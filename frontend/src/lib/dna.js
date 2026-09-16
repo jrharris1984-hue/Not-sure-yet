@@ -1,4 +1,6 @@
 // DNA schema + prompt builder + randomizer
+import { expandPrompt } from "@/lib/promptMap";
+
 export const SECTIONS = [
   {
     key: "identity",
@@ -269,129 +271,150 @@ export function resetSection(sectionKey) {
 export function buildPrompts(dna = {}) {
   const bits = [];
   const push = (v) => { if (v !== undefined && v !== null && String(v).trim() !== "") bits.push(String(v).trim()); };
+  // Expanded token lookup via promptMap
+  const mp = (section, field) => {
+    const v = dna?.[section]?.[field];
+    return v ? expandPrompt(section, field, v) : "";
+  };
+
+  // Quality suffix — enforced at end for photorealism
+  const quality = "masterpiece, best quality, ultra-detailed, 8k resolution, sharp focus, professional photography, realistic skin texture, detailed eyes, detailed skin pores, cinematic composition, physically accurate lighting";
 
   const id = dna.identity || {};
-  push(id.age && `${id.age} year old`);
-  push(id.ethnicity);
-  push(id.gender);
-  push(id.archetype);
+  if (id.name) push(`portrait of ${id.name}`);
+  push(id.age && `${id.age} year old adult`);
+  push(mp("identity", "ethnicity"));
+  push(mp("identity", "gender"));
+  push(mp("identity", "archetype"));
 
   const ph = dna.physique || {};
-  push(ph.height);
-  push(ph.body_type);
-  if (ph.muscularity > 60) push("athletic build");
-  if (ph.muscularity > 85) push("highly muscular");
-  if (ph.curves > 60) push("curvy figure");
-  if (ph.curves > 85) push("extremely curvy");
-  // Exaggeration → prompt intensity modifiers
+  push(ph.height && `${ph.height} height`);
+  push(mp("physique", "body_type"));
+  if (ph.muscularity > 60) push("athletic toned build, defined muscles");
+  if (ph.muscularity > 85) push("highly muscular fitness model physique");
+  if (ph.curves > 60) push("curvaceous voluptuous body");
+  if (ph.curves > 85) push("extremely curvy dramatic hourglass proportions");
   const ex = Number(ph.exaggeration || 0);
   const emphasize = (label) => {
-    if (ex >= 85) return `hyper-exaggerated ${label}`;
-    if (ex >= 65) return `exaggerated ${label}`;
+    if (ex >= 85) return `hyper-exaggerated cartoonishly ${label}`;
+    if (ex >= 65) return `dramatically exaggerated ${label}`;
     if (ex >= 40) return `enhanced ${label}`;
     return label;
   };
-  push(ph.bust && emphasize(`${ph.bust} bust`));
-  push(ph.bust_shape && `${ph.bust_shape} breasts`);
-  push(ph.butt && emphasize(`${ph.butt} butt`));
-  push(ph.thighs && emphasize(`${ph.thighs} thighs`));
-  push(ph.hips && emphasize(`${ph.hips} hips`));
-  push(ph.waist && `${ph.waist} waist`);
-  push(ph.shoulders && `${ph.shoulders} shoulders`);
-  push(ph.legs && `${ph.legs} legs`);
-  if (ex >= 75) push("stylized cartoonish proportions, exaggerated hourglass silhouette");
+  push(ph.bust && emphasize(expandPrompt("physique", "bust", ph.bust)));
+  push(mp("physique", "bust_shape"));
+  push(ph.butt && emphasize(expandPrompt("physique", "butt", ph.butt)));
+  push(ph.thighs && emphasize(expandPrompt("physique", "thighs", ph.thighs)));
+  push(ph.hips && emphasize(expandPrompt("physique", "hips", ph.hips)));
+  push(mp("physique", "waist"));
+  push(mp("physique", "shoulders"));
+  push(mp("physique", "legs"));
+  if (ex >= 75) push("stylized exaggerated body proportions, extreme feminine silhouette, dramatic curves");
   push(ph.proportions);
 
   const face = dna.face || {};
-  push(face.eye_shape && `${face.eye_shape} eyes`);
-  push(face.eye_color && `${face.eye_color} eyes`);
-  push(face.jawline && `${face.jawline} jawline`);
+  push(mp("face", "eye_shape"));
+  push(mp("face", "eye_color"));
+  push(mp("face", "jawline"));
   push(face.nose && `${face.nose} nose`);
-  push(face.lips && `${face.lips} lips`);
-  push(face.expression);
+  push(mp("face", "lips"));
+  push(mp("face", "expression"));
 
   const hair = dna.hair || {};
-  push([hair.length, hair.style, hair.color, "hair"].filter(Boolean).join(" "));
+  const hairColor = hair.color && expandPrompt("hair", "color", hair.color);
+  const hairLength = hair.length && expandPrompt("hair", "length", hair.length);
+  const hairStyle = hair.style && expandPrompt("hair", "style", hair.style);
+  push([hairLength, hairStyle, hairColor].filter(Boolean).join(", "));
   push(hair.bangs && hair.bangs !== "none" && `${hair.bangs} bangs`);
   push(hair.texture && `${hair.texture} hair texture`);
 
   const skin = dna.skin || {};
-  push(skin.tone && `${skin.tone} skin`);
-  push(skin.texture);
-  push(skin.freckles && skin.freckles !== "none" && `${skin.freckles} freckles`);
+  push(mp("skin", "tone"));
+  push(mp("skin", "texture"));
+  push(mp("skin", "freckles"));
   push(skin.tattoos);
-  if (skin.glow > 60) push("dewy glowing skin");
+  if (skin.glow > 60) push("dewy glowing luminous skin, healthy sheen");
+  if (skin.glow > 85) push("oiled glistening sweaty body, wet shine on skin");
 
   const im = dna.intimate || {};
-  push(im.pubic_hair && `${im.pubic_hair} pubic hair`);
-  push(im.pussy && `${im.pussy} pussy`);
-  push(im.clit && im.clit !== "hidden" && `${im.clit} clit`);
-  push(im.asshole && im.asshole !== "hidden" && `${im.asshole} asshole`);
-  push(im.nipples && `${im.nipples} nipples`);
-  push(im.areolas && `${im.areolas} areolas`);
-  push(im.body_hair && im.body_hair !== "hairless" && `${im.body_hair} body hair`);
-  push(im.piercings && im.piercings !== "none" && `${im.piercings} piercing`);
+  push(mp("intimate", "pubic_hair"));
+  push(mp("intimate", "pussy"));
+  push(im.clit && im.clit !== "hidden" && expandPrompt("intimate", "clit", im.clit));
+  push(im.asshole && im.asshole !== "hidden" && expandPrompt("intimate", "asshole", im.asshole));
+  push(mp("intimate", "nipples"));
+  push(mp("intimate", "areolas"));
+  push(im.body_hair && im.body_hair !== "hairless" && expandPrompt("intimate", "body_hair", im.body_hair));
+  push(im.piercings && im.piercings !== "none" && expandPrompt("intimate", "piercings", im.piercings));
 
   const wd = dna.wardrobe || {};
-  push(wd.outfit_preset);
-  const noneVals = new Set(["none", "nude"]);
-  if (!noneVals.has(wd.top)) push(wd.top);
-  if (!noneVals.has(wd.bottom)) push(wd.bottom);
-  if (!noneVals.has(wd.underwear)) push(wd.underwear);
-  push(wd.footwear && wd.footwear !== "barefoot" && wd.footwear);
-  if (wd.accessories && wd.accessories !== "none") push(wd.accessories);
-  push(wd.material);
-  push(wd.palette);
-  push(wd.fit);
-  push(wd.state && wd.state !== "fully clothed" && wd.state);
+  push(mp("wardrobe", "outfit_preset"));
+  if (wd.top && wd.top !== "none") push(expandPrompt("wardrobe", "top", wd.top));
+  if (wd.bottom && wd.bottom !== "none") push(expandPrompt("wardrobe", "bottom", wd.bottom));
+  if (wd.underwear && wd.underwear !== "none") push(expandPrompt("wardrobe", "underwear", wd.underwear));
+  if (wd.footwear && wd.footwear !== "barefoot") push(expandPrompt("wardrobe", "footwear", wd.footwear));
+  if (wd.accessories && wd.accessories !== "none") push(expandPrompt("wardrobe", "accessories", wd.accessories));
+  push(mp("wardrobe", "material"));
+  push(wd.palette && `${wd.palette} color palette`);
+  push(wd.fit && `${wd.fit} fit`);
+  push(wd.state && wd.state !== "fully clothed" && expandPrompt("wardrobe", "state", wd.state));
 
   const pose = dna.pose || {};
-  push(pose.action);
-  push(pose.angle && `${pose.angle} angle`);
-  push(pose.distance);
-  push(pose.focus && pose.focus !== "full frame" && `focus on ${pose.focus}`);
-  push(pose.hands && `hands ${pose.hands}`);
-  push(pose.body_language);
+  push(mp("pose", "action"));
+  push(mp("pose", "angle"));
+  push(mp("pose", "distance"));
+  push(pose.focus && pose.focus !== "full frame" && expandPrompt("pose", "focus", pose.focus));
+  push(pose.hands && expandPrompt("pose", "hands", pose.hands));
+  push(mp("pose", "body_language"));
 
   const sc = dna.scenario || {};
-  push(sc.cast_size && sc.cast_size !== "solo" && sc.cast_size);
-  push(sc.cast_type && sc.cast_type !== "none" && sc.cast_type);
-  push(sc.roleplay && sc.roleplay !== "none" && sc.roleplay);
-  push(sc.acts && sc.acts !== "none" && sc.acts);
+  push(sc.cast_size && sc.cast_size !== "solo" && expandPrompt("scenario", "cast_size", sc.cast_size));
+  push(sc.cast_type && sc.cast_type !== "none" && expandPrompt("scenario", "cast_type", sc.cast_type));
+  push(sc.roleplay && sc.roleplay !== "none" && expandPrompt("scenario", "roleplay", sc.roleplay));
+  push(sc.acts && sc.acts !== "none" && expandPrompt("scenario", "acts", sc.acts));
   const intensity = Number(sc.intensity || 0);
-  if (intensity >= 85) push("extreme hardcore explicit pornographic scene");
-  else if (intensity >= 65) push("hardcore explicit scene");
-  else if (intensity >= 40) push("explicit adult scene");
-  else if (intensity >= 20) push("sensual softcore");
+  if (intensity >= 85) push("extreme hardcore XXX pornographic scene, explicit sexual content, uncensored");
+  else if (intensity >= 65) push("hardcore explicit adult scene, uncensored NSFW");
+  else if (intensity >= 40) push("explicit adult content, NSFW");
+  else if (intensity >= 20) push("sensual softcore, tasteful nude");
   push(sc.extra_acts);
 
   const scene = dna.scene || {};
-  push(scene.environment);
+  push(mp("scene", "environment"));
   push(scene.background);
-  push(scene.era);
+  push(mp("scene", "era"));
   push(scene.props);
 
   const lg = dna.lighting || {};
-  push(lg.source && `${lg.source} light`);
+  push(lg.source && expandPrompt("lighting", "source", lg.source));
   push(lg.color_temp && `${lg.color_temp} color temperature`);
-  push(lg.direction && `${lg.direction} lighting`);
-  push(lg.style);
-  push(lg.mood && `${lg.mood} mood`);
+  push(lg.direction && `${lg.direction} lighting direction`);
+  push(mp("lighting", "style"));
+  push(mp("lighting", "mood"));
 
   const cam = dna.camera || {};
-  push(cam.lens && `${cam.lens} lens`);
-  push(cam.aperture);
-  push(cam.angle);
+  push(mp("camera", "lens"));
+  push(mp("camera", "aperture"));
+  push(cam.angle && `${cam.angle} camera angle`);
   push(cam.aspect_ratio && `${cam.aspect_ratio} aspect ratio`);
 
   const st = dna.style || {};
-  push(st.render);
+  push(mp("style", "render"));
   push(st.film_grain && st.film_grain !== "none" && `${st.film_grain} film grain`);
-  push(st.artistic_tone);
+  push(mp("style", "artistic_tone"));
   push(st.extra);
 
+  bits.push(quality);
+
   const positive = bits.filter(Boolean).join(", ");
-  const negative = "low quality, blurry, deformed anatomy, extra fingers, watermark, text, jpeg artifacts";
+  const negative = [
+    "low quality, worst quality, blurry, out of focus, jpeg artifacts, compression artifacts",
+    "deformed, disfigured, mutated, extra fingers, missing fingers, fused fingers, extra limbs, missing limbs, mutated hands, bad anatomy, bad proportions, unnatural body",
+    "poorly drawn face, asymmetric face, cross-eyed, poorly drawn eyes, dead eyes",
+    "cartoon, anime, 3d render, cgi, painting, illustration, drawing, sketch, doll-like, plastic, wax figure, uncanny valley",
+    "watermark, signature, text, username, logo, artist name",
+    "underage, child, teen, young girl, minor, loli",
+    "overexposed, underexposed, harsh flash, oversaturated, washed out",
+  ].join(", ");
   return { positive, negative };
 }
 
