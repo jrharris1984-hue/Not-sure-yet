@@ -1,0 +1,119 @@
+{
+  "theme": "Studio Dark Vibe (High-Contrast, Tactile Creative Studio)",
+  "context_type": "Mobile-First Hybrid Fullstack App (Studio Character Design Tool)",
+  "typography": {
+    "heading_font": "Outfit, Cabinet Grotesk, or Syne, sans-serif (Prohibited: Inter for headlines)",
+    "body_font": "Manrope or Plus Jakarta Sans, sans-serif",
+    "mono_font": "JetBrains Mono or Space Mono, monospace (for Prompt String Preview, DNA JSON, and ComfyUI logs)",
+    "scale": {
+      "h1": "text-2xl sm:text-3xl lg:text-4xl font-extrabold tracking-tight",
+      "h2": "text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight",
+      "h3": "text-lg sm:text-xl font-semibold",
+      "section_label": "text-xs uppercase tracking-wider font-mono text-amber-500/90 font-bold",
+      "body": "text-sm sm:text-base text-zinc-300 font-normal leading-relaxed",
+      "caption": "text-xs text-zinc-400 font-medium"
+    }
+  },
+  "colors": {
+    "mode": "dark",
+    "background_base": "#090A0F",
+    "surface_card": "#12141C",
+    "surface_elevated": "#1A1D28",
+    "surface_hover": "#242838",
+    "border_subtle": "#222634",
+    "border_active": "#3B4256",
+    "primary_accent": "#F59E0B",
+    "primary_accent_hover": "#D97706",
+    "secondary_accent": "#10B981",
+    "accent_glow": "rgba(245, 158, 11, 0.15)",
+    "text_primary": "#F3F4F6",
+    "text_secondary": "#9CA3AF",
+    "text_muted": "#6B7280",
+    "forbidden_colors": [
+      "#7351B7",
+      "AI-slop purple gradients",
+      "Teal blue #1B93A4"
+    ]
+  },
+  "layout_and_grids": {
+    "mobile": "Single column mobile-first with sticky bottom navigation or drawer, bottom sheet trait selection, swipeable horizontal chips, thumb-friendly tap targets (min 44px).",
+    "desktop": "Three-pane studio desktop layout: Pane 1 Left Nav/Sections Sidebar (w-64) | Pane 2 Center DNA Form Builder (flex-1 scrollable) | Pane 3 Right Live Preview Panel + Prompt String Panel + Render Status & Gallery Drawer (w-96 or w-[420px]).",
+    "spacing_scale": "Generous spacing: p-4 to p-6 inside card containers; gap-4 to gap-6 between grid widgets; strict border padding to avoid text collisions."
+  },
+  "sections_breakdown": [
+    "Identity (Gender, Age, Ethnicity, Archetype, Name)",
+    "Physique (Height, Body Type, Muscularity, Curves, Bust/Chest, Proportions)",
+    "Face (Eye Shape, Eye Color, Jawline, Nose, Lips, Expression, Age Detail)",
+    "Hair (Style, Length, Color, Texture, Bangs, Facial Hair)",
+    "Skin (Tone, Texture, Freckles, Tattoos, Tan Lines, Oiliness/Glow, Imperfections)",
+    "Wardrobe (Top, Bottom, Lingerie/Underwear, Material, Color Palette, Fit)",
+    "Pose (Action, Angle, Camera Distance, Hand Placement, Body Language)",
+    "Scene (Environment, Background, Indoor/Outdoor, Era/Theme, Props)",
+    "Lighting (Source, Color Temperature, Direction, Cinematic Style, Mood)",
+    "Camera (Lens Focal Length, Aperture/Depth of Field, Angle, Aspect Ratio)",
+    "Style (Realistic Photography, Cinematic, Analog Film Grain, Octane Render, NSFW/Artistic Tone)"
+  ],
+  "visual_enhancers": {
+    "cards": "Subtle 1px border (#222634), deep background (#12141C), rounded-xl, hover:border-zinc-700 transition-all",
+    "chip_buttons": "Tactile pill buttons with dark borders, active state highlighted in Amber (#F59E0B) or Emerald (#10B981) with soft glow shadow",
+    "bottom_sheets": "Backdrop blur (backdrop-blur-md bg-black/80), smooth spring slide up, rounded-t-2xl with grab handle",
+    "prompt_preview": "Monospace editor card with syntax-highlighted tokens, copy-to-clipboard, lock toggle per section, live character count",
+    "progress_bar": "WebSocket render progress bar with glowing amber/cyan accent, percentage indicator, frame time, and live step logs"
+  },
+  "media": {
+    "character_previews": [
+      {
+        "category": "Cinematic Portrait 1",
+        "url": "https://images.unsplash.com/photo-1563170446-9c3c0622d8a9?crop=entropy&cs=srgb&fm=jpg&q=85",
+        "description": "Dramatic studio lighting portrait"
+      },
+      {
+        "category": "Cinematic Portrait 2",
+        "url": "https://images.unsplash.com/photo-1568038479111-87bf80659645?crop=entropy&cs=srgb&fm=jpg&q=85",
+        "description": "Blonde hair detailed face render"
+      },
+      {
+        "category": "Studio Lighting 3",
+        "url": "https://images.pexels.com/photos/36211006/pexels-photo-36211006.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+        "description": "Dramatic red and dark cinematic portrait lighting"
+      },
+      {
+        "category": "Neo-Lighting 4",
+        "url": "https://images.pexels.com/photos/18399215/pexels-photo-18399215.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+        "description": "Moody atmospheric dual lighting portrait"
+      }
+    ]
+  },
+  "testing_attributes": {
+    "mandate": "Every interactive element (button, slider, input, tab, card, chip, dropdown, modal trigger, WebSocket state widget) MUST include a unique data-testid attribute in kebab-case.",
+    "examples": [
+      "data-testid=\"dna-section-identity\"",
+      "data-testid=\"trait-chip-female\"",
+      "data-testid=\"slider-physique-muscularity\"",
+      "data-testid=\"btn-ai-freeform-generate\"",
+      "data-testid=\"btn-dispatch-comfyui-render\"",
+      "data-testid=\"prompt-string-preview\"",
+      "data-testid=\"comfyui-ws-status-badge\"",
+      "data-testid=\"character-library-card-1\""
+    ]
+  },
+  "instructions_to_main_agent": {
+    "tech_stack": "React js (.js / .jsx), Tailwind CSS, Framer Motion, Lucide-React icons, Sonner for notifications.",
+    "core_workflows": [
+      "1. Build DNA Form with 11 distinct sections, slider controls, chip sets, searchable dropdowns, lock/randomize per section.",
+      "2. Prompt Builder engine that dynamically parses DNA state into standard SDXL/FLUX positive and negative prompt strings with real-time editing.",
+      "3. AI Assist integration: OpenRouter API freeform-to-DNA parser, refine prompt mode, and per-section AI trait suggestions.",
+      "4. ComfyUI Local Server integration: Dispatch generation jobs, track status with WebSocket mock/live handler, view progress bar & live generated output.",
+      "5. Character Library: Save character DNA snapshots, versioning, tag filter, search, duplicate, favorite, export/import JSON.",
+      "6. Render Gallery: Display generated outputs linked to character DNA snapshots with full prompt viewer and metadata modal."
+    ]
+  },
+  "UNIVERSAL GUIDELINES FOR MAIN AGENT": [
+    "Ensure dark studio vibe theme with rich obsidian (#090A0F) and dark slate (#12141C) surfaces.",
+    "Never use generic centered layouts or AI purple gradients.",
+    "Use distinct font pairings (Outfit for headers, Manrope for body, JetBrains Mono for prompts).",
+    "All interactive and key status components MUST include data-testid attributes.",
+    "No hover-only essential actions; ensure tap targets are min 44px for thumb accessibility.",
+    "Ensure non-transparent headers and bottom drawers (always use background color with blur)."
+  ]
+}

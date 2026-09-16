@@ -1,0 +1,28 @@
+import axios from "axios";
+
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
+export const API_BASE = `${BACKEND_URL}/api`;
+
+export const api = axios.create({
+  baseURL: API_BASE,
+  headers: { "Content-Type": "application/json" },
+});
+
+export const endpoints = {
+  settings: () => api.get("/settings").then((r) => r.data),
+  updateSettings: (body) => api.put("/settings", body).then((r) => r.data),
+  comfyHealth: () => api.get("/comfyui/health").then((r) => r.data),
+  listCharacters: (params = {}) => api.get("/characters", { params }).then((r) => r.data),
+  createCharacter: (body) => api.post("/characters", body).then((r) => r.data),
+  getCharacter: (id) => api.get(`/characters/${id}`).then((r) => r.data),
+  updateCharacter: (id, body) => api.patch(`/characters/${id}`, body).then((r) => r.data),
+  deleteCharacter: (id) => api.delete(`/characters/${id}`).then((r) => r.data),
+  duplicateCharacter: (id) => api.post(`/characters/${id}/duplicate`).then((r) => r.data),
+  characterRenders: (id) => api.get(`/characters/${id}/renders`).then((r) => r.data),
+  listRenders: () => api.get("/renders").then((r) => r.data),
+  dispatchRender: (body) => api.post("/renders/dispatch", body).then((r) => r.data),
+  pollRender: (id) => api.post(`/renders/${id}/poll`).then((r) => r.data),
+  aiFreeform: (text) => api.post("/ai/freeform", { text }).then((r) => r.data),
+  aiRefine: (dna, instruction) => api.post("/ai/refine", { dna, instruction }).then((r) => r.data),
+  aiSuggest: (section, dna) => api.post("/ai/suggest", { section, dna }).then((r) => r.data),
+};

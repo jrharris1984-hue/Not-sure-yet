@@ -1,0 +1,118 @@
+@import url("https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 230 24% 5%;
+    --foreground: 220 14% 96%;
+    --card: 230 20% 9%;
+    --card-foreground: 220 14% 96%;
+    --popover: 230 22% 8%;
+    --popover-foreground: 220 14% 96%;
+    --primary: 38 92% 50%;
+    --primary-foreground: 30 100% 8%;
+    --secondary: 230 18% 14%;
+    --secondary-foreground: 220 14% 96%;
+    --muted: 230 16% 15%;
+    --muted-foreground: 220 8% 62%;
+    --accent: 160 84% 39%;
+    --accent-foreground: 160 20% 6%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 228 16% 16%;
+    --input: 228 16% 16%;
+    --ring: 38 92% 50%;
+    --radius: 0.75rem;
+  }
+}
+
+html,
+body,
+#root {
+  background: #090A0F;
+  color: #F3F4F6;
+  min-height: 100vh;
+}
+
+body {
+  margin: 0;
+  font-family: "Manrope", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+h1, h2, h3, h4, .font-display {
+  font-family: "Outfit", system-ui, sans-serif;
+  letter-spacing: -0.01em;
+}
+
+code, pre, .font-mono {
+  font-family: "JetBrains Mono", "Menlo", monospace;
+}
+
+::selection {
+  background: rgba(245, 158, 11, 0.35);
+  color: #fff;
+}
+
+.grain::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 60;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.9 0 0 0 0 0.9 0 0 0 0 0.9 0 0 0 0.06 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  opacity: 0.5;
+  mix-blend-mode: overlay;
+}
+
+.section-label {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #F59E0B;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.75rem;
+  border-radius: 999px;
+  border: 1px solid #222634;
+  background: #12141C;
+  color: #D1D5DB;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: border-color 180ms ease, background 180ms ease, color 180ms ease, transform 180ms ease;
+  min-height: 36px;
+}
+.chip:hover { border-color: #3B4256; background: #1A1D28; }
+.chip.active {
+  border-color: #F59E0B;
+  color: #FDE68A;
+  background: rgba(245, 158, 11, 0.10);
+  box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.25);
+}
+
+.hairline { border-color: #222634 !important; }
+
+.scroll-fade::-webkit-scrollbar { width: 6px; height: 6px; }
+.scroll-fade::-webkit-scrollbar-thumb { background: #242838; border-radius: 999px; }
+
+.pane {
+  background: #12141C;
+  border: 1px solid #222634;
+  border-radius: 14px;
+}
+
+.glass {
+  background: rgba(18, 20, 28, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
