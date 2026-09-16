@@ -1,0 +1,158 @@
+{
+  "1": {
+    "inputs": {
+      "preset": "FACEID PLUS V2",
+      "lora_strength": 1,
+      "provider": "CUDA",
+      "model": [
+        "2",
+        0
+      ]
+    },
+    "class_type": "IPAdapterUnifiedLoaderFaceID",
+    "_meta": {
+      "title": "IPAdapter Unified Loader FaceID"
+    }
+  },
+  "2": {
+    "inputs": {
+      "ckpt_name": "Realistic_Vision_V6.0_NV_B1_fp16.safetensors"
+    },
+    "class_type": "CheckpointLoaderSimple",
+    "_meta": {
+      "title": "Load Checkpoint"
+    }
+  },
+  "3": {
+    "inputs": {
+      "weight": 1.1,
+      "weight_faceidv2": 1.4,
+      "weight_type": "linear",
+      "combine_embeds": "concat",
+      "start_at": 0,
+      "end_at": 0.95,
+      "embeds_scaling": "V only",
+      "model": [
+        "1",
+        0
+      ],
+      "ipadapter": [
+        "1",
+        1
+      ],
+      "image": [
+        "4",
+        0
+      ]
+    },
+    "class_type": "IPAdapterFaceID",
+    "_meta": {
+      "title": "IPAdapter FaceID"
+    }
+  },
+  "4": {
+    "inputs": {
+      "image": "253024057.jpg"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "Load Image"
+    }
+  },
+  "7": {
+    "inputs": {
+      "text": "photorealistic full-body photograph of the same adult woman shown in the reference image,\n\nstrong facial identity preservation, highly recognizable as the reference person, preserve her unique facial structure, face shape, eyes, nose, lips, cheekbones, jawline, eyebrows, skin tone, apparent age, and distinctive facial characteristics,\n\naccurate natural facial proportions, realistic facial symmetry, detailed natural eyes with realistic reflections, natural eyelashes and eyebrows, realistic lips,\n\nnatural realistic skin texture, visible pores, subtle skin imperfections, fine facial texture, natural pigmentation variation, realistic skin highlights, realistic skin elasticity, no excessive skin smoothing,\n\nrealistic natural hair with individual strands, detailed hair texture, natural hairline,\n\nanatomically correct adult body, realistic human proportions, natural body shape, realistic shoulders, arms, torso, waist, hips and legs, anatomically correct hands and feet,\n\nfull body visible from head to feet, standing in a confident elegant pose, looking toward the camera, natural posture, relaxed sophisticated expression,\n\nwearing an elegant fitted black evening gown, luxurious formal evening fashion, sophisticated styling, realistic fabric texture, natural fabric folds and draping,\n\nstanding inside the lobby of a luxurious five-star hotel, elegant contemporary interior, polished stone floors, sophisticated furniture, warm decorative lighting, softly illuminated architectural details in the background,\n\nprofessional luxury fashion photography, realistic 35mm photograph, eye-level camera, natural perspective, realistic lens characteristics, accurate depth of field,\n\nwarm cinematic interior lighting, soft flattering key light across the face, subtle fill lighting, gentle rim lighting, realistic shadows, natural highlights, balanced exposure,\n\nbackground softly out of focus with realistic depth separation, detailed environment without distracting from the subject,\n\nsharp facial focus, highly detailed face, realistic photographic detail, natural color grading, realistic contrast, high dynamic range, physically plausible lighting, photorealistic",
+      "clip": [
+        "2",
+        1
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "CLIP Text Encode Positive"
+    }
+  },
+  "8": {
+    "inputs": {
+      "text": "low quality, low resolution, blurry, out of focus, distorted face, deformed face, altered facial identity, asymmetrical eyes, crossed eyes, malformed eyes, duplicate face, duplicate person, extra limbs, extra fingers, missing fingers, malformed hands, malformed feet, bad anatomy, warped body, unnatural proportions, plastic skin, waxy skin, oversmoothed skin, cartoon, anime, illustration, painting, CGI, watermark, text, logo",
+      "clip": [
+        "2",
+        1
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "CLIP Text Encode Megative"
+    }
+  },
+  "9": {
+    "inputs": {
+      "width": 768,
+      "height": 1024,
+      "batch_size": 1
+    },
+    "class_type": "EmptyLatentImage",
+    "_meta": {
+      "title": "Empty Latent Image"
+    }
+  },
+  "10": {
+    "inputs": {
+      "seed": 739736176745007,
+      "steps": 25,
+      "cfg": 5,
+      "sampler_name": "euler",
+      "scheduler": "karras",
+      "denoise": 1,
+      "model": [
+        "3",
+        0
+      ],
+      "positive": [
+        "7",
+        0
+      ],
+      "negative": [
+        "8",
+        0
+      ],
+      "latent_image": [
+        "9",
+        0
+      ]
+    },
+    "class_type": "KSampler",
+    "_meta": {
+      "title": "KSampler"
+    }
+  },
+  "11": {
+    "inputs": {
+      "samples": [
+        "10",
+        0
+      ],
+      "vae": [
+        "2",
+        2
+      ]
+    },
+    "class_type": "VAEDecode",
+    "_meta": {
+      "title": "VAE Decode"
+    }
+  },
+  "12": {
+    "inputs": {
+      "filename_prefix": "ComfyUI",
+      "images": [
+        "11",
+        0
+      ]
+    },
+    "class_type": "SaveImage",
+    "_meta": {
+      "title": "Save Image"
+    }
+  }
+}

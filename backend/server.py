@@ -85,12 +85,26 @@ class Render(BaseModel):
     updated_at: str = Field(default_factory=now_iso)
 
 
+class WorkflowTemplate(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=new_id)
+    name: str = "Untitled workflow"
+    kind: str = "image"  # image | video | edit | face
+    json_str: str = ""
+    positive_node_id: str = ""
+    negative_node_id: str = ""
+    notes: str = ""
+
+
 class Settings(BaseModel):
     model_config = ConfigDict(extra="ignore")
     id: str = "singleton"
     comfyui_url: str = "http://localhost:8188"
     openrouter_api_key: str = ""
     openrouter_model: str = "cognitivecomputations/dolphin-mixtral-8x7b"
+    workflows: List[WorkflowTemplate] = Field(default_factory=list)
+    default_workflow_id: str = ""
+    # deprecated legacy fields (kept for older docs)
     image_workflow_json: str = ""
     video_workflow_json: str = ""
     positive_prompt_node_id: str = "6"
@@ -101,10 +115,88 @@ class Settings(BaseModel):
 # ============================================================
 # Helpers
 # ============================================================
+SEED_DIR = ROOT_DIR / "seed_workflows"
+
+
+def _detect_prompt_nodes(wf: Dict[str, Any]) -> Dict[str, str]:
+    """Best-effort: find positive/negative text-encode nodes.
+    Preference: 1) node title/meta explicitly says 'positive'/'negative';
+    2) fallback to keyword heuristic on text."""
+    candidates: List[tuple] = []  # (node_id, title, text)
+    for nid, node in wf.items():
+        if not isinstance(node, dict):
+            continue
+        ct = str(node.get("class_type", ""))
+        if "TextEncode" in ct or "CLIPText" in ct:
+            title = str(node.get("_meta", {}).get("title", "")).lower()
+            inputs = node.get("inputs", {})
+            txt = str(inputs.get("text", inputs.get("prompt", "")))
+            candidates.append((nid, title, txt))
+
+    pos, neg = "", ""
+
+    # Pass 1: exact match by title
+    for nid, title, _txt in candidates:
+        if not pos and ("positive" in title or "megative" not in title and " pos" in title):
+            if "positive" in title:
+                pos = nid
+        if not neg and ("negative" in title or "megative" in title):  # 'megative' typo in your face wf
+            neg = nid
+    # Pass 2: keyword heuristic (only if still missing)
+    neg_keywords = ("low quality", "worst quality", "watermark", "deformed", "disfigured",
+                    "extra fingers", "cartoon, anime", "cgi, render", "bad anatomy")
+    if not pos or not neg:
+        for nid, _title, txt in candidates:
+            lower = txt.lower()
+            if not neg and any(k in lower for k in neg_keywords) and nid != pos:
+                neg = nid
+            elif not pos and nid != neg:
+                pos = nid
+    # Fallback: first is pos, second is neg
+    if not pos and candidates:
+        pos = candidates[0][0]
+    if not neg and len(candidates) > 1:
+        neg = next((c[0] for c in candidates if c[0] != pos), "")
+    return {"positive_node_id": pos, "negative_node_id": neg}
+
+
+SEED_WORKFLOWS = [
+    {"file": "chroma.json", "name": "Chroma1-HD · Golden T2I", "kind": "image"},
+    {"file": "zimage.json", "name": "Z-image Turbo · NSFW", "kind": "image"},
+    {"file": "qwen.json", "name": "Qwen Image Edit 2511", "kind": "edit"},
+    {"file": "wan.json", "name": "WAN 2.2 5B · Image → Video", "kind": "video"},
+    {"file": "face.json", "name": "Face-Preserved · IPAdapter FaceID", "kind": "face"},
+]
+
+
+def _load_seed_workflows() -> List[WorkflowTemplate]:
+    out: List[WorkflowTemplate] = []
+    for spec in SEED_WORKFLOWS:
+        p = SEED_DIR / spec["file"]
+        if not p.exists():
+            continue
+        try:
+            raw = p.read_text()
+            wf = json.loads(raw)
+            nodes = _detect_prompt_nodes(wf)
+            out.append(WorkflowTemplate(
+                name=spec["name"],
+                kind=spec["kind"],
+                json_str=raw,
+                positive_node_id=nodes["positive_node_id"],
+                negative_node_id=nodes["negative_node_id"],
+            ))
+        except Exception as e:
+            logger.warning(f"seed workflow {spec['file']} failed: {e}")
+    return out
+
+
 async def get_settings() -> Settings:
     doc = await db.settings.find_one({"id": "singleton"}, {"_id": 0})
     if not doc:
-        s = Settings()
+        s = Settings(workflows=_load_seed_workflows())
+        if s.workflows:
+            s.default_workflow_id = s.workflows[0].id
         await db.settings.insert_one(s.model_dump())
         return s
     return Settings(**doc)
@@ -186,13 +278,86 @@ async def update_settings(body: Dict[str, Any] = Body(...)):
     current = (await get_settings()).model_dump()
     allowed = {"comfyui_url", "openrouter_api_key", "openrouter_model",
                "image_workflow_json", "video_workflow_json",
-               "positive_prompt_node_id", "negative_prompt_node_id"}
+               "positive_prompt_node_id", "negative_prompt_node_id",
+               "default_workflow_id"}
     for k, v in body.items():
         if k in allowed:
             current[k] = v
     current["updated_at"] = now_iso()
     await db.settings.update_one({"id": "singleton"}, {"$set": current}, upsert=True)
     return Settings(**current)
+
+
+# ============================================================
+# Workflow library
+# ============================================================
+class WorkflowUpsert(BaseModel):
+    id: Optional[str] = None
+    name: Optional[str] = None
+    kind: Optional[str] = None
+    json_str: Optional[str] = None
+    positive_node_id: Optional[str] = None
+    negative_node_id: Optional[str] = None
+    notes: Optional[str] = None
+    auto_detect: bool = False
+
+
+@api.get("/workflows")
+async def list_workflows():
+    s = await get_settings()
+    return [w.model_dump() for w in s.workflows]
+
+
+@api.post("/workflows")
+async def upsert_workflow(body: WorkflowUpsert):
+    s = await get_settings()
+    workflows = list(s.workflows)
+    payload = body.model_dump(exclude_none=True)
+    payload.pop("auto_detect", None)
+    if body.auto_detect and body.json_str:
+        try:
+            wf = json.loads(body.json_str)
+            payload.update(_detect_prompt_nodes(wf))
+        except Exception:
+            pass
+    existing = next((w for w in workflows if w.id == body.id), None) if body.id else None
+    if existing:
+        for k, v in payload.items():
+            setattr(existing, k, v)
+        result = existing
+    else:
+        result = WorkflowTemplate(**payload)
+        workflows.append(result)
+    doc = {"workflows": [w.model_dump() for w in workflows], "updated_at": now_iso()}
+    if not s.default_workflow_id and workflows:
+        doc["default_workflow_id"] = workflows[0].id
+    await db.settings.update_one({"id": "singleton"}, {"$set": doc}, upsert=True)
+    return result.model_dump()
+
+
+@api.delete("/workflows/{wid}")
+async def delete_workflow(wid: str):
+    s = await get_settings()
+    workflows = [w for w in s.workflows if w.id != wid]
+    doc = {"workflows": [w.model_dump() for w in workflows], "updated_at": now_iso()}
+    if s.default_workflow_id == wid:
+        doc["default_workflow_id"] = workflows[0].id if workflows else ""
+    await db.settings.update_one({"id": "singleton"}, {"$set": doc}, upsert=True)
+    return {"ok": True}
+
+
+@api.post("/workflows/seed")
+async def seed_workflows():
+    """Add the 5 bundled default workflows (idempotent by name)."""
+    s = await get_settings()
+    existing_names = {w.name for w in s.workflows}
+    new = [w for w in _load_seed_workflows() if w.name not in existing_names]
+    workflows = list(s.workflows) + new
+    doc = {"workflows": [w.model_dump() for w in workflows], "updated_at": now_iso()}
+    if not s.default_workflow_id and workflows:
+        doc["default_workflow_id"] = workflows[0].id
+    await db.settings.update_one({"id": "singleton"}, {"$set": doc}, upsert=True)
+    return {"added": len(new), "total": len(workflows)}
 
 
 # ============================================================
@@ -324,24 +489,46 @@ class DispatchBody(BaseModel):
     dna: Dict[str, Any] = Field(default_factory=dict)
     prompt_positive: str = ""
     prompt_negative: str = ""
-    workflow_type: str = "image"
+    workflow_id: Optional[str] = None
+    workflow_type: str = "image"  # legacy fallback
 
 
 @api.post("/renders/dispatch")
 async def dispatch_render(body: DispatchBody):
     s = await get_settings()
+    # Resolve workflow
+    wf_template: Optional[WorkflowTemplate] = None
+    if body.workflow_id:
+        wf_template = next((w for w in s.workflows if w.id == body.workflow_id), None)
+    if not wf_template and s.default_workflow_id:
+        wf_template = next((w for w in s.workflows if w.id == s.default_workflow_id), None)
+    if not wf_template and s.workflows:
+        wf_template = s.workflows[0]
+
     r = Render(
         character_id=body.character_id,
         dna_snapshot=body.dna,
         prompt_positive=body.prompt_positive,
         prompt_negative=body.prompt_negative,
-        workflow_type=body.workflow_type,
+        workflow_type=wf_template.kind if wf_template else body.workflow_type,
     )
-    template_str = s.image_workflow_json if body.workflow_type == "image" else s.video_workflow_json
+
+    # Fallback to legacy fields if no workflow library entry
+    if wf_template:
+        template_str = wf_template.json_str
+        pos_id = wf_template.positive_node_id
+        neg_id = wf_template.negative_node_id
+    else:
+        template_str = s.image_workflow_json if body.workflow_type == "image" else s.video_workflow_json
+        pos_id = s.positive_prompt_node_id
+        neg_id = s.negative_prompt_node_id
+
     if not template_str.strip():
         r.status = "failed"
-        r.error = f"No {body.workflow_type} workflow template set in Settings."
-        await db.renders.insert_one(r.model_dump())
+        r.error = "No workflow template set. Add one in Settings."
+        doc = r.model_dump()
+        await db.renders.insert_one(doc)
+        doc.pop("_id", None)
         raise HTTPException(400, r.error)
 
     try:
@@ -349,16 +536,17 @@ async def dispatch_render(body: DispatchBody):
     except Exception as e:
         r.status = "failed"
         r.error = f"Workflow template is not valid JSON: {e}"
-        await db.renders.insert_one(r.model_dump())
+        doc = r.model_dump()
+        await db.renders.insert_one(doc)
+        doc.pop("_id", None)
         raise HTTPException(400, r.error)
 
     # Map prompts into template
-    pos_id, neg_id = s.positive_prompt_node_id, s.negative_prompt_node_id
     mapped = {"positive": False, "negative": False}
-    if pos_id in workflow and "inputs" in workflow[pos_id] and "text" in workflow[pos_id]["inputs"]:
+    if pos_id and pos_id in workflow and "inputs" in workflow[pos_id] and "text" in workflow[pos_id]["inputs"]:
         workflow[pos_id]["inputs"]["text"] = body.prompt_positive
         mapped["positive"] = True
-    if neg_id in workflow and "inputs" in workflow[neg_id] and "text" in workflow[neg_id]["inputs"]:
+    if neg_id and neg_id in workflow and "inputs" in workflow[neg_id] and "text" in workflow[neg_id]["inputs"]:
         workflow[neg_id]["inputs"]["text"] = body.prompt_negative
         mapped["negative"] = True
 
@@ -382,6 +570,8 @@ async def dispatch_render(body: DispatchBody):
 
     doc = r.model_dump()
     doc["mapping"] = mapped
+    doc["workflow_id"] = wf_template.id if wf_template else None
+    doc["workflow_name"] = wf_template.name if wf_template else None
     await db.renders.insert_one(doc)
     doc.pop("_id", None)
     return doc

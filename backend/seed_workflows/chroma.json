@@ -1,0 +1,221 @@
+{
+  "298": {
+    "inputs": {
+      "samples": [
+        "747",
+        0
+      ],
+      "vae": [
+        "710",
+        0
+      ]
+    },
+    "class_type": "VAEDecode",
+    "_meta": {
+      "title": "VAE Decode"
+    }
+  },
+  "694": {
+    "inputs": {
+      "cfg": 3.8,
+      "model": [
+        "701",
+        0
+      ],
+      "positive": [
+        "748",
+        0
+      ],
+      "negative": [
+        "749",
+        0
+      ]
+    },
+    "class_type": "CFGGuider",
+    "_meta": {
+      "title": "CFG Guider"
+    }
+  },
+  "700": {
+    "inputs": {
+      "sampler_name": "euler"
+    },
+    "class_type": "KSamplerSelect",
+    "_meta": {
+      "title": "KSamplerSelect"
+    }
+  },
+  "701": {
+    "inputs": {
+      "shift": 1,
+      "model": [
+        "752",
+        0
+      ]
+    },
+    "class_type": "ModelSamplingAuraFlow",
+    "_meta": {
+      "title": "Flow Shift"
+    }
+  },
+  "710": {
+    "inputs": {
+      "vae_name": "ae.safetensors"
+    },
+    "class_type": "VAELoader",
+    "_meta": {
+      "title": "Load VAE"
+    }
+  },
+  "718": {
+    "inputs": {
+      "noise_seed": 283036233092683
+    },
+    "class_type": "RandomNoise",
+    "_meta": {
+      "title": "SEED"
+    }
+  },
+  "731": {
+    "inputs": {
+      "unet_name": "Chroma1-HD-fp8mixed-final.safetensors",
+      "weight_dtype": "default"
+    },
+    "class_type": "UNETLoader",
+    "_meta": {
+      "title": "Load Diffusion Model"
+    }
+  },
+  "733": {
+    "inputs": {
+      "clip_name": "t5xxl_fp8_e4m3fn_scaled.safetensors",
+      "type": "chroma",
+      "device": "default"
+    },
+    "class_type": "CLIPLoader",
+    "_meta": {
+      "title": "Load CLIP"
+    }
+  },
+  "737": {
+    "inputs": {
+      "width": 768,
+      "height": 1152,
+      "batch_size": 1
+    },
+    "class_type": "EmptySD3LatentImage",
+    "_meta": {
+      "title": "EmptySD3LatentImage"
+    }
+  },
+  "740": {
+    "inputs": {
+      "filename_prefix": "ComfyUI",
+      "images": [
+        "298",
+        0
+      ]
+    },
+    "class_type": "SaveImage",
+    "_meta": {
+      "title": "Save Image"
+    }
+  },
+  "741": {
+    "inputs": {
+      "min_padding": 0,
+      "min_length": 0,
+      "clip": [
+        "733",
+        0
+      ]
+    },
+    "class_type": "T5TokenizerOptions",
+    "_meta": {
+      "title": "T5 Tokenizer Options"
+    }
+  },
+  "747": {
+    "inputs": {
+      "noise": [
+        "718",
+        0
+      ],
+      "guider": [
+        "694",
+        0
+      ],
+      "sampler": [
+        "700",
+        0
+      ],
+      "sigmas": [
+        "751",
+        0
+      ],
+      "latent_image": [
+        "737",
+        0
+      ]
+    },
+    "class_type": "SamplerCustomAdvanced",
+    "_meta": {
+      "title": "SamplerCustomAdvanced"
+    }
+  },
+  "748": {
+    "inputs": {
+      "text": "photorealistic adult photography, 8k resolution, ultra-detailed, plus-size Black woman with curvaceous figure, large breasts with dark areolas, thick thighs, wide hips, large buttocks, natural body hair, visible labia, long wavy blonde ombre hair with dark roots, tan skin tone, wing tattoos and star tattoo on chest, colorful nail polish, pulling down dark blue leggings, seated on plush gray rug, legs spread wide, open legs, squatting pose, hands on thighs, modern living room with white leather sofa in background, bright natural lighting, sharp focus, professional color grading, detailed skin texture, natural skin imperfections",
+      "clip": [
+        "741",
+        0
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "CLIP Text Encode (Positive Prompt)"
+    }
+  },
+  "749": {
+    "inputs": {
+      "text": "cartoon, anime, 3d, painting, illustration, drawing, sketch, cgi, render, low quality, blurry, out of focus, soft focus, bad quality, jpeg artifacts, watermark, signature, text, username, logo, deformed, distorted, disfigured, poor anatomy, extra limbs, missing limbs, fused fingers, too many fingers, wrong number of fingers, mutated hands, unrealistic proportions, exaggerated features, plastic appearance, overly smooth skin, airbrushed skin, doll-like, mannequin, wax figure, unnatural poses, contorted positions, impossible anatomy, mutated body parts, asymmetrical features, bad hands, missing hands, extra arms, underage, child, teen, young, minor, flat chest, small breasts, skinny, thin, model body, athletic body, muscular body, body hair on face, facial hair, beard, mustache, noise, grain, artifacts, edges, borders, frame, background blur, bokeh, lens flare, overexposed, underexposed, dark shadows, high contrast, HDR, saturation, oversaturated, desaturated, color cast, color shift, white balance error",
+      "clip": [
+        "741",
+        0
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "CLIP Text Encode (Negative Prompt)"
+    }
+  },
+  "751": {
+    "inputs": {
+      "steps": 26,
+      "alpha": 0.45,
+      "beta": 0.45,
+      "model": [
+        "701",
+        0
+      ]
+    },
+    "class_type": "BetaSamplingScheduler",
+    "_meta": {
+      "title": "BetaSamplingScheduler"
+    }
+  },
+  "752": {
+    "inputs": {
+      "lora_name": "goldenchromaV1.safetensors",
+      "strength_model": 0.5,
+      "model": [
+        "731",
+        0
+      ]
+    },
+    "class_type": "LoraLoaderModelOnly",
+    "_meta": {
+      "title": "GoldenChroma LoRA (Balanced 0.50)"
+    }
+  }
+}

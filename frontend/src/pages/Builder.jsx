@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Save, Shuffle, Zap, Download, Upload, Loader2, Film, ImagePlus } from "lucide-react";
+import { Save, Shuffle, Download, Upload, Loader2, Play } from "lucide-react";
 import { toast } from "sonner";
 import { endpoints } from "@/lib/api";
 import { SECTIONS, DEFAULT_DNA, randomizeDna, randomizeSection, resetSection, buildPrompts } from "@/lib/dna";
@@ -22,6 +22,15 @@ export default function Builder() {
   const [activeSection, setActiveSection] = useState(SECTIONS[0].key);
   const [dispatching, setDispatching] = useState(false);
   const [activeRender, setActiveRender] = useState(null);
+  const [workflowId, setWorkflowId] = useState("");
+
+  const { data: workflows = [] } = useQuery({ queryKey: ["workflows"], queryFn: endpoints.listWorkflows });
+  const { data: settings } = useQuery({ queryKey: ["settings"], queryFn: endpoints.settings });
+  useEffect(() => {
+    if (!workflowId && workflows.length) {
+      setWorkflowId(settings?.default_workflow_id || workflows[0].id);
+    }
+  }, [workflows, settings, workflowId]);
 
   useQuery({
     queryKey: ["character", id],
@@ -53,7 +62,11 @@ export default function Builder() {
     onError: (e) => toast.error(e?.response?.data?.detail || "Save failed"),
   });
 
-  const doDispatch = async (workflow_type) => {
+  const doDispatch = async () => {
+    if (!workflowId) {
+      toast.error("Pick a workflow first (Settings → Workflow library)");
+      return;
+    }
     setDispatching(true);
     try {
       const r = await endpoints.dispatchRender({
@@ -61,7 +74,7 @@ export default function Builder() {
         dna,
         prompt_positive: positive,
         prompt_negative: negative,
-        workflow_type,
+        workflow_id: workflowId,
       });
       setActiveRender(r);
       toast.success(r.status === "running" ? "Render queued to ComfyUI" : `Render ${r.status}`);
@@ -137,6 +150,17 @@ export default function Builder() {
           className="bg-elevated border-hairline text-lg font-display font-bold"
         />
         <div className="flex flex-wrap gap-2">
+          <select
+            data-testid="select-workflow"
+            value={workflowId}
+            onChange={(e) => setWorkflowId(e.target.value)}
+            className="bg-elevated border border-hairline rounded-lg px-3 py-2 text-sm text-zinc-100 min-w-[200px]"
+          >
+            {workflows.length === 0 && <option value="">No workflows — open Settings</option>}
+            {workflows.map((w) => (
+              <option key={w.id} value={w.id}>{w.kind.toUpperCase()} · {w.name}</option>
+            ))}
+          </select>
           <button
             onClick={() => setDna(randomizeDna(dna, locks))}
             data-testid="btn-randomize-all"
@@ -153,20 +177,12 @@ export default function Builder() {
             {save.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Save
           </button>
           <button
-            onClick={() => doDispatch("image")}
-            disabled={dispatching}
+            onClick={doDispatch}
+            disabled={dispatching || !workflowId}
             data-testid="btn-dispatch-comfyui-render"
             className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black text-sm font-semibold px-3 py-2 disabled:opacity-40"
           >
-            {dispatching ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImagePlus className="h-4 w-4" />} Render
-          </button>
-          <button
-            onClick={() => doDispatch("video")}
-            disabled={dispatching}
-            data-testid="btn-dispatch-video"
-            className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/40 text-emerald-200 hover:bg-emerald-500/10 text-sm font-semibold px-3 py-2 disabled:opacity-40"
-          >
-            <Film className="h-4 w-4" /> Video
+            {dispatching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />} Render
           </button>
           <button
             onClick={exportJson}
