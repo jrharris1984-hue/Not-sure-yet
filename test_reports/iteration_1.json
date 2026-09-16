@@ -1,0 +1,35 @@
+{
+  "summary": "First-finish smoke pass on Ultra Studio Character DNA Builder v2. Verified backend health/settings/CRUD/filters and full frontend flow (Library empty state, Builder save flow, Settings save with toast, Gallery). One HIGH backend bug: /api/renders/dispatch returns HTTP 500 (ObjectId serialization) when ComfyUI is offline instead of the expected render doc with status='offline'. Render doc is actually persisted (visible in Gallery), but the JSON response fails to serialize.",
+  "tested_scope": ["backend", "frontend", "integration"],
+  "passed": [
+    "GET /api/health -> {ok:true, mongo:true}",
+    "GET /api/settings returns singleton with correct defaults (comfyui_url=http://localhost:8188, model=cognitivecomputations/dolphin-mixtral-8x7b, empty key)",
+    "PUT /api/settings persists image_workflow_json and positive_prompt_node_id",
+    "GET /api/comfyui/health -> {online:false, ...} HTTP 200 (graceful)",
+    "POST /api/characters, GET /api/characters, GET /api/characters/{id}, PATCH /api/characters/{id}, POST /api/characters/{id}/duplicate, DELETE /api/characters/{id} all work",
+    "GET /api/characters?q=TestChar filters by name substring",
+    "GET /api/characters?favorite=true filters favorites",
+    "POST /api/renders/dispatch with workflow_type=image and no image_workflow_json returns HTTP 400 with 'No image workflow template set in Settings.'",
+    "POST /api/ai/freeform with no OpenRouter key returns HTTP 400 with 'OpenRouter API key not set in Settings' (note: request body field is 'text', not 'prompt')",
+    "Frontend Library / shows 'No characters yet' empty state and New Character button",
+    "Frontend Builder /character/new: input-character-name accepts input; chip-identity-gender-female clickable; prompt-string-preview updates ('44 year old, female, hair'); btn-randomize-all works; btn-save-character saves and navigates to /character/{id}; new character visible in Library",
+    "Frontend /settings loads defaults; btn-save-settings triggers 'Saved' toast",
+    "Frontend /gallery renders (shows previously-dispatched render tiles with status 'offline'/'failed' correctly)"
+  ],
+  "failed": [
+    {
+      "area": "backend /api/renders/dispatch (image + ComfyUI offline)",
+      "issue": "Returns HTTP 500 'Internal Server Error' instead of a render doc with status='offline'. Root cause per backend traceback: FastAPI response serialization fails with ValueError: [TypeError(\"'ObjectId' object is not iterable\"), TypeError('vars() argument must have __dict__ attribute')]. The Mongo document (including _id ObjectId) is being returned directly without being converted to the Pydantic Render model / without stripping _id.",
+      "evidence": "curl -X POST /api/renders/dispatch {workflow_type:'image', positive_prompt:'a woman', negative_prompt:'blurry'} with a valid image_workflow_json in Settings -> HTTP 500. Backend log: /root/.venv/.../fastapi/encoders.py line 327 vars(obj); ValueError: [TypeError(\"'ObjectId' object is not iterable\"), TypeError('vars() argument must have __dict__ attribute')]. Gallery UI shows the persisted 'offline' render tile, confirming the doc is saved but response serialization fails.",
+      "priority": "HIGH"
+    }
+  ],
+  "action_items": [
+    "In /app/backend/server.py, in the renders/dispatch handler, return a serializable object: either construct/return a Render Pydantic model (excluding _id) or run the Mongo doc through a helper that drops '_id' and casts ObjectIds. Currently the raw Mongo insert result / find_one() dict with ObjectId _id is being returned, which FastAPI's jsonable_encoder cannot serialize.",
+    "Verify the same fix also applies to any other endpoint that returns Mongo docs directly (spot-check /api/renders list, etc.).",
+    "Optional (not blocking): also expose data-testid=btn-new-character on the mobile visible 'Create your first' / bottom-nav 'New' buttons so tests don't need to target the hidden sm-only desktop button on small viewports."
+  ],
+  "success_rate": {"backend": "92%", "frontend": "100%"},
+  "retest_needed": true,
+  "full_testing_deferred": true
+}

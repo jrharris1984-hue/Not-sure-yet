@@ -383,6 +383,7 @@ async def dispatch_render(body: DispatchBody):
     doc = r.model_dump()
     doc["mapping"] = mapped
     await db.renders.insert_one(doc)
+    doc.pop("_id", None)
     return doc
 
 
