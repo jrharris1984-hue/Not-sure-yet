@@ -267,154 +267,235 @@ export function resetSection(sectionKey) {
   return { ...DEFAULT_DNA[sectionKey] };
 }
 
-// Build positive/negative prompts from DNA
+// Build positive/negative prompts from DNA — Venice-style structured formula:
+// [QUALITY] + [SUBJECT] + [OUTFIT] + [POSE] + [SCENE] + [LIGHTING] + [CAMERA] + [STYLE] + [EXPLICIT]
 export function buildPrompts(dna = {}) {
-  const bits = [];
-  const push = (v) => { if (v !== undefined && v !== null && String(v).trim() !== "") bits.push(String(v).trim()); };
-  // Expanded token lookup via promptMap
-  const mp = (section, field) => {
-    const v = dna?.[section]?.[field];
+  // Value + expansion helpers
+  const val = (section, field) => dna?.[section]?.[field] || "";
+  const exp = (section, field) => {
+    const v = val(section, field);
     return v ? expandPrompt(section, field, v) : "";
   };
+  const join = (parts, sep = ", ") => parts.filter((p) => p && String(p).trim()).map(String).join(sep);
 
-  // Quality suffix — enforced at end for photorealism
-  const quality = "masterpiece, best quality, ultra-detailed, 8k resolution, sharp focus, professional photography, realistic skin texture, detailed eyes, detailed skin pores, cinematic composition, physically accurate lighting";
+  // -------- 1. QUALITY (leading) --------
+  const st = dna.style || {};
+  const genre = exp("style", "render") || "photorealistic photograph";
+  const quality = join(["photorealistic", "hyperrealistic", "editorial photograph", "8K UHD", "highly detailed"]);
 
+  // -------- 2. SUBJECT (age + ethnicity + skin + body + face + hair) --------
   const id = dna.identity || {};
-  if (id.name) push(`portrait of ${id.name}`);
-  push(id.age && `${id.age} year old adult`);
-  push(mp("identity", "ethnicity"));
-  push(mp("identity", "gender"));
-  push(mp("identity", "archetype"));
-
   const ph = dna.physique || {};
-  push(ph.height && `${ph.height} height`);
-  push(mp("physique", "body_type"));
-  if (ph.muscularity > 60) push("athletic toned build, defined muscles");
-  if (ph.muscularity > 85) push("highly muscular fitness model physique");
-  if (ph.curves > 60) push("curvaceous voluptuous body");
-  if (ph.curves > 85) push("extremely curvy dramatic hourglass proportions");
+  const face = dna.face || {};
+  const hair = dna.hair || {};
+  const skin = dna.skin || {};
+  const im = dna.intimate || {};
+
   const ex = Number(ph.exaggeration || 0);
-  const emphasize = (label) => {
+  const exaggerate = (label) => {
+    if (!label) return "";
     if (ex >= 85) return `hyper-exaggerated cartoonishly ${label}`;
     if (ex >= 65) return `dramatically exaggerated ${label}`;
     if (ex >= 40) return `enhanced ${label}`;
     return label;
   };
-  push(ph.bust && emphasize(expandPrompt("physique", "bust", ph.bust)));
-  push(mp("physique", "bust_shape"));
-  push(ph.butt && emphasize(expandPrompt("physique", "butt", ph.butt)));
-  push(ph.thighs && emphasize(expandPrompt("physique", "thighs", ph.thighs)));
-  push(ph.hips && emphasize(expandPrompt("physique", "hips", ph.hips)));
-  push(mp("physique", "waist"));
-  push(mp("physique", "shoulders"));
-  push(mp("physique", "legs"));
-  if (ex >= 75) push("stylized exaggerated body proportions, extreme feminine silhouette, dramatic curves");
-  push(ph.proportions);
 
-  const face = dna.face || {};
-  push(mp("face", "eye_shape"));
-  push(mp("face", "eye_color"));
-  push(mp("face", "jawline"));
-  push(face.nose && `${face.nose} nose`);
-  push(mp("face", "lips"));
-  push(mp("face", "expression"));
+  const ageStr = id.age ? `${id.age}-year-old` : "";
+  const ethn = exp("identity", "ethnicity") || "woman";
+  const gender = id.gender && id.gender !== "female" ? id.gender : "woman";
+  const skinTone = exp("skin", "tone") || (skin.tone ? `${skin.tone} skin` : "");
+  const bodyType = exp("physique", "body_type");
+  const height = ph.height && ph.height !== "average" ? `${ph.height} height` : "";
+  const musc = ph.muscularity > 85 ? "highly muscular fitness physique"
+             : ph.muscularity > 60 ? "athletic toned build" : "";
+  const curves = ph.curves > 85 ? "extremely curvaceous dramatic hourglass"
+               : ph.curves > 60 ? "voluptuous curvy body" : "";
 
-  const hair = dna.hair || {};
-  const hairColor = hair.color && expandPrompt("hair", "color", hair.color);
-  const hairLength = hair.length && expandPrompt("hair", "length", hair.length);
-  const hairStyle = hair.style && expandPrompt("hair", "style", hair.style);
-  push([hairLength, hairStyle, hairColor].filter(Boolean).join(", "));
-  push(hair.bangs && hair.bangs !== "none" && `${hair.bangs} bangs`);
-  push(hair.texture && `${hair.texture} hair texture`);
+  const subjectHead = join([
+    ageStr,
+    ethn,
+    gender.includes("woman") || ethn.includes("woman") ? "" : gender,
+  ]);
 
-  const skin = dna.skin || {};
-  push(mp("skin", "tone"));
-  push(mp("skin", "texture"));
-  push(mp("skin", "freckles"));
-  push(skin.tattoos);
-  if (skin.glow > 60) push("dewy glowing luminous skin, healthy sheen");
-  if (skin.glow > 85) push("oiled glistening sweaty body, wet shine on skin");
+  const subjectBody = join([
+    skinTone,
+    bodyType,
+    height,
+    musc,
+    curves,
+    exaggerate(exp("physique", "bust") || (ph.bust && `${ph.bust} breasts`)),
+    exp("physique", "bust_shape"),
+    exaggerate(exp("physique", "butt") || (ph.butt && `${ph.butt} butt`)),
+    exaggerate(exp("physique", "thighs") || (ph.thighs && `${ph.thighs} thighs`)),
+    exaggerate(exp("physique", "hips") || (ph.hips && `${ph.hips} hips`)),
+    exp("physique", "waist"),
+    ph.shoulders && ph.shoulders !== "average" && exp("physique", "shoulders"),
+    ph.legs && ph.legs !== "average" && exp("physique", "legs"),
+    ex >= 75 ? "stylized exaggerated body proportions, extreme feminine silhouette" : "",
+    ph.proportions,
+  ]);
 
-  const im = dna.intimate || {};
-  push(mp("intimate", "pubic_hair"));
-  push(mp("intimate", "pussy"));
-  push(im.clit && im.clit !== "hidden" && expandPrompt("intimate", "clit", im.clit));
-  push(im.asshole && im.asshole !== "hidden" && expandPrompt("intimate", "asshole", im.asshole));
-  push(mp("intimate", "nipples"));
-  push(mp("intimate", "areolas"));
-  push(im.body_hair && im.body_hair !== "hairless" && expandPrompt("intimate", "body_hair", im.body_hair));
-  push(im.piercings && im.piercings !== "none" && expandPrompt("intimate", "piercings", im.piercings));
+  const subjectFace = join([
+    exp("face", "eye_shape"),
+    exp("face", "eye_color"),
+    exp("face", "jawline"),
+    face.nose && `${face.nose} nose`,
+    exp("face", "lips"),
+    exp("face", "expression"),
+  ]);
 
+  const hairStr = (hair.length || hair.style || hair.color)
+    ? [exp("hair", "length"), exp("hair", "style"), exp("hair", "color")].filter(Boolean).join(", ")
+    : "";
+  const hairExtras = join([
+    hair.bangs && hair.bangs !== "none" && `${hair.bangs} bangs`,
+    hair.texture && `${hair.texture} hair texture`,
+  ]);
+
+  const skinDetails = join([
+    exp("skin", "texture"),
+    skin.freckles && skin.freckles !== "none" && exp("skin", "freckles"),
+    skin.tattoos,
+    skin.glow > 85 ? "oiled glistening sweaty body, wet shine on skin"
+      : skin.glow > 60 ? "dewy glowing luminous skin, healthy sheen" : "",
+  ]);
+
+  const nameTag = id.name ? `portrait of ${id.name}` : "";
+
+  const subject = join([nameTag, subjectHead, subjectBody, subjectFace, hairStr, hairExtras, skinDetails]);
+
+  // -------- 3. OUTFIT --------
   const wd = dna.wardrobe || {};
-  push(mp("wardrobe", "outfit_preset"));
-  if (wd.top && wd.top !== "none") push(expandPrompt("wardrobe", "top", wd.top));
-  if (wd.bottom && wd.bottom !== "none") push(expandPrompt("wardrobe", "bottom", wd.bottom));
-  if (wd.underwear && wd.underwear !== "none") push(expandPrompt("wardrobe", "underwear", wd.underwear));
-  if (wd.footwear && wd.footwear !== "barefoot") push(expandPrompt("wardrobe", "footwear", wd.footwear));
-  if (wd.accessories && wd.accessories !== "none") push(expandPrompt("wardrobe", "accessories", wd.accessories));
-  push(mp("wardrobe", "material"));
-  push(wd.palette && `${wd.palette} color palette`);
-  push(wd.fit && `${wd.fit} fit`);
-  push(wd.state && wd.state !== "fully clothed" && expandPrompt("wardrobe", "state", wd.state));
+  const outfitPieces = [];
+  if (wd.outfit_preset) outfitPieces.push(exp("wardrobe", "outfit_preset"));
+  if (wd.top && wd.top !== "none") outfitPieces.push(exp("wardrobe", "top"));
+  if (wd.bottom && wd.bottom !== "none") outfitPieces.push(exp("wardrobe", "bottom"));
+  if (wd.underwear && wd.underwear !== "none") outfitPieces.push(exp("wardrobe", "underwear"));
+  if (wd.footwear && wd.footwear !== "barefoot") outfitPieces.push(exp("wardrobe", "footwear"));
+  if (wd.accessories && wd.accessories !== "none") outfitPieces.push(exp("wardrobe", "accessories"));
+  const outfitCore = outfitPieces.length ? `wearing ${outfitPieces.join(", ")}` : "";
+  const outfitTail = join([
+    exp("wardrobe", "material"),
+    wd.palette && `${wd.palette} color palette`,
+    wd.fit && `${wd.fit} fit`,
+    wd.state && wd.state !== "fully clothed" && exp("wardrobe", "state"),
+  ]);
+  const outfit = join([outfitCore, outfitTail]);
 
+  // -------- 4. POSE --------
   const pose = dna.pose || {};
-  push(mp("pose", "action"));
-  push(mp("pose", "angle"));
-  push(mp("pose", "distance"));
-  push(pose.focus && pose.focus !== "full frame" && expandPrompt("pose", "focus", pose.focus));
-  push(pose.hands && expandPrompt("pose", "hands", pose.hands));
-  push(mp("pose", "body_language"));
+  const poseCore = exp("pose", "action");
+  const poseFraming = join([
+    exp("pose", "angle"),
+    exp("pose", "distance"),
+    pose.focus && pose.focus !== "full frame" && exp("pose", "focus"),
+  ]);
+  const poseDetails = join([
+    pose.hands && exp("pose", "hands"),
+    exp("pose", "body_language"),
+  ]);
+  const poseStr = join([poseCore, poseFraming, poseDetails]);
 
-  const sc = dna.scenario || {};
-  push(sc.cast_size && sc.cast_size !== "solo" && expandPrompt("scenario", "cast_size", sc.cast_size));
-  push(sc.cast_type && sc.cast_type !== "none" && expandPrompt("scenario", "cast_type", sc.cast_type));
-  push(sc.roleplay && sc.roleplay !== "none" && expandPrompt("scenario", "roleplay", sc.roleplay));
-  push(sc.acts && sc.acts !== "none" && expandPrompt("scenario", "acts", sc.acts));
-  const intensity = Number(sc.intensity || 0);
-  if (intensity >= 85) push("extreme hardcore XXX pornographic scene, explicit sexual content, uncensored");
-  else if (intensity >= 65) push("hardcore explicit adult scene, uncensored NSFW");
-  else if (intensity >= 40) push("explicit adult content, NSFW");
-  else if (intensity >= 20) push("sensual softcore, tasteful nude");
-  push(sc.extra_acts);
-
+  // -------- 5. SCENE --------
   const scene = dna.scene || {};
-  push(mp("scene", "environment"));
-  push(scene.background);
-  push(mp("scene", "era"));
-  push(scene.props);
+  const scenePieces = [
+    scene.environment && `in a ${exp("scene", "environment")}`,
+    scene.background,
+    exp("scene", "era"),
+    scene.props && `with ${scene.props}`,
+  ];
+  const sceneStr = join(scenePieces);
 
+  // -------- 6. LIGHTING --------
   const lg = dna.lighting || {};
-  push(lg.source && expandPrompt("lighting", "source", lg.source));
-  push(lg.color_temp && `${lg.color_temp} color temperature`);
-  push(lg.direction && `${lg.direction} lighting direction`);
-  push(mp("lighting", "style"));
-  push(mp("lighting", "mood"));
+  const lightingStr = join([
+    lg.source && exp("lighting", "source"),
+    lg.direction && `${lg.direction} lighting direction`,
+    lg.color_temp && `${lg.color_temp} color temperature`,
+    exp("lighting", "style"),
+    exp("lighting", "mood"),
+  ]);
 
+  // -------- 7. CAMERA --------
   const cam = dna.camera || {};
-  push(mp("camera", "lens"));
-  push(mp("camera", "aperture"));
-  push(cam.angle && `${cam.angle} camera angle`);
-  push(cam.aspect_ratio && `${cam.aspect_ratio} aspect ratio`);
+  const camStr = join([
+    cam.lens && `shot on ${exp("camera", "lens")}`,
+    exp("camera", "aperture"),
+    cam.angle && `${cam.angle} camera angle`,
+    cam.aspect_ratio && `${cam.aspect_ratio} aspect ratio`,
+  ]);
 
-  const st = dna.style || {};
-  push(mp("style", "render"));
-  push(st.film_grain && st.film_grain !== "none" && `${st.film_grain} film grain`);
-  push(mp("style", "artistic_tone"));
-  push(st.extra);
+  // -------- 8. STYLE --------
+  const styleStr = join([
+    genre,
+    st.film_grain && st.film_grain !== "none" && `${st.film_grain} film grain`,
+    exp("style", "artistic_tone"),
+    st.extra,
+  ]);
 
-  bits.push(quality);
+  // -------- 9. EXPLICIT DETAILS (scenario + intimate) --------
+  const sc = dna.scenario || {};
+  const intensity = Number(sc.intensity || 0);
+  const intensityTag = intensity >= 85 ? "extreme hardcore XXX pornographic scene, explicit uncensored"
+                     : intensity >= 65 ? "hardcore explicit adult scene, uncensored NSFW"
+                     : intensity >= 40 ? "explicit adult content, NSFW"
+                     : intensity >= 20 ? "sensual softcore, tasteful nude" : "";
 
-  const positive = bits.filter(Boolean).join(", ");
+  const scenarioStr = join([
+    sc.cast_size && sc.cast_size !== "solo" && exp("scenario", "cast_size"),
+    sc.cast_type && sc.cast_type !== "none" && exp("scenario", "cast_type"),
+    sc.roleplay && sc.roleplay !== "none" && exp("scenario", "roleplay"),
+    sc.acts && sc.acts !== "none" && exp("scenario", "acts"),
+    intensityTag,
+    sc.extra_acts,
+  ]);
+
+  const intimateStr = join([
+    exp("intimate", "pubic_hair"),
+    exp("intimate", "pussy"),
+    im.clit && im.clit !== "hidden" && exp("intimate", "clit"),
+    im.asshole && im.asshole !== "hidden" && exp("intimate", "asshole"),
+    exp("intimate", "nipples"),
+    exp("intimate", "areolas"),
+    im.body_hair && im.body_hair !== "hairless" && exp("intimate", "body_hair"),
+    im.piercings && im.piercings !== "none" && exp("intimate", "piercings"),
+  ]);
+
+  // Anatomical accuracy phrases — only added when the scene calls for it
+  const hasExplicit = scenarioStr || intimateStr || intensity > 0;
+  const anatomyStr = hasExplicit
+    ? "detailed anatomy with natural proportions, anatomically correct body, realistic weight distribution, natural breast shape with realistic gravity, detailed vulva, visible labia, realistic skin flush, natural moisture"
+    : "detailed anatomy with natural proportions, anatomically correct body, natural weight distribution";
+
+  // -------- Quality suffix (technical grade) --------
+  const qualityTail = "masterpiece, best quality, ultra-detailed, 8k resolution, sharp focus, professional photography, realistic skin texture with visible pores, detailed eyes with catchlights, physically accurate lighting, award-winning composition";
+
+  // Assemble in Venice order
+  const positive = join([
+    quality,
+    subject,
+    outfit,
+    poseStr,
+    sceneStr,
+    lightingStr,
+    camStr,
+    styleStr,
+    scenarioStr,
+    intimateStr,
+    anatomyStr,
+    qualityTail,
+  ]);
+
   const negative = [
-    "low quality, worst quality, blurry, out of focus, jpeg artifacts, compression artifacts",
-    "deformed, disfigured, mutated, extra fingers, missing fingers, fused fingers, extra limbs, missing limbs, mutated hands, bad anatomy, bad proportions, unnatural body",
-    "poorly drawn face, asymmetric face, cross-eyed, poorly drawn eyes, dead eyes",
-    "cartoon, anime, 3d render, cgi, painting, illustration, drawing, sketch, doll-like, plastic, wax figure, uncanny valley",
-    "watermark, signature, text, username, logo, artist name",
-    "underage, child, teen, young girl, minor, loli",
-    "overexposed, underexposed, harsh flash, oversaturated, washed out",
+    "low quality, worst quality, blurry, out of focus, jpeg artifacts, compression artifacts, noisy",
+    "deformed, disfigured, mutated, extra fingers, missing fingers, fused fingers, extra limbs, missing limbs, mutated hands, poorly drawn hands, bad anatomy, bad proportions, unnatural body, floating limbs, disconnected limbs",
+    "poorly drawn face, asymmetric face, cross-eyed, poorly drawn eyes, dead eyes, ugly, unattractive",
+    "cartoon, anime, 3d render, cgi, painting, illustration, drawing, sketch, doll-like, plastic skin, airbrushed, wax figure, uncanny valley, overly smooth skin, plastic appearance",
+    "watermark, signature, text, username, logo, artist name, cropped, frame, border",
+    "underage, child, teen, young girl, minor, loli, shota",
+    "overexposed, underexposed, harsh flash, oversaturated, washed out, blown highlights, crushed blacks",
   ].join(", ");
+
   return { positive, negative };
 }
 
