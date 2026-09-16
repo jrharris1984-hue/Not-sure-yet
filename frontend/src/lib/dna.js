@@ -59,32 +59,82 @@ export const SECTIONS = [
     title: "Skin",
     fields: [
       { key: "tone", type: "chips", label: "Tone", options: ["porcelain", "fair", "olive", "tan", "bronze", "dark brown", "ebony"] },
-      { key: "texture", type: "chips", label: "Texture", options: ["smooth", "natural pores", "textured", "matte", "dewy"] },
+      { key: "texture", type: "chips", label: "Texture", options: ["smooth", "natural pores", "textured", "matte", "dewy", "oiled", "sweat-glistening"] },
       { key: "freckles", type: "chips", label: "Freckles", options: ["none", "light", "scattered", "heavy"] },
       { key: "tattoos", type: "text", label: "Tattoos" },
       { key: "glow", type: "slider", label: "Glow", min: 0, max: 100, step: 1 },
     ],
   },
   {
+    key: "intimate",
+    title: "Intimate",
+    fields: [
+      { key: "pubic_hair", type: "chips", label: "Pubic hair", options: ["hairless", "shaved smooth", "stubble", "trimmed", "landing strip", "natural bush", "hairy", "very hairy", "wild bush", "heart-shaped"] },
+      { key: "pussy", type: "chips", label: "Pussy", options: ["closed", "small labia", "prominent labia", "puffy", "innie", "outie", "meaty", "tight", "spread", "wet"] },
+      { key: "clit", type: "chips", label: "Clit", options: ["hidden", "subtle", "prominent", "large", "pierced"] },
+      { key: "asshole", type: "chips", label: "Butthole", options: ["hidden", "tight", "visible", "puckered", "trimmed", "hairy", "bleached", "pierced", "spread"] },
+      { key: "nipples", type: "chips", label: "Nipples", options: ["soft", "erect", "inverted", "small", "large", "puffy", "pierced"] },
+      { key: "areolas", type: "chips", label: "Areolas", options: ["small pale", "medium pink", "large brown", "very large dark", "puffy dome"] },
+      { key: "body_hair", type: "chips", label: "Body hair", options: ["hairless", "light peach fuzz", "moderate", "heavy", "natural", "unshaven armpits"] },
+      { key: "piercings", type: "chips", label: "Piercings", options: ["none", "nipple", "navel", "nose", "septum", "tongue", "clit hood", "labia", "multi"] },
+    ],
+  },
+  {
     key: "wardrobe",
     title: "Wardrobe",
     fields: [
-      { key: "top", type: "text", label: "Top" },
-      { key: "bottom", type: "text", label: "Bottom" },
-      { key: "underwear", type: "text", label: "Lingerie / underwear" },
-      { key: "material", type: "chips", label: "Material", options: ["cotton", "silk", "leather", "denim", "lace", "linen", "latex", "wool", "velvet"] },
-      { key: "palette", type: "chips", label: "Palette", options: ["monochrome black", "neutrals", "warm earth", "cool jewel tones", "pastel", "neon", "crimson"] },
-      { key: "fit", type: "chips", label: "Fit", options: ["fitted", "loose", "oversized", "tailored", "cropped"] },
+      { key: "outfit_preset", type: "chips", label: "Outfit preset", options: [
+        "nude", "topless", "bottomless", "boudoir lingerie", "sheer negligee", "silk robe open", "wet t-shirt", "bikini", "micro bikini", "string bikini",
+        "sexy schoolgirl", "naughty nurse", "french maid", "playboy bunny", "showgirl", "pole dancer", "gogo dancer", "stripper", "cheerleader",
+        "dominatrix", "leather mistress", "latex catsuit", "kinky harness", "shibari rope", "fetish gimp",
+        "secretary unbuttoned", "librarian undone", "biker chick", "cowgirl chaps", "cop uniform undone", "flight attendant undone",
+        "cocktail dress", "evening gown slit", "backless red carpet", "club outfit",
+        "yoga wear", "gym set", "sports bra and shorts", "cheerleader off-duty",
+        "streetwear", "casual home", "just a shirt", "boyfriend's shirt", "just panties"
+      ]},
+      { key: "top", type: "chips", label: "Top", options: [
+        "none", "sheer top", "mesh top", "lace bralette", "bikini top", "corset", "bustier", "crop top", "backless top", "keyhole top", "halter",
+        "tube top", "strapless", "wet t-shirt", "unbuttoned blouse", "ripped shirt", "nipple pasties", "leather harness", "cage bra", "chainmail top"
+      ]},
+      { key: "bottom", type: "chips", label: "Bottom", options: [
+        "none", "micro-mini skirt", "pencil skirt", "leather skirt", "school skirt", "denim shorts", "hot pants", "booty shorts", "yoga pants",
+        "latex leggings", "wet look pants", "cutoff jeans", "chaps", "fishnet stockings", "garter belt", "thigh-high stockings"
+      ]},
+      { key: "underwear", type: "chips", label: "Lingerie", options: [
+        "none", "thong", "g-string", "lace panties", "sheer panties", "crotchless", "microkini", "boy shorts", "high-waist briefs",
+        "teddy", "babydoll", "chemise", "bodysuit", "mesh bodysuit", "corset with garters", "harness lingerie", "leather harness", "bikini set"
+      ]},
+      { key: "footwear", type: "chips", label: "Footwear", options: [
+        "barefoot", "stiletto heels", "stripper heels", "thigh-high boots", "over-the-knee boots", "ankle boots", "combat boots", "sneakers", "platform heels", "sandals", "kitten heels", "cowgirl boots"
+      ]},
+      { key: "accessories", type: "chips", label: "Accessories", options: [
+        "none", "choker", "leather collar", "leash", "handcuffs", "gloves", "opera gloves", "fishnet gloves", "garters", "stockings", "veil", "cat ears", "bunny ears", "devil horns", "angel wings", "sunglasses", "jewelry", "body chain", "belly chain"
+      ]},
+      { key: "material", type: "chips", label: "Material", options: ["cotton", "silk", "satin", "leather", "denim", "lace", "linen", "latex", "PVC", "wet look", "sheer mesh", "fishnet", "chainmail", "chrome", "velvet"] },
+      { key: "palette", type: "chips", label: "Palette", options: ["monochrome black", "blood red", "hot pink", "neon", "pastel", "white bridal", "gold and black", "silver", "leopard print", "zebra print"] },
+      { key: "fit", type: "chips", label: "Fit", options: ["skin-tight", "fitted", "loose", "cropped", "oversized", "torn", "wet and clinging"] },
+      { key: "state", type: "chips", label: "State", options: ["fully clothed", "one strap down", "top pulled down", "shirt open", "unbuttoned", "unzipped", "panties pulled aside", "riding up", "coming off", "ripped", "disheveled"] },
     ],
   },
   {
     key: "pose",
     title: "Pose",
     fields: [
-      { key: "action", type: "chips", label: "Action", options: ["standing", "sitting", "walking", "leaning", "lying", "kneeling", "dancing", "reaching"] },
-      { key: "angle", type: "chips", label: "Angle", options: ["front", "3/4", "profile", "back", "over-shoulder"] },
-      { key: "distance", type: "chips", label: "Distance", options: ["close-up", "waist-up", "full body", "wide shot"] },
-      { key: "body_language", type: "chips", label: "Body language", options: ["confident", "relaxed", "intimate", "playful", "powerful", "vulnerable"] },
+      { key: "action", type: "pose_chips", label: "Pose", options: [
+        "standing", "standing hip out", "standing hands on hips", "standing arms up", "standing back arched", "standing legs apart", "standing splits", "walking",
+        "leaning wall", "leaning forward", "bending over",
+        "sitting legs crossed", "sitting legs open", "sitting reverse chair", "sitting on edge",
+        "kneeling upright", "kneeling back arched", "kneeling hands floor",
+        "lying back", "lying side", "lying stomach", "lying legs spread", "lying legs up", "on back legs up",
+        "all fours", "doggy arched", "doggy low",
+        "squatting", "squatting spread", "squatting deep",
+        "over shoulder look", "arched on knees", "hands on knees", "hair flip", "dancing", "reverse view"
+      ]},
+      { key: "angle", type: "chips", label: "Camera angle", options: ["front", "3/4", "profile", "back", "over-shoulder", "from above", "from below", "pov"] },
+      { key: "distance", type: "chips", label: "Framing", options: ["close-up", "portrait", "waist-up", "full body", "wide shot", "detail shot"] },
+      { key: "focus", type: "chips", label: "Focus on", options: ["face", "body", "breasts", "butt", "hips", "legs", "feet", "hands", "full frame"] },
+      { key: "hands", type: "chips", label: "Hands", options: ["at sides", "on hips", "in hair", "touching body", "on breasts", "between legs", "gripping something", "over head", "behind back", "behind head"] },
+      { key: "body_language", type: "chips", label: "Vibe", options: ["confident", "relaxed", "intimate", "playful", "powerful", "vulnerable", "sultry", "coy", "come-hither", "dominant", "submissive", "teasing"] },
     ],
   },
   {
@@ -146,7 +196,7 @@ export function randomizeSection(sectionKey, current = {}) {
   const section = SECTIONS.find((s) => s.key === sectionKey);
   const out = { ...current };
   section.fields.forEach((f) => {
-    if (f.type === "chips") out[f.key] = pick(f.options);
+    if (f.type === "chips" || f.type === "pose_chips") out[f.key] = pick(f.options);
     else if (f.type === "slider") out[f.key] = Math.floor(Math.random() * (f.max - f.min + 1)) + f.min;
     else if (f.type === "text") out[f.key] = out[f.key] || "";
   });
@@ -223,18 +273,35 @@ export function buildPrompts(dna = {}) {
   push(skin.tattoos);
   if (skin.glow > 60) push("dewy glowing skin");
 
+  const im = dna.intimate || {};
+  push(im.pubic_hair && `${im.pubic_hair} pubic hair`);
+  push(im.pussy && `${im.pussy} pussy`);
+  push(im.clit && im.clit !== "hidden" && `${im.clit} clit`);
+  push(im.asshole && im.asshole !== "hidden" && `${im.asshole} asshole`);
+  push(im.nipples && `${im.nipples} nipples`);
+  push(im.areolas && `${im.areolas} areolas`);
+  push(im.body_hair && im.body_hair !== "hairless" && `${im.body_hair} body hair`);
+  push(im.piercings && im.piercings !== "none" && `${im.piercings} piercing`);
+
   const wd = dna.wardrobe || {};
-  push(wd.top);
-  push(wd.bottom);
-  push(wd.underwear);
+  push(wd.outfit_preset);
+  const noneVals = new Set(["none", "nude"]);
+  if (!noneVals.has(wd.top)) push(wd.top);
+  if (!noneVals.has(wd.bottom)) push(wd.bottom);
+  if (!noneVals.has(wd.underwear)) push(wd.underwear);
+  push(wd.footwear && wd.footwear !== "barefoot" && wd.footwear);
+  if (wd.accessories && wd.accessories !== "none") push(wd.accessories);
   push(wd.material);
   push(wd.palette);
   push(wd.fit);
+  push(wd.state && wd.state !== "fully clothed" && wd.state);
 
   const pose = dna.pose || {};
   push(pose.action);
   push(pose.angle && `${pose.angle} angle`);
   push(pose.distance);
+  push(pose.focus && pose.focus !== "full frame" && `focus on ${pose.focus}`);
+  push(pose.hands && `hands ${pose.hands}`);
   push(pose.body_language);
 
   const scene = dna.scene || {};

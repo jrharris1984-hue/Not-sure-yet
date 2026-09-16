@@ -38,13 +38,16 @@ export default function AppShell({ children }) {
       <header className="glass sticky top-0 z-40 border-b hairline">
         <div className="mx-auto flex max-w-[1600px] items-center justify-between px-4 py-3 sm:px-6">
           <Link to="/" className="flex items-center gap-2" data-testid="brand-home">
-            <div className="h-8 w-8 rounded-lg bg-amber-500/15 border border-amber-500/40 grid place-items-center">
+            <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-amber-500/20 to-rose-500/20 border border-amber-500/40 grid place-items-center">
               <Sparkles className="h-4 w-4 text-amber-400" />
             </div>
             <div className="leading-tight">
               <div className="font-display font-extrabold text-sm sm:text-base tracking-tight">Ultra Studio</div>
-              <div className="text-[10px] font-mono uppercase tracking-widest text-zinc-500">Character DNA</div>
+              <div className="text-[10px] font-mono uppercase tracking-widest text-rose-400/80">Adult · XXX · DNA</div>
             </div>
+            <span className="hidden sm:inline-flex items-center rounded-md border border-rose-500/50 bg-rose-500/10 px-1.5 py-0.5 text-[9px] font-mono font-bold uppercase tracking-widest text-rose-300 ml-1">
+              18+
+            </span>
           </Link>
           <div className="hidden md:flex items-center gap-1">
             {nav.map((n) => (

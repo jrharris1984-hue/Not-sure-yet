@@ -33,8 +33,8 @@ export default function Library() {
       <div className="flex flex-col sm:flex-row sm:items-end gap-4 sm:gap-6">
         <div>
           <div className="section-label">Library</div>
-          <h1 className="font-display font-extrabold text-3xl sm:text-4xl mt-1">Your characters</h1>
-          <p className="text-sm text-zinc-400 mt-1">Save the ones you love. Iterate on the DNA. Ship the render.</p>
+          <h1 className="font-display font-extrabold text-3xl sm:text-4xl mt-1">Your talent roster</h1>
+          <p className="text-sm text-zinc-400 mt-1">Cast your models. Refine their DNA. Render the scene.</p>
         </div>
         <div className="flex-1" />
         <Link
@@ -76,9 +76,9 @@ export default function Library() {
         </div>
       ) : chars.length === 0 ? (
         <div className="pane p-10 text-center">
-          <div className="section-label mb-2">Empty studio</div>
-          <h3 className="font-display text-xl">No characters yet</h3>
-          <p className="text-sm text-zinc-400 mt-1">Describe someone in words and let AI fill the DNA, or start from a blank slate.</p>
+          <div className="section-label mb-2">Empty stage</div>
+          <h3 className="font-display text-xl">Casting call · no models yet</h3>
+          <p className="text-sm text-zinc-400 mt-1">Describe your fantasy in words and let AI fill the DNA, or hand-build every trait — pussy, curves, wardrobe, pose — from scratch.</p>
           <Link
             to="/character/new"
             data-testid="btn-empty-new"

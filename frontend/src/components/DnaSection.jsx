@@ -1,6 +1,7 @@
 import { Slider } from "@/components/ui/slider";
 import { Input } from "@/components/ui/input";
 import { Shuffle, RotateCcw, Lock, LockOpen, Wand2 } from "lucide-react";
+import PoseIcon from "@/components/PoseIcon";
 
 export function ChipRow({ options, value, onChange, testIdPrefix }) {
   return (
@@ -16,6 +17,32 @@ export function ChipRow({ options, value, onChange, testIdPrefix }) {
             onClick={() => onChange(active ? "" : opt)}
           >
             {opt}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+export function PoseChipGrid({ options, value, onChange, testIdPrefix }) {
+  return (
+    <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
+      {options.map((opt) => {
+        const active = value === opt;
+        return (
+          <button
+            key={opt}
+            type="button"
+            data-testid={`${testIdPrefix}-${opt.replace(/\s+/g, "-")}`}
+            onClick={() => onChange(active ? "" : opt)}
+            className={`flex flex-col items-center justify-center gap-1 rounded-xl border p-2 text-[10px] leading-tight text-center min-h-[88px] transition-all ${
+              active
+                ? "border-amber-500 bg-amber-500/10 text-amber-100 shadow-[0_0_20px_rgba(245,158,11,0.15)]"
+                : "border-[#222634] bg-[#12141C] text-zinc-300 hover:border-zinc-600 hover:bg-[#1A1D28]"
+            }`}
+          >
+            <PoseIcon name={opt} size={40} active={active} />
+            <span className="font-mono uppercase tracking-tight">{opt}</span>
           </button>
         );
       })}
@@ -104,6 +131,14 @@ export default function DnaSection({
                 value={value[f.key] || ""}
                 onChange={(v) => set(f.key, v)}
                 testIdPrefix={`chip-${section.key}-${f.key}`}
+              />
+            )}
+            {f.type === "pose_chips" && (
+              <PoseChipGrid
+                options={f.options}
+                value={value[f.key] || ""}
+                onChange={(v) => set(f.key, v)}
+                testIdPrefix={`pose-${section.key}-${f.key}`}
               />
             )}
             {f.type === "slider" && (
