@@ -15,7 +15,9 @@ function App() {
           <Routes>
             <Route path="/" element={<Library />} />
             <Route path="/character/new" element={<Builder />} />
+            <Route path="/character/new/s/:section" element={<Builder />} />
             <Route path="/character/:id" element={<Builder />} />
+            <Route path="/character/:id/s/:section" element={<Builder />} />
             <Route path="/gallery" element={<Gallery />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="*" element={<Navigate to="/" replace />} />

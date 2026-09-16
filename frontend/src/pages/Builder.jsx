@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Save, Shuffle, Download, Upload, Loader2, Play } from "lucide-react";
+import { Save, Shuffle, Download, Upload, Loader2, Play, ChevronLeft, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import { endpoints } from "@/lib/api";
 import { SECTIONS, DEFAULT_DNA, randomizeDna, randomizeSection, resetSection, buildPrompts } from "@/lib/dna";
@@ -11,15 +11,20 @@ import AiAssistBar from "@/components/AiAssistBar";
 import { Input } from "@/components/ui/input";
 
 export default function Builder() {
-  const { id } = useParams();
+  const { id, section: sectionParam } = useParams();
   const isNew = !id;
   const nav = useNavigate();
   const qc = useQueryClient();
 
+  const activeIdx = Math.max(0, SECTIONS.findIndex((s) => s.key === sectionParam));
+  const activeSection = SECTIONS[activeIdx].key;
+  const basePath = isNew ? "/character/new" : `/character/${id}`;
+  const sectionUrl = (key) => `${basePath}/s/${key}`;
+  const goSection = (key) => nav(sectionUrl(key));
+
   const [name, setName] = useState("Untitled");
   const [dna, setDna] = useState(DEFAULT_DNA);
   const [locks, setLocks] = useState({});
-  const [activeSection, setActiveSection] = useState(SECTIONS[0].key);
   const [dispatching, setDispatching] = useState(false);
   const [activeRender, setActiveRender] = useState(null);
   const [workflowId, setWorkflowId] = useState("");
@@ -57,7 +62,7 @@ export default function Builder() {
     onSuccess: (c) => {
       toast.success("Saved");
       qc.invalidateQueries({ queryKey: ["characters"] });
-      if (isNew && c?.id) nav(`/character/${c.id}`, { replace: true });
+      if (isNew && c?.id) nav(`/character/${c.id}/s/${activeSection}`, { replace: true });
     },
     onError: (e) => toast.error(e?.response?.data?.detail || "Save failed"),
   });
@@ -205,57 +210,86 @@ export default function Builder() {
         {/* Left rail - section nav */}
         <aside className="hidden lg:block pane p-2 h-fit sticky top-20">
           <div className="section-label px-2 py-2">Sections</div>
-          {SECTIONS.map((s) => (
-            <button
+          {SECTIONS.map((s, i) => (
+            <Link
               key={s.key}
-              onClick={() => {
-                setActiveSection(s.key);
-                document.getElementById(`sec-${s.key}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
-              }}
+              to={sectionUrl(s.key)}
               data-testid={`nav-section-${s.key}`}
-              className={`w-full text-left px-3 py-2 rounded-md text-sm ${
+              className={`w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm ${
                 activeSection === s.key ? "bg-amber-500/10 text-amber-200" : "text-zinc-300 hover:bg-white/5"
               }`}
             >
-              {s.title}
-              {locks[s.key] && <span className="ml-2 text-[10px] text-amber-300">🔒</span>}
-            </button>
+              <span className="text-[10px] font-mono text-zinc-500 w-4">{i + 1}</span>
+              <span className="flex-1">{s.title}</span>
+              {locks[s.key] && <span className="text-[10px] text-amber-300">🔒</span>}
+            </Link>
           ))}
         </aside>
 
         {/* Mobile section chips */}
         <div className="lg:hidden overflow-x-auto scroll-fade -mx-3 px-3 flex gap-2 pb-1">
           {SECTIONS.map((s) => (
-            <button
+            <Link
               key={s.key}
-              onClick={() => {
-                setActiveSection(s.key);
-                document.getElementById(`sec-${s.key}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
-              }}
+              to={sectionUrl(s.key)}
               data-testid={`nav-section-${s.key}-mobile`}
               className={`chip whitespace-nowrap ${activeSection === s.key ? "active" : ""}`}
             >
               {s.title}{locks[s.key] && " 🔒"}
-            </button>
+            </Link>
           ))}
         </div>
 
-        {/* Center - sections */}
+        {/* Center - single active section */}
         <div className="space-y-4">
-          {SECTIONS.map((s) => (
-            <div id={`sec-${s.key}`} key={s.key}>
-              <DnaSection
-                section={s}
-                value={dna[s.key] || {}}
-                onChange={(v) => setSection(s.key, v)}
-                locked={!!locks[s.key]}
-                onToggleLock={() => setLocks({ ...locks, [s.key]: !locks[s.key] })}
-                onRandomize={() => setSection(s.key, randomizeSection(s.key, dna[s.key] || {}))}
-                onReset={() => setSection(s.key, resetSection(s.key))}
-                onSuggest={() => runSuggest(s.key)}
-              />
-            </div>
-          ))}
+          <div className="flex items-center justify-between text-xs font-mono text-zinc-500">
+            <span>Step {activeIdx + 1} of {SECTIONS.length}</span>
+            <span className="uppercase tracking-widest text-amber-300">{SECTIONS[activeIdx].title}</span>
+          </div>
+          <div className="h-1 rounded-full bg-elevated overflow-hidden">
+            <div
+              className="h-full bg-amber-400 transition-all"
+              style={{ width: `${((activeIdx + 1) / SECTIONS.length) * 100}%` }}
+            />
+          </div>
+          <DnaSection
+            key={activeSection}
+            section={SECTIONS[activeIdx]}
+            value={dna[activeSection] || {}}
+            onChange={(v) => setSection(activeSection, v)}
+            locked={!!locks[activeSection]}
+            onToggleLock={() => setLocks({ ...locks, [activeSection]: !locks[activeSection] })}
+            onRandomize={() => setSection(activeSection, randomizeSection(activeSection, dna[activeSection] || {}))}
+            onReset={() => setSection(activeSection, resetSection(activeSection))}
+            onSuggest={() => runSuggest(activeSection)}
+          />
+          <div className="flex items-center justify-between gap-2">
+            <button
+              onClick={() => activeIdx > 0 && goSection(SECTIONS[activeIdx - 1].key)}
+              disabled={activeIdx === 0}
+              data-testid="btn-section-prev"
+              className="inline-flex items-center gap-1.5 rounded-lg border hairline px-4 py-2.5 text-sm text-zinc-200 hover:bg-white/5 disabled:opacity-30"
+            >
+              <ChevronLeft className="h-4 w-4" /> {activeIdx > 0 ? SECTIONS[activeIdx - 1].title : "Prev"}
+            </button>
+            {activeIdx < SECTIONS.length - 1 ? (
+              <button
+                onClick={() => goSection(SECTIONS[activeIdx + 1].key)}
+                data-testid="btn-section-next"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-black text-sm font-semibold px-4 py-2.5"
+              >
+                {SECTIONS[activeIdx + 1].title} <ChevronRight className="h-4 w-4" />
+              </button>
+            ) : (
+              <button
+                onClick={() => save.mutate()}
+                data-testid="btn-section-finish"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black text-sm font-semibold px-4 py-2.5"
+              >
+                Finish & Save <Save className="h-4 w-4" />
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Right - preview + AI + render */}

@@ -16,11 +16,19 @@ export const SECTIONS = [
     title: "Physique",
     fields: [
       { key: "height", type: "chips", label: "Height", options: ["petite", "short", "average", "tall", "statuesque"] },
-      { key: "body_type", type: "chips", label: "Body type", options: ["slim", "athletic", "curvy", "voluptuous", "plus size", "hourglass", "pear"] },
+      { key: "body_type", type: "chips", label: "Body type", options: ["slim", "athletic", "curvy", "voluptuous", "plus size", "hourglass", "pear", "apple", "bombshell", "amazonian"] },
       { key: "muscularity", type: "slider", label: "Muscularity", min: 0, max: 100, step: 1 },
       { key: "curves", type: "slider", label: "Curves", min: 0, max: 100, step: 1 },
-      { key: "bust", type: "chips", label: "Bust", options: ["small", "medium", "large", "very large"] },
-      { key: "proportions", type: "text", label: "Proportions notes" },
+      { key: "exaggeration", type: "slider", label: "Proportion exaggeration (natural → hyper)", min: 0, max: 100, step: 1 },
+      { key: "bust", type: "chips", label: "Bust size", options: ["flat", "small", "medium", "large", "very large", "huge", "enormous", "hyper"] },
+      { key: "bust_shape", type: "chips", label: "Bust shape", options: ["natural", "perky", "round", "teardrop", "athletic", "augmented", "gravity-defying"] },
+      { key: "butt", type: "chips", label: "Butt", options: ["flat", "small", "toned", "round", "bubble", "large", "very large", "huge", "hyper"] },
+      { key: "thighs", type: "chips", label: "Thighs", options: ["slim", "toned", "athletic", "thick", "very thick", "massive"] },
+      { key: "hips", type: "chips", label: "Hips", options: ["narrow", "average", "wide", "very wide", "extreme"] },
+      { key: "waist", type: "chips", label: "Waist", options: ["thick", "average", "slim", "cinched", "tiny", "wasp-thin"] },
+      { key: "shoulders", type: "chips", label: "Shoulders", options: ["narrow", "average", "broad", "athletic"] },
+      { key: "legs", type: "chips", label: "Legs", options: ["short", "average", "long", "endless"] },
+      { key: "proportions", type: "text", label: "Extra proportions notes" },
     ],
   },
   {
@@ -173,8 +181,26 @@ export function buildPrompts(dna = {}) {
   push(ph.height);
   push(ph.body_type);
   if (ph.muscularity > 60) push("athletic build");
+  if (ph.muscularity > 85) push("highly muscular");
   if (ph.curves > 60) push("curvy figure");
-  push(ph.bust && `${ph.bust} bust`);
+  if (ph.curves > 85) push("extremely curvy");
+  // Exaggeration → prompt intensity modifiers
+  const ex = Number(ph.exaggeration || 0);
+  const emphasize = (label) => {
+    if (ex >= 85) return `hyper-exaggerated ${label}`;
+    if (ex >= 65) return `exaggerated ${label}`;
+    if (ex >= 40) return `enhanced ${label}`;
+    return label;
+  };
+  push(ph.bust && emphasize(`${ph.bust} bust`));
+  push(ph.bust_shape && `${ph.bust_shape} breasts`);
+  push(ph.butt && emphasize(`${ph.butt} butt`));
+  push(ph.thighs && emphasize(`${ph.thighs} thighs`));
+  push(ph.hips && emphasize(`${ph.hips} hips`));
+  push(ph.waist && `${ph.waist} waist`);
+  push(ph.shoulders && `${ph.shoulders} shoulders`);
+  push(ph.legs && `${ph.legs} legs`);
+  if (ex >= 75) push("stylized cartoonish proportions, exaggerated hourglass silhouette");
   push(ph.proportions);
 
   const face = dna.face || {};
