@@ -6,7 +6,19 @@ export const SECTIONS = [
     fields: [
       { key: "gender", type: "chips", label: "Gender", options: ["female", "male", "non-binary", "androgynous"] },
       { key: "age", type: "slider", label: "Age", min: 18, max: 70, step: 1 },
-      { key: "ethnicity", type: "chips", label: "Ethnicity", options: ["latina", "east asian", "south asian", "black", "white", "middle eastern", "mixed", "nordic", "polynesian"] },
+      { key: "ethnicity", type: "chips", label: "Ethnicity", options: [
+        "latina", "mexican", "brazilian", "colombian", "puerto rican", "cuban", "dominican", "venezuelan", "argentinian", "peruvian",
+        "east asian", "japanese", "korean", "chinese", "vietnamese", "thai", "filipina", "indonesian", "cambodian",
+        "south asian", "indian", "pakistani", "bangladeshi", "sri lankan",
+        "black", "african american", "ebony", "afro-caribbean", "nigerian", "ethiopian", "somali",
+        "white", "caucasian", "european", "british", "french", "german", "italian", "spanish", "irish", "russian", "polish",
+        "nordic", "scandinavian", "swedish", "norwegian", "icelandic",
+        "middle eastern", "arab", "persian", "turkish", "lebanese", "egyptian", "moroccan", "israeli",
+        "polynesian", "hawaiian", "samoan", "maori",
+        "native american", "indigenous",
+        "mixed", "blasian", "afro-latina", "eurasian", "mulatto", "mestiza", "creole", "amerasian",
+        "mediterranean", "greek",
+      ]},
       { key: "archetype", type: "chips", label: "Archetype", options: ["girl next door", "femme fatale", "warrior", "pirate", "cyberpunk", "goth", "cottagecore", "athlete", "queen"] },
       { key: "name", type: "text", label: "Name" },
     ],
@@ -135,6 +147,43 @@ export const SECTIONS = [
       { key: "focus", type: "chips", label: "Focus on", options: ["face", "body", "breasts", "butt", "hips", "legs", "feet", "hands", "full frame"] },
       { key: "hands", type: "chips", label: "Hands", options: ["at sides", "on hips", "in hair", "touching body", "on breasts", "between legs", "gripping something", "over head", "behind back", "behind head"] },
       { key: "body_language", type: "chips", label: "Vibe", options: ["confident", "relaxed", "intimate", "playful", "powerful", "vulnerable", "sultry", "coy", "come-hither", "dominant", "submissive", "teasing"] },
+    ],
+  },
+  {
+    key: "scenario",
+    title: "Scenario",
+    fields: [
+      { key: "cast_size", type: "chips", label: "Cast size", options: ["solo", "duo", "threesome", "foursome", "group", "gangbang", "orgy"] },
+      { key: "cast_type", type: "chips", label: "Cast pairing", options: [
+        "none", "twins", "identical twins", "sisters", "best friends", "roommates",
+        "mother and daughter", "stepmom and stepdaughter", "aunt and niece",
+        "grandma and granddaughter", "milf granny", "mature and young",
+        "teacher and student", "boss and secretary", "nurse and patient", "coach and athlete",
+        "dominant and submissive", "wife and mistress",
+      ]},
+      { key: "roleplay", type: "chips", label: "Role", options: [
+        "none", "girl next door", "sexy stepmom", "hot aunt", "sexy granny", "milf",
+        "cougar", "sugar mommy", "lonely housewife", "trophy wife", "best friend's mom",
+        "step-sister", "schoolgirl", "college coed", "sorority girl", "cheerleader",
+        "librarian", "teacher", "secretary", "boss lady", "nurse", "doctor",
+        "yoga instructor", "personal trainer", "maid", "waitress", "flight attendant",
+        "dominatrix", "submissive", "gothic girl", "e-girl", "onlyfans model", "cam girl", "porn star",
+      ]},
+      { key: "acts", type: "chips", label: "Explicit acts", options: [
+        "none", "posing", "teasing", "stripping", "flashing", "upskirt", "exposed", "spread eagle", "spreading pussy",
+        "masturbating", "fingering", "using dildo", "using vibrator", "using rabbit", "riding toy",
+        "oral", "blowjob", "deepthroat", "throatpie", "titfucking", "handjob",
+        "missionary", "cowgirl", "reverse cowgirl", "doggy style", "prone bone", "spooning",
+        "standing sex", "against wall", "table sex", "bent over", "legs on shoulders", "amazon position",
+        "anal", "anal doggy", "anal reverse cowgirl", "double penetration", "DAP", "DVP", "DP",
+        "facesitting", "sixty-nine", "eating pussy", "rimming",
+        "lesbian", "tribbing", "scissoring", "strap-on",
+        "creampie", "cumshot", "facial", "bukkake", "cum on tits", "cum on ass", "cum on face", "swallowing",
+        "squirting", "fisting", "gaping", "stretched",
+        "bondage", "shibari", "tied up", "collared and leashed", "spanking", "gagged",
+      ]},
+      { key: "intensity", type: "slider", label: "Explicit intensity (softcore → hardcore)", min: 0, max: 100, step: 1 },
+      { key: "extra_acts", type: "text", label: "Additional acts / notes" },
     ],
   },
   {
@@ -304,6 +353,18 @@ export function buildPrompts(dna = {}) {
   push(pose.hands && `hands ${pose.hands}`);
   push(pose.body_language);
 
+  const sc = dna.scenario || {};
+  push(sc.cast_size && sc.cast_size !== "solo" && sc.cast_size);
+  push(sc.cast_type && sc.cast_type !== "none" && sc.cast_type);
+  push(sc.roleplay && sc.roleplay !== "none" && sc.roleplay);
+  push(sc.acts && sc.acts !== "none" && sc.acts);
+  const intensity = Number(sc.intensity || 0);
+  if (intensity >= 85) push("extreme hardcore explicit pornographic scene");
+  else if (intensity >= 65) push("hardcore explicit scene");
+  else if (intensity >= 40) push("explicit adult scene");
+  else if (intensity >= 20) push("sensual softcore");
+  push(sc.extra_acts);
+
   const scene = dna.scene || {};
   push(scene.environment);
   push(scene.background);
@@ -333,3 +394,147 @@ export function buildPrompts(dna = {}) {
   const negative = "low quality, blurry, deformed anatomy, extra fingers, watermark, text, jpeg artifacts";
   return { positive, negative };
 }
+
+// ============================================================
+// Star / celebrity presets — one-tap DNA fills
+// Trait descriptions only; if you have a LoRA for a star,
+// add the trigger token in Style → Extra style tokens.
+// ============================================================
+export const STAR_PRESETS = [
+  {
+    name: "Ava Devine",
+    tags: ["mature", "MILF", "brunette", "big bust", "tattoos"],
+    dna: {
+      identity: { gender: "female", age: 48, ethnicity: "white", archetype: "femme fatale", name: "Ava Devine" },
+      physique: { height: "average", body_type: "hourglass", muscularity: 20, curves: 80, exaggeration: 55, bust: "huge", bust_shape: "augmented", butt: "large", thighs: "thick", hips: "very wide", waist: "cinched", shoulders: "average", legs: "average" },
+      face: { eye_shape: "almond", eye_color: "deep brown", jawline: "defined", nose: "straight", lips: "full", expression: "sultry" },
+      hair: { style: "wavy", length: "long", color: "jet black", texture: "thick", bangs: "none" },
+      skin: { tone: "tan", texture: "dewy", freckles: "none", tattoos: "tramp stamp, full sleeve tattoos" },
+      intimate: { pubic_hair: "trimmed", nipples: "erect", areolas: "large brown", piercings: "nipple" },
+    },
+  },
+  {
+    name: "Ebony Mystique",
+    tags: ["ebony", "huge natural bust", "curvy"],
+    dna: {
+      identity: { gender: "female", age: 32, ethnicity: "black", archetype: "bombshell", name: "Ebony Mystique" },
+      physique: { height: "average", body_type: "hourglass", muscularity: 30, curves: 95, exaggeration: 75, bust: "enormous", bust_shape: "natural", butt: "huge", thighs: "very thick", hips: "very wide", waist: "cinched", shoulders: "average", legs: "average" },
+      face: { eye_shape: "almond", eye_color: "deep brown", jawline: "soft", nose: "button", lips: "full", expression: "sultry" },
+      hair: { style: "wavy", length: "long", color: "jet black", texture: "thick", bangs: "none" },
+      skin: { tone: "dark brown", texture: "dewy", glow: 70, tattoos: "" },
+      intimate: { pubic_hair: "shaved smooth", nipples: "erect", areolas: "very large dark" },
+    },
+  },
+  {
+    name: "Gracie Bon",
+    tags: ["latina", "huge butt", "curvy"],
+    dna: {
+      identity: { gender: "female", age: 26, ethnicity: "latina", archetype: "bombshell", name: "Gracie Bon" },
+      physique: { height: "average", body_type: "pear", muscularity: 25, curves: 95, exaggeration: 80, bust: "large", bust_shape: "natural", butt: "hyper", thighs: "very thick", hips: "extreme", waist: "tiny", shoulders: "narrow", legs: "average" },
+      face: { eye_shape: "almond", eye_color: "deep brown", jawline: "soft", nose: "button", lips: "full", expression: "sultry" },
+      hair: { style: "wavy", length: "long", color: "chestnut", texture: "thick", bangs: "none" },
+      skin: { tone: "tan", texture: "dewy", glow: 70 },
+      intimate: { pubic_hair: "shaved smooth" },
+    },
+  },
+  {
+    name: "Allegra Cole",
+    tags: ["mature", "MILF", "blonde", "natural huge bust"],
+    dna: {
+      identity: { gender: "female", age: 45, ethnicity: "white", archetype: "queen", name: "Allegra Cole" },
+      physique: { height: "tall", body_type: "hourglass", muscularity: 25, curves: 90, exaggeration: 70, bust: "enormous", bust_shape: "natural", butt: "large", thighs: "thick", hips: "wide", waist: "slim", shoulders: "average", legs: "long" },
+      face: { eye_shape: "almond", eye_color: "blue", jawline: "defined", nose: "straight", lips: "full", expression: "sultry" },
+      hair: { style: "wavy", length: "long", color: "honey blonde", texture: "thick", bangs: "curtain" },
+      skin: { tone: "fair", texture: "dewy", glow: 60 },
+      intimate: { pubic_hair: "trimmed", areolas: "medium pink" },
+    },
+  },
+  {
+    name: "Angela White",
+    tags: ["brunette", "natural huge bust", "curvy"],
+    dna: {
+      identity: { gender: "female", age: 34, ethnicity: "white", archetype: "bombshell", name: "Angela White" },
+      physique: { height: "average", body_type: "hourglass", muscularity: 35, curves: 90, exaggeration: 60, bust: "enormous", bust_shape: "natural", butt: "large", thighs: "thick", hips: "wide", waist: "slim", shoulders: "average", legs: "average" },
+      face: { eye_shape: "almond", eye_color: "green", jawline: "defined", nose: "straight", lips: "full", expression: "sultry" },
+      hair: { style: "straight", length: "long", color: "jet black", texture: "thick", bangs: "none" },
+      skin: { tone: "fair", texture: "dewy", glow: 55, tattoos: "small arm and back tattoos" },
+    },
+  },
+  {
+    name: "Lisa Ann",
+    tags: ["MILF", "brunette", "mature"],
+    dna: {
+      identity: { gender: "female", age: 52, ethnicity: "white", archetype: "femme fatale", name: "Lisa Ann" },
+      physique: { height: "average", body_type: "hourglass", muscularity: 25, curves: 80, exaggeration: 55, bust: "very large", bust_shape: "augmented", butt: "large", thighs: "thick", hips: "wide", waist: "slim", shoulders: "average", legs: "average" },
+      face: { eye_shape: "almond", eye_color: "hazel", jawline: "defined", nose: "straight", lips: "full", expression: "sultry" },
+      hair: { style: "straight", length: "shoulder", color: "jet black", texture: "medium", bangs: "curtain" },
+      skin: { tone: "tan", texture: "dewy" },
+    },
+  },
+  {
+    name: "Sara Jay",
+    tags: ["MILF", "blonde", "huge bust"],
+    dna: {
+      identity: { gender: "female", age: 47, ethnicity: "white", archetype: "queen", name: "Sara Jay" },
+      physique: { height: "average", body_type: "hourglass", muscularity: 20, curves: 90, exaggeration: 65, bust: "enormous", bust_shape: "augmented", butt: "large", thighs: "thick", hips: "very wide", waist: "cinched", shoulders: "average", legs: "average" },
+      face: { eye_shape: "almond", eye_color: "hazel", jawline: "defined", nose: "straight", lips: "full", expression: "sultry" },
+      hair: { style: "wavy", length: "long", color: "platinum blonde", texture: "thick", bangs: "curtain" },
+      skin: { tone: "tan", texture: "dewy", tattoos: "" },
+    },
+  },
+  {
+    name: "Kelly Divine",
+    tags: ["huge butt", "brunette", "PAWG"],
+    dna: {
+      identity: { gender: "female", age: 36, ethnicity: "white", archetype: "bombshell", name: "Kelly Divine" },
+      physique: { height: "average", body_type: "pear", muscularity: 25, curves: 95, exaggeration: 75, bust: "large", bust_shape: "natural", butt: "hyper", thighs: "very thick", hips: "extreme", waist: "cinched", shoulders: "narrow", legs: "average" },
+      face: { eye_shape: "almond", eye_color: "green", jawline: "soft", nose: "button", lips: "full", expression: "sultry" },
+      hair: { style: "wavy", length: "long", color: "chestnut", texture: "thick", bangs: "none" },
+      skin: { tone: "tan", texture: "dewy" },
+    },
+  },
+  {
+    name: "Riley Reid",
+    tags: ["petite", "brunette", "young adult"],
+    dna: {
+      identity: { gender: "female", age: 28, ethnicity: "white", archetype: "girl next door", name: "Riley Reid" },
+      physique: { height: "petite", body_type: "slim", muscularity: 35, curves: 45, exaggeration: 10, bust: "small", bust_shape: "perky", butt: "toned", thighs: "toned", hips: "narrow", waist: "slim", shoulders: "narrow", legs: "average" },
+      face: { eye_shape: "round", eye_color: "hazel", jawline: "soft", nose: "button", lips: "medium", expression: "playful" },
+      hair: { style: "wavy", length: "long", color: "chestnut", texture: "medium", bangs: "curtain" },
+      skin: { tone: "fair", texture: "smooth", freckles: "light" },
+    },
+  },
+  {
+    name: "Mia Malkova",
+    tags: ["blonde", "athletic", "fit"],
+    dna: {
+      identity: { gender: "female", age: 30, ethnicity: "white", archetype: "athlete", name: "Mia Malkova" },
+      physique: { height: "average", body_type: "athletic", muscularity: 65, curves: 60, exaggeration: 20, bust: "medium", bust_shape: "perky", butt: "bubble", thighs: "toned", hips: "average", waist: "slim", shoulders: "average", legs: "long" },
+      face: { eye_shape: "almond", eye_color: "blue", jawline: "defined", nose: "straight", lips: "medium", expression: "sultry" },
+      hair: { style: "wavy", length: "long", color: "honey blonde", texture: "medium", bangs: "none" },
+      skin: { tone: "fair", texture: "dewy", glow: 55 },
+    },
+  },
+  {
+    name: "Alexis Texas",
+    tags: ["blonde", "big butt", "PAWG"],
+    dna: {
+      identity: { gender: "female", age: 36, ethnicity: "white", archetype: "bombshell", name: "Alexis Texas" },
+      physique: { height: "average", body_type: "pear", muscularity: 40, curves: 85, exaggeration: 60, bust: "large", bust_shape: "natural", butt: "very large", thighs: "very thick", hips: "very wide", waist: "cinched", shoulders: "average", legs: "average" },
+      face: { eye_shape: "almond", eye_color: "blue", jawline: "defined", nose: "straight", lips: "full", expression: "sultry" },
+      hair: { style: "wavy", length: "long", color: "honey blonde", texture: "thick", bangs: "curtain" },
+      skin: { tone: "tan", texture: "dewy" },
+    },
+  },
+  {
+    name: "Sommer Ray",
+    tags: ["fitness", "curvy", "tan"],
+    dna: {
+      identity: { gender: "female", age: 28, ethnicity: "white", archetype: "athlete", name: "Sommer Ray" },
+      physique: { height: "average", body_type: "hourglass", muscularity: 65, curves: 85, exaggeration: 45, bust: "medium", bust_shape: "perky", butt: "bubble", thighs: "toned", hips: "wide", waist: "tiny", shoulders: "average", legs: "long" },
+      face: { eye_shape: "almond", eye_color: "hazel", jawline: "defined", nose: "straight", lips: "medium", expression: "playful" },
+      hair: { style: "wavy", length: "long", color: "chestnut", texture: "medium", bangs: "none" },
+      skin: { tone: "tan", texture: "dewy", glow: 70 },
+    },
+  },
+];

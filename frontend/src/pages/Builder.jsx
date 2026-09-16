@@ -8,6 +8,7 @@ import { SECTIONS, DEFAULT_DNA, randomizeDna, randomizeSection, resetSection, bu
 import DnaSection from "@/components/DnaSection";
 import PromptPreview from "@/components/PromptPreview";
 import AiAssistBar from "@/components/AiAssistBar";
+import PresetsMenu from "@/components/PresetsMenu";
 import { Input } from "@/components/ui/input";
 
 export default function Builder() {
@@ -173,6 +174,15 @@ export default function Builder() {
           >
             <Shuffle className="h-4 w-4" /> Randomize
           </button>
+          <PresetsMenu
+            onApply={(preset) => {
+              // Merge preset but keep locked sections intact
+              const next = { ...preset };
+              Object.keys(locks).forEach((k) => { if (locks[k]) next[k] = dna[k]; });
+              setDna(next);
+              toast.success("Preset applied");
+            }}
+          />
           <button
             onClick={() => save.mutate()}
             disabled={save.isPending}
