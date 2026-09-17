@@ -120,7 +120,9 @@ export function buildPonyPrompts(dna = {}) {
     sc.cast_size && sc.cast_size !== "solo" && exp("scenario", "cast_size"),
     sc.cast_type && sc.cast_type !== "none" && exp("scenario", "cast_type"),
     sc.roleplay && sc.roleplay !== "none" && exp("scenario", "roleplay"),
-    sc.acts && sc.acts !== "none" && w(exp("scenario", "acts"), 1.3),
+    Array.isArray(sc.acts)
+      ? sc.acts.filter((a) => a && a !== "none").map((a) => w(expandPrompt("scenario", "acts", a), 1.3)).join(", ")
+      : (sc.acts && sc.acts !== "none" && w(exp("scenario", "acts"), 1.3)),
     sc.extra_acts,
   ]);
 

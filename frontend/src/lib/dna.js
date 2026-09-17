@@ -176,7 +176,7 @@ export const SECTIONS = [
         { name: "Alt", options: ["gothic girl", "e-girl"] },
         { name: "Adult", options: ["onlyfans model", "cam girl", "porn star", "girl next door"] },
       ]},
-      { key: "acts", type: "chips", label: "Explicit acts", groups: [
+      { key: "acts", type: "chips_multi", label: "Explicit acts (pick many)", groups: [
         { name: "Solo/Tease", options: ["posing", "teasing", "stripping", "flashing", "upskirt", "exposed", "spread eagle", "spreading pussy"] },
         { name: "Toys/Solo", options: ["masturbating", "fingering", "using dildo", "using vibrator", "using rabbit", "riding toy"] },
         { name: "Oral", options: ["oral", "blowjob", "deepthroat", "throatpie", "titfucking", "handjob", "eating pussy", "sixty-nine", "rimming"] },
@@ -240,6 +240,7 @@ export const DEFAULT_DNA = SECTIONS.reduce((acc, s) => {
   acc[s.key] = {};
   s.fields.forEach((f) => {
     if (f.type === "slider") acc[s.key][f.key] = Math.round((f.min + f.max) / 2);
+    else if (f.type === "chips_multi") acc[s.key][f.key] = [];
     else acc[s.key][f.key] = "";
   });
   return acc;
@@ -254,6 +255,12 @@ export function randomizeSection(sectionKey, current = {}) {
     if (f.type === "chips" || f.type === "pose_chips") {
       const pool = f.groups ? f.groups.flatMap((g) => g.options) : (f.options || []);
       if (pool.length) out[f.key] = pick(pool);
+    }
+    else if (f.type === "chips_multi") {
+      const pool = f.groups ? f.groups.flatMap((g) => g.options) : (f.options || []);
+      const n = 1 + Math.floor(Math.random() * 3); // 1-3 items
+      const shuffled = [...pool].sort(() => Math.random() - 0.5);
+      out[f.key] = shuffled.slice(0, n);
     }
     else if (f.type === "slider") out[f.key] = Math.floor(Math.random() * (f.max - f.min + 1)) + f.min;
     else if (f.type === "text") out[f.key] = out[f.key] || "";
@@ -452,7 +459,9 @@ export function buildPrompts(dna = {}) {
     sc.cast_size && sc.cast_size !== "solo" && exp("scenario", "cast_size"),
     sc.cast_type && sc.cast_type !== "none" && exp("scenario", "cast_type"),
     sc.roleplay && sc.roleplay !== "none" && exp("scenario", "roleplay"),
-    sc.acts && sc.acts !== "none" && exp("scenario", "acts"),
+    Array.isArray(sc.acts)
+      ? sc.acts.filter((a) => a && a !== "none").map((a) => expandPrompt("scenario", "acts", a)).join(", ")
+      : (sc.acts && sc.acts !== "none" && exp("scenario", "acts")),
     intensityTag,
     sc.extra_acts,
   ]);

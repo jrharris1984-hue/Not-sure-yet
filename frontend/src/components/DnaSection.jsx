@@ -126,6 +126,16 @@ export default function DnaSection({
                 </span>
               )}
             </label>
+            {f.type === "chips_multi" && (
+              <GroupedChips
+                groups={f.groups || [{ name: "All", options: f.options || [] }]}
+                value={Array.isArray(value[f.key]) ? value[f.key] : []}
+                onChange={(v) => set(f.key, v)}
+                testIdPrefix={`chip-${section.key}-${f.key}`}
+                variant="chips"
+                multi
+              />
+            )}
             {f.type === "chips" && f.groups && (
               <GroupedChips
                 groups={f.groups}

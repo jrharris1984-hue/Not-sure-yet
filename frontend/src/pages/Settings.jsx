@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Save, KeyRound, Server, CheckCircle2, XCircle, Plus, Trash2, Download, ChevronDown, ChevronRight, Wand2 } from "lucide-react";
+import { Save, KeyRound, Server, CheckCircle2, XCircle, Plus, Trash2, Download, ChevronDown, ChevronRight, Wand2, ArrowUp, ArrowDown } from "lucide-react";
 import { toast } from "sonner";
 import { endpoints } from "@/lib/api";
 import { Input } from "@/components/ui/input";
@@ -13,7 +13,7 @@ const KIND_OPTIONS = [
   { value: "face", label: "Face-preserved" },
 ];
 
-function WorkflowRow({ w, isDefault, onSetDefault, onDelete, onSave }) {
+function WorkflowRow({ w, isDefault, isFirst, isLast, onSetDefault, onDelete, onSave, onMoveUp, onMoveDown }) {
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState(w);
   useEffect(() => setForm(w), [w]);
@@ -21,16 +21,38 @@ function WorkflowRow({ w, isDefault, onSetDefault, onDelete, onSave }) {
 
   return (
     <div className="border hairline rounded-lg overflow-hidden bg-elevated/60" data-testid={`workflow-row-${w.id}`}>
-      <button
-        onClick={() => setOpen((v) => !v)}
-        className="w-full flex items-center gap-3 px-3 py-2.5 text-left hover:bg-white/5"
-      >
-        {open ? <ChevronDown className="h-4 w-4 text-zinc-400" /> : <ChevronRight className="h-4 w-4 text-zinc-400" />}
-        <span className="text-[10px] uppercase tracking-widest font-mono text-amber-300 min-w-[52px]">{w.kind}</span>
-        <span className="font-display font-semibold text-sm truncate flex-1">{w.name}</span>
-        <span className="text-[10px] font-mono text-zinc-500 hidden sm:inline">pos:{w.positive_node_id || "—"} · neg:{w.negative_node_id || "—"}</span>
-        {isDefault && <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-500/10 text-amber-300 border border-amber-500/40">default</span>}
-      </button>
+      <div className="flex items-center gap-1 px-2 py-2">
+        <div className="flex flex-col -space-y-0.5">
+          <button
+            onClick={(e) => { e.stopPropagation(); onMoveUp(w.id); }}
+            disabled={isFirst}
+            data-testid={`btn-workflow-up-${w.id}`}
+            className="h-4 w-6 grid place-items-center rounded text-zinc-400 hover:bg-white/5 disabled:opacity-25"
+            title="Move up"
+          >
+            <ArrowUp className="h-3 w-3" />
+          </button>
+          <button
+            onClick={(e) => { e.stopPropagation(); onMoveDown(w.id); }}
+            disabled={isLast}
+            data-testid={`btn-workflow-down-${w.id}`}
+            className="h-4 w-6 grid place-items-center rounded text-zinc-400 hover:bg-white/5 disabled:opacity-25"
+            title="Move down"
+          >
+            <ArrowDown className="h-3 w-3" />
+          </button>
+        </div>
+        <button
+          onClick={() => setOpen((v) => !v)}
+          className="flex-1 flex items-center gap-3 px-2 py-1.5 text-left hover:bg-white/5 rounded"
+        >
+          {open ? <ChevronDown className="h-4 w-4 text-zinc-400" /> : <ChevronRight className="h-4 w-4 text-zinc-400" />}
+          <span className="text-[10px] uppercase tracking-widest font-mono text-amber-300 min-w-[52px]">{w.kind}</span>
+          <span className="font-display font-semibold text-sm truncate flex-1">{w.name}</span>
+          <span className="text-[10px] font-mono text-zinc-500 hidden sm:inline">pos:{w.positive_node_id || "—"} · neg:{w.negative_node_id || "—"}</span>
+          {isDefault && <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-500/10 text-amber-300 border border-amber-500/40">default</span>}
+        </button>
+      </div>
       {open && (
         <div className="p-3 space-y-3 border-t hairline">
           <div className="grid sm:grid-cols-2 gap-2">
@@ -136,6 +158,21 @@ export default function Settings() {
     mutationFn: () => endpoints.seedWorkflows(),
     onSuccess: (r) => { toast.success(`Seeded ${r.added} workflow(s)`); qc.invalidateQueries({ queryKey: ["workflows"] }); },
   });
+  const reorderWf = useMutation({
+    mutationFn: (order) => endpoints.reorderWorkflows(order),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["workflows"] }),
+  });
+
+  const move = (id, dir) => {
+    const idx = workflows.findIndex((w) => w.id === id);
+    if (idx < 0) return;
+    const target = idx + dir;
+    if (target < 0 || target >= workflows.length) return;
+    const next = [...workflows];
+    [next[idx], next[target]] = [next[target], next[idx]];
+    qc.setQueryData(["workflows"], next);
+    reorderWf.mutate(next.map((w) => w.id));
+  };
 
   if (!form) return <div className="p-10 text-zinc-500">Loading settings…</div>;
   const set = (k, v) => setForm({ ...form, [k]: v });
@@ -199,11 +236,15 @@ export default function Settings() {
           </button>
         </div>
         <div className="space-y-2">
-          {workflows.map((w) => (
+          {workflows.map((w, i) => (
             <WorkflowRow
               key={w.id}
               w={w}
               isDefault={form.default_workflow_id === w.id}
+              isFirst={i === 0}
+              isLast={i === workflows.length - 1}
+              onMoveUp={(id) => move(id, -1)}
+              onMoveDown={(id) => move(id, 1)}
               onSetDefault={(id) => {
                 set("default_workflow_id", id);
                 saveSettings.mutate({ default_workflow_id: id });

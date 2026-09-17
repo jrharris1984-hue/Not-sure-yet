@@ -384,6 +384,26 @@ async def workflow_loras(wid: str):
     return {"loras": _detect_loras(wf)}
 
 
+@api.post("/workflows/reorder")
+async def reorder_workflows(body: Dict[str, List[str]] = Body(...)):
+    """Reorder workflows. Body: {\"order\": [wid1, wid2, ...]}."""
+    s = await get_settings()
+    order = body.get("order") or []
+    by_id = {w.id: w for w in s.workflows}
+    reordered = [by_id[wid] for wid in order if wid in by_id]
+    # Preserve any workflows not mentioned in the reorder list (append at end)
+    seen = set(order)
+    for w in s.workflows:
+        if w.id not in seen:
+            reordered.append(w)
+    await db.settings.update_one(
+        {"id": "singleton"},
+        {"$set": {"workflows": [w.model_dump() for w in reordered], "updated_at": now_iso()}},
+        upsert=True,
+    )
+    return {"order": [w.id for w in reordered]}
+
+
 @api.post("/workflows/seed")
 async def seed_workflows():
     """Add the 5 bundled default workflows (idempotent by name)."""
