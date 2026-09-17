@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Camera, ChevronLeft, RefreshCw, Trash2, Loader2 } from "lucide-react";
 import { endpoints } from "@/lib/api";
+import LivePreview from "@/components/LivePreview";
 
 const STATUS_COLOR = {
   done: "text-emerald-300",
@@ -121,9 +122,16 @@ export default function ShootDetail() {
               <div className="relative aspect-square rounded-md border hairline bg-elevated overflow-hidden">
                 {outputUrl ? (
                   <img src={outputUrl} alt={`frame ${i + 1}`} className="w-full h-full object-cover" />
+                ) : status === "running" && r?.id ? (
+                  <LivePreview
+                    clientId={r.id}
+                    enabled
+                    variant="card"
+                    testId={`shoot-frame-${i}-live`}
+                  />
                 ) : (
                   <div className="w-full h-full grid place-items-center text-xs text-zinc-500 font-mono">
-                    {status === "running" || status === "queued" ? (
+                    {status === "queued" ? (
                       <Loader2 className="h-5 w-5 animate-spin text-amber-300" />
                     ) : status === "pending" ? (
                       <span className="text-zinc-500">pending</span>

@@ -11,6 +11,7 @@ import PromptPreview from "@/components/PromptPreview";
 import AiAssistBar from "@/components/AiAssistBar";
 import PresetsMenu from "@/components/PresetsMenu";
 import LoraPanel from "@/components/LoraPanel";
+import LivePreview from "@/components/LivePreview";
 import { Input } from "@/components/ui/input";
 
 export default function Builder() {
@@ -358,8 +359,16 @@ export default function Builder() {
                 </div>
               )}
               {activeRender.status !== "done" && activeRender.status !== "failed" && activeRender.status !== "offline" && (
-                <div className="h-2 rounded-full bg-elevated overflow-hidden">
-                  <div className="h-full bg-amber-400 animate-pulse w-1/3" />
+                <div
+                  data-testid="render-live-preview-container"
+                  className="relative w-full aspect-square rounded-md border hairline bg-elevated overflow-hidden"
+                >
+                  <LivePreview
+                    clientId={activeRender.id}
+                    enabled
+                    variant="card"
+                    testId="render-live-preview"
+                  />
                 </div>
               )}
               {activeRender.output_files?.length > 0 && (

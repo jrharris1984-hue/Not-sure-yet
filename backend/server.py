@@ -1,5 +1,5 @@
 """Ultra Studio Character DNA Builder — FastAPI backend."""
-from fastapi import FastAPI, APIRouter, HTTPException, Body, BackgroundTasks
+from fastapi import FastAPI, APIRouter, HTTPException, Body, BackgroundTasks, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse, JSONResponse
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
@@ -17,6 +17,7 @@ from typing import Any, Dict, List, Optional
 from pydantic import BaseModel, Field, ConfigDict
 
 import httpx
+import websockets as ws_client
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / ".env")
@@ -444,6 +445,81 @@ async def comfyui_object_info():
             return r.json()
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"ComfyUI unreachable: {e}")
+
+
+def _comfy_ws_url(http_url: str, client_id: str) -> str:
+    base = http_url.rstrip("/")
+    if base.startswith("https://"):
+        base = "wss://" + base[len("https://"):]
+    elif base.startswith("http://"):
+        base = "ws://" + base[len("http://"):]
+    return f"{base}/ws?clientId={client_id}"
+
+
+@api.websocket("/ws/comfyui")
+async def comfyui_ws_proxy(websocket: WebSocket, client_id: str):
+    """Proxy the browser <-> ComfyUI /ws socket. Relays text JSON events (status,
+    progress, executing, executed) and binary preview frames. Closes gracefully if
+    ComfyUI is unreachable."""
+    await websocket.accept()
+    s = await get_settings()
+    target = _comfy_ws_url(s.comfyui_url, client_id)
+    upstream = None
+    try:
+        try:
+            upstream = await asyncio.wait_for(
+                ws_client.connect(target, max_size=32 * 1024 * 1024, open_timeout=4),
+                timeout=5.0,
+            )
+        except Exception as e:
+            await websocket.send_json({"type": "proxy_error", "data": {"message": f"ComfyUI ws unreachable: {e}"}})
+            await websocket.close(code=1011)
+            return
+
+        await websocket.send_json({"type": "proxy_ready", "data": {"client_id": client_id}})
+
+        async def pipe_upstream_to_browser():
+            try:
+                async for msg in upstream:
+                    if isinstance(msg, (bytes, bytearray)):
+                        await websocket.send_bytes(bytes(msg))
+                    else:
+                        await websocket.send_text(msg)
+            except Exception:
+                pass
+
+        async def pipe_browser_to_upstream():
+            try:
+                while True:
+                    data = await websocket.receive()
+                    if data.get("type") == "websocket.disconnect":
+                        break
+                    if "text" in data and data["text"] is not None:
+                        await upstream.send(data["text"])
+                    elif "bytes" in data and data["bytes"] is not None:
+                        await upstream.send(data["bytes"])
+            except WebSocketDisconnect:
+                pass
+            except Exception:
+                pass
+
+        done, pending = await asyncio.wait(
+            {asyncio.create_task(pipe_upstream_to_browser()),
+             asyncio.create_task(pipe_browser_to_upstream())},
+            return_when=asyncio.FIRST_COMPLETED,
+        )
+        for t in pending:
+            t.cancel()
+    finally:
+        if upstream is not None:
+            try:
+                await upstream.close()
+            except Exception:
+                pass
+        try:
+            await websocket.close()
+        except Exception:
+            pass
 
 
 # ============================================================
