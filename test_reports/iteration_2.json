@@ -1,0 +1,39 @@
+{
+  "summary": "Comprehensive regression + Photo Shoot acceptance pass. All 6 backend pytest cases PASS: health, settings/workflows seeding, character CRUD (create/get/patch/search/favorite-filter/duplicate/delete), renders/dispatch offline path with seed patching (no more ObjectId 500 — iteration_1 HIGH bug is FIXED and returns clean 200 + seed_used echoed), shoot validation (count 1-40, frames length==count, 404 for missing char), and full shoot lifecycle including background dispatch, retry (with seed override), list filter by character_id, and delete cascade. Frontend E2E via Playwright completed the entire Photo Shoot flow: Library → Shoot button → /shoot/new/:characterId → slider (4-20) → all three pose modes (pack shows Boudoir preview 'lying back', manual chips toggle, random hint) → outfit rotation (44 chips) → seed modes (Locked/Locked+offset show base seed input, randomize populates; Fresh hides it) → Start shoot → /shoot/:id → 5 frames render sequentially → all end with status 'offline' (expected, ComfyUI unreachable) → progress bar reaches 100% → shoot status FAILED with any_failed flag (expected) → retry buttons visible and clickable ('Frame re-queued' toast) → Shoots overview shows the created shoot → Delete removes it. Cleanup done.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "GET /api/settings PUT", "issue": "PUT /api/settings 'allowed' set does not include 'openrouter_model' or 'comfyui_url' updates via PATCH-like key... actually comfyui_url IS allowed. No real minor issue — noting only that legacy image_workflow_json / video_workflow_json fields are still in the model but no longer used by the workflow-library flow (dead code). Consider removing in a future cleanup."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "ShootDetail header", "issues": ["The '0/5 done' progress text next to FAILED status can be confusing when ComfyUI is offline — it shows 0 done + 5 failed. Consider showing 'N offline' distinctly from 'N failed' since backend already distinguishes those statuses per-frame (STATUS_COLOR already handles it, but the summary counter buckets them together as 'failed')."}]
+    }
+  },
+  "test_report_links": [
+    "/app/backend/tests/backend_test.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [
+    "No blocking action items. Iteration_1's HIGH bug (ObjectId serialization on /api/renders/dispatch) is confirmed FIXED — _perform_dispatch now pops _id before returning.",
+    "Optional cleanup: in ShootDetail.jsx, separate offlineCount from failedCount for a clearer status summary when ComfyUI is offline.",
+    "Optional: hydration warning 'span cannot be a child of option' — comes from Emergent's visual-editor overlay injecting spans into <option> elements; not user code, no action needed."
+  ],
+  "critical_code_review_comments": [
+    "server.py is 1100 lines — approaching the 700-line 'split into modules' threshold. Consider splitting into routers/{characters,renders,shoots,workflows,ai}.py once feature-stable.",
+    "_run_shoot_background updates the entire frames array on every iteration ($set frames: [...]) which racks up write amplification for 20-frame shoots; a positional $set on frames.{i} would be cleaner but not urgent.",
+    "ShootSetup.jsx imports 'getPack' but doesn't use it — dead import (minor).",
+    "ShootDetail.jsx useQuery refetchInterval callback signature: TanStack Query v5 passes the Query object (not data). `data?.status` on a Query object is undefined, so the interval falls through to 2500ms forever, never slowing to 8s after completion. Signature should be `(query) => query.state.data?.status === 'done' ? 8000 : 2500`. Low priority (just extra polling)."
+  ],
+  "updated_files": [
+    "/app/backend/tests/backend_test.py (created — 6 pytest cases)"
+  ],
+  "success_rate": {"backend": "100% (6/6)", "frontend": "100% (all shoot flows pass)"},
+  "seed_data_creation": "Created and cleaned up 3 test characters (TEST_ShootChar, TEST_CrudChar + duplicate, TEST_ShootUI/Playwright Test). Also created and deleted 1 test shoot via API and 1 via UI. DB is tidy.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Backend fully green. Photo Shoot API + UI verified end-to-end against public URL. Optional polish items in critical_code_review_comments. ComfyUI is offline in this pod — every frame ending 'offline' and shoot status 'FAILED' is EXPECTED behavior. Reuse /app/backend/tests/backend_test.py for regression."
+}

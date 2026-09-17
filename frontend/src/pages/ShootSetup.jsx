@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { Camera, Shuffle, Play, Loader2, X, ChevronLeft } from "lucide-react";
 import { endpoints } from "@/lib/api";
 import { SECTIONS } from "@/lib/dna";
-import { POSE_PACKS, samplePoses, cycleOutfits, getPack } from "@/lib/posePacks";
+import { POSE_PACKS, samplePoses, cycleOutfits } from "@/lib/posePacks";
 import LoraPanel from "@/components/LoraPanel";
 
 // Flat pool of all pose actions from the DNA schema

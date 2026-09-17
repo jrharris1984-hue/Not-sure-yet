@@ -22,7 +22,10 @@ export default function ShootDetail() {
     queryKey: ["shoot", shootId],
     queryFn: () => endpoints.getShoot(shootId),
     enabled: !!shootId,
-    refetchInterval: (data) => (data && (data.status === "done" || data.status === "failed") ? 8000 : 2500),
+    refetchInterval: (query) => {
+      const status = query.state.data?.status;
+      return status === "done" || status === "failed" ? 8000 : 2500;
+    },
   });
 
   // Also poll individual running renders so ComfyUI outputs pop in
@@ -54,7 +57,8 @@ export default function ShootDetail() {
   if (!shoot) return <div className="p-8 text-zinc-400">Shoot not found.</div>;
 
   const doneCount = shoot.frames.filter((f) => f.status === "done").length;
-  const failedCount = shoot.frames.filter((f) => f.status === "failed" || f.status === "offline").length;
+  const failedCount = shoot.frames.filter((f) => f.status === "failed").length;
+  const offlineCount = shoot.frames.filter((f) => f.status === "offline").length;
 
   return (
     <div className="mx-auto max-w-[1400px] px-4 sm:px-6 py-6 sm:py-10 space-y-6" data-testid="shoot-detail-page">
@@ -77,6 +81,7 @@ export default function ShootDetail() {
               <span>·</span>
               <span data-testid="shoot-progress">{doneCount}/{shoot.count} done</span>
               {failedCount > 0 && <><span>·</span><span className="text-red-400">{failedCount} failed</span></>}
+              {offlineCount > 0 && <><span>·</span><span className="text-zinc-400">{offlineCount} offline</span></>}
               <span>·</span>
               <span>seed mode: {shoot.seed_mode}</span>
               {shoot.pose_pack && <><span>·</span><span>pack: {shoot.pose_pack}</span></>}
