@@ -31,4 +31,10 @@ export const endpoints = {
   aiFreeform: (text) => api.post("/ai/freeform", { text }).then((r) => r.data),
   aiRefine: (dna, instruction) => api.post("/ai/refine", { dna, instruction }).then((r) => r.data),
   aiSuggest: (section, dna) => api.post("/ai/suggest", { section, dna }).then((r) => r.data),
+  // Photo Shoots
+  createShoot: (body) => api.post("/shoots", body).then((r) => r.data),
+  listShoots: (params = {}) => api.get("/shoots", { params }).then((r) => r.data),
+  getShoot: (id) => api.get(`/shoots/${id}`).then((r) => r.data),
+  deleteShoot: (id) => api.delete(`/shoots/${id}`).then((r) => r.data),
+  retryShootFrame: (id, index, body = {}) => api.post(`/shoots/${id}/retry/${index}`, body).then((r) => r.data),
 };

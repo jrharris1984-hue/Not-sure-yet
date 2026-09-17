@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Save, Shuffle, Download, Upload, Loader2, Play, ChevronLeft, ChevronRight } from "lucide-react";
+import { Save, Shuffle, Download, Upload, Loader2, Play, ChevronLeft, ChevronRight, Camera } from "lucide-react";
 import { toast } from "sonner";
 import { endpoints } from "@/lib/api";
 import { SECTIONS, DEFAULT_DNA, randomizeDna, randomizeSection, resetSection, buildPrompts } from "@/lib/dna";
@@ -209,6 +209,16 @@ export default function Builder() {
           >
             {dispatching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />} Render
           </button>
+          {!isNew && (
+            <Link
+              to={`/shoot/new/${id}`}
+              data-testid="btn-open-shoot"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/40 bg-emerald-500/10 text-emerald-200 text-sm font-semibold px-3 py-2 hover:bg-emerald-500/20"
+              title="Batch photo shoot"
+            >
+              <Camera className="h-4 w-4" /> Shoot
+            </Link>
+          )}
           <button
             onClick={exportJson}
             data-testid="btn-export-json"

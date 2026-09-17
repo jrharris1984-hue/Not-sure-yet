@@ -1,5 +1,5 @@
 """Ultra Studio Character DNA Builder — FastAPI backend."""
-from fastapi import FastAPI, APIRouter, HTTPException, Body
+from fastapi import FastAPI, APIRouter, HTTPException, Body, BackgroundTasks
 from fastapi.responses import FileResponse, JSONResponse
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
@@ -9,6 +9,8 @@ import logging
 import uuid
 import json
 import re
+import random
+import asyncio
 from pathlib import Path
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
@@ -550,12 +552,33 @@ class DispatchBody(BaseModel):
     workflow_id: Optional[str] = None
     workflow_type: str = "image"  # legacy fallback
     lora_overrides: Dict[str, Dict[str, float]] = Field(default_factory=dict)  # node_id -> {strength_model, strength_clip}
+    seed: Optional[int] = None  # if provided, override any seed/noise_seed in workflow
+    shoot_id: Optional[str] = None
+    shoot_frame_index: Optional[int] = None
 
 
-@api.post("/renders/dispatch")
-async def dispatch_render(body: DispatchBody):
+def _patch_seed(workflow: Dict[str, Any], seed: int) -> int:
+    """Overwrite `seed` and `noise_seed` on all sampler/noise nodes. Returns count patched."""
+    count = 0
+    for _nid, node in workflow.items():
+        if not isinstance(node, dict):
+            continue
+        inp = node.get("inputs")
+        if not isinstance(inp, dict):
+            continue
+        if "seed" in inp and isinstance(inp["seed"], (int, float)):
+            inp["seed"] = int(seed)
+            count += 1
+        if "noise_seed" in inp and isinstance(inp["noise_seed"], (int, float)):
+            inp["noise_seed"] = int(seed)
+            count += 1
+    return count
+
+
+async def _perform_dispatch(body: "DispatchBody") -> Dict[str, Any]:
+    """Shared dispatch pipeline. Builds a Render, patches the workflow, calls ComfyUI,
+    persists the render, and returns the doc (without _id)."""
     s = await get_settings()
-    # Resolve workflow
     wf_template: Optional[WorkflowTemplate] = None
     if body.workflow_id:
         wf_template = next((w for w in s.workflows if w.id == body.workflow_id), None)
@@ -572,7 +595,6 @@ async def dispatch_render(body: DispatchBody):
         workflow_type=wf_template.kind if wf_template else body.workflow_type,
     )
 
-    # Fallback to legacy fields if no workflow library entry
     if wf_template:
         template_str = wf_template.json_str
         pos_id = wf_template.positive_node_id
@@ -586,9 +608,11 @@ async def dispatch_render(body: DispatchBody):
         r.status = "failed"
         r.error = "No workflow template set. Add one in Settings."
         doc = r.model_dump()
+        doc["shoot_id"] = body.shoot_id
+        doc["shoot_frame_index"] = body.shoot_frame_index
         await db.renders.insert_one(doc)
         doc.pop("_id", None)
-        raise HTTPException(400, r.error)
+        return doc
 
     try:
         workflow = json.loads(template_str)
@@ -596,9 +620,11 @@ async def dispatch_render(body: DispatchBody):
         r.status = "failed"
         r.error = f"Workflow template is not valid JSON: {e}"
         doc = r.model_dump()
+        doc["shoot_id"] = body.shoot_id
+        doc["shoot_frame_index"] = body.shoot_frame_index
         await db.renders.insert_one(doc)
         doc.pop("_id", None)
-        raise HTTPException(400, r.error)
+        return doc
 
     # Map prompts into template
     mapped = {"positive": False, "negative": False}
@@ -610,15 +636,19 @@ async def dispatch_render(body: DispatchBody):
         mapped["negative"] = True
 
     # Apply LoRA weight overrides
-    lora_applied = []
     for node_id, weights in (body.lora_overrides or {}).items():
         if node_id in workflow and "inputs" in workflow[node_id]:
             inp = workflow[node_id]["inputs"]
             if "strength_model" in inp and "strength_model" in weights:
                 inp["strength_model"] = float(weights["strength_model"])
-                lora_applied.append(node_id)
             if "strength_clip" in inp and "strength_clip" in weights:
                 inp["strength_clip"] = float(weights["strength_clip"])
+
+    # Apply seed override
+    seed_used = None
+    if body.seed is not None:
+        _patch_seed(workflow, int(body.seed))
+        seed_used = int(body.seed)
 
     # Try to dispatch to ComfyUI
     try:
@@ -642,8 +672,19 @@ async def dispatch_render(body: DispatchBody):
     doc["mapping"] = mapped
     doc["workflow_id"] = wf_template.id if wf_template else None
     doc["workflow_name"] = wf_template.name if wf_template else None
+    doc["seed_used"] = seed_used
+    doc["shoot_id"] = body.shoot_id
+    doc["shoot_frame_index"] = body.shoot_frame_index
     await db.renders.insert_one(doc)
     doc.pop("_id", None)
+    return doc
+
+
+@api.post("/renders/dispatch")
+async def dispatch_render(body: DispatchBody):
+    doc = await _perform_dispatch(body)
+    if doc.get("status") == "failed" and doc.get("error", "").startswith(("No workflow template", "Workflow template is not valid")):
+        raise HTTPException(400, doc["error"])
     return doc
 
 
@@ -684,6 +725,301 @@ async def poll_render(rid: str):
 async def delete_render(rid: str):
     await db.renders.delete_one({"id": rid})
     return {"ok": True}
+
+
+# ============================================================
+# Photo Shoot — batch renders of one character with varied poses/outfits
+# ============================================================
+class ShootFrame(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    index: int
+    pose_action: str = ""
+    outfit_overrides: Dict[str, Any] = Field(default_factory=dict)  # partial wardrobe overrides
+    seed: Optional[int] = None
+    render_id: Optional[str] = None
+    status: str = "pending"  # pending | running | done | failed | offline | queued
+
+
+class Shoot(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=new_id)
+    name: str = "Photo Shoot"
+    character_id: str
+    workflow_id: Optional[str] = None
+    count: int = 4
+    frames: List[ShootFrame] = Field(default_factory=list)
+    lora_overrides: Dict[str, Dict[str, float]] = Field(default_factory=dict)
+    pose_mode: str = "random"  # random | pack | manual
+    pose_pack: str = ""
+    seed_mode: str = "fresh"  # same | character_pose | fresh
+    base_seed: Optional[int] = None
+    lock_scenario: bool = True
+    status: str = "queued"  # queued | running | done | failed
+    progress: float = 0.0
+    error: Optional[str] = None
+    created_at: str = Field(default_factory=now_iso)
+    updated_at: str = Field(default_factory=now_iso)
+
+
+class ShootCreateBody(BaseModel):
+    name: Optional[str] = None
+    character_id: str
+    workflow_id: Optional[str] = None
+    count: int = 4
+    frames: List[Dict[str, Any]] = Field(default_factory=list)  # per-frame: pose_action, outfit_overrides, seed
+    lora_overrides: Dict[str, Dict[str, float]] = Field(default_factory=dict)
+    pose_mode: str = "random"
+    pose_pack: str = ""
+    seed_mode: str = "fresh"
+    base_seed: Optional[int] = None
+    lock_scenario: bool = True
+
+
+def _apply_frame_to_dna(dna: Dict[str, Any], frame: Dict[str, Any], lock_scenario: bool) -> Dict[str, Any]:
+    """Build a per-frame DNA snapshot with pose + outfit overrides applied."""
+    out = json.loads(json.dumps(dna or {}))  # deep copy
+    pose_action = frame.get("pose_action")
+    if pose_action:
+        out.setdefault("pose", {})
+        out["pose"]["action"] = pose_action
+    outfit = frame.get("outfit_overrides") or {}
+    if outfit:
+        out.setdefault("wardrobe", {})
+        for k, v in outfit.items():
+            out["wardrobe"][k] = v
+    if not lock_scenario:
+        # nothing to do — caller may pre-vary scenario in frames
+        pass
+    return out
+
+
+async def _run_shoot_background(shoot_id: str):
+    """Sequential dispatch of all frames for a shoot."""
+    shoot_doc = await db.shoots.find_one({"id": shoot_id}, {"_id": 0})
+    if not shoot_doc:
+        return
+    shoot = Shoot(**shoot_doc)
+    char = await db.characters.find_one({"id": shoot.character_id}, {"_id": 0})
+    if not char:
+        await db.shoots.update_one({"id": shoot_id}, {"$set": {"status": "failed", "error": "Character not found", "updated_at": now_iso()}})
+        return
+    await db.shoots.update_one({"id": shoot_id}, {"$set": {"status": "running", "updated_at": now_iso()}})
+
+    total = len(shoot.frames)
+    any_failed = False
+    for i, frame in enumerate(shoot.frames):
+        frame_dict = frame.model_dump()
+        per_dna = _apply_frame_to_dna(char.get("dna") or {}, frame_dict, shoot.lock_scenario)
+        # Build prompts on server side? No — the client sent the base prompt in char.prompt_positive.
+        # We rebuild by using char's stored prompt_positive as a fallback baseline, but we honor
+        # any per-frame prompt overrides sent by the client through outfit changes only.
+        # The client should send desired positive/negative in ShootCreateBody? Actually to keep
+        # it simple, we use character's saved prompts and append a per-frame override string.
+        pos = char.get("prompt_positive", "")
+        neg = char.get("prompt_negative", "")
+        # Simple augmentation: prepend pose_action + outfit overrides
+        aug_parts = []
+        if frame.pose_action:
+            aug_parts.append(frame.pose_action)
+        for _k, v in (frame.outfit_overrides or {}).items():
+            if isinstance(v, list):
+                aug_parts.extend([str(x) for x in v if x])
+            elif v:
+                aug_parts.append(str(v))
+        if aug_parts:
+            pos = ", ".join(aug_parts) + ", " + pos
+
+        seed = frame.seed
+        body = DispatchBody(
+            character_id=shoot.character_id,
+            dna=per_dna,
+            prompt_positive=pos,
+            prompt_negative=neg,
+            workflow_id=shoot.workflow_id,
+            lora_overrides=shoot.lora_overrides,
+            seed=seed,
+            shoot_id=shoot_id,
+            shoot_frame_index=i,
+        )
+        try:
+            r_doc = await _perform_dispatch(body)
+            status = r_doc.get("status", "failed")
+            frame.render_id = r_doc.get("id")
+            frame.status = status
+            if status in ("failed", "offline"):
+                any_failed = True
+        except Exception as e:
+            frame.status = "failed"
+            any_failed = True
+            logger.warning(f"shoot frame {i} dispatch error: {e}")
+
+        # Update the shoot with progress after each frame
+        await db.shoots.update_one(
+            {"id": shoot_id},
+            {"$set": {
+                "frames": [f.model_dump() for f in shoot.frames],
+                "progress": (i + 1) / total if total else 1.0,
+                "updated_at": now_iso(),
+            }},
+        )
+        # Small pacing gap so ComfyUI can queue cleanly
+        await asyncio.sleep(0.5)
+
+    final_status = "done" if not any_failed else "failed"
+    await db.shoots.update_one(
+        {"id": shoot_id},
+        {"$set": {"status": final_status, "progress": 1.0, "updated_at": now_iso()}},
+    )
+
+
+@api.post("/shoots")
+async def create_shoot(body: ShootCreateBody, background_tasks: BackgroundTasks):
+    if body.count < 1 or body.count > 40:
+        raise HTTPException(400, "count must be between 1 and 40")
+    if not body.frames or len(body.frames) != body.count:
+        raise HTTPException(400, "frames list length must equal count")
+    char = await db.characters.find_one({"id": body.character_id}, {"_id": 0})
+    if not char:
+        raise HTTPException(404, "Character not found")
+
+    # Compute seeds according to seed_mode if not explicitly set
+    base_seed = body.base_seed if body.base_seed is not None else random.randint(1, 2**31 - 1)
+    frames: List[ShootFrame] = []
+    for i, f in enumerate(body.frames):
+        seed = f.get("seed")
+        if seed is None:
+            if body.seed_mode == "same":
+                seed = base_seed
+            elif body.seed_mode == "character_pose":
+                seed = base_seed + i  # base drives character; small offset varies pose
+            else:  # fresh
+                seed = random.randint(1, 2**31 - 1)
+        frames.append(ShootFrame(
+            index=i,
+            pose_action=str(f.get("pose_action") or ""),
+            outfit_overrides=f.get("outfit_overrides") or {},
+            seed=int(seed),
+            status="pending",
+        ))
+
+    shoot = Shoot(
+        name=body.name or f"Shoot · {char.get('name','Untitled')}",
+        character_id=body.character_id,
+        workflow_id=body.workflow_id,
+        count=body.count,
+        frames=frames,
+        lora_overrides=body.lora_overrides,
+        pose_mode=body.pose_mode,
+        pose_pack=body.pose_pack,
+        seed_mode=body.seed_mode,
+        base_seed=base_seed,
+        lock_scenario=body.lock_scenario,
+        status="queued",
+    )
+    await db.shoots.insert_one(shoot.model_dump())
+    background_tasks.add_task(_run_shoot_background, shoot.id)
+    return shoot.model_dump()
+
+
+@api.get("/shoots")
+async def list_shoots(character_id: Optional[str] = None, limit: int = 100):
+    query: Dict[str, Any] = {}
+    if character_id:
+        query["character_id"] = character_id
+    docs = await db.shoots.find(query, {"_id": 0}).sort("created_at", -1).to_list(limit)
+    return docs
+
+
+@api.get("/shoots/{sid}")
+async def get_shoot(sid: str):
+    doc = await db.shoots.find_one({"id": sid}, {"_id": 0})
+    if not doc:
+        raise HTTPException(404, "Shoot not found")
+    # Attach latest render docs (for output_files + status refresh)
+    render_ids = [f.get("render_id") for f in doc.get("frames", []) if f.get("render_id")]
+    renders = []
+    if render_ids:
+        renders = await db.renders.find({"id": {"$in": render_ids}}, {"_id": 0}).to_list(len(render_ids))
+    by_id = {r["id"]: r for r in renders}
+    doc["renders"] = [by_id.get(rid) for rid in render_ids]
+    return doc
+
+
+@api.delete("/shoots/{sid}")
+async def delete_shoot(sid: str):
+    doc = await db.shoots.find_one({"id": sid}, {"_id": 0})
+    if not doc:
+        raise HTTPException(404, "Shoot not found")
+    render_ids = [f.get("render_id") for f in doc.get("frames", []) if f.get("render_id")]
+    if render_ids:
+        await db.renders.delete_many({"id": {"$in": render_ids}})
+    await db.shoots.delete_one({"id": sid})
+    return {"ok": True}
+
+
+class ShootRetryBody(BaseModel):
+    seed: Optional[int] = None
+
+
+@api.post("/shoots/{sid}/retry/{frame_index}")
+async def retry_shoot_frame(sid: str, frame_index: int, body: ShootRetryBody, background_tasks: BackgroundTasks):
+    doc = await db.shoots.find_one({"id": sid}, {"_id": 0})
+    if not doc:
+        raise HTTPException(404, "Shoot not found")
+    shoot = Shoot(**doc)
+    if frame_index < 0 or frame_index >= len(shoot.frames):
+        raise HTTPException(400, "Invalid frame index")
+    frame = shoot.frames[frame_index]
+    # Optionally reset seed
+    if body.seed is not None:
+        frame.seed = int(body.seed)
+
+    async def _retry():
+        char = await db.characters.find_one({"id": shoot.character_id}, {"_id": 0})
+        if not char:
+            return
+        # Delete old render doc if any
+        if frame.render_id:
+            await db.renders.delete_one({"id": frame.render_id})
+        per_dna = _apply_frame_to_dna(char.get("dna") or {}, frame.model_dump(), shoot.lock_scenario)
+        pos = char.get("prompt_positive", "")
+        neg = char.get("prompt_negative", "")
+        aug_parts = []
+        if frame.pose_action:
+            aug_parts.append(frame.pose_action)
+        for _k, v in (frame.outfit_overrides or {}).items():
+            if isinstance(v, list):
+                aug_parts.extend([str(x) for x in v if x])
+            elif v:
+                aug_parts.append(str(v))
+        if aug_parts:
+            pos = ", ".join(aug_parts) + ", " + pos
+        body_disp = DispatchBody(
+            character_id=shoot.character_id,
+            dna=per_dna,
+            prompt_positive=pos,
+            prompt_negative=neg,
+            workflow_id=shoot.workflow_id,
+            lora_overrides=shoot.lora_overrides,
+            seed=frame.seed,
+            shoot_id=sid,
+            shoot_frame_index=frame_index,
+        )
+        r_doc = await _perform_dispatch(body_disp)
+        frame.render_id = r_doc.get("id")
+        frame.status = r_doc.get("status", "failed")
+        # persist back
+        cur = await db.shoots.find_one({"id": sid}, {"_id": 0})
+        if cur:
+            frames = cur.get("frames", [])
+            frames[frame_index] = frame.model_dump()
+            await db.shoots.update_one(
+                {"id": sid},
+                {"$set": {"frames": frames, "updated_at": now_iso()}},
+            )
+
+    background_tasks.add_task(_retry)
+    return {"ok": True, "frame_index": frame_index}
 
 
 # ============================================================

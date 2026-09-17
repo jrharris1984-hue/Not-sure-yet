@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Copy, Trash2, Star, StarOff, Plus, Search } from "lucide-react";
+import { Copy, Trash2, Star, StarOff, Plus, Search, Camera } from "lucide-react";
 import { useState } from "react";
 import { endpoints } from "@/lib/api";
 import { Input } from "@/components/ui/input";
@@ -118,6 +118,14 @@ export default function Library() {
                   className="flex-1 text-center rounded-md bg-amber-500/10 border border-amber-500/40 text-amber-200 text-xs font-semibold py-1.5 hover:bg-amber-500/20"
                 >
                   Open
+                </Link>
+                <Link
+                  to={`/shoot/new/${c.id}`}
+                  data-testid={`btn-shoot-${i}`}
+                  className="inline-flex items-center gap-1 rounded-md bg-emerald-500/10 border border-emerald-500/40 text-emerald-200 text-xs font-semibold px-2 py-1.5 hover:bg-emerald-500/20"
+                  title="Photo shoot"
+                >
+                  <Camera className="h-3.5 w-3.5" /> Shoot
                 </Link>
                 <button
                   data-testid={`btn-duplicate-${i}`}
