@@ -13,7 +13,7 @@ const KIND_OPTIONS = [
   { value: "face", label: "Face-preserved" },
 ];
 
-function WorkflowRow({ w, isDefault, isFirst, isLast, onSetDefault, onDelete, onSave, onMoveUp, onMoveDown }) {
+function WorkflowRow({ w, isDefault, isFallback, isFirst, isLast, onSetDefault, onDelete, onSave, onMoveUp, onMoveDown }) {
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState(w);
   useEffect(() => setForm(w), [w]);
@@ -51,6 +51,7 @@ function WorkflowRow({ w, isDefault, isFirst, isLast, onSetDefault, onDelete, on
           <span className="font-display font-semibold text-sm truncate flex-1">{w.name}</span>
           <span className="text-[10px] font-mono text-zinc-500 hidden sm:inline">pos:{w.positive_node_id || "—"} · neg:{w.negative_node_id || "—"}</span>
           {isDefault && <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-500/10 text-amber-300 border border-amber-500/40">default</span>}
+          {!isDefault && isFallback && <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-300 border border-emerald-500/40">fallback</span>}
         </button>
       </div>
       {open && (
@@ -113,6 +114,15 @@ function WorkflowRow({ w, isDefault, isFirst, isLast, onSetDefault, onDelete, on
                 className="inline-flex items-center gap-1.5 rounded-md border hairline text-zinc-200 hover:bg-white/5 text-xs font-semibold px-3 py-1.5"
               >
                 Set as default
+              </button>
+            )}
+            {isDefault && (
+              <button
+                onClick={() => onSetDefault("")}
+                data-testid={`btn-workflow-clear-default-${w.id}`}
+                className="inline-flex items-center gap-1.5 rounded-md border border-amber-500/40 text-amber-200 hover:bg-amber-500/10 text-xs font-semibold px-3 py-1.5"
+              >
+                Clear default
               </button>
             )}
             <div className="flex-1" />
@@ -241,6 +251,7 @@ export default function Settings() {
               key={w.id}
               w={w}
               isDefault={form.default_workflow_id === w.id}
+              isFallback={i === 0 && !form.default_workflow_id}
               isFirst={i === 0}
               isLast={i === workflows.length - 1}
               onMoveUp={(id) => move(id, -1)}
@@ -253,6 +264,9 @@ export default function Settings() {
               onSave={(payload) => upsertWf.mutate(payload)}
             />
           ))}
+          <p className="text-[11px] text-zinc-500 pt-1">
+            Top of the list is the fallback used when no default is set. Use the up/down arrows to reorder.
+          </p>
           {workflows.length === 0 && (
             <div className="text-sm text-zinc-500 text-center py-6">No workflows yet. Tap "Re-seed bundled 5" or "Add workflow".</div>
           )}

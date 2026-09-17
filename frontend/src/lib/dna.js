@@ -123,8 +123,8 @@ export const SECTIONS = [
       { key: "footwear", type: "chips", label: "Footwear", options: [
         "barefoot", "stiletto heels", "stripper heels", "thigh-high boots", "over-the-knee boots", "ankle boots", "combat boots", "sneakers", "platform heels", "sandals", "kitten heels", "cowgirl boots"
       ]},
-      { key: "accessories", type: "chips", label: "Accessories", options: [
-        "none", "choker", "leather collar", "leash", "handcuffs", "gloves", "opera gloves", "fishnet gloves", "garters", "stockings", "veil", "cat ears", "bunny ears", "devil horns", "angel wings", "sunglasses", "jewelry", "body chain", "belly chain"
+      { key: "accessories", type: "chips_multi", label: "Accessories (pick many)", options: [
+        "choker", "leather collar", "leash", "handcuffs", "gloves", "opera gloves", "fishnet gloves", "garters", "stockings", "veil", "cat ears", "bunny ears", "devil horns", "angel wings", "sunglasses", "jewelry", "body chain", "belly chain"
       ]},
       { key: "material", type: "chips", label: "Material", options: ["cotton", "silk", "satin", "leather", "denim", "lace", "linen", "latex", "PVC", "wet look", "sheer mesh", "fishnet", "chainmail", "chrome", "velvet"] },
       { key: "palette", type: "chips", label: "Palette", options: ["monochrome black", "blood red", "hot pink", "neon", "pastel", "white bridal", "gold and black", "silver", "leopard print", "zebra print"] },
@@ -149,7 +149,7 @@ export const SECTIONS = [
       { key: "angle", type: "chips", label: "Camera angle", options: ["front", "3/4", "profile", "back", "over-shoulder", "from above", "from below", "pov"] },
       { key: "distance", type: "chips", label: "Framing", options: ["close-up", "portrait", "waist-up", "full body", "wide shot", "detail shot"] },
       { key: "focus", type: "chips", label: "Focus on", options: ["face", "body", "breasts", "butt", "hips", "legs", "feet", "hands", "full frame"] },
-      { key: "hands", type: "chips", label: "Hands", options: ["at sides", "on hips", "in hair", "touching body", "on breasts", "between legs", "gripping something", "over head", "behind back", "behind head"] },
+      { key: "hands", type: "chips_multi", label: "Hands (pick many)", options: ["at sides", "on hips", "in hair", "touching body", "on breasts", "between legs", "gripping something", "over head", "behind back", "behind head"] },
       { key: "body_language", type: "chips", label: "Vibe", options: ["confident", "relaxed", "intimate", "playful", "powerful", "vulnerable", "sultry", "coy", "come-hither", "dominant", "submissive", "teasing"] },
     ],
   },
@@ -386,7 +386,10 @@ export function buildPrompts(dna = {}) {
   if (wd.bottom && wd.bottom !== "none") outfitPieces.push(exp("wardrobe", "bottom"));
   if (wd.underwear && wd.underwear !== "none") outfitPieces.push(exp("wardrobe", "underwear"));
   if (wd.footwear && wd.footwear !== "barefoot") outfitPieces.push(exp("wardrobe", "footwear"));
-  if (wd.accessories && wd.accessories !== "none") outfitPieces.push(exp("wardrobe", "accessories"));
+  if (wd.accessories) {
+    const accs = Array.isArray(wd.accessories) ? wd.accessories : [wd.accessories];
+    accs.filter((a) => a && a !== "none").forEach((a) => outfitPieces.push(exp("wardrobe", "accessories") ? expandPrompt("wardrobe", "accessories", a) : a));
+  }
   const outfitCore = outfitPieces.length ? `wearing ${outfitPieces.join(", ")}` : "";
   const outfitTail = join([
     exp("wardrobe", "material"),
@@ -405,7 +408,9 @@ export function buildPrompts(dna = {}) {
     pose.focus && pose.focus !== "full frame" && exp("pose", "focus"),
   ]);
   const poseDetails = join([
-    pose.hands && exp("pose", "hands"),
+    Array.isArray(pose.hands)
+      ? pose.hands.filter(Boolean).map((h) => expandPrompt("pose", "hands", h)).join(", ")
+      : (pose.hands && exp("pose", "hands")),
     exp("pose", "body_language"),
   ]);
   const poseStr = join([poseCore, poseFraming, poseDetails]);

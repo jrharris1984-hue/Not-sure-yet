@@ -85,7 +85,10 @@ export function buildPonyPrompts(dna = {}) {
   if (wd.bottom && wd.bottom !== "none") outfitPieces.push(exp("wardrobe", "bottom"));
   if (wd.underwear && wd.underwear !== "none") outfitPieces.push(exp("wardrobe", "underwear"));
   if (wd.footwear && wd.footwear !== "barefoot") outfitPieces.push(exp("wardrobe", "footwear"));
-  if (wd.accessories && wd.accessories !== "none") outfitPieces.push(exp("wardrobe", "accessories"));
+  if (wd.accessories) {
+    const accs = Array.isArray(wd.accessories) ? wd.accessories : [wd.accessories];
+    accs.filter((a) => a && a !== "none").forEach((a) => outfitPieces.push(expandPrompt("wardrobe", "accessories", a)));
+  }
   const outfitStr = join([
     outfitPieces.length ? `wearing ${outfitPieces.join(", ")}` : "",
     exp("wardrobe", "material"),
@@ -100,7 +103,9 @@ export function buildPonyPrompts(dna = {}) {
     exp("pose", "angle"),
     exp("pose", "distance"),
     pose.focus && pose.focus !== "full frame" && exp("pose", "focus"),
-    pose.hands && exp("pose", "hands"),
+    Array.isArray(pose.hands)
+      ? pose.hands.filter(Boolean).map((h) => expandPrompt("pose", "hands", h)).join(", ")
+      : (pose.hands && exp("pose", "hands")),
     exp("pose", "body_language"),
   ]);
 
