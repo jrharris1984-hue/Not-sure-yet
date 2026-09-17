@@ -1,0 +1,45 @@
+services:
+  mongo:
+    image: mongo:7
+    container_name: ultra-studio-mongo
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - ./data/mongo:/data/db
+
+  backend:
+    build:
+      context: ./backend
+    container_name: ultra-studio-backend
+    restart: unless-stopped
+    depends_on:
+      - mongo
+    environment:
+      MONGO_URL: mongodb://mongo:27017
+      DB_NAME: ultra_studio
+      CORS_ORIGINS: http://localhost:3000
+    ports:
+      - "8001:8001"
+    volumes:
+      - ./backend/renders:/app/renders
+    # Uncomment on Linux to let backend reach ComfyUI on host localhost directly:
+    # network_mode: host
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  frontend:
+    build:
+      context: ./frontend
+    container_name: ultra-studio-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    environment:
+      REACT_APP_BACKEND_URL: http://localhost:8001
+      WDS_SOCKET_PORT: "3000"
+      HOST: 0.0.0.0
+      PORT: "3000"
+      CHOKIDAR_USEPOLLING: "true"
+    ports:
+      - "3000:3000"
