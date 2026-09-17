@@ -13,6 +13,7 @@ const STATUS_COLOR = {
   pending: "text-zinc-400",
   failed: "text-red-400",
   offline: "text-zinc-400",
+  cancelled: "text-zinc-400",
 };
 
 export default function ShootDetail() {
@@ -48,6 +49,17 @@ export default function ShootDetail() {
     onSuccess: () => { toast.success("Frame re-queued"); qc.invalidateQueries({ queryKey: ["shoot", shootId] }); },
     onError: (e) => toast.error(e?.response?.data?.detail || "Retry failed"),
   });
+
+  const cancelFrame = async (renderId) => {
+    if (!renderId) return;
+    try {
+      await endpoints.cancelRender(renderId);
+      toast.success("Frame cancelled");
+      qc.invalidateQueries({ queryKey: ["shoot", shootId] });
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || "Cancel failed");
+    }
+  };
 
   const del = useMutation({
     mutationFn: () => endpoints.deleteShoot(shootId),
@@ -128,6 +140,7 @@ export default function ShootDetail() {
                     enabled
                     variant="card"
                     testId={`shoot-frame-${i}-live`}
+                    onCancel={() => cancelFrame(r.id)}
                   />
                 ) : (
                   <div className="w-full h-full grid place-items-center text-xs text-zinc-500 font-mono">

@@ -12,6 +12,7 @@ import AiAssistBar from "@/components/AiAssistBar";
 import PresetsMenu from "@/components/PresetsMenu";
 import LoraPanel from "@/components/LoraPanel";
 import LivePreview from "@/components/LivePreview";
+import TagInput from "@/components/TagInput";
 import { Input } from "@/components/ui/input";
 
 export default function Builder() {
@@ -29,6 +30,7 @@ export default function Builder() {
   const [name, setName] = useState("Untitled");
   const [dna, setDna] = useState(DEFAULT_DNA);
   const [locks, setLocks] = useState({});
+  const [tags, setTags] = useState([]);
   const [dispatching, setDispatching] = useState(false);
   const [activeRender, setActiveRender] = useState(null);
   const [workflowId, setWorkflowId] = useState("");
@@ -53,6 +55,7 @@ export default function Builder() {
       setName(c.name || "Untitled");
       setDna({ ...DEFAULT_DNA, ...(c.dna || {}) });
       setLocks(c.locks || {});
+      setTags(Array.isArray(c.tags) ? c.tags : []);
     },
   });
 
@@ -63,7 +66,7 @@ export default function Builder() {
 
   const save = useMutation({
     mutationFn: async () => {
-      const payload = { name, dna, locks, prompt_positive: positive, prompt_negative: negative };
+      const payload = { name, dna, locks, tags, prompt_positive: positive, prompt_negative: negative };
       if (isNew) {
         const created = await endpoints.createCharacter(payload);
         return created;
@@ -73,6 +76,7 @@ export default function Builder() {
     onSuccess: (c) => {
       toast.success("Saved");
       qc.invalidateQueries({ queryKey: ["characters"] });
+      qc.invalidateQueries({ queryKey: ["character-tags"] });
       if (isNew && c?.id) nav(`/character/${c.id}/s/${activeSection}`, { replace: true });
     },
     onError: (e) => toast.error(e?.response?.data?.detail || "Save failed"),
@@ -159,14 +163,15 @@ export default function Builder() {
   return (
     <div className="mx-auto max-w-[1600px] px-3 sm:px-6 py-4 sm:py-6 space-y-4">
       {/* Header */}
-      <div className="pane p-3 sm:p-4 flex flex-col sm:flex-row gap-3 sm:items-center">
-        <Input
-          data-testid="input-character-name"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          className="bg-elevated border-hairline text-lg font-display font-bold"
-        />
-        <div className="flex flex-wrap gap-2">
+      <div className="pane p-3 sm:p-4 flex flex-col gap-3">
+        <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
+          <Input
+            data-testid="input-character-name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            className="bg-elevated border-hairline text-lg font-display font-bold"
+          />
+          <div className="flex flex-wrap gap-2">
           <select
             data-testid="select-workflow"
             value={workflowId}
@@ -235,6 +240,8 @@ export default function Builder() {
             <input type="file" accept="application/json" onChange={importJson} className="hidden" />
           </label>
         </div>
+        </div>
+        <TagInput value={tags} onChange={setTags} placeholder="tag this character (mood, ethnicity, persona)…" testId="builder-tags" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-[240px_1fr_380px] gap-4">
@@ -347,6 +354,7 @@ export default function Builder() {
                   className={`text-xs font-mono ${
                     activeRender.status === "done" ? "text-emerald-300" :
                     activeRender.status === "failed" ? "text-red-400" :
+                    activeRender.status === "cancelled" ? "text-zinc-400" :
                     activeRender.status === "offline" ? "text-zinc-400" : "text-amber-300"
                   }`}
                 >
@@ -358,7 +366,7 @@ export default function Builder() {
                   {activeRender.error}
                 </div>
               )}
-              {activeRender.status !== "done" && activeRender.status !== "failed" && activeRender.status !== "offline" && (
+              {activeRender.status !== "done" && activeRender.status !== "failed" && activeRender.status !== "offline" && activeRender.status !== "cancelled" && (
                 <div
                   data-testid="render-live-preview-container"
                   className="relative w-full aspect-square rounded-md border hairline bg-elevated overflow-hidden"
@@ -368,6 +376,15 @@ export default function Builder() {
                     enabled
                     variant="card"
                     testId="render-live-preview"
+                    onCancel={async () => {
+                      try {
+                        const updated = await endpoints.cancelRender(activeRender.id);
+                        setActiveRender(updated);
+                        toast.success("Render cancelled");
+                      } catch (e) {
+                        toast.error(e?.response?.data?.detail || "Cancel failed");
+                      }
+                    }}
                   />
                 </div>
               )}

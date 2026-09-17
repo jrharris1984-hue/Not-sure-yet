@@ -1,5 +1,5 @@
 """Ultra Studio Character DNA Builder — FastAPI backend."""
-from fastapi import FastAPI, APIRouter, HTTPException, Body, BackgroundTasks, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, APIRouter, HTTPException, Body, BackgroundTasks, WebSocket, WebSocketDisconnect, Query
 from fastapi.responses import FileResponse, JSONResponse
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
@@ -526,7 +526,8 @@ async def comfyui_ws_proxy(websocket: WebSocket, client_id: str):
 # Characters
 # ============================================================
 @api.get("/characters")
-async def list_characters(q: Optional[str] = None, tag: Optional[str] = None,
+async def list_characters(q: Optional[str] = None,
+                          tag: Optional[List[str]] = Query(default=None),
                           favorite: Optional[bool] = None, limit: int = 200):
     query: Dict[str, Any] = {}
     if q:
@@ -536,10 +537,24 @@ async def list_characters(q: Optional[str] = None, tag: Optional[str] = None,
             {"prompt_positive": {"$regex": q, "$options": "i"}},
         ]
     if tag:
-        query["tags"] = tag
+        # AND semantics — must have all selected tags
+        query["tags"] = {"$all": tag}
     if favorite is not None:
         query["favorite"] = favorite
     docs = await db.characters.find(query, {"_id": 0}).sort("updated_at", -1).to_list(limit)
+    return docs
+
+
+@api.get("/characters/tags")
+async def list_character_tags():
+    """Return unique tags across the library with their counts, sorted desc."""
+    pipeline = [
+        {"$unwind": "$tags"},
+        {"$group": {"_id": "$tags", "count": {"$sum": 1}}},
+        {"$sort": {"count": -1, "_id": 1}},
+        {"$project": {"_id": 0, "tag": "$_id", "count": 1}},
+    ]
+    docs = await db.characters.aggregate(pipeline).to_list(500)
     return docs
 
 
@@ -801,6 +816,35 @@ async def poll_render(rid: str):
 async def delete_render(rid: str):
     await db.renders.delete_one({"id": rid})
     return {"ok": True}
+
+
+@api.post("/renders/{rid}/cancel")
+async def cancel_render(rid: str):
+    """Interrupt an in-flight ComfyUI render and drop it from the queue."""
+    doc = await db.renders.find_one({"id": rid}, {"_id": 0})
+    if not doc:
+        raise HTTPException(404, "Render not found")
+    s = await get_settings()
+    base = s.comfyui_url.rstrip("/")
+    interrupted = False
+    dropped = False
+    try:
+        async with httpx.AsyncClient(timeout=4.0) as hc:
+            r1 = await hc.post(f"{base}/interrupt")
+            interrupted = r1.status_code < 400
+            prompt_id = doc.get("comfy_prompt_id")
+            if prompt_id:
+                r2 = await hc.post(f"{base}/queue", json={"delete": [prompt_id]})
+                dropped = r2.status_code < 400
+    except Exception as e:
+        # Even if ComfyUI is unreachable, we still mark the render cancelled locally
+        logger.warning(f"cancel_render: ComfyUI unreachable: {e}")
+    patch = {"status": "cancelled", "error": None, "updated_at": now_iso()}
+    await db.renders.update_one({"id": rid}, {"$set": patch})
+    doc.update(patch)
+    doc["interrupted"] = interrupted
+    doc["dropped_from_queue"] = dropped
+    return doc
 
 
 # ============================================================

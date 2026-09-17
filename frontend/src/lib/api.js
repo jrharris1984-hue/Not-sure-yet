@@ -6,6 +6,18 @@ export const API_BASE = `${BACKEND_URL}/api`;
 export const api = axios.create({
   baseURL: API_BASE,
   headers: { "Content-Type": "application/json" },
+  // FastAPI expects repeated query params for List types: ?tag=a&tag=b
+  paramsSerializer: {
+    serialize: (params) => {
+      const usp = new URLSearchParams();
+      Object.entries(params).forEach(([k, v]) => {
+        if (v === undefined || v === null || v === "") return;
+        if (Array.isArray(v)) v.forEach((x) => usp.append(k, x));
+        else usp.append(k, v);
+      });
+      return usp.toString();
+    },
+  },
 });
 
 export const endpoints = {
@@ -13,6 +25,7 @@ export const endpoints = {
   updateSettings: (body) => api.put("/settings", body).then((r) => r.data),
   comfyHealth: () => api.get("/comfyui/health").then((r) => r.data),
   listCharacters: (params = {}) => api.get("/characters", { params }).then((r) => r.data),
+  listCharacterTags: () => api.get("/characters/tags").then((r) => r.data),
   createCharacter: (body) => api.post("/characters", body).then((r) => r.data),
   getCharacter: (id) => api.get(`/characters/${id}`).then((r) => r.data),
   updateCharacter: (id, body) => api.patch(`/characters/${id}`, body).then((r) => r.data),
@@ -22,6 +35,7 @@ export const endpoints = {
   listRenders: () => api.get("/renders").then((r) => r.data),
   dispatchRender: (body) => api.post("/renders/dispatch", body).then((r) => r.data),
   pollRender: (id) => api.post(`/renders/${id}/poll`).then((r) => r.data),
+  cancelRender: (id) => api.post(`/renders/${id}/cancel`).then((r) => r.data),
   listWorkflows: () => api.get("/workflows").then((r) => r.data),
   upsertWorkflow: (body) => api.post("/workflows", body).then((r) => r.data),
   deleteWorkflow: (id) => api.delete(`/workflows/${id}`).then((r) => r.data),

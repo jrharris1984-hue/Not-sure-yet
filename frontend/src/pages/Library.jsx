@@ -9,19 +9,38 @@ import { toast } from "sonner";
 export default function Library() {
   const [q, setQ] = useState("");
   const [onlyFav, setOnlyFav] = useState(false);
+  const [activeTags, setActiveTags] = useState([]);
   const qc = useQueryClient();
   const { data: chars = [], isLoading } = useQuery({
-    queryKey: ["characters", q, onlyFav],
-    queryFn: () => endpoints.listCharacters({ q: q || undefined, favorite: onlyFav || undefined }),
+    queryKey: ["characters", q, onlyFav, activeTags],
+    queryFn: () => endpoints.listCharacters({
+      q: q || undefined,
+      favorite: onlyFav || undefined,
+      tag: activeTags.length ? activeTags : undefined,
+    }),
   });
+  const { data: tagCloud = [] } = useQuery({
+    queryKey: ["character-tags"],
+    queryFn: endpoints.listCharacterTags,
+  });
+  const toggleTag = (t) =>
+    setActiveTags((cur) => (cur.includes(t) ? cur.filter((x) => x !== t) : [...cur, t]));
 
   const del = useMutation({
     mutationFn: (id) => endpoints.deleteCharacter(id),
-    onSuccess: () => { toast.success("Deleted"); qc.invalidateQueries({ queryKey: ["characters"] }); },
+    onSuccess: () => {
+      toast.success("Deleted");
+      qc.invalidateQueries({ queryKey: ["characters"] });
+      qc.invalidateQueries({ queryKey: ["character-tags"] });
+    },
   });
   const dup = useMutation({
     mutationFn: (id) => endpoints.duplicateCharacter(id),
-    onSuccess: () => { toast.success("Duplicated"); qc.invalidateQueries({ queryKey: ["characters"] }); },
+    onSuccess: () => {
+      toast.success("Duplicated");
+      qc.invalidateQueries({ queryKey: ["characters"] });
+      qc.invalidateQueries({ queryKey: ["character-tags"] });
+    },
   });
   const fav = useMutation({
     mutationFn: ({ id, v }) => endpoints.updateCharacter(id, { favorite: v }),
@@ -68,6 +87,38 @@ export default function Library() {
         </button>
       </div>
 
+      {/* Tag filter row */}
+      {tagCloud.length > 0 && (
+        <div className="pane p-3 flex flex-wrap items-center gap-1.5" data-testid="library-tag-cloud">
+          <span className="text-[10px] font-mono uppercase tracking-widest text-zinc-500 mr-1">Tags</span>
+          {tagCloud.map((t) => {
+            const active = activeTags.includes(t.tag);
+            return (
+              <button
+                key={t.tag}
+                type="button"
+                onClick={() => toggleTag(t.tag)}
+                data-testid={`btn-tag-filter-${t.tag}`}
+                className={`chip ${active ? "active" : ""}`}
+              >
+                {t.tag}
+                <span className="ml-1 text-[9px] opacity-60">{t.count}</span>
+              </button>
+            );
+          })}
+          {activeTags.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setActiveTags([])}
+              data-testid="btn-tag-filter-clear"
+              className="ml-auto text-[10px] font-mono uppercase tracking-widest text-zinc-400 hover:text-zinc-100"
+            >
+              clear tags
+            </button>
+          )}
+        </div>
+      )}
+
       {isLoading ? (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
           {Array.from({ length: 8 }).map((_, i) => (
@@ -111,6 +162,18 @@ export default function Library() {
                 </button>
               </div>
               <div className="text-xs text-zinc-400 line-clamp-3 font-mono">{c.prompt_positive || "no prompt yet"}</div>
+              {Array.isArray(c.tags) && c.tags.length > 0 && (
+                <div className="flex flex-wrap gap-1" data-testid={`tags-${i}`}>
+                  {c.tags.slice(0, 6).map((t) => (
+                    <span key={t} className="text-[10px] font-mono rounded-full bg-zinc-800/80 border border-hairline text-zinc-300 px-1.5 py-0.5">
+                      {t}
+                    </span>
+                  ))}
+                  {c.tags.length > 6 && (
+                    <span className="text-[10px] font-mono text-zinc-500">+{c.tags.length - 6}</span>
+                  )}
+                </div>
+              )}
               <div className="mt-auto flex items-center gap-1">
                 <Link
                   to={`/character/${c.id}`}

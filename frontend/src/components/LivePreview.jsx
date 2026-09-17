@@ -1,5 +1,5 @@
 import { useComfyWs } from "@/hooks/useComfyWs";
-import { Loader2, WifiOff, Zap } from "lucide-react";
+import { Loader2, WifiOff, Zap, Square } from "lucide-react";
 
 /**
  * Inline live-preview overlay driven by ComfyUI's /ws stream.
@@ -9,8 +9,9 @@ import { Loader2, WifiOff, Zap } from "lucide-react";
  *   enabled   - only open the socket while the render is in flight
  *   variant   - "card" (default, fills the container) | "compact" (tiny bar)
  *   fallback  - a React node shown when no preview yet (usually a spinner/status)
+ *   onCancel  - if provided, renders a Stop button that calls this handler
  */
-export default function LivePreview({ clientId, enabled = true, variant = "card", fallback = null, testId = "live-preview" }) {
+export default function LivePreview({ clientId, enabled = true, variant = "card", fallback = null, testId = "live-preview", onCancel = null }) {
   const { connected, progress, step, max, previewUrl, status, error } = useComfyWs(clientId, { enabled });
 
   if (variant === "compact") {
@@ -73,6 +74,17 @@ export default function LivePreview({ clientId, enabled = true, variant = "card"
         <div className="absolute top-1 right-1 text-[9px] font-mono px-1.5 py-0.5 rounded bg-black/70 text-zinc-400 flex items-center gap-1">
           <WifiOff className="h-3 w-3" /> offline
         </div>
+      )}
+      {onCancel && !error && (
+        <button
+          type="button"
+          onClick={onCancel}
+          data-testid={`${testId}-cancel`}
+          title="Interrupt render"
+          className="absolute top-1 right-1 inline-flex items-center gap-1 rounded-md bg-red-500/80 hover:bg-red-500 text-white text-[10px] font-mono px-2 py-1 backdrop-blur-sm"
+        >
+          <Square className="h-3 w-3 fill-current" /> stop
+        </button>
       )}
     </div>
   );
