@@ -1,0 +1,215 @@
+{
+  "1": {
+    "inputs": {
+      "ckpt_name": "realismByStableYogi_ponyV2.safetensors"
+    },
+    "class_type": "CheckpointLoaderSimple",
+    "_meta": {
+      "title": "CheckpointLoaderSimple"
+    }
+  },
+  "2": {
+    "inputs": {
+      "lora_name": "Pony\\Realism_Lora_By_Stable_Yogi_Pony_V2.safetensors",
+      "strength_model": 0.3,
+      "strength_clip": 0,
+      "model": [
+        "1",
+        0
+      ],
+      "clip": [
+        "1",
+        1
+      ]
+    },
+    "class_type": "LoraLoader",
+    "_meta": {
+      "title": "LoraLoader"
+    }
+  },
+  "3": {
+    "inputs": {
+      "lora_name": "Pony\\real-skin-slider.safetensors",
+      "strength_model": 0.5,
+      "strength_clip": 0.5,
+      "model": [
+        "2",
+        0
+      ],
+      "clip": [
+        "2",
+        1
+      ]
+    },
+    "class_type": "LoraLoader",
+    "_meta": {
+      "title": "LoraLoader"
+    }
+  },
+  "4": {
+    "inputs": {
+      "lora_name": "Pony\\detail-slider-lora-ponyxl-sdxl.safetensors",
+      "strength_model": 0.5,
+      "strength_clip": 0.5,
+      "model": [
+        "3",
+        0
+      ],
+      "clip": [
+        "3",
+        1
+      ]
+    },
+    "class_type": "LoraLoader",
+    "_meta": {
+      "title": "LoraLoader"
+    }
+  },
+  "5": {
+    "inputs": {
+      "lora_name": "Pony\\body-weight-slider-pony.safetensors",
+      "strength_model": 1.5,
+      "strength_clip": 0,
+      "model": [
+        "4",
+        0
+      ],
+      "clip": [
+        "4",
+        1
+      ]
+    },
+    "class_type": "LoraLoader",
+    "_meta": {
+      "title": "LoraLoader"
+    }
+  },
+  "6": {
+    "inputs": {
+      "lora_name": "Pony\\breasts-size-slider-pdxl.safetensors",
+      "strength_model": 2.5,
+      "strength_clip": 0,
+      "model": [
+        "5",
+        0
+      ],
+      "clip": [
+        "5",
+        1
+      ]
+    },
+    "class_type": "LoraLoader",
+    "_meta": {
+      "title": "LoraLoader"
+    }
+  },
+  "7": {
+    "inputs": {
+      "stop_at_clip_layer": -2,
+      "clip": [
+        "6",
+        1
+      ]
+    },
+    "class_type": "CLIPSetLastLayer",
+    "_meta": {
+      "title": "CLIPSetLastLayer"
+    }
+  },
+  "8": {
+    "inputs": {
+      "text": "score_9, score_8_up, score_7_up,\n\nphotorealistic, hyperrealistic, RAW professional photograph, full-body editorial fitness photograph,\n\nbeautiful ADULT Middle Eastern Egyptian woman, approximately 42 years old, unmistakably mature adult woman,\n\nwarm medium olive-golden skin with subtle bronze undertones, realistic natural pigmentation variation,\n\nelegant mature facial structure, softly defined cheekbones, refined jawline, naturally full lips, straight refined nose, thick naturally shaped dark eyebrows,\n\nlarge expressive deep brown almond-shaped eyes, realistic iris detail, natural pupils, subtle natural catchlights, individually defined eyelashes,\n\nlong thick dark brown hair, naturally wavy hair, realistic individual hair strands, natural volume, subtle flyaway hairs,\n\nREAL MATURE HUMAN SKIN, visible natural pores, fine facial texture, subtle expression lines around the eyes, natural pigmentation variation, tiny skin imperfections, realistic skin elasticity, natural skin highlights, realistic subsurface scattering, unretouched skin,\n\ncurvy feminine adult figure, pronounced natural hourglass silhouette, (full bare breasts:1.4), (completely topless:1.3), (bare exposed chest:1.3), (no shirt:1.3), (nude upper body:1.3), (uncovered breasts:1.3), (naked chest:1.2), (exposed nipples:1.2), natural breast shape, visible cleavage, clearly defined waist, wide feminine hips, full rounded hips, thick shapely thighs, strong substantial legs, realistic calves, balanced mature body proportions,\n\nsoft natural abdominal contours, realistic torso proportions, natural transition from narrow waist into wider hips, realistic hip structure, naturally proportioned upper and lower body,\n\nrealistic adult human anatomy, anatomically believable shoulders, realistic arms and elbows, (anatomically believable bare torso:1.3), (naked upper body:1.2), realistic pelvis and hips, realistic thighs, knees, calves and ankles,\n\nanatomically correct hands, five fingers on each hand, naturally separated fingers, realistic finger lengths, realistic knuckles, relaxed natural hands,\n\n(fitted high-waisted black athletic shorts:1.2) ONLY, realistic stretch fabric, clothing closely following the natural contours of her lower figure, clearly visible waistline, clearly visible hip shape, thighs completely visible, legs completely visible, (no top:1.4), (no bra:1.4), (no shirt:1.4), (upper body nude:1.3),\n\nbare legs, simple athletic shoes,\n\nFULL BODY HEAD-TO-TOE PHOTOGRAPH, entire body completely visible from the top of her head through the bottom of both shoes, both feet completely inside the frame, no cropped limbs,\n\nstanding naturally facing generally toward the camera, subtle three-quarter body angle, one leg slightly forward, gentle natural hip shift, realistic weight distribution, relaxed shoulders, arms positioned naturally,\n\nconfident relaxed mature expression, natural posture,\n\nbright upscale photography studio with large windows, clean neutral interior, realistic environmental details, softly blurred background,\n\nprofessional full-frame DSLR photography, 50mm lens, camera positioned approximately waist height, camera several feet from subject, realistic perspective without wide-angle distortion,\n\nsoft natural window lighting, subtle professional fill light, realistic photographic exposure, natural highlights and shadows, realistic white balance, accurate skin tones,\n\nshallow natural depth of field, subtle background bokeh, high dynamic range, realistic photographic micro-detail, sharp focus on subject, professional editorial photography, natural contrast, RAW photograph, unretouched photographic appearance",
+      "clip": [
+        "7",
+        0
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "CLIPTextEncode"
+    }
+  },
+  "9": {
+    "inputs": {
+      "text": "score_4, score_3, score_2, score_1,\n\nlow quality, worst quality, blurry, out of focus, low resolution, pixelated, jpeg artifacts, compression artifacts, noisy, oversharpened, oversaturated, overprocessed,\n\nanime, manga, cartoon, comic, illustration, drawing, sketch, painting, digital painting, oil painting, concept art, fantasy art, 3d render, CGI, video game character, doll, mannequin,\n\nplastic skin, waxy skin, porcelain skin, airbrushed skin, overly smooth skin, excessive skin smoothing, beauty filter, fake skin, artificial skin texture, excessive retouching,\n\nchild, teenager, young-looking, juvenile appearance, minor, underage, adolescent,\n\nclose-up, extreme close-up, headshot, bust portrait, upper-body portrait, waist-up portrait, cropped portrait, cropped head, cropped arms, cropped hands, cropped legs, cropped knees, cropped ankles, cropped feet, feet outside frame, missing feet,\n\noversized clothing, baggy clothing, long dress, floor-length dress, coat covering body, clothing hiding waist, clothing hiding hips, clothing hiding thighs, shirt, top, bra, bikini top, sports bra, crop top, tank top, blouse,\n\nbad anatomy, malformed anatomy, distorted body, deformed body, twisted torso, broken anatomy, unnatural posture, impossible pose, unrealistic proportions,\n\nextremely narrow hips, unnaturally tiny waist, broken waist, distorted torso, malformed pelvis, distorted hips, asymmetric hip distortion, malformed thighs, fused thighs, distorted legs,\n\nextra limbs, missing limbs, duplicate limbs, disconnected limbs, fused limbs, extra arms, missing arms, extra legs, missing legs,\n\nbad hands, malformed hands, deformed hands, fused hands, extra hands, missing hands, bad fingers, malformed fingers, fused fingers, webbed fingers, extra fingers, missing fingers, too many fingers, incorrect number of fingers, unnaturally long fingers,\n\nunnatural breasts, malformed breasts, asymmetrical breast distortion, duplicate breasts, extra breasts, unnatural chest anatomy, sagging deflated breasts, implant-looking breasts, bolted-on breasts,\n\ndeformed face, distorted face, malformed face, duplicate face, extra face, unnatural facial proportions,\n\ndeformed eyes, distorted eyes, crossed eyes, misaligned eyes, extra eyes, missing eyes, malformed pupils,\n\nduplicate person, multiple people, cloned person, partially visible second person, extra body,\n\nfisheye distortion, extreme wide-angle distortion, warped perspective, warped background,\n\ntext, caption, watermark, signature, artist signature, logo, border, frame, UI, interface, buttons, controls,\n\ncensored, mosaic, blur censor, black bar, pixelated genitals, pixelated nipples, covered nipples, pasties, nipple pasties, nipple covers,\n\nsweat, glistening sweat, wet skin, oily skin, greasy skin, wet look, shiny skin, reflective skin,\n\nmuscular, bodybuilder, ripped, shredded, extremely defined abs, vascular, veins, prominent veins, bodybuilding physique, masculine muscle definition,\n\ntan lines, sunburn, peeling skin, skin damage, bruises, scars, tattoos, piercings, body jewelry, necklace, earrings, bracelets, watch, ring, accessories,\n\nsmile, grin, laughing, exaggerated expression, surprised expression, shocked expression, open mouth, tongue out,\n\ndark shadows, harsh shadows, underexposed, silhouette, backlit silhouette, extreme contrast, blown highlights, clipped whites, crushed blacks,\n\nmonochrome, black and white, sepia, desaturated, color tint, color cast, wrong white balance, green tint, magenta tint, blue tint, orange tint,\n\ngrainy, film grain, noise, chromatic aberration, lens flare, light leak, vignetting, heavy vignette, artificial bokeh, fake depth of field",
+      "clip": [
+        "7",
+        0
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "CLIPTextEncode"
+    }
+  },
+  "10": {
+    "inputs": {
+      "width": 832,
+      "height": 1216,
+      "batch_size": 1
+    },
+    "class_type": "EmptyLatentImage",
+    "_meta": {
+      "title": "EmptyLatentImage"
+    }
+  },
+  "11": {
+    "inputs": {
+      "seed": 63815168086868,
+      "steps": 25,
+      "cfg": 7,
+      "sampler_name": "euler_ancestral",
+      "scheduler": "normal",
+      "denoise": 1,
+      "model": [
+        "6",
+        0
+      ],
+      "positive": [
+        "8",
+        0
+      ],
+      "negative": [
+        "9",
+        0
+      ],
+      "latent_image": [
+        "10",
+        0
+      ]
+    },
+    "class_type": "KSampler",
+    "_meta": {
+      "title": "KSampler"
+    }
+  },
+  "12": {
+    "inputs": {
+      "samples": [
+        "11",
+        0
+      ],
+      "vae": [
+        "1",
+        2
+      ]
+    },
+    "class_type": "VAEDecode",
+    "_meta": {
+      "title": "VAEDecode"
+    }
+  },
+  "13": {
+    "inputs": {
+      "filename_prefix": "PonyXL",
+      "images": [
+        "12",
+        0
+      ]
+    },
+    "class_type": "SaveImage",
+    "_meta": {
+      "title": "SaveImage"
+    }
+  }
+}

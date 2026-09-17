@@ -89,7 +89,8 @@ class WorkflowTemplate(BaseModel):
     model_config = ConfigDict(extra="ignore")
     id: str = Field(default_factory=new_id)
     name: str = "Untitled workflow"
-    kind: str = "image"  # image | video | edit | face
+    kind: str = "image"  # image | video | edit | face | pony
+    prompt_style: str = "venice"  # venice | pony
     json_str: str = ""
     positive_node_id: str = ""
     negative_node_id: str = ""
@@ -161,12 +162,35 @@ def _detect_prompt_nodes(wf: Dict[str, Any]) -> Dict[str, str]:
 
 
 SEED_WORKFLOWS = [
-    {"file": "chroma.json", "name": "Chroma1-HD · Golden T2I", "kind": "image"},
-    {"file": "zimage.json", "name": "Z-image Turbo · NSFW", "kind": "image"},
-    {"file": "qwen.json", "name": "Qwen Image Edit 2511", "kind": "edit"},
-    {"file": "wan.json", "name": "WAN 2.2 5B · Image → Video", "kind": "video"},
-    {"file": "face.json", "name": "Face-Preserved · IPAdapter FaceID", "kind": "face"},
+    {"file": "chroma.json", "name": "Chroma1-HD · Golden T2I", "kind": "image", "prompt_style": "venice"},
+    {"file": "zimage.json", "name": "Z-image Turbo · NSFW", "kind": "image", "prompt_style": "venice"},
+    {"file": "qwen.json", "name": "Qwen Image Edit 2511", "kind": "edit", "prompt_style": "venice"},
+    {"file": "wan.json", "name": "WAN 2.2 5B · Image → Video", "kind": "video", "prompt_style": "venice"},
+    {"file": "face.json", "name": "Face-Preserved · IPAdapter FaceID", "kind": "face", "prompt_style": "venice"},
+    {"file": "pony.json", "name": "Pony V6 XL · 5 LoRAs", "kind": "pony", "prompt_style": "pony"},
 ]
+
+
+def _detect_loras(wf: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """Find LoRA nodes and return their metadata for slider UI."""
+    out = []
+    for nid, node in wf.items():
+        if not isinstance(node, dict):
+            continue
+        ct = str(node.get("class_type", ""))
+        if "Lora" in ct or "LoRA" in ct:
+            inputs = node.get("inputs", {})
+            name = inputs.get("lora_name", "")
+            # derive a short label from filename
+            label = os.path.basename(str(name).replace("\\", "/")).replace(".safetensors", "").replace("_", " ").replace("-", " ")
+            out.append({
+                "node_id": nid,
+                "lora_name": name,
+                "label": label,
+                "strength_model": float(inputs.get("strength_model", 1.0) or 0),
+                "strength_clip": float(inputs.get("strength_clip", 1.0) or 0),
+            })
+    return out
 
 
 def _load_seed_workflows() -> List[WorkflowTemplate]:
@@ -182,6 +206,7 @@ def _load_seed_workflows() -> List[WorkflowTemplate]:
             out.append(WorkflowTemplate(
                 name=spec["name"],
                 kind=spec["kind"],
+                prompt_style=spec.get("prompt_style", "venice"),
                 json_str=raw,
                 positive_node_id=nodes["positive_node_id"],
                 negative_node_id=nodes["negative_node_id"],
@@ -346,6 +371,19 @@ async def delete_workflow(wid: str):
     return {"ok": True}
 
 
+@api.get("/workflows/{wid}/loras")
+async def workflow_loras(wid: str):
+    s = await get_settings()
+    wf_t = next((w for w in s.workflows if w.id == wid), None)
+    if not wf_t or not wf_t.json_str.strip():
+        return {"loras": []}
+    try:
+        wf = json.loads(wf_t.json_str)
+    except Exception:
+        return {"loras": []}
+    return {"loras": _detect_loras(wf)}
+
+
 @api.post("/workflows/seed")
 async def seed_workflows():
     """Add the 5 bundled default workflows (idempotent by name)."""
@@ -491,6 +529,7 @@ class DispatchBody(BaseModel):
     prompt_negative: str = ""
     workflow_id: Optional[str] = None
     workflow_type: str = "image"  # legacy fallback
+    lora_overrides: Dict[str, Dict[str, float]] = Field(default_factory=dict)  # node_id -> {strength_model, strength_clip}
 
 
 @api.post("/renders/dispatch")
@@ -549,6 +588,17 @@ async def dispatch_render(body: DispatchBody):
     if neg_id and neg_id in workflow and "inputs" in workflow[neg_id] and "text" in workflow[neg_id]["inputs"]:
         workflow[neg_id]["inputs"]["text"] = body.prompt_negative
         mapped["negative"] = True
+
+    # Apply LoRA weight overrides
+    lora_applied = []
+    for node_id, weights in (body.lora_overrides or {}).items():
+        if node_id in workflow and "inputs" in workflow[node_id]:
+            inp = workflow[node_id]["inputs"]
+            if "strength_model" in inp and "strength_model" in weights:
+                inp["strength_model"] = float(weights["strength_model"])
+                lora_applied.append(node_id)
+            if "strength_clip" in inp and "strength_clip" in weights:
+                inp["strength_clip"] = float(weights["strength_clip"])
 
     # Try to dispatch to ComfyUI
     try:

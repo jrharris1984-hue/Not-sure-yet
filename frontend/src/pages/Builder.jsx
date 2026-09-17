@@ -5,10 +5,12 @@ import { Save, Shuffle, Download, Upload, Loader2, Play, ChevronLeft, ChevronRig
 import { toast } from "sonner";
 import { endpoints } from "@/lib/api";
 import { SECTIONS, DEFAULT_DNA, randomizeDna, randomizeSection, resetSection, buildPrompts } from "@/lib/dna";
+import { buildPonyPrompts } from "@/lib/ponyPrompts";
 import DnaSection from "@/components/DnaSection";
 import PromptPreview from "@/components/PromptPreview";
 import AiAssistBar from "@/components/AiAssistBar";
 import PresetsMenu from "@/components/PresetsMenu";
+import LoraPanel from "@/components/LoraPanel";
 import { Input } from "@/components/ui/input";
 
 export default function Builder() {
@@ -29,6 +31,7 @@ export default function Builder() {
   const [dispatching, setDispatching] = useState(false);
   const [activeRender, setActiveRender] = useState(null);
   const [workflowId, setWorkflowId] = useState("");
+  const [loraOverrides, setLoraOverrides] = useState({});
 
   const { data: workflows = [] } = useQuery({ queryKey: ["workflows"], queryFn: endpoints.listWorkflows });
   const { data: settings } = useQuery({ queryKey: ["settings"], queryFn: endpoints.settings });
@@ -37,6 +40,9 @@ export default function Builder() {
       setWorkflowId(settings?.default_workflow_id || workflows[0].id);
     }
   }, [workflows, settings, workflowId]);
+
+  const activeWorkflow = workflows.find((w) => w.id === workflowId);
+  const promptStyle = activeWorkflow?.prompt_style || "venice";
 
   useQuery({
     queryKey: ["character", id],
@@ -49,7 +55,10 @@ export default function Builder() {
     },
   });
 
-  const { positive, negative } = useMemo(() => buildPrompts(dna), [dna]);
+  const { positive, negative } = useMemo(
+    () => (promptStyle === "pony" ? buildPonyPrompts(dna) : buildPrompts(dna)),
+    [dna, promptStyle]
+  );
 
   const save = useMutation({
     mutationFn: async () => {
@@ -81,6 +90,7 @@ export default function Builder() {
         prompt_positive: positive,
         prompt_negative: negative,
         workflow_id: workflowId,
+        lora_overrides: loraOverrides,
       });
       setActiveRender(r);
       toast.success(r.status === "running" ? "Render queued to ComfyUI" : `Render ${r.status}`);
@@ -159,7 +169,7 @@ export default function Builder() {
           <select
             data-testid="select-workflow"
             value={workflowId}
-            onChange={(e) => setWorkflowId(e.target.value)}
+            onChange={(e) => { setWorkflowId(e.target.value); setLoraOverrides({}); }}
             className="bg-elevated border border-hairline rounded-lg px-3 py-2 text-sm text-zinc-100 min-w-[200px]"
           >
             {workflows.length === 0 && <option value="">No workflows — open Settings</option>}
@@ -305,6 +315,17 @@ export default function Builder() {
         {/* Right - preview + AI + render */}
         <aside className="space-y-4 lg:sticky lg:top-20 lg:h-fit">
           <PromptPreview positive={positive} negative={negative} />
+          {activeWorkflow && promptStyle === "pony" && (
+            <div className="pane p-3 flex items-center gap-2" data-testid="pony-style-badge">
+              <span className="text-[10px] font-mono uppercase tracking-widest text-rose-300 bg-rose-500/10 border border-rose-500/40 rounded px-1.5 py-0.5">pony style</span>
+              <span className="text-[11px] text-zinc-400">score_9 prefix + booru tag weighting enabled</span>
+            </div>
+          )}
+          <LoraPanel
+            workflowId={workflowId}
+            values={loraOverrides}
+            onChange={setLoraOverrides}
+          />
           <AiAssistBar dna={dna} onApplyDna={(d) => setDna({ ...DEFAULT_DNA, ...d })} />
           {activeRender && (
             <div className="pane p-4 space-y-3" data-testid="render-status-panel">
