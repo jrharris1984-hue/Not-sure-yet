@@ -2,6 +2,7 @@ import { Slider } from "@/components/ui/slider";
 import { Input } from "@/components/ui/input";
 import { Shuffle, RotateCcw, Lock, LockOpen, Wand2 } from "lucide-react";
 import PoseIcon from "@/components/PoseIcon";
+import GroupedChips from "@/components/GroupedChips";
 
 export function ChipRow({ options, value, onChange, testIdPrefix }) {
   return (
@@ -125,7 +126,16 @@ export default function DnaSection({
                 </span>
               )}
             </label>
-            {f.type === "chips" && (
+            {f.type === "chips" && f.groups && (
+              <GroupedChips
+                groups={f.groups}
+                value={value[f.key] || ""}
+                onChange={(v) => set(f.key, v)}
+                testIdPrefix={`chip-${section.key}-${f.key}`}
+                variant="chips"
+              />
+            )}
+            {f.type === "chips" && !f.groups && (
               <ChipRow
                 options={f.options}
                 value={value[f.key] || ""}
@@ -133,7 +143,16 @@ export default function DnaSection({
                 testIdPrefix={`chip-${section.key}-${f.key}`}
               />
             )}
-            {f.type === "pose_chips" && (
+            {f.type === "pose_chips" && f.groups && (
+              <GroupedChips
+                groups={f.groups}
+                value={value[f.key] || ""}
+                onChange={(v) => set(f.key, v)}
+                testIdPrefix={`pose-${section.key}-${f.key}`}
+                variant="poses"
+              />
+            )}
+            {f.type === "pose_chips" && !f.groups && (
               <PoseChipGrid
                 options={f.options}
                 value={value[f.key] || ""}

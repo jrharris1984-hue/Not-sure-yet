@@ -8,18 +8,18 @@ export const SECTIONS = [
     fields: [
       { key: "gender", type: "chips", label: "Gender", options: ["female", "male", "non-binary", "androgynous"] },
       { key: "age", type: "slider", label: "Age", min: 18, max: 70, step: 1 },
-      { key: "ethnicity", type: "chips", label: "Ethnicity", options: [
-        "latina", "mexican", "brazilian", "colombian", "puerto rican", "cuban", "dominican", "venezuelan", "argentinian", "peruvian",
-        "east asian", "japanese", "korean", "chinese", "vietnamese", "thai", "filipina", "indonesian", "cambodian",
-        "south asian", "indian", "pakistani", "bangladeshi", "sri lankan",
-        "black", "african american", "ebony", "afro-caribbean", "nigerian", "ethiopian", "somali",
-        "white", "caucasian", "european", "british", "french", "german", "italian", "spanish", "irish", "russian", "polish",
-        "nordic", "scandinavian", "swedish", "norwegian", "icelandic",
-        "middle eastern", "arab", "persian", "turkish", "lebanese", "egyptian", "moroccan", "israeli",
-        "polynesian", "hawaiian", "samoan", "maori",
-        "native american", "indigenous",
-        "mixed", "blasian", "afro-latina", "eurasian", "mulatto", "mestiza", "creole", "amerasian",
-        "mediterranean", "greek",
+      { key: "ethnicity", type: "chips", label: "Ethnicity", groups: [
+        { name: "Latin", options: ["latina", "mexican", "brazilian", "colombian", "puerto rican", "cuban", "dominican", "venezuelan", "argentinian", "peruvian"] },
+        { name: "East Asian", options: ["east asian", "japanese", "korean", "chinese", "vietnamese", "thai", "filipina", "indonesian", "cambodian"] },
+        { name: "South Asian", options: ["south asian", "indian", "pakistani", "bangladeshi", "sri lankan"] },
+        { name: "Black", options: ["black", "african american", "ebony", "afro-caribbean", "nigerian", "ethiopian", "somali"] },
+        { name: "European", options: ["white", "caucasian", "european", "british", "french", "german", "italian", "spanish", "irish", "russian", "polish"] },
+        { name: "Nordic", options: ["nordic", "scandinavian", "swedish", "norwegian", "icelandic"] },
+        { name: "Middle Eastern", options: ["middle eastern", "arab", "persian", "turkish", "lebanese", "egyptian", "moroccan", "israeli"] },
+        { name: "Islander", options: ["polynesian", "hawaiian", "samoan", "maori"] },
+        { name: "Indigenous", options: ["native american", "indigenous"] },
+        { name: "Mixed", options: ["mixed", "blasian", "afro-latina", "eurasian", "mulatto", "mestiza", "creole", "amerasian"] },
+        { name: "Mediterranean", options: ["mediterranean", "greek"] },
       ]},
       { key: "archetype", type: "chips", label: "Archetype", options: ["girl next door", "femme fatale", "warrior", "pirate", "cyberpunk", "goth", "cottagecore", "athlete", "queen"] },
       { key: "name", type: "text", label: "Name" },
@@ -97,14 +97,16 @@ export const SECTIONS = [
     key: "wardrobe",
     title: "Wardrobe",
     fields: [
-      { key: "outfit_preset", type: "chips", label: "Outfit preset", options: [
-        "nude", "topless", "bottomless", "boudoir lingerie", "sheer negligee", "silk robe open", "wet t-shirt", "bikini", "micro bikini", "string bikini",
-        "sexy schoolgirl", "naughty nurse", "french maid", "playboy bunny", "showgirl", "pole dancer", "gogo dancer", "stripper", "cheerleader",
-        "dominatrix", "leather mistress", "latex catsuit", "kinky harness", "shibari rope", "fetish gimp",
-        "secretary unbuttoned", "librarian undone", "biker chick", "cowgirl chaps", "cop uniform undone", "flight attendant undone",
-        "cocktail dress", "evening gown slit", "backless red carpet", "club outfit",
-        "yoga wear", "gym set", "sports bra and shorts", "cheerleader off-duty",
-        "streetwear", "casual home", "just a shirt", "boyfriend's shirt", "just panties"
+      { key: "outfit_preset", type: "chips", label: "Outfit preset", groups: [
+        { name: "Bare", options: ["nude", "topless", "bottomless", "just panties", "just a shirt", "boyfriend's shirt"] },
+        { name: "Lingerie", options: ["boudoir lingerie", "sheer negligee", "silk robe open"] },
+        { name: "Bikini", options: ["bikini", "micro bikini", "string bikini", "wet t-shirt"] },
+        { name: "Roleplay", options: ["sexy schoolgirl", "naughty nurse", "french maid", "playboy bunny", "showgirl", "cheerleader", "secretary unbuttoned", "librarian undone", "biker chick", "cowgirl chaps", "cop uniform undone", "flight attendant undone"] },
+        { name: "Fetish/Kink", options: ["dominatrix", "leather mistress", "latex catsuit", "kinky harness", "shibari rope", "fetish gimp"] },
+        { name: "Adult Perf.", options: ["pole dancer", "gogo dancer", "stripper"] },
+        { name: "Formal", options: ["cocktail dress", "evening gown slit", "backless red carpet", "club outfit"] },
+        { name: "Athletic", options: ["yoga wear", "gym set", "sports bra and shorts", "cheerleader off-duty"] },
+        { name: "Casual", options: ["streetwear", "casual home"] },
       ]},
       { key: "top", type: "chips", label: "Top", options: [
         "none", "sheer top", "mesh top", "lace bralette", "bikini top", "corset", "bustier", "crop top", "backless top", "keyhole top", "halter",
@@ -134,15 +136,15 @@ export const SECTIONS = [
     key: "pose",
     title: "Pose",
     fields: [
-      { key: "action", type: "pose_chips", label: "Pose", options: [
-        "standing", "standing hip out", "standing hands on hips", "standing arms up", "standing back arched", "standing legs apart", "standing splits", "walking",
-        "leaning wall", "leaning forward", "bending over",
-        "sitting legs crossed", "sitting legs open", "sitting reverse chair", "sitting on edge",
-        "kneeling upright", "kneeling back arched", "kneeling hands floor",
-        "lying back", "lying side", "lying stomach", "lying legs spread", "lying legs up", "on back legs up",
-        "all fours", "doggy arched", "doggy low",
-        "squatting", "squatting spread", "squatting deep",
-        "over shoulder look", "arched on knees", "hands on knees", "hair flip", "dancing", "reverse view"
+      { key: "action", type: "pose_chips", label: "Pose", groups: [
+        { name: "Standing", options: ["standing", "standing hip out", "standing hands on hips", "standing arms up", "standing back arched", "standing legs apart", "standing splits", "walking"] },
+        { name: "Leaning", options: ["leaning wall", "leaning forward", "bending over"] },
+        { name: "Sitting", options: ["sitting legs crossed", "sitting legs open", "sitting reverse chair", "sitting on edge"] },
+        { name: "Kneeling", options: ["kneeling upright", "kneeling back arched", "kneeling hands floor"] },
+        { name: "Lying", options: ["lying back", "lying side", "lying stomach", "lying legs spread", "lying legs up", "on back legs up"] },
+        { name: "All Fours", options: ["all fours", "doggy arched", "doggy low"] },
+        { name: "Squatting", options: ["squatting", "squatting spread", "squatting deep"] },
+        { name: "Cinematic", options: ["over shoulder look", "arched on knees", "hands on knees", "hair flip", "dancing", "reverse view"] },
       ]},
       { key: "angle", type: "chips", label: "Camera angle", options: ["front", "3/4", "profile", "back", "over-shoulder", "from above", "from below", "pov"] },
       { key: "distance", type: "chips", label: "Framing", options: ["close-up", "portrait", "waist-up", "full body", "wide shot", "detail shot"] },
@@ -163,26 +165,28 @@ export const SECTIONS = [
         "teacher and student", "boss and secretary", "nurse and patient", "coach and athlete",
         "dominant and submissive", "wife and mistress",
       ]},
-      { key: "roleplay", type: "chips", label: "Role", options: [
-        "none", "girl next door", "sexy stepmom", "hot aunt", "sexy granny", "milf",
-        "cougar", "sugar mommy", "lonely housewife", "trophy wife", "best friend's mom",
-        "step-sister", "schoolgirl", "college coed", "sorority girl", "cheerleader",
-        "librarian", "teacher", "secretary", "boss lady", "nurse", "doctor",
-        "yoga instructor", "personal trainer", "maid", "waitress", "flight attendant",
-        "dominatrix", "submissive", "gothic girl", "e-girl", "onlyfans model", "cam girl", "porn star",
+      { key: "roleplay", type: "chips", label: "Role", groups: [
+        { name: "MILF & Family", options: ["sexy stepmom", "hot aunt", "sexy granny", "milf", "cougar", "sugar mommy", "lonely housewife", "trophy wife", "best friend's mom", "step-sister"] },
+        { name: "School", options: ["schoolgirl", "college coed", "sorority girl", "cheerleader", "librarian", "teacher"] },
+        { name: "Office", options: ["secretary", "boss lady"] },
+        { name: "Medical", options: ["nurse", "doctor"] },
+        { name: "Fitness", options: ["yoga instructor", "personal trainer"] },
+        { name: "Service", options: ["maid", "waitress", "flight attendant"] },
+        { name: "Kink", options: ["dominatrix", "submissive"] },
+        { name: "Alt", options: ["gothic girl", "e-girl"] },
+        { name: "Adult", options: ["onlyfans model", "cam girl", "porn star", "girl next door"] },
       ]},
-      { key: "acts", type: "chips", label: "Explicit acts", options: [
-        "none", "posing", "teasing", "stripping", "flashing", "upskirt", "exposed", "spread eagle", "spreading pussy",
-        "masturbating", "fingering", "using dildo", "using vibrator", "using rabbit", "riding toy",
-        "oral", "blowjob", "deepthroat", "throatpie", "titfucking", "handjob",
-        "missionary", "cowgirl", "reverse cowgirl", "doggy style", "prone bone", "spooning",
-        "standing sex", "against wall", "table sex", "bent over", "legs on shoulders", "amazon position",
-        "anal", "anal doggy", "anal reverse cowgirl", "double penetration", "DAP", "DVP", "DP",
-        "facesitting", "sixty-nine", "eating pussy", "rimming",
-        "lesbian", "tribbing", "scissoring", "strap-on",
-        "creampie", "cumshot", "facial", "bukkake", "cum on tits", "cum on ass", "cum on face", "swallowing",
-        "squirting", "fisting", "gaping", "stretched",
-        "bondage", "shibari", "tied up", "collared and leashed", "spanking", "gagged",
+      { key: "acts", type: "chips", label: "Explicit acts", groups: [
+        { name: "Solo/Tease", options: ["posing", "teasing", "stripping", "flashing", "upskirt", "exposed", "spread eagle", "spreading pussy"] },
+        { name: "Toys/Solo", options: ["masturbating", "fingering", "using dildo", "using vibrator", "using rabbit", "riding toy"] },
+        { name: "Oral", options: ["oral", "blowjob", "deepthroat", "throatpie", "titfucking", "handjob", "eating pussy", "sixty-nine", "rimming"] },
+        { name: "Vaginal", options: ["missionary", "cowgirl", "reverse cowgirl", "doggy style", "prone bone", "spooning", "standing sex", "against wall", "table sex", "bent over", "legs on shoulders", "amazon position"] },
+        { name: "Anal", options: ["anal", "anal doggy", "anal reverse cowgirl"] },
+        { name: "DP", options: ["double penetration", "DAP", "DVP", "DP"] },
+        { name: "Cum", options: ["creampie", "cumshot", "facial", "bukkake", "cum on tits", "cum on ass", "cum on face", "swallowing", "squirting"] },
+        { name: "Extreme", options: ["fisting", "gaping", "stretched"] },
+        { name: "Lesbian", options: ["lesbian", "tribbing", "scissoring", "strap-on", "facesitting"] },
+        { name: "BDSM", options: ["bondage", "shibari", "tied up", "collared and leashed", "spanking", "gagged"] },
       ]},
       { key: "intensity", type: "slider", label: "Explicit intensity (softcore → hardcore)", min: 0, max: 100, step: 1 },
       { key: "extra_acts", type: "text", label: "Additional acts / notes" },
@@ -247,7 +251,10 @@ export function randomizeSection(sectionKey, current = {}) {
   const section = SECTIONS.find((s) => s.key === sectionKey);
   const out = { ...current };
   section.fields.forEach((f) => {
-    if (f.type === "chips" || f.type === "pose_chips") out[f.key] = pick(f.options);
+    if (f.type === "chips" || f.type === "pose_chips") {
+      const pool = f.groups ? f.groups.flatMap((g) => g.options) : (f.options || []);
+      if (pool.length) out[f.key] = pick(pool);
+    }
     else if (f.type === "slider") out[f.key] = Math.floor(Math.random() * (f.max - f.min + 1)) + f.min;
     else if (f.type === "text") out[f.key] = out[f.key] || "";
   });
