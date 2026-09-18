@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Save, Shuffle, Download, Upload, Loader2, Play, ChevronLeft, ChevronRight, Camera, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { endpoints } from "@/lib/api";
-import { SECTIONS, DEFAULT_DNA, randomizeDna, randomizeSection, randomizeWetDream, resetSection, buildPrompts } from "@/lib/dna";
+import { SECTIONS, DEFAULT_DNA, randomizeDna, randomizeSection, randomizeWetDream, resetSection, buildPrompts, phaseOfSection } from "@/lib/dna";
 import { buildPonyPrompts } from "@/lib/ponyPrompts";
 import DnaSection from "@/components/DnaSection";
 import PromptPreview from "@/components/PromptPreview";
@@ -14,6 +14,8 @@ import KinkPresetsMenu from "@/components/KinkPresetsMenu";
 import LoraPanel from "@/components/LoraPanel";
 import LivePreview from "@/components/LivePreview";
 import TagInput from "@/components/TagInput";
+import GroupedSectionRail from "@/components/GroupedSectionRail";
+import DnaAtAGlance from "@/components/DnaAtAGlance";
 import { Flame } from "lucide-react";
 import { Input } from "@/components/ui/input";
 
@@ -278,34 +280,28 @@ export default function Builder() {
         <TagInput value={tags} onChange={setTags} placeholder="tag this character (mood, ethnicity, persona)…" testId="builder-tags" />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[240px_1fr_380px] gap-4">
-        {/* Left rail - section nav */}
-        <aside className="hidden lg:block pane p-2 h-fit sticky top-20">
-          <div className="section-label px-2 py-2">Sections</div>
-          {SECTIONS.map((s, i) => (
-            <Link
-              key={s.key}
-              to={sectionUrl(s.key)}
-              data-testid={`nav-section-${s.key}`}
-              className={`w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm ${
-                activeSection === s.key ? "bg-amber-500/10 text-amber-200" : "text-zinc-300 hover:bg-white/5"
-              }`}
-            >
-              <span className="text-[10px] font-mono text-zinc-500 w-4">{i + 1}</span>
-              <span className="flex-1">{s.title}</span>
-              {locks[s.key] && <span className="text-[10px] text-amber-300">🔒</span>}
-            </Link>
-          ))}
+      <DnaAtAGlance dna={dna} name={name} />
+
+      <div className="grid grid-cols-1 lg:grid-cols-[260px_1fr_380px] gap-4">
+        {/* Left rail - grouped-by-phase section nav */}
+        <aside className="hidden lg:block h-fit sticky top-20">
+          <GroupedSectionRail
+            dna={dna}
+            locks={locks}
+            activeSection={activeSection}
+            onSelect={(key) => nav(sectionUrl(key))}
+            testIdPrefix="nav-section"
+          />
         </aside>
 
-        {/* Mobile section chips */}
+        {/* Mobile section chips — grouped by phase */}
         <div className="lg:hidden overflow-x-auto scroll-fade -mx-3 px-3 flex gap-2 pb-1">
           {SECTIONS.map((s) => (
             <Link
               key={s.key}
               to={sectionUrl(s.key)}
               data-testid={`nav-section-${s.key}-mobile`}
-              className={`chip whitespace-nowrap ${activeSection === s.key ? "active" : ""}`}
+              className={`chip chip-${phaseOfSection(s.key)} whitespace-nowrap ${activeSection === s.key ? "active" : ""}`}
             >
               {s.title}{locks[s.key] && " 🔒"}
             </Link>
@@ -316,7 +312,7 @@ export default function Builder() {
         <div className="space-y-4">
           <div className="flex items-center justify-between text-xs font-mono text-zinc-500">
             <span>Step {activeIdx + 1} of {SECTIONS.length}</span>
-            <span className="uppercase tracking-widest text-amber-300">{SECTIONS[activeIdx].title}</span>
+            <span className={`uppercase tracking-widest section-label phase-${phaseOfSection(activeSection)}`}>{SECTIONS[activeIdx].title}</span>
           </div>
           <div className="h-1 rounded-full bg-elevated overflow-hidden">
             <div

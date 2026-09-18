@@ -544,6 +544,17 @@ async def list_characters(q: Optional[str] = None,
     if favorite is not None:
         query["favorite"] = favorite
     docs = await db.characters.find(query, {"_id": 0}).sort("updated_at", -1).to_list(limit)
+    # Attach latest render thumbnail per character (single Mongo aggregation)
+    ids = [d["id"] for d in docs]
+    if ids:
+        pipeline = [
+            {"$match": {"character_id": {"$in": ids}, "output_files": {"$exists": True, "$ne": []}}},
+            {"$sort": {"created_at": -1}},
+            {"$group": {"_id": "$character_id", "output_files": {"$first": "$output_files"}, "created_at": {"$first": "$created_at"}}},
+        ]
+        thumbs = {r["_id"]: r["output_files"][0] for r in await db.renders.aggregate(pipeline).to_list(len(ids)) if r.get("output_files")}
+        for d in docs:
+            d["thumbnail"] = thumbs.get(d["id"])
     return docs
 
 

@@ -385,6 +385,32 @@ export function resetSection(sectionKey) {
   return { ...DEFAULT_DNA[sectionKey] };
 }
 
+// Phase groupings for the wizard rail — clusters 16 sections into 4 collapsible bands.
+export const PHASES = [
+  { key: "body",     label: "Body",     hint: "Who she is", sections: ["identity", "physique", "face", "hair", "skin"] },
+  { key: "intimate", label: "Intimate", hint: "Anatomy & fluids", sections: ["intimate", "feet"] },
+  { key: "style",    label: "Style",    hint: "How she's shot", sections: ["wardrobe", "pose", "scene", "lighting", "camera", "style"] },
+  { key: "play",     label: "Play",     hint: "Kink & scenario", sections: ["kink", "scenario", "watersports"] },
+];
+
+export function phaseOfSection(sectionKey) {
+  return PHASES.find((p) => p.sections.includes(sectionKey))?.key || "body";
+}
+
+// Returns true if the section has any user-set content beyond defaults.
+export function isSectionFilled(sectionKey, dna) {
+  const sec = dna?.[sectionKey];
+  if (!sec) return false;
+  const def = DEFAULT_DNA[sectionKey] || {};
+  return Object.entries(sec).some(([k, v]) => {
+    const dv = def[k];
+    if (Array.isArray(v)) return v.length > 0;
+    if (typeof v === "number") return v !== dv && v !== 0;
+    if (typeof v === "string") return v && v !== dv && v !== "none";
+    return v !== dv;
+  });
+}
+
 // Spin the dice across ALL "Wet Dream" sections at once — feet + kink + watersports +
 // intimate fluids/mess + scenario dials. Everything else (identity, physique, face, hair,
 // wardrobe, scene, lighting, camera, style) is preserved. Respects `locks` so locked
