@@ -385,6 +385,57 @@ export function resetSection(sectionKey) {
   return { ...DEFAULT_DNA[sectionKey] };
 }
 
+// Spin the dice across ALL "Wet Dream" sections at once — feet + kink + watersports +
+// intimate fluids/mess + scenario dials. Everything else (identity, physique, face, hair,
+// wardrobe, scene, lighting, camera, style) is preserved. Respects `locks` so locked
+// sections aren't touched.
+export function randomizeWetDream(current = {}, locks = {}) {
+  const out = { ...current };
+  const targets = ["feet", "kink", "watersports"];
+  targets.forEach((k) => {
+    if (locks[k]) return;
+    out[k] = randomizeSection(k, current[k] || {});
+  });
+  // Intimate — only shuffle the fluids/mess sub-block, keep anatomy fields intact
+  if (!locks.intimate) {
+    const im = { ...(current.intimate || {}) };
+    const section = SECTIONS.find((s) => s.key === "intimate");
+    const fluidsKeys = ["cum_state", "saliva", "squirt", "lactation", "sweat", "lube", "tears"];
+    section.fields.forEach((f) => {
+      if (!fluidsKeys.includes(f.key)) return;
+      if (f.type === "chips_multi") {
+        const pool = f.groups ? f.groups.flatMap((g) => g.options) : (f.options || []);
+        const n = 1 + Math.floor(Math.random() * 3);
+        im[f.key] = [...pool].sort(() => Math.random() - 0.5).slice(0, n);
+      } else if (f.type === "chips") {
+        const pool = f.groups ? f.groups.flatMap((g) => g.options) : (f.options || []);
+        if (pool.length) im[f.key] = pool[Math.floor(Math.random() * pool.length)];
+      }
+    });
+    out.intimate = im;
+  }
+  // Scenario — only shuffle the dual dials + push a couple of extra acts, keep cast/roleplay intact
+  if (!locks.scenario) {
+    const sc = { ...(current.scenario || {}) };
+    sc.explicit_level = 40 + Math.floor(Math.random() * 61); // 40-100
+    sc.kink_level = 30 + Math.floor(Math.random() * 71); // 30-100
+    const section = SECTIONS.find((s) => s.key === "scenario");
+    const actsField = section.fields.find((f) => f.key === "acts");
+    const pool = actsField.groups ? actsField.groups.flatMap((g) => g.options) : (actsField.options || []);
+    const existing = Array.isArray(sc.acts) ? sc.acts : [];
+    const n = 1 + Math.floor(Math.random() * 3);
+    const additions = [...pool].sort(() => Math.random() - 0.5).slice(0, n);
+    sc.acts = Array.from(new Set([...existing, ...additions]));
+    out.scenario = sc;
+  }
+  // Also nudge pose focus + lighting mood toward the "Wet Dream" aesthetic if unlocked
+  if (!locks.pose) {
+    const focusPool = ["face", "breasts", "hips", "feet", "full frame"];
+    out.pose = { ...(current.pose || {}), focus: focusPool[Math.floor(Math.random() * focusPool.length)] };
+  }
+  return out;
+}
+
 // Build positive/negative prompts from DNA — Venice-style structured formula:
 // [QUALITY] + [SUBJECT] + [OUTFIT] + [POSE] + [SCENE] + [LIGHTING] + [CAMERA] + [STYLE] + [EXPLICIT]
 export function buildPrompts(dna = {}, opts = {}) {
@@ -611,6 +662,9 @@ export function buildPrompts(dna = {}, opts = {}) {
 
   // Feet section
   const ft = dna.feet || {};
+  const feetActive = !!(ft.sole_presentation || (Array.isArray(ft.toes) && ft.toes.length) || ft.arch || ft.pedicure ||
+    (Array.isArray(ft.foot_state) && ft.foot_state.length) || ft.hosiery ||
+    (Array.isArray(ft.foot_act) && ft.foot_act.length) || ft.framing);
   const feetStr = join([
     exp("feet", "sole_presentation"),
     expArr("feet", "toes"),
@@ -621,6 +675,7 @@ export function buildPrompts(dna = {}, opts = {}) {
     ft.hosiery && ft.hosiery !== "bare" && exp("feet", "hosiery"),
     expArr("feet", "foot_act"),
     ft.framing && exp("feet", "framing"),
+    feetActive && "anatomically correct feet with exactly five toes on each foot, natural toe alignment, correct toe count, well-defined big toe and pinky toe",
   ]);
 
   // Kink section
@@ -682,6 +737,8 @@ export function buildPrompts(dna = {}, opts = {}) {
   const negative = [
     "low quality, worst quality, blurry, out of focus, jpeg artifacts, compression artifacts, noisy, oversharpened",
     "deformed, disfigured, mutated, extra fingers, missing fingers, fused fingers, extra limbs, missing limbs, mutated hands, poorly drawn hands, bad anatomy, bad proportions, unnatural body, floating limbs, disconnected limbs",
+    // Toe count — SDXL/Pony frequently miscount; hard block wrong counts
+    "extra toes, missing toes, fused toes, four toes, three toes, six toes, seven toes, deformed toes, malformed feet, mutated feet, extra feet, missing feet, wrong toe count",
     "poorly drawn face, asymmetric face, cross-eyed, poorly drawn eyes, dead eyes",
     "cartoon, anime, 3d render, cgi, painting, illustration, drawing, sketch, doll-like, plastic skin, airbrushed, wax figure, uncanny valley, overly smooth skin, plastic appearance",
     "watermark, signature, text, username, logo, artist name, cropped, frame, border, censored, mosaic, black bar",

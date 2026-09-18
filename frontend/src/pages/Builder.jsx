@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Save, Shuffle, Download, Upload, Loader2, Play, ChevronLeft, ChevronRight, Camera } from "lucide-react";
+import { Save, Shuffle, Download, Upload, Loader2, Play, ChevronLeft, ChevronRight, Camera, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { endpoints } from "@/lib/api";
-import { SECTIONS, DEFAULT_DNA, randomizeDna, randomizeSection, resetSection, buildPrompts } from "@/lib/dna";
+import { SECTIONS, DEFAULT_DNA, randomizeDna, randomizeSection, randomizeWetDream, resetSection, buildPrompts } from "@/lib/dna";
 import { buildPonyPrompts } from "@/lib/ponyPrompts";
 import DnaSection from "@/components/DnaSection";
 import PromptPreview from "@/components/PromptPreview";
@@ -193,6 +193,14 @@ export default function Builder() {
             className="inline-flex items-center gap-1.5 rounded-lg border hairline px-3 py-2 text-sm text-zinc-200 hover:bg-white/5"
           >
             <Shuffle className="h-4 w-4" /> Randomize
+          </button>
+          <button
+            onClick={() => { setDna(randomizeWetDream(dna, locks)); toast.success("Wet dream spun 🎲"); }}
+            data-testid="btn-randomize-wet-dream"
+            title="Spin feet + kink + watersports + fluids + explicit/kink dials at once"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-fuchsia-500/50 bg-gradient-to-r from-fuchsia-500/15 to-amber-500/15 text-fuchsia-100 hover:from-fuchsia-500/25 hover:to-amber-500/25 text-sm font-semibold px-3 py-2"
+          >
+            <Sparkles className="h-4 w-4" /> Wet dream
           </button>
           <PresetsMenu
             onApply={(preset) => {

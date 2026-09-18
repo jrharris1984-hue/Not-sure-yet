@@ -299,11 +299,15 @@ export function buildPonyPrompts(dna = {}, opts = {}) {
 
   // -------- Feet --------
   const ft = dna.feet || {};
+  const feetActive = !!(ft.sole_presentation || (Array.isArray(ft.toes) && ft.toes.length) || ft.arch || ft.pedicure ||
+    (Array.isArray(ft.foot_state) && ft.foot_state.length) || ft.hosiery ||
+    (Array.isArray(ft.foot_act) && ft.foot_act.length) || ft.framing);
   const feetStr = join([
     tag("feet", "sole_presentation", ft.sole_presentation),
     tagArr("feet", "foot_act", ft.foot_act),
     ft.hosiery && ft.hosiery !== "bare" && exp("feet", "hosiery"),
     (ft.foot_act && ft.foot_act.length) || (ft.sole_presentation) ? w("foot_focus, feet_focus", 1.25) : "",
+    feetActive && w("five_toes, anatomically_correct_feet", 1.2),
   ]);
 
   // -------- Kink --------
@@ -401,6 +405,8 @@ export function buildPonyPrompts(dna = {}, opts = {}) {
     // AGE SAFEGUARDS — HARD LOCKED
     "child, teenager, young-looking, minor, underage, loli, shota, kid",
     "bad anatomy, malformed anatomy, deformed, disfigured, extra limbs, missing limbs, extra fingers, missing fingers, fused fingers, mutated hands",
+    // Toe/foot safety — Pony/SDXL commonly miscount
+    "four_toes, three_toes, six_toes, seven_toes, extra_toes, missing_toes, fused_toes, mutated_feet, deformed_feet, malformed_feet, extra_feet",
     "unnatural breasts, malformed breasts, asymmetrical breasts, bolted-on breasts",
     "text, watermark, signature, logo, censored, mosaic, black bar",
   ].join(", ");
