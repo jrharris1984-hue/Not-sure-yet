@@ -1,0 +1,32 @@
+{
+  "summary": "Frontend-only prompt-string verification for multi-subject cast fix in Pony (ponyPrompts.js) and Venice (dna.js) builders. Since ComfyUI is offline, temporarily exposed buildPonyPrompts/buildPrompts on window from Builder.jsx, ran 7 scenario cases through Playwright page.evaluate, and asserted 20 conditions (all PASS). Test hook was reverted immediately after. No characters were seeded (in-memory testing only).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "assertions_verified": [
+    "Pony duo + mother/daughter: contains '2girls' + '(mother_and_daughter, family, multiple_generations, older_and_younger_woman, age_difference, two_women:1.35)', does NOT contain '1girl, solo'; negative contains 'solo, 1girl, single_subject, cropped_partner, missing_second_person' — PASS",
+    "Pony threesome + none: contains '3girls', not '1girl, solo' or '2girls'; negative has single-subject block — PASS",
+    "Pony solo + twins: pairing overrides to '2girls' with '(twins, siblings, matching_faces, identical_twins:1.3)'; negative has single-subject block — PASS",
+    "Pony solo + none (backward compat): STILL has '1girl, solo'; negative does NOT include the single-subject block — PASS",
+    "Venice duo + mother/daughter: positive contains 'two women in the frame, both fully visible, full bodies of both subjects shown'; negative contains 'solo shot, single person in frame, only one woman in the frame, missing second person, cropped-out partner' — PASS",
+    "Venice threesome: positive contains 'three women in the frame'; negative has single-subject block — PASS",
+    "Venice solo + none: positive does NOT contain 'two women in the frame' or 'three women'; negative does NOT include the single-subject block — PASS"
+  ],
+  "test_report_links": [],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "ponyPrompts.js pairingTag falls into the mother_and_daughter branch on any castType containing 'mother' — that also catches accidental substrings like 'grandmother' (intentional per code comments including 'grandma'/'granny'). Confirmed intentional but worth an inline unit test to protect against future rename regressions.",
+    "dna.js and ponyPrompts.js contain a duplicate castHeadcount/countTag helper — consider extracting a single shared helper in /lib/castHelpers.js so future cast_size options only need to be added once.",
+    "PromptPreview 'Copy' button copies positive prompt only, not negative. Minor UX gap."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A (skipped)", "frontend": "100% (20/20 prompt-string assertions)"},
+  "seed_data_creation": "None — verification was in-memory JS calls only; no characters created.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Multi-subject fix verified in both builders. Regression items (foot anatomy, field-lock buttons, section collapse, DNA at-a-glance collapse, NowRenderingStrip, Wet Dream, Kink/Star presets, Raunch, Tag Filters, Cancel Render, Photo Shoot, thumbnail attach on GET /api/characters, mobile builder overflow kebab, mobile library +N more) were previously validated in iteration_5.json and iteration_6.json and none of the touched files (ponyPrompts.js, dna.js) impact those flows. If retesting is needed, the same window.__buildPonyPrompts / window.__buildPrompts approach used here is the quickest path — just re-add the useEffect test hook in Builder.jsx.",
+  "rca of the issue": "Original bug: Pony builder hardcoded '1girl, solo' at head of subject; Venice had no explicit headcount phrase, so both models defaulted to one subject even when cast_type implied two. Fix computes countTag (Pony) / castHeadcount (Venice) from cast_size + cast_type, adds weighted pairingTag for Pony, and appends single-subject negative block only when multi-subject is expected. Backward-compat path (cast_size=solo, cast_type=none) unchanged — verified."
+}
