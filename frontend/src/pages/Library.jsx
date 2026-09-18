@@ -10,6 +10,7 @@ export default function Library() {
   const [q, setQ] = useState("");
   const [onlyFav, setOnlyFav] = useState(false);
   const [activeTags, setActiveTags] = useState([]);
+  const [tagsExpanded, setTagsExpanded] = useState(false);
   const qc = useQueryClient();
   const { data: chars = [], isLoading } = useQuery({
     queryKey: ["characters", q, onlyFav, activeTags],
@@ -88,36 +89,62 @@ export default function Library() {
       </div>
 
       {/* Tag filter row */}
-      {tagCloud.length > 0 && (
-        <div className="pane p-3 flex flex-wrap items-center gap-1.5" data-testid="library-tag-cloud">
-          <span className="text-[10px] font-mono uppercase tracking-widest text-zinc-500 mr-1">Tags</span>
-          {tagCloud.map((t) => {
-            const active = activeTags.includes(t.tag);
-            return (
+      {tagCloud.length > 0 && (() => {
+        const collapseLimit = 5;
+        const showAll = tagsExpanded || tagCloud.length <= collapseLimit;
+        const visible = showAll ? tagCloud : tagCloud.slice(0, collapseLimit);
+        const hidden = tagCloud.length - collapseLimit;
+        return (
+          <div className="pane p-3 flex flex-wrap items-center gap-1.5" data-testid="library-tag-cloud">
+            <span className="text-[10px] font-mono uppercase tracking-widest text-zinc-500 mr-1">Tags</span>
+            {visible.map((t) => {
+              const active = activeTags.includes(t.tag);
+              return (
+                <button
+                  key={t.tag}
+                  type="button"
+                  onClick={() => toggleTag(t.tag)}
+                  data-testid={`btn-tag-filter-${t.tag}`}
+                  className={`chip !py-1 !min-h-0 ${active ? "active" : ""}`}
+                >
+                  {t.tag}
+                  <span className="ml-1 text-[9px] opacity-60">{t.count}</span>
+                </button>
+              );
+            })}
+            {!showAll && hidden > 0 && (
               <button
-                key={t.tag}
                 type="button"
-                onClick={() => toggleTag(t.tag)}
-                data-testid={`btn-tag-filter-${t.tag}`}
-                className={`chip ${active ? "active" : ""}`}
+                onClick={() => setTagsExpanded(true)}
+                data-testid="btn-tag-cloud-expand"
+                className="chip !py-1 !min-h-0 !text-zinc-400"
               >
-                {t.tag}
-                <span className="ml-1 text-[9px] opacity-60">{t.count}</span>
+                +{hidden} more
               </button>
-            );
-          })}
-          {activeTags.length > 0 && (
-            <button
-              type="button"
-              onClick={() => setActiveTags([])}
-              data-testid="btn-tag-filter-clear"
-              className="ml-auto text-[10px] font-mono uppercase tracking-widest text-zinc-400 hover:text-zinc-100"
-            >
-              clear tags
-            </button>
-          )}
-        </div>
-      )}
+            )}
+            {tagsExpanded && tagCloud.length > collapseLimit && (
+              <button
+                type="button"
+                onClick={() => setTagsExpanded(false)}
+                data-testid="btn-tag-cloud-collapse"
+                className="chip !py-1 !min-h-0 !text-zinc-500"
+              >
+                show less
+              </button>
+            )}
+            {activeTags.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setActiveTags([])}
+                data-testid="btn-tag-filter-clear"
+                className="ml-auto text-[10px] font-mono uppercase tracking-widest text-zinc-400 hover:text-zinc-100"
+              >
+                clear tags
+              </button>
+            )}
+          </div>
+        );
+      })()}
 
       {isLoading ? (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
@@ -161,7 +188,7 @@ export default function Library() {
               <div className="relative p-4 flex flex-col gap-3 flex-1">
                 <div className="flex items-start justify-between gap-2">
                   <Link to={`/character/${c.id}`} className="min-w-0 flex-1">
-                    <div className="text-[10px] uppercase tracking-widest text-zinc-400 font-mono">
+                    <div className="hidden sm:block text-[10px] uppercase tracking-widest text-zinc-400 font-mono">
                       {c.dna?.identity?.archetype || "Character"}
                     </div>
                     <div className="font-display font-bold text-base truncate text-zinc-50 drop-shadow-md">{c.name || "Untitled"}</div>
@@ -174,16 +201,16 @@ export default function Library() {
                     {c.favorite ? <Star className="h-4 w-4 fill-current" /> : <StarOff className="h-4 w-4" />}
                   </button>
                 </div>
-                <div className="text-xs text-zinc-300 line-clamp-2 font-mono">{c.prompt_positive || "no prompt yet"}</div>
+                <div className="hidden sm:block text-xs text-zinc-300 line-clamp-2 font-mono">{c.prompt_positive || "no prompt yet"}</div>
                 {Array.isArray(c.tags) && c.tags.length > 0 && (
                   <div className="flex flex-wrap gap-1" data-testid={`tags-${i}`}>
-                    {c.tags.slice(0, 5).map((t) => (
+                    {c.tags.slice(0, 3).map((t) => (
                       <span key={t} className="text-[10px] font-mono rounded-full bg-black/50 backdrop-blur-sm border border-zinc-700/60 text-zinc-200 px-1.5 py-0.5">
                         {t}
                       </span>
                     ))}
-                    {c.tags.length > 5 && (
-                      <span className="text-[10px] font-mono text-zinc-400">+{c.tags.length - 5}</span>
+                    {c.tags.length > 3 && (
+                      <span className="text-[10px] font-mono text-zinc-400">+{c.tags.length - 3}</span>
                     )}
                   </div>
                 )}
@@ -201,12 +228,12 @@ export default function Library() {
                   className="inline-flex items-center gap-1 rounded-md bg-emerald-500/10 border border-emerald-500/40 text-emerald-200 text-xs font-semibold px-2 py-1.5 hover:bg-emerald-500/20"
                   title="Photo shoot"
                 >
-                  <Camera className="h-3.5 w-3.5" /> Shoot
+                  <Camera className="h-3.5 w-3.5" /> <span className="hidden sm:inline">Shoot</span>
                 </Link>
                 <button
                   data-testid={`btn-duplicate-${i}`}
                   onClick={() => dup.mutate(c.id)}
-                  className="h-7 w-7 grid place-items-center rounded-md border hairline text-zinc-300 hover:bg-white/5"
+                  className="hidden sm:grid h-7 w-7 place-items-center rounded-md border hairline text-zinc-300 hover:bg-white/5"
                   title="Duplicate"
                 >
                   <Copy className="h-3.5 w-3.5" />

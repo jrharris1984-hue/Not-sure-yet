@@ -16,6 +16,7 @@ import LivePreview from "@/components/LivePreview";
 import TagInput from "@/components/TagInput";
 import GroupedSectionRail from "@/components/GroupedSectionRail";
 import DnaAtAGlance from "@/components/DnaAtAGlance";
+import MobileOverflow from "@/components/MobileOverflow";
 import { Flame } from "lucide-react";
 import { Input } from "@/components/ui/input";
 
@@ -66,7 +67,13 @@ export default function Builder() {
     setDna({ ...DEFAULT_DNA, ...(character.dna || {}) });
     setLocks(character.locks || {});
     setFieldLocks(character.field_locks || {});
-    setCollapsed(character.collapsed || {});
+    // Auto-fold the DNA at-a-glance panel on mobile if the user has never set a preference
+    const savedCollapsed = character.collapsed || {};
+    if (typeof savedCollapsed._glance === "undefined" && typeof window !== "undefined" && window.innerWidth < 1024) {
+      setCollapsed({ ...savedCollapsed, _glance: true });
+    } else {
+      setCollapsed(savedCollapsed);
+    }
     setTags(Array.isArray(character.tags) ? character.tags : []);
     setRaunch(!!character.raunch);
     // Only re-hydrate when the character ID changes, not on every refetch (would clobber unsaved edits)
@@ -198,52 +205,6 @@ export default function Builder() {
             ))}
           </select>
           <button
-            onClick={() => setDna(randomizeDna(dna, locks, fieldLocks))}
-            data-testid="btn-randomize-all"
-            className="inline-flex items-center gap-1.5 rounded-lg border hairline px-3 py-2 text-sm text-zinc-200 hover:bg-white/5"
-          >
-            <Shuffle className="h-4 w-4" /> Randomize
-          </button>
-          <button
-            onClick={() => { setDna(randomizeWetDream(dna, locks)); toast.success("Wet dream spun 🎲"); }}
-            data-testid="btn-randomize-wet-dream"
-            title="Spin feet + kink + watersports + fluids + explicit/kink dials at once"
-            className="inline-flex items-center gap-1.5 rounded-lg border border-fuchsia-500/50 bg-gradient-to-r from-fuchsia-500/15 to-amber-500/15 text-fuchsia-100 hover:from-fuchsia-500/25 hover:to-amber-500/25 text-sm font-semibold px-3 py-2"
-          >
-            <Sparkles className="h-4 w-4" /> Wet dream
-          </button>
-          <PresetsMenu
-            onApply={(preset) => {
-              // Merge preset but keep locked sections intact
-              const next = { ...preset };
-              Object.keys(locks).forEach((k) => { if (locks[k]) next[k] = dna[k]; });
-              setDna(next);
-              toast.success("Preset applied");
-            }}
-          />
-          <KinkPresetsMenu
-            currentDna={dna}
-            onApply={(next) => {
-              // Respect locked sections
-              const merged = { ...next };
-              Object.keys(locks).forEach((k) => { if (locks[k]) merged[k] = dna[k]; });
-              setDna(merged);
-            }}
-          />
-          <button
-            type="button"
-            onClick={() => setRaunch((v) => !v)}
-            data-testid="btn-toggle-raunch"
-            title={raunch ? "Raunch mode ON — graphic vernacular in Venice prompts" : "Raunch mode OFF — editorial vocabulary"}
-            className={`inline-flex items-center gap-1.5 rounded-lg border text-sm font-semibold px-3 py-2 ${
-              raunch
-                ? "border-fuchsia-500/60 bg-fuchsia-500/15 text-fuchsia-200"
-                : "border-hairline text-zinc-300 hover:bg-white/5"
-            }`}
-          >
-            <Flame className="h-4 w-4" /> {raunch ? "Raunch ON" : "Raunch"}
-          </button>
-          <button
             onClick={() => save.mutate()}
             disabled={save.isPending}
             data-testid="btn-save-character"
@@ -259,30 +220,78 @@ export default function Builder() {
           >
             {dispatching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />} Render
           </button>
-          {!isNew && (
-            <Link
-              to={`/shoot/new/${id}`}
-              data-testid="btn-open-shoot"
-              className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/40 bg-emerald-500/10 text-emerald-200 text-sm font-semibold px-3 py-2 hover:bg-emerald-500/20"
-              title="Batch photo shoot"
+          <MobileOverflow testId="builder-overflow">
+            <button
+              onClick={() => setDna(randomizeDna(dna, locks, fieldLocks))}
+              data-testid="btn-randomize-all"
+              className="inline-flex items-center gap-1.5 rounded-lg border hairline px-3 py-2 text-sm text-zinc-200 hover:bg-white/5"
             >
-              <Camera className="h-4 w-4" /> Shoot
-            </Link>
-          )}
-          <button
-            onClick={exportJson}
-            data-testid="btn-export-json"
-            className="inline-flex items-center gap-1.5 rounded-lg border hairline px-3 py-2 text-sm text-zinc-300"
-          >
-            <Download className="h-4 w-4" />
-          </button>
-          <label
-            data-testid="btn-import-json"
-            className="inline-flex items-center gap-1.5 rounded-lg border hairline px-3 py-2 text-sm text-zinc-300 cursor-pointer"
-          >
-            <Upload className="h-4 w-4" />
-            <input type="file" accept="application/json" onChange={importJson} className="hidden" />
-          </label>
+              <Shuffle className="h-4 w-4" /> Randomize
+            </button>
+            <button
+              onClick={() => { setDna(randomizeWetDream(dna, locks)); toast.success("Wet dream spun 🎲"); }}
+              data-testid="btn-randomize-wet-dream"
+              title="Spin feet + kink + watersports + fluids + explicit/kink dials at once"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-fuchsia-500/50 bg-gradient-to-r from-fuchsia-500/15 to-amber-500/15 text-fuchsia-100 hover:from-fuchsia-500/25 hover:to-amber-500/25 text-sm font-semibold px-3 py-2"
+            >
+              <Sparkles className="h-4 w-4" /> Wet dream
+            </button>
+            <PresetsMenu
+              onApply={(preset) => {
+                const next = { ...preset };
+                Object.keys(locks).forEach((k) => { if (locks[k]) next[k] = dna[k]; });
+                setDna(next);
+                toast.success("Preset applied");
+              }}
+            />
+            <KinkPresetsMenu
+              currentDna={dna}
+              onApply={(next) => {
+                const merged = { ...next };
+                Object.keys(locks).forEach((k) => { if (locks[k]) merged[k] = dna[k]; });
+                setDna(merged);
+              }}
+            />
+            <button
+              type="button"
+              onClick={() => setRaunch((v) => !v)}
+              data-testid="btn-toggle-raunch"
+              title={raunch ? "Raunch mode ON — graphic vernacular in Venice prompts" : "Raunch mode OFF — editorial vocabulary"}
+              className={`inline-flex items-center gap-1.5 rounded-lg border text-sm font-semibold px-3 py-2 ${
+                raunch
+                  ? "border-fuchsia-500/60 bg-fuchsia-500/15 text-fuchsia-200"
+                  : "border-hairline text-zinc-300 hover:bg-white/5"
+              }`}
+            >
+              <Flame className="h-4 w-4" /> {raunch ? "Raunch ON" : "Raunch"}
+            </button>
+            {!isNew && (
+              <Link
+                to={`/shoot/new/${id}`}
+                data-testid="btn-open-shoot"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/40 bg-emerald-500/10 text-emerald-200 text-sm font-semibold px-3 py-2 hover:bg-emerald-500/20"
+                title="Batch photo shoot"
+              >
+                <Camera className="h-4 w-4" /> Shoot
+              </Link>
+            )}
+            <button
+              onClick={exportJson}
+              data-testid="btn-export-json"
+              className="inline-flex items-center gap-1.5 rounded-lg border hairline px-3 py-2 text-sm text-zinc-300"
+              title="Export DNA JSON"
+            >
+              <Download className="h-4 w-4" /> Export
+            </button>
+            <label
+              data-testid="btn-import-json"
+              className="inline-flex items-center gap-1.5 rounded-lg border hairline px-3 py-2 text-sm text-zinc-300 cursor-pointer"
+              title="Import DNA JSON"
+            >
+              <Upload className="h-4 w-4" /> Import
+              <input type="file" accept="application/json" onChange={importJson} className="hidden" />
+            </label>
+          </MobileOverflow>
         </div>
         </div>
         <TagInput value={tags} onChange={setTags} placeholder="tag this character (mood, ethnicity, persona)…" testId="builder-tags" />
