@@ -1,0 +1,36 @@
+{
+  "summary": "Verified foot-safeguard bug fix + all new features (field lock, section collapse, glance collapse, save+reload persistence, NowRenderingStrip) + full regression. Backend 16/16 pytest green (including 2 new tests: test_create_character_with_field_locks_and_collapsed_persists & test_create_character_without_locks_defaults_empty). Frontend prompt-string checks all PASS: Venice positive contains 'human foot anatomy not hand anatomy' + 'toes shorter and thicker than fingers' only when feet section active; Venice negative contains 'hands instead of feet' + 'fingers instead of toes' + 'floating hand in frame' always-on; Pony positive contains '(five_toes, toenails, sole, heel, arch, ankle, human_feet, correct_foot_anatomy:1.3)' when feet active; Pony negative contains 'hands_instead_of_feet' + 'fingers_instead_of_toes' + 'palm_instead_of_sole'. Feet-empty state confirmed: positive does NOT include the foot-anatomy line (no pollution) while negative KEEPS the hand-as-foot block (intentional always-on). UI PASS: field lock btn-field-lock-identity-age prevents age change across 5x randomize; unlock allows change; btn-collapse-identity hides & re-shows slider; btn-collapse-glance hides dna-at-a-glance; all three persist through save + full page reload (Builder useEffect on character?.id correctly hydrates). NowRenderingStrip appears on / within ~3s of inserting a running render doc, and is correctly HIDDEN on /shoot/:sid; dismiss button hides the strip; testids now-rendering-strip, btn-now-rendering-dismiss, btn-now-rendering-toggle all functional.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Builder (dev only)", "issues": ["Carried-over Emergent visual-editor overlay warning: <span> cannot be a child of <option>. Not user code; harmless in production build. Already flagged in iter 2/3/4."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/backend_test.py",
+    "/app/backend/tests/test_wet_dream_expansion.py",
+    "/app/backend/tests/test_thumbnail_field.py",
+    "/app/backend/tests/test_field_locks_and_collapsed.py",
+    "/app/test_reports/pytest/iteration_5.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "server.py grew to 1286 lines — still well above 700-line guideline. Same recommendation carries from iter 4: split into routers/{characters,renders,shoots,kink_presets,workflows,ai}.py.",
+    "The pytest suite hard-fails when REACT_APP_BACKEND_URL env var isn't exported to the shell (test_wet_dream_expansion.py and test_thumbnail_field.py use os.environ.get() without a fallback). Non-blocking (backend_test.py has a fallback and passes) but recommend standardising: either add a conftest.py that reads /app/frontend/.env or add a fallback default in each test file for consistency.",
+    "buildPrompts() Venice foot-anatomy positive is a very long comma-separated phrase (~55 tokens). Given the +99-token budget the CLIP+ badge already flags, this is close to over-budget with a full character. Consider condensing or gating on prompt_style==='venice' only inside a helper.",
+    "NowRenderingStrip: currently only hides via regex /^\\/shoot\\/[^/]+$/. The prop 'enabled: !hideOnPath' still fires renderer polling on /shoot pages (though useQuery is disabled) — good. But dismiss state is per-session and per-strip; if user dismisses then a NEW render starts, the effect on line 35-37 resets dismissed=false, which is correct — verified in testing.",
+    "field_locks and collapsed have no server-side validation on shape — an unstructured JSON payload will pass. Low priority (client-controlled), but a Pydantic model could catch typos."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_field_locks_and_collapsed.py (new — 2 tests for field_locks + collapsed persistence)"
+  ],
+  "success_rate": {"backend": "100% (16/16)", "frontend": "100% (all 6 bug-fix prompt assertions + all 8 new-feature UI assertions + regression pass)"},
+  "test_credentials": "none (no auth in this app)",
+  "seed_data_creation": "Created + cleaned: 1 character TEST_LockPersist (id 50edee37-…), 1 fake running render TEST_09f1cd00-…. Cleanup verified: 0 TEST_-prefixed docs remain in characters or renders.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Foot-safeguard bug fix is verified via the Builder's live prompt-string preview ([data-testid=prompt-string-preview]) — no ComfyUI needed. To test NowRenderingStrip locally without ComfyUI, insert a doc into MongoDB db.renders with {id, character_id, status:'running', comfy_prompt_id:<any>} — the strip appears on any non-/shoot/:sid page within one poll interval (~3s). Character name input testid is 'input-character-name' (not placeholder-based). Save button testid is 'btn-save-character'. Field-lock button lives OUTSIDE the label so it correctly toggles without swallowing slider interactions.",
+  "rca of the issue": "N/A — bug fix applied by main agent is fully verified as effective at the prompt-string level, which is the only verifiable layer with ComfyUI offline."
+}
