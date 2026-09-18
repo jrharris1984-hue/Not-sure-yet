@@ -1,0 +1,64 @@
+{
+  "summary": "Both backend + frontend testing for multi-subject DNA + Venice.AI. Backend: 3/3 pytest cases pass (multi-subject persist w/ create+GET+PATCH+GET, backward-compat dna-only, Venice.AI freeform integration returns HTTP 200 with valid dna JSON — key is NOT capped anymore, so wiring proven end-to-end). Frontend: 13 of 14 review scenarios pass via Playwright. One minor UI bug: 'Copy A → here' button is visible even when Subject A is active; per spec it should be hidden.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "SubjectSwitcher",
+        "issue": "btn-copy-from-primary is rendered whenever subjects.length>1, regardless of activeId. Per spec it should be hidden when Subject A (primary) is active — otherwise clicking 'Copy A → here' when A is active is a no-op or overwrites A with itself.",
+        "selector": "[data-testid=\"btn-copy-from-primary\"]",
+        "priority": "LOW",
+        "fix_hint": "Change `{subjects.length > 1 && (...)}` to `{subjects.length > 1 && activeId !== subjects[0].id && (...)}` (component already receives activeId + subjects)."
+      }
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "verified_behaviors": {
+    "T1_no_switcher_on_new_solo": true,
+    "T2_switcher_appears_after_cast_size_duo": true,
+    "T2_subject_tab_A_and_B_present": true,
+    "T2_subject_B_auto_seeded_age_42_and_inherits_ethnicity": true,
+    "T3_per_subject_name_isolation_A_stays_Ava_B_stays_Bella_after_roundtrip": true,
+    "T4_prompt_has_Subject_A_and_Subject_B_clauses": true,
+    "T4_prompt_has_two_women_in_the_frame": true,
+    "T4_negative_has_solo_shot": true,
+    "T5_add_subject_up_to_C_and_D_max_4": true,
+    "T5_add_button_disabled_at_max": true,
+    "T6_subject_A_not_removable": true,
+    "T6_labels_stay_contiguous_after_removing_middle_subject": true,
+    "T7_copy_button_visible_on_non_A": true,
+    "T7_copy_button_hidden_on_A": false,
+    "T8_randomize_active_and_randomize_all_present": true,
+    "T9_dnaAtAGlance_renders_glance_subject_A_and_B_labels": true,
+    "T9_solo_renders_glance_single_without_labels": true,
+    "T10_switcher_hides_when_scenario_solo_and_only_1_subject": "not-verified-cleanly-in-test (stale cast_type kept expectedCount>1; per code logic the hide condition works when both cast_size=solo AND cast_type=none — user-triggered edge case, not a bug)",
+    "T11_B_auto_age_when_switching_to_mother_and_daughter_from_existing_multi": "42 (B already existed so auto-seeder did NOT re-seed — expected per implementation; the 21yo seed only fires when auto-adding a new subject)",
+    "backend_create_with_subjects_persists_and_GET_returns_intact": true,
+    "backend_PATCH_subjects_persists": true,
+    "backend_backward_compat_dna_only_still_works": true,
+    "backend_venice_ai_freeform_returns_200_with_dna_json": true
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_multi_subject_and_venice.py",
+    "/app/test_reports/pytest/multi_subject_results.xml"
+  ],
+  "action_items": [
+    "Fix SubjectSwitcher: hide btn-copy-from-primary when Subject A (primary/index 0) is the active subject (spec says the button is only for copying INTO a non-A subject).",
+    "Optional UX polish: when user picks cast_type='mother_and_daughter' after multi-subject already exists, consider re-seeding existing Subject B's age to 21 (currently seedSubjectFromPairing only runs on auto-add, so an already-added B keeps its previous age). If this is intentional, add a Copy/Randomize workflow hint in the UI."
+  ],
+  "critical_code_review_comments": [
+    "SubjectSwitcher.jsx line 92: `{subjects.length > 1 && (...)}` does not check activeId==primary — leads to the T7 bug above. Add `activeId !== subjects[0].id` guard.",
+    "Builder auto-add effect keyed on `${cast_size}|${cast_type}` fires only when expected>subjects.length — good. But there's no complementary auto-prune when expected drops back to 1 while extras exist. That is intentional (user data preservation) but consider a toast hint 'You now have more subjects than the scenario needs.'",
+    "PromptPreview 'Copy' still copies positive only, not negative (carry-over from iteration_7 review).",
+    "In dna.js buildMultiVenicePrompts, subject clause is `Subject A (44yo): 44-year-old, woman` — the age is duplicated (in parens AND in the clause body). Minor redundancy but does not affect correctness."
+  ],
+  "updated_files": ["/app/backend/tests/test_multi_subject_and_venice.py"],
+  "success_rate": {"backend": "100% (3/3)", "frontend": "~93% (13/14 review scenarios)"},
+  "test_credentials": "n/a (no auth in this app)",
+  "seed_data_creation": "Test characters TEST_MultiSubject and TEST_SoloBC created and deleted by pytest tests (self-cleanup).",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Multi-subject persistence + Venice.AI integration verified end-to-end. Only outstanding item is the copy-button visibility bug in SubjectSwitcher — a one-line fix. Venice.AI key is currently WORKING (returns 200), not 402-capped as the review request warned; the backend correctly points to https://api.venice.ai/api/v1/chat/completions and uses VENICE_API_KEY. Testids to remember: cast options use `chip-scenario-cast_size-{opt}` and `chip-scenario-cast_type-{opt}` (NOT input-* like the review request wording suggested). Section rail testids: `nav-section-{key}` (desktop, requires expanding the parent `phase-header-{phase}` first). Prompt content is inside <pre> tags under `[data-testid=\"prompt-string-preview\"]`, not textarea.",
+  "rca of the issue": "Copy-A-here button: SubjectSwitcher.jsx renders the button under `{subjects.length > 1 && ...}` without an activeId guard. Reproduction: create new char → set cast_size=duo → click subject-tab-A → button `btn-copy-from-primary` is still visible. Mitigation: add `activeId !== subjects[0]?.id` to the render condition."
+}

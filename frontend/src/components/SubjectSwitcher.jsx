@@ -89,7 +89,7 @@ export default function SubjectSwitcher({
         </button>
       </div>
       <div className="ml-auto flex flex-wrap items-center gap-1.5">
-        {subjects.length > 1 && (
+        {subjects.length > 1 && subjects[0]?.id !== activeId && (
           <button
             type="button"
             onClick={onCopyFromPrimary}
