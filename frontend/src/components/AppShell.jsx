@@ -2,6 +2,7 @@ import { Link, NavLink, useLocation } from "react-router-dom";
 import { Library, Sparkles, Image as ImageIcon, Settings2, Plus, Camera } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { endpoints } from "@/lib/api";
+import NowRenderingStrip from "@/components/NowRenderingStrip";
 
 const nav = [
   { to: "/", label: "Library", icon: Library, testId: "nav-library" },
@@ -83,6 +84,8 @@ export default function AppShell({ children }) {
       </header>
 
       <main className="flex-1">{children}</main>
+
+      <NowRenderingStrip />
 
       {/* Mobile bottom nav */}
       <nav className="glass md:hidden fixed bottom-0 inset-x-0 z-40 border-t hairline">

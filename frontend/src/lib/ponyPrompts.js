@@ -307,7 +307,7 @@ export function buildPonyPrompts(dna = {}, opts = {}) {
     tagArr("feet", "foot_act", ft.foot_act),
     ft.hosiery && ft.hosiery !== "bare" && exp("feet", "hosiery"),
     (ft.foot_act && ft.foot_act.length) || (ft.sole_presentation) ? w("foot_focus, feet_focus", 1.25) : "",
-    feetActive && w("five_toes, anatomically_correct_feet", 1.2),
+    feetActive && w("five_toes, toenails, sole, heel, arch, ankle, human_feet, correct_foot_anatomy", 1.3),
   ]);
 
   // -------- Kink --------
@@ -405,8 +405,9 @@ export function buildPonyPrompts(dna = {}, opts = {}) {
     // AGE SAFEGUARDS — HARD LOCKED
     "child, teenager, young-looking, minor, underage, loli, shota, kid",
     "bad anatomy, malformed anatomy, deformed, disfigured, extra limbs, missing limbs, extra fingers, missing fingers, fused fingers, mutated hands",
-    // Toe/foot safety — Pony/SDXL commonly miscount
+    // Toe / foot safety — Pony/SDXL commonly miscount OR paste hands where feet should be
     "four_toes, three_toes, six_toes, seven_toes, extra_toes, missing_toes, fused_toes, mutated_feet, deformed_feet, malformed_feet, extra_feet",
+    "hands_instead_of_feet, hand_as_foot, fingers_instead_of_toes, finger_toes, knuckles_on_feet, palm_instead_of_sole, fingernails_on_toes, wrist_instead_of_ankle, foot_with_fingers, extra_hand_in_frame, floating_hand",
     "unnatural breasts, malformed breasts, asymmetrical breasts, bolted-on breasts",
     "text, watermark, signature, logo, censored, mosaic, black bar",
   ].join(", ");

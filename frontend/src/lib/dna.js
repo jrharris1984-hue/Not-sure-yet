@@ -352,10 +352,11 @@ export const DEFAULT_DNA = SECTIONS.reduce((acc, s) => {
 
 const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
 
-export function randomizeSection(sectionKey, current = {}) {
+export function randomizeSection(sectionKey, current = {}, fieldLocks = {}) {
   const section = SECTIONS.find((s) => s.key === sectionKey);
   const out = { ...current };
   section.fields.forEach((f) => {
+    if (fieldLocks?.[f.key]) return; // per-field lock — keep current value
     if (f.type === "chips" || f.type === "pose_chips") {
       const pool = f.groups ? f.groups.flatMap((g) => g.options) : (f.options || []);
       if (pool.length) out[f.key] = pick(pool);
@@ -372,11 +373,11 @@ export function randomizeSection(sectionKey, current = {}) {
   return out;
 }
 
-export function randomizeDna(current = {}, locks = {}) {
+export function randomizeDna(current = {}, locks = {}, fieldLocks = {}) {
   const out = { ...current };
   SECTIONS.forEach((s) => {
     if (locks[s.key]) return;
-    out[s.key] = randomizeSection(s.key, current[s.key] || {});
+    out[s.key] = randomizeSection(s.key, current[s.key] || {}, fieldLocks?.[s.key] || {});
   });
   return out;
 }
@@ -701,7 +702,7 @@ export function buildPrompts(dna = {}, opts = {}) {
     ft.hosiery && ft.hosiery !== "bare" && exp("feet", "hosiery"),
     expArr("feet", "foot_act"),
     ft.framing && exp("feet", "framing"),
-    feetActive && "anatomically correct feet with exactly five toes on each foot, natural toe alignment, correct toe count, well-defined big toe and pinky toe",
+    feetActive && "clearly recognisable human feet with heel and arch and sole, exactly five distinct toes per foot with rounded toe pads, human foot anatomy not hand anatomy, ankle visible where foot meets calf, toenails not fingernails, well-defined big toe and pinky toe, toes shorter and thicker than fingers, foot shape wider at ball narrower at heel",
   ]);
 
   // Kink section
@@ -763,8 +764,9 @@ export function buildPrompts(dna = {}, opts = {}) {
   const negative = [
     "low quality, worst quality, blurry, out of focus, jpeg artifacts, compression artifacts, noisy, oversharpened",
     "deformed, disfigured, mutated, extra fingers, missing fingers, fused fingers, extra limbs, missing limbs, mutated hands, poorly drawn hands, bad anatomy, bad proportions, unnatural body, floating limbs, disconnected limbs",
-    // Toe count — SDXL/Pony frequently miscount; hard block wrong counts
+    // Toe / foot anatomy — SDXL/Pony frequently render hands as feet or miscount toes
     "extra toes, missing toes, fused toes, four toes, three toes, six toes, seven toes, deformed toes, malformed feet, mutated feet, extra feet, missing feet, wrong toe count",
+    "hands instead of feet, fingers instead of toes, palm instead of sole, knuckles on feet, hand-like feet, finger-like toes, wrist instead of ankle, fingernails on toes, foot with fingers, foot that looks like a hand, floating hand in frame, extra hand in frame",
     "poorly drawn face, asymmetric face, cross-eyed, poorly drawn eyes, dead eyes",
     "cartoon, anime, 3d render, cgi, painting, illustration, drawing, sketch, doll-like, plastic skin, airbrushed, wax figure, uncanny valley, overly smooth skin, plastic appearance",
     "watermark, signature, text, username, logo, artist name, cropped, frame, border, censored, mosaic, black bar",

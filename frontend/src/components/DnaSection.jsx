@@ -1,6 +1,6 @@
 import { Slider } from "@/components/ui/slider";
 import { Input } from "@/components/ui/input";
-import { Shuffle, RotateCcw, Lock, LockOpen, Wand2 } from "lucide-react";
+import { Shuffle, RotateCcw, Lock, LockOpen, Wand2, ChevronDown } from "lucide-react";
 import PoseIcon from "@/components/PoseIcon";
 import GroupedChips from "@/components/GroupedChips";
 
@@ -60,8 +60,15 @@ export default function DnaSection({
   onRandomize,
   onReset,
   onSuggest,
+  fieldLocks = {},
+  onToggleFieldLock,
+  collapsed = false,
+  onToggleCollapsed,
 }) {
-  const set = (k, v) => onChange({ ...value, [k]: v });
+  const set = (k, v) => {
+    if (fieldLocks?.[k]) return; // ignore edits to a locked field
+    onChange({ ...value, [k]: v });
+  };
 
   return (
     <section
@@ -69,10 +76,18 @@ export default function DnaSection({
       className="pane p-4 sm:p-6 space-y-4"
     >
       <header className="flex items-center justify-between gap-2">
-        <div>
-          <div className="section-label">{section.key}</div>
-          <h2 className="font-display font-bold text-lg sm:text-xl">{section.title}</h2>
-        </div>
+        <button
+          type="button"
+          onClick={onToggleCollapsed}
+          data-testid={`btn-collapse-${section.key}`}
+          className="flex items-center gap-2 text-left group"
+        >
+          <ChevronDown className={`h-4 w-4 text-zinc-500 group-hover:text-zinc-200 transition-transform ${collapsed ? "-rotate-90" : ""}`} />
+          <div>
+            <div className="section-label">{section.key}</div>
+            <h2 className="font-display font-bold text-lg sm:text-xl">{section.title}</h2>
+          </div>
+        </button>
         <div className="flex items-center gap-1">
           <button
             type="button"
@@ -115,17 +130,39 @@ export default function DnaSection({
         </div>
       </header>
 
+      {!collapsed && (
       <div className="grid gap-5">
-        {section.fields.map((f) => (
-          <div key={f.key} className="space-y-2">
-            <label className="flex items-center justify-between text-xs text-zinc-400 font-mono uppercase tracking-widest">
-              <span>{f.label}</span>
-              {f.type === "slider" && (
-                <span data-testid={`slider-value-${section.key}-${f.key}`} className="text-amber-300">
-                  {value[f.key] ?? ""}
-                </span>
-              )}
-            </label>
+        {section.fields.map((f) => {
+          const fLocked = !!fieldLocks?.[f.key];
+          const canLock = f.type === "slider" || f.type === "chips" || f.type === "pose_chips";
+          return (
+          <div key={f.key} className={`space-y-2 ${fLocked ? "opacity-70" : ""}`}>
+            <div className="flex items-center justify-between text-xs text-zinc-400 font-mono uppercase tracking-widest">
+              <span className="flex items-center gap-1.5">
+                {f.label}
+                {fLocked && <Lock className="h-3 w-3 text-amber-300" />}
+              </span>
+              <div className="flex items-center gap-2">
+                {f.type === "slider" && (
+                  <span data-testid={`slider-value-${section.key}-${f.key}`} className="text-amber-300">
+                    {value[f.key] ?? ""}
+                  </span>
+                )}
+                {canLock && onToggleFieldLock && (
+                  <button
+                    type="button"
+                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); onToggleFieldLock(f.key); }}
+                    data-testid={`btn-field-lock-${section.key}-${f.key}`}
+                    title={fLocked ? "Unlock — will be randomized" : "Lock — value stays put"}
+                    className={`h-5 w-5 grid place-items-center rounded ${
+                      fLocked ? "text-amber-300" : "text-zinc-500 hover:text-zinc-200"
+                    }`}
+                  >
+                    {fLocked ? <Lock className="h-3 w-3" /> : <LockOpen className="h-3 w-3" />}
+                  </button>
+                )}
+              </div>
+            </div>
             {f.type === "chips_multi" && (
               <GroupedChips
                 groups={f.groups || [{ name: "All", options: f.options || [] }]}
@@ -178,6 +215,7 @@ export default function DnaSection({
                 step={f.step || 1}
                 value={[Number(value[f.key] ?? f.min)]}
                 onValueChange={(v) => set(f.key, v[0])}
+                disabled={fLocked}
               />
             )}
             {f.type === "text" && (
@@ -190,8 +228,10 @@ export default function DnaSection({
               />
             )}
           </div>
-        ))}
+          );
+        })}
       </div>
+      )}
     </section>
   );
 }

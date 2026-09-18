@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Save, Shuffle, Download, Upload, Loader2, Play, ChevronLeft, ChevronRight, Camera, Sparkles } from "lucide-react";
+import { Save, Shuffle, Download, Upload, Loader2, Play, ChevronLeft, ChevronRight, Camera, Sparkles, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 import { endpoints } from "@/lib/api";
 import { SECTIONS, DEFAULT_DNA, randomizeDna, randomizeSection, randomizeWetDream, resetSection, buildPrompts, phaseOfSection } from "@/lib/dna";
@@ -34,6 +34,8 @@ export default function Builder() {
   const [name, setName] = useState("Untitled");
   const [dna, setDna] = useState(DEFAULT_DNA);
   const [locks, setLocks] = useState({});
+  const [fieldLocks, setFieldLocks] = useState({});   // {section: {field: bool}}
+  const [collapsed, setCollapsed] = useState({});     // {sectionKey|'_glance': bool}
   const [tags, setTags] = useState([]);
   const [raunch, setRaunch] = useState(false);
   const [dispatching, setDispatching] = useState(false);
@@ -52,18 +54,24 @@ export default function Builder() {
   const activeWorkflow = workflows.find((w) => w.id === workflowId);
   const promptStyle = activeWorkflow?.prompt_style || "venice";
 
-  useQuery({
+  const { data: character } = useQuery({
     queryKey: ["character", id],
     queryFn: () => endpoints.getCharacter(id),
     enabled: !!id,
-    onSuccess: (c) => {
-      setName(c.name || "Untitled");
-      setDna({ ...DEFAULT_DNA, ...(c.dna || {}) });
-      setLocks(c.locks || {});
-      setTags(Array.isArray(c.tags) ? c.tags : []);
-      setRaunch(!!c.raunch);
-    },
   });
+
+  useEffect(() => {
+    if (!character) return;
+    setName(character.name || "Untitled");
+    setDna({ ...DEFAULT_DNA, ...(character.dna || {}) });
+    setLocks(character.locks || {});
+    setFieldLocks(character.field_locks || {});
+    setCollapsed(character.collapsed || {});
+    setTags(Array.isArray(character.tags) ? character.tags : []);
+    setRaunch(!!character.raunch);
+    // Only re-hydrate when the character ID changes, not on every refetch (would clobber unsaved edits)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [character?.id]);
 
   const { positive, negative } = useMemo(
     () => (promptStyle === "pony" ? buildPonyPrompts(dna, { raunch }) : buildPrompts(dna, { raunch })),
@@ -72,7 +80,7 @@ export default function Builder() {
 
   const save = useMutation({
     mutationFn: async () => {
-      const payload = { name, dna, locks, tags, raunch, prompt_positive: positive, prompt_negative: negative };
+      const payload = { name, dna, locks, field_locks: fieldLocks, collapsed, tags, raunch, prompt_positive: positive, prompt_negative: negative };
       if (isNew) {
         const created = await endpoints.createCharacter(payload);
         return created;
@@ -190,7 +198,7 @@ export default function Builder() {
             ))}
           </select>
           <button
-            onClick={() => setDna(randomizeDna(dna, locks))}
+            onClick={() => setDna(randomizeDna(dna, locks, fieldLocks))}
             data-testid="btn-randomize-all"
             className="inline-flex items-center gap-1.5 rounded-lg border hairline px-3 py-2 text-sm text-zinc-200 hover:bg-white/5"
           >
@@ -280,7 +288,18 @@ export default function Builder() {
         <TagInput value={tags} onChange={setTags} placeholder="tag this character (mood, ethnicity, persona)…" testId="builder-tags" />
       </div>
 
-      <DnaAtAGlance dna={dna} name={name} />
+      <div className="pane px-3 py-2 flex items-center gap-2" data-testid="glance-header">
+        <button
+          type="button"
+          onClick={() => setCollapsed((cur) => ({ ...cur, _glance: !cur._glance }))}
+          data-testid="btn-collapse-glance"
+          className="flex items-center gap-2 text-left flex-1 group"
+        >
+          <ChevronDown className={`h-4 w-4 text-zinc-500 group-hover:text-zinc-200 transition-transform ${collapsed._glance ? "-rotate-90" : ""}`} />
+          <span className="section-label">DNA at a glance</span>
+        </button>
+      </div>
+      {!collapsed._glance && <DnaAtAGlance dna={dna} name={name} />}
 
       <div className="grid grid-cols-1 lg:grid-cols-[260px_1fr_380px] gap-4">
         {/* Left rail - grouped-by-phase section nav */}
@@ -327,9 +346,16 @@ export default function Builder() {
             onChange={(v) => setSection(activeSection, v)}
             locked={!!locks[activeSection]}
             onToggleLock={() => setLocks({ ...locks, [activeSection]: !locks[activeSection] })}
-            onRandomize={() => setSection(activeSection, randomizeSection(activeSection, dna[activeSection] || {}))}
+            onRandomize={() => setSection(activeSection, randomizeSection(activeSection, dna[activeSection] || {}, fieldLocks[activeSection] || {}))}
             onReset={() => setSection(activeSection, resetSection(activeSection))}
             onSuggest={() => runSuggest(activeSection)}
+            fieldLocks={fieldLocks[activeSection] || {}}
+            onToggleFieldLock={(fieldKey) => setFieldLocks((cur) => ({
+              ...cur,
+              [activeSection]: { ...(cur[activeSection] || {}), [fieldKey]: !(cur[activeSection] || {})[fieldKey] },
+            }))}
+            collapsed={!!collapsed[activeSection]}
+            onToggleCollapsed={() => setCollapsed((cur) => ({ ...cur, [activeSection]: !cur[activeSection] }))}
           />
           <div className="flex items-center justify-between gap-2">
             <button

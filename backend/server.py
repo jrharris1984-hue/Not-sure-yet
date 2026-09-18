@@ -53,6 +53,8 @@ class Character(BaseModel):
     name: str = "Untitled"
     dna: Dict[str, Any] = Field(default_factory=dict)
     locks: Dict[str, bool] = Field(default_factory=dict)
+    field_locks: Dict[str, Dict[str, bool]] = Field(default_factory=dict)  # {section: {field: bool}}
+    collapsed: Dict[str, bool] = Field(default_factory=dict)  # UI state: which panes are folded
     tags: List[str] = Field(default_factory=list)
     favorite: bool = False
     raunch: bool = False  # graphic-vernacular prompt mode
@@ -66,6 +68,8 @@ class CharacterUpsert(BaseModel):
     name: Optional[str] = None
     dna: Optional[Dict[str, Any]] = None
     locks: Optional[Dict[str, bool]] = None
+    field_locks: Optional[Dict[str, Dict[str, bool]]] = None
+    collapsed: Optional[Dict[str, bool]] = None
     tags: Optional[List[str]] = None
     favorite: Optional[bool] = None
     raunch: Optional[bool] = None
@@ -577,6 +581,8 @@ async def create_character(body: CharacterUpsert):
         name=body.name or "Untitled",
         dna=body.dna or {},
         locks=body.locks or {},
+        field_locks=body.field_locks or {},
+        collapsed=body.collapsed or {},
         tags=body.tags or [],
         favorite=body.favorite or False,
         raunch=body.raunch or False,
