@@ -105,15 +105,16 @@ code, pre, .font-mono {
   color: #E5DED3;
   font-size: 0.8rem;
   cursor: pointer;
-  transition: border-color 180ms ease, background 180ms ease, color 180ms ease, transform 180ms ease;
+  transition: border-color 220ms ease, background 220ms ease, color 220ms ease, transform 220ms cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 220ms ease;
   min-height: 36px;
 }
-.chip:hover { border-color: #453E52; background: #1F1B27; }
+.chip:hover { border-color: #F5A524; background: #1F1B27; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(245, 165, 36, 0.10); }
 .chip.active {
   border-color: #F5A524;
   color: #FEE5A7;
-  background: rgba(245, 165, 36, 0.10);
-  box-shadow: 0 0 0 1px rgba(245, 165, 36, 0.25);
+  background: rgba(245, 165, 36, 0.14);
+  box-shadow: 0 0 0 1px rgba(245, 165, 36, 0.35), 0 4px 20px rgba(245, 165, 36, 0.15);
+  transform: translateY(-1px);
 }
 
 /* Chip variants for phases (used by DNA at-a-glance & tag chips) */
@@ -147,4 +148,21 @@ code, pre, .font-mono {
 .text-rose    { color: #E85482; }
 .text-teal    { color: #38BDF8; }
 .text-fuchsia { color: #D946EF; }
+
+
+/* joi.ai-inspired: cinematic hero glow behind the builder header */
+.builder-hero {
+  position: relative;
+  isolation: isolate;
+}
+.builder-hero::before {
+  content: "";
+  position: absolute;
+  inset: -60px -40px 40% -40px;
+  z-index: -1;
+  background:
+    radial-gradient(600px 200px at 20% 0%, rgba(245,165,36,0.14) 0%, transparent 60%),
+    radial-gradient(500px 200px at 80% 0%, rgba(232,84,130,0.10) 0%, transparent 60%);
+  pointer-events: none;
+}
 

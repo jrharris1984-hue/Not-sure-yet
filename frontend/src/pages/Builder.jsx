@@ -315,7 +315,7 @@ export default function Builder() {
   const expectedCount = expectedSubjectCount(primaryDna);
 
   return (
-    <div className="mx-auto max-w-[1600px] px-3 sm:px-6 py-4 sm:py-6 space-y-4">
+    <div className="builder-hero mx-auto max-w-[1600px] px-3 sm:px-6 py-4 sm:py-6 space-y-4">
       {/* Header */}
       <div className="pane p-3 sm:p-4 flex flex-col gap-3">
         <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
@@ -337,6 +337,14 @@ export default function Builder() {
               <option key={w.id} value={w.id}>{w.kind.toUpperCase()} · {w.name}</option>
             ))}
           </select>
+          <button
+            onClick={() => nav(isNew ? "/character/new/quick" : `/character/${id}/quick`)}
+            data-testid="btn-open-quick-create"
+            title="Full-screen guided wizard — one field at a time with big cards"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-fuchsia-500/50 bg-gradient-to-r from-fuchsia-500/10 to-amber-500/10 text-fuchsia-100 hover:from-fuchsia-500/20 hover:to-amber-500/20 text-sm font-semibold px-3 py-2"
+          >
+            <Sparkles className="h-4 w-4" /> Quick Create
+          </button>
           <button
             onClick={() => save.mutate()}
             disabled={save.isPending}

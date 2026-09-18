@@ -9,6 +9,7 @@ import Settings from "@/pages/Settings";
 import Shoots from "@/pages/Shoots";
 import ShootSetup from "@/pages/ShootSetup";
 import ShootDetail from "@/pages/ShootDetail";
+import QuickCreate from "@/pages/QuickCreate";
 
 function App() {
   return (
@@ -18,8 +19,10 @@ function App() {
           <Routes>
             <Route path="/" element={<Library />} />
             <Route path="/character/new" element={<Builder />} />
+            <Route path="/character/new/quick" element={<QuickCreate />} />
             <Route path="/character/new/s/:section" element={<Builder />} />
             <Route path="/character/:id" element={<Builder />} />
+            <Route path="/character/:id/quick" element={<QuickCreate />} />
             <Route path="/character/:id/s/:section" element={<Builder />} />
             <Route path="/gallery" element={<Gallery />} />
             <Route path="/shoots" element={<Shoots />} />
