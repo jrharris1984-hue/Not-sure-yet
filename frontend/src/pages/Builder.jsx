@@ -10,9 +10,11 @@ import DnaSection from "@/components/DnaSection";
 import PromptPreview from "@/components/PromptPreview";
 import AiAssistBar from "@/components/AiAssistBar";
 import PresetsMenu from "@/components/PresetsMenu";
+import KinkPresetsMenu from "@/components/KinkPresetsMenu";
 import LoraPanel from "@/components/LoraPanel";
 import LivePreview from "@/components/LivePreview";
 import TagInput from "@/components/TagInput";
+import { Flame } from "lucide-react";
 import { Input } from "@/components/ui/input";
 
 export default function Builder() {
@@ -31,6 +33,7 @@ export default function Builder() {
   const [dna, setDna] = useState(DEFAULT_DNA);
   const [locks, setLocks] = useState({});
   const [tags, setTags] = useState([]);
+  const [raunch, setRaunch] = useState(false);
   const [dispatching, setDispatching] = useState(false);
   const [activeRender, setActiveRender] = useState(null);
   const [workflowId, setWorkflowId] = useState("");
@@ -56,17 +59,18 @@ export default function Builder() {
       setDna({ ...DEFAULT_DNA, ...(c.dna || {}) });
       setLocks(c.locks || {});
       setTags(Array.isArray(c.tags) ? c.tags : []);
+      setRaunch(!!c.raunch);
     },
   });
 
   const { positive, negative } = useMemo(
-    () => (promptStyle === "pony" ? buildPonyPrompts(dna) : buildPrompts(dna)),
-    [dna, promptStyle]
+    () => (promptStyle === "pony" ? buildPonyPrompts(dna, { raunch }) : buildPrompts(dna, { raunch })),
+    [dna, promptStyle, raunch]
   );
 
   const save = useMutation({
     mutationFn: async () => {
-      const payload = { name, dna, locks, tags, prompt_positive: positive, prompt_negative: negative };
+      const payload = { name, dna, locks, tags, raunch, prompt_positive: positive, prompt_negative: negative };
       if (isNew) {
         const created = await endpoints.createCharacter(payload);
         return created;
@@ -199,6 +203,28 @@ export default function Builder() {
               toast.success("Preset applied");
             }}
           />
+          <KinkPresetsMenu
+            currentDna={dna}
+            onApply={(next) => {
+              // Respect locked sections
+              const merged = { ...next };
+              Object.keys(locks).forEach((k) => { if (locks[k]) merged[k] = dna[k]; });
+              setDna(merged);
+            }}
+          />
+          <button
+            type="button"
+            onClick={() => setRaunch((v) => !v)}
+            data-testid="btn-toggle-raunch"
+            title={raunch ? "Raunch mode ON — graphic vernacular in Venice prompts" : "Raunch mode OFF — editorial vocabulary"}
+            className={`inline-flex items-center gap-1.5 rounded-lg border text-sm font-semibold px-3 py-2 ${
+              raunch
+                ? "border-fuchsia-500/60 bg-fuchsia-500/15 text-fuchsia-200"
+                : "border-hairline text-zinc-300 hover:bg-white/5"
+            }`}
+          >
+            <Flame className="h-4 w-4" /> {raunch ? "Raunch ON" : "Raunch"}
+          </button>
           <button
             onClick={() => save.mutate()}
             disabled={save.isPending}

@@ -5,30 +5,196 @@ import { expandPrompt } from "@/lib/promptMap";
 // Booru-style tag weighting: wrap phrase in (x:1.3) format
 const w = (phrase, weight) => phrase && weight && weight !== 1 ? `(${phrase}:${weight})` : phrase;
 
-export function buildPonyPrompts(dna = {}) {
+// Canonical booru tag mapping for specific DNA values. Anything not mapped falls back to
+// the natural-language expansion (which Pony still understands, just less precisely).
+const PONY_TAGS = {
+  intimate: {
+    lactation: {
+      "lactating": "lactation, breast_milk",
+      "milk drip": "lactation, milk_drip",
+      "milk spray": "lactation, milk_spray, spraying_milk",
+      "breastfeeding": "breastfeeding, nursing",
+      "cow-milked": "cow_print, being_milked, breast_milking",
+    },
+    squirt: {
+      "gushing squirt": "female_ejaculation, squirting",
+      "arcing stream": "female_ejaculation, squirting_arc",
+      "mid-squirt": "female_ejaculation, squirting",
+      "squirting on face": "female_ejaculation, squirt_on_face",
+    },
+    tears: {
+      "mascara tears": "crying, mascara_tears, running_mascara",
+      "ugly cry": "crying, ugly_cry",
+      "single tear": "single_tear",
+      "tear-streaked face": "crying_with_eyes_open, tear_streaked",
+    },
+    cum_state: {
+      "fresh creampie": "creampie, cum_in_pussy",
+      "dripping creampie": "cum_drip, creampie, cum_in_pussy",
+      "gaping creampie": "gaping, creampie, cum_pool, cum_drip",
+      "anal creampie": "anal_creampie, cum_in_ass",
+      "cum on face": "cum_on_face, facial",
+      "cum on tits": "cum_on_breasts",
+      "cum on ass": "cum_on_ass",
+      "cum in mouth open display": "cum_in_mouth, tongue_out, cum_pool",
+      "cum-covered whole body": "covered_in_cum, cum_everywhere",
+    },
+  },
+  feet: {
+    foot_act: {
+      "footjob": "footjob, feet_focus",
+      "double footjob": "double_footjob",
+      "foot worship": "foot_worship, foot_focus",
+      "sole licking": "sole_lick, foot_worship, tongue_out",
+      "toe sucking": "toe_sucking, foot_worship",
+      "foot on face": "foot_on_face, femdom, foot_worship",
+      "foot smothering": "foot_smother, femdom",
+      "trampling": "trampling, foot_focus",
+      "cum on feet": "cum_on_feet, foot_focus",
+      "cum on soles": "cum_on_soles, foot_focus",
+    },
+    sole_presentation: {
+      "soles up": "soles, feet_up, foot_focus",
+      "sole showcase": "sole_focus, foot_focus",
+      "oiled soles": "oiled_soles, wet_feet, foot_focus",
+      "dirty soles": "dirty_feet, foot_focus",
+      "wrinkled soles": "wrinkled_soles, foot_focus",
+    },
+  },
+  kink: {
+    restraint: {
+      "rope shibari": "shibari, bondage, rope",
+      "hemp bondage": "bondage, rope",
+      "leather cuffs": "cuffs, bondage",
+      "metal handcuffs": "handcuffs, bondage",
+      "spreader bar": "spreader_bar, bondage",
+      "hogtie": "hogtie, bondage",
+      "suspension": "suspension_bondage, rope, bondage",
+      "wrists overhead": "arms_up, bondage, bound_wrists",
+      "collar and leash": "collar, leash, pet_play",
+      "chastity cage": "chastity, chastity_cage",
+      "chastity belt": "chastity_belt",
+    },
+    gag: {
+      "ball gag": "ball_gag, gagged, drool",
+      "ring gag": "ring_gag, gagged, tongue_out",
+      "tape gag": "tape_gag, gagged",
+      "panty gag": "panty_gag, gagged",
+      "muzzle": "muzzle, gagged",
+    },
+    marks: {
+      "spanking": "spanking, ass_focus",
+      "red handprint": "handprint, red_ass, spanking",
+      "welts": "welts, marks",
+      "bruises": "bruise",
+      "rope marks": "rope_marks",
+      "bite marks": "bite_mark",
+      "hickeys": "hickey",
+    },
+    humiliation: {
+      "ahegao expression": "ahegao, tongue_out, rolling_eyes",
+      "mind-break": "mind_break, ahegao",
+      "drooling": "drooling, saliva",
+      "puppy hood": "puppy_ears, pet_play",
+      "kitten ears and tail plug": "cat_ears, cat_tail, buttplug",
+      "collared pet": "collar, pet_play",
+      "leash walk": "leash, pet_play, being_led",
+      "mascara tears": "crying, mascara_tears",
+    },
+    orgasm_control: {
+      "edged": "edging, denied_orgasm",
+      "forced orgasm": "forced_orgasm",
+      "overstimulation": "overstimulation, post_orgasm",
+      "hitachi torture": "hitachi_magic_wand, forced_orgasm",
+    },
+    group_kink: {
+      "gangbang": "gangbang",
+      "double penetration": "double_penetration, dp",
+      "triple penetration": "triple_penetration, tp",
+      "air-tight": "airtight, triple_penetration",
+      "bukkake": "bukkake, cum_on_face",
+      "spitroast": "spitroast, double_blowjob",
+    },
+  },
+  watersports: {
+    source: {
+      "self": "peeing, urine, self_peeing",
+      "partner": "peeing_on_another, urine, watersports",
+      "mutual": "mutual_peeing, urine, watersports",
+      "group": "group_peeing, urine, watersports",
+    },
+    direction: {
+      "in mouth": "peeing_in_mouth, urine, watersports",
+      "on face": "peeing_on_face, urine, watersports",
+      "on tits": "peeing_on_breasts, urine",
+      "held in": "omorashi, holding_pee, desperation",
+      "forced held-in": "omorashi, desperation, forced_holding",
+    },
+    stream: {
+      "trickle": "peeing, urine, small_stream",
+      "steady stream": "peeing, urine_stream",
+      "gush": "gushing_urine, watersports",
+      "arc": "arcing_urine, peeing, watersports",
+      "pooling": "pool_of_urine, watersports",
+    },
+    container: {
+      "toilet": "toilet, peeing",
+      "shower": "shower, peeing, watersports",
+      "in panties": "wet_panties, peeing_in_clothes, omorashi",
+      "in jeans": "wet_jeans, peeing_in_clothes, omorashi",
+      "public": "public_urination, watersports",
+    },
+    wetness: {
+      "soaked panties": "wet_panties, wet_clothes",
+      "puddle at feet": "pool_of_urine, wet_floor",
+      "running down legs": "urine_dripping, wet_legs",
+    },
+    desperation: {
+      "needy": "omorashi, holding_pee",
+      "holding it": "omorashi, holding_pee, desperation",
+      "about to burst": "omorashi, desperate, holding_pee",
+      "losing control": "omorashi, losing_control, peeing",
+      "humiliated": "humiliation, omorashi, tears",
+    },
+  },
+};
+
+const tag = (section, field, value) => {
+  if (!value) return "";
+  return PONY_TAGS?.[section]?.[field]?.[value] || value;
+};
+const tagArr = (section, field, arr) => {
+  if (!Array.isArray(arr)) return "";
+  return arr.filter(Boolean).map((v) => tag(section, field, v)).join(", ");
+};
+
+export function buildPonyPrompts(dna = {}, opts = {}) {
+  const raunch = !!opts.raunch;
   const val = (section, field) => dna?.[section]?.[field] || "";
   const exp = (section, field) => {
     const v = val(section, field);
-    return v ? expandPrompt(section, field, v) : "";
+    return v ? expandPrompt(section, field, v, { raunch }) : "";
   };
   const join = (parts, sep = ", ") => parts.filter((p) => p && String(p).trim()).map(String).join(sep);
 
   // -------- Pony quality prefix (MANDATORY) --------
   const qualityPrefix = "score_9, score_8_up, score_7_up, score_6_up, rating_explicit, source_photo, photorealistic, RAW professional photograph, 8k, highly detailed";
 
-  // Rating tag adjusts with intensity
   const sc = dna.scenario || {};
-  const intensity = Number(sc.intensity || 0);
-  const ratingTag = intensity >= 65 ? "rating_explicit, explicit content, uncensored"
-                  : intensity >= 40 ? "rating_explicit, nsfw"
-                  : intensity >= 20 ? "rating_questionable" : "rating_safe";
+  const explicitLevel = Number(sc.explicit_level ?? sc.intensity ?? 0);
+  const kinkLevel = Number(sc.kink_level ?? 0);
+  const ratingTag = explicitLevel >= 65 ? "rating_explicit, explicit content, uncensored"
+                  : explicitLevel >= 40 ? "rating_explicit, nsfw"
+                  : explicitLevel >= 20 ? "rating_questionable" : "rating_safe";
+  const kinkTag = kinkLevel >= 65 ? w("bdsm, kink, dominance_and_submission", 1.3)
+                 : kinkLevel >= 40 ? w("bdsm, light_kink", 1.15)
+                 : kinkLevel >= 20 ? "light_kink" : "";
 
   // -------- Subject --------
   const id = dna.identity || {};
   const ph = dna.physique || {};
   const face = dna.face || {};
   const hair = dna.hair || {};
-  const skin = dna.skin || {};
   const im = dna.intimate || {};
 
   const ex = Number(ph.exaggeration || 0);
@@ -87,7 +253,7 @@ export function buildPonyPrompts(dna = {}) {
   if (wd.footwear && wd.footwear !== "barefoot") outfitPieces.push(exp("wardrobe", "footwear"));
   if (wd.accessories) {
     const accs = Array.isArray(wd.accessories) ? wd.accessories : [wd.accessories];
-    accs.filter((a) => a && a !== "none").forEach((a) => outfitPieces.push(expandPrompt("wardrobe", "accessories", a)));
+    accs.filter((a) => a && a !== "none").forEach((a) => outfitPieces.push(expandPrompt("wardrobe", "accessories", a, { raunch })));
   }
   const outfitStr = join([
     outfitPieces.length ? `wearing ${outfitPieces.join(", ")}` : "",
@@ -104,12 +270,12 @@ export function buildPonyPrompts(dna = {}) {
     exp("pose", "distance"),
     pose.focus && pose.focus !== "full frame" && exp("pose", "focus"),
     Array.isArray(pose.hands)
-      ? pose.hands.filter(Boolean).map((h) => expandPrompt("pose", "hands", h)).join(", ")
+      ? pose.hands.filter(Boolean).map((h) => expandPrompt("pose", "hands", h, { raunch })).join(", ")
       : (pose.hands && exp("pose", "hands")),
     exp("pose", "body_language"),
   ]);
 
-  // -------- Explicit (intimate + scenario) --------
+  // -------- Explicit / anatomy --------
   const intimateStr = join([
     w(exp("intimate", "pubic_hair"), im.pubic_hair && im.pubic_hair.includes("hair") ? 1.2 : 1),
     w(exp("intimate", "pussy"), 1.2),
@@ -121,14 +287,60 @@ export function buildPonyPrompts(dna = {}) {
     im.piercings && im.piercings !== "none" && exp("intimate", "piercings"),
   ]);
 
+  const fluidsStr = join([
+    tagArr("intimate", "cum_state", im.cum_state),
+    im.squirt && im.squirt !== "none" && tag("intimate", "squirt", im.squirt),
+    im.lactation && im.lactation !== "none" && w(tag("intimate", "lactation", im.lactation), 1.2),
+    im.tears && im.tears !== "none" && tag("intimate", "tears", im.tears),
+    im.saliva && Array.isArray(im.saliva) && im.saliva.length && "saliva, drool",
+    im.sweat && im.sweat !== "none" && "sweat, sweaty_body",
+    im.lube && im.lube !== "none" && "oiled_body, wet_skin",
+  ]);
+
+  // -------- Feet --------
+  const ft = dna.feet || {};
+  const feetStr = join([
+    tag("feet", "sole_presentation", ft.sole_presentation),
+    tagArr("feet", "foot_act", ft.foot_act),
+    ft.hosiery && ft.hosiery !== "bare" && exp("feet", "hosiery"),
+    (ft.foot_act && ft.foot_act.length) || (ft.sole_presentation) ? w("foot_focus, feet_focus", 1.25) : "",
+  ]);
+
+  // -------- Kink --------
+  const kk = dna.kink || {};
+  const kinkStr = join([
+    tagArr("kink", "restraint", kk.restraint),
+    tagArr("kink", "gag", kk.gag),
+    tagArr("kink", "marks", kk.marks),
+    tagArr("kink", "humiliation", kk.humiliation),
+    tagArr("kink", "orgasm_control", kk.orgasm_control),
+    tagArr("kink", "group_kink", kk.group_kink),
+    kk.power_dynamic && kk.power_dynamic !== "none" && exp("kink", "power_dynamic"),
+  ]);
+
+  // -------- Watersports --------
+  const ws = dna.watersports || {};
+  const wsHasAny = ws.source && ws.source !== "none";
+  const wsStr = wsHasAny ? join([
+    w("peeing, urine, watersports", 1.3),
+    tag("watersports", "source", ws.source),
+    tagArr("watersports", "direction", ws.direction),
+    tag("watersports", "stream", ws.stream),
+    tag("watersports", "container", ws.container),
+    tagArr("watersports", "wetness", ws.wetness),
+    tag("watersports", "desperation", ws.desperation),
+  ]) : "";
+
+  // -------- Scenario --------
   const scenarioStr = join([
     sc.cast_size && sc.cast_size !== "solo" && exp("scenario", "cast_size"),
     sc.cast_type && sc.cast_type !== "none" && exp("scenario", "cast_type"),
     sc.roleplay && sc.roleplay !== "none" && exp("scenario", "roleplay"),
     Array.isArray(sc.acts)
-      ? sc.acts.filter((a) => a && a !== "none").map((a) => w(expandPrompt("scenario", "acts", a), 1.3)).join(", ")
+      ? sc.acts.filter((a) => a && a !== "none").map((a) => w(expandPrompt("scenario", "acts", a, { raunch }), 1.3)).join(", ")
       : (sc.acts && sc.acts !== "none" && w(exp("scenario", "acts"), 1.3)),
     sc.extra_acts,
+    kinkTag,
   ]);
 
   // -------- Scene / Lighting / Camera --------
@@ -150,10 +362,8 @@ export function buildPonyPrompts(dna = {}) {
     exp("camera", "aperture"),
   ]);
 
-  // -------- Anatomy accuracy (Pony-specific) --------
   const anatomyStr = "anatomically correct, realistic proportions, natural weight distribution, detailed anatomy";
 
-  // Style
   const st = dna.style || {};
   const styleStr = join([
     st.render && exp("style", "render"),
@@ -161,7 +371,6 @@ export function buildPonyPrompts(dna = {}) {
     st.extra,
   ]);
 
-  // Assemble in Pony order
   const positive = join([
     qualityPrefix,
     ratingTag,
@@ -170,7 +379,11 @@ export function buildPonyPrompts(dna = {}) {
     hairStr,
     outfitStr,
     poseStr,
+    feetStr,
     intimateStr,
+    fluidsStr,
+    kinkStr,
+    wsStr,
     scenarioStr,
     sceneStr,
     lightingStr,
@@ -179,13 +392,14 @@ export function buildPonyPrompts(dna = {}) {
     anatomyStr,
   ]);
 
-  // Pony negative uses low-score tags + safety
+  // Pony negative — auto-permissive. Only technical quality + AGE SAFEGUARDS.
   const negative = [
     "score_6, score_5, score_4, score_3, score_2, score_1",
     "worst quality, low quality, jpeg artifacts, compression artifacts, blurry, noisy, oversharpened",
     "anime, manga, cartoon, comic, illustration, drawing, sketch, painting, 3d render, CGI, doll, mannequin",
     "plastic skin, waxy skin, airbrushed, overly smooth skin, beauty filter",
-    "child, teenager, young-looking, minor, underage, loli, shota",
+    // AGE SAFEGUARDS — HARD LOCKED
+    "child, teenager, young-looking, minor, underage, loli, shota, kid",
     "bad anatomy, malformed anatomy, deformed, disfigured, extra limbs, missing limbs, extra fingers, missing fingers, fused fingers, mutated hands",
     "unnatural breasts, malformed breasts, asymmetrical breasts, bolted-on breasts",
     "text, watermark, signature, logo, censored, mosaic, black bar",

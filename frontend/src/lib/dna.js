@@ -91,6 +91,46 @@ export const SECTIONS = [
       { key: "areolas", type: "chips", label: "Areolas", options: ["small pale", "medium pink", "large brown", "very large dark", "puffy dome"] },
       { key: "body_hair", type: "chips", label: "Body hair", options: ["hairless", "light peach fuzz", "moderate", "heavy", "natural", "unshaven armpits"] },
       { key: "piercings", type: "chips", label: "Piercings", options: ["none", "nipple", "navel", "nose", "septum", "tongue", "clit hood", "labia", "multi"] },
+      { key: "cum_state", type: "chips_multi", label: "Cum / mess (pick many)", groups: [
+        { name: "Facial", options: ["cum on face", "cum in mouth open display", "cum in mouth held", "cum on lips", "cum on eyelashes", "cum in hair"] },
+        { name: "Body", options: ["cum on tits", "cum on ass", "cum on stomach", "cum on thighs", "cum-covered whole body", "cum drenched"] },
+        { name: "Holes", options: ["fresh creampie", "dripping creampie", "gaping creampie", "anal creampie", "ass-to-mouth", "pooled cum"] },
+        { name: "Play", options: ["snowballing", "cum swap kiss", "cum drool", "cum gargle", "swallowing cum"] },
+      ]},
+      { key: "saliva", type: "chips_multi", label: "Saliva / spit (pick many)", options: ["glossy wet lips", "spit strand", "drool from mouth", "drool from chin", "spit trail chin to tits", "spit-covered cock", "spit shine on lips", "sloppy spit"] },
+      { key: "squirt", type: "chips", label: "Squirt", options: ["none", "light squirt", "gushing squirt", "arcing stream", "mid-squirt", "post-squirt puddle", "squirting on face"] },
+      { key: "lactation", type: "chips", label: "Lactation / milk", options: ["none", "lactating", "milk drip", "milk spray", "breastfeeding", "cow-milked"] },
+      { key: "sweat", type: "chips", label: "Sweat", options: ["none", "dewy", "glistening", "sweat-drenched", "sweat on brow", "sweat between tits", "wet sheen everywhere"] },
+      { key: "lube", type: "chips", label: "Lube / oil", options: ["none", "glossy", "dripping lube", "oiled up", "baby oil sheen"] },
+      { key: "tears", type: "chips", label: "Tears", options: ["none", "single tear", "mascara tears", "ugly cry", "tear-streaked face"] },
+    ],
+  },
+  {
+    key: "feet",
+    title: "Feet",
+    fields: [
+      { key: "sole_presentation", type: "pose_chips", label: "Sole presentation", groups: [
+        { name: "Presentation", options: ["soles up", "soles together", "sole showcase", "sole toward camera", "one sole raised"] },
+        { name: "Detail", options: ["wrinkled soles", "smooth soles", "oiled soles", "dirty soles", "muddy soles", "freshly washed"] },
+      ]},
+      { key: "toes", type: "chips_multi", label: "Toe action (pick many)", options: ["toe curl", "toe spread", "toe point", "toe suck", "toe ring", "toe scrunch", "big toe out", "toes in mouth"] },
+      { key: "arch", type: "chips", label: "Arch style", options: ["high arch", "medium arch", "flat arch", "defined arch", "banana arch"] },
+      { key: "pedicure", type: "chips", label: "Pedicure", options: ["natural nails", "painted red", "painted black", "painted french", "painted pink", "chipped polish", "long nails", "sharp claws", "glitter polish"] },
+      { key: "foot_size", type: "chips", label: "Foot size", options: ["petite", "average", "large", "size queen"] },
+      { key: "foot_state", type: "chips_multi", label: "Foot state (pick many)", options: ["bare", "sweaty", "oiled", "dirty", "muddy", "freshly washed", "in nylons", "in socks", "stinky", "cum on feet", "cum on soles"] },
+      { key: "hosiery", type: "chips", label: "Hosiery", groups: [
+        { name: "Bare / sheer", options: ["bare", "sheer stockings", "toeless stockings", "footed stockings", "pantyhose", "ripped pantyhose"] },
+        { name: "Fishnet", options: ["fishnet stockings", "toeless fishnets", "ripped fishnets"] },
+        { name: "Socks", options: ["ankle socks", "gym socks", "knee-high socks", "thigh-high socks", "over-the-knee socks", "dirty socks", "sweaty socks"] },
+      ]},
+      { key: "foot_act", type: "chips_multi", label: "Foot act (pick many)", groups: [
+        { name: "Solo", options: ["foot showcase", "foot posing", "foot tease", "arched foot", "toe suck self"] },
+        { name: "Worship", options: ["foot worship", "sole licking", "toe sucking", "foot kissing", "foot massage"] },
+        { name: "Sex", options: ["footjob", "double footjob", "foot on cock", "foot in mouth POV"] },
+        { name: "Dominance", options: ["foot on face", "foot smothering", "trampling", "standing on someone", "foot gag"] },
+        { name: "Mess", options: ["cum on feet", "cum on soles", "cum between toes"] },
+      ]},
+      { key: "framing", type: "chips", label: "Framing", options: ["full body", "waist-down", "knees-down", "feet close-up", "sole close-up", "POV under foot", "low angle sole"] },
     ],
   },
   {
@@ -154,6 +194,46 @@ export const SECTIONS = [
     ],
   },
   {
+    key: "kink",
+    title: "Kink",
+    fields: [
+      { key: "restraint", type: "chips_multi", label: "Restraint (pick many)", options: [
+        "rope shibari", "hemp bondage", "leather cuffs", "metal handcuffs", "straitjacket", "spreader bar",
+        "hogtie", "suspension", "chair-tied", "tied to bed", "wrists overhead", "ankle cuffs", "thigh cuffs",
+        "chastity cage", "chastity belt", "collar and leash", "arms behind back", "frogtie",
+      ]},
+      { key: "gag", type: "chips_multi", label: "Gag (pick many)", options: [
+        "ball gag", "ring gag", "bit gag", "cleave gag", "tape gag", "panty gag", "drool bib", "dildo gag", "muzzle", "spider gag",
+      ]},
+      { key: "marks", type: "chips_multi", label: "Impact & marks (pick many)", options: [
+        "spanking", "red handprint", "paddled", "caned", "whipped", "cropped", "welts",
+        "bruises", "rope marks", "scratched", "bite marks", "hickeys", "belt marks",
+      ]},
+      { key: "sensation", type: "chips_multi", label: "Sensation play (pick many)", options: [
+        "wax play", "hot wax on tits", "ice play", "electro pads", "needle play", "clothespins",
+        "clover clamps", "nipple clamps", "clamps with weights", "tit slaps", "nipple twist", "hair pulling",
+      ]},
+      { key: "humiliation", type: "chips_multi", label: "Humiliation / degradation (pick many)", groups: [
+        { name: "Pet play", options: ["collared pet", "puppy hood", "kitten ears and tail plug", "ponygirl gear", "on all fours pet", "leash walk", "food bowl"] },
+        { name: "Degradation", options: ["degradation stare", "spit on face", "face-fucked", "used", "wrecked", "spit-drenched"] },
+        { name: "Ahegao / mind-break", options: ["ahegao expression", "mind-break", "tongue-out", "rolled-back eyes", "drooling", "mascara tears", "slut-face"] },
+      ]},
+      { key: "orgasm_control", type: "chips_multi", label: "Orgasm control (pick many)", options: [
+        "edged", "denied", "ruined orgasm", "forced orgasm", "hitachi torture", "overstimulation",
+        "post-orgasm torture", "chastity release", "milked dry", "back-to-back orgasms",
+      ]},
+      { key: "power_dynamic", type: "chips", label: "Power dynamic", options: [
+        "none", "dominant", "submissive", "brat", "switch",
+        "master and slave", "mistress and slave", "owner and pet", "princess and daddy dom", "mommy dom and boy",
+        "slut in training", "goddess and worshipper",
+      ]},
+      { key: "group_kink", type: "chips_multi", label: "Group kink (pick many)", options: [
+        "gangbang", "train", "double penetration", "triple penetration", "air-tight",
+        "bukkake", "blowbang", "spitroast", "eiffel tower",
+      ]},
+    ],
+  },
+  {
     key: "scenario",
     title: "Scenario",
     fields: [
@@ -184,12 +264,36 @@ export const SECTIONS = [
         { name: "Anal", options: ["anal", "anal doggy", "anal reverse cowgirl"] },
         { name: "DP", options: ["double penetration", "DAP", "DVP", "DP"] },
         { name: "Cum", options: ["creampie", "cumshot", "facial", "bukkake", "cum on tits", "cum on ass", "cum on face", "swallowing", "squirting"] },
-        { name: "Extreme", options: ["fisting", "gaping", "stretched"] },
+        { name: "Extreme insertion", options: ["fisting", "fisting deep", "double fisting", "fisting anal", "prolapse", "gaping", "gaping wide", "stretched", "stretched hole", "object insertion", "bottle insertion"] },
+        { name: "Rough / brutal", options: ["throat-fuck", "gagging", "choking hands on throat", "hair pulled hard", "slapped mid-fuck", "face-slapped", "hate-fuck framing"] },
+        { name: "Cum play", options: ["snowballing", "cum-sharing kiss", "cum swap", "cum drool", "cum gargle", "bukkake shower", "cum drenched"] },
+        { name: "Fantasy", options: ["cnc roleplay", "captured", "tentacle", "monster", "alien", "breeding kink", "impregnation kink", "pregnancy belly", "ahegao mid-cum", "mind-broken"] },
         { name: "Lesbian", options: ["lesbian", "tribbing", "scissoring", "strap-on", "facesitting"] },
         { name: "BDSM", options: ["bondage", "shibari", "tied up", "collared and leashed", "spanking", "gagged"] },
       ]},
-      { key: "intensity", type: "slider", label: "Explicit intensity (softcore → hardcore)", min: 0, max: 100, step: 1 },
+      { key: "explicit_level", type: "slider", label: "Explicit level (softcore → depraved)", min: 0, max: 100, step: 1 },
+      { key: "kink_level", type: "slider", label: "Kink level (vanilla → extreme kink)", min: 0, max: 100, step: 1 },
       { key: "extra_acts", type: "text", label: "Additional acts / notes" },
+    ],
+  },
+  {
+    key: "watersports",
+    title: "Watersports",
+    fields: [
+      { key: "source", type: "chips", label: "Source", options: ["none", "self", "partner", "mutual", "group", "unknown POV"] },
+      { key: "direction", type: "chips_multi", label: "Direction (pick many)", options: [
+        "in mouth", "on face", "on tits", "on ass", "on feet", "on floor", "on another person",
+        "inside pussy", "inside ass", "held in", "forced held-in",
+      ]},
+      { key: "stream", type: "chips", label: "Stream state", options: ["trickle", "steady stream", "gush", "spray", "arc", "pooling", "explosive"] },
+      { key: "container", type: "chips", label: "Container / context", options: ["toilet", "tub", "shower", "outdoors", "in panties", "in jeans", "on bed", "into glass", "into cup", "through funnel", "public"] },
+      { key: "wetness", type: "chips_multi", label: "Wetness (pick many)", options: [
+        "dry", "damp", "soaked panties", "soaked jeans", "dripping thighs", "puddle at feet", "running down legs", "wet floor",
+      ]},
+      { key: "desperation", type: "chips", label: "Desperation", options: ["none", "calm", "needy", "holding it", "about to burst", "losing control", "humiliated"] },
+      { key: "aftermath", type: "chips_multi", label: "Aftermath (pick many)", options: [
+        "glistening skin", "wet hair", "wet clothes", "matted fur", "standing in puddle", "smeared mascara", "post-piss glow",
+      ]},
     ],
   },
   {
@@ -283,12 +387,18 @@ export function resetSection(sectionKey) {
 
 // Build positive/negative prompts from DNA — Venice-style structured formula:
 // [QUALITY] + [SUBJECT] + [OUTFIT] + [POSE] + [SCENE] + [LIGHTING] + [CAMERA] + [STYLE] + [EXPLICIT]
-export function buildPrompts(dna = {}) {
+export function buildPrompts(dna = {}, opts = {}) {
+  const raunch = !!opts.raunch;
   // Value + expansion helpers
   const val = (section, field) => dna?.[section]?.[field] || "";
   const exp = (section, field) => {
     const v = val(section, field);
-    return v ? expandPrompt(section, field, v) : "";
+    return v ? expandPrompt(section, field, v, { raunch }) : "";
+  };
+  const expArr = (section, field) => {
+    const v = dna?.[section]?.[field];
+    if (!Array.isArray(v)) return "";
+    return v.filter(Boolean).map((x) => expandPrompt(section, field, x, { raunch })).join(", ");
   };
   const join = (parts, sep = ", ") => parts.filter((p) => p && String(p).trim()).map(String).join(sep);
 
@@ -452,22 +562,29 @@ export function buildPrompts(dna = {}) {
     st.extra,
   ]);
 
-  // -------- 9. EXPLICIT DETAILS (scenario + intimate) --------
+  // -------- 9. EXPLICIT DETAILS (scenario + intimate + fluids + kink + feet + watersports) --------
   const sc = dna.scenario || {};
-  const intensity = Number(sc.intensity || 0);
-  const intensityTag = intensity >= 85 ? "extreme hardcore XXX pornographic scene, explicit uncensored"
-                     : intensity >= 65 ? "hardcore explicit adult scene, uncensored NSFW"
-                     : intensity >= 40 ? "explicit adult content, NSFW"
-                     : intensity >= 20 ? "sensual softcore, tasteful nude" : "";
+  // Backward compat: legacy `intensity` slider maps to explicit_level if new dial not set
+  const explicitLevel = Number(sc.explicit_level ?? sc.intensity ?? 0);
+  const kinkLevel = Number(sc.kink_level ?? 0);
+  const explicitTag = explicitLevel >= 85 ? "extreme depraved XXX hardcore, uncensored graphic pornographic scene"
+                     : explicitLevel >= 65 ? "hardcore explicit adult scene, uncensored NSFW"
+                     : explicitLevel >= 40 ? "explicit adult content, NSFW"
+                     : explicitLevel >= 20 ? "sensual softcore, tasteful nude" : "";
+  const kinkTag = kinkLevel >= 85 ? "extreme hardcore BDSM, brutal kink, total power exchange, degradation and mind-break"
+                 : kinkLevel >= 65 ? "hardcore kink scene, heavy BDSM, rough dominance and submission"
+                 : kinkLevel >= 40 ? "playful kink, light BDSM, teasing dominance"
+                 : kinkLevel >= 20 ? "hint of kink, light restraint or teasing" : "";
 
   const scenarioStr = join([
     sc.cast_size && sc.cast_size !== "solo" && exp("scenario", "cast_size"),
     sc.cast_type && sc.cast_type !== "none" && exp("scenario", "cast_type"),
     sc.roleplay && sc.roleplay !== "none" && exp("scenario", "roleplay"),
     Array.isArray(sc.acts)
-      ? sc.acts.filter((a) => a && a !== "none").map((a) => expandPrompt("scenario", "acts", a)).join(", ")
+      ? sc.acts.filter((a) => a && a !== "none").map((a) => expandPrompt("scenario", "acts", a, { raunch })).join(", ")
       : (sc.acts && sc.acts !== "none" && exp("scenario", "acts")),
-    intensityTag,
+    explicitTag,
+    kinkTag,
     sc.extra_acts,
   ]);
 
@@ -482,8 +599,57 @@ export function buildPrompts(dna = {}) {
     im.piercings && im.piercings !== "none" && exp("intimate", "piercings"),
   ]);
 
+  const fluidsStr = join([
+    expArr("intimate", "cum_state"),
+    expArr("intimate", "saliva"),
+    im.squirt && im.squirt !== "none" && exp("intimate", "squirt"),
+    im.lactation && im.lactation !== "none" && exp("intimate", "lactation"),
+    im.sweat && im.sweat !== "none" && exp("intimate", "sweat"),
+    im.lube && im.lube !== "none" && exp("intimate", "lube"),
+    im.tears && im.tears !== "none" && exp("intimate", "tears"),
+  ]);
+
+  // Feet section
+  const ft = dna.feet || {};
+  const feetStr = join([
+    exp("feet", "sole_presentation"),
+    expArr("feet", "toes"),
+    ft.arch && exp("feet", "arch"),
+    ft.pedicure && exp("feet", "pedicure"),
+    ft.foot_size && ft.foot_size !== "average" && exp("feet", "foot_size"),
+    expArr("feet", "foot_state"),
+    ft.hosiery && ft.hosiery !== "bare" && exp("feet", "hosiery"),
+    expArr("feet", "foot_act"),
+    ft.framing && exp("feet", "framing"),
+  ]);
+
+  // Kink section
+  const kk = dna.kink || {};
+  const kinkStr = join([
+    expArr("kink", "restraint"),
+    expArr("kink", "gag"),
+    expArr("kink", "marks"),
+    expArr("kink", "sensation"),
+    expArr("kink", "humiliation"),
+    expArr("kink", "orgasm_control"),
+    kk.power_dynamic && kk.power_dynamic !== "none" && exp("kink", "power_dynamic"),
+    expArr("kink", "group_kink"),
+  ]);
+
+  // Watersports section
+  const ws = dna.watersports || {};
+  const wsStr = join([
+    ws.source && ws.source !== "none" && exp("watersports", "source"),
+    expArr("watersports", "direction"),
+    ws.stream && exp("watersports", "stream"),
+    ws.container && exp("watersports", "container"),
+    expArr("watersports", "wetness"),
+    ws.desperation && ws.desperation !== "none" && exp("watersports", "desperation"),
+    expArr("watersports", "aftermath"),
+  ]);
+
   // Anatomical accuracy phrases — only added when the scene calls for it
-  const hasExplicit = scenarioStr || intimateStr || intensity > 0;
+  const hasExplicit = scenarioStr || intimateStr || fluidsStr || kinkStr || wsStr || explicitLevel > 0 || kinkLevel > 0;
   const anatomyStr = hasExplicit
     ? "detailed anatomy with natural proportions, anatomically correct body, realistic weight distribution, natural breast shape with realistic gravity, detailed vulva, visible labia, realistic skin flush, natural moisture"
     : "detailed anatomy with natural proportions, anatomically correct body, natural weight distribution";
@@ -497,24 +663,31 @@ export function buildPrompts(dna = {}) {
     subject,
     outfit,
     poseStr,
+    feetStr,
     sceneStr,
     lightingStr,
     camStr,
     styleStr,
     scenarioStr,
+    kinkStr,
+    wsStr,
     intimateStr,
+    fluidsStr,
     anatomyStr,
     qualityTail,
   ]);
 
+  // Negative prompt — auto-permissive: only technical quality issues + AGE SAFEGUARDS (non-removable).
+  // Never blocks intentional aesthetics like wet skin, messy makeup, bruises, gaping, etc.
   const negative = [
-    "low quality, worst quality, blurry, out of focus, jpeg artifacts, compression artifacts, noisy",
+    "low quality, worst quality, blurry, out of focus, jpeg artifacts, compression artifacts, noisy, oversharpened",
     "deformed, disfigured, mutated, extra fingers, missing fingers, fused fingers, extra limbs, missing limbs, mutated hands, poorly drawn hands, bad anatomy, bad proportions, unnatural body, floating limbs, disconnected limbs",
-    "poorly drawn face, asymmetric face, cross-eyed, poorly drawn eyes, dead eyes, ugly, unattractive",
+    "poorly drawn face, asymmetric face, cross-eyed, poorly drawn eyes, dead eyes",
     "cartoon, anime, 3d render, cgi, painting, illustration, drawing, sketch, doll-like, plastic skin, airbrushed, wax figure, uncanny valley, overly smooth skin, plastic appearance",
-    "watermark, signature, text, username, logo, artist name, cropped, frame, border",
-    "underage, child, teen, young girl, minor, loli, shota",
-    "overexposed, underexposed, harsh flash, oversaturated, washed out, blown highlights, crushed blacks",
+    "watermark, signature, text, username, logo, artist name, cropped, frame, border, censored, mosaic, black bar",
+    // AGE SAFEGUARDS — HARD LOCKED, never removed regardless of settings
+    "underage, child, teen, teenager, young girl, minor, kid, loli, shota",
+    "overexposed, blown highlights",
   ].join(", ");
 
   return { positive, negative };
@@ -660,6 +833,85 @@ export const STAR_PRESETS = [
       face: { eye_shape: "almond", eye_color: "hazel", jawline: "defined", nose: "straight", lips: "medium", expression: "playful" },
       hair: { style: "wavy", length: "long", color: "chestnut", texture: "medium", bangs: "none" },
       skin: { tone: "tan", texture: "dewy", glow: 70 },
+    },
+  },
+];
+
+
+// ============================================================
+// Kink Presets — one-tap fetish stacks applied over the current DNA.
+// Only the sections/fields listed will be patched — everything else is preserved.
+// ============================================================
+export const KINK_PRESETS = [
+  {
+    name: "Foot Goddess",
+    tags: ["feet", "worship", "POV"],
+    dna: {
+      feet: { sole_presentation: "sole showcase", toes: ["toe curl", "toe spread"], arch: "high arch", pedicure: "painted red", foot_state: ["oiled"], hosiery: "bare", foot_act: ["foot worship", "sole licking"], framing: "POV under foot" },
+      pose: { angle: "from below", distance: "detail shot", focus: "feet", body_language: "dominant" },
+      lighting: { source: "softbox", style: "cinematic", mood: "sensual" },
+      scenario: { kink_level: 55, explicit_level: 40 },
+    },
+  },
+  {
+    name: "Piss Slut",
+    tags: ["watersports", "humiliation", "wet"],
+    dna: {
+      watersports: { source: "partner", direction: ["on face", "in mouth", "on tits"], stream: "gush", container: "on bed", wetness: ["soaked panties", "dripping thighs"], desperation: "losing control", aftermath: ["smeared mascara", "wet hair"] },
+      kink: { humiliation: ["degradation stare", "spit on face", "drooling", "mascara tears"] },
+      face: { expression: "sultry" },
+      wardrobe: { state: "coming off" },
+      scenario: { explicit_level: 80, kink_level: 70 },
+    },
+  },
+  {
+    name: "Bound & Wrecked",
+    tags: ["shibari", "gag", "impact"],
+    dna: {
+      kink: { restraint: ["rope shibari", "wrists overhead"], gag: ["ball gag", "drool bib"], marks: ["red handprint", "rope marks", "welts"], humiliation: ["ahegao expression", "mind-break", "drooling", "mascara tears"], orgasm_control: ["forced orgasm", "overstimulation"], power_dynamic: "master and slave" },
+      face: { expression: "sultry" },
+      intimate: { tears: "mascara tears", saliva: ["drool from mouth", "drool from chin"] },
+      scenario: { kink_level: 90, explicit_level: 70 },
+    },
+  },
+  {
+    name: "Bukkake Queen",
+    tags: ["cum", "group", "facial"],
+    dna: {
+      scenario: { cast_size: "group", acts: ["bukkake", "facial", "cum on tits", "cum on face"], explicit_level: 95, kink_level: 40 },
+      intimate: { cum_state: ["cum on face", "cum in mouth open display", "cum on tits", "cum in hair", "cum-covered whole body"], saliva: ["drool from mouth"] },
+      pose: { angle: "front", distance: "portrait", focus: "face", body_language: "submissive" },
+    },
+  },
+  {
+    name: "Puppy Pet",
+    tags: ["pet play", "collar", "kneeling"],
+    dna: {
+      kink: { restraint: ["collar and leash"], humiliation: ["puppy hood", "on all fours pet", "leash walk", "ahegao expression", "drooling"], power_dynamic: "owner and pet" },
+      pose: { action: "all fours", body_language: "submissive", hands: ["at sides"] },
+      face: { expression: "sultry" },
+      wardrobe: { accessories: ["leather collar", "leash"] },
+      scenario: { kink_level: 75, explicit_level: 50 },
+    },
+  },
+  {
+    name: "Lactation Mommy",
+    tags: ["lactation", "milk", "MILF"],
+    dna: {
+      intimate: { nipples: "erect", areolas: "puffy dome", lactation: "milk drip", cum_state: [] },
+      physique: { bust: "huge", bust_shape: "natural" },
+      pose: { focus: "breasts", body_language: "sensual" },
+      wardrobe: { outfit_preset: "topless" },
+      scenario: { roleplay: "milf", explicit_level: 60, kink_level: 30 },
+    },
+  },
+  {
+    name: "Toilet Toy",
+    tags: ["watersports", "humiliation", "degradation"],
+    dna: {
+      watersports: { source: "group", direction: ["in mouth", "on face", "held in"], stream: "steady stream", container: "toilet", desperation: "humiliated", aftermath: ["smeared mascara", "wet hair", "wet clothes"] },
+      kink: { restraint: ["collar and leash"], humiliation: ["degradation stare", "spit on face", "used", "wrecked", "drooling"], power_dynamic: "owner and pet" },
+      scenario: { explicit_level: 90, kink_level: 85 },
     },
   },
 ];

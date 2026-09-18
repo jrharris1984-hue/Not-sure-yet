@@ -74,6 +74,51 @@ export const POSE_PACKS = [
       "all fours",
     ],
   },
+  {
+    key: "foot_set",
+    name: "Foot Set",
+    hint: "Sole-up, footjob POV, foot worship",
+    poses: [
+      "lying legs up",
+      "lying stomach",
+      "sitting on edge",
+      "kneeling upright",
+      "over shoulder look",
+      "lying side",
+      "on back legs up",
+      "all fours",
+    ],
+  },
+  {
+    key: "watersports_set",
+    name: "Watersports Set",
+    hint: "Desperation, mid-stream, aftermath",
+    poses: [
+      "squatting spread",
+      "standing legs apart",
+      "sitting legs open",
+      "kneeling upright",
+      "lying back",
+      "standing hip out",
+      "over shoulder look",
+      "leaning wall",
+    ],
+  },
+  {
+    key: "kink_set",
+    name: "Kink Set",
+    hint: "Tied, gagged, spanked, worshipping",
+    poses: [
+      "kneeling upright",
+      "wrists overhead",
+      "arched on knees",
+      "all fours",
+      "doggy arched",
+      "kneeling hands floor",
+      "kneeling back arched",
+      "lying stomach",
+    ],
+  },
 ];
 
 export const getPack = (key) => POSE_PACKS.find((p) => p.key === key);

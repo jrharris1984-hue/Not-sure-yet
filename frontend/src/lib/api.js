@@ -51,4 +51,8 @@ export const endpoints = {
   getShoot: (id) => api.get(`/shoots/${id}`).then((r) => r.data),
   deleteShoot: (id) => api.delete(`/shoots/${id}`).then((r) => r.data),
   retryShootFrame: (id, index, body = {}) => api.post(`/shoots/${id}/retry/${index}`, body).then((r) => r.data),
+  // Kink presets
+  listKinkPresets: () => api.get("/kink_presets").then((r) => r.data),
+  createKinkPreset: (body) => api.post("/kink_presets", body).then((r) => r.data),
+  deleteKinkPreset: (id) => api.delete(`/kink_presets/${id}`).then((r) => r.data),
 };

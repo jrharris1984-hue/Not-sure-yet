@@ -17,18 +17,16 @@ Web-based, mobile-first personal tool for a solo user to design realistic adult 
 - No auth. All NSFW content stays local.
 
 ## What's been implemented (2026-02)
-- FastAPI backend (`/app/backend/server.py`): `/api/health`, `/api/settings`, `/api/comfyui/health` + `/object_info`, full `/api/characters` CRUD + `duplicate`, `/api/renders` list + dispatch + poll + delete, `/api/ai/freeform|refine|suggest` (OpenRouter direct via httpx)
-- **Photo Shoot (2026-02)**: `/api/shoots` CRUD (`POST/GET/DELETE`), `/api/shoots/{id}/retry/{frame_index}`. Sequential background dispatcher builds N frames (4-20) applying pose + outfit + seed overrides per frame; ComfyUI-offline tolerant. Frames linked to `renders` via `shoot_id` + `shoot_frame_index`. Seed modes: `same` / `character_pose` (base + i) / `fresh`.
-- Mongo collections: `characters`, `renders`, `settings` (singleton), `shoots`
-- Frontend routes: `/` Library, `/character/new`, `/character/:id` Builder, `/gallery`, `/settings`, `/shoots`, `/shoot/new/:characterId`, `/shoot/:shootId`
-- Photo Shoot UI: 3 pose modes (Random / Pack / Manual pick), curated pose packs (Editorial, Boudoir, Portrait, Action, Explicit), outfit rotation across shots, scenario lock toggle, seed mode selector, live shot-list preview, per-frame retry, delete shoot
-- Studio-dark theme (Outfit/Manrope/JetBrains Mono, amber+emerald accents, grain overlay, hairline borders, chip pills, tactile sliders)
-- Mobile bottom nav (5 tabs) + desktop 3-pane builder with sticky section rail
-- Live prompt builder from DNA (`buildPrompts` in `lib/dna.js`) + copy-to-clipboard
-- Randomize all / per-section, section lock, per-section AI suggest, export/import DNA JSON
-- OpenRouter integration (user key in Settings, defaults to `cognitivecomputations/dolphin-mixtral-8x7b`)
-- ComfyUI dispatcher: paste-your-own workflow JSON with configurable positive/negative prompt node IDs; graceful `offline` status when ComfyUI unreachable; seed override auto-patches `seed` and `noise_seed` on all sampler nodes
-- data-testid coverage on every interactive control
+- FastAPI backend (`/app/backend/server.py`): `/api/health`, `/api/settings`, `/api/comfyui/health` + `/object_info`, full `/api/characters` CRUD + `duplicate`, `/api/renders` list + dispatch + poll + delete + cancel, `/api/ai/freeform|refine|suggest` (OpenRouter direct via httpx), `/api/ws/comfyui` WS proxy for live previews, `/api/kink_presets` CRUD, `/api/characters/tags` cloud
+- **Photo Shoot**: `/api/shoots` CRUD, retry, sequential background dispatcher with pose+outfit+seed overrides; ComfyUI-offline tolerant. Shoot packs: Editorial, Boudoir, Portrait, Action, Explicit, Foot Set, Watersports Set, Kink Set.
+- **Wet Dream Expansion (2026-02)**: 3 new DNA sections (Feet, Kink, Watersports) → wizard is now 16 steps. Intimate expanded with fluids/mess sub-block (cum_state, saliva, squirt, lactation, sweat, lube, tears). Scenario acts extended with extreme insertion / rough / cum play / fantasy groups. Single Intensity dial replaced with dual Explicit + Kink dials (multiplied into prompt independently). Raunch mode toggle per-character swaps editorial vocabulary for graphic vernacular in Venice prompts (Pony stays untouched). Pony builder gets canonical booru tag mapping (foot_focus, footjob, peeing, urine, watersports, shibari, bondage, ahegao, cum_in_pussy, etc.). 7 Kink Presets built-in (Foot Goddess, Piss Slut, Bound & Wrecked, Bukkake Queen, Puppy Pet, Lactation Mommy, Toilet Toy) + "save current" custom preset store.
+- **Live Preview**: WebSocket proxy + `useComfyWs` hook + `LivePreview` component streams ComfyUI sampler previews (binary frames) and step progress inline in Builder render panel and Shoot frame cards.
+- **Cancel Render**: `POST /api/renders/{rid}/cancel` calls ComfyUI `/interrupt` + `/queue` DELETE + local `cancelled` state. Stop button on every LivePreview overlay.
+- **Tag Filters**: `GET /api/characters/tags` cloud with counts. Library chip row for AND filtering (`?tag=a&tag=b`). Builder TagInput chip editor.
+- **Age safeguards**: negative prompt hard-locks "underage, child, teen, teenager, young girl, minor, kid, loli, shota" in both Venice and Pony builders — non-removable in every path. DNA age slider stays at 18-70 (min: 18).
+- Mongo collections: `characters`, `renders`, `settings` (singleton), `shoots`, `kink_presets`
+- Frontend routes: `/` Library, `/character/new`, `/character/:id` Builder, `/gallery`, `/settings`, `/shoots`, `/shoot/new/:cid`, `/shoot/:sid`
+- Studio-dark theme, mobile bottom nav (5 tabs), data-testid coverage everywhere
 
 ## Prioritized backlog
 
@@ -36,22 +34,24 @@ Web-based, mobile-first personal tool for a solo user to design realistic adult 
 - (none)
 
 ### P1
-- Save Per-Character LoRA Weights & preferred workflow (recall exact tuning on re-render)
-- WebSocket live progress from ComfyUI (currently polls `/history` every 2.5s)
-- Video workflow polish (audio, frame count, aspect from DNA `camera.aspect_ratio`)
-- Tag chips + tag filter UI
+- Save Per-Character LoRA Weights & preferred workflow
+- Contact Sheet Export (PDF/grid image of a shoot)
+- WebSocket ComfyUI `/ws` for live progress — DONE
+- Video-specific kink motion presets
 
 ### P2
+- Now-Rendering floating strip (watch previews from any page)
+- Shoot Presets (save entire shoot config)
+- Auto-suggest tags from DNA on save
 - LoRA/checkpoint pickers pulled from `/object_info`
 - Save Custom Expansions (edit chip expansion phrases in Settings)
-- Raw Prompt Override (advanced text-area before dispatch)
+- Raw Prompt Override (advanced text area before dispatch)
 - Multi-select Cast Type
 - Fallback Per-Kind (image/video/edit)
-- Optional Object Storage for gallery sharing
-- Render queue view / cancel button
+- Render queue view / cancel button (per-render cancel — DONE)
 - Prompt token weighting UI (e.g., `(term:1.2)`)
 
 ## Next tasks
+- Contact Sheet Export
 - Save Per-Character LoRA Weights + preferred workflow
-- Wire WebSocket to ComfyUI `/ws` for live progress
-- Tag input + tag filter chips in Library
+- Now-Rendering floating strip

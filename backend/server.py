@@ -55,6 +55,7 @@ class Character(BaseModel):
     locks: Dict[str, bool] = Field(default_factory=dict)
     tags: List[str] = Field(default_factory=list)
     favorite: bool = False
+    raunch: bool = False  # graphic-vernacular prompt mode
     prompt_positive: str = ""
     prompt_negative: str = ""
     created_at: str = Field(default_factory=now_iso)
@@ -67,6 +68,7 @@ class CharacterUpsert(BaseModel):
     locks: Optional[Dict[str, bool]] = None
     tags: Optional[List[str]] = None
     favorite: Optional[bool] = None
+    raunch: Optional[bool] = None
     prompt_positive: Optional[str] = None
     prompt_negative: Optional[str] = None
 
@@ -566,6 +568,7 @@ async def create_character(body: CharacterUpsert):
         locks=body.locks or {},
         tags=body.tags or [],
         favorite=body.favorite or False,
+        raunch=body.raunch or False,
         prompt_positive=body.prompt_positive or "",
         prompt_negative=body.prompt_negative or "",
     )
@@ -611,6 +614,43 @@ async def duplicate_character(cid: str):
     doc["updated_at"] = now_iso()
     await db.characters.insert_one(doc)
     return Character(**doc)
+
+
+# ============================================================
+# Kink Presets — user-saved fetish DNA stacks
+# ============================================================
+class KinkPreset(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=new_id)
+    name: str = "Untitled preset"
+    tags: List[str] = Field(default_factory=list)
+    dna: Dict[str, Any] = Field(default_factory=dict)
+    created_at: str = Field(default_factory=now_iso)
+
+
+class KinkPresetBody(BaseModel):
+    name: str
+    tags: Optional[List[str]] = None
+    dna: Dict[str, Any]
+
+
+@api.get("/kink_presets")
+async def list_kink_presets():
+    docs = await db.kink_presets.find({}, {"_id": 0}).sort("created_at", -1).to_list(500)
+    return docs
+
+
+@api.post("/kink_presets", response_model=KinkPreset)
+async def create_kink_preset(body: KinkPresetBody):
+    kp = KinkPreset(name=body.name, tags=body.tags or [], dna=body.dna)
+    await db.kink_presets.insert_one(kp.model_dump())
+    return kp
+
+
+@api.delete("/kink_presets/{pid}")
+async def delete_kink_preset(pid: str):
+    await db.kink_presets.delete_one({"id": pid})
+    return {"ok": True}
 
 
 @api.get("/characters/{cid}/renders")
