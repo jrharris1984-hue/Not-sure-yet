@@ -203,9 +203,40 @@ export function buildPonyPrompts(dna = {}, opts = {}) {
   const ageStr = id.age ? `${id.age} years old, mature adult woman, unmistakably adult` : "adult woman";
   const ethn = exp("identity", "ethnicity") || "woman";
 
+  // Cast headcount — determine subject count from cast_size + cast_type
+  const castSize = sc.cast_size || "solo";
+  const castType = sc.cast_type || "none";
+  const isPairing = castType && castType !== "none";
+  // Any non-solo pairing forces at least 2 subjects
+  const countTag = (() => {
+    if (castSize === "duo" || (isPairing && castSize === "solo")) return "2girls";
+    if (castSize === "threesome") return "3girls";
+    if (castSize === "foursome") return "4girls";
+    if (castSize === "group") return "multiple_girls, 5girls";
+    if (castSize === "gangbang" || castSize === "orgy") return "multiple_girls, 6+girls";
+    return "1girl, solo";
+  })();
+
+  // Explicit pairing booru tags — strengthen so Pony actually paints both people
+  const pairingTag = (() => {
+    if (!isPairing) return "";
+    const t = castType;
+    if (t === "twins" || t === "identical twins") return w("twins, siblings, matching_faces, identical_twins", 1.3);
+    if (t === "sisters") return w("siblings, sisters, family, two_women", 1.25);
+    if (t === "best friends" || t === "roommates") return w("two_women, best_friends", 1.15);
+    if (t.includes("mother") || t.includes("stepmom") || t.includes("aunt") || t.includes("grandma") || t.includes("granny") || t.includes("mature and young"))
+      return w("mother_and_daughter, family, multiple_generations, older_and_younger_woman, age_difference, two_women", 1.35);
+    if (t.includes("teacher") || t.includes("boss") || t.includes("nurse") || t.includes("coach"))
+      return w("two_women, age_difference", 1.2);
+    if (t === "dominant and submissive" || t === "wife and mistress")
+      return w("two_women, femdom", 1.2);
+    return w("two_women", 1.2);
+  })();
+
   const subject = join([
     id.name && w(`portrait of ${id.name}`, 1.2),
-    "1girl, solo",
+    countTag,
+    pairingTag,
     ageStr,
     ethn,
     exp("skin", "tone"),
@@ -397,6 +428,8 @@ export function buildPonyPrompts(dna = {}, opts = {}) {
   ]);
 
   // Pony negative — auto-permissive. Only technical quality + AGE SAFEGUARDS.
+  // When multi-subject cast is active, also block 'solo/1girl' so Pony renders every person.
+  const multiSubject = countTag !== "1girl, solo";
   const negative = [
     "score_6, score_5, score_4, score_3, score_2, score_1",
     "worst quality, low quality, jpeg artifacts, compression artifacts, blurry, noisy, oversharpened",
@@ -409,8 +442,10 @@ export function buildPonyPrompts(dna = {}, opts = {}) {
     "four_toes, three_toes, six_toes, seven_toes, extra_toes, missing_toes, fused_toes, mutated_feet, deformed_feet, malformed_feet, extra_feet",
     "hands_instead_of_feet, hand_as_foot, fingers_instead_of_toes, finger_toes, knuckles_on_feet, palm_instead_of_sole, fingernails_on_toes, wrist_instead_of_ankle, foot_with_fingers, extra_hand_in_frame, floating_hand",
     "unnatural breasts, malformed breasts, asymmetrical breasts, bolted-on breasts",
+    // Multi-subject enforcement — Pony often defaults to single subject even when cast is duo+
+    multiSubject && "solo, 1girl, single_subject, cropped_partner, missing_second_person",
     "text, watermark, signature, logo, censored, mosaic, black bar",
-  ].join(", ");
+  ].filter(Boolean).join(", ");
 
   return { positive, negative };
 }

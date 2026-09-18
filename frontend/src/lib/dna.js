@@ -564,7 +564,21 @@ export function buildPrompts(dna = {}, opts = {}) {
 
   const nameTag = id.name ? `portrait of ${id.name}` : "";
 
-  const subject = join([nameTag, subjectHead, subjectBody, subjectFace, hairStr, hairExtras, skinDetails]);
+  // Cast headcount — force multi-subject language when scenario says duo/threesome/pair
+  const sc0 = dna.scenario || {};
+  const cs = sc0.cast_size || "solo";
+  const ct = sc0.cast_type || "none";
+  const isPairing = ct && ct !== "none";
+  const castHeadcount = (() => {
+    if (cs === "duo" || (isPairing && cs === "solo")) return "two women in the frame, both fully visible, full bodies of both subjects shown";
+    if (cs === "threesome") return "three women in the frame, all fully visible, full bodies of all three subjects shown";
+    if (cs === "foursome") return "four women in the frame, all fully visible, full bodies of all four subjects shown";
+    if (cs === "group") return "five women in the frame, ensemble scene, every subject clearly visible";
+    if (cs === "gangbang" || cs === "orgy") return "multiple people in the frame, group scene, every subject clearly visible in the composition";
+    return "";
+  })();
+
+  const subject = join([nameTag, castHeadcount, subjectHead, subjectBody, subjectFace, hairStr, hairExtras, skinDetails]);
 
   // -------- 3. OUTFIT --------
   const wd = dna.wardrobe || {};
@@ -761,6 +775,7 @@ export function buildPrompts(dna = {}, opts = {}) {
 
   // Negative prompt — auto-permissive: only technical quality issues + AGE SAFEGUARDS (non-removable).
   // Never blocks intentional aesthetics like wet skin, messy makeup, bruises, gaping, etc.
+  const multiSubjectExpected = !!castHeadcount;
   const negative = [
     "low quality, worst quality, blurry, out of focus, jpeg artifacts, compression artifacts, noisy, oversharpened",
     "deformed, disfigured, mutated, extra fingers, missing fingers, fused fingers, extra limbs, missing limbs, mutated hands, poorly drawn hands, bad anatomy, bad proportions, unnatural body, floating limbs, disconnected limbs",
@@ -772,8 +787,10 @@ export function buildPrompts(dna = {}, opts = {}) {
     "watermark, signature, text, username, logo, artist name, cropped, frame, border, censored, mosaic, black bar",
     // AGE SAFEGUARDS — HARD LOCKED, never removed regardless of settings
     "underage, child, teen, teenager, young girl, minor, kid, loli, shota",
+    // Multi-subject enforcement — when scenario asks for multiple people, block single-subject output
+    multiSubjectExpected && "solo shot, single person in frame, only one woman in the frame, missing second person, cropped-out partner",
     "overexposed, blown highlights",
-  ].join(", ");
+  ].filter(Boolean).join(", ");
 
   return { positive, negative };
 }
