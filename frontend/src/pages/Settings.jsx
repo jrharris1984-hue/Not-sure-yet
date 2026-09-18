@@ -276,27 +276,25 @@ export default function Settings() {
       <section className="pane p-5 space-y-4">
         <div className="flex items-center gap-2">
           <KeyRound className="h-4 w-4 text-amber-400" />
-          <div className="section-label">OpenRouter (AI Assist)</div>
+          <div className="section-label">Venice.AI (AI Assist)</div>
+        </div>
+        <div className="text-[11px] text-zinc-400 leading-relaxed">
+          AI Assist is powered by <code className="text-amber-300">Venice.AI</code> (uncensored, NSFW-permissive).
+          The API key and model are read from <code>backend/.env</code>:
+          <code className="block mt-1 text-zinc-500">VENICE_API_KEY, VENICE_MODEL (default: venice-uncensored)</code>
+          <span className="block mt-2 text-zinc-500">
+            Get a key at <a href="https://venice.ai" target="_blank" rel="noreferrer" className="text-amber-300 underline">venice.ai</a>.
+            The legacy key field below is a fallback if the env var isn't set.
+          </span>
         </div>
         <label className="block space-y-1">
-          <span className="text-xs uppercase tracking-widest text-zinc-500 font-mono">API key</span>
+          <span className="text-xs uppercase tracking-widest text-zinc-500 font-mono">Fallback API key (optional)</span>
           <Input
             data-testid="input-openrouter-key"
             type="password"
             value={form.openrouter_api_key}
             onChange={(e) => set("openrouter_api_key", e.target.value)}
-            placeholder="sk-or-v1-..."
-            className="bg-elevated border-hairline font-mono"
-          />
-          <p className="text-[11px] text-zinc-500">Get a key at openrouter.ai/keys. NSFW-permissive models supported.</p>
-        </label>
-        <label className="block space-y-1">
-          <span className="text-xs uppercase tracking-widest text-zinc-500 font-mono">Model</span>
-          <Input
-            data-testid="input-openrouter-model"
-            value={form.openrouter_model}
-            onChange={(e) => set("openrouter_model", e.target.value)}
-            placeholder="cognitivecomputations/dolphin-mixtral-8x7b"
+            placeholder="only used if VENICE_API_KEY env var is missing"
             className="bg-elevated border-hairline font-mono"
           />
         </label>

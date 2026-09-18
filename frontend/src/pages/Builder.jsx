@@ -1,11 +1,18 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Save, Shuffle, Download, Upload, Loader2, Play, ChevronLeft, ChevronRight, Camera, Sparkles, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 import { endpoints } from "@/lib/api";
-import { SECTIONS, DEFAULT_DNA, randomizeDna, randomizeSection, randomizeWetDream, resetSection, buildPrompts, phaseOfSection } from "@/lib/dna";
-import { buildPonyPrompts } from "@/lib/ponyPrompts";
+import {
+  SECTIONS, DEFAULT_DNA,
+  randomizeDna, randomizeSection, randomizeWetDream, resetSection,
+  buildPrompts, buildMultiVenicePrompts,
+  phaseOfSection,
+  MAX_SUBJECTS, makeSubject, subjectsFromCharacter, subjectLabel,
+  expectedSubjectCount, seedSubjectFromPairing,
+} from "@/lib/dna";
+import { buildPonyPrompts, buildMultiPonyPrompts } from "@/lib/ponyPrompts";
 import DnaSection from "@/components/DnaSection";
 import PromptPreview from "@/components/PromptPreview";
 import AiAssistBar from "@/components/AiAssistBar";
@@ -17,6 +24,7 @@ import TagInput from "@/components/TagInput";
 import GroupedSectionRail from "@/components/GroupedSectionRail";
 import DnaAtAGlance from "@/components/DnaAtAGlance";
 import MobileOverflow from "@/components/MobileOverflow";
+import SubjectSwitcher from "@/components/SubjectSwitcher";
 import { Flame } from "lucide-react";
 import { Input } from "@/components/ui/input";
 
@@ -33,9 +41,10 @@ export default function Builder() {
   const goSection = (key) => nav(sectionUrl(key));
 
   const [name, setName] = useState("Untitled");
-  const [dna, setDna] = useState(DEFAULT_DNA);
-  const [locks, setLocks] = useState({});
-  const [fieldLocks, setFieldLocks] = useState({});   // {section: {field: bool}}
+  // Multi-subject store: [{id, label, dna, field_locks}]. subjects[0] is Subject A (primary).
+  const [subjects, setSubjects] = useState(() => [makeSubject({ label: "A" })]);
+  const [activeSubjectId, setActiveSubjectId] = useState(() => "");
+  const [locks, setLocks] = useState({}); // section-level locks (shared across subjects — shot-level)
   const [collapsed, setCollapsed] = useState({});     // {sectionKey|'_glance': bool}
   const [tags, setTags] = useState([]);
   const [raunch, setRaunch] = useState(false);
@@ -64,9 +73,12 @@ export default function Builder() {
   useEffect(() => {
     if (!character) return;
     setName(character.name || "Untitled");
-    setDna({ ...DEFAULT_DNA, ...(character.dna || {}) });
+    const subs = subjectsFromCharacter(character);
+    setSubjects(subs);
+    setActiveSubjectId(character.active_subject_id && subs.find((s) => s.id === character.active_subject_id)
+      ? character.active_subject_id
+      : subs[0].id);
     setLocks(character.locks || {});
-    setFieldLocks(character.field_locks || {});
     // Auto-fold the DNA at-a-glance panel on mobile if the user has never set a preference
     const savedCollapsed = character.collapsed || {};
     if (typeof savedCollapsed._glance === "undefined" && typeof window !== "undefined" && window.innerWidth < 1024) {
@@ -76,18 +88,80 @@ export default function Builder() {
     }
     setTags(Array.isArray(character.tags) ? character.tags : []);
     setRaunch(!!character.raunch);
-    // Only re-hydrate when the character ID changes, not on every refetch (would clobber unsaved edits)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [character?.id]);
 
+  // Ensure active id is always valid.
+  useEffect(() => {
+    if (!subjects.length) return;
+    if (!activeSubjectId || !subjects.find((s) => s.id === activeSubjectId)) {
+      setActiveSubjectId(subjects[0].id);
+    }
+  }, [subjects, activeSubjectId]);
+
+  const activeSubjectIdx = Math.max(0, subjects.findIndex((s) => s.id === activeSubjectId));
+  const activeSubject = subjects[activeSubjectIdx] || subjects[0];
+  const activeDna = activeSubject?.dna || DEFAULT_DNA;
+  const activeFieldLocks = activeSubject?.field_locks || {};
+  const primaryDna = subjects[0]?.dna || DEFAULT_DNA;
+
+  // Whenever the user changes cast_size / cast_type in scenario, we may want to auto-add
+  // a subject B (only if not already present, and we've truly upgraded to multi-subject).
+  const prevPairingRef = useRef("");
+  useEffect(() => {
+    const key = `${primaryDna?.scenario?.cast_size || "solo"}|${primaryDna?.scenario?.cast_type || "none"}`;
+    if (prevPairingRef.current === key) return;
+    prevPairingRef.current = key;
+    const expected = expectedSubjectCount(primaryDna);
+    if (expected > subjects.length && subjects.length < MAX_SUBJECTS) {
+      // Auto-add one subject (never more than one at a time — user can add more via UI).
+      const seeded = seedSubjectFromPairing(primaryDna, subjects.length);
+      const newSub = makeSubject({ label: subjectLabel(subjects.length), dna: seeded });
+      setSubjects((cur) => [...cur, newSub]);
+      toast.success(`Subject ${newSub.label} added — scenario expects ${expected} subjects`);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [primaryDna?.scenario?.cast_size, primaryDna?.scenario?.cast_type]);
+
+  const updateActiveSubject = (updater) => {
+    setSubjects((cur) => cur.map((s) => (s.id === activeSubjectId ? { ...s, ...updater(s) } : s)));
+  };
+  const setActiveDna = (newDna) => updateActiveSubject(() => ({ dna: newDna }));
+  const setActiveFieldLocks = (newLocks) => updateActiveSubject(() => ({ field_locks: newLocks }));
+
+  const setSection = (key, val) => setActiveDna({ ...activeDna, [key]: val });
+
+  const isMulti = subjects.length > 1;
   const { positive, negative } = useMemo(
-    () => (promptStyle === "pony" ? buildPonyPrompts(dna, { raunch }) : buildPrompts(dna, { raunch })),
-    [dna, promptStyle, raunch]
+    () => {
+      if (isMulti) {
+        return promptStyle === "pony"
+          ? buildMultiPonyPrompts(subjects, { raunch })
+          : buildMultiVenicePrompts(subjects, { raunch });
+      }
+      return promptStyle === "pony"
+        ? buildPonyPrompts(activeDna, { raunch })
+        : buildPrompts(activeDna, { raunch });
+    },
+    [subjects, isMulti, activeDna, promptStyle, raunch]
   );
 
   const save = useMutation({
     mutationFn: async () => {
-      const payload = { name, dna, locks, field_locks: fieldLocks, collapsed, tags, raunch, prompt_positive: positive, prompt_negative: negative };
+      // Persist subjects[]. Also mirror Subject A into dna/field_locks for backward compat.
+      const payload = {
+        name,
+        dna: subjects[0]?.dna || {},
+        field_locks: subjects[0]?.field_locks || {},
+        subjects: subjects.map((s) => ({ id: s.id, label: s.label, dna: s.dna, field_locks: s.field_locks })),
+        active_subject_id: activeSubjectId,
+        locks,
+        collapsed,
+        tags,
+        raunch,
+        prompt_positive: positive,
+        prompt_negative: negative,
+      };
       if (isNew) {
         const created = await endpoints.createCharacter(payload);
         return created;
@@ -112,7 +186,9 @@ export default function Builder() {
     try {
       const r = await endpoints.dispatchRender({
         character_id: isNew ? undefined : id,
-        dna,
+        // Send primary subject DNA (backward compat) + all subjects for future backend use.
+        dna: subjects[0]?.dna || {},
+        subjects: subjects.map((s) => ({ label: s.label, dna: s.dna })),
         prompt_positive: positive,
         prompt_negative: negative,
         workflow_id: workflowId,
@@ -141,7 +217,10 @@ export default function Builder() {
   }, [activeRender?.id, activeRender?.status]);
 
   const exportJson = () => {
-    const blob = new Blob([JSON.stringify({ name, dna, locks }, null, 2)], { type: "application/json" });
+    const blob = new Blob(
+      [JSON.stringify({ name, subjects, locks, tags }, null, 2)],
+      { type: "application/json" }
+    );
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -158,28 +237,82 @@ export default function Builder() {
       try {
         const parsed = JSON.parse(reader.result);
         if (parsed.name) setName(parsed.name);
-        if (parsed.dna) setDna({ ...DEFAULT_DNA, ...parsed.dna });
+        if (Array.isArray(parsed.subjects) && parsed.subjects.length) {
+          const subs = subjectsFromCharacter({ subjects: parsed.subjects });
+          setSubjects(subs);
+          setActiveSubjectId(subs[0].id);
+        } else if (parsed.dna) {
+          const subs = subjectsFromCharacter({ dna: parsed.dna, field_locks: parsed.field_locks });
+          setSubjects(subs);
+          setActiveSubjectId(subs[0].id);
+        }
         if (parsed.locks) setLocks(parsed.locks);
+        if (Array.isArray(parsed.tags)) setTags(parsed.tags);
         toast.success("Imported");
       } catch { toast.error("Invalid JSON"); }
     };
     reader.readAsText(file);
   };
 
-  const setSection = (key, val) => setDna({ ...dna, [key]: val });
-
   const runSuggest = async (sectionKey) => {
     try {
-      const res = await endpoints.aiSuggest(sectionKey, dna);
+      const res = await endpoints.aiSuggest(sectionKey, activeDna);
       const first = res.options?.[0];
       if (first) {
-        setSection(sectionKey, { ...(dna[sectionKey] || {}), ...first });
+        setSection(sectionKey, { ...(activeDna[sectionKey] || {}), ...first });
         toast.success(`Suggested ${sectionKey}`);
       }
     } catch (e) {
       toast.error(e?.response?.data?.detail || "AI suggest failed");
     }
   };
+
+  // -------- Subject switcher actions --------
+  const addSubject = () => {
+    if (subjects.length >= MAX_SUBJECTS) {
+      toast.error(`Max ${MAX_SUBJECTS} subjects`);
+      return;
+    }
+    const seeded = seedSubjectFromPairing(primaryDna, subjects.length);
+    const label = subjectLabel(subjects.length);
+    const newSub = makeSubject({ label, dna: seeded });
+    setSubjects((cur) => [...cur, newSub]);
+    setActiveSubjectId(newSub.id);
+    toast.success(`Subject ${label} added`);
+  };
+  const removeSubject = (subjectId) => {
+    if (subjects.length <= 1) return;
+    setSubjects((cur) => {
+      const filtered = cur.filter((s) => s.id !== subjectId);
+      // Re-label sequentially so A, B, C stays contiguous
+      return filtered.map((s, i) => ({ ...s, label: subjectLabel(i) }));
+    });
+    // If we removed the active one, snap to Subject A
+    if (subjectId === activeSubjectId) setActiveSubjectId(subjects[0].id);
+  };
+  const copyPrimaryToActive = () => {
+    if (activeSubjectIdx === 0) {
+      toast.error("Copy target is Subject A itself");
+      return;
+    }
+    const cloneDna = JSON.parse(JSON.stringify(primaryDna));
+    // Preserve name — copies shouldn't have the same name field
+    cloneDna.identity = { ...cloneDna.identity, name: "" };
+    updateActiveSubject(() => ({ dna: cloneDna }));
+    toast.success(`Copied Subject A → Subject ${activeSubject.label}`);
+  };
+  const randomizeActive = () =>
+    updateActiveSubject((s) => ({ dna: randomizeDna(s.dna, locks, s.field_locks) }));
+  const randomizeAllSubjects = () => {
+    setSubjects((cur) => cur.map((s) => ({ ...s, dna: randomizeDna(s.dna, locks, s.field_locks) })));
+    toast.success(`Randomized ${subjects.length} subject${subjects.length > 1 ? "s" : ""}`);
+  };
+  const wetDreamActive = () => {
+    updateActiveSubject((s) => ({ dna: randomizeWetDream(s.dna, locks) }));
+    toast.success(`Wet dream · Subject ${activeSubject.label} 🎲`);
+  };
+
+  const expectedCount = expectedSubjectCount(primaryDna);
 
   return (
     <div className="mx-auto max-w-[1600px] px-3 sm:px-6 py-4 sm:py-6 space-y-4">
@@ -222,34 +355,35 @@ export default function Builder() {
           </button>
           <MobileOverflow testId="builder-overflow">
             <button
-              onClick={() => setDna(randomizeDna(dna, locks, fieldLocks))}
+              onClick={randomizeAllSubjects}
               data-testid="btn-randomize-all"
               className="inline-flex items-center gap-1.5 rounded-lg border hairline px-3 py-2 text-sm text-zinc-200 hover:bg-white/5"
+              title={isMulti ? `Randomize all ${subjects.length} subjects` : "Randomize DNA"}
             >
-              <Shuffle className="h-4 w-4" /> Randomize
+              <Shuffle className="h-4 w-4" /> {isMulti ? "Randomize all" : "Randomize"}
             </button>
             <button
-              onClick={() => { setDna(randomizeWetDream(dna, locks)); toast.success("Wet dream spun 🎲"); }}
+              onClick={wetDreamActive}
               data-testid="btn-randomize-wet-dream"
-              title="Spin feet + kink + watersports + fluids + explicit/kink dials at once"
+              title={isMulti ? `Wet dream on Subject ${activeSubject.label}` : "Spin feet + kink + watersports + fluids + explicit/kink dials"}
               className="inline-flex items-center gap-1.5 rounded-lg border border-fuchsia-500/50 bg-gradient-to-r from-fuchsia-500/15 to-amber-500/15 text-fuchsia-100 hover:from-fuchsia-500/25 hover:to-amber-500/25 text-sm font-semibold px-3 py-2"
             >
-              <Sparkles className="h-4 w-4" /> Wet dream
+              <Sparkles className="h-4 w-4" /> Wet dream{isMulti ? ` · ${activeSubject.label}` : ""}
             </button>
             <PresetsMenu
               onApply={(preset) => {
                 const next = { ...preset };
-                Object.keys(locks).forEach((k) => { if (locks[k]) next[k] = dna[k]; });
-                setDna(next);
-                toast.success("Preset applied");
+                Object.keys(locks).forEach((k) => { if (locks[k]) next[k] = activeDna[k]; });
+                setActiveDna(next);
+                toast.success(`Preset applied to Subject ${activeSubject.label}`);
               }}
             />
             <KinkPresetsMenu
-              currentDna={dna}
+              currentDna={activeDna}
               onApply={(next) => {
                 const merged = { ...next };
-                Object.keys(locks).forEach((k) => { if (locks[k]) merged[k] = dna[k]; });
-                setDna(merged);
+                Object.keys(locks).forEach((k) => { if (locks[k]) merged[k] = activeDna[k]; });
+                setActiveDna(merged);
               }}
             />
             <button
@@ -297,6 +431,19 @@ export default function Builder() {
         <TagInput value={tags} onChange={setTags} placeholder="tag this character (mood, ethnicity, persona)…" testId="builder-tags" />
       </div>
 
+      {/* Subject switcher — appears when scenario expects >1 or user manually added subjects */}
+      <SubjectSwitcher
+        subjects={subjects}
+        activeId={activeSubjectId}
+        expectedCount={expectedCount}
+        primaryLabel={subjects[0]?.label || "A"}
+        onSelect={setActiveSubjectId}
+        onAdd={addSubject}
+        onRemove={removeSubject}
+        onCopyFromPrimary={copyPrimaryToActive}
+        onRandomizeActive={randomizeActive}
+      />
+
       <div className="pane px-3 py-2 flex items-center gap-2" data-testid="glance-header">
         <button
           type="button"
@@ -305,16 +452,16 @@ export default function Builder() {
           className="flex items-center gap-2 text-left flex-1 group"
         >
           <ChevronDown className={`h-4 w-4 text-zinc-500 group-hover:text-zinc-200 transition-transform ${collapsed._glance ? "-rotate-90" : ""}`} />
-          <span className="section-label">DNA at a glance</span>
+          <span className="section-label">DNA at a glance{isMulti ? ` · ${subjects.length} subjects` : ""}</span>
         </button>
       </div>
-      {!collapsed._glance && <DnaAtAGlance dna={dna} name={name} />}
+      {!collapsed._glance && <DnaAtAGlance dna={activeDna} name={name} subjects={isMulti ? subjects : undefined} />}
 
       <div className="grid grid-cols-1 lg:grid-cols-[260px_1fr_380px] gap-4">
-        {/* Left rail - grouped-by-phase section nav */}
+        {/* Left rail - grouped-by-phase section nav (uses active subject's dna for filled dots) */}
         <aside className="hidden lg:block h-fit sticky top-20">
           <GroupedSectionRail
-            dna={dna}
+            dna={activeDna}
             locks={locks}
             activeSection={activeSection}
             onSelect={(key) => nav(sectionUrl(key))}
@@ -339,7 +486,7 @@ export default function Builder() {
         {/* Center - single active section */}
         <div className="space-y-4">
           <div className="flex items-center justify-between text-xs font-mono text-zinc-500">
-            <span>Step {activeIdx + 1} of {SECTIONS.length}</span>
+            <span>Step {activeIdx + 1} of {SECTIONS.length}{isMulti && ` · Subject ${activeSubject.label}`}</span>
             <span className={`uppercase tracking-widest section-label phase-${phaseOfSection(activeSection)}`}>{SECTIONS[activeIdx].title}</span>
           </div>
           <div className="h-1 rounded-full bg-elevated overflow-hidden">
@@ -349,20 +496,20 @@ export default function Builder() {
             />
           </div>
           <DnaSection
-            key={activeSection}
+            key={`${activeSubjectId}-${activeSection}`}
             section={SECTIONS[activeIdx]}
-            value={dna[activeSection] || {}}
+            value={activeDna[activeSection] || {}}
             onChange={(v) => setSection(activeSection, v)}
             locked={!!locks[activeSection]}
             onToggleLock={() => setLocks({ ...locks, [activeSection]: !locks[activeSection] })}
-            onRandomize={() => setSection(activeSection, randomizeSection(activeSection, dna[activeSection] || {}, fieldLocks[activeSection] || {}))}
+            onRandomize={() => setSection(activeSection, randomizeSection(activeSection, activeDna[activeSection] || {}, activeFieldLocks[activeSection] || {}))}
             onReset={() => setSection(activeSection, resetSection(activeSection))}
             onSuggest={() => runSuggest(activeSection)}
-            fieldLocks={fieldLocks[activeSection] || {}}
-            onToggleFieldLock={(fieldKey) => setFieldLocks((cur) => ({
-              ...cur,
-              [activeSection]: { ...(cur[activeSection] || {}), [fieldKey]: !(cur[activeSection] || {})[fieldKey] },
-            }))}
+            fieldLocks={activeFieldLocks[activeSection] || {}}
+            onToggleFieldLock={(fieldKey) => setActiveFieldLocks({
+              ...activeFieldLocks,
+              [activeSection]: { ...(activeFieldLocks[activeSection] || {}), [fieldKey]: !(activeFieldLocks[activeSection] || {})[fieldKey] },
+            })}
             collapsed={!!collapsed[activeSection]}
             onToggleCollapsed={() => setCollapsed((cur) => ({ ...cur, [activeSection]: !cur[activeSection] }))}
           />
@@ -409,7 +556,7 @@ export default function Builder() {
             values={loraOverrides}
             onChange={setLoraOverrides}
           />
-          <AiAssistBar dna={dna} onApplyDna={(d) => setDna({ ...DEFAULT_DNA, ...d })} />
+          <AiAssistBar dna={activeDna} onApplyDna={(d) => setActiveDna({ ...DEFAULT_DNA, ...d })} />
           {activeRender && (
             <div className="pane p-4 space-y-3" data-testid="render-status-panel">
               <div className="flex items-center justify-between">

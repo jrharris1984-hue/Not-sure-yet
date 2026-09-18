@@ -51,9 +51,12 @@ class Character(BaseModel):
     model_config = ConfigDict(extra="ignore")
     id: str = Field(default_factory=new_id)
     name: str = "Untitled"
-    dna: Dict[str, Any] = Field(default_factory=dict)
+    dna: Dict[str, Any] = Field(default_factory=dict)  # Subject A dna (backward-compat mirror of subjects[0].dna)
     locks: Dict[str, bool] = Field(default_factory=dict)
-    field_locks: Dict[str, Dict[str, bool]] = Field(default_factory=dict)  # {section: {field: bool}}
+    field_locks: Dict[str, Dict[str, bool]] = Field(default_factory=dict)  # {section: {field: bool}} — Subject A only
+    # Multi-subject store: each subject has its own DNA + field_locks. subjects[0] mirrors `dna` above.
+    subjects: List[Dict[str, Any]] = Field(default_factory=list)
+    active_subject_id: str = ""
     collapsed: Dict[str, bool] = Field(default_factory=dict)  # UI state: which panes are folded
     tags: List[str] = Field(default_factory=list)
     favorite: bool = False
@@ -69,6 +72,8 @@ class CharacterUpsert(BaseModel):
     dna: Optional[Dict[str, Any]] = None
     locks: Optional[Dict[str, bool]] = None
     field_locks: Optional[Dict[str, Dict[str, bool]]] = None
+    subjects: Optional[List[Dict[str, Any]]] = None
+    active_subject_id: Optional[str] = None
     collapsed: Optional[Dict[str, bool]] = None
     tags: Optional[List[str]] = None
     favorite: Optional[bool] = None
@@ -237,11 +242,19 @@ async def get_settings() -> Settings:
 
 
 async def openrouter_chat(system: str, user: str, response_format_json: bool = False) -> str:
+    """Chat completion via Venice.AI (uncensored NSFW-permissive LLM).
+    Falls back to Settings.openrouter_api_key if a legacy key is stored there and no
+    VENICE_API_KEY is present, but by default reads from env."""
+    venice_key = os.environ.get("VENICE_API_KEY", "").strip()
+    venice_model = os.environ.get("VENICE_MODEL", "venice-uncensored").strip() or "venice-uncensored"
     s = await get_settings()
-    if not s.openrouter_api_key:
-        raise HTTPException(status_code=400, detail="OpenRouter API key not set in Settings")
+    # Prefer env-configured Venice key. If missing, allow the legacy Settings.openrouter_api_key
+    # (users who stored a Venice key there still get served).
+    api_key = venice_key or s.openrouter_api_key
+    if not api_key:
+        raise HTTPException(status_code=400, detail="Venice API key not configured. Set VENICE_API_KEY in backend/.env.")
     payload = {
-        "model": s.openrouter_model,
+        "model": venice_model,
         "messages": [
             {"role": "system", "content": system},
             {"role": "user", "content": user},
@@ -252,17 +265,15 @@ async def openrouter_chat(system: str, user: str, response_format_json: bool = F
         payload["response_format"] = {"type": "json_object"}
     async with httpx.AsyncClient(timeout=90.0) as hc:
         r = await hc.post(
-            "https://openrouter.ai/api/v1/chat/completions",
+            "https://api.venice.ai/api/v1/chat/completions",
             headers={
-                "Authorization": f"Bearer {s.openrouter_api_key}",
-                "HTTP-Referer": "https://ultra-studio.local",
-                "X-Title": "Ultra Studio DNA Builder",
+                "Authorization": f"Bearer {api_key}",
                 "Content-Type": "application/json",
             },
             json=payload,
         )
         if r.status_code >= 400:
-            raise HTTPException(status_code=502, detail=f"OpenRouter error: {r.status_code} {r.text[:400]}")
+            raise HTTPException(status_code=502, detail=f"Venice error: {r.status_code} {r.text[:400]}")
         data = r.json()
     return data["choices"][0]["message"]["content"]
 
@@ -582,6 +593,8 @@ async def create_character(body: CharacterUpsert):
         dna=body.dna or {},
         locks=body.locks or {},
         field_locks=body.field_locks or {},
+        subjects=body.subjects or [],
+        active_subject_id=body.active_subject_id or "",
         collapsed=body.collapsed or {},
         tags=body.tags or [],
         favorite=body.favorite or False,

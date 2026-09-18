@@ -463,11 +463,309 @@ export function randomizeWetDream(current = {}, locks = {}) {
   return out;
 }
 
+// Sections whose DNA is per-subject in multi-subject scenes. Everything else is
+// "shot-level" (shared) — read from the primary subject (Subject A).
+export const SUBJECT_SCOPED_SECTIONS = [
+  "identity", "physique", "face", "hair", "skin",
+  "intimate", "feet", "wardrobe", "pose",
+  "kink", "watersports",
+];
+export const SHARED_SECTIONS = ["scenario", "scene", "lighting", "camera", "style"];
+export const MAX_SUBJECTS = 4;
+const SUBJECT_LABELS = ["A", "B", "C", "D"];
+
+// Small ID helper — enough uniqueness for local UI keys.
+function _sid() {
+  return Math.random().toString(36).slice(2, 10);
+}
+
+export function makeSubject({ label, dna: initialDna, fieldLocks } = {}) {
+  return {
+    id: _sid(),
+    label: label || "A",
+    dna: initialDna || JSON.parse(JSON.stringify(DEFAULT_DNA)),
+    field_locks: fieldLocks || {},
+  };
+}
+
+// Build the subjects array from a character doc, migrating legacy (single-dna) shape.
+export function subjectsFromCharacter(character) {
+  if (character && Array.isArray(character.subjects) && character.subjects.length > 0) {
+    return character.subjects.map((s, i) => ({
+      id: s.id || _sid(),
+      label: s.label || SUBJECT_LABELS[i] || `S${i + 1}`,
+      dna: { ...DEFAULT_DNA, ...(s.dna || {}) },
+      field_locks: s.field_locks || {},
+    }));
+  }
+  return [makeSubject({
+    label: "A",
+    dna: { ...DEFAULT_DNA, ...(character?.dna || {}) },
+    fieldLocks: character?.field_locks || {},
+  })];
+}
+
+// How many subjects a scenario currently expects (min 1).
+export function expectedSubjectCount(dna = {}) {
+  const sc = dna?.scenario || {};
+  const cs = sc.cast_size || "solo";
+  const ct = sc.cast_type || "none";
+  const isPairing = ct && ct !== "none";
+  if (cs === "orgy" || cs === "gangbang") return Math.min(MAX_SUBJECTS, 4);
+  if (cs === "group") return Math.min(MAX_SUBJECTS, 4);
+  if (cs === "foursome") return 4;
+  if (cs === "threesome") return 3;
+  if (cs === "duo") return 2;
+  if (isPairing) return 2;
+  return 1;
+}
+
+// Return sensible DNA overrides for the newly-added subject given the pairing on primary DNA.
+// Only sets a few fields — never blocks user overrides. `subjectIndex` is the position of the
+// NEW subject in the subjects array (1 = second, 2 = third, ...).
+export function seedSubjectFromPairing(primaryDna = {}, subjectIndex = 1) {
+  const sc = primaryDna?.scenario || {};
+  const pairing = sc.cast_type || "none";
+  const primaryAge = Number(primaryDna?.identity?.age || 0) || 0;
+  const primaryEth = primaryDna?.identity?.ethnicity || "";
+  const base = JSON.parse(JSON.stringify(DEFAULT_DNA));
+  // Inherit ethnicity from primary by default (family scenes usually share heritage).
+  if (primaryEth) base.identity.ethnicity = primaryEth;
+
+  const setAge = (age) => { base.identity.age = age; };
+  const setArchetype = (a) => { base.identity.archetype = a; };
+
+  if (pairing === "twins" || pairing === "identical twins") {
+    // Clone A verbatim (twins should look alike)
+    return JSON.parse(JSON.stringify(primaryDna || DEFAULT_DNA));
+  }
+  if (pairing === "sisters") {
+    const clone = JSON.parse(JSON.stringify(primaryDna || DEFAULT_DNA));
+    clone.identity = { ...clone.identity, age: Math.max(21, (primaryAge || 25) - 4), name: "" };
+    return clone;
+  }
+  if (pairing === "best friends" || pairing === "roommates") {
+    setAge(Math.max(21, primaryAge || 25));
+  } else if (pairing === "mother and daughter" || pairing === "stepmom and stepdaughter") {
+    setAge(21); setArchetype("girl next door");
+  } else if (pairing === "aunt and niece") {
+    setAge(22);
+  } else if (pairing === "grandma and granddaughter" || pairing === "milf granny" || pairing === "mature and young") {
+    setAge(22);
+  } else if (pairing === "teacher and student" || pairing === "coach and athlete") {
+    setAge(21); setArchetype("athlete");
+  } else if (pairing === "boss and secretary") {
+    setAge(26);
+  } else if (pairing === "nurse and patient") {
+    setAge(28);
+  } else if (pairing === "dominant and submissive") {
+    setAge(Math.max(21, primaryAge || 25));
+    base.wardrobe.outfit_preset = "kinky harness";
+  } else if (pairing === "wife and mistress") {
+    setAge(Math.max(21, (primaryAge || 30) - 4));
+  } else {
+    // Fallback — a younger adult, roughly same age band
+    setAge(Math.max(21, (primaryAge || 25) - 2));
+  }
+  // For subjectIndex > 1 (a third/fourth subject) — nudge to a slightly different age so the
+  // group isn't a copy-paste.
+  if (subjectIndex > 1) {
+    base.identity.age = Math.max(21, (base.identity.age || 24) + (subjectIndex - 1) * 3);
+  }
+  return base;
+}
+
+export function subjectLabel(index) {
+  return SUBJECT_LABELS[index] || `S${index + 1}`;
+}
+
 // Build positive/negative prompts from DNA — Venice-style structured formula:
 // [QUALITY] + [SUBJECT] + [OUTFIT] + [POSE] + [SCENE] + [LIGHTING] + [CAMERA] + [STYLE] + [EXPLICIT]
 export function buildPrompts(dna = {}, opts = {}) {
+  const shared = _veniceSharedBlock(dna, opts, 1);
+  const subject = _veniceSubjectBlock(dna, opts);
+  const positive = _join([
+    shared.qualityLead,
+    shared.castHeadcount,
+    subject.subject,
+    subject.outfit,
+    subject.pose,
+    subject.feet,
+    shared.scene,
+    shared.lighting,
+    shared.camera,
+    shared.style,
+    shared.scenario,
+    subject.kink,
+    subject.watersports,
+    subject.intimate,
+    subject.fluids,
+    shared.anatomy(subject.hasExplicit || shared.hasExplicit),
+    shared.qualityTail,
+  ]);
+  const negative = _veniceNegative(shared.multiSubjectExpected);
+  return { positive, negative };
+}
+
+// Multi-subject Venice prompt builder. Each subject contributes its own body/wardrobe/
+// pose/intimate/feet/kink/watersports clause. Shared context (quality, scenario, scene,
+// lighting, camera, style) is taken from the primary subject's DNA.
+export function buildMultiVenicePrompts(subjects = [], opts = {}) {
+  if (!Array.isArray(subjects) || subjects.length === 0) {
+    return buildPrompts({}, opts);
+  }
+  if (subjects.length === 1) {
+    return buildPrompts(subjects[0].dna || {}, opts);
+  }
+  const primary = subjects[0].dna || {};
+  const shared = _veniceSharedBlock(primary, opts, subjects.length);
+  const clauses = subjects.map((s) => {
+    const clause = _veniceSubjectBlock(s.dna || {}, opts);
+    const label = s.label || "A";
+    return `Subject ${label} (${_subjectShortDescriptor(s.dna || {})}): ${_join([
+      clause.subject, clause.outfit, clause.pose, clause.feet,
+      clause.kink, clause.watersports, clause.intimate, clause.fluids,
+    ])}`;
+  });
+  const anyExplicit = subjects.some((s) => _veniceSubjectBlock(s.dna || {}, opts).hasExplicit) || shared.hasExplicit;
+  const positive = _join([
+    shared.qualityLead,
+    shared.castHeadcount,
+    "clearly separated subjects, all subjects fully visible in the frame with distinct bodies and faces",
+    clauses.join("; "),
+    shared.scene,
+    shared.lighting,
+    shared.camera,
+    shared.style,
+    shared.scenario,
+    shared.anatomy(anyExplicit),
+    shared.qualityTail,
+  ]);
+  const negative = _veniceNegative(true);
+  return { positive, negative };
+}
+
+// Terse "Latina 34yo hourglass" descriptor for label parenthesis.
+function _subjectShortDescriptor(dna = {}) {
+  const id = dna.identity || {};
+  const ph = dna.physique || {};
+  const hair = dna.hair || {};
+  return [
+    id.age && `${id.age}yo`,
+    id.ethnicity,
+    ph.body_type,
+    hair.color && hair.length && `${hair.color} ${hair.length} hair`,
+  ].filter(Boolean).join(" ") || "adult woman";
+}
+
+const _join = (parts, sep = ", ") => parts.filter((p) => p && String(p).trim()).map(String).join(sep);
+
+// -------- Shared shot-level block (quality, scenario, scene, lighting, camera, style) --------
+function _veniceSharedBlock(dna = {}, opts = {}, subjectCount = 1) {
   const raunch = !!opts.raunch;
-  // Value + expansion helpers
+  const val = (section, field) => dna?.[section]?.[field] || "";
+  const exp = (section, field) => {
+    const v = val(section, field);
+    return v ? expandPrompt(section, field, v, { raunch }) : "";
+  };
+  const join = _join;
+
+  const st = dna.style || {};
+  const genre = exp("style", "render") || "photorealistic photograph";
+  const qualityLead = join(["photorealistic", "hyperrealistic", "editorial photograph", "8K UHD", "highly detailed"]);
+
+  const sc0 = dna.scenario || {};
+  const cs = sc0.cast_size || "solo";
+  const ct = sc0.cast_type || "none";
+  const isPairing = ct && ct !== "none";
+  // Cast headcount — force multi-subject language when scenario says duo/threesome/pair
+  // OR when we have >1 explicit subject fed in.
+  const castHeadcount = (() => {
+    const effectiveCount = Math.max(subjectCount, 1);
+    if (effectiveCount >= 6 || cs === "gangbang" || cs === "orgy") return "multiple people in the frame, group scene, every subject clearly visible in the composition";
+    if (effectiveCount >= 5 || cs === "group") return "five women in the frame, ensemble scene, every subject clearly visible";
+    if (effectiveCount >= 4 || cs === "foursome") return "four women in the frame, all fully visible, full bodies of all four subjects shown";
+    if (effectiveCount >= 3 || cs === "threesome") return "three women in the frame, all fully visible, full bodies of all three subjects shown";
+    if (effectiveCount >= 2 || cs === "duo" || (isPairing && cs === "solo")) return "two women in the frame, both fully visible, full bodies of both subjects shown";
+    return "";
+  })();
+  const multiSubjectExpected = !!castHeadcount;
+
+  const scene = dna.scene || {};
+  const sceneStr = join([
+    scene.environment && `in a ${exp("scene", "environment")}`,
+    scene.background,
+    exp("scene", "era"),
+    scene.props && `with ${scene.props}`,
+  ]);
+  const lg = dna.lighting || {};
+  const lightingStr = join([
+    lg.source && exp("lighting", "source"),
+    lg.direction && `${lg.direction} lighting direction`,
+    lg.color_temp && `${lg.color_temp} color temperature`,
+    exp("lighting", "style"),
+    exp("lighting", "mood"),
+  ]);
+  const cam = dna.camera || {};
+  const camStr = join([
+    cam.lens && `shot on ${exp("camera", "lens")}`,
+    exp("camera", "aperture"),
+    cam.angle && `${cam.angle} camera angle`,
+    cam.aspect_ratio && `${cam.aspect_ratio} aspect ratio`,
+  ]);
+  const styleStr = join([
+    genre,
+    st.film_grain && st.film_grain !== "none" && `${st.film_grain} film grain`,
+    exp("style", "artistic_tone"),
+    st.extra,
+  ]);
+
+  const sc = dna.scenario || {};
+  const explicitLevel = Number(sc.explicit_level ?? sc.intensity ?? 0);
+  const kinkLevel = Number(sc.kink_level ?? 0);
+  const explicitTag = explicitLevel >= 85 ? "extreme depraved XXX hardcore, uncensored graphic pornographic scene"
+                     : explicitLevel >= 65 ? "hardcore explicit adult scene, uncensored NSFW"
+                     : explicitLevel >= 40 ? "explicit adult content, NSFW"
+                     : explicitLevel >= 20 ? "sensual softcore, tasteful nude" : "";
+  const kinkTag = kinkLevel >= 85 ? "extreme hardcore BDSM, brutal kink, total power exchange, degradation and mind-break"
+                 : kinkLevel >= 65 ? "hardcore kink scene, heavy BDSM, rough dominance and submission"
+                 : kinkLevel >= 40 ? "playful kink, light BDSM, teasing dominance"
+                 : kinkLevel >= 20 ? "hint of kink, light restraint or teasing" : "";
+
+  const scenarioStr = join([
+    sc.cast_size && sc.cast_size !== "solo" && exp("scenario", "cast_size"),
+    sc.cast_type && sc.cast_type !== "none" && exp("scenario", "cast_type"),
+    sc.roleplay && sc.roleplay !== "none" && exp("scenario", "roleplay"),
+    Array.isArray(sc.acts)
+      ? sc.acts.filter((a) => a && a !== "none").map((a) => expandPrompt("scenario", "acts", a, { raunch })).join(", ")
+      : (sc.acts && sc.acts !== "none" && exp("scenario", "acts")),
+    explicitTag,
+    kinkTag,
+    sc.extra_acts,
+  ]);
+
+  const qualityTail = "masterpiece, best quality, ultra-detailed, 8k resolution, sharp focus, professional photography, realistic skin texture with visible pores, detailed eyes with catchlights, physically accurate lighting, award-winning composition";
+
+  return {
+    qualityLead,
+    castHeadcount,
+    multiSubjectExpected,
+    scene: sceneStr,
+    lighting: lightingStr,
+    camera: camStr,
+    style: styleStr,
+    scenario: scenarioStr,
+    qualityTail,
+    hasExplicit: !!scenarioStr || explicitLevel > 0 || kinkLevel > 0,
+    anatomy: (has) => has
+      ? "detailed anatomy with natural proportions, anatomically correct body, realistic weight distribution, natural breast shape with realistic gravity, detailed vulva, visible labia, realistic skin flush, natural moisture"
+      : "detailed anatomy with natural proportions, anatomically correct body, natural weight distribution",
+  };
+}
+
+// -------- Per-subject Venice block (identity/body/face/hair/skin/wardrobe/pose/intimate/feet/kink/ws) --------
+function _veniceSubjectBlock(dna = {}, opts = {}) {
+  const raunch = !!opts.raunch;
   const val = (section, field) => dna?.[section]?.[field] || "";
   const exp = (section, field) => {
     const v = val(section, field);
@@ -478,14 +776,8 @@ export function buildPrompts(dna = {}, opts = {}) {
     if (!Array.isArray(v)) return "";
     return v.filter(Boolean).map((x) => expandPrompt(section, field, x, { raunch })).join(", ");
   };
-  const join = (parts, sep = ", ") => parts.filter((p) => p && String(p).trim()).map(String).join(sep);
+  const join = _join;
 
-  // -------- 1. QUALITY (leading) --------
-  const st = dna.style || {};
-  const genre = exp("style", "render") || "photorealistic photograph";
-  const quality = join(["photorealistic", "hyperrealistic", "editorial photograph", "8K UHD", "highly detailed"]);
-
-  // -------- 2. SUBJECT (age + ethnicity + skin + body + face + hair) --------
   const id = dna.identity || {};
   const ph = dna.physique || {};
   const face = dna.face || {};
@@ -518,7 +810,6 @@ export function buildPrompts(dna = {}, opts = {}) {
     ethn,
     gender.includes("woman") || ethn.includes("woman") ? "" : gender,
   ]);
-
   const subjectBody = join([
     skinTone,
     bodyType,
@@ -536,7 +827,6 @@ export function buildPrompts(dna = {}, opts = {}) {
     ex >= 75 ? "stylized exaggerated body proportions, extreme feminine silhouette" : "",
     ph.proportions,
   ]);
-
   const subjectFace = join([
     exp("face", "eye_shape"),
     exp("face", "eye_color"),
@@ -545,7 +835,6 @@ export function buildPrompts(dna = {}, opts = {}) {
     exp("face", "lips"),
     exp("face", "expression"),
   ]);
-
   const hairStr = (hair.length || hair.style || hair.color)
     ? [exp("hair", "length"), exp("hair", "style"), exp("hair", "color")].filter(Boolean).join(", ")
     : "";
@@ -553,7 +842,6 @@ export function buildPrompts(dna = {}, opts = {}) {
     hair.bangs && hair.bangs !== "none" && `${hair.bangs} bangs`,
     hair.texture && `${hair.texture} hair texture`,
   ]);
-
   const skinDetails = join([
     exp("skin", "texture"),
     skin.freckles && skin.freckles !== "none" && exp("skin", "freckles"),
@@ -561,26 +849,10 @@ export function buildPrompts(dna = {}, opts = {}) {
     skin.glow > 85 ? "oiled glistening sweaty body, wet shine on skin"
       : skin.glow > 60 ? "dewy glowing luminous skin, healthy sheen" : "",
   ]);
-
   const nameTag = id.name ? `portrait of ${id.name}` : "";
+  const subject = join([nameTag, subjectHead, subjectBody, subjectFace, hairStr, hairExtras, skinDetails]);
 
-  // Cast headcount — force multi-subject language when scenario says duo/threesome/pair
-  const sc0 = dna.scenario || {};
-  const cs = sc0.cast_size || "solo";
-  const ct = sc0.cast_type || "none";
-  const isPairing = ct && ct !== "none";
-  const castHeadcount = (() => {
-    if (cs === "duo" || (isPairing && cs === "solo")) return "two women in the frame, both fully visible, full bodies of both subjects shown";
-    if (cs === "threesome") return "three women in the frame, all fully visible, full bodies of all three subjects shown";
-    if (cs === "foursome") return "four women in the frame, all fully visible, full bodies of all four subjects shown";
-    if (cs === "group") return "five women in the frame, ensemble scene, every subject clearly visible";
-    if (cs === "gangbang" || cs === "orgy") return "multiple people in the frame, group scene, every subject clearly visible in the composition";
-    return "";
-  })();
-
-  const subject = join([nameTag, castHeadcount, subjectHead, subjectBody, subjectFace, hairStr, hairExtras, skinDetails]);
-
-  // -------- 3. OUTFIT --------
+  // -------- Wardrobe --------
   const wd = dna.wardrobe || {};
   const outfitPieces = [];
   if (wd.outfit_preset) outfitPieces.push(exp("wardrobe", "outfit_preset"));
@@ -601,7 +873,7 @@ export function buildPrompts(dna = {}, opts = {}) {
   ]);
   const outfit = join([outfitCore, outfitTail]);
 
-  // -------- 4. POSE --------
+  // -------- Pose --------
   const pose = dna.pose || {};
   const poseCore = exp("pose", "action");
   const poseFraming = join([
@@ -617,69 +889,7 @@ export function buildPrompts(dna = {}, opts = {}) {
   ]);
   const poseStr = join([poseCore, poseFraming, poseDetails]);
 
-  // -------- 5. SCENE --------
-  const scene = dna.scene || {};
-  const scenePieces = [
-    scene.environment && `in a ${exp("scene", "environment")}`,
-    scene.background,
-    exp("scene", "era"),
-    scene.props && `with ${scene.props}`,
-  ];
-  const sceneStr = join(scenePieces);
-
-  // -------- 6. LIGHTING --------
-  const lg = dna.lighting || {};
-  const lightingStr = join([
-    lg.source && exp("lighting", "source"),
-    lg.direction && `${lg.direction} lighting direction`,
-    lg.color_temp && `${lg.color_temp} color temperature`,
-    exp("lighting", "style"),
-    exp("lighting", "mood"),
-  ]);
-
-  // -------- 7. CAMERA --------
-  const cam = dna.camera || {};
-  const camStr = join([
-    cam.lens && `shot on ${exp("camera", "lens")}`,
-    exp("camera", "aperture"),
-    cam.angle && `${cam.angle} camera angle`,
-    cam.aspect_ratio && `${cam.aspect_ratio} aspect ratio`,
-  ]);
-
-  // -------- 8. STYLE --------
-  const styleStr = join([
-    genre,
-    st.film_grain && st.film_grain !== "none" && `${st.film_grain} film grain`,
-    exp("style", "artistic_tone"),
-    st.extra,
-  ]);
-
-  // -------- 9. EXPLICIT DETAILS (scenario + intimate + fluids + kink + feet + watersports) --------
-  const sc = dna.scenario || {};
-  // Backward compat: legacy `intensity` slider maps to explicit_level if new dial not set
-  const explicitLevel = Number(sc.explicit_level ?? sc.intensity ?? 0);
-  const kinkLevel = Number(sc.kink_level ?? 0);
-  const explicitTag = explicitLevel >= 85 ? "extreme depraved XXX hardcore, uncensored graphic pornographic scene"
-                     : explicitLevel >= 65 ? "hardcore explicit adult scene, uncensored NSFW"
-                     : explicitLevel >= 40 ? "explicit adult content, NSFW"
-                     : explicitLevel >= 20 ? "sensual softcore, tasteful nude" : "";
-  const kinkTag = kinkLevel >= 85 ? "extreme hardcore BDSM, brutal kink, total power exchange, degradation and mind-break"
-                 : kinkLevel >= 65 ? "hardcore kink scene, heavy BDSM, rough dominance and submission"
-                 : kinkLevel >= 40 ? "playful kink, light BDSM, teasing dominance"
-                 : kinkLevel >= 20 ? "hint of kink, light restraint or teasing" : "";
-
-  const scenarioStr = join([
-    sc.cast_size && sc.cast_size !== "solo" && exp("scenario", "cast_size"),
-    sc.cast_type && sc.cast_type !== "none" && exp("scenario", "cast_type"),
-    sc.roleplay && sc.roleplay !== "none" && exp("scenario", "roleplay"),
-    Array.isArray(sc.acts)
-      ? sc.acts.filter((a) => a && a !== "none").map((a) => expandPrompt("scenario", "acts", a, { raunch })).join(", ")
-      : (sc.acts && sc.acts !== "none" && exp("scenario", "acts")),
-    explicitTag,
-    kinkTag,
-    sc.extra_acts,
-  ]);
-
+  // -------- Intimate --------
   const intimateStr = join([
     exp("intimate", "pubic_hair"),
     exp("intimate", "pussy"),
@@ -690,7 +900,6 @@ export function buildPrompts(dna = {}, opts = {}) {
     im.body_hair && im.body_hair !== "hairless" && exp("intimate", "body_hair"),
     im.piercings && im.piercings !== "none" && exp("intimate", "piercings"),
   ]);
-
   const fluidsStr = join([
     expArr("intimate", "cum_state"),
     expArr("intimate", "saliva"),
@@ -701,7 +910,7 @@ export function buildPrompts(dna = {}, opts = {}) {
     im.tears && im.tears !== "none" && exp("intimate", "tears"),
   ]);
 
-  // Feet section
+  // -------- Feet --------
   const ft = dna.feet || {};
   const feetActive = !!(ft.sole_presentation || (Array.isArray(ft.toes) && ft.toes.length) || ft.arch || ft.pedicure ||
     (Array.isArray(ft.foot_state) && ft.foot_state.length) || ft.hosiery ||
@@ -719,7 +928,7 @@ export function buildPrompts(dna = {}, opts = {}) {
     feetActive && "clearly recognisable human feet with heel and arch and sole, exactly five distinct toes per foot with rounded toe pads, human foot anatomy not hand anatomy, ankle visible where foot meets calf, toenails not fingernails, well-defined big toe and pinky toe, toes shorter and thicker than fingers, foot shape wider at ball narrower at heel",
   ]);
 
-  // Kink section
+  // -------- Kink --------
   const kk = dna.kink || {};
   const kinkStr = join([
     expArr("kink", "restraint"),
@@ -732,7 +941,7 @@ export function buildPrompts(dna = {}, opts = {}) {
     expArr("kink", "group_kink"),
   ]);
 
-  // Watersports section
+  // -------- Watersports --------
   const ws = dna.watersports || {};
   const wsStr = join([
     ws.source && ws.source !== "none" && exp("watersports", "source"),
@@ -744,56 +953,34 @@ export function buildPrompts(dna = {}, opts = {}) {
     expArr("watersports", "aftermath"),
   ]);
 
-  // Anatomical accuracy phrases — only added when the scene calls for it
-  const hasExplicit = scenarioStr || intimateStr || fluidsStr || kinkStr || wsStr || explicitLevel > 0 || kinkLevel > 0;
-  const anatomyStr = hasExplicit
-    ? "detailed anatomy with natural proportions, anatomically correct body, realistic weight distribution, natural breast shape with realistic gravity, detailed vulva, visible labia, realistic skin flush, natural moisture"
-    : "detailed anatomy with natural proportions, anatomically correct body, natural weight distribution";
-
-  // -------- Quality suffix (technical grade) --------
-  const qualityTail = "masterpiece, best quality, ultra-detailed, 8k resolution, sharp focus, professional photography, realistic skin texture with visible pores, detailed eyes with catchlights, physically accurate lighting, award-winning composition";
-
-  // Assemble in Venice order
-  const positive = join([
-    quality,
+  return {
     subject,
     outfit,
-    poseStr,
-    feetStr,
-    sceneStr,
-    lightingStr,
-    camStr,
-    styleStr,
-    scenarioStr,
-    kinkStr,
-    wsStr,
-    intimateStr,
-    fluidsStr,
-    anatomyStr,
-    qualityTail,
-  ]);
+    pose: poseStr,
+    feet: feetStr,
+    intimate: intimateStr,
+    fluids: fluidsStr,
+    kink: kinkStr,
+    watersports: wsStr,
+    hasExplicit: !!(intimateStr || fluidsStr || kinkStr || wsStr),
+  };
+}
 
-  // Negative prompt — auto-permissive: only technical quality issues + AGE SAFEGUARDS (non-removable).
-  // Never blocks intentional aesthetics like wet skin, messy makeup, bruises, gaping, etc.
-  const multiSubjectExpected = !!castHeadcount;
-  const negative = [
+function _veniceNegative(multiSubjectExpected) {
+  return [
     "low quality, worst quality, blurry, out of focus, jpeg artifacts, compression artifacts, noisy, oversharpened",
     "deformed, disfigured, mutated, extra fingers, missing fingers, fused fingers, extra limbs, missing limbs, mutated hands, poorly drawn hands, bad anatomy, bad proportions, unnatural body, floating limbs, disconnected limbs",
-    // Toe / foot anatomy — SDXL/Pony frequently render hands as feet or miscount toes
     "extra toes, missing toes, fused toes, four toes, three toes, six toes, seven toes, deformed toes, malformed feet, mutated feet, extra feet, missing feet, wrong toe count",
     "hands instead of feet, fingers instead of toes, palm instead of sole, knuckles on feet, hand-like feet, finger-like toes, wrist instead of ankle, fingernails on toes, foot with fingers, foot that looks like a hand, floating hand in frame, extra hand in frame",
     "poorly drawn face, asymmetric face, cross-eyed, poorly drawn eyes, dead eyes",
     "cartoon, anime, 3d render, cgi, painting, illustration, drawing, sketch, doll-like, plastic skin, airbrushed, wax figure, uncanny valley, overly smooth skin, plastic appearance",
     "watermark, signature, text, username, logo, artist name, cropped, frame, border, censored, mosaic, black bar",
-    // AGE SAFEGUARDS — HARD LOCKED, never removed regardless of settings
     "underage, child, teen, teenager, young girl, minor, kid, loli, shota",
-    // Multi-subject enforcement — when scenario asks for multiple people, block single-subject output
     multiSubjectExpected && "solo shot, single person in frame, only one woman in the frame, missing second person, cropped-out partner",
     "overexposed, blown highlights",
   ].filter(Boolean).join(", ");
-
-  return { positive, negative };
 }
+
 
 // ============================================================
 // Star / celebrity presets — one-tap DNA fills

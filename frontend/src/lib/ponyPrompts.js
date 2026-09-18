@@ -169,17 +169,74 @@ const tagArr = (section, field, arr) => {
 };
 
 export function buildPonyPrompts(dna = {}, opts = {}) {
+  const shared = _ponySharedBlock(dna, opts, 1);
+  const subject = _ponySubjectBlock(dna, opts);
+  const positive = _join([
+    shared.qualityPrefix,
+    shared.ratingTag,
+    shared.countTag,
+    shared.pairingTag,
+    subject.subject,
+    subject.face,
+    subject.hair,
+    subject.outfit,
+    subject.pose,
+    subject.feet,
+    subject.intimate,
+    subject.fluids,
+    subject.kink,
+    subject.watersports,
+    shared.scenario,
+    shared.scene,
+    shared.lighting,
+    shared.camera,
+    shared.style,
+    shared.anatomy,
+  ]);
+  const negative = _ponyNegative(shared.multiSubject);
+  return { positive, negative };
+}
+
+// Multi-subject Pony builder. Shared shot context comes from primary; per-subject
+// clauses are concatenated with subject markers.
+export function buildMultiPonyPrompts(subjects = [], opts = {}) {
+  if (!Array.isArray(subjects) || subjects.length === 0) return buildPonyPrompts({}, opts);
+  if (subjects.length === 1) return buildPonyPrompts(subjects[0].dna || {}, opts);
+  const primary = subjects[0].dna || {};
+  const shared = _ponySharedBlock(primary, opts, subjects.length);
+  const clauses = subjects.map((s) => {
+    const clause = _ponySubjectBlock(s.dna || {}, opts);
+    const label = s.label || "A";
+    return `[Subject ${label}: ${_join([clause.subject, clause.face, clause.hair, clause.outfit, clause.pose, clause.feet, clause.intimate, clause.fluids, clause.kink, clause.watersports])}]`;
+  });
+  const positive = _join([
+    shared.qualityPrefix,
+    shared.ratingTag,
+    shared.countTag,
+    shared.pairingTag,
+    "separated_subjects, all_subjects_visible, distinct_bodies",
+    clauses.join(", "),
+    shared.scenario,
+    shared.scene,
+    shared.lighting,
+    shared.camera,
+    shared.style,
+    shared.anatomy,
+  ]);
+  const negative = _ponyNegative(true);
+  return { positive, negative };
+}
+
+const _join = (parts, sep = ", ") => parts.filter((p) => p && String(p).trim()).map(String).join(sep);
+
+function _ponySharedBlock(dna = {}, opts = {}, subjectCount = 1) {
   const raunch = !!opts.raunch;
-  const val = (section, field) => dna?.[section]?.[field] || "";
   const exp = (section, field) => {
-    const v = val(section, field);
+    const v = dna?.[section]?.[field] || "";
     return v ? expandPrompt(section, field, v, { raunch }) : "";
   };
-  const join = (parts, sep = ", ") => parts.filter((p) => p && String(p).trim()).map(String).join(sep);
-
-  // -------- Pony quality prefix (MANDATORY) --------
+  const join = _join;
   const qualityPrefix = "score_9, score_8_up, score_7_up, score_6_up, rating_explicit, source_photo, photorealistic, RAW professional photograph, 8k, highly detailed";
-
   const sc = dna.scenario || {};
   const explicitLevel = Number(sc.explicit_level ?? sc.intensity ?? 0);
   const kinkLevel = Number(sc.kink_level ?? 0);
@@ -190,34 +247,18 @@ export function buildPonyPrompts(dna = {}, opts = {}) {
                  : kinkLevel >= 40 ? w("bdsm, light_kink", 1.15)
                  : kinkLevel >= 20 ? "light_kink" : "";
 
-  // -------- Subject --------
-  const id = dna.identity || {};
-  const ph = dna.physique || {};
-  const face = dna.face || {};
-  const hair = dna.hair || {};
-  const im = dna.intimate || {};
-
-  const ex = Number(ph.exaggeration || 0);
-  const eWeight = ex >= 85 ? 1.5 : ex >= 65 ? 1.3 : ex >= 40 ? 1.15 : 1;
-
-  const ageStr = id.age ? `${id.age} years old, mature adult woman, unmistakably adult` : "adult woman";
-  const ethn = exp("identity", "ethnicity") || "woman";
-
-  // Cast headcount — determine subject count from cast_size + cast_type
   const castSize = sc.cast_size || "solo";
   const castType = sc.cast_type || "none";
   const isPairing = castType && castType !== "none";
-  // Any non-solo pairing forces at least 2 subjects
+  const effectiveCount = Math.max(subjectCount, 1);
   const countTag = (() => {
-    if (castSize === "duo" || (isPairing && castSize === "solo")) return "2girls";
-    if (castSize === "threesome") return "3girls";
-    if (castSize === "foursome") return "4girls";
-    if (castSize === "group") return "multiple_girls, 5girls";
-    if (castSize === "gangbang" || castSize === "orgy") return "multiple_girls, 6+girls";
+    if (effectiveCount >= 6 || castSize === "orgy" || castSize === "gangbang") return "multiple_girls, 6+girls";
+    if (effectiveCount >= 5 || castSize === "group") return "multiple_girls, 5girls";
+    if (effectiveCount >= 4 || castSize === "foursome") return "4girls";
+    if (effectiveCount >= 3 || castSize === "threesome") return "3girls";
+    if (effectiveCount >= 2 || castSize === "duo" || (isPairing && castSize === "solo")) return "2girls";
     return "1girl, solo";
   })();
-
-  // Explicit pairing booru tags — strengthen so Pony actually paints both people
   const pairingTag = (() => {
     if (!isPairing) return "";
     const t = castType;
@@ -233,10 +274,70 @@ export function buildPonyPrompts(dna = {}, opts = {}) {
     return w("two_women", 1.2);
   })();
 
+  const scenarioStr = join([
+    sc.cast_size && sc.cast_size !== "solo" && exp("scenario", "cast_size"),
+    sc.cast_type && sc.cast_type !== "none" && exp("scenario", "cast_type"),
+    sc.roleplay && sc.roleplay !== "none" && exp("scenario", "roleplay"),
+    Array.isArray(sc.acts)
+      ? sc.acts.filter((a) => a && a !== "none").map((a) => w(expandPrompt("scenario", "acts", a, { raunch }), 1.3)).join(", ")
+      : (sc.acts && sc.acts !== "none" && w(exp("scenario", "acts"), 1.3)),
+    sc.extra_acts,
+    kinkTag,
+  ]);
+  const scene = dna.scene || {};
+  const sceneStr = join([
+    scene.environment && `in a ${exp("scene", "environment")}`,
+    scene.background,
+    scene.props,
+  ]);
+  const lg = dna.lighting || {};
+  const lightingStr = join([
+    lg.source && exp("lighting", "source"),
+    exp("lighting", "style"),
+    exp("lighting", "mood"),
+  ]);
+  const cam = dna.camera || {};
+  const camStr = join([
+    cam.lens && `shot on ${exp("camera", "lens")}`,
+    exp("camera", "aperture"),
+  ]);
+  const st = dna.style || {};
+  const styleStr = join([
+    st.render && exp("style", "render"),
+    st.artistic_tone && exp("style", "artistic_tone"),
+    st.extra,
+  ]);
+  const anatomy = "anatomically correct, realistic proportions, natural weight distribution, detailed anatomy";
+  const multiSubject = countTag !== "1girl, solo";
+  return {
+    qualityPrefix, ratingTag, countTag, pairingTag,
+    scenario: scenarioStr, scene: sceneStr, lighting: lightingStr, camera: camStr, style: styleStr,
+    anatomy, multiSubject,
+  };
+}
+
+function _ponySubjectBlock(dna = {}, opts = {}) {
+  const raunch = !!opts.raunch;
+  const val = (section, field) => dna?.[section]?.[field] || "";
+  const exp = (section, field) => {
+    const v = val(section, field);
+    return v ? expandPrompt(section, field, v, { raunch }) : "";
+  };
+  const join = _join;
+
+  const id = dna.identity || {};
+  const ph = dna.physique || {};
+  const face = dna.face || {};
+  const hair = dna.hair || {};
+  const im = dna.intimate || {};
+
+  const ex = Number(ph.exaggeration || 0);
+  const eWeight = ex >= 85 ? 1.5 : ex >= 65 ? 1.3 : ex >= 40 ? 1.15 : 1;
+  const ageStr = id.age ? `${id.age} years old, mature adult woman, unmistakably adult` : "adult woman";
+  const ethn = exp("identity", "ethnicity") || "woman";
+
   const subject = join([
     id.name && w(`portrait of ${id.name}`, 1.2),
-    countTag,
-    pairingTag,
     ageStr,
     ethn,
     exp("skin", "tone"),
@@ -255,7 +356,6 @@ export function buildPonyPrompts(dna = {}, opts = {}) {
     ex >= 75 && w("exaggerated body proportions, extreme hourglass silhouette", 1.4),
   ]);
 
-  // -------- Face --------
   const faceStr = join([
     exp("face", "eye_shape"),
     exp("face", "eye_color"),
@@ -265,8 +365,6 @@ export function buildPonyPrompts(dna = {}, opts = {}) {
     exp("face", "expression"),
     "detailed eyes, realistic pupils, natural catchlights, individually defined eyelashes",
   ]);
-
-  // -------- Hair --------
   const hairStr = join([
     hair.length && exp("hair", "length"),
     hair.style && exp("hair", "style"),
@@ -274,7 +372,6 @@ export function buildPonyPrompts(dna = {}, opts = {}) {
     hair.bangs && hair.bangs !== "none" && `${hair.bangs} bangs`,
   ]);
 
-  // -------- Wardrobe --------
   const wd = dna.wardrobe || {};
   const outfitPieces = [];
   if (wd.outfit_preset) outfitPieces.push(exp("wardrobe", "outfit_preset"));
@@ -293,7 +390,6 @@ export function buildPonyPrompts(dna = {}, opts = {}) {
     wd.state && wd.state !== "fully clothed" && w(exp("wardrobe", "state"), 1.2),
   ]);
 
-  // -------- Pose --------
   const pose = dna.pose || {};
   const poseStr = join([
     w(exp("pose", "action"), 1.15),
@@ -306,7 +402,6 @@ export function buildPonyPrompts(dna = {}, opts = {}) {
     exp("pose", "body_language"),
   ]);
 
-  // -------- Explicit / anatomy --------
   const intimateStr = join([
     w(exp("intimate", "pubic_hair"), im.pubic_hair && im.pubic_hair.includes("hair") ? 1.2 : 1),
     w(exp("intimate", "pussy"), 1.2),
@@ -317,7 +412,6 @@ export function buildPonyPrompts(dna = {}, opts = {}) {
     im.body_hair && im.body_hair !== "hairless" && exp("intimate", "body_hair"),
     im.piercings && im.piercings !== "none" && exp("intimate", "piercings"),
   ]);
-
   const fluidsStr = join([
     tagArr("intimate", "cum_state", im.cum_state),
     im.squirt && im.squirt !== "none" && tag("intimate", "squirt", im.squirt),
@@ -328,7 +422,6 @@ export function buildPonyPrompts(dna = {}, opts = {}) {
     im.lube && im.lube !== "none" && "oiled_body, wet_skin",
   ]);
 
-  // -------- Feet --------
   const ft = dna.feet || {};
   const feetActive = !!(ft.sole_presentation || (Array.isArray(ft.toes) && ft.toes.length) || ft.arch || ft.pedicure ||
     (Array.isArray(ft.foot_state) && ft.foot_state.length) || ft.hosiery ||
@@ -341,7 +434,6 @@ export function buildPonyPrompts(dna = {}, opts = {}) {
     feetActive && w("five_toes, toenails, sole, heel, arch, ankle, human_feet, correct_foot_anatomy", 1.3),
   ]);
 
-  // -------- Kink --------
   const kk = dna.kink || {};
   const kinkStr = join([
     tagArr("kink", "restraint", kk.restraint),
@@ -353,7 +445,6 @@ export function buildPonyPrompts(dna = {}, opts = {}) {
     kk.power_dynamic && kk.power_dynamic !== "none" && exp("kink", "power_dynamic"),
   ]);
 
-  // -------- Watersports --------
   const ws = dna.watersports || {};
   const wsHasAny = ws.source && ws.source !== "none";
   const wsStr = wsHasAny ? join([
@@ -366,86 +457,25 @@ export function buildPonyPrompts(dna = {}, opts = {}) {
     tag("watersports", "desperation", ws.desperation),
   ]) : "";
 
-  // -------- Scenario --------
-  const scenarioStr = join([
-    sc.cast_size && sc.cast_size !== "solo" && exp("scenario", "cast_size"),
-    sc.cast_type && sc.cast_type !== "none" && exp("scenario", "cast_type"),
-    sc.roleplay && sc.roleplay !== "none" && exp("scenario", "roleplay"),
-    Array.isArray(sc.acts)
-      ? sc.acts.filter((a) => a && a !== "none").map((a) => w(expandPrompt("scenario", "acts", a, { raunch }), 1.3)).join(", ")
-      : (sc.acts && sc.acts !== "none" && w(exp("scenario", "acts"), 1.3)),
-    sc.extra_acts,
-    kinkTag,
-  ]);
+  return {
+    subject, face: faceStr, hair: hairStr, outfit: outfitStr, pose: poseStr,
+    intimate: intimateStr, fluids: fluidsStr, feet: feetStr, kink: kinkStr, watersports: wsStr,
+  };
+}
 
-  // -------- Scene / Lighting / Camera --------
-  const scene = dna.scene || {};
-  const sceneStr = join([
-    scene.environment && `in a ${exp("scene", "environment")}`,
-    scene.background,
-    scene.props,
-  ]);
-  const lg = dna.lighting || {};
-  const lightingStr = join([
-    lg.source && exp("lighting", "source"),
-    exp("lighting", "style"),
-    exp("lighting", "mood"),
-  ]);
-  const cam = dna.camera || {};
-  const camStr = join([
-    cam.lens && `shot on ${exp("camera", "lens")}`,
-    exp("camera", "aperture"),
-  ]);
-
-  const anatomyStr = "anatomically correct, realistic proportions, natural weight distribution, detailed anatomy";
-
-  const st = dna.style || {};
-  const styleStr = join([
-    st.render && exp("style", "render"),
-    st.artistic_tone && exp("style", "artistic_tone"),
-    st.extra,
-  ]);
-
-  const positive = join([
-    qualityPrefix,
-    ratingTag,
-    subject,
-    faceStr,
-    hairStr,
-    outfitStr,
-    poseStr,
-    feetStr,
-    intimateStr,
-    fluidsStr,
-    kinkStr,
-    wsStr,
-    scenarioStr,
-    sceneStr,
-    lightingStr,
-    camStr,
-    styleStr,
-    anatomyStr,
-  ]);
-
-  // Pony negative — auto-permissive. Only technical quality + AGE SAFEGUARDS.
-  // When multi-subject cast is active, also block 'solo/1girl' so Pony renders every person.
-  const multiSubject = countTag !== "1girl, solo";
-  const negative = [
+function _ponyNegative(multiSubject) {
+  return [
     "score_6, score_5, score_4, score_3, score_2, score_1",
     "worst quality, low quality, jpeg artifacts, compression artifacts, blurry, noisy, oversharpened",
     "anime, manga, cartoon, comic, illustration, drawing, sketch, painting, 3d render, CGI, doll, mannequin",
     "plastic skin, waxy skin, airbrushed, overly smooth skin, beauty filter",
-    // AGE SAFEGUARDS — HARD LOCKED
     "child, teenager, young-looking, minor, underage, loli, shota, kid",
     "bad anatomy, malformed anatomy, deformed, disfigured, extra limbs, missing limbs, extra fingers, missing fingers, fused fingers, mutated hands",
-    // Toe / foot safety — Pony/SDXL commonly miscount OR paste hands where feet should be
     "four_toes, three_toes, six_toes, seven_toes, extra_toes, missing_toes, fused_toes, mutated_feet, deformed_feet, malformed_feet, extra_feet",
     "hands_instead_of_feet, hand_as_foot, fingers_instead_of_toes, finger_toes, knuckles_on_feet, palm_instead_of_sole, fingernails_on_toes, wrist_instead_of_ankle, foot_with_fingers, extra_hand_in_frame, floating_hand",
     "unnatural breasts, malformed breasts, asymmetrical breasts, bolted-on breasts",
-    // Multi-subject enforcement — Pony often defaults to single subject even when cast is duo+
     multiSubject && "solo, 1girl, single_subject, cropped_partner, missing_second_person",
     "text, watermark, signature, logo, censored, mosaic, black bar",
   ].filter(Boolean).join(", ");
-
-  return { positive, negative };
 }
+
