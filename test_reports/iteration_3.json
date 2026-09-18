@@ -1,0 +1,36 @@
+{
+  "summary": "Wet Dream Expansion — comprehensive backend + frontend pass. Backend: 12/12 pytest cases green (6 existing regression + 6 new). Verified /api/kink_presets CRUD (list/create/get-included/delete/validation), Character.raunch persistence on create AND patch (roundtrip both directions), and Feet/Kink/Watersports/Intimate-fluids/Scenario dual dials all persist through save→GET cycle including chips_multi arrays. Frontend: All 16 sections navigate correctly (identity→style incl. new Feet/Kink/Watersports), Raunch toggle switches state (button label changes 'Raunch' ↔ 'Raunch ON', border/fill turns fuchsia), prompt vocabulary correctly flips — Raunch ON produces 'sopping wet fucked-open pussy' variant, Raunch OFF produces editorial 'wet dripping pussy'. Negative prompt contains full age-safeguard list ('underage, child, teen, teenager, young girl, minor, kid, loli, shota') and NO longer contains 'ugly'/'unattractive'. All 7 built-in Kink Presets render in modal (Foot Goddess, Piss Slut, Bound & Wrecked, Bukkake Queen, Puppy Pet, Lactation Mommy, Toilet Toy). Applying 'Bound & Wrecked' merges into DNA without overwriting character name. Scenario dual sliders (Explicit level 0-100, Kink level 0-100) render with new act groups (EXTREME INSERTION, ROUGH / BRUTAL, CUM PLAY, FANTASY, plus LESBIAN, BDSM). All 8 Shoot packs visible on /shoot/new/:cid (Editorial, Boudoir, Portrait Set, Action / Motion, Explicit Suite, Foot Set, Watersports Set, Kink Set). Save+reload restores raunch state. Character cleanup performed via API.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Builder header (all pages)", "issues": ["Persistent React hydration warning: <span> cannot be a child of <option>. Caused by Emergent visual-editor overlay injecting x-file-name spans into <option> elements inside <select> (workflow selector in Builder.jsx line 187, ShootSetup.jsx line 132). NOT user code — harmless in production build, but noisy in console during dev. Same issue was noted in iteration_2 — carry-over."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/backend_test.py",
+    "/app/backend/tests/test_wet_dream_expansion.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "server.py is now ~1270 lines — over the 700-line guideline. Splitting into routers/{characters,renders,shoots,kink_presets,workflows,ai}.py is due. Not blocking.",
+    "buildPrompts in dna.js is ~300 lines and does 9 sequential joins — consider extracting per-section builders (buildSubject, buildOutfit, buildExplicit, etc.) for testability and reuse with buildPonyPrompts.",
+    "KinkPresetsMenu.saveCurrent() uses window.prompt() which is blocked in some embedded contexts and is not styled — replace with a small controlled inline input to match app aesthetic.",
+    "The delete-preset confirm uses window.confirm() — same UX inconsistency; consider a shadcn AlertDialog.",
+    "PATCH /api/characters/{cid} uses `if v is not None` filter which means clients CANNOT explicitly set raunch/favorite back to false via a null-tolerant patch — currently works because Pydantic exclude_unset keeps them out unless set. Confirmed round-trip works. Nit only.",
+    "server.py update_settings allowed-set does NOT include 'default_workflow_id' consistently — wait, it does. False alarm.",
+    "KINK_PRESETS Bukkake Queen sets scenario.cast_size='group' but doesn't touch scenario.cast_type — minor DNA consistency polish.",
+    "No backend validation that scenario.explicit_level / kink_level are 0-100 integers — client-side only. Adding a Pydantic model for DNA sub-schemas would harden against garbage input from API consumers."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_wet_dream_expansion.py (new — 6 tests for raunch persistence, kink_presets CRUD, new DNA sections)"
+  ],
+  "success_rate": {"backend": "100% (12/12)", "frontend": "100% (all reviewed features render + persist)"},
+  "seed_data_creation": "Created + cleaned up: TEST_ShootChar, TEST_CrudChar (+dup), TEST_RaunchChar, TEST_RaunchDefault, TEST_KinkPreset_Alpha, TEST_WetDreamChar, TEST_WetDreamUI (via Playwright). DB is tidy.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Backend regression file backend_test.py + test_wet_dream_expansion.py cover all core APIs. ComfyUI remains offline in pod — /renders/dispatch returning status='offline' is expected. For Wet Dream feature: Raunch toggle default OFF, chips_multi values default to [] via DEFAULT_DNA. Section labels in DnaSection use CSS text-transform:uppercase so innerText-based Playwright assertions must be case-insensitive OR use HTML source. All 7 built-in kink presets and 8 shoot packs verified visually. Iteration_2's carry-over hydration warning about <span> inside <option> still present (Emergent visual-editor overlay, non-user code).",
+  "rca of the issue": "N/A — no bugs found this iteration. Iteration_2's HIGH bug (ObjectId in /api/renders/dispatch) remains fixed. Iteration_3 spec (raunch on create was 'a bug caught during smoke test, now fixed') is verified fixed — POST /api/characters {raunch:true} now persists correctly (create_character passes body.raunch or False into Character model)."
+}
