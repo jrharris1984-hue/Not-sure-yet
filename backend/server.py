@@ -1077,7 +1077,9 @@ def _collect_comfy_outputs(base_url: str, outputs: Dict[str, Any]) -> tuple[List
     collected: List[tuple[int, str, str]] = []
     variants: Dict[str, List[str]] = {"enhanced": [], "original": [], "other": []}
     for node in outputs.values():
-        for media_key in ("images", "videos"):
+        # Different ComfyUI save nodes report animations under images, videos,
+        # or gifs. Inspect all common media buckets.
+        for media_key in ("images", "videos", "gifs"):
             for item in node.get(media_key, []) or []:
                 filename = str(item.get("filename", ""))
                 subfolder = str(item.get("subfolder", ""))
