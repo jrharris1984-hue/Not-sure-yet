@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { endpoints } from "@/lib/api";
+import { API_BASE, endpoints } from "@/lib/api";
 import { Link } from "react-router-dom";
 import { X, Download, Copy, ExternalLink, Trash2, CheckSquare } from "lucide-react";
 import { toast } from "sonner";
@@ -33,9 +33,25 @@ const STATUS_STYLE = {
   running: "text-amber-300 bg-amber-500/10 border-amber-500/30",
 };
 
-const primaryOutput = (render) => render.output_variants?.enhanced?.[0] || render.output_files?.[0];
-const originalOutput = (render) => render.output_variants?.original?.[0];
-const isVideoUrl = (url = "") => /\.(webm|mp4|mov)(?:[?&]|$)/i.test(url);
+const proxiedMediaUrl = (url = "") => {
+  if (!url) return url;
+  try {
+    const parsed = new URL(url, window.location.origin);
+    const filename = parsed.searchParams.get("filename");
+    if (filename && parsed.pathname.endsWith("/view")) {
+      const query = new URLSearchParams({
+        filename,
+        subfolder: parsed.searchParams.get("subfolder") || "",
+        type: parsed.searchParams.get("type") || "output",
+      });
+      return `${API_BASE}/comfyui/media?${query.toString()}`;
+    }
+  } catch { /* keep the original URL */ }
+  return url;
+};
+const primaryOutput = (render) => proxiedMediaUrl(render.output_variants?.enhanced?.[0] || render.output_files?.[0]);
+const originalOutput = (render) => proxiedMediaUrl(render.output_variants?.original?.[0]);
+const isVideoUrl = (url = "") => /\.(webm|mp4|mov)(?:[?&]|$)/i.test(decodeURIComponent(url));
 
 export default function Gallery() {
   const qc = useQueryClient();
