@@ -65,6 +65,8 @@ export default function Builder() {
   const [videoFrames, setVideoFrames] = useState(41);
   const [videoFps, setVideoFps] = useState(24);
   const [enhancingVideo, setEnhancingVideo] = useState(false);
+  const [analyzingVideoImage, setAnalyzingVideoImage] = useState(false);
+  const [videoImageAnalysis, setVideoImageAnalysis] = useState("");
 
   const { data: workflows = [] } = useQuery({ queryKey: ["workflows"], queryFn: endpoints.listWorkflows });
   const { data: settings } = useQuery({ queryKey: ["settings"], queryFn: endpoints.settings });
@@ -79,6 +81,7 @@ export default function Builder() {
   const isFaceWorkflow = activeWorkflow?.kind === "face";
   const isEditWorkflow = activeWorkflow?.kind === "edit";
   const isVideoWorkflow = activeWorkflow?.kind === "video";
+  const isTextVideoWorkflow = activeWorkflow?.kind === "text_video";
 
   const uploadReference = async (file) => {
     if (!file) return;
@@ -120,13 +123,34 @@ export default function Builder() {
     }
     setEnhancingVideo(true);
     try {
-      const result = await endpoints.aiVideoPrompt(videoInstruction.trim());
+      const result = await endpoints.aiVideoPrompt(
+        videoInstruction.trim(),
+        isTextVideoWorkflow ? "text" : "image"
+      );
       setVideoInstruction(result.prompt || videoInstruction);
-      toast.success("Venice enhanced the motion prompt");
+      toast.success(isTextVideoWorkflow ? "Venice expanded the video prompt" : "Venice enhanced the motion prompt");
     } catch (e) {
       toast.error(e?.response?.data?.detail || "Venice could not enhance the motion prompt");
     } finally {
       setEnhancingVideo(false);
+    }
+  };
+
+  const analyzeVideoImage = async () => {
+    if (!referenceImage?.name) {
+      toast.error("Upload a starting image first");
+      return;
+    }
+    setAnalyzingVideoImage(true);
+    try {
+      const result = await endpoints.aiAnalyzeVideoImage(referenceImage.name, videoInstruction.trim());
+      setVideoImageAnalysis(result.analysis || "");
+      if (result.prompt) setVideoInstruction(result.prompt);
+      toast.success("Venice analyzed the starting image and drafted the motion prompt");
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || "Venice could not analyze the starting image");
+    } finally {
+      setAnalyzingVideoImage(false);
     }
   };
 
@@ -274,8 +298,10 @@ export default function Builder() {
       toast.error("Upload a starting image before using WAN Image to Video");
       return;
     }
-    if (isVideoWorkflow && !videoInstruction.trim()) {
-      toast.error("Describe the movement you want WAN to create");
+    if ((isVideoWorkflow || isTextVideoWorkflow) && !videoInstruction.trim()) {
+      toast.error(isTextVideoWorkflow
+        ? "Describe the video you want WAN to create"
+        : "Describe the movement you want WAN to create");
       return;
     }
     setDispatching(true);
@@ -294,9 +320,11 @@ export default function Builder() {
         faceid_v2_strength: faceIdV2Strength,
         edit_instruction: isEditWorkflow ? editInstruction.trim() : undefined,
         preserve_unmentioned: preserveUnmentioned,
-        video_instruction: isVideoWorkflow ? videoInstruction.trim() : undefined,
+        video_instruction: (isVideoWorkflow || isTextVideoWorkflow) ? videoInstruction.trim() : undefined,
         video_frames: videoFrames,
         video_fps: videoFps,
+        video_width: 640,
+        video_height: 640,
       });
       setActiveRender(r);
       toast.success(r.status === "running" ? "Render queued to ComfyUI" : `Render ${r.status}`);
@@ -694,6 +722,19 @@ export default function Builder() {
                   className="bg-elevated border-hairline text-sm"
                   data-testid="textarea-wan-motion" />
               </label>
+              <button type="button" onClick={analyzeVideoImage}
+                disabled={analyzingVideoImage || !referenceImage?.name}
+                className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-cyan-500/40 bg-cyan-500/10 px-3 py-2 text-sm font-semibold text-cyan-200 hover:bg-cyan-500/20 disabled:opacity-40"
+                data-testid="btn-venice-analyze-video-image">
+                {analyzingVideoImage ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                Analyze image + draft motion with Venice
+              </button>
+              {videoImageAnalysis && (
+                <div className="rounded-lg border border-cyan-500/20 bg-cyan-500/5 p-3 text-xs text-zinc-300">
+                  <div className="mb-1 font-mono uppercase tracking-widest text-cyan-300">Venice image analysis</div>
+                  {videoImageAnalysis}
+                </div>
+              )}
               <button type="button" onClick={enhanceVideoInstruction}
                 disabled={enhancingVideo || !videoInstruction.trim()}
                 className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm font-semibold text-amber-200 hover:bg-amber-500/20 disabled:opacity-40"
@@ -729,6 +770,58 @@ export default function Builder() {
               </div>
               <p className="text-[11px] text-zinc-500">
                 Longer clips require substantially more VRAM and generation time. Start with 41 frames for testing.
+              </p>
+            </div>
+          )}
+          {isTextVideoWorkflow && (
+            <div className="pane p-4 space-y-4" data-testid="wan-text-video-panel">
+              <div className="flex items-center gap-2">
+                <Camera className="h-4 w-4 text-violet-300" />
+                <div className="section-label">WAN Text → Video</div>
+              </div>
+              <p className="text-xs text-zinc-400">
+                Describe the complete shot: adult subject, action, environment, lighting, framing, and camera motion. No starting image is required.
+              </p>
+              <label className="block space-y-1">
+                <span className="text-xs uppercase tracking-widest text-zinc-500 font-mono">Video description</span>
+                <Textarea rows={7} value={videoInstruction}
+                  onChange={(event) => setVideoInstruction(event.target.value)}
+                  placeholder="Example: A cinematic full-body shot of an adult woman walking through a softly lit hotel suite, natural body movement, gentle handheld camera, stable identity, one continuous shot."
+                  className="bg-elevated border-hairline text-sm"
+                  data-testid="textarea-wan-text-video" />
+              </label>
+              <button type="button" onClick={enhanceVideoInstruction}
+                disabled={enhancingVideo || !videoInstruction.trim()}
+                className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm font-semibold text-amber-200 hover:bg-amber-500/20 disabled:opacity-40"
+                data-testid="btn-venice-enhance-text-video">
+                {enhancingVideo ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                Expand scene with Venice
+              </button>
+              <div className="grid grid-cols-2 gap-3">
+                <label className="space-y-1">
+                  <span className="text-xs text-zinc-400">Duration</span>
+                  <select value={videoFrames} onChange={(e) => setVideoFrames(Number(e.target.value))}
+                    className="w-full rounded-lg border border-hairline bg-elevated px-3 py-2 text-sm"
+                    data-testid="select-wan-t2v-duration">
+                    <option value={41}>2.6 sec · 41 frames</option>
+                    <option value={81}>5.1 sec · 81 frames</option>
+                    <option value={121}>7.6 sec · 121 frames</option>
+                    <option value={161}>10 sec · 161 frames</option>
+                  </select>
+                </label>
+                <label className="space-y-1">
+                  <span className="text-xs text-zinc-400">Playback FPS</span>
+                  <select value={videoFps} onChange={(e) => setVideoFps(Number(e.target.value))}
+                    className="w-full rounded-lg border border-hairline bg-elevated px-3 py-2 text-sm"
+                    data-testid="select-wan-t2v-fps">
+                    <option value={16}>16 FPS</option>
+                    <option value={20}>20 FPS</option>
+                    <option value={24}>24 FPS</option>
+                  </select>
+                </label>
+              </div>
+              <p className="text-[11px] text-zinc-500">
+                This 14B workflow is much heavier than the 5B Image → Video workflow. Test with 41 frames first.
               </p>
             </div>
           )}
