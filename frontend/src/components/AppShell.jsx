@@ -1,5 +1,5 @@
 import { Link, NavLink, useLocation } from "react-router-dom";
-import { Library, Sparkles, Image as ImageIcon, Settings2, Plus, Camera } from "lucide-react";
+import { Library, Sparkles, Image as ImageIcon, Settings2, Plus, Camera, ListOrdered } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { endpoints } from "@/lib/api";
 import NowRenderingStrip from "@/components/NowRenderingStrip";
@@ -8,6 +8,7 @@ const nav = [
   { to: "/", label: "Library", icon: Library, testId: "nav-library" },
   { to: "/shoots", label: "Shoots", icon: Camera, testId: "nav-shoots" },
   { to: "/gallery", label: "Gallery", icon: ImageIcon, testId: "nav-gallery" },
+  { to: "/queue", label: "Queue", icon: ListOrdered, testId: "nav-queue" },
   { to: "/settings", label: "Settings", icon: Settings2, testId: "nav-settings" },
 ];
 
@@ -89,7 +90,7 @@ export default function AppShell({ children }) {
 
       {/* Mobile bottom nav */}
       <nav className="glass md:hidden fixed bottom-0 inset-x-0 z-40 border-t hairline">
-        <div className="grid grid-cols-5 gap-0">
+        <div className="grid grid-cols-6 gap-0">
           {nav.map((n) => (
             <NavLink
               key={n.to}
