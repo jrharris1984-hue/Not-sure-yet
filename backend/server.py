@@ -14,6 +14,7 @@ import asyncio
 from pathlib import Path
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
+from urllib.parse import urlencode
 from pydantic import BaseModel, Field, ConfigDict
 
 import httpx
@@ -94,6 +95,7 @@ class Render(BaseModel):
     progress: float = 0.0
     comfy_prompt_id: Optional[str] = None
     output_files: List[str] = Field(default_factory=list)
+    output_variants: Dict[str, List[str]] = Field(default_factory=dict)
     error: Optional[str] = None
     created_at: str = Field(default_factory=now_iso)
     updated_at: str = Field(default_factory=now_iso)
@@ -426,16 +428,32 @@ async def reorder_workflows(body: Dict[str, List[str]] = Body(...)):
 
 @api.post("/workflows/seed")
 async def seed_workflows():
-    """Add the 5 bundled default workflows (idempotent by name)."""
+    """Add missing bundled workflows and refresh existing bundled copies by name.
+
+    Existing workflow IDs and the user's default selection are preserved, so app
+    upgrades can ship corrected workflow JSON without creating duplicates.
+    """
     s = await get_settings()
-    existing_names = {w.name for w in s.workflows}
-    new = [w for w in _load_seed_workflows() if w.name not in existing_names]
-    workflows = list(s.workflows) + new
+    bundled = _load_seed_workflows()
+    bundled_by_name = {w.name: w for w in bundled}
+    workflows = []
+    updated = 0
+    for existing in s.workflows:
+        replacement = bundled_by_name.pop(existing.name, None)
+        if replacement:
+            replacement.id = existing.id
+            replacement.notes = existing.notes
+            workflows.append(replacement)
+            updated += 1
+        else:
+            workflows.append(existing)
+    new = list(bundled_by_name.values())
+    workflows.extend(new)
     doc = {"workflows": [w.model_dump() for w in workflows], "updated_at": now_iso()}
     if not s.default_workflow_id and workflows:
         doc["default_workflow_id"] = workflows[0].id
     await db.settings.update_one({"id": "singleton"}, {"$set": doc}, upsert=True)
-    return {"added": len(new), "total": len(workflows)}
+    return {"added": len(new), "updated": updated, "total": len(workflows)}
 
 
 # ============================================================
@@ -849,6 +867,34 @@ async def dispatch_render(body: DispatchBody):
     return doc
 
 
+def _collect_comfy_outputs(base_url: str, outputs: Dict[str, Any]) -> tuple[List[str], Dict[str, List[str]]]:
+    """Build stable view URLs, preferring final enhanced images over originals."""
+    collected: List[tuple[int, str, str]] = []
+    variants: Dict[str, List[str]] = {"enhanced": [], "original": [], "other": []}
+    for node in outputs.values():
+        for media_key in ("images", "videos"):
+            for item in node.get(media_key, []) or []:
+                filename = str(item.get("filename", ""))
+                subfolder = str(item.get("subfolder", ""))
+                marker = f"{subfolder}/{filename}".lower()
+                if "enhanced-2048" in marker or "enhanced" in marker:
+                    label, priority = "enhanced", 0
+                elif "original" in marker:
+                    label, priority = "original", 2
+                else:
+                    label, priority = "other", 1
+                query = urlencode({
+                    "filename": filename,
+                    "subfolder": subfolder,
+                    "type": item.get("type", "output"),
+                })
+                url = f"{base_url.rstrip('/')}/view?{query}"
+                variants[label].append(url)
+                collected.append((priority, marker, url))
+    collected.sort(key=lambda entry: (entry[0], entry[1]))
+    return [entry[2] for entry in collected], {k: v for k, v in variants.items() if v}
+
+
 @api.post("/renders/{rid}/poll")
 async def poll_render(rid: str):
     doc = await db.renders.find_one({"id": rid}, {"_id": 0})
@@ -865,14 +911,10 @@ async def poll_render(rid: str):
             entry = hist.get(doc["comfy_prompt_id"])
             if entry:
                 outputs = entry.get("outputs", {})
-                files: List[str] = []
-                for node in outputs.values():
-                    for imgs in node.get("images", []) or []:
-                        files.append(f"{s.comfyui_url.rstrip('/')}/view?filename={imgs.get('filename')}&subfolder={imgs.get('subfolder','')}&type={imgs.get('type','output')}")
-                    for vids in node.get("videos", []) or []:
-                        files.append(f"{s.comfyui_url.rstrip('/')}/view?filename={vids.get('filename')}&subfolder={vids.get('subfolder','')}&type={vids.get('type','output')}")
+                files, variants = _collect_comfy_outputs(s.comfyui_url, outputs)
                 update = {"status": "done" if files else doc.get("status", "running"),
                           "output_files": files,
+                          "output_variants": variants,
                           "progress": 1.0 if files else doc.get("progress", 0.0),
                           "updated_at": now_iso()}
                 await db.renders.update_one({"id": rid}, {"$set": update})

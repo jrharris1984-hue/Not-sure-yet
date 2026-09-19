@@ -33,6 +33,9 @@ const STATUS_STYLE = {
   running: "text-amber-300 bg-amber-500/10 border-amber-500/30",
 };
 
+const primaryOutput = (render) => render.output_variants?.enhanced?.[0] || render.output_files?.[0];
+const originalOutput = (render) => render.output_variants?.original?.[0];
+
 export default function Gallery() {
   const { data: renders = [], isLoading } = useQuery({
     queryKey: ["renders"],
@@ -42,8 +45,8 @@ export default function Gallery() {
   const [lightbox, setLightbox] = useState(null); // render object
 
   // Only renders with output to show as thumbnails; keep unfinished list on the side
-  const withOutput = renders.filter((r) => r.output_files?.[0]);
-  const inFlight = renders.filter((r) => !r.output_files?.[0] && r.status !== "done");
+  const withOutput = renders.filter((r) => primaryOutput(r));
+  const inFlight = renders.filter((r) => !primaryOutput(r) && r.status !== "done");
 
   return (
     <div className="mx-auto max-w-[1400px] px-4 sm:px-6 py-6 sm:py-10 space-y-6">
@@ -81,7 +84,7 @@ export default function Gallery() {
                   className="relative aspect-square rounded-lg overflow-hidden border hairline bg-elevated group focus:outline-none focus:ring-2 focus:ring-amber-400/60"
                 >
                   <img
-                    src={r.output_files[0]}
+                    src={primaryOutput(r)}
                     alt={r.prompt_positive?.slice(0, 40) || "render"}
                     loading="lazy"
                     className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
@@ -93,7 +96,7 @@ export default function Gallery() {
                     </div>
                   </div>
                   <span className="absolute top-1 right-1 text-[9px] font-mono px-1.5 py-0.5 rounded backdrop-blur-sm bg-black/60 text-emerald-300">
-                    done
+                    {r.output_variants?.enhanced?.length ? "enhanced" : "done"}
                   </span>
                 </button>
               ))}
@@ -132,7 +135,7 @@ export default function Gallery() {
             {/* Image column */}
             <div className="flex-1 min-h-0 flex items-center justify-center">
               <img
-                src={lightbox.output_files[0]}
+                src={primaryOutput(lightbox)}
                 alt={lightbox.prompt_positive?.slice(0, 60) || "render"}
                 data-testid="gallery-lightbox-image"
                 className="max-h-[85vh] max-w-full object-contain rounded-lg shadow-2xl"
@@ -179,12 +182,21 @@ export default function Gallery() {
 
               <div className="flex flex-col gap-2 pt-2">
                 <button
-                  onClick={() => downloadImage(lightbox.output_files[0], `${lightbox.workflow_name || "render"}-${lightbox.id.slice(0, 8)}.png`)}
+                  onClick={() => downloadImage(primaryOutput(lightbox), `${lightbox.workflow_name || "render"}-${lightbox.id.slice(0, 8)}-enhanced.png`)}
                   data-testid="btn-lightbox-download"
                   className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-black text-sm font-semibold px-3 py-2"
                 >
-                  <Download className="h-4 w-4" /> Download
+                  <Download className="h-4 w-4" /> Download enhanced
                 </button>
+                {originalOutput(lightbox) && (
+                  <button
+                    onClick={() => downloadImage(originalOutput(lightbox), `${lightbox.workflow_name || "render"}-${lightbox.id.slice(0, 8)}-original.png`)}
+                    data-testid="btn-lightbox-download-original"
+                    className="w-full inline-flex items-center justify-center gap-2 rounded-lg border hairline text-zinc-200 hover:bg-white/5 text-sm px-3 py-2"
+                  >
+                    <Download className="h-4 w-4" /> Download original
+                  </button>
+                )}
                 <button
                   onClick={() => { navigator.clipboard.writeText(lightbox.prompt_positive || ""); toast.success("Prompt copied"); }}
                   data-testid="btn-lightbox-copy-prompt"
