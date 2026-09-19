@@ -982,6 +982,59 @@ function _veniceNegative(multiSubjectExpected) {
 }
 
 
+
+// GoldenChroma uses a T5 encoder with a practical 512-token ceiling. The
+// general Venice compiler is intentionally exhaustive, so this model-specific
+// compiler removes repeated quality language and preserves the actual subject,
+// pose, wardrobe, setting, camera, and adult details first.
+function _compactChromaText(text, maxWords = 390) {
+  const redundant = new Set([
+    "photorealistic", "hyperrealistic", "editorial photograph", "8K UHD",
+    "highly detailed", "masterpiece", "best quality", "ultra-detailed",
+    "8k resolution", "sharp focus", "professional photography",
+    "award-winning composition",
+  ]);
+  const seen = new Set();
+  const segments = String(text || "")
+    .split(",")
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .filter((part) => {
+      const key = part.toLowerCase().replace(/[^a-z0-9 ]/g, "").trim();
+      if (!key || redundant.has(part) || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  const lead = "Natural high-end editorial photograph with realistic human anatomy and believable physical detail";
+  const words = `${lead}. ${segments.join(", ")}`.split(/\s+/);
+  return words.slice(0, maxWords).join(" ").replace(/[, ]+$/, "") + ".";
+}
+
+const CHROMA_NEGATIVE = [
+  "low quality, blurry, out of focus, jpeg artifacts, watermark, signature, text, logo",
+  "deformed anatomy, impossible joints, extra limbs, missing limbs, duplicate body parts",
+  "malformed hands, fused fingers, extra fingers, missing fingers, malformed feet, fused toes, extra toes, missing toes",
+  "distorted face, asymmetrical eyes, crossed eyes, malformed pupils",
+  "cartoon, anime, illustration, painting, CGI, 3D render, mannequin, plastic skin, waxy skin, excessive smoothing",
+  "underage, child, teenager, minor, youthful appearance",
+].join(", ");
+
+export function buildChromaPrompts(dna = {}, opts = {}) {
+  const base = buildPrompts(dna, opts);
+  return {
+    positive: _compactChromaText(base.positive),
+    negative: CHROMA_NEGATIVE,
+  };
+}
+
+export function buildMultiChromaPrompts(subjects = [], opts = {}) {
+  const base = buildMultiVenicePrompts(subjects, opts);
+  return {
+    positive: _compactChromaText(base.positive),
+    negative: CHROMA_NEGATIVE + ", missing subject, merged bodies, fused people, duplicate face",
+  };
+}
+
 // ============================================================
 // Star / celebrity presets — one-tap DNA fills
 // Trait descriptions only; if you have a LoRA for a star,
