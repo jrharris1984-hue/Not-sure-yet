@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { endpoints } from "@/lib/api";
 import { Link } from "react-router-dom";
-import { X, Download, Copy, ExternalLink } from "lucide-react";
+import { X, Download, Copy, ExternalLink, Trash2, CheckSquare } from "lucide-react";
 import { toast } from "sonner";
 
 async function downloadImage(url, filename) {
@@ -35,14 +35,60 @@ const STATUS_STYLE = {
 
 const primaryOutput = (render) => render.output_variants?.enhanced?.[0] || render.output_files?.[0];
 const originalOutput = (render) => render.output_variants?.original?.[0];
+const isVideoUrl = (url = "") => /\.(webm|mp4|mov)(\?|$)/i.test(url);
 
 export default function Gallery() {
+  const qc = useQueryClient();
   const { data: renders = [], isLoading } = useQuery({
     queryKey: ["renders"],
     queryFn: endpoints.listRenders,
     refetchInterval: 5000,
   });
   const [lightbox, setLightbox] = useState(null); // render object
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selected, setSelected] = useState([]);
+
+  const removeOne = useMutation({
+    mutationFn: (id) => endpoints.deleteRender(id),
+    onSuccess: (_result, id) => {
+      setSelected((current) => current.filter((item) => item !== id));
+      if (lightbox?.id === id) setLightbox(null);
+      qc.invalidateQueries({ queryKey: ["renders"] });
+      toast.success("Removed from Gallery");
+    },
+    onError: (error) => toast.error(error?.response?.data?.detail || "Could not remove render"),
+  });
+
+  const removeMany = useMutation({
+    mutationFn: (ids) => endpoints.deleteRenders(ids),
+    onSuccess: (result) => {
+      setSelected([]);
+      setSelectionMode(false);
+      setLightbox(null);
+      qc.invalidateQueries({ queryKey: ["renders"] });
+      toast.success(`Removed ${result.deleted || 0} Gallery items`);
+    },
+    onError: (error) => toast.error(error?.response?.data?.detail || "Could not remove selected renders"),
+  });
+
+  const confirmRemoveOne = (render) => {
+    if (window.confirm("Remove this item from the Ultra Studio Gallery? The original ComfyUI output file will remain on disk.")) {
+      removeOne.mutate(render.id);
+    }
+  };
+
+  const confirmRemoveSelected = () => {
+    if (!selected.length) return;
+    if (window.confirm(`Remove ${selected.length} selected items from the Ultra Studio Gallery? Original ComfyUI files will remain on disk.`)) {
+      removeMany.mutate(selected);
+    }
+  };
+
+  const toggleSelected = (id) => {
+    setSelected((current) => current.includes(id)
+      ? current.filter((item) => item !== id)
+      : [...current, id]);
+  };
 
   // Only renders with output to show as thumbnails; keep unfinished list on the side
   const withOutput = renders.filter((r) => primaryOutput(r));
@@ -58,6 +104,28 @@ export default function Gallery() {
             {withOutput.length} finished · {inFlight.length} in flight. Tap a thumbnail to open.
           </p>
         </div>
+        {withOutput.length > 0 && (
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setSelectionMode((value) => !value);
+                setSelected([]);
+              }}
+              className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm ${selectionMode ? "border-amber-500/50 bg-amber-500/10 text-amber-200" : "hairline text-zinc-200"}`}
+              data-testid="btn-gallery-select">
+              <CheckSquare className="h-4 w-4" /> {selectionMode ? "Cancel" : "Select"}
+            </button>
+            {selectionMode && selected.length > 0 && (
+              <button type="button" onClick={confirmRemoveSelected}
+                disabled={removeMany.isPending}
+                className="inline-flex items-center gap-2 rounded-lg border border-red-500/50 bg-red-500/10 px-3 py-2 text-sm text-red-200 disabled:opacity-40"
+                data-testid="btn-gallery-delete-selected">
+                <Trash2 className="h-4 w-4" /> Remove {selected.length}
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       {isLoading ? (
@@ -76,30 +144,51 @@ export default function Gallery() {
           {/* Thumbnail grid — dense, clean, contact-sheet style */}
           {withOutput.length > 0 && (
             <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2" data-testid="gallery-grid">
-              {withOutput.map((r, i) => (
-                <button
-                  key={r.id}
-                  onClick={() => setLightbox(r)}
-                  data-testid={`gallery-thumb-${i}`}
-                  className="relative aspect-square rounded-lg overflow-hidden border hairline bg-elevated group focus:outline-none focus:ring-2 focus:ring-amber-400/60"
-                >
-                  <img
-                    src={primaryOutput(r)}
-                    alt={r.prompt_positive?.slice(0, 40) || "render"}
-                    loading="lazy"
-                    className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                  <div className="absolute inset-x-0 bottom-0 p-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <div className="text-[10px] font-mono uppercase tracking-widest text-zinc-300 truncate">
-                      {r.workflow_name || r.workflow_type}
-                    </div>
+              {withOutput.map((r, i) => {
+                const output = primaryOutput(r);
+                const checked = selected.includes(r.id);
+                return (
+                  <div key={r.id}
+                    data-testid={`gallery-thumb-${i}`}
+                    className={`relative aspect-square rounded-lg overflow-hidden border bg-elevated group ${checked ? "border-amber-400 ring-2 ring-amber-400/50" : "hairline"}`}>
+                    <button type="button"
+                      onClick={() => selectionMode ? toggleSelected(r.id) : setLightbox(r)}
+                      className="absolute inset-0 w-full h-full focus:outline-none focus:ring-2 focus:ring-amber-400/60">
+                      {isVideoUrl(output) ? (
+                        <video src={output} muted playsInline preload="metadata"
+                          className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" />
+                      ) : (
+                        <img src={output}
+                          alt={r.prompt_positive?.slice(0, 40) || "render"}
+                          loading="lazy"
+                          className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" />
+                      )}
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                      <div className="absolute inset-x-0 bottom-0 p-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="text-[10px] font-mono uppercase tracking-widest text-zinc-300 truncate">
+                          {r.workflow_name || r.workflow_type}
+                        </div>
+                      </div>
+                    </button>
+                    {selectionMode ? (
+                      <button type="button" onClick={() => toggleSelected(r.id)}
+                        className={`absolute left-1 top-1 z-10 h-7 w-7 rounded-full border grid place-items-center ${checked ? "border-amber-300 bg-amber-400 text-black" : "border-white/40 bg-black/70 text-white"}`}
+                        aria-label={checked ? "Deselect render" : "Select render"}>
+                        {checked ? "✓" : ""}
+                      </button>
+                    ) : (
+                      <button type="button" onClick={() => confirmRemoveOne(r)}
+                        className="absolute left-1 top-1 z-10 h-7 w-7 rounded-full bg-black/70 text-zinc-200 grid place-items-center opacity-100 sm:opacity-0 sm:group-hover:opacity-100 hover:bg-red-500"
+                        aria-label="Remove from Gallery" data-testid={`btn-delete-render-${i}`}>
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    )}
+                    <span className="absolute top-1 right-1 z-10 text-[9px] font-mono px-1.5 py-0.5 rounded backdrop-blur-sm bg-black/60 text-emerald-300 pointer-events-none">
+                      {isVideoUrl(output) ? "video" : r.output_variants?.enhanced?.length ? "enhanced" : "done"}
+                    </span>
                   </div>
-                  <span className="absolute top-1 right-1 text-[9px] font-mono px-1.5 py-0.5 rounded backdrop-blur-sm bg-black/60 text-emerald-300">
-                    {r.output_variants?.enhanced?.length ? "enhanced" : "done"}
-                  </span>
-                </button>
-              ))}
+                );
+              })}
             </div>
           )}
 
@@ -134,12 +223,18 @@ export default function Gallery() {
           >
             {/* Image column */}
             <div className="flex-1 min-h-0 flex items-center justify-center">
-              <img
-                src={primaryOutput(lightbox)}
-                alt={lightbox.prompt_positive?.slice(0, 60) || "render"}
-                data-testid="gallery-lightbox-image"
-                className="max-h-[85vh] max-w-full object-contain rounded-lg shadow-2xl"
-              />
+              {isVideoUrl(primaryOutput(lightbox)) ? (
+                <video src={primaryOutput(lightbox)} controls autoPlay playsInline loop
+                  data-testid="gallery-lightbox-video"
+                  className="max-h-[85vh] max-w-full object-contain rounded-lg shadow-2xl" />
+              ) : (
+                <img
+                  src={primaryOutput(lightbox)}
+                  alt={lightbox.prompt_positive?.slice(0, 60) || "render"}
+                  data-testid="gallery-lightbox-image"
+                  className="max-h-[85vh] max-w-full object-contain rounded-lg shadow-2xl"
+                />
+              )}
             </div>
 
             {/* Meta column */}
@@ -203,6 +298,15 @@ export default function Gallery() {
                   className="w-full inline-flex items-center justify-center gap-2 rounded-lg border hairline text-zinc-200 hover:bg-white/5 text-sm px-3 py-2"
                 >
                   <Copy className="h-4 w-4" /> Copy prompt
+                </button>
+                <button
+                  type="button"
+                  onClick={() => confirmRemoveOne(lightbox)}
+                  disabled={removeOne.isPending}
+                  data-testid="btn-lightbox-delete"
+                  className="w-full inline-flex items-center justify-center gap-2 rounded-lg border border-red-500/40 text-red-200 hover:bg-red-500/10 text-sm px-3 py-2 disabled:opacity-40"
+                >
+                  <Trash2 className="h-4 w-4" /> Remove from Gallery
                 </button>
                 {lightbox.character_id && (
                   <Link
