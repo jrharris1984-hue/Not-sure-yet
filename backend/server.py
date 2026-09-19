@@ -152,6 +152,25 @@ def _detect_prompt_nodes(wf: Dict[str, Any]) -> Dict[str, str]:
 
     pos, neg = "", ""
 
+    # Prefer the actual sampler wiring. This is required for Qwen Image Edit,
+    # whose two encoder nodes both have empty prompts and generic titles.
+    for node in wf.values():
+        if not isinstance(node, dict):
+            continue
+        inputs = node.get("inputs", {})
+        positive_ref = inputs.get("positive")
+        negative_ref = inputs.get("negative")
+        if isinstance(positive_ref, list) and positive_ref:
+            candidate = str(positive_ref[0])
+            if any(nid == candidate for nid, _title, _txt in candidates):
+                pos = candidate
+        if isinstance(negative_ref, list) and negative_ref:
+            candidate = str(negative_ref[0])
+            if any(nid == candidate for nid, _title, _txt in candidates):
+                neg = candidate
+        if pos and neg:
+            break
+
     # Pass 1: exact match by title
     for nid, title, _txt in candidates:
         if not pos and ("positive" in title or "megative" not in title and " pos" in title):
@@ -737,6 +756,8 @@ class DispatchBody(BaseModel):
     reference_image: Optional[str] = None  # ComfyUI input filename returned by /reference-images/upload
     face_strength: float = 1.1
     faceid_v2_strength: float = 1.4
+    edit_instruction: str = ""
+    preserve_unmentioned: bool = True
 
 
 def _patch_seed(workflow: Dict[str, Any], seed: int) -> int:
@@ -841,14 +862,70 @@ async def _perform_dispatch(body: "DispatchBody") -> Dict[str, Any]:
             doc.pop("_id", None)
             return doc
 
-    # Map prompts into template
+    positive_text = body.prompt_positive
+    negative_text = body.prompt_negative
+
+    # Qwen Image Edit also consumes an uploaded source image, but its positive
+    # prompt is a direct edit instruction rather than the character DNA prompt.
+    if wf_template and wf_template.kind == "edit":
+        # Re-detect from the live workflow every time. Older databases may have
+        # stored the two Qwen prompt node IDs in reverse before sampler-aware
+        # detection was added.
+        detected_nodes = _detect_prompt_nodes(workflow)
+        pos_id = detected_nodes.get("positive_node_id") or pos_id
+        neg_id = detected_nodes.get("negative_node_id") or neg_id
+        if not body.reference_image:
+            r.status = "failed"
+            r.error = "Select and upload a source image before using Qwen Image Edit."
+            doc = r.model_dump()
+            await db.renders.insert_one(doc)
+            doc.pop("_id", None)
+            return doc
+        instruction = body.edit_instruction.strip()
+        if not instruction:
+            r.status = "failed"
+            r.error = "Describe the change you want Qwen Image Edit to make."
+            doc = r.model_dump()
+            await db.renders.insert_one(doc)
+            doc.pop("_id", None)
+            return doc
+        image_patched = False
+        for node in workflow.values():
+            if not isinstance(node, dict):
+                continue
+            inputs = node.get("inputs", {})
+            if node.get("class_type") == "LoadImage" and "image" in inputs:
+                inputs["image"] = body.reference_image
+                image_patched = True
+        if not image_patched:
+            r.status = "failed"
+            r.error = "The selected Qwen Image Edit workflow has no LoadImage node."
+            doc = r.model_dump()
+            await db.renders.insert_one(doc)
+            doc.pop("_id", None)
+            return doc
+        positive_text = instruction
+        if body.preserve_unmentioned:
+            positive_text += (
+                "\nPreserve the original subject identity, face, age, body proportions, "
+                "composition, camera perspective, lighting, background, and all details "
+                "not explicitly requested to change."
+            )
+
+    # Map prompts into either standard CLIP 'text' fields or Qwen 'prompt' fields.
     mapped = {"positive": False, "negative": False}
-    if pos_id and pos_id in workflow and "inputs" in workflow[pos_id] and "text" in workflow[pos_id]["inputs"]:
-        workflow[pos_id]["inputs"]["text"] = body.prompt_positive
-        mapped["positive"] = True
-    if neg_id and neg_id in workflow and "inputs" in workflow[neg_id] and "text" in workflow[neg_id]["inputs"]:
-        workflow[neg_id]["inputs"]["text"] = body.prompt_negative
-        mapped["negative"] = True
+    if pos_id and pos_id in workflow and "inputs" in workflow[pos_id]:
+        inputs = workflow[pos_id]["inputs"]
+        key = "text" if "text" in inputs else "prompt" if "prompt" in inputs else None
+        if key:
+            inputs[key] = positive_text
+            mapped["positive"] = True
+    if neg_id and neg_id in workflow and "inputs" in workflow[neg_id]:
+        inputs = workflow[neg_id]["inputs"]
+        key = "text" if "text" in inputs else "prompt" if "prompt" in inputs else None
+        if key:
+            inputs[key] = negative_text
+            mapped["negative"] = True
 
     # Apply LoRA weight overrides
     for node_id, weights in (body.lora_overrides or {}).items():
@@ -1346,6 +1423,11 @@ class SuggestBody(BaseModel):
     dna: Dict[str, Any] = Field(default_factory=dict)
 
 
+class EditPromptBody(BaseModel):
+    instruction: str
+    preserve_unmentioned: bool = True
+
+
 DNA_SCHEMA_HINT = """The DNA object has these sections and example keys:
 - identity: { gender, age, ethnicity, archetype, name }
 - physique: { height, body_type, muscularity, curves, bust, proportions }
@@ -1383,6 +1465,21 @@ async def ai_refine(body: RefineBody):
     user = f"Current DNA:\n{json.dumps(body.dna)}\n\nInstruction: {body.instruction}"
     out = await openrouter_chat(sys, user, response_format_json=True)
     return {"dna": extract_json(out)}
+
+
+@api.post("/ai/edit-prompt")
+async def ai_edit_prompt(body: EditPromptBody):
+    """Use Venice to turn a rough request into a precise Qwen image-edit instruction."""
+    system = (
+        "You write concise, literal instructions for Qwen Image Edit. Expand the user's request "
+        "into one clear image-edit prompt. State exactly what should change. Do not invent changes "
+        "to identity, age, body, clothing, pose, camera, lighting, or background unless requested. "
+        "Return only the finished instruction with no heading, quotation marks, or explanation."
+    )
+    if body.preserve_unmentioned:
+        system += " Explicitly instruct the editor to preserve every unmentioned visual detail."
+    prompt = await openrouter_chat(system, body.instruction, response_format_json=False)
+    return {"prompt": prompt.strip()}
 
 
 @api.post("/ai/suggest")

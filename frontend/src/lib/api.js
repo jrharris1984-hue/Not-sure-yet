@@ -51,6 +51,11 @@ export const endpoints = {
   workflowLoras: (id) => api.get(`/workflows/${id}/loras`).then((r) => r.data),
   aiFreeform: (text) => api.post("/ai/freeform", { text }).then((r) => r.data),
   aiRefine: (dna, instruction) => api.post("/ai/refine", { dna, instruction }).then((r) => r.data),
+  aiEditPrompt: (instruction, preserveUnmentioned = true) =>
+    api.post("/ai/edit-prompt", {
+      instruction,
+      preserve_unmentioned: preserveUnmentioned,
+    }).then((r) => r.data),
   aiSuggest: (section, dna) => api.post("/ai/suggest", { section, dna }).then((r) => r.data),
   // Photo Shoots
   createShoot: (body) => api.post("/shoots", body).then((r) => r.data),
