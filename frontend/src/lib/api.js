@@ -65,6 +65,12 @@ export const endpoints = {
       reference_image: referenceImage,
       instruction,
     }).then((r) => r.data),
+  aiAnalyzeRepairImage: (referenceImage, targets = [], instruction = "") =>
+    api.post("/ai/analyze-repair-image", {
+      reference_image: referenceImage,
+      targets,
+      instruction,
+    }).then((r) => r.data),
   aiSuggest: (section, dna) => api.post("/ai/suggest", { section, dna }).then((r) => r.data),
   // Photo Shoots
   createShoot: (body) => api.post("/shoots", body).then((r) => r.data),
