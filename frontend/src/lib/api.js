@@ -58,8 +58,13 @@ export const endpoints = {
       instruction,
       preserve_unmentioned: preserveUnmentioned,
     }).then((r) => r.data),
-  aiVideoPrompt: (instruction) =>
-    api.post("/ai/video-prompt", { instruction }).then((r) => r.data),
+  aiVideoPrompt: (instruction, mode = "image") =>
+    api.post("/ai/video-prompt", { instruction, mode }).then((r) => r.data),
+  aiAnalyzeVideoImage: (referenceImage, instruction = "") =>
+    api.post("/ai/analyze-video-image", {
+      reference_image: referenceImage,
+      instruction,
+    }).then((r) => r.data),
   aiSuggest: (section, dna) => api.post("/ai/suggest", { section, dna }).then((r) => r.data),
   // Photo Shoots
   createShoot: (body) => api.post("/shoots", body).then((r) => r.data),

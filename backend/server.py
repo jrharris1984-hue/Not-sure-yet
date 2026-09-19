@@ -12,6 +12,8 @@ import json
 import re
 import random
 import asyncio
+import base64
+import mimetypes
 from pathlib import Path
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
@@ -202,6 +204,7 @@ SEED_WORKFLOWS = [
     {"file": "zimage.json", "name": "Z-image Turbo · NSFW", "kind": "image", "prompt_style": "venice"},
     {"file": "qwen.json", "name": "Qwen Image Edit 2511", "kind": "edit", "prompt_style": "venice"},
     {"file": "wan.json", "name": "WAN 2.2 5B · Image → Video", "kind": "video", "prompt_style": "venice"},
+    {"file": "wan_t2v.json", "name": "WAN 2.2 14B · Text → Video", "kind": "text_video", "prompt_style": "venice"},
     {"file": "face.json", "name": "Face-Preserved · IPAdapter FaceID", "kind": "face", "prompt_style": "venice"},
     {"file": "pony.json", "name": "Pony V6 XL · 5 LoRAs", "kind": "pony", "prompt_style": "pony"},
 ]
@@ -804,6 +807,8 @@ class DispatchBody(BaseModel):
     video_instruction: str = ""
     video_frames: int = 41
     video_fps: int = 24
+    video_width: int = 640
+    video_height: int = 640
 
 
 def _patch_seed(workflow: Dict[str, Any], seed: int) -> int:
@@ -958,49 +963,71 @@ async def _perform_dispatch(body: "DispatchBody") -> Dict[str, Any]:
                 "not explicitly requested to change."
             )
 
-    # The bundled WAN workflow is image-to-video. Replace its exported
-    # source filename, motion prompt, frame count, and output FPS at dispatch time.
-    if wf_template and wf_template.kind == "video":
-        if not body.reference_image:
-            r.status = "failed"
-            r.error = "Select and upload a starting image before using WAN Image to Video."
-            doc = r.model_dump()
-            await db.renders.insert_one(doc)
-            doc.pop("_id", None)
-            return doc
+    # WAN image-to-video and text-to-video use separate workflows so the
+    # proven image pipeline remains untouched.
+    if wf_template and wf_template.kind in {"video", "text_video"}:
         instruction = body.video_instruction.strip()
         if not instruction:
             r.status = "failed"
-            r.error = "Describe the movement you want WAN to create."
+            r.error = "Describe the video you want WAN to create."
             doc = r.model_dump()
             await db.renders.insert_one(doc)
             doc.pop("_id", None)
             return doc
+
         requested_frames = max(41, min(241, int(body.video_frames)))
         # WAN uses frame counts in the 4n+1 family.
         frames = ((requested_frames - 1) // 4) * 4 + 1
         fps = max(8, min(30, int(body.video_fps)))
         image_patched = False
         latent_patched = False
+
         for node in workflow.values():
             if not isinstance(node, dict):
                 continue
             inputs = node.get("inputs", {})
-            if node.get("class_type") == "LoadImage" and "image" in inputs:
-                inputs["image"] = body.reference_image
-                image_patched = True
-            if node.get("class_type") == "Wan22ImageToVideoLatent":
-                inputs["length"] = frames
-                latent_patched = True
-            if node.get("class_type") in {"SaveAnimatedWEBP", "SaveWEBM", "VHS_VideoCombine"} and "fps" in inputs:
+            class_type = node.get("class_type")
+
+            if wf_template.kind == "video":
+                if class_type == "LoadImage" and "image" in inputs:
+                    inputs["image"] = body.reference_image
+                    image_patched = True
+                if class_type == "Wan22ImageToVideoLatent":
+                    inputs["length"] = frames
+                    latent_patched = True
+            else:
+                if class_type == "EmptyHunyuanLatentVideo":
+                    inputs["length"] = frames
+                    inputs["width"] = max(256, min(1280, int(body.video_width)))
+                    inputs["height"] = max(256, min(1280, int(body.video_height)))
+                    latent_patched = True
+
+            if class_type in {"SaveAnimatedWEBP", "SaveWEBM", "VHS_VideoCombine", "CreateVideo"} and "fps" in inputs:
                 inputs["fps"] = fps
-        if not image_patched or not latent_patched:
+
+        if wf_template.kind == "video":
+            if not body.reference_image:
+                r.status = "failed"
+                r.error = "Select and upload a starting image before using WAN Image to Video."
+                doc = r.model_dump()
+                await db.renders.insert_one(doc)
+                doc.pop("_id", None)
+                return doc
+            if not image_patched or not latent_patched:
+                r.status = "failed"
+                r.error = "The selected WAN workflow is missing its LoadImage or image-to-video latent node."
+                doc = r.model_dump()
+                await db.renders.insert_one(doc)
+                doc.pop("_id", None)
+                return doc
+        elif not latent_patched:
             r.status = "failed"
-            r.error = "The selected WAN workflow is missing its LoadImage or image-to-video latent node."
+            r.error = "The selected WAN Text to Video workflow is missing its latent-video node."
             doc = r.model_dump()
             await db.renders.insert_one(doc)
             doc.pop("_id", None)
             return doc
+
         positive_text = instruction
 
     # Store the exact instruction actually sent to the selected workflow so
@@ -1541,6 +1568,12 @@ class EditPromptBody(BaseModel):
 
 class VideoPromptBody(BaseModel):
     instruction: str
+    mode: str = "image"
+
+
+class VideoImageAnalysisBody(BaseModel):
+    reference_image: str
+    instruction: str = ""
 
 
 DNA_SCHEMA_HINT = """The DNA object has these sections and example keys:
@@ -1599,17 +1632,89 @@ async def ai_edit_prompt(body: EditPromptBody):
 
 @api.post("/ai/video-prompt")
 async def ai_video_prompt(body: VideoPromptBody):
-    """Use Venice to convert a rough idea into a WAN image-to-video motion prompt."""
-    system = (
-        "You write concise image-to-video prompts for WAN 2.2. The source image already defines "
-        "the person, clothing, location, lighting, and composition. Expand the user's request into "
-        "clear temporal motion: subject movement, facial expression, hands, hair and fabric physics, "
-        "and camera movement only when requested. Preserve identity and existing visual details. "
-        "Avoid scene cuts, sudden transformations, new people, or invented wardrobe changes. "
-        "Return only the finished motion prompt with no heading or explanation."
-    )
+    """Use Venice to expand a rough idea for either WAN video mode."""
+    if body.mode == "text":
+        system = (
+            "You write production-ready text-to-video prompts for WAN 2.2. Expand the user's idea "
+            "into one coherent shot describing the adult subject, action over time, environment, "
+            "lighting, composition, camera movement, and realistic motion. Keep identity and anatomy "
+            "consistent from first frame to last. Avoid scene cuts, sudden transformations, duplicate "
+            "people, or contradictory motion. Return only the finished prompt with no heading."
+        )
+    else:
+        system = (
+            "You write concise image-to-video prompts for WAN 2.2. The source image already defines "
+            "the person, clothing, location, lighting, and composition. Expand the user's request into "
+            "clear temporal motion: subject movement, facial expression, hands, hair and fabric physics, "
+            "and camera movement only when requested. Preserve identity and existing visual details. "
+            "Avoid scene cuts, sudden transformations, new people, or invented wardrobe changes. "
+            "Return only the finished motion prompt with no heading or explanation."
+        )
     prompt = await openrouter_chat(system, body.instruction, response_format_json=False)
     return {"prompt": prompt.strip()}
+
+
+@api.post("/ai/analyze-video-image")
+async def ai_analyze_video_image(body: VideoImageAnalysisBody):
+    """Analyze an uploaded starting frame with a Venice vision model and draft a WAN motion prompt."""
+    vision_model = os.environ.get("VENICE_VISION_MODEL", "").strip()
+    if not vision_model:
+        raise HTTPException(
+            status_code=400,
+            detail="Venice vision is not configured. Add VENICE_VISION_MODEL to backend/.env and restart the backend.",
+        )
+    venice_key = os.environ.get("VENICE_API_KEY", "").strip()
+    s = await get_settings()
+    api_key = venice_key or s.openrouter_api_key
+    if not api_key:
+        raise HTTPException(status_code=400, detail="Venice API key not configured.")
+
+    try:
+        async with httpx.AsyncClient(timeout=45.0) as hc:
+            image_response = await hc.get(
+                f"{s.comfyui_url.rstrip('/')}/view",
+                params={"filename": body.reference_image, "type": "input", "subfolder": ""},
+            )
+        if image_response.status_code >= 400:
+            raise HTTPException(status_code=502, detail="Could not read the uploaded image from ComfyUI.")
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Could not read the uploaded image: {exc}")
+
+    mime = image_response.headers.get("content-type") or mimetypes.guess_type(body.reference_image)[0] or "image/png"
+    data_url = f"data:{mime};base64,{base64.b64encode(image_response.content).decode('ascii')}"
+    requested_motion = body.instruction.strip() or "Natural subtle motion appropriate to this image."
+    system = (
+        "Analyze the supplied starting frame for WAN 2.2 image-to-video. Return JSON with exactly "
+        "two strings: analysis and prompt. analysis briefly records the visible adult subject, pose, "
+        "expression, clothing, environment, lighting, framing, and continuity constraints. prompt is "
+        "an editable WAN motion prompt combining those observations with the requested motion. Do not "
+        "invent wardrobe, identity, location, or extra people. Preserve the starting frame while adding "
+        "natural temporal movement."
+    )
+    payload = {
+        "model": vision_model,
+        "messages": [
+            {"role": "system", "content": system},
+            {"role": "user", "content": [
+                {"type": "text", "text": f"Requested motion: {requested_motion}"},
+                {"type": "image_url", "image_url": {"url": data_url}},
+            ]},
+        ],
+        "temperature": 0.5,
+        "response_format": {"type": "json_object"},
+    }
+    async with httpx.AsyncClient(timeout=120.0) as hc:
+        response = await hc.post(
+            "https://api.venice.ai/api/v1/chat/completions",
+            headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+            json=payload,
+        )
+    if response.status_code >= 400:
+        raise HTTPException(status_code=502, detail=f"Venice vision error: {response.status_code} {response.text[:400]}")
+    result = extract_json(response.json()["choices"][0]["message"]["content"])
+    return {"analysis": str(result.get("analysis", "")).strip(), "prompt": str(result.get("prompt", "")).strip()}
 
 
 @api.post("/ai/suggest")
