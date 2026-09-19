@@ -1,5 +1,5 @@
 """Ultra Studio Character DNA Builder — FastAPI backend."""
-from fastapi import FastAPI, APIRouter, HTTPException, Body, BackgroundTasks, WebSocket, WebSocketDisconnect, Query
+from fastapi import FastAPI, APIRouter, HTTPException, Body, BackgroundTasks, WebSocket, WebSocketDisconnect, Query, UploadFile, File
 from fastapi.responses import FileResponse, JSONResponse
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
@@ -734,6 +734,9 @@ class DispatchBody(BaseModel):
     seed: Optional[int] = None  # if provided, override any seed/noise_seed in workflow
     shoot_id: Optional[str] = None
     shoot_frame_index: Optional[int] = None
+    reference_image: Optional[str] = None  # ComfyUI input filename returned by /reference-images/upload
+    face_strength: float = 1.1
+    faceid_v2_strength: float = 1.4
 
 
 def _patch_seed(workflow: Dict[str, Any], seed: int) -> int:
@@ -805,6 +808,39 @@ async def _perform_dispatch(body: "DispatchBody") -> Dict[str, Any]:
         doc.pop("_id", None)
         return doc
 
+    # Face-preserve workflows require an uploaded reference image. Patch the
+    # LoadImage and IPAdapter FaceID nodes dynamically so bundled workflows never
+    # reuse the example filename that was present when the workflow was exported.
+    if wf_template and wf_template.kind == "face":
+        if not body.reference_image:
+            r.status = "failed"
+            r.error = "Select and upload a reference photograph before using the Face-Preserved workflow."
+            doc = r.model_dump()
+            doc["workflow_id"] = wf_template.id
+            doc["workflow_name"] = wf_template.name
+            await db.renders.insert_one(doc)
+            doc.pop("_id", None)
+            return doc
+        image_patched = False
+        for node in workflow.values():
+            if not isinstance(node, dict):
+                continue
+            inputs = node.get("inputs", {})
+            if node.get("class_type") == "LoadImage" and "image" in inputs:
+                inputs["image"] = body.reference_image
+                image_patched = True
+            if node.get("class_type") == "IPAdapterFaceID":
+                inputs["weight"] = max(0.0, min(2.0, float(body.face_strength)))
+                if "weight_faceidv2" in inputs:
+                    inputs["weight_faceidv2"] = max(0.0, min(2.0, float(body.faceid_v2_strength)))
+        if not image_patched:
+            r.status = "failed"
+            r.error = "The selected Face-Preserved workflow has no LoadImage node."
+            doc = r.model_dump()
+            await db.renders.insert_one(doc)
+            doc.pop("_id", None)
+            return doc
+
     # Map prompts into template
     mapped = {"positive": False, "negative": False}
     if pos_id and pos_id in workflow and "inputs" in workflow[pos_id] and "text" in workflow[pos_id]["inputs"]:
@@ -857,6 +893,45 @@ async def _perform_dispatch(body: "DispatchBody") -> Dict[str, Any]:
     await db.renders.insert_one(doc)
     doc.pop("_id", None)
     return doc
+
+
+@api.post("/reference-images/upload")
+async def upload_reference_image(image: UploadFile = File(...)):
+    """Validate and forward a reference photograph to ComfyUI's input storage."""
+    allowed = {"image/jpeg", "image/png", "image/webp"}
+    content_type = (image.content_type or "").lower()
+    if content_type not in allowed:
+        raise HTTPException(400, "Reference image must be a JPG, PNG, or WEBP file.")
+    data = await image.read()
+    if not data:
+        raise HTTPException(400, "The selected reference image is empty.")
+    if len(data) > 20 * 1024 * 1024:
+        raise HTTPException(413, "Reference image must be 20 MB or smaller.")
+
+    suffix = Path(image.filename or "reference.jpg").suffix.lower()
+    if suffix not in {".jpg", ".jpeg", ".png", ".webp"}:
+        suffix = { "image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp" }[content_type]
+    comfy_name = f"ultra-studio-reference-{uuid.uuid4().hex}{suffix}"
+    settings = await get_settings()
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as hc:
+            response = await hc.post(
+                f"{settings.comfyui_url.rstrip('/')}/upload/image",
+                files={"image": (comfy_name, data, content_type)},
+                data={"type": "input", "overwrite": "true"},
+            )
+        if response.status_code >= 400:
+            raise HTTPException(502, f"ComfyUI image upload failed: {response.status_code} {response.text[:200]}")
+        payload = response.json()
+        return {
+            "name": payload.get("name", comfy_name),
+            "subfolder": payload.get("subfolder", ""),
+            "type": payload.get("type", "input"),
+        }
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(502, f"Could not upload the reference image to ComfyUI: {exc}")
 
 
 @api.post("/renders/dispatch")
