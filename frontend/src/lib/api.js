@@ -34,6 +34,13 @@ export const endpoints = {
   characterRenders: (id) => api.get(`/characters/${id}/renders`).then((r) => r.data),
   listRenders: () => api.get("/renders").then((r) => r.data),
   dispatchRender: (body) => api.post("/renders/dispatch", body).then((r) => r.data),
+  uploadReferenceImage: (file) => {
+    const form = new FormData();
+    form.append("image", file);
+    return api.post("/reference-images/upload", form, {
+      headers: { "Content-Type": "multipart/form-data" },
+    }).then((r) => r.data);
+  },
   pollRender: (id) => api.post(`/renders/${id}/poll`).then((r) => r.data),
   cancelRender: (id) => api.post(`/renders/${id}/cancel`).then((r) => r.data),
   listWorkflows: () => api.get("/workflows").then((r) => r.data),

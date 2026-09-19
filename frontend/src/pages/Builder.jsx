@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, useRef } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Save, Shuffle, Download, Upload, Loader2, Play, ChevronLeft, ChevronRight, Camera, Sparkles, ChevronDown } from "lucide-react";
+import { Save, Shuffle, Download, Upload, Loader2, Play, ChevronLeft, ChevronRight, Camera, Sparkles, ChevronDown, ImagePlus, X } from "lucide-react";
 import { toast } from "sonner";
 import { endpoints } from "@/lib/api";
 import {
@@ -52,6 +52,11 @@ export default function Builder() {
   const [activeRender, setActiveRender] = useState(null);
   const [workflowId, setWorkflowId] = useState("");
   const [loraOverrides, setLoraOverrides] = useState({});
+  const [referenceImage, setReferenceImage] = useState(null);
+  const [referencePreview, setReferencePreview] = useState("");
+  const [referenceUploading, setReferenceUploading] = useState(false);
+  const [faceStrength, setFaceStrength] = useState(1.1);
+  const [faceIdV2Strength, setFaceIdV2Strength] = useState(1.4);
 
   const { data: workflows = [] } = useQuery({ queryKey: ["workflows"], queryFn: endpoints.listWorkflows });
   const { data: settings } = useQuery({ queryKey: ["settings"], queryFn: endpoints.settings });
@@ -63,6 +68,33 @@ export default function Builder() {
 
   const activeWorkflow = workflows.find((w) => w.id === workflowId);
   const promptStyle = activeWorkflow?.prompt_style || "venice";
+  const isFaceWorkflow = activeWorkflow?.kind === "face";
+
+  const uploadReference = async (file) => {
+    if (!file) return;
+    setReferenceUploading(true);
+    try {
+      const uploaded = await endpoints.uploadReferenceImage(file);
+      if (referencePreview) URL.revokeObjectURL(referencePreview);
+      setReferencePreview(URL.createObjectURL(file));
+      setReferenceImage(uploaded);
+      toast.success("Reference photograph uploaded");
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || "Reference photograph upload failed");
+    } finally {
+      setReferenceUploading(false);
+    }
+  };
+
+  const clearReference = () => {
+    if (referencePreview) URL.revokeObjectURL(referencePreview);
+    setReferencePreview("");
+    setReferenceImage(null);
+  };
+
+  useEffect(() => () => {
+    if (referencePreview) URL.revokeObjectURL(referencePreview);
+  }, [referencePreview]);
 
   const { data: character } = useQuery({
     queryKey: ["character", id],
@@ -182,6 +214,10 @@ export default function Builder() {
       toast.error("Pick a workflow first (Settings → Workflow library)");
       return;
     }
+    if (isFaceWorkflow && !referenceImage?.name) {
+      toast.error("Upload a reference photograph before using Face Preserve");
+      return;
+    }
     setDispatching(true);
     try {
       const r = await endpoints.dispatchRender({
@@ -193,6 +229,9 @@ export default function Builder() {
         prompt_negative: negative,
         workflow_id: workflowId,
         lora_overrides: loraOverrides,
+        reference_image: isFaceWorkflow ? referenceImage?.name : undefined,
+        face_strength: faceStrength,
+        faceid_v2_strength: faceIdV2Strength,
       });
       setActiveRender(r);
       toast.success(r.status === "running" ? "Render queued to ComfyUI" : `Render ${r.status}`);
@@ -549,6 +588,63 @@ export default function Builder() {
             <div className="pane p-3 flex items-center gap-2" data-testid="pony-style-badge">
               <span className="text-[10px] font-mono uppercase tracking-widest text-rose-300 bg-rose-500/10 border border-rose-500/40 rounded px-1.5 py-0.5">pony style</span>
               <span className="text-[11px] text-zinc-400">score_9 prefix + booru tag weighting enabled</span>
+            </div>
+          )}
+          {isFaceWorkflow && (
+            <div className="pane p-4 space-y-4" data-testid="face-reference-panel">
+              <div className="flex items-center gap-2">
+                <ImagePlus className="h-4 w-4 text-amber-400" />
+                <div className="section-label">Face Preserve Reference</div>
+              </div>
+              <p className="text-xs text-zinc-400">
+                Upload a clear photograph of one adult face. The photo is sent directly to your local ComfyUI input folder.
+              </p>
+              {referencePreview ? (
+                <div className="relative rounded-lg overflow-hidden border hairline bg-elevated">
+                  <img src={referencePreview} alt="Face reference" className="w-full max-h-72 object-contain" />
+                  <button
+                    type="button"
+                    onClick={clearReference}
+                    className="absolute right-2 top-2 rounded-full bg-black/70 p-2 text-zinc-100 hover:bg-red-500"
+                    aria-label="Remove reference photograph"
+                    data-testid="btn-remove-face-reference"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              ) : (
+                <label className="flex min-h-28 cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-amber-500/40 bg-amber-500/5 px-4 py-5 text-center hover:bg-amber-500/10">
+                  {referenceUploading ? <Loader2 className="h-6 w-6 animate-spin text-amber-300" /> : <Upload className="h-6 w-6 text-amber-300" />}
+                  <span className="text-sm font-semibold text-amber-100">
+                    {referenceUploading ? "Uploading…" : "Choose reference photograph"}
+                  </span>
+                  <span className="text-[11px] text-zinc-500">JPG, PNG, or WEBP · maximum 20 MB</span>
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    disabled={referenceUploading}
+                    onChange={(event) => uploadReference(event.target.files?.[0])}
+                    className="hidden"
+                    data-testid="input-face-reference"
+                  />
+                </label>
+              )}
+              <label className="block space-y-1">
+                <div className="flex justify-between text-xs text-zinc-400">
+                  <span>Identity strength</span><span className="font-mono text-amber-300">{faceStrength.toFixed(2)}</span>
+                </div>
+                <input type="range" min="0.5" max="1.8" step="0.05" value={faceStrength}
+                  onChange={(e) => setFaceStrength(Number(e.target.value))} className="w-full accent-amber-400"
+                  data-testid="slider-face-strength" />
+              </label>
+              <label className="block space-y-1">
+                <div className="flex justify-between text-xs text-zinc-400">
+                  <span>FaceID v2 strength</span><span className="font-mono text-amber-300">{faceIdV2Strength.toFixed(2)}</span>
+                </div>
+                <input type="range" min="0.5" max="1.8" step="0.05" value={faceIdV2Strength}
+                  onChange={(e) => setFaceIdV2Strength(Number(e.target.value))} className="w-full accent-amber-400"
+                  data-testid="slider-faceid-v2-strength" />
+              </label>
             </div>
           )}
           <LoraPanel
