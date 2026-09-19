@@ -29,6 +29,17 @@ import { Flame } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 
+const REPAIR_TARGETS = [
+  ["face", "Face"],
+  ["hands", "Hands & fingers"],
+  ["feet", "Feet & toes"],
+  ["anatomy", "Body anatomy"],
+  ["skin", "Natural skin texture"],
+  ["sharpness", "Focus & sharpness"],
+  ["lighting", "Lighting & exposure"],
+  ["artifacts", "Artifacts & noise"],
+];
+
 export default function Builder() {
   const { id, section: sectionParam } = useParams();
   const isNew = !id;
@@ -61,6 +72,11 @@ export default function Builder() {
   const [editInstruction, setEditInstruction] = useState("");
   const [preserveUnmentioned, setPreserveUnmentioned] = useState(true);
   const [enhancingEdit, setEnhancingEdit] = useState(false);
+  const [repairTargets, setRepairTargets] = useState(["face", "hands"]);
+  const [repairInstruction, setRepairInstruction] = useState("");
+  const [repairStrength, setRepairStrength] = useState(0.45);
+  const [repairAnalysis, setRepairAnalysis] = useState("");
+  const [analyzingRepair, setAnalyzingRepair] = useState(false);
   const [videoInstruction, setVideoInstruction] = useState("");
   const [videoFrames, setVideoFrames] = useState(41);
   const [videoFps, setVideoFps] = useState(24);
@@ -80,6 +96,7 @@ export default function Builder() {
   const promptStyle = activeWorkflow?.prompt_style || "venice";
   const isFaceWorkflow = activeWorkflow?.kind === "face";
   const isEditWorkflow = activeWorkflow?.kind === "edit";
+  const isEnhanceWorkflow = activeWorkflow?.kind === "enhance";
   const isVideoWorkflow = activeWorkflow?.kind === "video";
   const isTextVideoWorkflow = activeWorkflow?.kind === "text_video";
 
@@ -96,6 +113,34 @@ export default function Builder() {
       toast.error(e?.response?.data?.detail || "Reference photograph upload failed");
     } finally {
       setReferenceUploading(false);
+    }
+  };
+
+  const toggleRepairTarget = (target) => {
+    setRepairTargets((current) =>
+      current.includes(target) ? current.filter((item) => item !== target) : [...current, target]
+    );
+  };
+
+  const analyzeRepairImage = async () => {
+    if (!referenceImage?.name) {
+      toast.error("Upload the image you want to repair first");
+      return;
+    }
+    setAnalyzingRepair(true);
+    try {
+      const result = await endpoints.aiAnalyzeRepairImage(
+        referenceImage.name,
+        repairTargets,
+        repairInstruction.trim()
+      );
+      setRepairAnalysis(result.analysis || "");
+      if (result.prompt) setRepairInstruction(result.prompt);
+      toast.success("Venice inspected the image and drafted a repair instruction");
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || "Venice could not inspect the image");
+    } finally {
+      setAnalyzingRepair(false);
     }
   };
 
@@ -290,6 +335,14 @@ export default function Builder() {
       toast.error("Upload a source image before using Qwen Image Edit");
       return;
     }
+    if (isEnhanceWorkflow && !referenceImage?.name) {
+      toast.error("Upload an image before using Image Repair & Enhance");
+      return;
+    }
+    if (isEnhanceWorkflow && repairTargets.length === 0 && !repairInstruction.trim()) {
+      toast.error("Choose at least one repair target or write a repair instruction");
+      return;
+    }
     if (isEditWorkflow && !editInstruction.trim()) {
       toast.error("Describe the change you want Qwen to make");
       return;
@@ -315,11 +368,15 @@ export default function Builder() {
         prompt_negative: negative,
         workflow_id: workflowId,
         lora_overrides: loraOverrides,
-        reference_image: (isFaceWorkflow || isEditWorkflow || isVideoWorkflow) ? referenceImage?.name : undefined,
+        reference_image: (isFaceWorkflow || isEditWorkflow || isEnhanceWorkflow || isVideoWorkflow) ? referenceImage?.name : undefined,
         face_strength: faceStrength,
         faceid_v2_strength: faceIdV2Strength,
-        edit_instruction: isEditWorkflow ? editInstruction.trim() : undefined,
+        edit_instruction: isEnhanceWorkflow
+          ? (repairInstruction.trim() || "Correct the selected technical defects naturally.")
+          : isEditWorkflow ? editInstruction.trim() : undefined,
         preserve_unmentioned: preserveUnmentioned,
+        repair_targets: isEnhanceWorkflow ? repairTargets : [],
+        repair_strength: repairStrength,
         video_instruction: (isVideoWorkflow || isTextVideoWorkflow) ? videoInstruction.trim() : undefined,
         video_frames: videoFrames,
         video_fps: videoFps,
@@ -822,6 +879,103 @@ export default function Builder() {
               </div>
               <p className="text-[11px] text-zinc-500">
                 This 14B workflow is much heavier than the 5B Image → Video workflow. Test with 41 frames first.
+              </p>
+            </div>
+          )}
+          {isEnhanceWorkflow && (
+            <div className="pane p-4 space-y-4" data-testid="image-repair-panel">
+              <div className="flex items-center gap-2">
+                <Sparkles className="h-4 w-4 text-cyan-300" />
+                <div className="section-label">Image Repair & Enhance</div>
+              </div>
+              <p className="text-xs text-zinc-400">
+                Upload an image, select only the areas that need correction, and optionally let Venice inspect it before Qwen performs the repair.
+              </p>
+              {referencePreview ? (
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div>
+                    <div className="mb-1 text-[10px] font-mono uppercase tracking-widest text-zinc-500">Original</div>
+                    <div className="relative rounded-lg overflow-hidden border hairline bg-elevated">
+                      <img src={referencePreview} alt="Original for repair" className="w-full max-h-80 object-contain" />
+                      <button type="button" onClick={clearReference}
+                        className="absolute right-2 top-2 rounded-full bg-black/70 p-2 text-zinc-100 hover:bg-red-500"
+                        aria-label="Remove repair image" data-testid="btn-remove-repair-source">
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                  {activeRender?.status === "done" && activeRender.output_files?.[0] && (
+                    <div>
+                      <div className="mb-1 text-[10px] font-mono uppercase tracking-widest text-emerald-300">Repaired result</div>
+                      <img src={activeRender.output_files[0]} alt="Repaired result"
+                        className="w-full max-h-80 rounded-lg border hairline bg-elevated object-contain" />
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <label className="flex min-h-32 cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-cyan-500/40 bg-cyan-500/5 px-4 py-6 text-center hover:bg-cyan-500/10">
+                  {referenceUploading ? <Loader2 className="h-6 w-6 animate-spin text-cyan-300" /> : <Upload className="h-6 w-6 text-cyan-300" />}
+                  <span className="text-sm font-semibold text-cyan-100">
+                    {referenceUploading ? "Uploading…" : "Choose image to repair"}
+                  </span>
+                  <span className="text-[11px] text-zinc-500">JPG, PNG, or WEBP · maximum 20 MB</span>
+                  <input type="file" accept="image/jpeg,image/png,image/webp"
+                    disabled={referenceUploading}
+                    onChange={(event) => uploadReference(event.target.files?.[0])}
+                    className="hidden" data-testid="input-repair-source" />
+                </label>
+              )}
+              <div>
+                <div className="mb-2 text-xs uppercase tracking-widest text-zinc-500 font-mono">Repair targets</div>
+                <div className="flex flex-wrap gap-2">
+                  {REPAIR_TARGETS.map(([value, label]) => (
+                    <button type="button" key={value} onClick={() => toggleRepairTarget(value)}
+                      className={`rounded-full border px-3 py-1.5 text-xs transition ${
+                        repairTargets.includes(value)
+                          ? "border-cyan-400 bg-cyan-500/20 text-cyan-100"
+                          : "border-hairline bg-elevated text-zinc-400 hover:text-zinc-200"
+                      }`}
+                      data-testid={`repair-target-${value}`}>
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <label className="block space-y-1">
+                <div className="flex justify-between text-xs text-zinc-400">
+                  <span>Repair strength</span>
+                  <span className="font-mono text-cyan-300">{Math.round(repairStrength * 100)}%</span>
+                </div>
+                <input type="range" min="0.2" max="0.85" step="0.05" value={repairStrength}
+                  onChange={(event) => setRepairStrength(Number(event.target.value))}
+                  className="w-full accent-cyan-400" data-testid="slider-repair-strength" />
+                <div className="flex justify-between text-[10px] text-zinc-600">
+                  <span>Subtle preservation</span><span>Stronger reconstruction</span>
+                </div>
+              </label>
+              <label className="block space-y-1">
+                <span className="text-xs uppercase tracking-widest text-zinc-500 font-mono">Repair instruction</span>
+                <Textarea rows={6} value={repairInstruction}
+                  onChange={(event) => setRepairInstruction(event.target.value)}
+                  placeholder="Optional: describe a specific defect or leave this blank and ask Venice to inspect the selected areas."
+                  className="bg-elevated border-hairline text-sm"
+                  data-testid="textarea-repair-instruction" />
+              </label>
+              <button type="button" onClick={analyzeRepairImage}
+                disabled={analyzingRepair || !referenceImage?.name}
+                className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-cyan-500/40 bg-cyan-500/10 px-3 py-2 text-sm font-semibold text-cyan-200 hover:bg-cyan-500/20 disabled:opacity-40"
+                data-testid="btn-venice-analyze-repair">
+                {analyzingRepair ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                Inspect image and draft repair with Venice
+              </button>
+              {repairAnalysis && (
+                <div className="rounded-lg border border-cyan-500/20 bg-cyan-500/5 p-3 text-xs text-zinc-300">
+                  <div className="mb-1 font-mono uppercase tracking-widest text-cyan-300">Venice inspection</div>
+                  {repairAnalysis}
+                </div>
+              )}
+              <p className="text-[11px] text-zinc-500">
+                The repair prompt always preserves identity, age, body shape, pose, clothing, environment, and camera framing unless you explicitly request a change.
               </p>
             </div>
           )}
