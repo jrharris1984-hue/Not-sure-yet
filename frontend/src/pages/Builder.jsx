@@ -384,7 +384,7 @@ export default function Builder() {
         video_height: 640,
       });
       setActiveRender(r);
-      toast.success(r.status === "running" ? "Render queued to ComfyUI" : `Render ${r.status}`);
+      toast.success(r.status === "queued" ? `Added to queue${r.queue_position ? ` · position #${r.queue_position}` : ""}` : `Render ${r.status}`);
     } catch (e) {
       toast.error(e?.response?.data?.detail || "Dispatch failed");
     } finally {
@@ -394,12 +394,12 @@ export default function Builder() {
 
   // Poll active render for output
   useEffect(() => {
-    if (!activeRender?.id || activeRender.status === "done" || activeRender.status === "failed") return;
+    if (!activeRender?.id || ["done", "failed", "offline", "cancelled"].includes(activeRender.status)) return;
     const t = setInterval(async () => {
       try {
         const r = await endpoints.pollRender(activeRender.id);
         setActiveRender(r);
-        if (r.status === "done" || r.status === "failed") clearInterval(t);
+        if (["done", "failed", "offline", "cancelled"].includes(r.status)) clearInterval(t);
       } catch { /* keep polling */ }
     }, 2500);
     return () => clearInterval(t);
