@@ -1,13 +1,13 @@
 import { useEffect, useMemo, useState, useRef } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Save, Shuffle, Download, Upload, Loader2, Play, ChevronLeft, ChevronRight, Camera, Sparkles, ChevronDown, ImagePlus, X } from "lucide-react";
+import { Save, Shuffle, Download, Upload, Loader2, Play, ChevronLeft, ChevronRight, Camera, Sparkles, ChevronDown, ImagePlus, X, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import { endpoints } from "@/lib/api";
 import {
   SECTIONS, DEFAULT_DNA,
   randomizeDna, randomizeSection, randomizeWetDream, resetSection,
-  buildPrompts, buildMultiVenicePrompts,
+  buildPrompts, buildMultiVenicePrompts, buildChromaPrompts, buildMultiChromaPrompts,
   phaseOfSection,
   MAX_SUBJECTS, makeSubject, subjectsFromCharacter, subjectLabel,
   expectedSubjectCount, seedSubjectFromPairing,
@@ -25,6 +25,7 @@ import GroupedSectionRail from "@/components/GroupedSectionRail";
 import DnaAtAGlance from "@/components/DnaAtAGlance";
 import MobileOverflow from "@/components/MobileOverflow";
 import SubjectSwitcher from "@/components/SubjectSwitcher";
+import ChromaControls from "@/components/ChromaControls";
 import { Flame } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -83,6 +84,15 @@ export default function Builder() {
   const [enhancingVideo, setEnhancingVideo] = useState(false);
   const [analyzingVideoImage, setAnalyzingVideoImage] = useState(false);
   const [videoImageAnalysis, setVideoImageAnalysis] = useState("");
+  const [chromaSettings, setChromaSettings] = useState({
+    width: 768,
+    height: 1152,
+    steps: 26,
+    cfg: 3.8,
+    batchSize: 1,
+    sampler: "euler",
+    seed: "",
+  });
 
   const { data: workflows = [] } = useQuery({ queryKey: ["workflows"], queryFn: endpoints.listWorkflows });
   const { data: settings } = useQuery({ queryKey: ["settings"], queryFn: endpoints.settings });
@@ -99,6 +109,7 @@ export default function Builder() {
   const isEnhanceWorkflow = activeWorkflow?.kind === "enhance";
   const isVideoWorkflow = activeWorkflow?.kind === "video";
   const isTextVideoWorkflow = activeWorkflow?.kind === "text_video";
+  const isGoldenChroma = promptStyle === "chroma" || /chroma/i.test(activeWorkflow?.name || "");
 
   const uploadReference = async (file) => {
     if (!file) return;
@@ -280,15 +291,15 @@ export default function Builder() {
   const { positive, negative } = useMemo(
     () => {
       if (isMulti) {
-        return promptStyle === "pony"
-          ? buildMultiPonyPrompts(subjects, { raunch })
-          : buildMultiVenicePrompts(subjects, { raunch });
+        if (promptStyle === "pony") return buildMultiPonyPrompts(subjects, { raunch });
+        if (isGoldenChroma) return buildMultiChromaPrompts(subjects, { raunch });
+        return buildMultiVenicePrompts(subjects, { raunch });
       }
-      return promptStyle === "pony"
-        ? buildPonyPrompts(activeDna, { raunch })
-        : buildPrompts(activeDna, { raunch });
+      if (promptStyle === "pony") return buildPonyPrompts(activeDna, { raunch });
+      if (isGoldenChroma) return buildChromaPrompts(activeDna, { raunch });
+      return buildPrompts(activeDna, { raunch });
     },
-    [subjects, isMulti, activeDna, promptStyle, raunch]
+    [subjects, isMulti, activeDna, promptStyle, raunch, isGoldenChroma]
   );
 
   const save = useMutation({
@@ -368,6 +379,13 @@ export default function Builder() {
         prompt_negative: negative,
         workflow_id: workflowId,
         lora_overrides: loraOverrides,
+        width: isGoldenChroma ? chromaSettings.width : undefined,
+        height: isGoldenChroma ? chromaSettings.height : undefined,
+        batch_size: isGoldenChroma ? chromaSettings.batchSize : undefined,
+        steps: isGoldenChroma ? chromaSettings.steps : undefined,
+        cfg: isGoldenChroma ? chromaSettings.cfg : undefined,
+        sampler_name: isGoldenChroma ? chromaSettings.sampler : undefined,
+        seed: isGoldenChroma && chromaSettings.seed !== "" ? Number(chromaSettings.seed) : undefined,
         reference_image: (isFaceWorkflow || isEditWorkflow || isEnhanceWorkflow || isVideoWorkflow) ? referenceImage?.name : undefined,
         face_strength: faceStrength,
         faceid_v2_strength: faceIdV2Strength,
@@ -501,6 +519,47 @@ export default function Builder() {
     toast.success(`Wet dream · Subject ${activeSubject.label} 🎲`);
   };
 
+  const resetCharacter = () => {
+    const confirmed = window.confirm(
+      "Reset this character? This clears all current selections, prompts, tags, locks, and the uploaded reference image. Saved characters and Gallery images will not be deleted."
+    );
+    if (!confirmed) return;
+    if (referencePreview) URL.revokeObjectURL(referencePreview);
+    const fresh = makeSubject({ label: "A", dna: JSON.parse(JSON.stringify(DEFAULT_DNA)) });
+    setName("Untitled");
+    setSubjects([fresh]);
+    setActiveSubjectId(fresh.id);
+    setLocks({});
+    setCollapsed({});
+    setTags([]);
+    setRaunch(false);
+    setLoraOverrides({});
+    setReferenceImage(null);
+    setReferencePreview("");
+    setActiveRender(null);
+    setEditInstruction("");
+    setRepairTargets(["face", "hands"]);
+    setRepairInstruction("");
+    setRepairAnalysis("");
+    setVideoInstruction("");
+    setVideoImageAnalysis("");
+    setFaceStrength(1.1);
+    setFaceIdV2Strength(1.4);
+    setRepairStrength(0.45);
+    setPreserveUnmentioned(true);
+    setChromaSettings({
+      width: 768,
+      height: 1152,
+      steps: 26,
+      cfg: 3.8,
+      batchSize: 1,
+      sampler: "euler",
+      seed: "",
+    });
+    goSection("identity");
+    toast.success("Character reset to defaults");
+  };
+
   const expectedCount = expectedSubjectCount(primaryDna);
 
   return (
@@ -541,6 +600,15 @@ export default function Builder() {
             className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black text-sm font-semibold px-3 py-2 disabled:opacity-40"
           >
             {dispatching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />} Render
+          </button>
+          <button
+            type="button"
+            onClick={resetCharacter}
+            data-testid="btn-reset-character"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-red-500/30 px-3 py-2 text-sm font-semibold text-red-300 hover:bg-red-500/10"
+            title="Reset all current character selections"
+          >
+            <RotateCcw className="h-4 w-4" /> Reset
           </button>
           <MobileOverflow testId="builder-overflow">
             <button
@@ -619,6 +687,10 @@ export default function Builder() {
         </div>
         <TagInput value={tags} onChange={setTags} placeholder="tag this character (mood, ethnicity, persona)…" testId="builder-tags" />
       </div>
+
+      {isGoldenChroma && (
+        <ChromaControls value={chromaSettings} onChange={setChromaSettings} />
+      )}
 
       {/* Subject switcher — appears when scenario expects >1 or user manually added subjects */}
       <SubjectSwitcher
