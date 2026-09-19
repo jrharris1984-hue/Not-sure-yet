@@ -5,6 +5,7 @@ import AppShell from "@/components/AppShell";
 import Library from "@/pages/Library";
 import Builder from "@/pages/Builder";
 import Gallery from "@/pages/Gallery";
+import Queue from "@/pages/Queue";
 import Settings from "@/pages/Settings";
 import Shoots from "@/pages/Shoots";
 import ShootSetup from "@/pages/ShootSetup";
@@ -22,6 +23,7 @@ function App() {
             <Route path="/character/:id" element={<Builder />} />
             <Route path="/character/:id/s/:section" element={<Builder />} />
             <Route path="/gallery" element={<Gallery />} />
+            <Route path="/queue" element={<Queue />} />
             <Route path="/shoots" element={<Shoots />} />
             <Route path="/shoot/new/:characterId" element={<ShootSetup />} />
             <Route path="/shoot/:shootId" element={<ShootDetail />} />
