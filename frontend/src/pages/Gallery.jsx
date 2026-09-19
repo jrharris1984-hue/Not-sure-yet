@@ -35,7 +35,7 @@ const STATUS_STYLE = {
 
 const primaryOutput = (render) => render.output_variants?.enhanced?.[0] || render.output_files?.[0];
 const originalOutput = (render) => render.output_variants?.original?.[0];
-const isVideoUrl = (url = "") => /\.(webm|mp4|mov)(\?|$)/i.test(url);
+const isVideoUrl = (url = "") => /\.(webm|mp4|mov)(?:[?&]|$)/i.test(url);
 
 export default function Gallery() {
   const qc = useQueryClient();
