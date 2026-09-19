@@ -61,6 +61,10 @@ export default function Builder() {
   const [editInstruction, setEditInstruction] = useState("");
   const [preserveUnmentioned, setPreserveUnmentioned] = useState(true);
   const [enhancingEdit, setEnhancingEdit] = useState(false);
+  const [videoInstruction, setVideoInstruction] = useState("");
+  const [videoFrames, setVideoFrames] = useState(41);
+  const [videoFps, setVideoFps] = useState(24);
+  const [enhancingVideo, setEnhancingVideo] = useState(false);
 
   const { data: workflows = [] } = useQuery({ queryKey: ["workflows"], queryFn: endpoints.listWorkflows });
   const { data: settings } = useQuery({ queryKey: ["settings"], queryFn: endpoints.settings });
@@ -74,6 +78,7 @@ export default function Builder() {
   const promptStyle = activeWorkflow?.prompt_style || "venice";
   const isFaceWorkflow = activeWorkflow?.kind === "face";
   const isEditWorkflow = activeWorkflow?.kind === "edit";
+  const isVideoWorkflow = activeWorkflow?.kind === "video";
 
   const uploadReference = async (file) => {
     if (!file) return;
@@ -105,6 +110,23 @@ export default function Builder() {
       toast.error(e?.response?.data?.detail || "Venice could not enhance the edit instruction");
     } finally {
       setEnhancingEdit(false);
+    }
+  };
+
+  const enhanceVideoInstruction = async () => {
+    if (!videoInstruction.trim()) {
+      toast.error("Describe the movement first");
+      return;
+    }
+    setEnhancingVideo(true);
+    try {
+      const result = await endpoints.aiVideoPrompt(videoInstruction.trim());
+      setVideoInstruction(result.prompt || videoInstruction);
+      toast.success("Venice enhanced the motion prompt");
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || "Venice could not enhance the motion prompt");
+    } finally {
+      setEnhancingVideo(false);
     }
   };
 
@@ -248,6 +270,14 @@ export default function Builder() {
       toast.error("Describe the change you want Qwen to make");
       return;
     }
+    if (isVideoWorkflow && !referenceImage?.name) {
+      toast.error("Upload a starting image before using WAN Image to Video");
+      return;
+    }
+    if (isVideoWorkflow && !videoInstruction.trim()) {
+      toast.error("Describe the movement you want WAN to create");
+      return;
+    }
     setDispatching(true);
     try {
       const r = await endpoints.dispatchRender({
@@ -259,11 +289,14 @@ export default function Builder() {
         prompt_negative: negative,
         workflow_id: workflowId,
         lora_overrides: loraOverrides,
-        reference_image: (isFaceWorkflow || isEditWorkflow) ? referenceImage?.name : undefined,
+        reference_image: (isFaceWorkflow || isEditWorkflow || isVideoWorkflow) ? referenceImage?.name : undefined,
         face_strength: faceStrength,
         faceid_v2_strength: faceIdV2Strength,
         edit_instruction: isEditWorkflow ? editInstruction.trim() : undefined,
         preserve_unmentioned: preserveUnmentioned,
+        video_instruction: isVideoWorkflow ? videoInstruction.trim() : undefined,
+        video_frames: videoFrames,
+        video_fps: videoFps,
       });
       setActiveRender(r);
       toast.success(r.status === "running" ? "Render queued to ComfyUI" : `Render ${r.status}`);
@@ -620,6 +653,83 @@ export default function Builder() {
             <div className="pane p-3 flex items-center gap-2" data-testid="pony-style-badge">
               <span className="text-[10px] font-mono uppercase tracking-widest text-rose-300 bg-rose-500/10 border border-rose-500/40 rounded px-1.5 py-0.5">pony style</span>
               <span className="text-[11px] text-zinc-400">score_9 prefix + booru tag weighting enabled</span>
+            </div>
+          )}
+          {isVideoWorkflow && (
+            <div className="pane p-4 space-y-4" data-testid="wan-video-panel">
+              <div className="flex items-center gap-2">
+                <Camera className="h-4 w-4 text-emerald-300" />
+                <div className="section-label">WAN Image → Video</div>
+              </div>
+              <p className="text-xs text-zinc-400">
+                Upload the starting frame, then describe movement rather than redesigning the image.
+              </p>
+              {referencePreview ? (
+                <div className="relative rounded-lg overflow-hidden border hairline bg-elevated">
+                  <img src={referencePreview} alt="WAN starting frame" className="w-full max-h-72 object-contain" />
+                  <button type="button" onClick={clearReference}
+                    className="absolute right-2 top-2 rounded-full bg-black/70 p-2 text-zinc-100 hover:bg-red-500"
+                    aria-label="Remove WAN starting image" data-testid="btn-remove-wan-source">
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              ) : (
+                <label className="flex min-h-28 cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-emerald-500/40 bg-emerald-500/5 px-4 py-5 text-center hover:bg-emerald-500/10">
+                  {referenceUploading ? <Loader2 className="h-6 w-6 animate-spin text-emerald-300" /> : <Upload className="h-6 w-6 text-emerald-300" />}
+                  <span className="text-sm font-semibold text-emerald-100">
+                    {referenceUploading ? "Uploading…" : "Choose starting image"}
+                  </span>
+                  <span className="text-[11px] text-zinc-500">JPG, PNG, or WEBP · maximum 20 MB</span>
+                  <input type="file" accept="image/jpeg,image/png,image/webp"
+                    disabled={referenceUploading}
+                    onChange={(event) => uploadReference(event.target.files?.[0])}
+                    className="hidden" data-testid="input-wan-source" />
+                </label>
+              )}
+              <label className="block space-y-1">
+                <span className="text-xs uppercase tracking-widest text-zinc-500 font-mono">Movement instruction</span>
+                <Textarea rows={5} value={videoInstruction}
+                  onChange={(event) => setVideoInstruction(event.target.value)}
+                  placeholder="Example: She slowly turns toward the camera and smiles. Natural blinking and breathing, gentle hair movement, steady camera."
+                  className="bg-elevated border-hairline text-sm"
+                  data-testid="textarea-wan-motion" />
+              </label>
+              <button type="button" onClick={enhanceVideoInstruction}
+                disabled={enhancingVideo || !videoInstruction.trim()}
+                className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm font-semibold text-amber-200 hover:bg-amber-500/20 disabled:opacity-40"
+                data-testid="btn-venice-enhance-video">
+                {enhancingVideo ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                Enhance movement with Venice
+              </button>
+              <div className="grid grid-cols-2 gap-3">
+                <label className="space-y-1">
+                  <span className="text-xs text-zinc-400">Duration</span>
+                  <select value={videoFrames} onChange={(e) => setVideoFrames(Number(e.target.value))}
+                    className="w-full rounded-lg border border-hairline bg-elevated px-3 py-2 text-sm"
+                    data-testid="select-wan-duration">
+                    <option value={41}>1.7 sec · 41 frames</option>
+                    <option value={81}>3.4 sec · 81 frames</option>
+                    <option value={121}>5 sec · 121 frames</option>
+                    <option value={161}>6.7 sec · 161 frames</option>
+                    <option value={201}>8.4 sec · 201 frames</option>
+                    <option value={241}>10 sec · 241 frames</option>
+                  </select>
+                </label>
+                <label className="space-y-1">
+                  <span className="text-xs text-zinc-400">Playback FPS</span>
+                  <select value={videoFps} onChange={(e) => setVideoFps(Number(e.target.value))}
+                    className="w-full rounded-lg border border-hairline bg-elevated px-3 py-2 text-sm"
+                    data-testid="select-wan-fps">
+                    <option value={16}>16 FPS</option>
+                    <option value={20}>20 FPS</option>
+                    <option value={24}>24 FPS</option>
+                    <option value={30}>30 FPS</option>
+                  </select>
+                </label>
+              </div>
+              <p className="text-[11px] text-zinc-500">
+                Longer clips require substantially more VRAM and generation time. Start with 41 frames for testing.
+              </p>
             </div>
           )}
           {isEditWorkflow && (
