@@ -27,6 +27,7 @@ import MobileOverflow from "@/components/MobileOverflow";
 import SubjectSwitcher from "@/components/SubjectSwitcher";
 import { Flame } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 
 export default function Builder() {
   const { id, section: sectionParam } = useParams();
@@ -57,6 +58,9 @@ export default function Builder() {
   const [referenceUploading, setReferenceUploading] = useState(false);
   const [faceStrength, setFaceStrength] = useState(1.1);
   const [faceIdV2Strength, setFaceIdV2Strength] = useState(1.4);
+  const [editInstruction, setEditInstruction] = useState("");
+  const [preserveUnmentioned, setPreserveUnmentioned] = useState(true);
+  const [enhancingEdit, setEnhancingEdit] = useState(false);
 
   const { data: workflows = [] } = useQuery({ queryKey: ["workflows"], queryFn: endpoints.listWorkflows });
   const { data: settings } = useQuery({ queryKey: ["settings"], queryFn: endpoints.settings });
@@ -69,6 +73,7 @@ export default function Builder() {
   const activeWorkflow = workflows.find((w) => w.id === workflowId);
   const promptStyle = activeWorkflow?.prompt_style || "venice";
   const isFaceWorkflow = activeWorkflow?.kind === "face";
+  const isEditWorkflow = activeWorkflow?.kind === "edit";
 
   const uploadReference = async (file) => {
     if (!file) return;
@@ -83,6 +88,23 @@ export default function Builder() {
       toast.error(e?.response?.data?.detail || "Reference photograph upload failed");
     } finally {
       setReferenceUploading(false);
+    }
+  };
+
+  const enhanceEditInstruction = async () => {
+    if (!editInstruction.trim()) {
+      toast.error("Describe the edit first");
+      return;
+    }
+    setEnhancingEdit(true);
+    try {
+      const result = await endpoints.aiEditPrompt(editInstruction.trim(), preserveUnmentioned);
+      setEditInstruction(result.prompt || editInstruction);
+      toast.success("Venice enhanced the edit instruction");
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || "Venice could not enhance the edit instruction");
+    } finally {
+      setEnhancingEdit(false);
     }
   };
 
@@ -218,6 +240,14 @@ export default function Builder() {
       toast.error("Upload a reference photograph before using Face Preserve");
       return;
     }
+    if (isEditWorkflow && !referenceImage?.name) {
+      toast.error("Upload a source image before using Qwen Image Edit");
+      return;
+    }
+    if (isEditWorkflow && !editInstruction.trim()) {
+      toast.error("Describe the change you want Qwen to make");
+      return;
+    }
     setDispatching(true);
     try {
       const r = await endpoints.dispatchRender({
@@ -229,9 +259,11 @@ export default function Builder() {
         prompt_negative: negative,
         workflow_id: workflowId,
         lora_overrides: loraOverrides,
-        reference_image: isFaceWorkflow ? referenceImage?.name : undefined,
+        reference_image: (isFaceWorkflow || isEditWorkflow) ? referenceImage?.name : undefined,
         face_strength: faceStrength,
         faceid_v2_strength: faceIdV2Strength,
+        edit_instruction: isEditWorkflow ? editInstruction.trim() : undefined,
+        preserve_unmentioned: preserveUnmentioned,
       });
       setActiveRender(r);
       toast.success(r.status === "running" ? "Render queued to ComfyUI" : `Render ${r.status}`);
@@ -588,6 +620,64 @@ export default function Builder() {
             <div className="pane p-3 flex items-center gap-2" data-testid="pony-style-badge">
               <span className="text-[10px] font-mono uppercase tracking-widest text-rose-300 bg-rose-500/10 border border-rose-500/40 rounded px-1.5 py-0.5">pony style</span>
               <span className="text-[11px] text-zinc-400">score_9 prefix + booru tag weighting enabled</span>
+            </div>
+          )}
+          {isEditWorkflow && (
+            <div className="pane p-4 space-y-4" data-testid="qwen-edit-panel">
+              <div className="flex items-center gap-2">
+                <ImagePlus className="h-4 w-4 text-cyan-300" />
+                <div className="section-label">Qwen Image Edit</div>
+              </div>
+              <p className="text-xs text-zinc-400">
+                Upload the image you want to change, then describe only the changes you want made.
+              </p>
+              {referencePreview ? (
+                <div className="relative rounded-lg overflow-hidden border hairline bg-elevated">
+                  <img src={referencePreview} alt="Source for editing" className="w-full max-h-72 object-contain" />
+                  <button type="button" onClick={clearReference}
+                    className="absolute right-2 top-2 rounded-full bg-black/70 p-2 text-zinc-100 hover:bg-red-500"
+                    aria-label="Remove source image" data-testid="btn-remove-edit-source">
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              ) : (
+                <label className="flex min-h-28 cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-cyan-500/40 bg-cyan-500/5 px-4 py-5 text-center hover:bg-cyan-500/10">
+                  {referenceUploading ? <Loader2 className="h-6 w-6 animate-spin text-cyan-300" /> : <Upload className="h-6 w-6 text-cyan-300" />}
+                  <span className="text-sm font-semibold text-cyan-100">
+                    {referenceUploading ? "Uploading…" : "Choose source image"}
+                  </span>
+                  <span className="text-[11px] text-zinc-500">JPG, PNG, or WEBP · maximum 20 MB</span>
+                  <input type="file" accept="image/jpeg,image/png,image/webp"
+                    disabled={referenceUploading}
+                    onChange={(event) => uploadReference(event.target.files?.[0])}
+                    className="hidden" data-testid="input-qwen-edit-source" />
+                </label>
+              )}
+              <label className="block space-y-1">
+                <span className="text-xs uppercase tracking-widest text-zinc-500 font-mono">Edit instruction</span>
+                <Textarea rows={5} value={editInstruction}
+                  onChange={(event) => setEditInstruction(event.target.value)}
+                  placeholder="Example: Change the black dress to a red satin evening gown. Keep her face, pose, body, lighting, and background unchanged."
+                  className="bg-elevated border-hairline text-sm"
+                  data-testid="textarea-qwen-edit-instruction" />
+              </label>
+              <label className="flex items-start gap-2 text-xs text-zinc-300">
+                <input type="checkbox" checked={preserveUnmentioned}
+                  onChange={(event) => setPreserveUnmentioned(event.target.checked)}
+                  className="mt-0.5 accent-cyan-400"
+                  data-testid="checkbox-preserve-unmentioned" />
+                <span>Preserve identity, composition, and every detail I did not ask to change</span>
+              </label>
+              <button type="button" onClick={enhanceEditInstruction}
+                disabled={enhancingEdit || !editInstruction.trim()}
+                className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm font-semibold text-amber-200 hover:bg-amber-500/20 disabled:opacity-40"
+                data-testid="btn-venice-enhance-edit">
+                {enhancingEdit ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                Enhance instruction with Venice
+              </button>
+              <p className="text-[11px] text-zinc-500">
+                Venice only rewrites the instruction. Review and edit it before rendering.
+              </p>
             </div>
           )}
           {isFaceWorkflow && (
