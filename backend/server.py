@@ -868,6 +868,12 @@ async def _perform_dispatch(body: "DispatchBody") -> Dict[str, Any]:
     # Qwen Image Edit also consumes an uploaded source image, but its positive
     # prompt is a direct edit instruction rather than the character DNA prompt.
     if wf_template and wf_template.kind == "edit":
+        # Re-detect from the live workflow every time. Older databases may have
+        # stored the two Qwen prompt node IDs in reverse before sampler-aware
+        # detection was added.
+        detected_nodes = _detect_prompt_nodes(workflow)
+        pos_id = detected_nodes.get("positive_node_id") or pos_id
+        neg_id = detected_nodes.get("negative_node_id") or neg_id
         if not body.reference_image:
             r.status = "failed"
             r.error = "Select and upload a source image before using Qwen Image Edit."
