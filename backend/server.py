@@ -1,8 +1,9 @@
 """Ultra Studio Character DNA Builder — FastAPI backend."""
 from fastapi import FastAPI, APIRouter, HTTPException, Body, BackgroundTasks, WebSocket, WebSocketDisconnect, Query, UploadFile, File
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
+from starlette.background import BackgroundTask
 from motor.motor_asyncio import AsyncIOMotorClient
 import os
 import logging
@@ -487,6 +488,48 @@ async def comfyui_health():
         return {"online": r.status_code == 200, "url": s.comfyui_url, "status": r.status_code}
     except Exception as e:
         return {"online": False, "url": s.comfyui_url, "error": str(e)}
+
+
+@api.get("/comfyui/media")
+async def comfyui_media(
+    filename: str = Query(...),
+    subfolder: str = Query(""),
+    type: str = Query("output"),
+):
+    """Stream ComfyUI output through Ultra Studio so Docker-only hostnames never reach browsers."""
+    settings = await get_settings()
+    client = httpx.AsyncClient(timeout=None)
+    request = client.build_request(
+        "GET",
+        f"{settings.comfyui_url.rstrip('/')}/view",
+        params={"filename": filename, "subfolder": subfolder, "type": type},
+    )
+    try:
+        response = await client.send(request, stream=True)
+    except Exception as exc:
+        await client.aclose()
+        raise HTTPException(502, f"Could not open ComfyUI media: {exc}")
+    if response.status_code >= 400:
+        detail = (await response.aread())[:200].decode("utf-8", errors="replace")
+        await response.aclose()
+        await client.aclose()
+        raise HTTPException(502, f"ComfyUI media error: {response.status_code} {detail}")
+
+    async def close_stream():
+        await response.aclose()
+        await client.aclose()
+
+    headers = {}
+    for name in ("content-length", "content-disposition", "accept-ranges"):
+        value = response.headers.get(name)
+        if value:
+            headers[name] = value
+    return StreamingResponse(
+        response.aiter_raw(),
+        media_type=response.headers.get("content-type", "application/octet-stream"),
+        headers=headers,
+        background=BackgroundTask(close_stream),
+    )
 
 
 @api.get("/comfyui/object_info")
