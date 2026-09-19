@@ -1162,12 +1162,97 @@ async def upload_reference_image(image: UploadFile = File(...)):
         raise HTTPException(502, f"Could not upload the reference image to ComfyUI: {exc}")
 
 
+QUEUE_TERMINAL = {"done", "failed", "offline", "cancelled"}
+_queue_worker_task: Optional[asyncio.Task] = None
+_queue_stop: Optional[asyncio.Event] = None
+
+
+async def _queue_position(job: Dict[str, Any]) -> Optional[int]:
+    if job.get("status") != "queued":
+        return None
+    ahead = await db.render_queue.count_documents({
+        "status": "queued",
+        "created_at": {"$lt": job.get("created_at", "")},
+    })
+    return ahead + 1
+
+
+async def _queue_view(job: Dict[str, Any]) -> Dict[str, Any]:
+    clean = {k: v for k, v in job.items() if k != "_id" and k != "payload"}
+    clean["queue_id"] = job["id"]
+    clean["queue_position"] = await _queue_position(job)
+    render_id = job.get("render_id")
+    if render_id:
+        render = await db.renders.find_one({"id": render_id}, {"_id": 0})
+        if render:
+            # Preserve the queue id so existing clients can keep polling the same URL.
+            clean.update({k: v for k, v in render.items() if k != "id"})
+            clean["id"] = job["id"]
+            clean["render_id"] = render_id
+            clean["status"] = job.get("status", render.get("status"))
+    return clean
+
+
+async def _enqueue_render(body: DispatchBody) -> Dict[str, Any]:
+    settings = await get_settings()
+    selected = next((w for w in settings.workflows if w.id == body.workflow_id), None)
+    created = now_iso()
+    job = {
+        "id": new_id(),
+        "payload": body.model_dump(),
+        "status": "queued",
+        "workflow_id": body.workflow_id,
+        "workflow_name": selected.name if selected else "Render",
+        "workflow_type": selected.kind if selected else body.workflow_type,
+        "character_id": body.character_id,
+        "render_id": None,
+        "error": None,
+        "attempts": 0,
+        "created_at": created,
+        "updated_at": created,
+        "started_at": None,
+        "finished_at": None,
+    }
+    await db.render_queue.insert_one(job)
+    return await _queue_view(job)
+
+
 @api.post("/renders/dispatch")
 async def dispatch_render(body: DispatchBody):
-    doc = await _perform_dispatch(body)
-    if doc.get("status") == "failed" and doc.get("error", "").startswith(("No workflow template", "Workflow template is not valid")):
-        raise HTTPException(400, doc["error"])
-    return doc
+    return await _enqueue_render(body)
+
+
+@api.get("/queue")
+async def list_queue(limit: int = 200):
+    jobs = await db.render_queue.find({}).sort("created_at", -1).to_list(limit)
+    return [await _queue_view(job) for job in jobs]
+
+
+@api.post("/queue/{qid}/retry")
+async def retry_queue_job(qid: str):
+    job = await db.render_queue.find_one({"id": qid})
+    if not job:
+        raise HTTPException(404, "Queue job not found")
+    if job.get("status") not in QUEUE_TERMINAL:
+        raise HTTPException(409, "Only finished, failed, offline, or cancelled jobs can be retried")
+    patch = {
+        "status": "queued",
+        "render_id": None,
+        "error": None,
+        "started_at": None,
+        "finished_at": None,
+        "updated_at": now_iso(),
+        "attempts": int(job.get("attempts", 0)) + 1,
+    }
+    await db.render_queue.update_one({"id": qid}, {"$set": patch})
+    job.update(patch)
+    return await _queue_view(job)
+
+
+@api.delete("/queue/completed")
+async def clear_completed_queue():
+    result = await db.render_queue.delete_many({"status": {"$in": list(QUEUE_TERMINAL)}})
+    return {"ok": True, "deleted": result.deleted_count}
 
 
 def _collect_comfy_outputs(base_url: str, outputs: Dict[str, Any]) -> tuple[List[str], Dict[str, List[str]]]:
@@ -1200,12 +1285,9 @@ def _collect_comfy_outputs(base_url: str, outputs: Dict[str, Any]) -> tuple[List
     return [entry[2] for entry in collected], {k: v for k, v in variants.items() if v}
 
 
-@api.post("/renders/{rid}/poll")
-async def poll_render(rid: str):
+async def _poll_render_doc(rid: str) -> Optional[Dict[str, Any]]:
     doc = await db.renders.find_one({"id": rid}, {"_id": 0})
-    if not doc:
-        raise HTTPException(404, "Render not found")
-    if not doc.get("comfy_prompt_id"):
+    if not doc or not doc.get("comfy_prompt_id"):
         return doc
     s = await get_settings()
     try:
@@ -1217,15 +1299,47 @@ async def poll_render(rid: str):
             if entry:
                 outputs = entry.get("outputs", {})
                 files, variants = _collect_comfy_outputs(s.comfyui_url, outputs)
-                update = {"status": "done" if files else doc.get("status", "running"),
-                          "output_files": files,
-                          "output_variants": variants,
-                          "progress": 1.0 if files else doc.get("progress", 0.0),
-                          "updated_at": now_iso()}
+                update = {
+                    "status": "done" if files else doc.get("status", "running"),
+                    "output_files": files,
+                    "output_variants": variants,
+                    "progress": 1.0 if files else doc.get("progress", 0.0),
+                    "updated_at": now_iso(),
+                }
                 await db.renders.update_one({"id": rid}, {"$set": update})
                 doc.update(update)
     except Exception as e:
         logger.warning(f"poll_render failed: {e}")
+    return doc
+
+
+async def _sync_queue_job(job: Dict[str, Any]) -> Dict[str, Any]:
+    render_id = job.get("render_id")
+    if not render_id:
+        return job
+    render = await _poll_render_doc(render_id)
+    if not render:
+        patch = {"status": "failed", "error": "The linked render record is missing.", "finished_at": now_iso(), "updated_at": now_iso()}
+    else:
+        status = render.get("status", "running")
+        patch = {"status": status, "error": render.get("error"), "updated_at": now_iso()}
+        if status in QUEUE_TERMINAL:
+            patch["finished_at"] = now_iso()
+    await db.render_queue.update_one({"id": job["id"]}, {"$set": patch})
+    job.update(patch)
+    return job
+
+
+@api.post("/renders/{rid}/poll")
+async def poll_render(rid: str):
+    queue_job = await db.render_queue.find_one({"id": rid})
+    if queue_job:
+        if queue_job.get("render_id"):
+            queue_job = await _sync_queue_job(queue_job)
+        return await _queue_view(queue_job)
+    doc = await _poll_render_doc(rid)
+    if not doc:
+        raise HTTPException(404, "Render not found")
     return doc
 
 
@@ -1248,9 +1362,7 @@ async def delete_renders_bulk(body: BulkRenderDeleteBody):
     return {"ok": True, "deleted": result.deleted_count}
 
 
-@api.post("/renders/{rid}/cancel")
-async def cancel_render(rid: str):
-    """Interrupt an in-flight ComfyUI render and drop it from the queue."""
+async def _cancel_render_doc(rid: str) -> Dict[str, Any]:
     doc = await db.renders.find_one({"id": rid}, {"_id": 0})
     if not doc:
         raise HTTPException(404, "Render not found")
@@ -1260,14 +1372,14 @@ async def cancel_render(rid: str):
     dropped = False
     try:
         async with httpx.AsyncClient(timeout=4.0) as hc:
-            r1 = await hc.post(f"{base}/interrupt")
-            interrupted = r1.status_code < 400
             prompt_id = doc.get("comfy_prompt_id")
             if prompt_id:
                 r2 = await hc.post(f"{base}/queue", json={"delete": [prompt_id]})
                 dropped = r2.status_code < 400
+                if not dropped:
+                    r1 = await hc.post(f"{base}/interrupt")
+                    interrupted = r1.status_code < 400
     except Exception as e:
-        # Even if ComfyUI is unreachable, we still mark the render cancelled locally
         logger.warning(f"cancel_render: ComfyUI unreachable: {e}")
     patch = {"status": "cancelled", "error": None, "updated_at": now_iso()}
     await db.renders.update_one({"id": rid}, {"$set": patch})
@@ -1275,6 +1387,77 @@ async def cancel_render(rid: str):
     doc["interrupted"] = interrupted
     doc["dropped_from_queue"] = dropped
     return doc
+
+
+@api.post("/renders/{rid}/cancel")
+async def cancel_render(rid: str):
+    """Cancel a queued request or its active ComfyUI render."""
+    job = await db.render_queue.find_one({"id": rid})
+    if job:
+        if job.get("status") in QUEUE_TERMINAL:
+            return await _queue_view(job)
+        if job.get("render_id"):
+            await _cancel_render_doc(job["render_id"])
+        patch = {"status": "cancelled", "error": None, "finished_at": now_iso(), "updated_at": now_iso()}
+        await db.render_queue.update_one({"id": rid}, {"$set": patch})
+        job.update(patch)
+        return await _queue_view(job)
+    return await _cancel_render_doc(rid)
+
+
+async def _render_queue_worker():
+    logger.info("Persistent render queue worker started")
+    while _queue_stop is not None and not _queue_stop.is_set():
+        try:
+            active = await db.render_queue.find_one(
+                {"status": {"$in": ["dispatching", "running"]}},
+                sort=[("created_at", 1)],
+            )
+            if active:
+                if active.get("render_id"):
+                    active = await _sync_queue_job(active)
+                elif active.get("status") == "dispatching":
+                    await db.render_queue.update_one(
+                        {"id": active["id"]},
+                        {"$set": {"status": "queued", "updated_at": now_iso()}},
+                    )
+                await asyncio.sleep(2.0)
+                continue
+
+            queued = await db.render_queue.find_one({"status": "queued"}, sort=[("created_at", 1)])
+            if not queued:
+                await asyncio.sleep(1.0)
+                continue
+            claimed = await db.render_queue.update_one(
+                {"id": queued["id"], "status": "queued"},
+                {"$set": {"status": "dispatching", "started_at": now_iso(), "updated_at": now_iso()}},
+            )
+            if not claimed.modified_count:
+                continue
+            try:
+                render = await _perform_dispatch(DispatchBody(**queued.get("payload", {})))
+                status = render.get("status", "running")
+                patch = {
+                    "render_id": render.get("id"),
+                    "status": status,
+                    "error": render.get("error"),
+                    "updated_at": now_iso(),
+                }
+                if status in QUEUE_TERMINAL:
+                    patch["finished_at"] = now_iso()
+                await db.render_queue.update_one({"id": queued["id"]}, {"$set": patch})
+            except Exception as exc:
+                logger.exception("Queue dispatch failed")
+                await db.render_queue.update_one(
+                    {"id": queued["id"]},
+                    {"$set": {"status": "failed", "error": str(exc), "finished_at": now_iso(), "updated_at": now_iso()}},
+                )
+        except asyncio.CancelledError:
+            break
+        except Exception:
+            logger.exception("Render queue worker loop failed")
+            await asyncio.sleep(2.0)
+    logger.info("Persistent render queue worker stopped")
 
 
 # ============================================================
@@ -1837,6 +2020,27 @@ app.add_middleware(
 )
 
 
+@app.on_event("startup")
+async def _startup():
+    global _queue_worker_task, _queue_stop
+    # A process can stop after claiming a job but before dispatching it. Requeue
+    # only that transient state; running jobs retain their render link and resume polling.
+    await db.render_queue.update_many(
+        {"status": "dispatching", "render_id": None},
+        {"$set": {"status": "queued", "updated_at": now_iso()}},
+    )
+    _queue_stop = asyncio.Event()
+    _queue_worker_task = asyncio.create_task(_render_queue_worker())
+
+
 @app.on_event("shutdown")
 async def _shutdown():
+    if _queue_stop is not None:
+        _queue_stop.set()
+    if _queue_worker_task is not None:
+        _queue_worker_task.cancel()
+        try:
+            await _queue_worker_task
+        except asyncio.CancelledError:
+            pass
     client.close()
