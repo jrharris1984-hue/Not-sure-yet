@@ -33,6 +33,8 @@ export const endpoints = {
   duplicateCharacter: (id) => api.post(`/characters/${id}/duplicate`).then((r) => r.data),
   characterRenders: (id) => api.get(`/characters/${id}/renders`).then((r) => r.data),
   listRenders: () => api.get("/renders").then((r) => r.data),
+  deleteRender: (id) => api.delete(`/renders/${id}`).then((r) => r.data),
+  deleteRenders: (ids) => api.post("/renders/delete-bulk", { ids }).then((r) => r.data),
   dispatchRender: (body) => api.post("/renders/dispatch", body).then((r) => r.data),
   uploadReferenceImage: (file) => {
     const form = new FormData();
@@ -56,6 +58,8 @@ export const endpoints = {
       instruction,
       preserve_unmentioned: preserveUnmentioned,
     }).then((r) => r.data),
+  aiVideoPrompt: (instruction) =>
+    api.post("/ai/video-prompt", { instruction }).then((r) => r.data),
   aiSuggest: (section, dna) => api.post("/ai/suggest", { section, dna }).then((r) => r.data),
   // Photo Shoots
   createShoot: (body) => api.post("/shoots", body).then((r) => r.data),
