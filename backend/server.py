@@ -960,6 +960,11 @@ async def _perform_dispatch(body: "DispatchBody") -> Dict[str, Any]:
             return doc
         positive_text = instruction
 
+    # Store the exact instruction actually sent to the selected workflow so
+    # Gallery metadata and copied prompts match the generated result.
+    r.prompt_positive = positive_text
+    r.prompt_negative = negative_text
+
     # Map prompts into either standard CLIP 'text' fields or Qwen 'prompt' fields.
     mapped = {"positive": False, "negative": False}
     if pos_id and pos_id in workflow and "inputs" in workflow[pos_id]:
