@@ -200,7 +200,7 @@ def _detect_prompt_nodes(wf: Dict[str, Any]) -> Dict[str, str]:
 
 
 SEED_WORKFLOWS = [
-    {"file": "chroma.json", "name": "Chroma1-HD · Golden T2I", "kind": "image", "prompt_style": "venice"},
+    {"file": "chroma.json", "name": "Chroma1-HD · Golden T2I", "kind": "image", "prompt_style": "chroma"},
     {"file": "zimage.json", "name": "Z-image Turbo · NSFW", "kind": "image", "prompt_style": "venice"},
     {"file": "qwen.json", "name": "Qwen Image Edit 2511", "kind": "edit", "prompt_style": "venice"},
     {"file": "qwen.json", "name": "Qwen Image Repair & Enhance", "kind": "enhance", "prompt_style": "venice"},
@@ -798,6 +798,12 @@ class DispatchBody(BaseModel):
     workflow_type: str = "image"  # legacy fallback
     lora_overrides: Dict[str, Dict[str, float]] = Field(default_factory=dict)  # node_id -> {strength_model, strength_clip}
     seed: Optional[int] = None  # if provided, override any seed/noise_seed in workflow
+    width: Optional[int] = None
+    height: Optional[int] = None
+    batch_size: Optional[int] = None
+    steps: Optional[int] = None
+    cfg: Optional[float] = None
+    sampler_name: Optional[str] = None
     shoot_id: Optional[str] = None
     shoot_frame_index: Optional[int] = None
     reference_image: Optional[str] = None  # ComfyUI input filename returned by /reference-images/upload
@@ -1087,6 +1093,37 @@ async def _perform_dispatch(body: "DispatchBody") -> Dict[str, Any]:
             if "strength_clip" in inp and "strength_clip" in weights:
                 inp["strength_clip"] = float(weights["strength_clip"])
 
+    # Apply model-specific generation overrides. These keys are patched only
+    # where they already exist, so the same dispatch body remains safe for
+    # GoldenChroma, Z-Image, and other workflows.
+    generation_overrides = {
+        "width": body.width,
+        "height": body.height,
+        "batch_size": body.batch_size,
+        "steps": body.steps,
+        "cfg": body.cfg,
+        "sampler_name": body.sampler_name,
+    }
+    for node in workflow.values():
+        if not isinstance(node, dict):
+            continue
+        inputs = node.get("inputs")
+        if not isinstance(inputs, dict):
+            continue
+        for key, value in generation_overrides.items():
+            if value is None or key not in inputs:
+                continue
+            if key in {"width", "height"}:
+                inputs[key] = max(256, min(2048, int(value)))
+            elif key == "batch_size":
+                inputs[key] = max(1, min(8, int(value)))
+            elif key == "steps":
+                inputs[key] = max(1, min(100, int(value)))
+            elif key == "cfg":
+                inputs[key] = max(0.0, min(30.0, float(value)))
+            elif key == "sampler_name":
+                inputs[key] = str(value)
+
     # Apply seed override
     seed_used = None
     if body.seed is not None:
@@ -1116,6 +1153,7 @@ async def _perform_dispatch(body: "DispatchBody") -> Dict[str, Any]:
     doc["workflow_id"] = wf_template.id if wf_template else None
     doc["workflow_name"] = wf_template.name if wf_template else None
     doc["seed_used"] = seed_used
+    doc["generation_settings"] = {k: v for k, v in generation_overrides.items() if v is not None}
     doc["shoot_id"] = body.shoot_id
     doc["shoot_frame_index"] = body.shoot_frame_index
     await db.renders.insert_one(doc)
