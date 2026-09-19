@@ -203,6 +203,7 @@ SEED_WORKFLOWS = [
     {"file": "chroma.json", "name": "Chroma1-HD · Golden T2I", "kind": "image", "prompt_style": "venice"},
     {"file": "zimage.json", "name": "Z-image Turbo · NSFW", "kind": "image", "prompt_style": "venice"},
     {"file": "qwen.json", "name": "Qwen Image Edit 2511", "kind": "edit", "prompt_style": "venice"},
+    {"file": "qwen.json", "name": "Qwen Image Repair & Enhance", "kind": "enhance", "prompt_style": "venice"},
     {"file": "wan.json", "name": "WAN 2.2 5B · Image → Video", "kind": "video", "prompt_style": "venice"},
     {"file": "wan_t2v.json", "name": "WAN 2.2 14B · Text → Video", "kind": "text_video", "prompt_style": "venice"},
     {"file": "face.json", "name": "Face-Preserved · IPAdapter FaceID", "kind": "face", "prompt_style": "venice"},
@@ -804,6 +805,8 @@ class DispatchBody(BaseModel):
     faceid_v2_strength: float = 1.4
     edit_instruction: str = ""
     preserve_unmentioned: bool = True
+    repair_targets: List[str] = Field(default_factory=list)
+    repair_strength: float = 0.5
     video_instruction: str = ""
     video_frames: int = 41
     video_fps: int = 24
@@ -918,7 +921,7 @@ async def _perform_dispatch(body: "DispatchBody") -> Dict[str, Any]:
 
     # Qwen Image Edit also consumes an uploaded source image, but its positive
     # prompt is a direct edit instruction rather than the character DNA prompt.
-    if wf_template and wf_template.kind == "edit":
+    if wf_template and wf_template.kind in {"edit", "enhance"}:
         # Re-detect from the live workflow every time. Older databases may have
         # stored the two Qwen prompt node IDs in reverse before sampler-aware
         # detection was added.
@@ -935,7 +938,11 @@ async def _perform_dispatch(body: "DispatchBody") -> Dict[str, Any]:
         instruction = body.edit_instruction.strip()
         if not instruction:
             r.status = "failed"
-            r.error = "Describe the change you want Qwen Image Edit to make."
+            r.error = (
+                "Choose repair targets or describe the repair you want."
+                if wf_template.kind == "enhance"
+                else "Describe the change you want Qwen Image Edit to make."
+            )
             doc = r.model_dump()
             await db.renders.insert_one(doc)
             doc.pop("_id", None)
@@ -955,13 +962,34 @@ async def _perform_dispatch(body: "DispatchBody") -> Dict[str, Any]:
             await db.renders.insert_one(doc)
             doc.pop("_id", None)
             return doc
-        positive_text = instruction
-        if body.preserve_unmentioned:
+        if wf_template.kind == "enhance":
+            targets = [str(item).strip() for item in body.repair_targets if str(item).strip()]
+            if targets:
+                positive_text = (
+                    "Repair and improve only these areas: " + ", ".join(targets) + ". " + instruction
+                )
+            else:
+                positive_text = instruction
             positive_text += (
-                "\nPreserve the original subject identity, face, age, body proportions, "
-                "composition, camera perspective, lighting, background, and all details "
-                "not explicitly requested to change."
+                "\nProduce a photorealistic correction. Preserve the adult subject's identity, age, "
+                "body shape, pose, clothing, environment, lighting, camera perspective, and composition. "
+                "Do not redesign or beautify unrelated details. Keep natural skin texture and realistic anatomy."
             )
+            # Lower denoise keeps subtle repairs close to the source; higher values permit stronger reconstruction.
+            denoise = max(0.2, min(0.85, float(body.repair_strength)))
+            for node in workflow.values():
+                if isinstance(node, dict) and node.get("class_type") == "KSampler":
+                    inputs = node.get("inputs", {})
+                    if "denoise" in inputs:
+                        inputs["denoise"] = denoise
+        else:
+            positive_text = instruction
+            if body.preserve_unmentioned:
+                positive_text += (
+                    "\nPreserve the original subject identity, face, age, body proportions, "
+                    "composition, camera perspective, lighting, background, and all details "
+                    "not explicitly requested to change."
+                )
 
     # WAN image-to-video and text-to-video use separate workflows so the
     # proven image pipeline remains untouched.
@@ -1576,6 +1604,12 @@ class VideoImageAnalysisBody(BaseModel):
     instruction: str = ""
 
 
+class RepairImageAnalysisBody(BaseModel):
+    reference_image: str
+    targets: List[str] = Field(default_factory=list)
+    instruction: str = ""
+
+
 DNA_SCHEMA_HINT = """The DNA object has these sections and example keys:
 - identity: { gender, age, ethnicity, archetype, name }
 - physique: { height, body_type, muscularity, curves, bust, proportions }
@@ -1703,6 +1737,66 @@ async def ai_analyze_video_image(body: VideoImageAnalysisBody):
             ]},
         ],
         "temperature": 0.5,
+        "response_format": {"type": "json_object"},
+    }
+    async with httpx.AsyncClient(timeout=120.0) as hc:
+        response = await hc.post(
+            "https://api.venice.ai/api/v1/chat/completions",
+            headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+            json=payload,
+        )
+    if response.status_code >= 400:
+        raise HTTPException(status_code=502, detail=f"Venice vision error: {response.status_code} {response.text[:400]}")
+    result = extract_json(response.json()["choices"][0]["message"]["content"])
+    return {"analysis": str(result.get("analysis", "")).strip(), "prompt": str(result.get("prompt", "")).strip()}
+
+
+@api.post("/ai/analyze-repair-image")
+async def ai_analyze_repair_image(body: RepairImageAnalysisBody):
+    """Inspect an uploaded image and draft a conservative Qwen repair instruction."""
+    vision_model = os.environ.get("VENICE_VISION_MODEL", "").strip()
+    if not vision_model:
+        raise HTTPException(status_code=400, detail="Venice vision is not configured.")
+    venice_key = os.environ.get("VENICE_API_KEY", "").strip()
+    s = await get_settings()
+    api_key = venice_key or s.openrouter_api_key
+    if not api_key:
+        raise HTTPException(status_code=400, detail="Venice API key not configured.")
+
+    try:
+        async with httpx.AsyncClient(timeout=45.0) as hc:
+            image_response = await hc.get(
+                f"{s.comfyui_url.rstrip('/')}/view",
+                params={"filename": body.reference_image, "type": "input", "subfolder": ""},
+            )
+        if image_response.status_code >= 400:
+            raise HTTPException(status_code=502, detail="Could not read the uploaded image from ComfyUI.")
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Could not read the uploaded image: {exc}")
+
+    mime = image_response.headers.get("content-type") or mimetypes.guess_type(body.reference_image)[0] or "image/png"
+    data_url = f"data:{mime};base64,{base64.b64encode(image_response.content).decode('ascii')}"
+    requested_targets = ", ".join(body.targets) if body.targets else "visible technical defects"
+    user_note = body.instruction.strip() or "No additional instruction."
+    payload = {
+        "model": vision_model,
+        "messages": [
+            {"role": "system", "content": (
+                "You inspect an adult photograph for technical image-generation defects and prepare a "
+                "conservative Qwen Image Edit repair. Return JSON with exactly two strings: analysis and "
+                "prompt. Focus only on the requested targets. Identify visible anatomy, face, hand, foot, "
+                "skin, focus, noise, exposure, or artifact problems without criticizing the person's real "
+                "appearance. The prompt must repair defects while preserving identity, age, body shape, "
+                "pose, clothing, environment, lighting, framing, and every unrelated detail."
+            )},
+            {"role": "user", "content": [
+                {"type": "text", "text": f"Repair targets: {requested_targets}\nUser note: {user_note}"},
+                {"type": "image_url", "image_url": {"url": data_url}},
+            ]},
+        ],
+        "temperature": 0.3,
         "response_format": {"type": "json_object"},
     }
     async with httpx.AsyncClient(timeout=120.0) as hc:
