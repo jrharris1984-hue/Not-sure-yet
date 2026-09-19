@@ -18,15 +18,15 @@ export default function NowRenderingStrip() {
   const hideOnPath = /^\/shoot\/[^/]+$/.test(location.pathname);
 
   const { data: renders = [] } = useQuery({
-    queryKey: ["renders"],
-    queryFn: endpoints.listRenders,
+    queryKey: ["render-queue"],
+    queryFn: endpoints.listQueue,
     refetchInterval: 3000,
     enabled: !hideOnPath,
   });
 
   const active = useMemo(
     () => renders.filter((r) =>
-      (r.status === "running" || r.status === "queued") && !dismissedIds.has(r.id)
+      (["queued", "dispatching", "running"].includes(r.status)) && !dismissedIds.has(r.id)
     ),
     [renders, dismissedIds]
   );
@@ -89,7 +89,7 @@ export default function NowRenderingStrip() {
               >
                 <div className="relative aspect-video">
                   <LivePreview
-                    clientId={r.id}
+                    clientId={r.render_id || r.id}
                     enabled
                     variant="card"
                     testId={`now-rendering-preview-${r.id}`}
@@ -98,7 +98,7 @@ export default function NowRenderingStrip() {
                 </div>
                 <div className="flex items-center gap-2 px-2 py-1.5 text-[10px] font-mono">
                   <span className="text-zinc-300 uppercase tracking-widest truncate flex-1">
-                    {r.workflow_name || r.workflow_type}
+                    {r.status === "queued" && r.queue_position ? `#${r.queue_position} · ` : ""}{r.workflow_name || r.workflow_type}
                   </span>
                   {r.character_id && (
                     <Link
