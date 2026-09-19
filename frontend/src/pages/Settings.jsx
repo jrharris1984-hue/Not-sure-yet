@@ -166,7 +166,13 @@ export default function Settings() {
   });
   const seedWf = useMutation({
     mutationFn: () => endpoints.seedWorkflows(),
-    onSuccess: (r) => { toast.success(`Seeded ${r.added} workflow(s)`); qc.invalidateQueries({ queryKey: ["workflows"] }); },
+    onSuccess: (r) => {
+      toast.success(`Bundled workflows refreshed`, {
+        description: `${r.updated || 0} updated · ${r.added || 0} added`,
+      });
+      qc.invalidateQueries({ queryKey: ["workflows"] });
+      qc.invalidateQueries({ queryKey: ["settings"] });
+    },
   });
   const reorderWf = useMutation({
     mutationFn: (order) => endpoints.reorderWorkflows(order),
@@ -235,7 +241,7 @@ export default function Settings() {
             data-testid="btn-seed-workflows"
             className="inline-flex items-center gap-1.5 rounded-md border hairline text-zinc-200 hover:bg-white/5 text-xs font-semibold px-3 py-1.5"
           >
-            <Download className="h-3.5 w-3.5" /> Re-seed bundled 5
+            <Download className="h-3.5 w-3.5" /> Refresh bundled workflows
           </button>
           <button
             onClick={() => upsertWf.mutate({ name: "New workflow", kind: "image", json_str: "", auto_detect: false })}
