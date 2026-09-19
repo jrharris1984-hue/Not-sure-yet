@@ -758,6 +758,9 @@ class DispatchBody(BaseModel):
     faceid_v2_strength: float = 1.4
     edit_instruction: str = ""
     preserve_unmentioned: bool = True
+    video_instruction: str = ""
+    video_frames: int = 41
+    video_fps: int = 24
 
 
 def _patch_seed(workflow: Dict[str, Any], seed: int) -> int:
@@ -911,6 +914,51 @@ async def _perform_dispatch(body: "DispatchBody") -> Dict[str, Any]:
                 "composition, camera perspective, lighting, background, and all details "
                 "not explicitly requested to change."
             )
+
+    # The bundled WAN workflow is image-to-video. Replace its exported
+    # source filename, motion prompt, frame count, and output FPS at dispatch time.
+    if wf_template and wf_template.kind == "video":
+        if not body.reference_image:
+            r.status = "failed"
+            r.error = "Select and upload a starting image before using WAN Image to Video."
+            doc = r.model_dump()
+            await db.renders.insert_one(doc)
+            doc.pop("_id", None)
+            return doc
+        instruction = body.video_instruction.strip()
+        if not instruction:
+            r.status = "failed"
+            r.error = "Describe the movement you want WAN to create."
+            doc = r.model_dump()
+            await db.renders.insert_one(doc)
+            doc.pop("_id", None)
+            return doc
+        requested_frames = max(41, min(241, int(body.video_frames)))
+        # WAN uses frame counts in the 4n+1 family.
+        frames = ((requested_frames - 1) // 4) * 4 + 1
+        fps = max(8, min(30, int(body.video_fps)))
+        image_patched = False
+        latent_patched = False
+        for node in workflow.values():
+            if not isinstance(node, dict):
+                continue
+            inputs = node.get("inputs", {})
+            if node.get("class_type") == "LoadImage" and "image" in inputs:
+                inputs["image"] = body.reference_image
+                image_patched = True
+            if node.get("class_type") == "Wan22ImageToVideoLatent":
+                inputs["length"] = frames
+                latent_patched = True
+            if node.get("class_type") in {"SaveAnimatedWEBP", "SaveWEBM", "VHS_VideoCombine"} and "fps" in inputs:
+                inputs["fps"] = fps
+        if not image_patched or not latent_patched:
+            r.status = "failed"
+            r.error = "The selected WAN workflow is missing its LoadImage or image-to-video latent node."
+            doc = r.model_dump()
+            await db.renders.insert_one(doc)
+            doc.pop("_id", None)
+            return doc
+        positive_text = instruction
 
     # Map prompts into either standard CLIP 'text' fields or Qwen 'prompt' fields.
     mapped = {"positive": False, "negative": False}
@@ -1080,6 +1128,19 @@ async def poll_render(rid: str):
 async def delete_render(rid: str):
     await db.renders.delete_one({"id": rid})
     return {"ok": True}
+
+
+class BulkRenderDeleteBody(BaseModel):
+    ids: List[str] = Field(default_factory=list)
+
+
+@api.post("/renders/delete-bulk")
+async def delete_renders_bulk(body: BulkRenderDeleteBody):
+    ids = list(dict.fromkeys(body.ids))[:200]
+    if not ids:
+        return {"ok": True, "deleted": 0}
+    result = await db.renders.delete_many({"id": {"$in": ids}})
+    return {"ok": True, "deleted": result.deleted_count}
 
 
 @api.post("/renders/{rid}/cancel")
@@ -1428,6 +1489,10 @@ class EditPromptBody(BaseModel):
     preserve_unmentioned: bool = True
 
 
+class VideoPromptBody(BaseModel):
+    instruction: str
+
+
 DNA_SCHEMA_HINT = """The DNA object has these sections and example keys:
 - identity: { gender, age, ethnicity, archetype, name }
 - physique: { height, body_type, muscularity, curves, bust, proportions }
@@ -1478,6 +1543,21 @@ async def ai_edit_prompt(body: EditPromptBody):
     )
     if body.preserve_unmentioned:
         system += " Explicitly instruct the editor to preserve every unmentioned visual detail."
+    prompt = await openrouter_chat(system, body.instruction, response_format_json=False)
+    return {"prompt": prompt.strip()}
+
+
+@api.post("/ai/video-prompt")
+async def ai_video_prompt(body: VideoPromptBody):
+    """Use Venice to convert a rough idea into a WAN image-to-video motion prompt."""
+    system = (
+        "You write concise image-to-video prompts for WAN 2.2. The source image already defines "
+        "the person, clothing, location, lighting, and composition. Expand the user's request into "
+        "clear temporal motion: subject movement, facial expression, hands, hair and fabric physics, "
+        "and camera movement only when requested. Preserve identity and existing visual details. "
+        "Avoid scene cuts, sudden transformations, new people, or invented wardrobe changes. "
+        "Return only the finished motion prompt with no heading or explanation."
+    )
     prompt = await openrouter_chat(system, body.instruction, response_format_json=False)
     return {"prompt": prompt.strip()}
 
