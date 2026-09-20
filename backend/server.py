@@ -1407,6 +1407,18 @@ async def poll_render(rid: str):
     return doc
 
 
+@api.delete("/renders/cancelled")
+async def delete_cancelled_renders():
+    """Remove cancelled render/queue records without touching ComfyUI output files."""
+    render_result = await db.renders.delete_many({"status": "cancelled"})
+    queue_result = await db.render_queue.delete_many({"status": "cancelled"})
+    return {
+        "ok": True,
+        "deleted": render_result.deleted_count,
+        "queue_deleted": queue_result.deleted_count,
+    }
+
+
 @api.delete("/renders/{rid}")
 async def delete_render(rid: str):
     await db.renders.delete_one({"id": rid})

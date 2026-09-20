@@ -87,6 +87,16 @@ export default function Gallery() {
     onError: (error) => toast.error(error?.response?.data?.detail || "Could not remove selected renders"),
   });
 
+  const clearCancelled = useMutation({
+    mutationFn: endpoints.clearCancelledRenders,
+    onSuccess: (result) => {
+      qc.invalidateQueries({ queryKey: ["renders"] });
+      qc.invalidateQueries({ queryKey: ["queue"] });
+      toast.success(`Cleared ${result.deleted || 0} cancelled render${result.deleted === 1 ? "" : "s"}`);
+    },
+    onError: (error) => toast.error(error?.response?.data?.detail || "Could not clear cancelled renders"),
+  });
+
   const confirmRemoveOne = (render) => {
     if (window.confirm("Remove this item from the Ultra Studio Gallery? The original ComfyUI output file will remain on disk.")) {
       removeOne.mutate(render.id);
@@ -106,9 +116,18 @@ export default function Gallery() {
       : [...current, id]);
   };
 
-  // Only renders with output to show as thumbnails; keep unfinished list on the side
+  // The gallery only treats work that can still produce output as in flight.
+  // Terminal records without media (cancelled/failed/offline) are not empty tiles.
   const withOutput = renders.filter((r) => primaryOutput(r));
-  const inFlight = renders.filter((r) => !primaryOutput(r) && r.status !== "done");
+  const inFlight = renders.filter((r) => !primaryOutput(r) && ["queued", "dispatching", "running"].includes(r.status));
+  const cancelled = renders.filter((r) => !primaryOutput(r) && r.status === "cancelled");
+
+  const confirmClearCancelled = () => {
+    if (!cancelled.length) return;
+    if (window.confirm(`Permanently remove ${cancelled.length} cancelled record${cancelled.length === 1 ? "" : "s"} from Ultra Studio? ComfyUI output files are not deleted.`)) {
+      clearCancelled.mutate();
+    }
+  };
 
   return (
     <div className="mx-auto max-w-[1400px] px-4 sm:px-6 py-6 sm:py-10 space-y-6">
@@ -120,8 +139,17 @@ export default function Gallery() {
             {withOutput.length} finished · {inFlight.length} in flight. Tap a thumbnail to open.
           </p>
         </div>
-        {withOutput.length > 0 && (
+        {(withOutput.length > 0 || cancelled.length > 0) && (
           <div className="flex gap-2">
+            {cancelled.length > 0 && (
+              <button type="button" onClick={confirmClearCancelled}
+                disabled={clearCancelled.isPending}
+                className="inline-flex items-center gap-2 rounded-lg border border-zinc-600/60 bg-zinc-500/5 px-3 py-2 text-sm text-zinc-300 hover:border-red-500/50 hover:text-red-200 disabled:opacity-40"
+                data-testid="btn-gallery-clear-cancelled">
+                <Trash2 className="h-4 w-4" /> Clear {cancelled.length} cancelled
+              </button>
+            )}
+            {withOutput.length > 0 && (
             <button
               type="button"
               onClick={() => {
@@ -132,6 +160,7 @@ export default function Gallery() {
               data-testid="btn-gallery-select">
               <CheckSquare className="h-4 w-4" /> {selectionMode ? "Cancel" : "Select"}
             </button>
+            )}
             {selectionMode && selected.length > 0 && (
               <button type="button" onClick={confirmRemoveSelected}
                 disabled={removeMany.isPending}
