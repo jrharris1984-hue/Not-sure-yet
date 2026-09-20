@@ -37,6 +37,7 @@ export const endpoints = {
   retryQueueJob: (id) => api.post(`/queue/${id}/retry`).then((r) => r.data),
   clearCompletedQueue: () => api.delete("/queue/completed").then((r) => r.data),
   deleteRender: (id) => api.delete(`/renders/${id}`).then((r) => r.data),
+  clearCancelledRenders: () => api.delete("/renders/cancelled").then((r) => r.data),
   deleteRenders: (ids) => api.post("/renders/delete-bulk", { ids }).then((r) => r.data),
   dispatchRender: (body) => api.post("/renders/dispatch", body).then((r) => r.data),
   uploadReferenceImage: (file) => {
