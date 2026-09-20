@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, useRef } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { useParams, useNavigate, useLocation, Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Save, Shuffle, Download, Upload, Loader2, Play, ChevronLeft, ChevronRight, Camera, Sparkles, ChevronDown, ImagePlus, X, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
@@ -46,7 +46,9 @@ export default function Builder() {
   const { id, section: sectionParam } = useParams();
   const isNew = !id;
   const nav = useNavigate();
+  const location = useLocation();
   const qc = useQueryClient();
+  const galleryImportApplied = useRef(false);
 
   const activeIdx = Math.max(0, SECTIONS.findIndex((s) => s.key === sectionParam));
   const activeSection = SECTIONS[activeIdx].key;
@@ -102,6 +104,24 @@ export default function Builder() {
       setWorkflowId(settings?.default_workflow_id || workflows[0].id);
     }
   }, [workflows, settings, workflowId]);
+
+  useEffect(() => {
+    const incoming = location.state?.galleryReference;
+    if (!incoming || !workflows.length || galleryImportApplied.current) return;
+    galleryImportApplied.current = true;
+    setReferenceImage(incoming);
+    setReferencePreview(location.state?.previewUrl || "");
+    const requestedKind = location.state?.targetKind;
+    const target = workflows.find((workflow) => workflow.kind === requestedKind);
+    if (target) setWorkflowId(target.id);
+    if (requestedKind === "edit") {
+      setEditInstruction("Describe the changes you want to make to this Gallery image.");
+    } else if (requestedKind === "video") {
+      setVideoInstruction("Describe how you want this Gallery image to move.");
+    }
+    toast.success(requestedKind === "video" ? "Gallery image loaded for animation" : "Gallery image loaded for editing");
+    nav(location.pathname, { replace: true, state: null });
+  }, [location.pathname, location.state, nav, workflows]);
 
   const activeWorkflow = workflows.find((w) => w.id === workflowId);
   const promptStyle = activeWorkflow?.prompt_style || "venice";
