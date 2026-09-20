@@ -100,6 +100,7 @@ export default function KinkPresetsMenu({ currentDna, onApply }) {
       <button
         type="button"
         onClick={() => setOpen(true)}
+        data-overflow-stay-open
         data-testid="btn-open-kink-presets"
         className="inline-flex items-center gap-1.5 rounded-lg border border-fuchsia-500/40 text-fuchsia-200 hover:bg-fuchsia-500/10 text-sm font-semibold px-3 py-2"
       >
