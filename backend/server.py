@@ -430,6 +430,29 @@ async def workflow_loras(wid: str):
     return {"loras": _detect_loras(wf)}
 
 
+@api.get("/comfyui/loras")
+async def comfyui_loras():
+    """Return LoRA filenames installed in the connected ComfyUI instance."""
+    s = await get_settings()
+    try:
+        async with httpx.AsyncClient(timeout=12.0) as hc:
+            response = await hc.get(f"{s.comfyui_url.rstrip('/')}/object_info")
+        response.raise_for_status()
+        info = response.json()
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Could not read ComfyUI LoRAs: {exc}")
+
+    names = set()
+    for class_name, spec in info.items():
+        if "lora" not in str(class_name).lower() or not isinstance(spec, dict):
+            continue
+        required = spec.get("input", {}).get("required", {})
+        field = required.get("lora_name")
+        if isinstance(field, list) and field and isinstance(field[0], list):
+            names.update(str(name) for name in field[0] if name)
+    return {"loras": sorted(names, key=str.lower)}
+
+
 @api.post("/workflows/reorder")
 async def reorder_workflows(body: Dict[str, List[str]] = Body(...)):
     """Reorder workflows. Body: {\"order\": [wid1, wid2, ...]}."""
@@ -796,7 +819,7 @@ class DispatchBody(BaseModel):
     prompt_negative: str = ""
     workflow_id: Optional[str] = None
     workflow_type: str = "image"  # legacy fallback
-    lora_overrides: Dict[str, Dict[str, float]] = Field(default_factory=dict)  # node_id -> {strength_model, strength_clip}
+    lora_overrides: Dict[str, Dict[str, Any]] = Field(default_factory=dict)  # node_id -> filename + weights
     seed: Optional[int] = None  # if provided, override any seed/noise_seed in workflow
     width: Optional[int] = None
     height: Optional[int] = None
@@ -1084,14 +1107,17 @@ async def _perform_dispatch(body: "DispatchBody") -> Dict[str, Any]:
             inputs[key] = negative_text
             mapped["negative"] = True
 
-    # Apply LoRA weight overrides
+    # Apply LoRA overrides. A likeness slot may replace the LoRA filename as
+    # well as its weights; ordinary LoRA controls continue to send weights only.
     for node_id, weights in (body.lora_overrides or {}).items():
         if node_id in workflow and "inputs" in workflow[node_id]:
             inp = workflow[node_id]["inputs"]
+            if "lora_name" in inp and weights.get("lora_name"):
+                inp["lora_name"] = str(weights["lora_name"])
             if "strength_model" in inp and "strength_model" in weights:
-                inp["strength_model"] = float(weights["strength_model"])
+                inp["strength_model"] = max(-3.0, min(3.0, float(weights["strength_model"])))
             if "strength_clip" in inp and "strength_clip" in weights:
-                inp["strength_clip"] = float(weights["strength_clip"])
+                inp["strength_clip"] = max(-3.0, min(3.0, float(weights["strength_clip"])))
 
     # Apply model-specific generation overrides. These keys are patched only
     # where they already exist, so the same dispatch body remains safe for
@@ -1519,7 +1545,7 @@ class Shoot(BaseModel):
     workflow_id: Optional[str] = None
     count: int = 4
     frames: List[ShootFrame] = Field(default_factory=list)
-    lora_overrides: Dict[str, Dict[str, float]] = Field(default_factory=dict)
+    lora_overrides: Dict[str, Dict[str, Any]] = Field(default_factory=dict)
     pose_mode: str = "random"  # random | pack | manual
     pose_pack: str = ""
     seed_mode: str = "fresh"  # same | character_pose | fresh
@@ -1538,7 +1564,7 @@ class ShootCreateBody(BaseModel):
     workflow_id: Optional[str] = None
     count: int = 4
     frames: List[Dict[str, Any]] = Field(default_factory=list)  # per-frame: pose_action, outfit_overrides, seed
-    lora_overrides: Dict[str, Dict[str, float]] = Field(default_factory=dict)
+    lora_overrides: Dict[str, Dict[str, Any]] = Field(default_factory=dict)
     pose_mode: str = "random"
     pose_pack: str = ""
     seed_mode: str = "fresh"
