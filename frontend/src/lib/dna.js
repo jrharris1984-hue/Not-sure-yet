@@ -543,13 +543,29 @@ export function seedSubjectFromPairing(primaryDna = {}, subjectIndex = 1) {
   }
   if (pairing === "sisters") {
     const clone = JSON.parse(JSON.stringify(primaryDna || DEFAULT_DNA));
-    clone.identity = { ...clone.identity, age: Math.max(21, (primaryAge || 25) - 4), name: "" };
+    const ageOffset = subjectIndex % 2 ? -3 : 3;
+    clone.identity = { ...clone.identity, age: Math.max(21, (primaryAge || 27) + ageOffset), name: "" };
+    // Preserve the recognizable family traits while allowing the user to edit either sister.
+    clone.face = { ...clone.face, expression: DEFAULT_DNA.face.expression };
     return clone;
   }
   if (pairing === "best friends" || pairing === "roommates") {
     setAge(Math.max(21, primaryAge || 25));
-  } else if (pairing === "mother and daughter" || pairing === "stepmom and stepdaughter") {
-    setAge(21); setArchetype("girl next door");
+  } else if (pairing === "mother and daughter") {
+    // Clone inherited appearance, then create an unmistakable adult generation gap.
+    const relative = JSON.parse(JSON.stringify(primaryDna || DEFAULT_DNA));
+    const primaryIsMother = primaryAge >= 39;
+    relative.identity = {
+      ...relative.identity,
+      age: primaryIsMother ? Math.max(21, primaryAge - 23) : Math.max(40, primaryAge + 23),
+      archetype: primaryIsMother ? "girl next door" : "queen",
+      name: "",
+    };
+    relative.face = { ...relative.face, expression: DEFAULT_DNA.face.expression };
+    return relative;
+  } else if (pairing === "stepmom and stepdaughter") {
+    setAge(primaryAge >= 39 ? Math.max(21, primaryAge - 20) : Math.max(40, primaryAge + 20));
+    setArchetype(primaryAge >= 39 ? "girl next door" : "queen");
   } else if (pairing === "aunt and niece") {
     setAge(22);
   } else if (pairing === "grandma and granddaughter" || pairing === "milf granny" || pairing === "mature and young") {
@@ -621,10 +637,17 @@ export function buildMultiVenicePrompts(subjects = [], opts = {}) {
   }
   const primary = subjects[0].dna || {};
   const shared = _veniceSharedBlock(primary, opts, subjects.length);
+  const pairing = primary?.scenario?.cast_type || "none";
+  const familyPairings = new Set(["twins", "identical twins", "sisters", "mother and daughter", "aunt and niece", "grandma and granddaughter"]);
+  const familyScene = familyPairings.has(pairing);
   const clauses = subjects.map((s) => {
-    const clause = _veniceSubjectBlock(s.dna || {}, opts);
+    const rawDna = s.dna || {};
+    const subjectDna = familyScene && Number(rawDna?.identity?.age || 0) < 21
+      ? { ...rawDna, identity: { ...(rawDna.identity || {}), age: 21 } }
+      : rawDna;
+    const clause = _veniceSubjectBlock(subjectDna, opts);
     const label = s.label || "A";
-    return `Subject ${label} (${_subjectShortDescriptor(s.dna || {})}): ${_join([
+    return `Subject ${label} (${_subjectShortDescriptor(subjectDna)}): ${_join([
       clause.subject, clause.outfit, clause.pose, clause.feet,
       clause.kink, clause.watersports, clause.intimate, clause.fluids,
     ])}`;
@@ -634,6 +657,7 @@ export function buildMultiVenicePrompts(subjects = [], opts = {}) {
     shared.qualityLead,
     shared.castHeadcount,
     "clearly separated subjects, all subjects fully visible in the frame with distinct bodies and faces",
+    familyScene && "all depicted people are adults age 21 or older, recognizable shared family resemblance in facial structure and heritage while preserving distinct adult identities",
     clauses.join("; "),
     shared.scene,
     shared.lighting,
@@ -1049,6 +1073,168 @@ export function buildMultiChromaPrompts(subjects = [], opts = {}) {
 // Trait descriptions only; if you have a LoRA for a star,
 // add the trigger token in Style → Extra style tokens.
 // ============================================================
+// Editable heritage starters deliberately keep skin tone as a separate, editable
+// choice. They are starting compositions, not claims that a heritage has one look.
+export const HERITAGE_PRESETS = [
+  {
+    name: "South Asian Editorial",
+    tags: ["heritage", "Indian", "editable"],
+    dna: {
+      identity: { gender: "female", age: 32, ethnicity: "indian", archetype: "queen", name: "" },
+      face: { eye_shape: "almond", eye_color: "deep brown", jawline: "soft", nose: "straight", lips: "full", expression: "confident" },
+      hair: { style: "wavy", length: "long", color: "jet black", texture: "thick", bangs: "none" },
+      skin: { tone: "tan", texture: "natural pores", glow: 45 },
+      physique: { body_type: "hourglass", curves: 65, exaggeration: 20 },
+    },
+  },
+  {
+    name: "East Asian Editorial",
+    tags: ["heritage", "East Asian", "editable"],
+    dna: {
+      identity: { gender: "female", age: 30, ethnicity: "east asian", archetype: "femme fatale", name: "" },
+      face: { eye_shape: "almond", eye_color: "deep brown", jawline: "soft", nose: "button", lips: "medium", expression: "confident" },
+      hair: { style: "straight", length: "long", color: "jet black", texture: "medium", bangs: "curtain" },
+      skin: { tone: "fair", texture: "natural pores", glow: 40 },
+      physique: { body_type: "slim", curves: 45, exaggeration: 10 },
+    },
+  },
+  {
+    name: "Southeast Asian Editorial",
+    tags: ["heritage", "Filipina", "editable"],
+    dna: {
+      identity: { gender: "female", age: 31, ethnicity: "filipina", archetype: "bombshell", name: "" },
+      face: { eye_shape: "almond", eye_color: "deep brown", jawline: "soft", nose: "button", lips: "full", expression: "warm smile" },
+      hair: { style: "wavy", length: "long", color: "jet black", texture: "thick", bangs: "none" },
+      skin: { tone: "tan", texture: "natural pores", glow: 55 },
+      physique: { body_type: "hourglass", curves: 60, exaggeration: 20 },
+    },
+  },
+  {
+    name: "African Diaspora Editorial",
+    tags: ["heritage", "Black", "editable"],
+    dna: {
+      identity: { gender: "female", age: 34, ethnicity: "african american", archetype: "queen", name: "" },
+      face: { eye_shape: "almond", eye_color: "deep brown", jawline: "defined", nose: "broad", lips: "full", expression: "confident" },
+      hair: { style: "coily", length: "shoulder", color: "jet black", texture: "coarse", bangs: "none" },
+      skin: { tone: "dark brown", texture: "natural pores", glow: 55 },
+      physique: { body_type: "curvy", curves: 75, exaggeration: 25 },
+    },
+  },
+  {
+    name: "Latina Editorial",
+    tags: ["heritage", "Latina", "editable"],
+    dna: {
+      identity: { gender: "female", age: 33, ethnicity: "latina", archetype: "bombshell", name: "" },
+      face: { eye_shape: "almond", eye_color: "deep brown", jawline: "defined", nose: "straight", lips: "full", expression: "confident" },
+      hair: { style: "wavy", length: "long", color: "chestnut", texture: "thick", bangs: "curtain" },
+      skin: { tone: "tan", texture: "natural pores", glow: 55 },
+      physique: { body_type: "hourglass", curves: 75, exaggeration: 30 },
+    },
+  },
+  {
+    name: "Middle Eastern Editorial",
+    tags: ["heritage", "Middle Eastern", "editable"],
+    dna: {
+      identity: { gender: "female", age: 35, ethnicity: "middle eastern", archetype: "femme fatale", name: "" },
+      face: { eye_shape: "almond", eye_color: "deep brown", jawline: "defined", nose: "aquiline", lips: "full", expression: "intense" },
+      hair: { style: "wavy", length: "long", color: "jet black", texture: "thick", bangs: "none" },
+      skin: { tone: "olive", texture: "natural pores", glow: 50 },
+      physique: { body_type: "hourglass", curves: 65, exaggeration: 20 },
+    },
+  },
+  {
+    name: "Mediterranean Editorial",
+    tags: ["heritage", "Mediterranean", "editable"],
+    dna: {
+      identity: { gender: "female", age: 36, ethnicity: "mediterranean", archetype: "queen", name: "" },
+      face: { eye_shape: "almond", eye_color: "hazel", jawline: "defined", nose: "straight", lips: "full", expression: "confident" },
+      hair: { style: "wavy", length: "long", color: "chestnut", texture: "thick", bangs: "curtain" },
+      skin: { tone: "olive", texture: "natural pores", glow: 50 },
+      physique: { body_type: "hourglass", curves: 70, exaggeration: 25 },
+    },
+  },
+  {
+    name: "Nordic Editorial",
+    tags: ["heritage", "Nordic", "editable"],
+    dna: {
+      identity: { gender: "female", age: 33, ethnicity: "nordic", archetype: "athlete", name: "" },
+      face: { eye_shape: "almond", eye_color: "blue", jawline: "defined", nose: "straight", lips: "medium", expression: "serene" },
+      hair: { style: "wavy", length: "long", color: "platinum blonde", texture: "medium", bangs: "none" },
+      skin: { tone: "fair", texture: "natural pores", glow: 35 },
+      physique: { height: "tall", body_type: "athletic", muscularity: 45, curves: 50, exaggeration: 10 },
+    },
+  },
+];
+
+// Original 21+ fairy-tale archetypes: recognizable moods without using child-coded
+// characters or claiming to reproduce a copyrighted animated likeness.
+export const STORYBOOK_PRESETS = [
+  {
+    name: "Adult Ice Queen",
+    tags: ["21+", "ice", "royal", "storybook"],
+    dna: {
+      identity: { gender: "female", age: 29, ethnicity: "nordic", archetype: "queen", name: "" },
+      hair: { style: "braids", length: "long", color: "platinum blonde", texture: "medium", bangs: "side-swept" },
+      face: { eye_shape: "almond", eye_color: "blue", jawline: "defined", nose: "straight", lips: "medium", expression: "serene" },
+      wardrobe: { outfit_preset: "evening gown slit", palette: "silver", material: "silk" },
+      scene: { environment: "castle", background: "glittering ice palace and falling snow", era: "medieval" },
+    },
+  },
+  {
+    name: "Adult Desert Princess",
+    tags: ["21+", "desert", "royal", "storybook"],
+    dna: {
+      identity: { gender: "female", age: 27, ethnicity: "middle eastern", archetype: "queen", name: "" },
+      hair: { style: "wavy", length: "long", color: "jet black", texture: "thick", bangs: "none" },
+      face: { eye_shape: "almond", eye_color: "deep brown", jawline: "soft", nose: "straight", lips: "full", expression: "confident" },
+      wardrobe: { outfit_preset: "evening gown slit", palette: "gold and black", material: "silk" },
+      scene: { environment: "desert", background: "ornate palace balcony beneath a starry night", era: "medieval" },
+    },
+  },
+  {
+    name: "Adult Bayou Princess",
+    tags: ["21+", "bayou", "elegant", "storybook"],
+    dna: {
+      identity: { gender: "female", age: 28, ethnicity: "african american", archetype: "queen", name: "" },
+      hair: { style: "coily", length: "shoulder", color: "jet black", texture: "coarse", bangs: "none" },
+      wardrobe: { outfit_preset: "evening gown slit", palette: "gold and black", material: "satin" },
+      scene: { environment: "forest", background: "enchanted bayou garden terrace at dusk", era: "vintage" },
+    },
+  },
+  {
+    name: "Adult Warrior Princess",
+    tags: ["21+", "warrior", "athletic", "storybook"],
+    dna: {
+      identity: { gender: "female", age: 30, ethnicity: "east asian", archetype: "warrior", name: "" },
+      physique: { body_type: "athletic", muscularity: 65, curves: 45, exaggeration: 10 },
+      hair: { style: "ponytail", length: "long", color: "jet black", texture: "silky", bangs: "none" },
+      wardrobe: { outfit_preset: "leather mistress", palette: "blood red", material: "leather" },
+      scene: { environment: "forest", background: "misty mountain temple", era: "medieval" },
+    },
+  },
+  {
+    name: "Adult Enchanted Rose Princess",
+    tags: ["21+", "rose", "royal", "storybook"],
+    dna: {
+      identity: { gender: "female", age: 31, ethnicity: "french", archetype: "queen", name: "" },
+      hair: { style: "updo", length: "long", color: "chestnut", texture: "wavy", bangs: "curtain" },
+      wardrobe: { outfit_preset: "evening gown slit", palette: "gold and black", material: "satin" },
+      scene: { environment: "castle", background: "candlelit grand ballroom filled with roses", era: "victorian" },
+    },
+  },
+  {
+    name: "Adult Ocean Wayfinder",
+    tags: ["21+", "ocean", "adventurer", "storybook"],
+    dna: {
+      identity: { gender: "female", age: 26, ethnicity: "polynesian", archetype: "warrior", name: "" },
+      physique: { body_type: "athletic", muscularity: 55, curves: 55, exaggeration: 10 },
+      hair: { style: "wavy", length: "long", color: "dark brown", texture: "thick", bangs: "none" },
+      wardrobe: { outfit_preset: "streetwear", palette: "blood red", material: "linen" },
+      scene: { environment: "beach", background: "tropical shoreline and ocean sunset", era: "contemporary" },
+    },
+  },
+];
+
 export const STAR_PRESETS = [
   {
     name: "Ava Devine",
