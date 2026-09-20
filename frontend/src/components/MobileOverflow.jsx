@@ -36,7 +36,12 @@ export default function MobileOverflow({ children, testId = "mobile-overflow" })
         {open && (
           <div
             data-testid={`${testId}-panel`}
-            onClick={() => setOpen(false)}
+            onClick={(event) => {
+              // Modal launchers must remain mounted after their trigger is tapped.
+              // They close this menu naturally when the user later taps outside it.
+              if (event.target.closest("[data-overflow-stay-open]")) return;
+              setOpen(false);
+            }}
             className="absolute right-0 top-full mt-1 z-50 pane glass p-2 min-w-[220px] flex flex-col gap-1 shadow-2xl"
           >
             {children}
