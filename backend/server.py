@@ -1,9 +1,8 @@
 """Ultra Studio Character DNA Builder — FastAPI backend."""
 from fastapi import FastAPI, APIRouter, HTTPException, Body, BackgroundTasks, WebSocket, WebSocketDisconnect, Query, UploadFile, File
-from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
+from fastapi.responses import FileResponse, JSONResponse, Response
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
-from starlette.background import BackgroundTask
 from motor.motor_asyncio import AsyncIOMotorClient
 import os
 import logging
@@ -523,39 +522,34 @@ async def comfyui_media(
     subfolder: str = Query(""),
     type: str = Query("output"),
 ):
-    """Stream ComfyUI output through Ultra Studio so Docker-only hostnames never reach browsers."""
+    """Return ComfyUI output through Ultra Studio so private hostnames never reach browsers.
+
+    Buffering the upstream response is intentional. Open streaming responses can
+    stall when a Gallery refresh requests many large images through both the
+    React and Tailscale proxies. Completed responses are also safely cacheable.
+    """
     settings = await get_settings()
-    client = httpx.AsyncClient(timeout=None)
-    request = client.build_request(
-        "GET",
-        f"{settings.comfyui_url.rstrip('/')}/view",
-        params={"filename": filename, "subfolder": subfolder, "type": type},
-    )
     try:
-        response = await client.send(request, stream=True)
+        async with httpx.AsyncClient(timeout=httpx.Timeout(120.0, connect=8.0)) as client:
+            response = await client.get(
+                f"{settings.comfyui_url.rstrip('/')}/view",
+                params={"filename": filename, "subfolder": subfolder, "type": type},
+            )
     except Exception as exc:
-        await client.aclose()
         raise HTTPException(502, f"Could not open ComfyUI media: {exc}")
     if response.status_code >= 400:
-        detail = (await response.aread())[:200].decode("utf-8", errors="replace")
-        await response.aclose()
-        await client.aclose()
+        detail = response.content[:200].decode("utf-8", errors="replace")
         raise HTTPException(502, f"ComfyUI media error: {response.status_code} {detail}")
 
-    async def close_stream():
-        await response.aclose()
-        await client.aclose()
-
-    headers = {}
-    for name in ("content-length", "content-disposition", "accept-ranges"):
+    headers = {"Cache-Control": "private, max-age=86400, immutable"}
+    for name in ("content-disposition", "etag", "last-modified"):
         value = response.headers.get(name)
         if value:
             headers[name] = value
-    return StreamingResponse(
-        response.aiter_raw(),
+    return Response(
+        content=response.content,
         media_type=response.headers.get("content-type", "application/octet-stream"),
         headers=headers,
-        background=BackgroundTask(close_stream),
     )
 
 

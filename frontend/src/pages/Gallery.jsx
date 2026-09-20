@@ -236,7 +236,7 @@ export default function Gallery() {
                       }}
                       className="absolute inset-0 w-full h-full focus:outline-none focus:ring-2 focus:ring-amber-400/60">
                       {isVideoUrl(output) ? (
-                        <video src={output} muted playsInline preload="metadata"
+                        <video src={output} muted playsInline preload="none"
                           className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" />
                       ) : (
                         <img src={output}
