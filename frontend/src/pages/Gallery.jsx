@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { API_BASE, endpoints } from "@/lib/api";
 import { Link, useNavigate } from "react-router-dom";
-import { X, Download, Copy, ExternalLink, Trash2, CheckSquare, RotateCcw, Shuffle, Pencil, Film, Loader2 } from "lucide-react";
+import { X, Download, Copy, ExternalLink, Trash2, CheckSquare, RotateCcw, Shuffle, Pencil, Film, Loader2, Info } from "lucide-react";
 import { toast } from "sonner";
 
 async function downloadImage(url, filename) {
@@ -62,6 +62,7 @@ export default function Gallery() {
     refetchInterval: 5000,
   });
   const [lightbox, setLightbox] = useState(null); // render object
+  const [showDetails, setShowDetails] = useState(false);
   const [selectionMode, setSelectionMode] = useState(false);
   const [selected, setSelected] = useState([]);
 
@@ -226,7 +227,13 @@ export default function Gallery() {
                     data-testid={`gallery-thumb-${i}`}
                     className={`relative aspect-square rounded-lg overflow-hidden border bg-elevated group ${checked ? "border-amber-400 ring-2 ring-amber-400/50" : "hairline"}`}>
                     <button type="button"
-                      onClick={() => selectionMode ? toggleSelected(r.id) : setLightbox(r)}
+                      onClick={() => {
+                        if (selectionMode) toggleSelected(r.id);
+                        else {
+                          setLightbox(r);
+                          setShowDetails(false);
+                        }
+                      }}
                       className="absolute inset-0 w-full h-full focus:outline-none focus:ring-2 focus:ring-amber-400/60">
                       {isVideoUrl(output) ? (
                         <video src={output} muted playsInline preload="metadata"
@@ -287,41 +294,66 @@ export default function Gallery() {
       {/* Lightbox modal */}
       {lightbox && (
         <div
-          onClick={() => setLightbox(null)}
+          onClick={() => { setLightbox(null); setShowDetails(false); }}
           data-testid="gallery-lightbox"
-          className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md p-4 sm:p-6 flex items-center justify-center"
+          className="fixed inset-0 z-50 bg-black/95 backdrop-blur-md p-0 sm:p-6 flex items-center justify-center"
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="relative w-full max-w-6xl max-h-full flex flex-col md:flex-row gap-4"
+            className="relative w-full h-full md:h-auto max-w-6xl md:max-h-full flex flex-col md:flex-row md:gap-4"
           >
+            {/* Mobile controls float over the image instead of covering it with metadata. */}
+            <button
+              type="button"
+              onClick={() => { setLightbox(null); setShowDetails(false); }}
+              className="md:hidden absolute right-3 top-[calc(.75rem+env(safe-area-inset-top,0px))] z-30 h-10 w-10 grid place-items-center rounded-full border border-white/20 bg-black/70 text-white backdrop-blur-md"
+              aria-label="Close full-screen image"
+            >
+              <X className="h-5 w-5" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowDetails((value) => !value)}
+              className="md:hidden absolute bottom-[calc(1rem+env(safe-area-inset-bottom,0px))] left-1/2 z-30 -translate-x-1/2 inline-flex items-center gap-2 rounded-full border border-white/20 bg-black/75 px-4 py-2.5 text-sm font-semibold text-white backdrop-blur-md"
+              data-testid="btn-lightbox-details-mobile"
+            >
+              <Info className="h-4 w-4" /> {showDetails ? "Hide details" : "Details"}
+            </button>
+
             {/* Image column */}
-            <div className="flex-1 min-h-0 flex items-center justify-center">
+            <div className="flex-1 min-h-0 h-full flex items-center justify-center">
               {isVideoUrl(primaryOutput(lightbox)) ? (
                 <video src={primaryOutput(lightbox)} controls autoPlay playsInline loop
                   data-testid="gallery-lightbox-video"
-                  className="max-h-[85vh] max-w-full object-contain rounded-lg shadow-2xl" />
+                  className="max-h-[100dvh] md:max-h-[85vh] max-w-full object-contain md:rounded-lg shadow-2xl" />
               ) : (
                 <img
                   src={primaryOutput(lightbox)}
                   alt={lightbox.prompt_positive?.slice(0, 60) || "render"}
                   data-testid="gallery-lightbox-image"
-                  className="max-h-[85vh] max-w-full object-contain rounded-lg shadow-2xl"
+                  className="max-h-[100dvh] md:max-h-[85vh] max-w-full object-contain md:rounded-lg shadow-2xl"
                 />
               )}
             </div>
 
             {/* Meta column */}
-            <aside className="w-full md:w-80 shrink-0 pane p-4 space-y-3 max-h-[85vh] overflow-y-auto scroll-fade">
+            <aside className={`${showDetails ? "flex" : "hidden"} md:flex flex-col fixed md:static inset-x-0 bottom-0 z-40 w-full md:w-80 shrink-0 pane rounded-b-none md:rounded-[14px] p-4 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] md:pb-4 space-y-3 max-h-[78dvh] md:max-h-[85vh] overflow-y-auto scroll-fade shadow-2xl`}>
               <div className="flex items-start justify-between gap-2">
                 <div>
                   <div className="section-label">Render</div>
                   <div className="font-display font-bold text-sm mt-0.5">{lightbox.workflow_name || lightbox.workflow_type}</div>
                 </div>
                 <button
-                  onClick={() => setLightbox(null)}
+                  onClick={() => setShowDetails(false)}
+                  className="md:hidden h-8 w-8 grid place-items-center rounded-md text-zinc-400 hover:bg-white/5"
+                  aria-label="Hide render details"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+                <button
+                  onClick={() => { setLightbox(null); setShowDetails(false); }}
                   data-testid="btn-lightbox-close"
-                  className="h-8 w-8 grid place-items-center rounded-md text-zinc-400 hover:bg-white/5"
+                  className="hidden md:grid h-8 w-8 place-items-center rounded-md text-zinc-400 hover:bg-white/5"
                 >
                   <X className="h-4 w-4" />
                 </button>
