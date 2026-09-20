@@ -7,6 +7,7 @@ import { endpoints } from "@/lib/api";
 import { SECTIONS } from "@/lib/dna";
 import { POSE_PACKS, samplePoses, cycleOutfits } from "@/lib/posePacks";
 import LoraPanel from "@/components/LoraPanel";
+import { likenessOverrides } from "@/components/LikenessLoraPanel";
 
 // Flat pool of all pose actions from the DNA schema
 const POSE_SECTION = SECTIONS.find((s) => s.key === "pose");
@@ -42,6 +43,10 @@ export default function ShootSetup() {
   const [baseSeed, setBaseSeed] = useState("");
   const [loraOverrides, setLoraOverrides] = useState({});
   const [name, setName] = useState("");
+  const savedLikenessOverrides = useMemo(
+    () => likenessOverrides(character?.subjects || []),
+    [character?.subjects]
+  );
 
   useEffect(() => {
     if (!workflowId && workflows.length) {
@@ -64,7 +69,7 @@ export default function ShootSetup() {
         workflow_id: workflowId,
         count,
         frames: previewFrames,
-        lora_overrides: loraOverrides,
+        lora_overrides: { ...loraOverrides, ...savedLikenessOverrides },
         pose_mode: poseMode,
         pose_pack: poseMode === "pack" ? packKey : "",
         seed_mode: seedMode,
