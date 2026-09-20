@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { API_BASE, endpoints } from "@/lib/api";
-import { Link } from "react-router-dom";
-import { X, Download, Copy, ExternalLink, Trash2, CheckSquare } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
+import { X, Download, Copy, ExternalLink, Trash2, CheckSquare, RotateCcw, Shuffle, Pencil, Film, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 async function downloadImage(url, filename) {
@@ -55,6 +55,7 @@ const isVideoUrl = (url = "") => /\.(webm|mp4|mov)(?:[?&]|$)/i.test(decodeURICom
 
 export default function Gallery() {
   const qc = useQueryClient();
+  const nav = useNavigate();
   const { data: renders = [], isLoading } = useQuery({
     queryKey: ["renders"],
     queryFn: endpoints.listRenders,
@@ -95,6 +96,34 @@ export default function Gallery() {
       toast.success(`Cleared ${result.deleted || 0} cancelled render${result.deleted === 1 ? "" : "s"}`);
     },
     onError: (error) => toast.error(error?.response?.data?.detail || "Could not clear cancelled renders"),
+  });
+
+  const recreate = useMutation({
+    mutationFn: ({ id, variation }) => endpoints.recreateRender(id, variation),
+    onSuccess: (result, variables) => {
+      qc.invalidateQueries({ queryKey: ["renders"] });
+      qc.invalidateQueries({ queryKey: ["queue"] });
+      setLightbox(null);
+      toast.success(variables.variation ? "Variation added to the render queue" : "Exact recipe added to the render queue", {
+        description: result.queue_position ? `Queue position #${result.queue_position}` : undefined,
+      });
+    },
+    onError: (error) => toast.error(error?.response?.data?.detail || "Could not recreate this render"),
+  });
+
+  const reuseAsReference = useMutation({
+    mutationFn: ({ render, targetKind }) => endpoints.prepareRenderReference(render.id).then((reference) => ({ render, targetKind, reference })),
+    onSuccess: ({ render, targetKind, reference }) => {
+      const path = render.character_id ? `/character/${render.character_id}` : "/character/new";
+      nav(path, {
+        state: {
+          galleryReference: reference,
+          previewUrl: primaryOutput(render),
+          targetKind,
+        },
+      });
+    },
+    onError: (error) => toast.error(error?.response?.data?.detail || "Could not reuse this Gallery image"),
   });
 
   const confirmRemoveOne = (render) => {
@@ -321,6 +350,40 @@ export default function Gallery() {
               )}
 
               <div className="flex flex-col gap-2 pt-2">
+                <div className="grid grid-cols-2 gap-2">
+                  <button type="button"
+                    onClick={() => recreate.mutate({ id: lightbox.id, variation: false })}
+                    disabled={recreate.isPending}
+                    data-testid="btn-lightbox-recreate"
+                    className="inline-flex items-center justify-center gap-2 rounded-lg border border-emerald-500/40 bg-emerald-500/10 text-emerald-200 hover:bg-emerald-500/20 text-sm px-3 py-2 disabled:opacity-40">
+                    {recreate.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />} Recreate
+                  </button>
+                  <button type="button"
+                    onClick={() => recreate.mutate({ id: lightbox.id, variation: true })}
+                    disabled={recreate.isPending}
+                    data-testid="btn-lightbox-variation"
+                    className="inline-flex items-center justify-center gap-2 rounded-lg border border-violet-500/40 bg-violet-500/10 text-violet-200 hover:bg-violet-500/20 text-sm px-3 py-2 disabled:opacity-40">
+                    <Shuffle className="h-4 w-4" /> Variation
+                  </button>
+                </div>
+                {!isVideoUrl(primaryOutput(lightbox)) && (
+                  <div className="grid grid-cols-2 gap-2">
+                    <button type="button"
+                      onClick={() => reuseAsReference.mutate({ render: lightbox, targetKind: "edit" })}
+                      disabled={reuseAsReference.isPending}
+                      data-testid="btn-lightbox-edit-again"
+                      className="inline-flex items-center justify-center gap-2 rounded-lg border hairline text-zinc-200 hover:bg-white/5 text-sm px-3 py-2 disabled:opacity-40">
+                      <Pencil className="h-4 w-4" /> Edit Again
+                    </button>
+                    <button type="button"
+                      onClick={() => reuseAsReference.mutate({ render: lightbox, targetKind: "video" })}
+                      disabled={reuseAsReference.isPending}
+                      data-testid="btn-lightbox-animate"
+                      className="inline-flex items-center justify-center gap-2 rounded-lg border hairline text-zinc-200 hover:bg-white/5 text-sm px-3 py-2 disabled:opacity-40">
+                      <Film className="h-4 w-4" /> Animate
+                    </button>
+                  </div>
+                )}
                 <button
                   onClick={() => downloadImage(primaryOutput(lightbox), `${lightbox.workflow_name || "render"}-${lightbox.id.slice(0, 8)}-enhanced.png`)}
                   data-testid="btn-lightbox-download"
