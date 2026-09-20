@@ -1,19 +1,26 @@
 import { useState, useMemo } from "react";
 import { Star, X, Search } from "lucide-react";
-import { STAR_PRESETS, DEFAULT_DNA } from "@/lib/dna";
+import { STAR_PRESETS, HERITAGE_PRESETS, STORYBOOK_PRESETS, DEFAULT_DNA } from "@/lib/dna";
 import { Input } from "@/components/ui/input";
 
 export default function PresetsMenu({ onApply }) {
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
+  const [category, setCategory] = useState("stars");
+
+  const source = category === "heritage"
+    ? HERITAGE_PRESETS
+    : category === "storybook"
+      ? STORYBOOK_PRESETS
+      : STAR_PRESETS;
 
   const filtered = useMemo(() => {
     const query = q.trim().toLowerCase();
-    if (!query) return STAR_PRESETS;
-    return STAR_PRESETS.filter(
+    if (!query) return source;
+    return source.filter(
       (p) => p.name.toLowerCase().includes(query) || (p.tags || []).some((t) => t.toLowerCase().includes(query))
     );
-  }, [q]);
+  }, [q, source]);
 
   const apply = (preset) => {
     // Deep-merge preset.dna into DEFAULT_DNA so untouched sections stay defaulted
@@ -37,13 +44,13 @@ export default function PresetsMenu({ onApply }) {
       </button>
       {open && (
         <div
-          className="fixed inset-0 z-50 flex items-start sm:items-center justify-center p-3 sm:p-8 bg-black/70 backdrop-blur-sm"
+          className="fixed inset-0 z-50 flex items-stretch sm:items-center justify-center p-0 sm:p-8 bg-black/70 backdrop-blur-sm"
           onClick={() => setOpen(false)}
           data-testid="presets-modal"
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-2xl bg-surface border border-hairline rounded-2xl shadow-2xl overflow-hidden"
+            className="w-full h-[100dvh] sm:h-auto sm:max-h-[88vh] max-w-2xl bg-surface border border-hairline rounded-none sm:rounded-2xl shadow-2xl overflow-hidden flex flex-col"
           >
             <div className="flex items-center gap-2 px-4 py-3 border-b hairline">
               <Star className="h-4 w-4 text-rose-400" />
@@ -58,6 +65,19 @@ export default function PresetsMenu({ onApply }) {
                 <X className="h-4 w-4" />
               </button>
             </div>
+            <div className="px-3 pt-3 flex gap-2 overflow-x-auto shrink-0" role="tablist" aria-label="Preset categories">
+              {[
+                ["stars", "Styles"],
+                ["heritage", "Heritage"],
+                ["storybook", "Storybook 21+"],
+              ].map(([key, label]) => (
+                <button key={key} type="button" role="tab" aria-selected={category === key}
+                  onClick={() => { setCategory(key); setQ(""); }}
+                  className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold ${category === key ? "border-rose-400 bg-rose-500/15 text-rose-200" : "hairline text-zinc-400"}`}>
+                  {label}
+                </button>
+              ))}
+            </div>
             <div className="p-3 border-b hairline">
               <div className="relative">
                 <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
@@ -67,11 +87,10 @@ export default function PresetsMenu({ onApply }) {
                   onChange={(e) => setQ(e.target.value)}
                   placeholder="Search by name or tag (blonde, MILF, huge butt, ebony...)"
                   className="pl-9 bg-elevated border-hairline"
-                  autoFocus
                 />
               </div>
             </div>
-            <div className="max-h-[60vh] overflow-y-auto scroll-fade p-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain scroll-fade p-3 grid content-start grid-cols-1 sm:grid-cols-2 gap-2">
               {filtered.map((p) => (
                 <button
                   key={p.name}
@@ -94,7 +113,7 @@ export default function PresetsMenu({ onApply }) {
               )}
             </div>
             <div className="px-4 py-2.5 border-t hairline text-[11px] text-zinc-500">
-              Applying a preset overwrites all sections with the star's traits. Tip: lock any section first to keep it.
+              Presets are editable starting points. Applying one replaces its supplied DNA traits; you can adjust every field afterward.
             </div>
           </div>
         </div>
