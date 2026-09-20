@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { API_BASE, endpoints } from "@/lib/api";
 import { Link, useNavigate } from "react-router-dom";
-import { X, Download, Copy, ExternalLink, Trash2, CheckSquare, RotateCcw, Shuffle, Pencil, Film, Loader2, Info } from "lucide-react";
+import { X, Download, Copy, ExternalLink, Trash2, CheckSquare, RotateCcw, Shuffle, Pencil, Film, Loader2, Info, ChevronLeft, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 
 async function downloadImage(url, filename) {
@@ -65,6 +65,7 @@ export default function Gallery() {
   const [showDetails, setShowDetails] = useState(false);
   const [selectionMode, setSelectionMode] = useState(false);
   const [selected, setSelected] = useState([]);
+  const swipeStartX = useRef(null);
 
   const removeOne = useMutation({
     mutationFn: (id) => endpoints.deleteRender(id),
@@ -151,6 +152,24 @@ export default function Gallery() {
   const withOutput = renders.filter((r) => primaryOutput(r));
   const inFlight = renders.filter((r) => !primaryOutput(r) && ["queued", "dispatching", "running"].includes(r.status));
   const cancelled = renders.filter((r) => !primaryOutput(r) && r.status === "cancelled");
+  const lightboxIndex = lightbox ? withOutput.findIndex((r) => r.id === lightbox.id) : -1;
+  const showAdjacent = (offset) => {
+    if (!withOutput.length || lightboxIndex < 0) return;
+    const nextIndex = (lightboxIndex + offset + withOutput.length) % withOutput.length;
+    setLightbox(withOutput[nextIndex]);
+    setShowDetails(false);
+  };
+
+  useEffect(() => {
+    if (!lightbox) return undefined;
+    const onKeyDown = (event) => {
+      if (event.key === "ArrowLeft") showAdjacent(-1);
+      if (event.key === "ArrowRight") showAdjacent(1);
+      if (event.key === "Escape") { setLightbox(null); setShowDetails(false); }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  });
 
   const confirmClearCancelled = () => {
     if (!cancelled.length) return;
@@ -190,6 +209,7 @@ export default function Gallery() {
               data-testid="btn-gallery-select">
               <CheckSquare className="h-4 w-4" /> {selectionMode ? "Cancel" : "Select"}
             </button>
+
             )}
             {selectionMode && selected.length > 0 && (
               <button type="button" onClick={confirmRemoveSelected}
@@ -320,8 +340,33 @@ export default function Gallery() {
               <Info className="h-4 w-4" /> {showDetails ? "Hide details" : "Details"}
             </button>
 
+            {withOutput.length > 1 && (
+              <>
+                <button type="button" onClick={() => showAdjacent(-1)}
+                  className="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 z-30 h-11 w-11 grid place-items-center rounded-full border border-white/20 bg-black/65 text-white backdrop-blur-md"
+                  aria-label="Previous gallery item" data-testid="btn-lightbox-previous">
+                  <ChevronLeft className="h-6 w-6" />
+                </button>
+                <button type="button" onClick={() => showAdjacent(1)}
+                  className="absolute right-2 md:right-[21rem] sm:right-4 top-1/2 -translate-y-1/2 z-30 h-11 w-11 grid place-items-center rounded-full border border-white/20 bg-black/65 text-white backdrop-blur-md"
+                  aria-label="Next gallery item" data-testid="btn-lightbox-next">
+                  <ChevronRight className="h-6 w-6" />
+                </button>
+                <div className="absolute left-1/2 top-[calc(.9rem+env(safe-area-inset-top,0px))] -translate-x-1/2 z-20 rounded-full bg-black/65 px-3 py-1 text-[11px] font-mono text-zinc-200">
+                  {lightboxIndex + 1} / {withOutput.length}
+                </div>
+              </>
+            )}
+
             {/* Image column */}
-            <div className="flex-1 min-h-0 h-full flex items-center justify-center">
+            <div className="flex-1 min-h-0 h-full flex items-center justify-center touch-pan-y"
+              onTouchStart={(event) => { swipeStartX.current = event.touches[0]?.clientX ?? null; }}
+              onTouchEnd={(event) => {
+                if (swipeStartX.current == null) return;
+                const delta = (event.changedTouches[0]?.clientX ?? swipeStartX.current) - swipeStartX.current;
+                swipeStartX.current = null;
+                if (Math.abs(delta) >= 50) showAdjacent(delta > 0 ? -1 : 1);
+              }}>
               {isVideoUrl(primaryOutput(lightbox)) ? (
                 <video src={primaryOutput(lightbox)} controls autoPlay playsInline loop
                   data-testid="gallery-lightbox-video"
