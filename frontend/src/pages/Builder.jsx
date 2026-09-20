@@ -19,6 +19,7 @@ import AiAssistBar from "@/components/AiAssistBar";
 import PresetsMenu from "@/components/PresetsMenu";
 import KinkPresetsMenu from "@/components/KinkPresetsMenu";
 import LoraPanel from "@/components/LoraPanel";
+import LikenessLoraPanel, { likenessOverrides, likenessTriggerText } from "@/components/LikenessLoraPanel";
 import LivePreview from "@/components/LivePreview";
 import TagInput from "@/components/TagInput";
 import GroupedSectionRail from "@/components/GroupedSectionRail";
@@ -290,16 +291,31 @@ export default function Builder() {
   const isMulti = subjects.length > 1;
   const { positive, negative } = useMemo(
     () => {
+      // A saved display name is useful in the library, but it is prompt noise
+      // when a real likeness LoRA is active. The LoRA trigger owns identity.
+      const promptSubjects = subjects.map((subject) => subject?.likeness?.enabled
+        ? { ...subject, dna: { ...subject.dna, identity: { ...(subject.dna?.identity || {}), name: "" } } }
+        : subject
+      );
+      const promptActiveDna = activeSubject?.likeness?.enabled
+        ? { ...activeDna, identity: { ...(activeDna.identity || {}), name: "" } }
+        : activeDna;
       if (isMulti) {
-        if (promptStyle === "pony") return buildMultiPonyPrompts(subjects, { raunch });
-        if (isGoldenChroma) return buildMultiChromaPrompts(subjects, { raunch });
-        return buildMultiVenicePrompts(subjects, { raunch });
+        if (promptStyle === "pony") return buildMultiPonyPrompts(promptSubjects, { raunch });
+        if (isGoldenChroma) return buildMultiChromaPrompts(promptSubjects, { raunch });
+        return buildMultiVenicePrompts(promptSubjects, { raunch });
       }
-      if (promptStyle === "pony") return buildPonyPrompts(activeDna, { raunch });
-      if (isGoldenChroma) return buildChromaPrompts(activeDna, { raunch });
-      return buildPrompts(activeDna, { raunch });
+      if (promptStyle === "pony") return buildPonyPrompts(promptActiveDna, { raunch });
+      if (isGoldenChroma) return buildChromaPrompts(promptActiveDna, { raunch });
+      return buildPrompts(promptActiveDna, { raunch });
     },
-    [subjects, isMulti, activeDna, promptStyle, raunch, isGoldenChroma]
+    [subjects, isMulti, activeDna, activeSubject?.likeness?.enabled, promptStyle, raunch, isGoldenChroma]
+  );
+  const likenessPrompt = useMemo(() => likenessTriggerText(subjects), [subjects]);
+  const finalPositive = likenessPrompt ? `${likenessPrompt}, ${positive}` : positive;
+  const effectiveLoraOverrides = useMemo(
+    () => ({ ...loraOverrides, ...likenessOverrides(subjects) }),
+    [loraOverrides, subjects]
   );
 
   const save = useMutation({
@@ -309,13 +325,13 @@ export default function Builder() {
         name,
         dna: subjects[0]?.dna || {},
         field_locks: subjects[0]?.field_locks || {},
-        subjects: subjects.map((s) => ({ id: s.id, label: s.label, dna: s.dna, field_locks: s.field_locks })),
+        subjects: subjects.map((s) => ({ id: s.id, label: s.label, dna: s.dna, field_locks: s.field_locks, likeness: s.likeness })),
         active_subject_id: activeSubjectId,
         locks,
         collapsed,
         tags,
         raunch,
-        prompt_positive: positive,
+        prompt_positive: finalPositive,
         prompt_negative: negative,
       };
       if (isNew) {
@@ -374,11 +390,11 @@ export default function Builder() {
         character_id: isNew ? undefined : id,
         // Send primary subject DNA (backward compat) + all subjects for future backend use.
         dna: subjects[0]?.dna || {},
-        subjects: subjects.map((s) => ({ label: s.label, dna: s.dna })),
-        prompt_positive: positive,
+        subjects: subjects.map((s) => ({ label: s.label, dna: s.dna, likeness: s.likeness })),
+        prompt_positive: finalPositive,
         prompt_negative: negative,
         workflow_id: workflowId,
-        lora_overrides: loraOverrides,
+        lora_overrides: effectiveLoraOverrides,
         width: isGoldenChroma ? chromaSettings.width : undefined,
         height: isGoldenChroma ? chromaSettings.height : undefined,
         batch_size: isGoldenChroma ? chromaSettings.batchSize : undefined,
@@ -805,7 +821,7 @@ export default function Builder() {
 
         {/* Right - preview + AI + render */}
         <aside className="space-y-4 lg:sticky lg:top-20 lg:h-fit">
-          <PromptPreview positive={positive} negative={negative} />
+          <PromptPreview positive={finalPositive} negative={negative} />
           {activeWorkflow && promptStyle === "pony" && (
             <div className="pane p-3 flex items-center gap-2" data-testid="pony-style-badge">
               <span className="text-[10px] font-mono uppercase tracking-widest text-rose-300 bg-rose-500/10 border border-rose-500/40 rounded px-1.5 py-0.5">pony style</span>
@@ -1166,6 +1182,11 @@ export default function Builder() {
               </label>
             </div>
           )}
+          <LikenessLoraPanel
+            workflowId={workflowId}
+            subject={activeSubject}
+            onChange={(likeness) => updateActiveSubject(() => ({ likeness }))}
+          />
           <LoraPanel
             workflowId={workflowId}
             values={loraOverrides}
