@@ -90,7 +90,7 @@ export const PROMPT_MAP = {
       "warrior": "fierce warrior woman, battle-ready confident stance, powerful",
       "pirate": "sexy pirate queen, tattered corset, hoop earrings, sword at hip, weathered beauty",
       "cyberpunk": "cyberpunk cyber-goth aesthetic, neon accents, futuristic tech, edgy",
-      "goth": "dark gothic aesthetic, black lipstick, pale skin, brooding beauty, alternative style",
+      "goth": "dark gothic aesthetic, black lipstick, brooding beauty, alternative style",
       "cottagecore": "soft cottagecore aesthetic, romantic pastoral, flowing dresses, natural",
       "athlete": "athletic fitness-model physique, defined muscles, healthy glow, confident",
       "queen": "regal queenly presence, elegant powerful, refined beauty, commanding",
