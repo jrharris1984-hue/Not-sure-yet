@@ -479,12 +479,13 @@ function _sid() {
   return Math.random().toString(36).slice(2, 10);
 }
 
-export function makeSubject({ label, dna: initialDna, fieldLocks } = {}) {
+export function makeSubject({ label, dna: initialDna, fieldLocks, likeness } = {}) {
   return {
     id: _sid(),
     label: label || "A",
     dna: initialDna || JSON.parse(JSON.stringify(DEFAULT_DNA)),
     field_locks: fieldLocks || {},
+    likeness: likeness || { enabled: false, node_id: "", lora_name: "", strength_model: 0.8, strength_clip: 0.8, trigger: "" },
   };
 }
 
@@ -496,6 +497,7 @@ export function subjectsFromCharacter(character) {
       label: s.label || SUBJECT_LABELS[i] || `S${i + 1}`,
       dna: { ...DEFAULT_DNA, ...(s.dna || {}) },
       field_locks: s.field_locks || {},
+      likeness: s.likeness || { enabled: false, node_id: "", lora_name: "", strength_model: 0.8, strength_clip: 0.8, trigger: "" },
     }));
   }
   return [makeSubject({
