@@ -1,6 +1,13 @@
 import axios from "axios";
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
+const configuredBackend = (process.env.REACT_APP_BACKEND_URL || "").replace(/\/$/, "");
+const browserOrigin = typeof window !== "undefined" ? window.location.origin : "";
+// An HTTPS-installed PWA cannot call an HTTP backend (mixed content). In that
+// case use the app's own origin; the frontend proxy forwards /api to FastAPI.
+const BACKEND_URL =
+  typeof window !== "undefined" && window.location.protocol === "https:" && configuredBackend.startsWith("http:")
+    ? browserOrigin
+    : configuredBackend || browserOrigin;
 export const API_BASE = `${BACKEND_URL}/api`;
 
 export const api = axios.create({
