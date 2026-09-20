@@ -672,7 +672,7 @@ function _veniceSharedBlock(dna = {}, opts = {}, subjectCount = 1) {
 
   const st = dna.style || {};
   const genre = exp("style", "render") || "photorealistic photograph";
-  const qualityLead = join(["photorealistic", "hyperrealistic", "editorial photograph", "8K UHD", "highly detailed"]);
+  const qualityLead = join(["photorealistic editorial photograph", "high detail", "natural color", "realistic texture"]);
 
   const sc0 = dna.scenario || {};
   const cs = sc0.cast_size || "solo";
@@ -723,14 +723,14 @@ function _veniceSharedBlock(dna = {}, opts = {}, subjectCount = 1) {
   const sc = dna.scenario || {};
   const explicitLevel = Number(sc.explicit_level ?? sc.intensity ?? 0);
   const kinkLevel = Number(sc.kink_level ?? 0);
+  // Dials below 40 are treated as neutral defaults. Specific selected content
+  // still appears through the intimate/kink/watersports blocks.
   const explicitTag = explicitLevel >= 85 ? "extreme depraved XXX hardcore, uncensored graphic pornographic scene"
                      : explicitLevel >= 65 ? "hardcore explicit adult scene, uncensored NSFW"
-                     : explicitLevel >= 40 ? "explicit adult content, NSFW"
-                     : explicitLevel >= 20 ? "sensual softcore, tasteful nude" : "";
+                     : explicitLevel > 40 ? "explicit adult content, NSFW" : "";
   const kinkTag = kinkLevel >= 85 ? "extreme hardcore BDSM, brutal kink, total power exchange, degradation and mind-break"
                  : kinkLevel >= 65 ? "hardcore kink scene, heavy BDSM, rough dominance and submission"
-                 : kinkLevel >= 40 ? "playful kink, light BDSM, teasing dominance"
-                 : kinkLevel >= 20 ? "hint of kink, light restraint or teasing" : "";
+                 : kinkLevel > 40 ? "playful kink, light BDSM, teasing dominance" : "";
 
   const scenarioStr = join([
     sc.cast_size && sc.cast_size !== "solo" && exp("scenario", "cast_size"),
@@ -744,7 +744,7 @@ function _veniceSharedBlock(dna = {}, opts = {}, subjectCount = 1) {
     sc.extra_acts,
   ]);
 
-  const qualityTail = "masterpiece, best quality, ultra-detailed, 8k resolution, sharp focus, professional photography, realistic skin texture with visible pores, detailed eyes with catchlights, physically accurate lighting, award-winning composition";
+  const qualityTail = "sharp focus, realistic skin texture with visible pores, physically accurate lighting";
 
   return {
     qualityLead,
@@ -786,45 +786,52 @@ function _veniceSubjectBlock(dna = {}, opts = {}) {
   const im = dna.intimate || {};
 
   const ex = Number(ph.exaggeration || 0);
-  const exaggerate = (label) => {
-    if (!label) return "";
-    if (ex >= 85) return `hyper-exaggerated cartoonishly ${label}`;
-    if (ex >= 65) return `dramatically exaggerated ${label}`;
-    if (ex >= 40) return `enhanced ${label}`;
-    return label;
-  };
 
-  const ageStr = id.age ? `${id.age}-year-old` : "";
-  const ethn = exp("identity", "ethnicity") || "woman";
-  const gender = id.gender && id.gender !== "female" ? id.gender : "woman";
+  const gender = id.gender === "male" ? "man"
+    : id.gender === "non-binary" ? "non-binary adult"
+    : id.gender === "androgynous" ? "androgynous adult"
+    : "woman";
+  const age = Number(id.age || 0);
+  const ageBand = age >= 60 ? "older mature adult"
+    : age >= 50 ? "early-to-late 50s"
+    : age >= 45 ? "mid-to-late 40s"
+    : age >= 40 ? "early 40s"
+    : age >= 35 ? "mid-to-late 30s"
+    : "";
+  const ageStr = age >= 45
+    ? `(${age}-year-old mature ${gender}:1.35), ${ageBand}, fine lines around the eyes and mouth, natural mature facial texture`
+    : age >= 35
+      ? `(${age}-year-old adult ${gender}:1.2), ${ageBand}, subtle expression lines`
+      : age ? `${age}-year-old adult ${gender}` : `adult ${gender}`;
+  const heritage = exp("identity", "ethnicity");
   const skinTone = exp("skin", "tone") || (skin.tone ? `${skin.tone} skin` : "");
   const bodyType = exp("physique", "body_type");
   const height = ph.height && ph.height !== "average" ? `${ph.height} height` : "";
   const musc = ph.muscularity > 85 ? "highly muscular fitness physique"
              : ph.muscularity > 60 ? "athletic toned build" : "";
-  const curves = ph.curves > 85 ? "extremely curvaceous dramatic hourglass"
-               : ph.curves > 60 ? "voluptuous curvy body" : "";
+  const curveBuiltIn = ["curvy", "voluptuous", "plus size", "hourglass", "bombshell"].includes(ph.body_type);
+  const curveModifier = ph.curves > 85 && !curveBuiltIn ? "pronounced feminine curves"
+                      : ph.curves > 60 && !curveBuiltIn ? "curved feminine silhouette" : "";
+  const bodyProfileBase = join([bodyType, curveModifier]);
+  const bodyProfile = ex >= 85 ? `hyper-exaggerated ${bodyProfileBase || "body proportions"}`
+                    : ex >= 65 ? `dramatically exaggerated ${bodyProfileBase || "body proportions"}`
+                    : ex >= 40 ? `enhanced ${bodyProfileBase || "body proportions"}`
+                    : bodyProfileBase;
 
-  const subjectHead = join([
-    ageStr,
-    ethn,
-    gender.includes("woman") || ethn.includes("woman") ? "" : gender,
-  ]);
+  const subjectHead = join([ageStr, heritage]);
   const subjectBody = join([
     skinTone,
-    bodyType,
+    bodyProfile,
     height,
     musc,
-    curves,
-    exaggerate(exp("physique", "bust") || (ph.bust && `${ph.bust} breasts`)),
+    exp("physique", "bust") || (ph.bust && `${ph.bust} breasts`),
     exp("physique", "bust_shape"),
-    exaggerate(exp("physique", "butt") || (ph.butt && `${ph.butt} butt`)),
-    exaggerate(exp("physique", "thighs") || (ph.thighs && `${ph.thighs} thighs`)),
-    exaggerate(exp("physique", "hips") || (ph.hips && `${ph.hips} hips`)),
+    exp("physique", "butt") || (ph.butt && `${ph.butt} butt`),
+    exp("physique", "thighs") || (ph.thighs && `${ph.thighs} thighs`),
+    exp("physique", "hips") || (ph.hips && `${ph.hips} hips`),
     exp("physique", "waist"),
     ph.shoulders && ph.shoulders !== "average" && exp("physique", "shoulders"),
     ph.legs && ph.legs !== "average" && exp("physique", "legs"),
-    ex >= 75 ? "stylized exaggerated body proportions, extreme feminine silhouette" : "",
     ph.proportions,
   ]);
   const subjectFace = join([
