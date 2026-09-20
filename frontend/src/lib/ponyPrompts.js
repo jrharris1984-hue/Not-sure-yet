@@ -236,16 +236,14 @@ function _ponySharedBlock(dna = {}, opts = {}, subjectCount = 1) {
     return v ? expandPrompt(section, field, v, { raunch }) : "";
   };
   const join = _join;
-  const qualityPrefix = "score_9, score_8_up, score_7_up, score_6_up, rating_explicit, source_photo, photorealistic, RAW professional photograph, 8k, highly detailed";
+  const qualityPrefix = "score_9, score_8_up, source_photo, photorealistic";
   const sc = dna.scenario || {};
   const explicitLevel = Number(sc.explicit_level ?? sc.intensity ?? 0);
   const kinkLevel = Number(sc.kink_level ?? 0);
   const ratingTag = explicitLevel >= 65 ? "rating_explicit, explicit content, uncensored"
-                  : explicitLevel >= 40 ? "rating_explicit, nsfw"
-                  : explicitLevel >= 20 ? "rating_questionable" : "rating_safe";
+                  : explicitLevel > 40 ? "rating_explicit, nsfw" : "";
   const kinkTag = kinkLevel >= 65 ? w("bdsm, kink, dominance_and_submission", 1.3)
-                 : kinkLevel >= 40 ? w("bdsm, light_kink", 1.15)
-                 : kinkLevel >= 20 ? "light_kink" : "";
+                 : kinkLevel > 40 ? w("bdsm, light_kink", 1.15) : "";
 
   const castSize = sc.cast_size || "solo";
   const castType = sc.cast_type || "none";
@@ -333,19 +331,39 @@ function _ponySubjectBlock(dna = {}, opts = {}) {
 
   const ex = Number(ph.exaggeration || 0);
   const eWeight = ex >= 85 ? 1.5 : ex >= 65 ? 1.3 : ex >= 40 ? 1.15 : 1;
-  const ageStr = id.age ? `${id.age} years old, mature adult woman, unmistakably adult` : "adult woman";
-  const ethn = exp("identity", "ethnicity") || "woman";
+  const gender = id.gender === "male" ? "man"
+    : id.gender === "non-binary" ? "non-binary adult"
+    : id.gender === "androgynous" ? "androgynous adult"
+    : "woman";
+  const age = Number(id.age || 0);
+  const ageBand = age >= 60 ? "older mature adult"
+    : age >= 50 ? "50s"
+    : age >= 45 ? "mid-to-late 40s"
+    : age >= 40 ? "early 40s"
+    : age >= 35 ? "mid-to-late 30s" : "";
+  const ageStr = age >= 45
+    ? w(`${age}-year-old mature ${gender}, ${ageBand}, fine lines around eyes and mouth, natural mature facial texture`, 1.35)
+    : age >= 35
+      ? w(`${age}-year-old adult ${gender}, ${ageBand}, subtle expression lines`, 1.2)
+      : age ? `${age}-year-old adult ${gender}` : `adult ${gender}`;
+  const heritage = exp("identity", "ethnicity");
+  const curveBuiltIn = ["curvy", "voluptuous", "plus size", "hourglass", "bombshell"].includes(ph.body_type);
+  const curveModifier = ph.curves > 85 && !curveBuiltIn ? "pronounced feminine curves"
+                      : ph.curves > 60 && !curveBuiltIn ? "curved feminine silhouette" : "";
+  const baseProfile = join([exp("physique", "body_type"), curveModifier]);
+  const bodyProfile = ex >= 65 ? w(baseProfile || "exaggerated body proportions", eWeight)
+                    : ex >= 40 ? w(baseProfile || "enhanced body proportions", eWeight)
+                    : baseProfile;
 
   const subject = join([
     id.name && w(`portrait of ${id.name}`, 1.2),
     ageStr,
-    ethn,
+    heritage,
     exp("skin", "tone"),
     exp("skin", "texture"),
     "realistic natural skin texture, visible pores, subtle skin imperfections",
-    exp("physique", "body_type"),
+    bodyProfile,
     ph.muscularity > 85 ? "muscular female, defined muscles" : ph.muscularity > 60 ? "athletic body, fit" : "",
-    ph.curves > 60 ? w("curvy figure", 1.1 + (ph.curves - 60) / 100) : "",
     w(exp("physique", "bust") || (ph.bust && `${ph.bust} breasts`), eWeight),
     exp("physique", "bust_shape"),
     w(exp("physique", "butt") || (ph.butt && `${ph.butt} ass`), eWeight),
@@ -353,7 +371,6 @@ function _ponySubjectBlock(dna = {}, opts = {}) {
     w(exp("physique", "hips") || (ph.hips && `${ph.hips} hips`), eWeight),
     exp("physique", "waist"),
     ph.legs && ph.legs !== "average" && exp("physique", "legs"),
-    ex >= 75 && w("exaggerated body proportions, extreme hourglass silhouette", 1.4),
   ]);
 
   const faceStr = join([
