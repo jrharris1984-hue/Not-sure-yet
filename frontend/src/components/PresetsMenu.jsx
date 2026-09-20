@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { createPortal } from "react-dom";
 import { Star, X, Search } from "lucide-react";
 import { STAR_PRESETS, HERITAGE_PRESETS, STORYBOOK_PRESETS, DEFAULT_DNA } from "@/lib/dna";
 import { Input } from "@/components/ui/input";
@@ -37,13 +38,15 @@ export default function PresetsMenu({ onApply }) {
       <button
         type="button"
         onClick={() => setOpen(true)}
+        data-overflow-stay-open
         data-testid="btn-open-presets"
         className="inline-flex items-center gap-1.5 rounded-lg border border-rose-500/40 text-rose-200 hover:bg-rose-500/10 text-sm font-semibold px-3 py-2"
       >
         <Star className="h-4 w-4" /> Star presets
       </button>
-      {open && (
+      {open && createPortal(
         <div
+          data-overflow-stay-open
           className="fixed inset-0 z-50 flex items-stretch sm:items-center justify-center p-0 sm:p-8 bg-black/70 backdrop-blur-sm"
           onClick={() => setOpen(false)}
           data-testid="presets-modal"
@@ -116,7 +119,8 @@ export default function PresetsMenu({ onApply }) {
               Presets are editable starting points. Applying one replaces its supplied DNA traits; you can adjust every field afterward.
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );
