@@ -43,7 +43,11 @@ export function useComfyWs(clientId, { enabled = true } = {}) {
 
   useEffect(() => {
     if (!enabled || !clientId) return undefined;
-    const base = process.env.REACT_APP_BACKEND_URL || "";
+    const configured = (process.env.REACT_APP_BACKEND_URL || "").replace(/\/$/, "");
+    const base =
+      window.location.protocol === "https:" && configured.startsWith("http:")
+        ? window.location.origin
+        : configured || window.location.origin;
     const wsUrl = `${toWs(base)}/api/ws/comfyui?client_id=${encodeURIComponent(clientId)}`;
     const socket = new WebSocket(wsUrl);
     socket.binaryType = "arraybuffer";

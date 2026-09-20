@@ -150,3 +150,27 @@ Everything stays on your machine:
 - **AI Assist prompts** — sent to OpenRouter only if you add a key; the model you configure is uncensored/NSFW-permissive.
 - **Render dispatch** — goes to *your* ComfyUI URL, nothing else.
 - **No auth, no telemetry, no external logging.** This is a single-user local tool.
+
+# Install Ultra Studio on Android
+
+Ultra Studio includes a Progressive Web App (PWA) shell. The Docker frontend
+proxies `/api` to the backend, so the browser, API, gallery media, and live
+render WebSocket can all use one address.
+
+After the containers are running, expose the frontend through Tailscale HTTPS
+from an Administrator PowerShell window:
+
+```powershell
+tailscale serve --bg http://localhost:3000
+tailscale serve status
+```
+
+Open the HTTPS address printed by `tailscale serve status` on the Android phone.
+Chrome will offer **Install Ultra Studio**. It can also be installed from
+Chrome's three-dot menu with **Add to Home screen** or **Install app**.
+
+To remove the Tailscale HTTPS proxy later:
+
+```powershell
+tailscale serve reset
+```

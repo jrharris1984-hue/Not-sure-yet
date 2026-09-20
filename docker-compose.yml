@@ -36,7 +36,9 @@ services:
     depends_on:
       - backend
     environment:
-      REACT_APP_BACKEND_URL: http://localhost:8001
+      # Blank means same-origin /api. The React dev proxy forwards requests to
+      # the backend container, which also keeps an HTTPS-installed PWA working.
+      REACT_APP_BACKEND_URL: ""
       WDS_SOCKET_PORT: "3000"
       HOST: 0.0.0.0
       PORT: "3000"

@@ -3,6 +3,7 @@ import { Library, Sparkles, Image as ImageIcon, Settings2, Plus, Camera, ListOrd
 import { useQuery } from "@tanstack/react-query";
 import { endpoints } from "@/lib/api";
 import NowRenderingStrip from "@/components/NowRenderingStrip";
+import PwaInstallPrompt from "@/components/PwaInstallPrompt";
 
 const nav = [
   { to: "/", label: "Library", icon: Library, testId: "nav-library" },
@@ -87,9 +88,10 @@ export default function AppShell({ children }) {
       <main className="flex-1">{children}</main>
 
       <NowRenderingStrip />
+      <PwaInstallPrompt />
 
       {/* Mobile bottom nav */}
-      <nav className="glass md:hidden fixed bottom-0 inset-x-0 z-40 border-t hairline">
+      <nav className="mobile-bottom-nav glass md:hidden fixed bottom-0 inset-x-0 z-40 border-t hairline">
         <div className="grid grid-cols-6 gap-0">
           {nav.map((n) => (
             <NavLink
@@ -116,7 +118,7 @@ export default function AppShell({ children }) {
           </Link>
         </div>
       </nav>
-      <div className="h-16 md:h-0" />
+      <div className="mobile-bottom-spacer h-16 md:h-0" />
     </div>
   );
 }

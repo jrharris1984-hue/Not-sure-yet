@@ -52,6 +52,24 @@ body {
   font-family: "Manrope", system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  overscroll-behavior-y: none;
+}
+
+.mobile-bottom-nav {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.mobile-bottom-spacer {
+  height: calc(4rem + env(safe-area-inset-bottom, 0px));
+}
+
+.pwa-install-banner {
+  bottom: calc(4.6rem + env(safe-area-inset-bottom, 0px));
+}
+
+@media (display-mode: standalone) {
+  body { -webkit-user-select: none; user-select: none; }
+  input, textarea, [contenteditable="true"] { -webkit-user-select: text; user-select: text; }
 }
 
 h1, h2, h3, h4, .font-display {
@@ -147,5 +165,4 @@ code, pre, .font-mono {
 .text-rose    { color: #E85482; }
 .text-teal    { color: #38BDF8; }
 .text-fuchsia { color: #D946EF; }
-
 
