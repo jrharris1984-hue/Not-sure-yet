@@ -40,6 +40,8 @@ export const endpoints = {
   clearCancelledRenders: () => api.delete("/renders/cancelled").then((r) => r.data),
   deleteRenders: (ids) => api.post("/renders/delete-bulk", { ids }).then((r) => r.data),
   dispatchRender: (body) => api.post("/renders/dispatch", body).then((r) => r.data),
+  recreateRender: (id, variation = false) => api.post(`/renders/${id}/recreate`, null, { params: { variation } }).then((r) => r.data),
+  prepareRenderReference: (id) => api.post(`/renders/${id}/prepare-reference`).then((r) => r.data),
   uploadReferenceImage: (file) => {
     const form = new FormData();
     form.append("image", file);

@@ -17,7 +17,7 @@ import mimetypes
 from pathlib import Path
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
-from urllib.parse import urlencode
+from urllib.parse import urlencode, urlparse, parse_qs
 from pydantic import BaseModel, Field, ConfigDict
 
 import httpx
@@ -815,6 +815,7 @@ async def get_render(rid: str):
 class DispatchBody(BaseModel):
     character_id: Optional[str] = None
     dna: Dict[str, Any] = Field(default_factory=dict)
+    subjects: List[Dict[str, Any]] = Field(default_factory=list)
     prompt_positive: str = ""
     prompt_negative: str = ""
     workflow_id: Optional[str] = None
@@ -1155,6 +1156,17 @@ async def _perform_dispatch(body: "DispatchBody") -> Dict[str, Any]:
     if body.seed is not None:
         _patch_seed(workflow, int(body.seed))
         seed_used = int(body.seed)
+    else:
+        for node in workflow.values():
+            inputs = node.get("inputs", {}) if isinstance(node, dict) else {}
+            candidate = inputs.get("seed", inputs.get("noise_seed"))
+            if isinstance(candidate, (int, float)):
+                seed_used = int(candidate)
+                break
+
+    # Store the actual seed in the recipe even when it came from the workflow.
+    if seed_used is not None:
+        body.seed = seed_used
 
     # Try to dispatch to ComfyUI
     try:
@@ -1180,6 +1192,8 @@ async def _perform_dispatch(body: "DispatchBody") -> Dict[str, Any]:
     doc["workflow_name"] = wf_template.name if wf_template else None
     doc["seed_used"] = seed_used
     doc["generation_settings"] = {k: v for k, v in generation_overrides.items() if v is not None}
+    # Complete reusable recipe for exact recreation and seed-only variations.
+    doc["render_recipe"] = body.model_dump()
     doc["shoot_id"] = body.shoot_id
     doc["shoot_frame_index"] = body.shoot_frame_index
     await db.renders.insert_one(doc)
@@ -1284,6 +1298,95 @@ async def _enqueue_render(body: DispatchBody) -> Dict[str, Any]:
 @api.post("/renders/dispatch")
 async def dispatch_render(body: DispatchBody):
     return await _enqueue_render(body)
+
+
+async def _render_recipe(rid: str) -> tuple[Dict[str, Any], Dict[str, Any]]:
+    render = await db.renders.find_one({"id": rid}, {"_id": 0})
+    if not render:
+        raise HTTPException(404, "Render not found")
+    recipe = render.get("render_recipe")
+    if not isinstance(recipe, dict):
+        queue_job = await db.render_queue.find_one({"render_id": rid}, {"_id": 0})
+        recipe = queue_job.get("payload") if queue_job else None
+    if not isinstance(recipe, dict):
+        generation = render.get("generation_settings") or {}
+        recipe = {
+            "character_id": render.get("character_id"),
+            "dna": render.get("dna_snapshot") or {},
+            "prompt_positive": render.get("prompt_positive", ""),
+            "prompt_negative": render.get("prompt_negative", ""),
+            "workflow_id": render.get("workflow_id"),
+            "workflow_type": render.get("workflow_type", "image"),
+            "seed": render.get("seed_used"),
+            **generation,
+        }
+    return render, recipe
+
+
+@api.post("/renders/{rid}/recreate")
+async def recreate_render(rid: str, variation: bool = Query(False)):
+    """Queue an exact recipe copy, optionally replacing only its seed."""
+    _render, recipe = await _render_recipe(rid)
+    recipe = dict(recipe)
+    recipe["shoot_id"] = None
+    recipe["shoot_frame_index"] = None
+    if variation:
+        recipe["seed"] = random.randint(0, 2**31 - 1)
+    body = DispatchBody(**recipe)
+    queued = await _enqueue_render(body)
+    queued["recreated_from"] = rid
+    queued["variation"] = variation
+    return queued
+
+
+@api.post("/renders/{rid}/prepare-reference")
+async def prepare_render_reference(rid: str):
+    """Copy a Gallery image from ComfyUI output storage into its input storage."""
+    render = await db.renders.find_one({"id": rid}, {"_id": 0})
+    if not render:
+        raise HTTPException(404, "Render not found")
+    variants = render.get("output_variants") or {}
+    candidates = (variants.get("enhanced") or []) + (render.get("output_files") or [])
+    url = next((str(item) for item in candidates if item), "")
+    if not url:
+        raise HTTPException(400, "This render has no image output to reuse.")
+    parsed = urlparse(url)
+    query = parse_qs(parsed.query)
+    filename = (query.get("filename") or [""])[0]
+    if not filename:
+        raise HTTPException(400, "Could not identify the ComfyUI output filename.")
+    if Path(filename).suffix.lower() in {".webm", ".mp4", ".mov"}:
+        raise HTTPException(400, "Video outputs cannot be used as image references.")
+    params = {
+        "filename": filename,
+        "subfolder": (query.get("subfolder") or [""])[0],
+        "type": (query.get("type") or ["output"])[0],
+    }
+    settings = await get_settings()
+    try:
+        async with httpx.AsyncClient(timeout=45.0) as hc:
+            source = await hc.get(f"{settings.comfyui_url.rstrip('/')}/view", params=params)
+            source.raise_for_status()
+            mime = source.headers.get("content-type") or mimetypes.guess_type(filename)[0] or "image/png"
+            suffix = Path(filename).suffix.lower() or ".png"
+            input_name = f"ultra-studio-gallery-{uuid.uuid4().hex}{suffix}"
+            uploaded = await hc.post(
+                f"{settings.comfyui_url.rstrip('/')}/upload/image",
+                files={"image": (input_name, source.content, mime)},
+                data={"type": "input", "overwrite": "true"},
+            )
+            uploaded.raise_for_status()
+        payload = uploaded.json()
+        return {
+            "name": payload.get("name", input_name),
+            "subfolder": payload.get("subfolder", ""),
+            "type": payload.get("type", "input"),
+            "source_render_id": rid,
+        }
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(502, f"Could not prepare Gallery image: {exc}")
 
 
 @api.get("/queue")
