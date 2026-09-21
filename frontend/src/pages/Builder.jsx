@@ -71,6 +71,7 @@ export default function Builder() {
   const [activeRender, setActiveRender] = useState(null);
   const [workflowId, setWorkflowId] = useState("");
   const [loraOverrides, setLoraOverrides] = useState({});
+  const [loraTriggerWords, setLoraTriggerWords] = useState([]);
   const [referenceImage, setReferenceImage] = useState(null);
   const [referencePreview, setReferencePreview] = useState("");
   const [referenceUploading, setReferenceUploading] = useState(false);
@@ -336,7 +337,11 @@ export default function Builder() {
   );
   const likenessPrompt = useMemo(() => likenessTriggerText(subjects), [subjects]);
   const generatedPositive = likenessPrompt ? `${likenessPrompt}, ${positive}` : positive;
-  const finalPositive = promptOverride || generatedPositive;
+  const positiveBeforeLoraTriggers = promptOverride || generatedPositive;
+  const finalPositive = loraTriggerWords.reduce(
+    (text, trigger) => text.toLowerCase().includes(trigger.toLowerCase()) ? text : `${trigger}, ${text}`,
+    positiveBeforeLoraTriggers
+  );
   const finalNegative = negativePromptOverride || negative;
   useEffect(() => {
     setPromptOverride("");
@@ -1271,6 +1276,7 @@ export default function Builder() {
             dna={activeDna}
             values={loraOverrides}
             onChange={setLoraOverrides}
+            onPlanChange={(plan) => setLoraTriggerWords(plan.triggerWords || [])}
           />
           <AiAssistBar dna={activeDna} onApplyDna={(d) => setActiveDna({ ...DEFAULT_DNA, ...d })} />
           {activeRender && (
