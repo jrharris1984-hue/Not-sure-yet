@@ -145,6 +145,19 @@ Restart ComfyUI (or rescan models), refresh Ultra Studio, choose the LoRA in
 `0.00` only for renders that need the effect. Use optional LoRAs only with a
 compatible base model.
 
+For a menu of verified Z-Image Turbo quality, body, wardrobe, and optional
+adult-effect LoRAs, use the curated downloader instead:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\install-curated-zimage-loras.ps1
+```
+
+Choose `R` for the recommended quality/body starter set, `A` for all 12 curated
+items, `B` for the complete 30-file `qqnyanddld/nsfw-z-image-lora` collection,
+or enter selected catalog numbers such as `1,2,3,5`. Existing downloads are
+skipped across every curated subfolder, interrupted `.part` downloads can
+resume, and files are organized under `models\loras\Z-Image\Curated`.
+
 ---
 
 ## Common gotchas
