@@ -4,7 +4,14 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Star, X, Search, Wand2, Save, Trash2, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { endpoints } from "@/lib/api";
-import { STAR_PRESETS, HERITAGE_PRESETS, STORYBOOK_PRESETS, DEFAULT_DNA, SECTIONS } from "@/lib/dna";
+import {
+  STAR_PRESETS,
+  HERITAGE_PRESETS,
+  STORYBOOK_PRESETS,
+  DEFAULT_DNA,
+  SECTIONS,
+  createHeritageCharacterVariation,
+} from "@/lib/dna";
 import { Input } from "@/components/ui/input";
 
 const DNA_CATALOG = Object.fromEntries(SECTIONS.map((section) => [
@@ -17,12 +24,14 @@ const DNA_CATALOG = Object.fromEntries(SECTIONS.map((section) => [
   }]))
 ]));
 
-export default function PresetsMenu({ onApply, currentDna }) {
+export default function PresetsMenu({ onApply, currentDna, sectionLocks = {}, fieldLocks = {} }) {
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
   const [category, setCategory] = useState("stars");
   const [description, setDescription] = useState("");
   const [draft, setDraft] = useState(null);
+  const [heritageMode, setHeritageMode] = useState("complete");
+  const [lastHeritage, setLastHeritage] = useState(null);
   const qc = useQueryClient();
   const { data: customPresets = [] } = useQuery({
     queryKey: ["character-presets"],
@@ -74,15 +83,29 @@ export default function PresetsMenu({ onApply, currentDna }) {
     );
   }, [q, source]);
 
-  const apply = (preset) => {
-    // Heritage selectors preserve the character already being designed. Fuller
-    // style/story presets intentionally begin from defaults.
-    const base = category === "heritage" && currentDna ? currentDna : DEFAULT_DNA;
-    const next = {};
+  const apply = (preset, requestedMode) => {
+    const isHeritage = category === "heritage" || requestedMode === "variation";
+    const mode = requestedMode || (isHeritage ? heritageMode : "preset");
+    const base = isHeritage && currentDna ? currentDna : DEFAULT_DNA;
+    let next = {};
     Object.keys(DEFAULT_DNA).forEach((k) => {
       next[k] = { ...DEFAULT_DNA[k], ...(base[k] || {}), ...(preset.dna[k] || {}) };
     });
+
+    if (isHeritage && (mode === "complete" || mode === "variation")) {
+      next = createHeritageCharacterVariation(
+        currentDna || DEFAULT_DNA,
+        preset.dna || {},
+        sectionLocks,
+        fieldLocks
+      );
+    }
+
     onApply(next);
+    if (isHeritage) {
+      setLastHeritage(preset);
+      toast.success(mode === "heritage" ? "Heritage applied" : "Complete heritage character created");
+    }
     setOpen(false);
   };
 
@@ -135,6 +158,35 @@ export default function PresetsMenu({ onApply, currentDna }) {
                 </button>
               ))}
             </div>
+            {category === "heritage" && (
+              <div className="px-3 py-3 border-b hairline bg-amber-500/[0.04] space-y-2" data-testid="heritage-generation-options">
+                <div>
+                  <div className="text-xs font-display font-bold text-amber-200">How should the heritage preset apply?</div>
+                  <p className="mt-0.5 text-[10px] sm:text-[11px] text-zinc-500">
+                    Complete character varies appearance, outfit, pose, and the selected body details. Play, fluids, acts, and Explicit/Kink stay untouched.
+                  </p>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <button type="button" onClick={() => setHeritageMode("heritage")}
+                    data-testid="heritage-mode-only"
+                    className={`rounded-lg border px-2 py-2 text-xs font-semibold ${heritageMode === "heritage" ? "border-amber-400 bg-amber-500/15 text-amber-100" : "hairline text-zinc-400"}`}>
+                    Heritage only
+                  </button>
+                  <button type="button" onClick={() => setHeritageMode("complete")}
+                    data-testid="heritage-mode-complete"
+                    className={`rounded-lg border px-2 py-2 text-xs font-semibold ${heritageMode === "complete" ? "border-amber-400 bg-amber-500/15 text-amber-100" : "hairline text-zinc-400"}`}>
+                    Complete character
+                  </button>
+                </div>
+                {lastHeritage && (
+                  <button type="button" onClick={() => apply(lastHeritage, "variation")}
+                    data-testid="btn-another-heritage-variation"
+                    className="w-full rounded-lg border border-violet-500/40 bg-violet-500/10 px-3 py-2 text-xs font-semibold text-violet-200 hover:bg-violet-500/15">
+                    Create another {lastHeritage.name} variation
+                  </button>
+                )}
+              </div>
+            )}
             <div className="p-3 border-b hairline">
               <div className="relative">
                 <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
