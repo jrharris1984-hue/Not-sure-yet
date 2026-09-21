@@ -1075,7 +1075,7 @@ export function buildMultiChromaPrompts(subjects = [], opts = {}) {
 // ============================================================
 // Editable heritage starters deliberately keep skin tone as a separate, editable
 // choice. They are starting compositions, not claims that a heritage has one look.
-export const HERITAGE_PRESETS = [
+const HERITAGE_EDITORIAL_PRESETS = [
   {
     name: "South Asian Editorial",
     tags: ["heritage", "Indian", "editable"],
@@ -1164,6 +1164,26 @@ export const HERITAGE_PRESETS = [
       physique: { height: "tall", body_type: "athletic", muscularity: 45, curves: 50, exaggeration: 10 },
     },
   },
+];
+
+const identitySection = SECTIONS.find((section) => section.key === "identity");
+const ethnicityField = identitySection?.fields.find((field) => field.key === "ethnicity");
+const titleCase = (value) => String(value || "").replace(/\b\w/g, (letter) => letter.toUpperCase());
+
+// Every ethnicity supported by the Identity section gets a searchable one-tap
+// selector. These intentionally change only heritage and preserve the rest of
+// the current character; the editorial cards below offer fuller looks.
+const ALL_HERITAGE_PRESETS = (ethnicityField?.groups || []).flatMap((group) =>
+  group.options.map((ethnicity) => ({
+    name: `${titleCase(ethnicity)} Heritage`,
+    tags: ["heritage", group.name, ethnicity, "preserves current DNA"],
+    dna: { identity: { ethnicity } },
+  }))
+);
+
+export const HERITAGE_PRESETS = [
+  ...ALL_HERITAGE_PRESETS,
+  ...HERITAGE_EDITORIAL_PRESETS,
 ];
 
 // Original 21+ fairy-tale archetypes: recognizable moods without using child-coded
