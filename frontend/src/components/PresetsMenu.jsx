@@ -4,7 +4,7 @@ import { Star, X, Search } from "lucide-react";
 import { STAR_PRESETS, HERITAGE_PRESETS, STORYBOOK_PRESETS, DEFAULT_DNA } from "@/lib/dna";
 import { Input } from "@/components/ui/input";
 
-export default function PresetsMenu({ onApply }) {
+export default function PresetsMenu({ onApply, currentDna }) {
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
   const [category, setCategory] = useState("stars");
@@ -24,10 +24,12 @@ export default function PresetsMenu({ onApply }) {
   }, [q, source]);
 
   const apply = (preset) => {
-    // Deep-merge preset.dna into DEFAULT_DNA so untouched sections stay defaulted
+    // Heritage selectors preserve the character already being designed. Fuller
+    // style/story presets intentionally begin from defaults.
+    const base = category === "heritage" && currentDna ? currentDna : DEFAULT_DNA;
     const next = {};
     Object.keys(DEFAULT_DNA).forEach((k) => {
-      next[k] = { ...DEFAULT_DNA[k], ...(preset.dna[k] || {}) };
+      next[k] = { ...DEFAULT_DNA[k], ...(base[k] || {}), ...(preset.dna[k] || {}) };
     });
     onApply(next);
     setOpen(false);
@@ -42,7 +44,7 @@ export default function PresetsMenu({ onApply }) {
         data-testid="btn-open-presets"
         className="inline-flex items-center gap-1.5 rounded-lg border border-rose-500/40 text-rose-200 hover:bg-rose-500/10 text-sm font-semibold px-3 py-2"
       >
-        <Star className="h-4 w-4" /> Star presets
+        <Star className="h-4 w-4" /> Character presets
       </button>
       {open && createPortal(
         <div
@@ -57,7 +59,7 @@ export default function PresetsMenu({ onApply }) {
           >
             <div className="flex items-center gap-2 px-4 py-3 border-b hairline">
               <Star className="h-4 w-4 text-rose-400" />
-              <div className="font-display font-bold">Star presets</div>
+              <div className="font-display font-bold">Character presets</div>
               <span className="text-xs text-zinc-500 font-mono">{filtered.length}</span>
               <div className="flex-1" />
               <button
@@ -68,7 +70,7 @@ export default function PresetsMenu({ onApply }) {
                 <X className="h-4 w-4" />
               </button>
             </div>
-            <div className="px-3 pt-3 flex gap-2 overflow-x-auto shrink-0" role="tablist" aria-label="Preset categories">
+            <div className="px-3 pt-3 grid grid-cols-3 gap-2 shrink-0" role="tablist" aria-label="Preset categories">
               {[
                 ["stars", "Styles"],
                 ["heritage", "Heritage"],
@@ -76,7 +78,7 @@ export default function PresetsMenu({ onApply }) {
               ].map(([key, label]) => (
                 <button key={key} type="button" role="tab" aria-selected={category === key}
                   onClick={() => { setCategory(key); setQ(""); }}
-                  className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold ${category === key ? "border-rose-400 bg-rose-500/15 text-rose-200" : "hairline text-zinc-400"}`}>
+                  className={`min-w-0 rounded-lg border px-1.5 py-2 text-[11px] sm:text-xs font-semibold truncate ${category === key ? "border-rose-400 bg-rose-500/15 text-rose-200" : "hairline text-zinc-400"}`}>
                   {label}
                 </button>
               ))}
@@ -88,7 +90,7 @@ export default function PresetsMenu({ onApply }) {
                   data-testid="input-preset-search"
                   value={q}
                   onChange={(e) => setQ(e.target.value)}
-                  placeholder="Search by name or tag (blonde, MILF, huge butt, ebony...)"
+                  placeholder={category === "heritage" ? "Search every ethnicity…" : "Search presets by name or tag…"}
                   className="pl-9 bg-elevated border-hairline"
                 />
               </div>

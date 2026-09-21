@@ -545,10 +545,13 @@ export default function Builder() {
     toast.success(`Copied Subject A → Subject ${activeSubject.label}`);
   };
   const randomizeActive = () =>
-    updateActiveSubject((s) => ({ dna: randomizeDna(s.dna, locks, s.field_locks) }));
+    updateActiveSubject((s) => ({
+      dna: randomizeDna(s.dna, { ...locks, kink: true, scenario: true, watersports: true }, s.field_locks),
+    }));
   const randomizeAllSubjects = () => {
-    setSubjects((cur) => cur.map((s) => ({ ...s, dna: randomizeDna(s.dna, locks, s.field_locks) })));
-    toast.success(`Randomized ${subjects.length} subject${subjects.length > 1 ? "s" : ""}`);
+    const nonPlayLocks = { ...locks, kink: true, scenario: true, watersports: true };
+    setSubjects((cur) => cur.map((s) => ({ ...s, dna: randomizeDna(s.dna, nonPlayLocks, s.field_locks) })));
+    toast.success(`Randomized ${subjects.length} subject${subjects.length > 1 ? "s" : ""} · Play preserved`);
   };
   const wetDreamActive = () => {
     updateActiveSubject((s) => ({ dna: randomizeWetDream(s.dna, locks) }));
@@ -664,6 +667,7 @@ export default function Builder() {
               <Sparkles className="h-4 w-4" /> Wet dream{isMulti ? ` · ${activeSubject.label}` : ""}
             </button>
             <PresetsMenu
+              currentDna={activeDna}
               onApply={(preset) => {
                 const next = { ...preset };
                 Object.keys(locks).forEach((k) => { if (locks[k]) next[k] = activeDna[k]; });
