@@ -25,9 +25,15 @@ describe("protected randomization", () => {
   });
 
   test("whole-character randomize preserves the same fields", () => {
-    const result = randomizeDna({ intimate: protectedIntimate, feet: protectedFeet });
+    const result = randomizeDna({
+      intimate: protectedIntimate,
+      feet: protectedFeet,
+      scenario: { explicit_level: 0, kink_level: 0 },
+    });
     Object.entries(protectedIntimate).forEach(([key, value]) => expect(result.intimate[key]).toEqual(value));
     Object.entries(protectedFeet).forEach(([key, value]) => expect(result.feet[key]).toEqual(value));
+    expect(result.scenario.explicit_level).toBe(0);
+    expect(result.scenario.kink_level).toBe(0);
   });
 });
 
