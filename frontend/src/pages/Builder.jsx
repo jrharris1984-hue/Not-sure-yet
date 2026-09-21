@@ -7,12 +7,11 @@ import { endpoints } from "@/lib/api";
 import {
   SECTIONS, DEFAULT_DNA,
   randomizeDna, randomizeSection, randomizeWetDream, resetSection,
-  buildPrompts, buildMultiVenicePrompts, buildChromaPrompts, buildMultiChromaPrompts,
   phaseOfSection,
   MAX_SUBJECTS, makeSubject, subjectsFromCharacter, subjectLabel,
   expectedSubjectCount, seedSubjectFromPairing,
 } from "@/lib/dna";
-import { buildPonyPrompts, buildMultiPonyPrompts } from "@/lib/ponyPrompts";
+import { compileModelPrompts, resolvePromptCompiler } from "@/lib/modelPromptCompilers";
 import DnaSection from "@/components/DnaSection";
 import PromptPreview from "@/components/PromptPreview";
 import AiAssistBar from "@/components/AiAssistBar";
@@ -134,7 +133,12 @@ export default function Builder() {
   const isEnhanceWorkflow = activeWorkflow?.kind === "enhance";
   const isVideoWorkflow = activeWorkflow?.kind === "video";
   const isTextVideoWorkflow = activeWorkflow?.kind === "text_video";
-  const isGoldenChroma = promptStyle === "chroma" || /chroma/i.test(activeWorkflow?.name || "");
+  const activeCompiler = resolvePromptCompiler({
+    promptStyle,
+    workflowKind: activeWorkflow?.kind,
+    workflowName: activeWorkflow?.name,
+  });
+  const isGoldenChroma = activeCompiler === "chroma";
 
   const uploadReference = async (file) => {
     if (!file) return;
@@ -324,16 +328,25 @@ export default function Builder() {
       const promptActiveDna = activeSubject?.likeness?.enabled
         ? { ...activeDna, identity: { ...(activeDna.identity || {}), name: "" } }
         : activeDna;
-      if (isMulti) {
-        if (promptStyle === "pony") return buildMultiPonyPrompts(promptSubjects, { raunch });
-        if (isGoldenChroma) return buildMultiChromaPrompts(promptSubjects, { raunch });
-        return buildMultiVenicePrompts(promptSubjects, { raunch });
-      }
-      if (promptStyle === "pony") return buildPonyPrompts(promptActiveDna, { raunch });
-      if (isGoldenChroma) return buildChromaPrompts(promptActiveDna, { raunch });
-      return buildPrompts(promptActiveDna, { raunch });
+      return compileModelPrompts({
+        promptStyle,
+        workflowKind: activeWorkflow?.kind,
+        workflowName: activeWorkflow?.name,
+        dna: promptActiveDna,
+        subjects: promptSubjects,
+        isMulti,
+        raunch,
+        editInstruction: isEnhanceWorkflow ? repairInstruction : editInstruction,
+        videoInstruction,
+        preserveUnmentioned,
+      });
     },
-    [subjects, isMulti, activeDna, activeSubject?.likeness?.enabled, promptStyle, raunch, isGoldenChroma]
+    [
+      subjects, isMulti, activeDna, activeSubject?.likeness?.enabled,
+      promptStyle, activeWorkflow?.kind, activeWorkflow?.name, raunch,
+      editInstruction, repairInstruction, videoInstruction, preserveUnmentioned,
+      isEnhanceWorkflow,
+    ]
   );
   const likenessPrompt = useMemo(() => likenessTriggerText(subjects), [subjects]);
   const generatedPositive = likenessPrompt ? `${likenessPrompt}, ${positive}` : positive;
@@ -358,7 +371,7 @@ export default function Builder() {
       const result = await endpoints.aiImproveGeneratedPrompt(
         finalPositive,
         finalNegative,
-        promptStyle,
+        activeCompiler,
         activeWorkflow?.name || ""
       );
       setPromptOverride(result.positive || finalPositive);
@@ -469,11 +482,11 @@ export default function Builder() {
         faceid_v2_strength: faceIdV2Strength,
         edit_instruction: isEnhanceWorkflow
           ? (repairInstruction.trim() || "Correct the selected technical defects naturally.")
-          : isEditWorkflow ? editInstruction.trim() : undefined,
+          : isEditWorkflow ? finalPositive : undefined,
         preserve_unmentioned: preserveUnmentioned,
         repair_targets: isEnhanceWorkflow ? repairTargets : [],
         repair_strength: repairStrength,
-        video_instruction: (isVideoWorkflow || isTextVideoWorkflow) ? videoInstruction.trim() : undefined,
+        video_instruction: (isVideoWorkflow || isTextVideoWorkflow) ? finalPositive : undefined,
         video_frames: videoFrames,
         video_fps: videoFps,
         video_width: 640,
