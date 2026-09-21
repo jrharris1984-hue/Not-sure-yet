@@ -271,8 +271,8 @@ export const SECTIONS = [
         { name: "Lesbian", options: ["lesbian", "tribbing", "scissoring", "strap-on", "facesitting"] },
         { name: "BDSM", options: ["bondage", "shibari", "tied up", "collared and leashed", "spanking", "gagged"] },
       ]},
-      { key: "explicit_level", type: "slider", label: "Explicit level (softcore → depraved)", min: 0, max: 100, step: 1 },
-      { key: "kink_level", type: "slider", label: "Kink level (vanilla → extreme kink)", min: 0, max: 100, step: 1 },
+      { key: "explicit_level", type: "slider", label: "Explicit level (off → depraved)", min: 0, max: 100, step: 1, defaultValue: 0 },
+      { key: "kink_level", type: "slider", label: "Kink level (off → extreme kink)", min: 0, max: 100, step: 1, defaultValue: 0 },
       { key: "extra_acts", type: "text", label: "Additional acts / notes" },
     ],
   },
@@ -343,7 +343,7 @@ export const SECTIONS = [
 export const DEFAULT_DNA = SECTIONS.reduce((acc, s) => {
   acc[s.key] = {};
   s.fields.forEach((f) => {
-    if (f.type === "slider") acc[s.key][f.key] = Math.round((f.min + f.max) / 2);
+    if (f.type === "slider") acc[s.key][f.key] = f.defaultValue ?? Math.round((f.min + f.max) / 2);
     else if (f.type === "chips_multi") acc[s.key][f.key] = [];
     else acc[s.key][f.key] = "";
   });
@@ -358,6 +358,7 @@ const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
 export const RANDOMIZE_PROTECTED_FIELDS = {
   intimate: new Set(["cum_state", "saliva", "squirt", "sweat", "lube", "tears"]),
   feet: new Set(["foot_state", "hosiery", "foot_act"]),
+  scenario: new Set(["explicit_level", "kink_level"]),
 };
 
 export function randomizeSection(sectionKey, current = {}, fieldLocks = {}, options = {}) {
