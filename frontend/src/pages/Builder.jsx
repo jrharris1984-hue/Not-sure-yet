@@ -710,6 +710,8 @@ export default function Builder() {
             </button>
             <PresetsMenu
               currentDna={activeDna}
+              sectionLocks={locks}
+              fieldLocks={activeFieldLocks}
               onApply={(preset) => {
                 const next = { ...preset };
                 Object.keys(locks).forEach((k) => { if (locks[k]) next[k] = activeDna[k]; });
