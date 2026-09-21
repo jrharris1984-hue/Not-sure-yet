@@ -431,11 +431,26 @@ export function createHeritageCharacterVariation(
     );
   });
 
-  // A heritage choice owns heritage, while the existing adult age is retained.
+  // Apply heritage, then restore every locked value. Locks always win over
+  // presets and randomization, including locks on non-randomized preset fields.
+  next.identity = { ...next.identity, ...(presetDna?.identity || {}) };
+  Object.entries(sectionLocks || {}).forEach(([sectionKey, locked]) => {
+    if (locked && currentDna?.[sectionKey]) next[sectionKey] = { ...currentDna[sectionKey] };
+  });
+  Object.entries(fieldLocks || {}).forEach(([sectionKey, lockedFields]) => {
+    Object.entries(lockedFields || {}).forEach(([fieldKey, locked]) => {
+      if (locked && currentDna?.[sectionKey]) {
+        next[sectionKey] = {
+          ...next[sectionKey],
+          [fieldKey]: currentDna[sectionKey][fieldKey],
+        };
+      }
+    });
+  });
+
   // Clamp defensively so a saved/imported character can never be rolled below 21.
   next.identity = {
     ...next.identity,
-    ...(presetDna?.identity || {}),
     age: Math.max(21, Number(next.identity?.age) || 21),
   };
   return next;
