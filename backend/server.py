@@ -108,7 +108,7 @@ class WorkflowTemplate(BaseModel):
     id: str = Field(default_factory=new_id)
     name: str = "Untitled workflow"
     kind: str = "image"  # image | video | edit | face | pony
-    prompt_style: str = "venice"  # venice | pony
+    prompt_style: str = "venice"  # venice | zimage | chroma | pony | qwen_edit | wan_i2v | wan_t2v
     json_str: str = ""
     positive_node_id: str = ""
     negative_node_id: str = ""
@@ -200,11 +200,11 @@ def _detect_prompt_nodes(wf: Dict[str, Any]) -> Dict[str, str]:
 
 SEED_WORKFLOWS = [
     {"file": "chroma.json", "name": "Chroma1-HD · Golden T2I", "kind": "image", "prompt_style": "chroma"},
-    {"file": "zimage.json", "name": "Z-image Turbo · NSFW", "kind": "image", "prompt_style": "venice"},
-    {"file": "qwen.json", "name": "Qwen Image Edit 2511", "kind": "edit", "prompt_style": "venice"},
-    {"file": "qwen.json", "name": "Qwen Image Repair & Enhance", "kind": "enhance", "prompt_style": "venice"},
-    {"file": "wan.json", "name": "WAN 2.2 5B · Image → Video", "kind": "video", "prompt_style": "venice"},
-    {"file": "wan_t2v.json", "name": "WAN 2.2 14B · Text → Video", "kind": "text_video", "prompt_style": "venice"},
+    {"file": "zimage.json", "name": "Z-image Turbo · NSFW", "kind": "image", "prompt_style": "zimage"},
+    {"file": "qwen.json", "name": "Qwen Image Edit 2511", "kind": "edit", "prompt_style": "qwen_edit"},
+    {"file": "qwen.json", "name": "Qwen Image Repair & Enhance", "kind": "enhance", "prompt_style": "qwen_edit"},
+    {"file": "wan.json", "name": "WAN 2.2 5B · Image → Video", "kind": "video", "prompt_style": "wan_i2v"},
+    {"file": "wan_t2v.json", "name": "WAN 2.2 14B · Text → Video", "kind": "text_video", "prompt_style": "wan_t2v"},
     {"file": "face.json", "name": "Face-Preserved · IPAdapter FaceID", "kind": "face", "prompt_style": "venice"},
     {"file": "pony.json", "name": "Pony V6 XL · 5 LoRAs", "kind": "pony", "prompt_style": "pony"},
 ]
@@ -2171,10 +2171,30 @@ async def ai_improve_generated_prompt(body: ImproveGeneratedPromptBody):
             "Use concise natural photographic language suitable for Chroma/T5. Keep the positive "
             "prompt comfortably below 512 tokens and place essential visual requirements first."
         )
+    elif style == "qwen_edit":
+        model_rules = (
+            "Write literal Qwen Image Edit instructions. Clearly separate requested changes from protected "
+            "source details. Do not turn an edit into a new text-to-image scene."
+        )
+    elif style == "wan_i2v":
+        model_rules = (
+            "Write temporal motion instructions for WAN image-to-video. The source frame owns identity, "
+            "wardrobe, setting, lighting, and composition. Do not redescribe or replace them."
+        )
+    elif style == "wan_t2v":
+        model_rules = (
+            "Write one continuous WAN text-to-video shot with a clear first frame, action over time, "
+            "camera behavior, and stable identity. Avoid cuts, transformations, and contradictory motion."
+        )
+    elif style == "zimage":
+        model_rules = (
+            "Use concise natural-language image instructions suitable for Z-Image Turbo/T5. Keep concrete "
+            "visual requirements early, remove exact repetition, and avoid booru-only syntax."
+        )
     else:
         model_rules = (
-            "Use concise natural-language image instructions suitable for Z-Image/modern T5 models. "
-            "Place essential composition and action requirements before secondary styling details."
+            "Use concise natural-language image instructions. Place essential composition and action "
+            "requirements before secondary styling details."
         )
 
     system = (
