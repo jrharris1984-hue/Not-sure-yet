@@ -25,12 +25,12 @@ export default function PromptPreview({ positive, negative, dna, workflow, conte
         <div className="flex items-center gap-2">
           <span
             data-testid="prompt-token-count"
-            className={\`text-[10px] font-mono px-1.5 py-0.5 rounded \${
+            className={`text-[10px] font-mono px-1.5 py-0.5 rounded ${
               lengthIssue?.severity === "error" ? "bg-red-500/20 text-red-300 border border-red-500/40"
               : lengthIssue ? "bg-amber-500/15 text-amber-300 border border-amber-500/40"
               : "bg-emerald-500/10 text-emerald-300 border border-emerald-500/30"
-            }\`}
-            title={\`Estimated length for \${quality.profileLabel}\`}
+            }`}
+            title={`Estimated length for ${quality.profileLabel}`}
           >
             ~{tokens} tok · {quality.profileLabel}
           </span>
@@ -65,8 +65,8 @@ export default function PromptPreview({ positive, negative, dna, workflow, conte
               ? <AlertTriangle className="h-4 w-4 text-red-300" />
               : <ShieldCheck className="h-4 w-4 text-emerald-300" />}
             <span className="text-xs font-semibold text-zinc-200">Generation preflight</span>
-            <span className={\`text-[10px] font-mono \${hasBlockingIssue ? "text-red-300" : "text-zinc-500"}\`}>
-              {hasBlockingIssue ? "Not ready" : \`\${quality.score}/100\`} · {quality.profileLabel}
+            <span className={`text-[10px] font-mono ${hasBlockingIssue ? "text-red-300" : "text-zinc-500"}`}>
+              {hasBlockingIssue ? "Not ready" : `${quality.score}/100`} · {quality.profileLabel}
             </span>
           </div>
           {optimized ? (
@@ -83,7 +83,7 @@ export default function PromptPreview({ positive, negative, dna, workflow, conte
         {quality.issues.length ? (
           <ul className="space-y-1">
             {quality.issues.slice(0, 6).map((item) => (
-              <li key={item.code} className={\`text-[10px] leading-relaxed \${item.severity === "error" ? "text-red-300" : item.severity === "warning" ? "text-amber-200" : "text-zinc-400"}\`}>
+              <li key={item.code} className={`text-[10px] leading-relaxed ${item.severity === "error" ? "text-red-300" : item.severity === "warning" ? "text-amber-200" : "text-zinc-400"}`}>
                 {item.message}
               </li>
             ))}
