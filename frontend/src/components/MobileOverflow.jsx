@@ -12,7 +12,14 @@ export default function MobileOverflow({ children, testId = "mobile-overflow" })
 
   useEffect(() => {
     if (!open) return undefined;
-    const onDoc = (e) => { if (!ref.current?.contains(e.target)) setOpen(false); };
+    const onDoc = (event) => {
+      const target = event.target instanceof Element ? event.target : null;
+      // Preset dialogs are rendered through document.body portals. Although
+      // they are outside `ref` in the DOM, they still belong to a launcher in
+      // this overflow menu and must remain mounted while the dialog is used.
+      if (target?.closest("[data-overflow-stay-open]")) return;
+      if (!ref.current?.contains(event.target)) setOpen(false);
+    };
     document.addEventListener("mousedown", onDoc);
     return () => document.removeEventListener("mousedown", onDoc);
   }, [open]);
