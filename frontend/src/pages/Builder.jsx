@@ -336,7 +336,9 @@ export default function Builder() {
         subjects: promptSubjects,
         isMulti,
         raunch,
-        editInstruction: isEnhanceWorkflow ? repairInstruction : editInstruction,
+        editInstruction: isEnhanceWorkflow
+          ? (repairInstruction || `Repair only these areas: ${repairTargets.join(", ")}`)
+          : editInstruction,
         videoInstruction,
         preserveUnmentioned,
       });
@@ -344,12 +346,13 @@ export default function Builder() {
     [
       subjects, isMulti, activeDna, activeSubject?.likeness?.enabled,
       promptStyle, activeWorkflow?.kind, activeWorkflow?.name, raunch,
-      editInstruction, repairInstruction, videoInstruction, preserveUnmentioned,
+      editInstruction, repairInstruction, repairTargets, videoInstruction, preserveUnmentioned,
       isEnhanceWorkflow,
     ]
   );
   const likenessPrompt = useMemo(() => likenessTriggerText(subjects), [subjects]);
-  const generatedPositive = likenessPrompt ? `${likenessPrompt}, ${positive}` : positive;
+  const acceptsLikenessPrompt = !["qwen_edit", "wan_i2v"].includes(activeCompiler);
+  const generatedPositive = acceptsLikenessPrompt && likenessPrompt ? `${likenessPrompt}, ${positive}` : positive;
   const positiveBeforeLoraTriggers = promptOverride || generatedPositive;
   const finalPositive = loraTriggerWords.reduce(
     (text, trigger) => text.toLowerCase().includes(trigger.toLowerCase()) ? text : `${trigger}, ${text}`,
