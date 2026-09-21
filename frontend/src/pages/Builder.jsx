@@ -1267,6 +1267,8 @@ export default function Builder() {
           />
           <LoraPanel
             workflowId={workflowId}
+            workflow={activeWorkflow}
+            dna={activeDna}
             values={loraOverrides}
             onChange={setLoraOverrides}
           />
