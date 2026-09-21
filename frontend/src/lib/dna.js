@@ -358,6 +358,7 @@ const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
 export const RANDOMIZE_PROTECTED_FIELDS = {
   intimate: new Set(["cum_state", "saliva", "squirt", "sweat", "lube", "tears"]),
   feet: new Set(["foot_state", "hosiery", "foot_act"]),
+  scenario: new Set(["explicit_level", "kink_level"]),
 };
 
 export function randomizeSection(sectionKey, current = {}, fieldLocks = {}, options = {}) {
