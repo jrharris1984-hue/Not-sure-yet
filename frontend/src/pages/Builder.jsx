@@ -64,6 +64,7 @@ export default function Builder() {
   const [collapsed, setCollapsed] = useState({});     // {sectionKey|'_glance': bool}
   const [tags, setTags] = useState([]);
   const [raunch, setRaunch] = useState(false);
+  const [promptOverride, setPromptOverride] = useState("");
   const [dispatching, setDispatching] = useState(false);
   const [activeRender, setActiveRender] = useState(null);
   const [workflowId, setWorkflowId] = useState("");
@@ -332,7 +333,11 @@ export default function Builder() {
     [subjects, isMulti, activeDna, activeSubject?.likeness?.enabled, promptStyle, raunch, isGoldenChroma]
   );
   const likenessPrompt = useMemo(() => likenessTriggerText(subjects), [subjects]);
-  const finalPositive = likenessPrompt ? `${likenessPrompt}, ${positive}` : positive;
+  const generatedPositive = likenessPrompt ? `${likenessPrompt}, ${positive}` : positive;
+  const finalPositive = promptOverride || generatedPositive;
+  useEffect(() => {
+    setPromptOverride("");
+  }, [generatedPositive, workflowId]);
   const effectiveLoraOverrides = useMemo(
     () => ({ ...loraOverrides, ...likenessOverrides(subjects) }),
     [loraOverrides, subjects]
@@ -845,7 +850,21 @@ export default function Builder() {
 
         {/* Right - preview + AI + render */}
         <aside className="space-y-4 lg:sticky lg:top-20 lg:h-fit">
-          <PromptPreview positive={finalPositive} negative={negative} />
+          <PromptPreview
+            positive={finalPositive}
+            negative={negative}
+            dna={activeDna}
+            workflow={activeWorkflow}
+            optimized={!!promptOverride}
+            onOptimize={(cleaned) => {
+              setPromptOverride(cleaned);
+              toast.success("Safe prompt cleanup applied");
+            }}
+            onRestore={() => {
+              setPromptOverride("");
+              toast.success("Generated prompt restored");
+            }}
+          />
           {activeWorkflow && promptStyle === "pony" && (
             <div className="pane p-3 flex items-center gap-2" data-testid="pony-style-badge">
               <span className="text-[10px] font-mono uppercase tracking-widest text-rose-300 bg-rose-500/10 border border-rose-500/40 rounded px-1.5 py-0.5">pony style</span>
