@@ -1100,6 +1100,10 @@ async def _perform_dispatch(body: "DispatchBody") -> Dict[str, Any]:
                     image_patched = True
                 if class_type == "Wan22ImageToVideoLatent":
                     inputs["length"] = frames
+                    if "width" in inputs:
+                        inputs["width"] = max(256, min(1280, int(body.video_width)))
+                    if "height" in inputs:
+                        inputs["height"] = max(256, min(1280, int(body.video_height)))
                     latent_patched = True
             else:
                 if class_type == "EmptyHunyuanLatentVideo":
