@@ -845,7 +845,7 @@ export default function Builder() {
         <TagInput value={tags} onChange={setTags} placeholder="tag this character (mood, ethnicity, persona)…" testId="builder-tags" />
       </div>
 
-      {activeWorkflow && (
+      {activeWorkflow && (activeCompiler !== "qwen_edit" || isEnhanceWorkflow) && (
         <RenderRecipeSelector
           compiler={activeCompiler}
           value={qualityTier}
