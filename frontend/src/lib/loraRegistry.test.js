@@ -1,4 +1,10 @@
-import { planLoras, registryForInstalled, workflowFamily } from "./loraRegistry";
+import {
+  planLoras,
+  registryForInstalled,
+  compatibleRegistryForWorkflow,
+  loraStackHealth,
+  workflowFamily,
+} from "./loraRegistry";
 
 const installed = [
   "Z-Image\\Curated\\QQ Collection\\lora-foot.safetensors",
@@ -47,5 +53,44 @@ describe("LoRA registry planner", () => {
     });
     expect(plan.selected.every((entry) => entry.family === "zimage")).toBe(true);
     expect(plan.selected.some((entry) => entry.id === "flux2-turbo")).toBe(false);
+  });
+
+  test("keeps automatic recommendations inside the family strength budget", () => {
+    const plan = planLoras({
+      workflow: { name: "IMAGE · Z-image Turbo · NSFW" },
+      dna: {
+        pose: { action: "POV doggy style" },
+        feet: { sole_presentation: "detailed feet" },
+        wardrobe: { outfit_preset: "lingerie" },
+      },
+      installed,
+    });
+    expect(plan.totalStrength).toBeLessThanOrEqual(plan.budget);
+    expect(plan.selected.every((entry) => entry.reason)).toBe(true);
+  });
+
+  test("filters assisted choices to the active workflow family", () => {
+    const compatible = compatibleRegistryForWorkflow(
+      { name: "IMAGE · Z-image Turbo · NSFW" },
+      installed
+    );
+    expect(compatible.every((entry) => entry.family === "zimage")).toBe(true);
+    expect(compatible.some((entry) => entry.id === "flux2-turbo")).toBe(false);
+  });
+
+  test("warns about cross-family files, conflicts, and excessive strength", () => {
+    const health = loraStackHealth({
+      workflow: { name: "IMAGE · Z-image Turbo · NSFW" },
+      installed,
+      overrides: {
+        a: { lora_name: "Flux_2-Turbo-LoRA_comfyui.safetensors", strength_model: 0.8 },
+        b: { lora_name: "Z-Image\\Curated\\QQ Collection\\lora-doggy.safetensors", strength_model: 1.2 },
+        c: { lora_name: "Z-Image\\Curated\\QQ Collection\\lora-pov-doggy.safetensors", strength_model: 1.0 },
+      },
+    });
+    expect(health.status).toBe("warning");
+    expect(health.warnings.some((warning) => warning.includes("not zimage"))).toBe(true);
+    expect(health.warnings.some((warning) => warning.includes("conflicts"))).toBe(true);
+    expect(health.warnings.some((warning) => warning.includes("budget"))).toBe(true);
   });
 });
