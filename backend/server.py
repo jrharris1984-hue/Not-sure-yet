@@ -220,14 +220,20 @@ def _detect_loras(wf: Dict[str, Any]) -> List[Dict[str, Any]]:
         if "Lora" in ct or "LoRA" in ct:
             inputs = node.get("inputs", {})
             name = inputs.get("lora_name", "")
+            title = str(node.get("_meta", {}).get("title", ""))
+            title_lower = title.lower()
             # derive a short label from filename
             label = os.path.basename(str(name).replace("\\", "/")).replace(".safetensors", "").replace("_", " ").replace("-", " ")
             out.append({
                 "node_id": nid,
                 "lora_name": name,
                 "label": label,
+                "title": title,
                 "strength_model": float(inputs.get("strength_model", 1.0) or 0),
                 "strength_clip": float(inputs.get("strength_clip", 1.0) or 0),
+                "supports_clip": "strength_clip" in inputs,
+                "dedicated_likeness": "likeness lora slot" in title_lower,
+                "optional_slot": "optional effect lora slot" in title_lower,
             })
     return out
 
@@ -1995,6 +2001,13 @@ class EditPromptBody(BaseModel):
     preserve_unmentioned: bool = True
 
 
+class ImproveGeneratedPromptBody(BaseModel):
+    positive: str
+    negative: str = ""
+    prompt_style: str = "venice"
+    workflow_name: str = ""
+
+
 class VideoPromptBody(BaseModel):
     instruction: str
     mode: str = "image"
@@ -2132,6 +2145,56 @@ async def ai_edit_prompt(body: EditPromptBody):
         system += " Explicitly instruct the editor to preserve every unmentioned visual detail."
     prompt = await openrouter_chat(system, body.instruction, response_format_json=False)
     return {"prompt": prompt.strip()}
+
+
+@api.post("/ai/improve-generated-prompt")
+async def ai_improve_generated_prompt(body: ImproveGeneratedPromptBody):
+    """Polish a compiled generation prompt without changing the user's DNA choices."""
+    positive = body.positive.strip()
+    if not positive:
+        raise HTTPException(400, "Build a prompt before asking Venice to improve it")
+    if len(positive) > 30000 or len(body.negative) > 30000:
+        raise HTTPException(400, "Prompt is too large to improve safely")
+
+    style = (body.prompt_style or "venice").strip().lower()
+    workflow = (body.workflow_name or "selected image model").strip()
+    if style == "pony":
+        model_rules = (
+            "Keep Pony/booru syntax, score and rating prefixes, underscores, and numeric weights. "
+            "Put the selected action, pose, feet/play requirements, subject count, and identity early."
+        )
+    elif style == "chroma" or "chroma" in workflow.lower():
+        model_rules = (
+            "Use concise natural photographic language suitable for Chroma/T5. Keep the positive "
+            "prompt comfortably below 512 tokens and place essential visual requirements first."
+        )
+    else:
+        model_rules = (
+            "Use concise natural-language image instructions suitable for Z-Image/modern T5 models. "
+            "Place essential composition and action requirements before secondary styling details."
+        )
+
+    system = (
+        "You are the final prompt editor for Ultra Studio. Improve an already compiled adult image-generation "
+        "prompt for stronger visual adherence and realism. Preserve EVERY concrete user-selected fact: adult age, "
+        "heritage, identity, body traits, wardrobe or nudity state, pose, camera, feet details, intimate details, "
+        "Play actions, subject count, setting, and lighting. Never add a new act, fetish, person, garment, body trait, "
+        "or fluid. Never remove or soften a selected explicit detail. Resolve only genuine wording contradictions, "
+        "remove redundant wording, and make the requested visible action/composition unmistakable. "
+        + model_rules +
+        " Return JSON with exactly two strings: positive and negative. The negative prompt should remain concise, "
+        "technical, and must not negate anything requested by the positive prompt. No markdown or commentary."
+    )
+    user = (
+        f"WORKFLOW: {workflow}\nPROMPT STYLE: {style}\n\n"
+        f"CURRENT POSITIVE:\n{positive}\n\nCURRENT NEGATIVE:\n{body.negative.strip()}"
+    )
+    result = extract_json(await openrouter_chat(system, user, response_format_json=True))
+    improved_positive = str(result.get("positive") or "").strip()
+    improved_negative = str(result.get("negative") or body.negative).strip()
+    if not improved_positive:
+        raise HTTPException(502, "Venice did not return an improved prompt")
+    return {"positive": improved_positive, "negative": improved_negative}
 
 
 @api.post("/ai/video-prompt")

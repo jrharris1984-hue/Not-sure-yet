@@ -107,7 +107,7 @@
     "inputs": {
       "stop_at_clip_layer": -2,
       "clip": [
-        "6",
+        "14",
         1
       ]
     },
@@ -162,7 +162,7 @@
       "scheduler": "normal",
       "denoise": 1,
       "model": [
-        "6",
+        "14",
         0
       ],
       "positive": [
@@ -210,6 +210,19 @@
     "class_type": "SaveImage",
     "_meta": {
       "title": "SaveImage"
+    }
+  },
+  "14": {
+    "inputs": {
+      "lora_name": "Pony\\Realism_Lora_By_Stable_Yogi_Pony_V2.safetensors",
+      "strength_model": 0,
+      "strength_clip": 0,
+      "model": ["6", 0],
+      "clip": ["6", 1]
+    },
+    "class_type": "LoraLoader",
+    "_meta": {
+      "title": "Likeness LoRA Slot · Subject A"
     }
   }
 }

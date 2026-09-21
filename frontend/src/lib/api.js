@@ -74,6 +74,13 @@ export const endpoints = {
       instruction,
       preserve_unmentioned: preserveUnmentioned,
     }).then((r) => r.data),
+  aiImproveGeneratedPrompt: (positive, negative, promptStyle, workflowName) =>
+    api.post("/ai/improve-generated-prompt", {
+      positive,
+      negative,
+      prompt_style: promptStyle,
+      workflow_name: workflowName,
+    }).then((r) => r.data),
   aiVideoPrompt: (instruction, mode = "image") =>
     api.post("/ai/video-prompt", { instruction, mode }).then((r) => r.data),
   aiAnalyzeVideoImage: (referenceImage, instruction = "") =>

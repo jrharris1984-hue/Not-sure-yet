@@ -130,6 +130,21 @@ The bundled workflows reference these files. If ComfyUI complains at dispatch, d
 
 If any file name in the seeded workflow doesn't match what you have locally, open **Settings → the workflow row → Workflow JSON** and edit the file name string in place, then Save.
 
+### Optional Z-Image effect LoRA
+
+The Z-Image workflow includes an **Optional Effect LoRA Slot**. On Windows, the
+included installer downloads the optional `girls pee.safetensors` LoRA into the
+shared ComfyUI model folder:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\install-zimage-pee-lora.ps1
+```
+
+Restart ComfyUI (or rescan models), refresh Ultra Studio, choose the LoRA in
+**LoRA weights → Optional Effect LoRA Slot**, and raise model strength from
+`0.00` only for renders that need the effect. Use optional LoRAs only with a
+compatible base model.
+
 ---
 
 ## Common gotchas
