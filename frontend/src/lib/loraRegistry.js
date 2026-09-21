@@ -84,6 +84,17 @@ export function workflowFamily(workflow = {}) {
 }
 
 const normalized = (value) => String(value || "").toLowerCase().replaceAll("\\", "/");
+
+export const LORA_STRENGTH_BUDGETS = {
+  zimage: 1.7,
+  chroma: 1.2,
+  pony: 1.5,
+  qwen_edit: 1.2,
+  wan22: 1.0,
+  flux: 1.4,
+  sd15: 1.4,
+  unknown: 1.0,
+};
 const installedMatch = (entry, installed) => {
   const expected = normalized(entry.file);
   return installed.find((name) => {
@@ -100,10 +111,10 @@ export function planLoras({ workflow, dna, installed = [] }) {
     .filter((entry) => entry.family === family && entry.auto && entry.verified)
     .map((entry) => ({ ...entry, installedName: installedMatch(entry, installed) }))
     .filter((entry) => entry.installedName)
-    .map((entry) => ({
-      ...entry,
-      score: entry.keywords.reduce((score, keyword) => score + (searchable.includes(keyword) ? 1 : 0), 0),
-    }))
+    .map((entry) => {
+      const matchedKeywords = entry.keywords.filter((keyword) => searchable.includes(keyword));
+      return { ...entry, matchedKeywords, score: matchedKeywords.length };
+    })
     .filter((entry) => entry.score > 0);
 
   const selected = [];
@@ -125,12 +136,84 @@ export function planLoras({ workflow, dna, installed = [] }) {
     if (fallback && installedName) selected.unshift({ ...fallback, installedName, score: 0 });
   }
 
+  const budget = LORA_STRENGTH_BUDGETS[family] || LORA_STRENGTH_BUDGETS.unknown;
+  const plannedStrength = selected.reduce((total, entry) => total + Math.max(0, entry.defaultStrength), 0);
+  if (plannedStrength > budget && plannedStrength > 0) {
+    const scale = budget / plannedStrength;
+    selected.forEach((entry) => {
+      entry.defaultStrength = Number((entry.defaultStrength * scale).toFixed(2));
+    });
+  }
+  selected.forEach((entry) => {
+    entry.reason = entry.matchedKeywords?.length
+      ? `Matched: ${entry.matchedKeywords.join(", ")}`
+      : "Default realism finish for this workflow";
+  });
+
   return {
     family,
+    budget,
+    totalStrength: selected.reduce((total, entry) => total + Math.max(0, entry.defaultStrength), 0),
     selected,
     warnings: family === "unknown"
       ? ["This workflow has no verified LoRA compatibility profile. Use Manual mode."]
       : [],
+  };
+}
+
+export function compatibleRegistryForWorkflow(workflow = {}, installed = []) {
+  const family = workflowFamily(workflow);
+  return LORA_REGISTRY
+    .filter((entry) => entry.family === family)
+    .map((entry) => ({ ...entry, installedName: installedMatch(entry, installed) }))
+    .filter((entry) => entry.installedName);
+}
+
+export function loraStackHealth({ workflow = {}, overrides = {}, installed = [] } = {}) {
+  const family = workflowFamily(workflow);
+  const budget = LORA_STRENGTH_BUDGETS[family] || LORA_STRENGTH_BUDGETS.unknown;
+  const active = Object.values(overrides || {}).filter((value) =>
+    value?.lora_name && Math.abs(Number(value?.strength_model || 0)) > 0
+  ).map((value) => {
+    const entry = LORA_REGISTRY.find((candidate) => installedMatch(candidate, [value.lora_name]));
+    return { ...value, entry };
+  });
+  const optional = active.filter(({ entry }) => entry && !["required", "identity"].includes(entry.slot));
+  const totalStrength = optional.reduce((total, value) => total + Math.abs(Number(value.strength_model || 0)), 0);
+  const warnings = [];
+
+  active.forEach(({ entry, lora_name: name, strength_model: strength }) => {
+    if (!entry) {
+      warnings.push(`${name} is not in the compatibility registry; verify it manually.`);
+      return;
+    }
+    if (entry.family !== family) warnings.push(`${entry.label} is for ${entry.family}, not ${family}.`);
+    if (Math.abs(Number(strength)) > entry.maxStrength) {
+      warnings.push(`${entry.label} is above its verified ${entry.maxStrength.toFixed(2)} strength.`);
+    }
+  });
+
+  for (let index = 0; index < active.length; index += 1) {
+    const left = active[index].entry;
+    if (!left) continue;
+    for (let other = index + 1; other < active.length; other += 1) {
+      const right = active[other].entry;
+      if (right && (left.conflicts.includes(right.id) || right.conflicts.includes(left.id))) {
+        warnings.push(`${left.label} conflicts with ${right.label}; keep only one active.`);
+      }
+    }
+  }
+  if (totalStrength > budget) {
+    warnings.push(`Optional LoRA strength ${totalStrength.toFixed(2)} exceeds the recommended ${budget.toFixed(2)} budget.`);
+  }
+
+  return {
+    family,
+    budget,
+    totalStrength,
+    activeCount: active.length,
+    warnings: [...new Set(warnings)],
+    status: warnings.length ? "warning" : "healthy",
   };
 }
 
