@@ -152,10 +152,11 @@ adult-effect LoRAs, use the curated downloader instead:
 powershell -ExecutionPolicy Bypass -File .\scripts\install-curated-zimage-loras.ps1
 ```
 
-Choose `R` for the recommended quality/body starter set, `A` for everything,
+Choose `R` for the recommended quality/body starter set, `A` for all 12 curated
+items, `B` for the complete 30-file `qqnyanddld/nsfw-z-image-lora` collection,
 or enter selected catalog numbers such as `1,2,3,5`. Existing downloads are
-skipped, interrupted `.part` downloads can resume, and files are organized
-under `models\loras\Z-Image\Curated`.
+skipped across every curated subfolder, interrupted `.part` downloads can
+resume, and files are organized under `models\loras\Z-Image\Curated`.
 
 ---
 

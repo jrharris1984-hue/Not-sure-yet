@@ -23,13 +23,40 @@ $catalog = @(
     [pscustomobject]@{ Id = 12; Name = "Peeing Women"; Category = "Effect"; File = "girls pee.safetensors"; Strength = "0.60-0.85"; Recommended = $false; Url = "https://huggingface.co/Frank196/Pissing_peeing_women_z_image_turbo/resolve/main/girls%20pee.safetensors?download=true" }
 )
 
+$qqFiles = @(
+    "lora-anal.safetensors", "lora-bbc-penis.safetensors", "lora-blowjob.safetensors",
+    "lora-blowjob2.safetensors", "lora-bukkake.safetensors", "lora-cum-kiss.safetensors",
+    "lora-cum.safetensors", "lora-doggy.safetensors", "lora-facial.safetensors",
+    "lora-fisting.safetensors", "lora-foot.safetensors", "lora-footing.safetensors",
+    "lora-fucking-penis.safetensors", "lora-lick-ass.safetensors", "lora-lick.safetensors",
+    "lora-lingerie.safetensors", "lora-nipple-clamp.safetensors", "lora-oiled-skin.safetensors",
+    "lora-open-pussy.safetensors", "lora-panty.safetensors", "lora-penis-blowjob.safetensors",
+    "lora-penis.safetensors", "lora-porn-master.safetensors", "lora-pov-doggy.safetensors",
+    "lora-pussy.safetensors", "lora-sex-machine.safetensors", "lora-sex.safetensors",
+    "lora-tattoo.safetensors", "lora-tentacled.safetensors", "lora-women.safetensors"
+)
+$qqCollection = @()
+for ($index = 0; $index -lt $qqFiles.Count; $index++) {
+    $file = $qqFiles[$index]
+    $qqCollection += [pscustomobject]@{
+        Id = "Q{0:D2}" -f ($index + 1)
+        Name = [IO.Path]::GetFileNameWithoutExtension($file).Replace("lora-", "").Replace("-", " ")
+        Category = "QQ Collection"
+        File = $file
+        Strength = "0.50-0.80"
+        Recommended = $false
+        Url = "https://huggingface.co/qqnyanddld/nsfw-z-image-lora/resolve/main/${file}?download=true"
+    }
+}
+
 function Show-Catalog {
     Write-Host ""
     Write-Host "Curated Z-Image Turbo LoRAs" -ForegroundColor Cyan
     Write-Host "Files are installed into: $loraRoot"
     Write-Host ""
     $catalog | Select-Object Id, Name, Category, Strength, @{Name = "Recommended"; Expression = { if ($_.Recommended) { "Yes" } else { "" } } } | Format-Table -AutoSize
-    Write-Host "R = recommended set (1-7), A = all, or enter numbers such as 1,2,4,9" -ForegroundColor DarkGray
+    Write-Host "R = recommended set (1-7), A = all 12 curated items" -ForegroundColor DarkGray
+    Write-Host "B = complete qqnyanddld collection (30 files), or enter numbers such as 1,2,4,9" -ForegroundColor DarkGray
 }
 
 Show-Catalog
@@ -43,6 +70,7 @@ if ([string]::IsNullOrWhiteSpace($Selection)) { $Selection = "R" }
 switch ($Selection.Trim().ToUpperInvariant()) {
     "R" { $selected = @($catalog | Where-Object Recommended) }
     "A" { $selected = @($catalog) }
+    "B" { $selected = @($qqCollection) }
     default {
         $ids = @()
         foreach ($piece in ($Selection -split "[, ]+" | Where-Object { $_ })) {
@@ -78,8 +106,9 @@ foreach ($item in $selected) {
     $target = Join-Path $categoryFolder $item.File
     $partial = "$target.part"
 
-    if ((Test-Path $target) -and (Get-Item $target).Length -ge 1MB) {
-        Write-Host ("SKIP  [{0}] already installed: {1}" -f $item.Id, $target) -ForegroundColor DarkYellow
+    $existing = Get-ChildItem -Path $loraRoot -Filter $item.File -File -Recurse -ErrorAction SilentlyContinue | Where-Object { $_.Length -ge 1MB } | Select-Object -First 1
+    if ($existing) {
+        Write-Host ("SKIP  [{0}] already installed: {1}" -f $item.Id, $existing.FullName) -ForegroundColor DarkYellow
         $skipped++
         continue
     }
