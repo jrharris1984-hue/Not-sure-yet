@@ -27,6 +27,8 @@ import DnaAtAGlance from "@/components/DnaAtAGlance";
 import MobileOverflow from "@/components/MobileOverflow";
 import SubjectSwitcher from "@/components/SubjectSwitcher";
 import ChromaControls from "@/components/ChromaControls";
+import RenderRecipeSelector from "@/components/RenderRecipeSelector";
+import { getRenderRecipe, recipeFamily } from "@/lib/renderRecipes";
 import { Flame } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -88,6 +90,9 @@ export default function Builder() {
   const [videoInstruction, setVideoInstruction] = useState("");
   const [videoFrames, setVideoFrames] = useState(41);
   const [videoFps, setVideoFps] = useState(24);
+  const [videoWidth, setVideoWidth] = useState(640);
+  const [videoHeight, setVideoHeight] = useState(640);
+  const [qualityTier, setQualityTier] = useState("balanced");
   const [enhancingVideo, setEnhancingVideo] = useState(false);
   const [analyzingVideoImage, setAnalyzingVideoImage] = useState(false);
   const [videoImageAnalysis, setVideoImageAnalysis] = useState("");
@@ -140,6 +145,36 @@ export default function Builder() {
     workflowName: activeWorkflow?.name,
   });
   const isGoldenChroma = activeCompiler === "chroma";
+  const activeRecipeFamily = recipeFamily(activeCompiler);
+
+  const applyQualityTier = (tier) => {
+    const recipe = getRenderRecipe(activeCompiler, tier);
+    setQualityTier(tier);
+    if (recipe.family === "image") {
+      setChromaSettings((current) => ({
+        ...current,
+        width: recipe.width,
+        height: recipe.height,
+        steps: recipe.steps,
+        cfg: recipe.cfg,
+        batchSize: recipe.batchSize,
+        sampler: recipe.sampler,
+      }));
+    } else if (recipe.family === "video") {
+      setVideoFrames(recipe.videoFrames);
+      setVideoFps(recipe.videoFps);
+      setVideoWidth(recipe.videoWidth);
+      setVideoHeight(recipe.videoHeight);
+    } else if (recipe.family === "edit") {
+      setRepairStrength(recipe.repairStrength);
+    }
+  };
+
+  useEffect(() => {
+    applyQualityTier("balanced");
+    // Reset to the recommended recipe only when the selected model family changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeCompiler]);
 
   const uploadReference = async (file) => {
     if (!file) return;
@@ -495,13 +530,13 @@ export default function Builder() {
         prompt_negative: finalNegative,
         workflow_id: workflowId,
         lora_overrides: effectiveLoraOverrides,
-        width: isGoldenChroma ? chromaSettings.width : undefined,
-        height: isGoldenChroma ? chromaSettings.height : undefined,
-        batch_size: isGoldenChroma ? chromaSettings.batchSize : undefined,
-        steps: isGoldenChroma ? chromaSettings.steps : undefined,
-        cfg: isGoldenChroma ? chromaSettings.cfg : undefined,
-        sampler_name: isGoldenChroma ? chromaSettings.sampler : undefined,
-        seed: isGoldenChroma && chromaSettings.seed !== "" ? Number(chromaSettings.seed) : undefined,
+        width: activeRecipeFamily === "image" ? chromaSettings.width : undefined,
+        height: activeRecipeFamily === "image" ? chromaSettings.height : undefined,
+        batch_size: activeRecipeFamily === "image" ? chromaSettings.batchSize : undefined,
+        steps: activeRecipeFamily === "image" ? chromaSettings.steps : undefined,
+        cfg: activeRecipeFamily === "image" ? chromaSettings.cfg : undefined,
+        sampler_name: activeRecipeFamily === "image" ? chromaSettings.sampler : undefined,
+        seed: activeRecipeFamily === "image" && chromaSettings.seed !== "" ? Number(chromaSettings.seed) : undefined,
         reference_image: (isFaceWorkflow || isEditWorkflow || isEnhanceWorkflow || isVideoWorkflow) ? referenceImage?.name : undefined,
         face_strength: faceStrength,
         faceid_v2_strength: faceIdV2Strength,
@@ -514,8 +549,8 @@ export default function Builder() {
         video_instruction: (isVideoWorkflow || isTextVideoWorkflow) ? finalPositive : undefined,
         video_frames: videoFrames,
         video_fps: videoFps,
-        video_width: 640,
-        video_height: 640,
+        video_width: videoWidth,
+        video_height: videoHeight,
       });
       setActiveRender(r);
       toast.success(r.status === "queued" ? `Added to queue${r.queue_position ? ` · position #${r.queue_position}` : ""}` : `Render ${r.status}`);
@@ -809,6 +844,14 @@ export default function Builder() {
         </div>
         <TagInput value={tags} onChange={setTags} placeholder="tag this character (mood, ethnicity, persona)…" testId="builder-tags" />
       </div>
+
+      {activeWorkflow && (activeCompiler !== "qwen_edit" || isEnhanceWorkflow) && (
+        <RenderRecipeSelector
+          compiler={activeCompiler}
+          value={qualityTier}
+          onChange={applyQualityTier}
+        />
+      )}
 
       {isGoldenChroma && (
         <ChromaControls value={chromaSettings} onChange={setChromaSettings} />
