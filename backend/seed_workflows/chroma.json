@@ -49,7 +49,7 @@
     "inputs": {
       "shift": 1,
       "model": [
-        "752",
+        "753",
         0
       ]
     },
@@ -216,6 +216,17 @@
     "class_type": "LoraLoaderModelOnly",
     "_meta": {
       "title": "GoldenChroma LoRA (Balanced 0.50)"
+    }
+  },
+  "753": {
+    "inputs": {
+      "lora_name": "goldenchromaV1.safetensors",
+      "strength_model": 0,
+      "model": ["752", 0]
+    },
+    "class_type": "LoraLoaderModelOnly",
+    "_meta": {
+      "title": "Likeness LoRA Slot · Subject A"
     }
   }
 }

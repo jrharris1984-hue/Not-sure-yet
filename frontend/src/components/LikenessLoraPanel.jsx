@@ -38,11 +38,20 @@ export default function LikenessLoraPanel({ workflowId, subject, onChange }) {
     endpoints.comfyLoras().then((r) => setInstalled(r.loras || [])).catch(() => setInstalled([]));
   }, [workflowId]);
 
-  const availableNodes = useMemo(() => nodes.map((node) => ({
+  const availableNodes = useMemo(() => nodes.filter((node) => node.dedicated_likeness).map((node) => ({
     ...node,
     name: `${node.node_id} · ${node.label || "LoRA loader"}`,
   })), [nodes]);
+  const selectedNode = availableNodes.find((node) => node.node_id === value.node_id);
   const set = (patch) => onChange({ ...value, ...patch });
+
+  useEffect(() => {
+    if (value.enabled && !value.node_id && availableNodes.length === 1) {
+      set({ node_id: availableNodes[0].node_id });
+    }
+  // Auto-select only when workflow readiness changes; `set` intentionally omitted.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value.enabled, value.node_id, availableNodes]);
 
   return (
     <section className="pane p-4 space-y-3" data-testid="likeness-lora-panel">
@@ -61,13 +70,13 @@ export default function LikenessLoraPanel({ workflowId, subject, onChange }) {
         <div className="space-y-3">
           {availableNodes.length === 0 && (
             <div className="flex gap-2 rounded-md border border-amber-500/30 bg-amber-500/5 p-3 text-xs text-amber-200">
-              <AlertTriangle className="h-4 w-4 shrink-0" /> This workflow has no LoRA loader. Add a dedicated LoraLoader node in ComfyUI, export API JSON, then refresh the workflow.
+              <AlertTriangle className="h-4 w-4 shrink-0" /> This workflow has no dedicated likeness slot. Open Settings and choose Refresh bundled workflows.
             </div>
           )}
           <label className="block space-y-1">
             <span className="text-[10px] font-mono uppercase tracking-widest text-zinc-400">Workflow slot</span>
             <select value={value.node_id} onChange={(e) => set({ node_id: e.target.value })} className="w-full bg-elevated border border-hairline rounded-lg px-3 py-2 text-sm">
-              <option value="">Select a dedicated LoRA loader…</option>
+              <option value="">Select the dedicated likeness slot…</option>
               {availableNodes.map((node) => <option key={node.node_id} value={node.node_id}>{node.name}</option>)}
             </select>
           </label>
@@ -82,12 +91,16 @@ export default function LikenessLoraPanel({ workflowId, subject, onChange }) {
             <span className="text-[10px] font-mono uppercase tracking-widest text-zinc-400">Trigger phrase (optional)</span>
             <Input value={value.trigger} onChange={(e) => set({ trigger: e.target.value })} placeholder="Training trigger word" className="bg-elevated border-hairline" />
           </label>
-          {[['strength_model', 'Model strength'], ['strength_clip', 'CLIP strength']].map(([key, label]) => (
+          {[['strength_model', 'Model strength'], ...(selectedNode?.supports_clip ? [['strength_clip', 'CLIP strength']] : [])].map(([key, label]) => (
             <label key={key} className="block space-y-1">
               <div className="flex justify-between text-[10px] font-mono uppercase tracking-widest text-zinc-400"><span>{label}</span><span className="text-amber-300">{Number(value[key]).toFixed(2)}</span></div>
               <Slider min={0} max={1.5} step={0.05} value={[Number(value[key])]} onValueChange={(v) => set({ [key]: Number(v[0].toFixed(2)) })} />
             </label>
           ))}
+          {value.node_id && value.lora_name && (
+            <p className="text-[11px] text-emerald-300">Ready. The selected likeness will be applied at render time.</p>
+          )}
+          <p className="text-[11px] text-zinc-500">The likeness LoRA must match this workflow's base model. A trigger phrase helps target Subject A, but multi-person regional binding is not guaranteed.</p>
           {installed.length === 0 && <p className="text-[11px] text-zinc-500">No installed LoRAs were reported. Confirm ComfyUI is online and refresh this page.</p>}
         </div>
       )}

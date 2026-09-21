@@ -98,7 +98,7 @@
     "inputs": {
       "shift": 3,
       "model": [
-        "57:62",
+        "107",
         0
       ]
     },
@@ -237,6 +237,28 @@
     "class_type": "SaveImage",
     "_meta": {
       "title": "Save Enhanced 2048"
+    }
+  },
+  "106": {
+    "inputs": {
+      "lora_name": "ZITnsfwLoRA.safetensors",
+      "strength_model": 0,
+      "model": ["57:62", 0]
+    },
+    "class_type": "LoraLoaderModelOnly",
+    "_meta": {
+      "title": "Likeness LoRA Slot · Subject A"
+    }
+  },
+  "107": {
+    "inputs": {
+      "lora_name": "ZITnsfwLoRA.safetensors",
+      "strength_model": 0,
+      "model": ["106", 0]
+    },
+    "class_type": "LoraLoaderModelOnly",
+    "_meta": {
+      "title": "Optional Effect LoRA Slot"
     }
   }
 }

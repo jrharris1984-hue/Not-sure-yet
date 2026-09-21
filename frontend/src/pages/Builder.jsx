@@ -65,6 +65,8 @@ export default function Builder() {
   const [tags, setTags] = useState([]);
   const [raunch, setRaunch] = useState(false);
   const [promptOverride, setPromptOverride] = useState("");
+  const [negativePromptOverride, setNegativePromptOverride] = useState("");
+  const [improvingPrompt, setImprovingPrompt] = useState(false);
   const [dispatching, setDispatching] = useState(false);
   const [activeRender, setActiveRender] = useState(null);
   const [workflowId, setWorkflowId] = useState("");
@@ -335,9 +337,34 @@ export default function Builder() {
   const likenessPrompt = useMemo(() => likenessTriggerText(subjects), [subjects]);
   const generatedPositive = likenessPrompt ? `${likenessPrompt}, ${positive}` : positive;
   const finalPositive = promptOverride || generatedPositive;
+  const finalNegative = negativePromptOverride || negative;
   useEffect(() => {
     setPromptOverride("");
-  }, [generatedPositive, workflowId]);
+    setNegativePromptOverride("");
+  }, [generatedPositive, negative, workflowId]);
+
+  const improveCompiledPrompt = async () => {
+    if (!finalPositive.trim()) {
+      toast.error("Build a prompt first");
+      return;
+    }
+    setImprovingPrompt(true);
+    try {
+      const result = await endpoints.aiImproveGeneratedPrompt(
+        finalPositive,
+        finalNegative,
+        promptStyle,
+        activeWorkflow?.name || ""
+      );
+      setPromptOverride(result.positive || finalPositive);
+      setNegativePromptOverride(result.negative || finalNegative);
+      toast.success("Venice improved the compiled prompt — review it before rendering");
+    } catch (error) {
+      toast.error(error?.response?.data?.detail || "Venice could not improve the prompt");
+    } finally {
+      setImprovingPrompt(false);
+    }
+  };
   const effectiveLoraOverrides = useMemo(
     () => ({ ...loraOverrides, ...likenessOverrides(subjects) }),
     [loraOverrides, subjects]
@@ -357,7 +384,7 @@ export default function Builder() {
         tags,
         raunch,
         prompt_positive: finalPositive,
-        prompt_negative: negative,
+        prompt_negative: finalNegative,
       };
       if (isNew) {
         const created = await endpoints.createCharacter(payload);
@@ -377,6 +404,11 @@ export default function Builder() {
   const doDispatch = async () => {
     if (!workflowId) {
       toast.error("Pick a workflow first (Settings → Workflow library)");
+      return;
+    }
+    const incompleteLikeness = subjects.find((subject) => subject?.likeness?.enabled && (!subject.likeness.node_id || !subject.likeness.lora_name));
+    if (incompleteLikeness) {
+      toast.error(`Finish the Likeness LoRA setup for Subject ${incompleteLikeness.label || "A"}`);
       return;
     }
     if (isFaceWorkflow && !referenceImage?.name) {
@@ -417,7 +449,7 @@ export default function Builder() {
         dna: subjects[0]?.dna || {},
         subjects: subjects.map((s) => ({ label: s.label, dna: s.dna, likeness: s.likeness })),
         prompt_positive: finalPositive,
-        prompt_negative: negative,
+        prompt_negative: finalNegative,
         workflow_id: workflowId,
         lora_overrides: effectiveLoraOverrides,
         width: isGoldenChroma ? chromaSettings.width : undefined,
@@ -852,16 +884,19 @@ export default function Builder() {
         <aside className="space-y-4 lg:sticky lg:top-20 lg:h-fit">
           <PromptPreview
             positive={finalPositive}
-            negative={negative}
+            negative={finalNegative}
             dna={activeDna}
             workflow={activeWorkflow}
             optimized={!!promptOverride}
+            improving={improvingPrompt}
+            onImprove={improveCompiledPrompt}
             onOptimize={(cleaned) => {
               setPromptOverride(cleaned);
               toast.success("Safe prompt cleanup applied");
             }}
             onRestore={() => {
               setPromptOverride("");
+              setNegativePromptOverride("");
               toast.success("Generated prompt restored");
             }}
           />

@@ -1,10 +1,10 @@
-import { Copy, Check, ShieldCheck, Wand2, Undo2, AlertTriangle } from "lucide-react";
+import { Copy, Check, ShieldCheck, Wand2, Undo2, AlertTriangle, Sparkles, Loader2 } from "lucide-react";
 import { useState, useMemo } from "react";
 import { toast } from "sonner";
 import { analyzePromptQuality, estimatePromptTokens } from "@/lib/promptQuality";
 
 // Rough CLIP tokenizer approximation: ~1 token per 4 chars, or per word split on punctuation.
-export default function PromptPreview({ positive, negative, dna, workflow, optimized, onOptimize, onRestore }) {
+export default function PromptPreview({ positive, negative, dna, workflow, optimized, improving, onImprove, onOptimize, onRestore }) {
   const [copied, setCopied] = useState(false);
   const tokens = useMemo(() => estimatePromptTokens(positive), [positive]);
   const quality = useMemo(() => analyzePromptQuality({ positive, dna, workflow }), [positive, dna, workflow]);
@@ -32,6 +32,17 @@ export default function PromptPreview({ positive, negative, dna, workflow, optim
           >
             ~{tokens} tok {overFlux ? "· FLUX cap" : overClip ? "· CLIP+" : "· CLIP-fit"}
           </span>
+          <button
+            onClick={onImprove}
+            disabled={improving || !positive}
+            data-testid="btn-venice-improve-prompt"
+            className="inline-flex items-center gap-1.5 rounded-md border border-purple-500/40 bg-purple-500/10 px-2.5 py-1.5 text-xs text-purple-200 hover:bg-purple-500/20 disabled:opacity-50"
+            title="Ask Venice to improve the compiled positive and negative prompts without changing selected DNA"
+          >
+            {improving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+            <span className="hidden sm:inline">{improving ? "Improving…" : "Improve with Venice"}</span>
+            <span className="sm:hidden">Venice</span>
+          </button>
           <button
             onClick={copy}
             data-testid="btn-copy-prompt"
