@@ -1,19 +1,70 @@
 import { useState, useMemo } from "react";
 import { createPortal } from "react-dom";
-import { Star, X, Search } from "lucide-react";
-import { STAR_PRESETS, HERITAGE_PRESETS, STORYBOOK_PRESETS, DEFAULT_DNA } from "@/lib/dna";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Star, X, Search, Wand2, Save, Trash2, Loader2 } from "lucide-react";
+import { toast } from "sonner";
+import { endpoints } from "@/lib/api";
+import { STAR_PRESETS, HERITAGE_PRESETS, STORYBOOK_PRESETS, DEFAULT_DNA, SECTIONS } from "@/lib/dna";
 import { Input } from "@/components/ui/input";
+
+const DNA_CATALOG = Object.fromEntries(SECTIONS.map((section) => [
+  section.key,
+  Object.fromEntries(section.fields.map((field) => [field.key, {
+    type: field.type,
+    options: field.groups ? field.groups.flatMap((group) => group.options) : (field.options || undefined),
+    min: field.min,
+    max: field.max,
+  }]))
+]));
 
 export default function PresetsMenu({ onApply, currentDna }) {
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
   const [category, setCategory] = useState("stars");
+  const [description, setDescription] = useState("");
+  const [draft, setDraft] = useState(null);
+  const qc = useQueryClient();
+  const { data: customPresets = [] } = useQuery({
+    queryKey: ["character-presets"],
+    queryFn: endpoints.listCharacterPresets,
+    enabled: open,
+  });
 
   const source = category === "heritage"
     ? HERITAGE_PRESETS
     : category === "storybook"
       ? STORYBOOK_PRESETS
+      : category === "custom"
+        ? customPresets
       : STAR_PRESETS;
+
+  const generate = useMutation({
+    mutationFn: () => endpoints.aiCharacterPreset(description.trim(), DNA_CATALOG),
+    onSuccess: (result) => {
+      setDraft(result);
+      toast.success("Venice created a preset draft");
+    },
+    onError: (error) => toast.error(error?.response?.data?.detail || "Venice could not create the preset"),
+  });
+  const savePreset = useMutation({
+    mutationFn: (preset) => endpoints.createCharacterPreset(preset),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["character-presets"] });
+      setDraft(null);
+      setDescription("");
+      setCategory("custom");
+      toast.success("Saved to My Presets");
+    },
+    onError: (error) => toast.error(error?.response?.data?.detail || "Could not save the preset"),
+  });
+  const deletePreset = useMutation({
+    mutationFn: endpoints.deleteCharacterPreset,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["character-presets"] });
+      toast.success("Preset deleted");
+    },
+    onError: (error) => toast.error(error?.response?.data?.detail || "Could not delete the preset"),
+  });
 
   const filtered = useMemo(() => {
     const query = q.trim().toLowerCase();
@@ -70,11 +121,12 @@ export default function PresetsMenu({ onApply, currentDna }) {
                 <X className="h-4 w-4" />
               </button>
             </div>
-            <div className="px-3 pt-3 grid grid-cols-3 gap-2 shrink-0" role="tablist" aria-label="Preset categories">
+            <div className="px-3 pt-3 grid grid-cols-4 gap-1.5 shrink-0" role="tablist" aria-label="Preset categories">
               {[
                 ["stars", "Styles"],
                 ["heritage", "Heritage"],
-                ["storybook", "Storybook 21+"],
+                ["storybook", "Storybook"],
+                ["custom", "My Presets"],
               ].map(([key, label]) => (
                 <button key={key} type="button" role="tab" aria-selected={category === key}
                   onClick={() => { setCategory(key); setQ(""); }}
@@ -96,25 +148,67 @@ export default function PresetsMenu({ onApply, currentDna }) {
               </div>
             </div>
             <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain scroll-fade p-3 grid content-start grid-cols-1 sm:grid-cols-2 gap-2">
-              {filtered.map((p) => (
-                <button
-                  key={p.name}
-                  onClick={() => apply(p)}
-                  data-testid={`preset-${p.name.replace(/\s+/g, "-")}`}
-                  className="text-left p-3 rounded-lg border hairline bg-elevated hover:border-rose-500/40 hover:bg-rose-500/5 transition-colors"
-                >
-                  <div className="font-display font-bold text-sm">{p.name}</div>
-                  <div className="mt-1.5 flex flex-wrap gap-1">
-                    {(p.tags || []).map((t) => (
-                      <span key={t} className="text-[10px] font-mono uppercase tracking-widest text-rose-300/90 bg-rose-500/10 border border-rose-500/30 rounded-full px-1.5 py-0.5">
-                        {t}
-                      </span>
-                    ))}
+              {category === "custom" && (
+                <div className="col-span-full rounded-xl border border-violet-500/30 bg-violet-500/5 p-3 space-y-3">
+                  <div>
+                    <div className="flex items-center gap-2 font-display font-bold text-sm text-violet-200">
+                      <Wand2 className="h-4 w-4" /> Create with Venice
+                    </div>
+                    <p className="mt-1 text-[11px] text-zinc-400">Describe the adult character you want. Venice can only select fields and values Ultra Studio supports.</p>
                   </div>
-                </button>
+                  <textarea value={description} onChange={(event) => setDescription(event.target.value)}
+                    placeholder="Example: A confident 42-year-old Colombian woman with an athletic hourglass build, long wavy black hair, warm editorial styling, and natural skin texture."
+                    className="w-full min-h-28 resize-y rounded-lg border hairline bg-elevated p-3 text-sm text-zinc-100 outline-none focus:border-violet-500/60"
+                    data-testid="input-venice-character-preset" />
+                  <button type="button" onClick={() => generate.mutate()}
+                    disabled={!description.trim() || generate.isPending}
+                    className="inline-flex items-center justify-center gap-2 rounded-lg bg-violet-500 px-3 py-2 text-sm font-semibold text-white hover:bg-violet-400 disabled:opacity-40"
+                    data-testid="btn-generate-character-preset">
+                    {generate.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />}
+                    {generate.isPending ? "Venice is designing…" : "Create preset draft"}
+                  </button>
+                  {draft && (
+                    <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-3 space-y-2">
+                      <Input value={draft.name || ""} onChange={(event) => setDraft({ ...draft, name: event.target.value })}
+                        className="bg-elevated border-hairline font-semibold" aria-label="Preset name" />
+                      <div className="flex flex-wrap gap-1">
+                        {(draft.tags || []).map((tag) => <span key={tag} className="rounded-full border border-violet-500/30 px-2 py-0.5 text-[10px] text-violet-200">{tag}</span>)}
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <button type="button" onClick={() => apply(draft)} className="rounded-lg border border-emerald-500/40 px-3 py-2 text-xs text-emerald-200">Preview & apply</button>
+                        <button type="button" onClick={() => savePreset.mutate({ ...draft, source: "venice" })}
+                          disabled={!draft.name?.trim() || savePreset.isPending}
+                          className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-emerald-500 px-3 py-2 text-xs font-semibold text-black disabled:opacity-40">
+                          <Save className="h-3.5 w-3.5" /> Save preset
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+              {filtered.map((p) => (
+                <div key={p.id || p.name} className="relative rounded-lg border hairline bg-elevated hover:border-rose-500/40 transition-colors">
+                  <button onClick={() => apply(p)} data-testid={`preset-${p.name.replace(/\s+/g, "-")}`}
+                    className="w-full text-left p-3 pr-10 rounded-lg hover:bg-rose-500/5">
+                    <div className="font-display font-bold text-sm">{p.name}</div>
+                    <div className="mt-1.5 flex flex-wrap gap-1">
+                      {(p.tags || []).map((t) => (
+                        <span key={t} className="text-[10px] font-mono uppercase tracking-widest text-rose-300/90 bg-rose-500/10 border border-rose-500/30 rounded-full px-1.5 py-0.5">{t}</span>
+                      ))}
+                    </div>
+                  </button>
+                  {category === "custom" && p.id && (
+                    <button type="button" onClick={() => { if (window.confirm(`Delete ${p.name}?`)) deletePreset.mutate(p.id); }}
+                      className="absolute right-2 top-2 h-7 w-7 grid place-items-center rounded-md text-zinc-500 hover:bg-red-500/10 hover:text-red-300"
+                      aria-label={`Delete ${p.name}`}><Trash2 className="h-3.5 w-3.5" /></button>
+                  )}
+                </div>
               ))}
-              {filtered.length === 0 && (
+              {filtered.length === 0 && category !== "custom" && (
                 <div className="col-span-full text-center text-sm text-zinc-500 py-8">No matches</div>
+              )}
+              {category === "custom" && filtered.length === 0 && (
+                <div className="col-span-full text-center text-sm text-zinc-500 py-5">No saved presets yet. Describe one above and let Venice build it.</div>
               )}
             </div>
             <div className="px-4 py-2.5 border-t hairline text-[11px] text-zinc-500">
