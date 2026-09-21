@@ -384,6 +384,78 @@ export function randomizeSection(sectionKey, current = {}, fieldLocks = {}, opti
   return out;
 }
 
+export const HERITAGE_VARIATION_FIELDS = {
+  physique: null,
+  face: null,
+  hair: null,
+  skin: null,
+  intimate: ["pubic_hair", "pussy", "nipples", "areolas"],
+  feet: ["sole_presentation", "pedicure", "foot_size", "hosiery"],
+  wardrobe: ["outfit_preset"],
+  pose: null,
+};
+
+// Builds a complete character around a selected heritage without touching Play,
+// fluids, selected acts, or the Explicit/Kink dials. null means every selectable
+// field in that section; an array limits the roll to the named fields.
+export function createHeritageCharacterVariation(
+  currentDna = DEFAULT_DNA,
+  presetDna = {},
+  sectionLocks = {},
+  fieldLocks = {}
+) {
+  const next = {};
+  Object.keys(DEFAULT_DNA).forEach((sectionKey) => {
+    next[sectionKey] = {
+      ...DEFAULT_DNA[sectionKey],
+      ...(currentDna?.[sectionKey] || {}),
+      ...(presetDna?.[sectionKey] || {}),
+    };
+  });
+
+  Object.entries(HERITAGE_VARIATION_FIELDS).forEach(([sectionKey, allowedFields]) => {
+    if (sectionLocks?.[sectionKey]) return;
+    const section = SECTIONS.find((item) => item.key === sectionKey);
+    if (!section) return;
+
+    const allowed = allowedFields ? new Set(allowedFields) : null;
+    const locksForSection = { ...(fieldLocks?.[sectionKey] || {}) };
+    section.fields.forEach((field) => {
+      if (allowed && !allowed.has(field.key)) locksForSection[field.key] = true;
+    });
+    next[sectionKey] = randomizeSection(
+      sectionKey,
+      next[sectionKey],
+      locksForSection,
+      { preserveProtected: true }
+    );
+  });
+
+  // Apply heritage, then restore every locked value. Locks always win over
+  // presets and randomization, including locks on non-randomized preset fields.
+  next.identity = { ...next.identity, ...(presetDna?.identity || {}) };
+  Object.entries(sectionLocks || {}).forEach(([sectionKey, locked]) => {
+    if (locked && currentDna?.[sectionKey]) next[sectionKey] = { ...currentDna[sectionKey] };
+  });
+  Object.entries(fieldLocks || {}).forEach(([sectionKey, lockedFields]) => {
+    Object.entries(lockedFields || {}).forEach(([fieldKey, locked]) => {
+      if (locked && currentDna?.[sectionKey]) {
+        next[sectionKey] = {
+          ...next[sectionKey],
+          [fieldKey]: currentDna[sectionKey][fieldKey],
+        };
+      }
+    });
+  });
+
+  // Clamp defensively so a saved/imported character can never be rolled below 21.
+  next.identity = {
+    ...next.identity,
+    age: Math.max(21, Number(next.identity?.age) || 21),
+  };
+  return next;
+}
+
 export function randomizeDna(current = {}, locks = {}, fieldLocks = {}) {
   const out = { ...current };
   SECTIONS.forEach((s) => {
