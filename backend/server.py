@@ -765,6 +765,23 @@ class KinkPresetBody(BaseModel):
     dna: Dict[str, Any]
 
 
+class CharacterPreset(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=new_id)
+    name: str = "Untitled character"
+    tags: List[str] = Field(default_factory=list)
+    dna: Dict[str, Any] = Field(default_factory=dict)
+    source: str = "manual"
+    created_at: str = Field(default_factory=now_iso)
+
+
+class CharacterPresetBody(BaseModel):
+    name: str
+    tags: Optional[List[str]] = None
+    dna: Dict[str, Any]
+    source: str = "manual"
+
+
 @api.get("/kink_presets")
 async def list_kink_presets():
     docs = await db.kink_presets.find({}, {"_id": 0}).sort("created_at", -1).to_list(500)
@@ -781,6 +798,34 @@ async def create_kink_preset(body: KinkPresetBody):
 @api.delete("/kink_presets/{pid}")
 async def delete_kink_preset(pid: str):
     await db.kink_presets.delete_one({"id": pid})
+    return {"ok": True}
+
+
+@api.get("/character_presets")
+async def list_character_presets():
+    return await db.character_presets.find({}, {"_id": 0}).sort("created_at", -1).to_list(500)
+
+
+@api.post("/character_presets", response_model=CharacterPreset)
+async def create_character_preset(body: CharacterPresetBody):
+    name = body.name.strip()
+    if not name:
+        raise HTTPException(400, "Preset name is required")
+    preset = CharacterPreset(
+        name=name[:100],
+        tags=(body.tags or [])[:20],
+        dna=body.dna,
+        source=body.source[:30] or "manual",
+    )
+    await db.character_presets.insert_one(preset.model_dump())
+    return preset
+
+
+@api.delete("/character_presets/{pid}")
+async def delete_character_preset(pid: str):
+    result = await db.character_presets.delete_one({"id": pid})
+    if result.deleted_count == 0:
+        raise HTTPException(404, "Character preset not found")
     return {"ok": True}
 
 
@@ -1966,6 +2011,11 @@ class RepairImageAnalysisBody(BaseModel):
     instruction: str = ""
 
 
+class CharacterPresetAiBody(BaseModel):
+    description: str
+    catalog: Dict[str, Any] = Field(default_factory=dict)
+
+
 DNA_SCHEMA_HINT = """The DNA object has these sections and example keys:
 - identity: { gender, age, ethnicity, archetype, name }
 - physique: { height, body_type, muscularity, curves, bust, proportions }
@@ -1990,6 +2040,70 @@ async def ai_freeform(body: FreeformBody):
     )
     out = await openrouter_chat(sys, body.text, response_format_json=True)
     return {"dna": extract_json(out)}
+
+
+@api.post("/ai/character-preset")
+async def ai_character_preset(body: CharacterPresetAiBody):
+    description = body.description.strip()
+    if not description:
+        raise HTTPException(400, "Describe the character first")
+    catalog_json = json.dumps(body.catalog, ensure_ascii=True)
+    if len(catalog_json) > 60000:
+        raise HTTPException(400, "DNA catalog is too large")
+    system = (
+        "You create reusable Ultra Studio character presets. Every depicted person must be an "
+        "adult age 21 or older. Convert the description into JSON with exactly these top-level "
+        "keys: name, tags, dna. name is a short original preset name. tags is an array of up to "
+        "six short search tags. dna contains only sections and fields present in the supplied "
+        "catalog. For fields with an options array, use only an exact listed value. For multi-value "
+        "fields, return an array of exact listed values. Slider values must remain within min and "
+        "max. Omit any field not supported by the description instead of inventing a conflicting "
+        "detail. Do not include markdown or commentary."
+    )
+    user = f"VALID ULTRA STUDIO CATALOG:\n{catalog_json}\n\nCHARACTER DESCRIPTION:\n{description}"
+    out = await openrouter_chat(system, user, response_format_json=True)
+    result = extract_json(out)
+    raw_dna = result.get("dna") if isinstance(result.get("dna"), dict) else {}
+    dna: Dict[str, Any] = {}
+    # Treat Venice as a proposer, not an authority: enforce the client-supplied
+    # catalog before anything reaches the builder or saved preset collection.
+    for section, fields in raw_dna.items():
+        allowed_fields = body.catalog.get(section)
+        if not isinstance(fields, dict) or not isinstance(allowed_fields, dict):
+            continue
+        clean_section: Dict[str, Any] = {}
+        for field, value in fields.items():
+            spec = allowed_fields.get(field)
+            if not isinstance(spec, dict):
+                continue
+            field_type = spec.get("type")
+            options = spec.get("options")
+            if field_type == "slider":
+                try:
+                    lower = float(spec.get("min", 0))
+                    upper = float(spec.get("max", 100))
+                    numeric = max(lower, min(upper, float(value)))
+                    if section == "identity" and field == "age":
+                        numeric = max(21, numeric)
+                    clean_section[field] = int(numeric) if numeric.is_integer() else numeric
+                except (TypeError, ValueError):
+                    continue
+            elif field_type == "chips_multi" and isinstance(value, list):
+                clean_section[field] = [item for item in value if not options or item in options]
+            elif options:
+                if value in options:
+                    clean_section[field] = value
+            elif isinstance(value, str):
+                clean_section[field] = value[:500]
+        if clean_section:
+            dna[section] = clean_section
+    if not dna:
+        raise HTTPException(502, "Venice did not return usable character DNA")
+    return {
+        "name": str(result.get("name") or "Venice Character")[:100],
+        "tags": [str(tag)[:40] for tag in (result.get("tags") or [])[:6]],
+        "dna": dna,
+    }
 
 
 @api.post("/ai/refine")
