@@ -1,4 +1,4 @@
-import { buildPrompts, randomizeDna, randomizeSection } from "./dna";
+import { DEFAULT_DNA, buildPrompts, randomizeDna, randomizeSection } from "./dna";
 import { buildPonyPrompts } from "./ponyPrompts";
 
 const protectedIntimate = {
@@ -63,5 +63,31 @@ describe("Feet and Play prompt priority", () => {
       expect(positive).toContain(value);
     });
     expect(positive.indexOf("sole licking")).toBeLessThan(positive.indexOf("35-year-old"));
+  });
+});
+
+
+describe("scenario intensity defaults", () => {
+  test("new characters start with Explicit and Kink at zero", () => {
+    expect(DEFAULT_DNA.scenario.explicit_level).toBe(0);
+    expect(DEFAULT_DNA.scenario.kink_level).toBe(0);
+  });
+
+  test("zero dials do not emit implicit explicit or kink intensity tags", () => {
+    const { positive } = buildPrompts(DEFAULT_DNA);
+    expect(positive).not.toContain("explicit adult content");
+    expect(positive).not.toContain("playful kink");
+    expect(positive).not.toContain("hardcore kink");
+    expect(positive).not.toContain("depraved XXX");
+  });
+
+  test("intentional slider values still emit model guidance", () => {
+    const dna = {
+      ...DEFAULT_DNA,
+      scenario: { ...DEFAULT_DNA.scenario, explicit_level: 70, kink_level: 70 },
+    };
+    const { positive } = buildPrompts(dna);
+    expect(positive).toContain("hardcore explicit adult scene");
+    expect(positive).toContain("hardcore kink scene");
   });
 });
