@@ -3,13 +3,15 @@ import { useState, useMemo } from "react";
 import { toast } from "sonner";
 import { analyzePromptQuality, estimatePromptTokens } from "@/lib/promptQuality";
 
-// Rough CLIP tokenizer approximation: ~1 token per 4 chars, or per word split on punctuation.
-export default function PromptPreview({ positive, negative, dna, workflow, optimized, improving, onImprove, onOptimize, onRestore }) {
+export default function PromptPreview({ positive, negative, dna, workflow, context, optimized, improving, onImprove, onOptimize, onRestore }) {
   const [copied, setCopied] = useState(false);
   const tokens = useMemo(() => estimatePromptTokens(positive), [positive]);
-  const quality = useMemo(() => analyzePromptQuality({ positive, dna, workflow }), [positive, dna, workflow]);
-  const overClip = tokens > 77;
-  const overFlux = tokens > 512;
+  const quality = useMemo(
+    () => analyzePromptQuality({ positive, dna, workflow, context }),
+    [positive, dna, workflow, context]
+  );
+  const lengthIssue = quality.issues.find((item) => item.code === "length");
+  const hasBlockingIssue = quality.blockers.length > 0;
   const copy = () => {
     navigator.clipboard.writeText(positive || "");
     setCopied(true);
@@ -24,13 +26,13 @@ export default function PromptPreview({ positive, negative, dna, workflow, optim
           <span
             data-testid="prompt-token-count"
             className={`text-[10px] font-mono px-1.5 py-0.5 rounded ${
-              overFlux ? "bg-red-500/20 text-red-300 border border-red-500/40"
-              : overClip ? "bg-amber-500/15 text-amber-300 border border-amber-500/40"
+              lengthIssue?.severity === "error" ? "bg-red-500/20 text-red-300 border border-red-500/40"
+              : lengthIssue ? "bg-amber-500/15 text-amber-300 border border-amber-500/40"
               : "bg-emerald-500/10 text-emerald-300 border border-emerald-500/30"
             }`}
-            title={overClip ? "Over CLIP 77-token limit — early tokens carry most weight" : "Within CLIP window"}
+            title={`Estimated length for ${quality.profileLabel}`}
           >
-            ~{tokens} tok {overFlux ? "· FLUX cap" : overClip ? "· CLIP+" : "· CLIP-fit"}
+            ~{tokens} tok · {quality.profileLabel}
           </span>
           <button
             onClick={onImprove}
@@ -59,11 +61,13 @@ export default function PromptPreview({ positive, negative, dna, workflow, optim
       <div className="rounded-lg border hairline bg-black/20 p-3 space-y-2" data-testid="prompt-quality-preflight">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">
-            {quality.issues.some((issue) => issue.severity === "error")
+            {hasBlockingIssue || quality.issues.some((item) => item.severity === "error")
               ? <AlertTriangle className="h-4 w-4 text-red-300" />
               : <ShieldCheck className="h-4 w-4 text-emerald-300" />}
-            <span className="text-xs font-semibold text-zinc-200">Prompt quality</span>
-            <span className="text-[10px] font-mono text-zinc-500">{quality.score}/100 · {quality.profileLabel}</span>
+            <span className="text-xs font-semibold text-zinc-200">Generation preflight</span>
+            <span className={`text-[10px] font-mono ${hasBlockingIssue ? "text-red-300" : "text-zinc-500"}`}>
+              {hasBlockingIssue ? "Not ready" : `${quality.score}/100`} · {quality.profileLabel}
+            </span>
           </div>
           {optimized ? (
             <button onClick={onRestore} className="inline-flex items-center gap-1 text-[11px] text-zinc-300 hover:text-white" data-testid="btn-restore-generated-prompt">
@@ -78,13 +82,13 @@ export default function PromptPreview({ positive, negative, dna, workflow, optim
         {optimized && <div className="text-[10px] text-emerald-300">Safe cleanup is active and will be sent to ComfyUI.</div>}
         {quality.issues.length ? (
           <ul className="space-y-1">
-            {quality.issues.slice(0, 4).map((issue) => (
-              <li key={issue.code} className={`text-[10px] leading-relaxed ${issue.severity === "error" ? "text-red-300" : issue.severity === "warning" ? "text-amber-200" : "text-zinc-400"}`}>
-                {issue.message}
+            {quality.issues.slice(0, 6).map((item) => (
+              <li key={item.code} className={`text-[10px] leading-relaxed ${item.severity === "error" ? "text-red-300" : item.severity === "warning" ? "text-amber-200" : "text-zinc-400"}`}>
+                {item.message}
               </li>
             ))}
           </ul>
-        ) : <div className="text-[10px] text-emerald-300">No obvious prompt conflicts or dilution detected.</div>}
+        ) : <div className="text-[10px] text-emerald-300">Ready to render. No obvious conflicts or missing requirements detected.</div>}
       </div>
       <div className="section-label">Negative</div>
       <pre className="text-[11px] font-mono leading-relaxed bg-elevated rounded-lg p-3 border hairline whitespace-pre-wrap break-words text-zinc-400 max-h-40 overflow-y-auto">

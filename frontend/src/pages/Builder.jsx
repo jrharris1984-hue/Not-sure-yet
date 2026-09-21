@@ -12,6 +12,7 @@ import {
   expectedSubjectCount, seedSubjectFromPairing,
 } from "@/lib/dna";
 import { compileModelPrompts, resolvePromptCompiler } from "@/lib/modelPromptCompilers";
+import { analyzePromptQuality } from "@/lib/promptQuality";
 import DnaSection from "@/components/DnaSection";
 import PromptPreview from "@/components/PromptPreview";
 import AiAssistBar from "@/components/AiAssistBar";
@@ -359,6 +360,17 @@ export default function Builder() {
     positiveBeforeLoraTriggers
   );
   const finalNegative = negativePromptOverride || negative;
+  const preflightContext = useMemo(() => ({
+    hasReferenceImage: !!referenceImage?.name,
+    editInstruction: isEnhanceWorkflow
+      ? (repairInstruction || repairTargets.join(", "))
+      : editInstruction,
+    videoInstruction,
+    subjectCount: subjects.length,
+  }), [
+    referenceImage?.name, isEnhanceWorkflow, repairInstruction,
+    repairTargets, editInstruction, videoInstruction, subjects.length,
+  ]);
   useEffect(() => {
     setPromptOverride("");
     setNegativePromptOverride("");
@@ -425,6 +437,16 @@ export default function Builder() {
   const doDispatch = async () => {
     if (!workflowId) {
       toast.error("Pick a workflow first (Settings → Workflow library)");
+      return;
+    }
+    const preflight = analyzePromptQuality({
+      positive: finalPositive,
+      dna: activeDna,
+      workflow: activeWorkflow,
+      context: preflightContext,
+    });
+    if (preflight.blockers.length) {
+      toast.error(preflight.blockers[0].message);
       return;
     }
     const incompleteLikeness = subjects.find((subject) => subject?.likeness?.enabled && (!subject.likeness.node_id || !subject.likeness.lora_name));
@@ -910,6 +932,7 @@ export default function Builder() {
             negative={finalNegative}
             dna={activeDna}
             workflow={activeWorkflow}
+            context={preflightContext}
             optimized={!!promptOverride}
             improving={improvingPrompt}
             onImprove={improveCompiledPrompt}
