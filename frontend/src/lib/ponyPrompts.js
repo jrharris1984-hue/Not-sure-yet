@@ -176,17 +176,16 @@ export function buildPonyPrompts(dna = {}, opts = {}) {
     shared.ratingTag,
     shared.countTag,
     shared.pairingTag,
+    shared.scenario,
+    subject.playPriority,
+    subject.feetPriority,
     subject.subject,
     subject.face,
     subject.hair,
     subject.outfit,
     subject.pose,
-    subject.feet,
     subject.intimate,
     subject.fluids,
-    subject.kink,
-    subject.watersports,
-    shared.scenario,
     shared.scene,
     shared.lighting,
     shared.camera,
@@ -207,16 +206,25 @@ export function buildMultiPonyPrompts(subjects = [], opts = {}) {
   const clauses = subjects.map((s) => {
     const clause = _ponySubjectBlock(s.dna || {}, opts);
     const label = s.label || "A";
-    return `[Subject ${label}: ${_join([clause.subject, clause.face, clause.hair, clause.outfit, clause.pose, clause.feet, clause.intimate, clause.fluids, clause.kink, clause.watersports])}]`;
+    return `[Subject ${label}: ${_join([clause.subject, clause.face, clause.hair, clause.outfit, clause.pose, clause.intimate, clause.fluids])}]`;
   });
+  const priorities = subjects.map((s) => {
+    const clause = _ponySubjectBlock(s.dna || {}, opts);
+    const label = s.label || "A";
+    return _join([
+      clause.playPriority && `Subject_${label}_${clause.playPriority}`,
+      clause.feetPriority && `Subject_${label}_${clause.feetPriority}`,
+    ]);
+  }).filter(Boolean).join(", ");
   const positive = _join([
     shared.qualityPrefix,
     shared.ratingTag,
     shared.countTag,
     shared.pairingTag,
     "separated_subjects, all_subjects_visible, distinct_bodies",
-    clauses.join(", "),
     shared.scenario,
+    priorities,
+    clauses.join(", "),
     shared.scene,
     shared.lighting,
     shared.camera,
@@ -445,8 +453,14 @@ function _ponySubjectBlock(dna = {}, opts = {}) {
     (Array.isArray(ft.foot_act) && ft.foot_act.length) || ft.framing);
   const feetStr = join([
     tag("feet", "sole_presentation", ft.sole_presentation),
+    tagArr("feet", "toes", ft.toes),
+    tag("feet", "arch", ft.arch),
+    tag("feet", "pedicure", ft.pedicure),
+    ft.foot_size && ft.foot_size !== "average" && tag("feet", "foot_size", ft.foot_size),
+    tagArr("feet", "foot_state", ft.foot_state),
     tagArr("feet", "foot_act", ft.foot_act),
     ft.hosiery && ft.hosiery !== "bare" && exp("feet", "hosiery"),
+    ft.framing && tag("feet", "framing", ft.framing),
     (ft.foot_act && ft.foot_act.length) || (ft.sole_presentation) ? w("foot_focus, feet_focus", 1.25) : "",
     feetActive && w("five_toes, toenails, sole, heel, arch, ankle, human_feet, correct_foot_anatomy", 1.3),
   ]);
@@ -456,6 +470,7 @@ function _ponySubjectBlock(dna = {}, opts = {}) {
     tagArr("kink", "restraint", kk.restraint),
     tagArr("kink", "gag", kk.gag),
     tagArr("kink", "marks", kk.marks),
+    tagArr("kink", "sensation", kk.sensation),
     tagArr("kink", "humiliation", kk.humiliation),
     tagArr("kink", "orgasm_control", kk.orgasm_control),
     tagArr("kink", "group_kink", kk.group_kink),
@@ -472,11 +487,17 @@ function _ponySubjectBlock(dna = {}, opts = {}) {
     tag("watersports", "container", ws.container),
     tagArr("watersports", "wetness", ws.wetness),
     tag("watersports", "desperation", ws.desperation),
+    tagArr("watersports", "aftermath", ws.aftermath),
   ]) : "";
+
+  const feetPriority = feetStr ? w(feetStr, 1.45) : "";
+  const playCore = join([kinkStr, wsStr]);
+  const playPriority = playCore ? w(playCore, 1.4) : "";
 
   return {
     subject, face: faceStr, hair: hairStr, outfit: outfitStr, pose: poseStr,
     intimate: intimateStr, fluids: fluidsStr, feet: feetStr, kink: kinkStr, watersports: wsStr,
+    feetPriority, playPriority,
   };
 }
 
@@ -495,4 +516,3 @@ function _ponyNegative(multiSubject) {
     "text, watermark, signature, logo, censored, mosaic, black bar",
   ].filter(Boolean).join(", ");
 }
-

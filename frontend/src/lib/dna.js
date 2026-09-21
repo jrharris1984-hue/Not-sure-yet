@@ -352,11 +352,21 @@ export const DEFAULT_DNA = SECTIONS.reduce((acc, s) => {
 
 const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
 
-export function randomizeSection(sectionKey, current = {}, fieldLocks = {}) {
+// Global/section randomize should not unexpectedly add fluids, mess, hosiery,
+// or foot-play choices. Those remain user-controlled; Wet Dream is the explicit
+// opt-in randomizer for them.
+export const RANDOMIZE_PROTECTED_FIELDS = {
+  intimate: new Set(["cum_state", "saliva", "squirt", "sweat", "lube", "tears"]),
+  feet: new Set(["foot_state", "hosiery", "foot_act"]),
+};
+
+export function randomizeSection(sectionKey, current = {}, fieldLocks = {}, options = {}) {
   const section = SECTIONS.find((s) => s.key === sectionKey);
   const out = { ...current };
+  const preserveProtected = options.preserveProtected !== false;
   section.fields.forEach((f) => {
     if (fieldLocks?.[f.key]) return; // per-field lock — keep current value
+    if (preserveProtected && RANDOMIZE_PROTECTED_FIELDS[sectionKey]?.has(f.key)) return;
     if (f.type === "chips" || f.type === "pose_chips") {
       const pool = f.groups ? f.groups.flatMap((g) => g.options) : (f.options || []);
       if (pool.length) out[f.key] = pick(pool);
@@ -421,7 +431,7 @@ export function randomizeWetDream(current = {}, locks = {}) {
   const targets = ["feet", "kink", "watersports"];
   targets.forEach((k) => {
     if (locks[k]) return;
-    out[k] = randomizeSection(k, current[k] || {});
+    out[k] = randomizeSection(k, current[k] || {}, {}, { preserveProtected: false });
   });
   // Intimate — only shuffle the fluids/mess sub-block, keep anatomy fields intact
   if (!locks.intimate) {
@@ -605,17 +615,16 @@ export function buildPrompts(dna = {}, opts = {}) {
   const positive = _join([
     shared.qualityLead,
     shared.castHeadcount,
+    shared.scenario && `PRIMARY SCENE ACTION — ${shared.scenario}`,
+    subject.playPriority,
+    subject.feetPriority,
     subject.subject,
     subject.outfit,
     subject.pose,
-    subject.feet,
     shared.scene,
     shared.lighting,
     shared.camera,
     shared.style,
-    shared.scenario,
-    subject.kink,
-    subject.watersports,
     subject.intimate,
     subject.fluids,
     shared.anatomy(subject.hasExplicit || shared.hasExplicit),
@@ -648,22 +657,31 @@ export function buildMultiVenicePrompts(subjects = [], opts = {}) {
     const clause = _veniceSubjectBlock(subjectDna, opts);
     const label = s.label || "A";
     return `Subject ${label} (${_subjectShortDescriptor(subjectDna)}): ${_join([
-      clause.subject, clause.outfit, clause.pose, clause.feet,
-      clause.kink, clause.watersports, clause.intimate, clause.fluids,
+      clause.subject, clause.outfit, clause.pose,
+      clause.intimate, clause.fluids,
     ])}`;
   });
+  const priorityClauses = subjects.map((s) => {
+    const clause = _veniceSubjectBlock(s.dna || {}, opts);
+    const label = s.label || "A";
+    return _join([
+      clause.playPriority && `Subject ${label} ${clause.playPriority}`,
+      clause.feetPriority && `Subject ${label} ${clause.feetPriority}`,
+    ], "; ");
+  }).filter(Boolean).join("; ");
   const anyExplicit = subjects.some((s) => _veniceSubjectBlock(s.dna || {}, opts).hasExplicit) || shared.hasExplicit;
   const positive = _join([
     shared.qualityLead,
     shared.castHeadcount,
     "clearly separated subjects, all subjects fully visible in the frame with distinct bodies and faces",
     familyScene && "all depicted people are adults age 21 or older, recognizable shared family resemblance in facial structure and heritage while preserving distinct adult identities",
+    shared.scenario && `PRIMARY SCENE ACTION — ${shared.scenario}`,
+    priorityClauses,
     clauses.join("; "),
     shared.scene,
     shared.lighting,
     shared.camera,
     shared.style,
-    shared.scenario,
     shared.anatomy(anyExplicit),
     shared.qualityTail,
   ]);
@@ -986,6 +1004,13 @@ function _veniceSubjectBlock(dna = {}, opts = {}) {
     expArr("watersports", "aftermath"),
   ]);
 
+  // Selected Feet and Play controls are compositional requirements, not minor
+  // styling hints. Promote them ahead of appearance details so long prompts do
+  // not cause the text encoder/model to ignore the requested action or framing.
+  const feetPriority = feetStr ? `PRIMARY FEET COMPOSITION — visibly and unambiguously show ${feetStr}` : "";
+  const playCore = join([kinkStr, wsStr]);
+  const playPriority = playCore ? `PRIMARY PLAY DETAILS — visibly depict ${playCore}` : "";
+
   return {
     subject,
     outfit,
@@ -995,6 +1020,8 @@ function _veniceSubjectBlock(dna = {}, opts = {}) {
     fluids: fluidsStr,
     kink: kinkStr,
     watersports: wsStr,
+    feetPriority,
+    playPriority,
     hasExplicit: !!(intimateStr || fluidsStr || kinkStr || wsStr),
   };
 }
