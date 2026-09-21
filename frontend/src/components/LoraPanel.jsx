@@ -41,8 +41,6 @@ export default function LoraPanel({ workflowId, workflow, dna, values, onChange 
   );
   const recognizedCount = useMemo(() => registryForInstalled(installed).length, [installed]);
 
-  if (!loras.length) return null;
-
   const cur = (nid) => values[nid] || defaults[nid] ||
     { lora_name: "", strength_model: 1, strength_clip: 1 };
 
@@ -112,6 +110,8 @@ export default function LoraPanel({ workflowId, workflow, dna, values, onChange 
   }, [mode, loras, defaults, plan]);
 
   const family = workflowFamily(workflow || {});
+
+  if (!loras.length) return null;
 
   return (
     <div className="pane p-4 space-y-4" data-testid="lora-panel">
