@@ -141,9 +141,10 @@ powershell -ExecutionPolicy Bypass -File .\scripts\install-zimage-pee-lora.ps1
 ```
 
 Restart ComfyUI (or rescan models), refresh Ultra Studio, choose the LoRA in
-**LoRA weights → Optional Effect LoRA Slot**, and raise model strength from
-`0.00` only for renders that need the effect. Use optional LoRAs only with a
-compatible base model.
+the matching **LoRA weights** slot. The Z-Image workflow provides independent
+**Quality**, **Body**, and **Action** slots. Selecting a file applies a
+conservative starting strength; resetting a slot returns it to the disabled
+`0.00` default. Use optional LoRAs only with a compatible base model.
 
 For a menu of verified Z-Image Turbo quality, body, wardrobe, and optional
 adult-effect LoRAs, use the curated downloader instead:

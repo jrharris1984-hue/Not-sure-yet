@@ -98,7 +98,7 @@
     "inputs": {
       "shift": 3,
       "model": [
-        "107",
+        "109",
         0
       ]
     },
@@ -258,7 +258,29 @@
     },
     "class_type": "LoraLoaderModelOnly",
     "_meta": {
-      "title": "Optional Effect LoRA Slot"
+      "title": "Optional Quality LoRA Slot"
+    }
+  },
+  "108": {
+    "inputs": {
+      "lora_name": "ZITnsfwLoRA.safetensors",
+      "strength_model": 0,
+      "model": ["107", 0]
+    },
+    "class_type": "LoraLoaderModelOnly",
+    "_meta": {
+      "title": "Optional Body LoRA Slot"
+    }
+  },
+  "109": {
+    "inputs": {
+      "lora_name": "ZITnsfwLoRA.safetensors",
+      "strength_model": 0,
+      "model": ["108", 0]
+    },
+    "class_type": "LoraLoaderModelOnly",
+    "_meta": {
+      "title": "Optional Action LoRA Slot"
     }
   }
 }

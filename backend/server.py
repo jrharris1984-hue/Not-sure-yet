@@ -222,6 +222,8 @@ def _detect_loras(wf: Dict[str, Any]) -> List[Dict[str, Any]]:
             name = inputs.get("lora_name", "")
             title = str(node.get("_meta", {}).get("title", ""))
             title_lower = title.lower()
+            optional_slot = title_lower.startswith("optional ") and " lora slot" in title_lower
+            slot_kind = next((kind for kind in ("quality", "body", "action", "effect") if kind in title_lower), "")
             # derive a short label from filename
             label = os.path.basename(str(name).replace("\\", "/")).replace(".safetensors", "").replace("_", " ").replace("-", " ")
             out.append({
@@ -233,7 +235,8 @@ def _detect_loras(wf: Dict[str, Any]) -> List[Dict[str, Any]]:
                 "strength_clip": float(inputs.get("strength_clip", 1.0) or 0),
                 "supports_clip": "strength_clip" in inputs,
                 "dedicated_likeness": "likeness lora slot" in title_lower,
-                "optional_slot": "optional effect lora slot" in title_lower,
+                "optional_slot": optional_slot,
+                "slot_kind": slot_kind,
             })
     return out
 

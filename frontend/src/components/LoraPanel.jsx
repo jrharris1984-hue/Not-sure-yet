@@ -33,6 +33,18 @@ export default function LoraPanel({ workflowId, values, onChange }) {
       [nid]: { ...(values[nid] || defaults[nid] || {}), [key]: v },
     });
   };
+  const setOptionalName = (lora, name) => {
+    const current = cur(lora.node_id);
+    const suggested = lora.slot_kind === "quality" ? 0.4 : lora.slot_kind === "body" ? 0.5 : 0.7;
+    onChange({
+      ...values,
+      [lora.node_id]: {
+        ...current,
+        lora_name: name,
+        strength_model: name && Number(current.strength_model) === 0 ? suggested : current.strength_model,
+      },
+    });
+  };
   const reset = (nid) => {
     const next = { ...values };
     delete next[nid];
@@ -45,7 +57,7 @@ export default function LoraPanel({ workflowId, values, onChange }) {
       <div className="flex items-center gap-2">
         <Sparkles className="h-4 w-4 text-amber-400" />
         <div className="section-label">LoRA weights</div>
-        <span className="text-[10px] font-mono text-zinc-500">{loras.length} loaded</span>
+        <span className="text-[10px] font-mono text-zinc-500">{loras.length} nodes</span>
       </div>
       <div className="space-y-3">
         {loras.map((l) => {
@@ -65,17 +77,17 @@ export default function LoraPanel({ workflowId, values, onChange }) {
               </div>
               {l.optional_slot && (
                 <label className="block space-y-1">
-                  <span className="text-[10px] font-mono text-zinc-400">INSTALLED EFFECT LORA</span>
+                  <span className="text-[10px] font-mono text-zinc-400">INSTALLED {(l.slot_kind || "OPTIONAL").toUpperCase()} LORA</span>
                   <select
                     value={c.lora_name || l.lora_name}
-                    onChange={(e) => setW(l.node_id, "lora_name", e.target.value)}
+                    onChange={(e) => setOptionalName(l, e.target.value)}
                     className="w-full bg-elevated border border-hairline rounded-lg px-3 py-2 text-xs"
                     data-testid={`select-lora-${l.node_id}`}
                   >
                     <option value="">Select an installed LoRA…</option>
                     {installed.map((name) => <option key={name} value={name}>{name}</option>)}
                   </select>
-                  <p className="text-[10px] text-zinc-500">Use only a LoRA trained for this workflow's base model.</p>
+                  <p className="text-[10px] text-zinc-500">Selecting a LoRA applies a conservative starting strength. Use only Z-Image-compatible LoRAs.</p>
                 </label>
               )}
               <label className="block space-y-1">
