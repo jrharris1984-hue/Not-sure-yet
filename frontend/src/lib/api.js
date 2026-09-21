@@ -66,6 +66,8 @@ export const endpoints = {
   workflowLoras: (id) => api.get(`/workflows/${id}/loras`).then((r) => r.data),
   comfyLoras: () => api.get("/comfyui/loras").then((r) => r.data),
   aiFreeform: (text) => api.post("/ai/freeform", { text }).then((r) => r.data),
+  aiCharacterPreset: (description, catalog) =>
+    api.post("/ai/character-preset", { description, catalog }).then((r) => r.data),
   aiRefine: (dna, instruction) => api.post("/ai/refine", { dna, instruction }).then((r) => r.data),
   aiEditPrompt: (instruction, preserveUnmentioned = true) =>
     api.post("/ai/edit-prompt", {
@@ -96,4 +98,8 @@ export const endpoints = {
   listKinkPresets: () => api.get("/kink_presets").then((r) => r.data),
   createKinkPreset: (body) => api.post("/kink_presets", body).then((r) => r.data),
   deleteKinkPreset: (id) => api.delete(`/kink_presets/${id}`).then((r) => r.data),
+  // Reusable full-character presets
+  listCharacterPresets: () => api.get("/character_presets").then((r) => r.data),
+  createCharacterPreset: (body) => api.post("/character_presets", body).then((r) => r.data),
+  deleteCharacterPreset: (id) => api.delete(`/character_presets/${id}`).then((r) => r.data),
 };
