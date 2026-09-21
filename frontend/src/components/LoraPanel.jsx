@@ -6,7 +6,7 @@ import { planLoras, registryForInstalled, workflowFamily } from "@/lib/loraRegis
 
 const MODE_KEY = "ultra-studio-lora-planner-mode";
 
-export default function LoraPanel({ workflowId, workflow, dna, values, onChange }) {
+export default function LoraPanel({ workflowId, workflow, dna, values, onChange, onPlanChange }) {
   const [loras, setLoras] = useState([]);
   const [defaults, setDefaults] = useState({});
   const [installed, setInstalled] = useState([]);
@@ -92,11 +92,25 @@ export default function LoraPanel({ workflowId, workflow, dna, values, onChange 
     return next;
   };
 
-  const applyPlan = () => onChange(buildPlannedOverrides());
+  const notifyPlan = () => {
+    onPlanChange?.({
+      family: plan.family,
+      selected: plan.selected.map(({ id, label, slot, installedName, defaultStrength }) => ({
+        id, label, slot, installedName, defaultStrength,
+      })),
+      triggerWords: [...new Set(plan.selected.flatMap((entry) => entry.triggerWords || []))],
+    });
+  };
+
+  const applyPlan = () => {
+    onChange(buildPlannedOverrides());
+    notifyPlan();
+  };
 
   const changeMode = (nextMode) => {
     setMode(nextMode);
     localStorage.setItem(MODE_KEY, nextMode);
+    if (nextMode === "manual") onPlanChange?.({ family, selected: [], triggerWords: [] });
   };
 
   // Automatic mode continuously follows DNA changes. Compare serialized values
@@ -105,6 +119,7 @@ export default function LoraPanel({ workflowId, workflow, dna, values, onChange 
     if (mode !== "automatic" || !loras.length) return;
     const next = buildPlannedOverrides();
     if (JSON.stringify(next) !== JSON.stringify(values)) onChange(next);
+    notifyPlan();
     // values/onChange are intentionally excluded: this effect is driven by the plan.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode, loras, defaults, plan]);
