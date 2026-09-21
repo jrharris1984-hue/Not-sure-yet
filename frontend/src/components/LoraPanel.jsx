@@ -2,7 +2,13 @@ import { useEffect, useMemo, useState } from "react";
 import { Slider } from "@/components/ui/slider";
 import { Sparkles, RotateCcw, WandSparkles, ShieldCheck, AlertTriangle } from "lucide-react";
 import { endpoints } from "@/lib/api";
-import { planLoras, registryForInstalled, workflowFamily } from "@/lib/loraRegistry";
+import {
+  planLoras,
+  registryForInstalled,
+  compatibleRegistryForWorkflow,
+  loraStackHealth,
+  workflowFamily,
+} from "@/lib/loraRegistry";
 
 const MODE_KEY = "ultra-studio-lora-planner-mode";
 
@@ -39,7 +45,27 @@ export default function LoraPanel({ workflowId, workflow, dna, values, onChange,
     () => planLoras({ workflow: workflow || {}, dna: dna || {}, installed }),
     [workflow, dna, installed]
   );
-  const recognizedCount = useMemo(() => registryForInstalled(installed).length, [installed]);
+  const recognizedEntries = useMemo(() => registryForInstalled(installed), [installed]);
+  const recognizedCount = recognizedEntries.length;
+  const compatibleEntries = useMemo(
+    () => compatibleRegistryForWorkflow(workflow || {}, installed),
+    [workflow, installed]
+  );
+  const combinedOverrides = useMemo(() => {
+    const combined = {};
+    loras.forEach((lora) => {
+      combined[lora.node_id] = values[lora.node_id] || defaults[lora.node_id] || {
+        lora_name: lora.lora_name,
+        strength_model: lora.strength_model,
+        strength_clip: lora.strength_clip,
+      };
+    });
+    return combined;
+  }, [loras, values, defaults]);
+  const stackHealth = useMemo(
+    () => loraStackHealth({ workflow: workflow || {}, overrides: combinedOverrides, installed }),
+    [workflow, combinedOverrides, installed]
+  );
 
   const cur = (nid) => values[nid] || defaults[nid] ||
     { lora_name: "", strength_model: 1, strength_clip: 1 };
@@ -95,8 +121,8 @@ export default function LoraPanel({ workflowId, workflow, dna, values, onChange,
   const notifyPlan = () => {
     onPlanChange?.({
       family: plan.family,
-      selected: plan.selected.map(({ id, label, slot, installedName, defaultStrength }) => ({
-        id, label, slot, installedName, defaultStrength,
+      selected: plan.selected.map(({ id, label, slot, installedName, defaultStrength, reason }) => ({
+        id, label, slot, installedName, defaultStrength, reason,
       })),
       triggerWords: [...new Set(plan.selected.flatMap((entry) => entry.triggerWords || []))],
     });
@@ -158,6 +184,29 @@ export default function LoraPanel({ workflowId, workflow, dna, values, onChange,
         ))}
       </div>
 
+      <div className={`rounded-lg border p-3 space-y-2 ${stackHealth.status === "healthy"
+        ? "border-emerald-500/25 bg-emerald-500/5"
+        : "border-amber-500/30 bg-amber-500/5"}`} data-testid="lora-stack-health">
+        <div className="flex items-center gap-2">
+          {stackHealth.status === "healthy"
+            ? <ShieldCheck className="h-4 w-4 text-emerald-400" />
+            : <AlertTriangle className="h-4 w-4 text-amber-300" />}
+          <span className="text-xs font-semibold">Stack {stackHealth.status === "healthy" ? "healthy" : "needs review"}</span>
+          <span className="ml-auto text-[10px] font-mono text-zinc-400">
+            optional {stackHealth.totalStrength.toFixed(2)} / {stackHealth.budget.toFixed(2)}
+          </span>
+        </div>
+        <div className="h-1.5 overflow-hidden rounded-full bg-black/30">
+          <div className={`h-full rounded-full ${stackHealth.totalStrength > stackHealth.budget ? "bg-red-400" : "bg-emerald-400"}`}
+            style={{ width: `${Math.min(100, (stackHealth.totalStrength / Math.max(stackHealth.budget, 0.01)) * 100)}%` }} />
+        </div>
+        {stackHealth.warnings.slice(0, 4).map((warning) => (
+          <div key={warning} className="flex gap-2 text-[10px] text-amber-200">
+            <AlertTriangle className="h-3.5 w-3.5 shrink-0" />{warning}
+          </div>
+        ))}
+      </div>
+
       {mode !== "manual" && (
         <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-3 space-y-2" data-testid="lora-plan">
           <div className="flex items-center gap-2">
@@ -169,7 +218,10 @@ export default function LoraPanel({ workflowId, workflow, dna, values, onChange,
               {plan.selected.map((entry) => (
                 <div key={entry.id} className="flex items-center gap-2 text-[11px]">
                   <ShieldCheck className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
-                  <span className="text-zinc-200 flex-1">{entry.label}</span>
+                  <span className="text-zinc-200 flex-1">
+                    {entry.label}
+                    <span className="block text-[9px] font-normal text-zinc-500">{entry.reason}</span>
+                  </span>
                   <span className="font-mono uppercase text-zinc-500">{entry.slot}</span>
                   <span className="font-mono text-amber-300">{entry.defaultStrength.toFixed(2)}</span>
                 </div>
@@ -204,6 +256,11 @@ export default function LoraPanel({ workflowId, workflow, dna, values, onChange,
       <div className="space-y-3">
         {loras.map((lora) => {
           const c = cur(lora.node_id);
+          const selectedRegistryEntry = recognizedEntries.find((entry) => entry.installedName === c.lora_name);
+          const sliderMin = lora.optional_slot && selectedRegistryEntry ? 0 : -3;
+          const sliderMax = lora.optional_slot && selectedRegistryEntry
+            ? Math.max(selectedRegistryEntry.maxStrength, selectedRegistryEntry.defaultStrength)
+            : 3;
           return (
             <div key={lora.node_id} className="rounded-md border hairline bg-elevated p-3 space-y-2" data-testid={`lora-${lora.node_id}`}>
               <div className="flex items-center gap-2">
@@ -232,12 +289,15 @@ export default function LoraPanel({ workflowId, workflow, dna, values, onChange,
                     disabled={mode === "automatic"}
                   >
                     <option value="">Select an installed LoRA…</option>
-                    {installed.map((name) => <option key={name} value={name}>{name}</option>)}
+                    {(mode === "manual" ? installed : compatibleEntries.map((entry) => entry.installedName))
+                      .map((name) => <option key={name} value={name}>{name}</option>)}
                   </select>
                   <p className="text-[10px] text-zinc-500">
                     {mode === "automatic"
                       ? "Automatic mode controls this slot."
-                      : "Only model-compatible LoRAs should be selected."}
+                      : mode === "assisted"
+                        ? `Showing ${compatibleEntries.length} installed LoRA${compatibleEntries.length === 1 ? "" : "s"} verified for this model.`
+                        : "Manual mode shows every installed LoRA and flags compatibility risks above."}
                   </p>
                 </label>
               )}
@@ -248,7 +308,7 @@ export default function LoraPanel({ workflowId, workflow, dna, values, onChange,
                 </div>
                 <Slider
                   data-testid={`slider-lora-model-${lora.node_id}`}
-                  min={-3} max={3} step={0.05}
+                  min={sliderMin} max={sliderMax} step={0.05}
                   value={[c.strength_model]}
                   onValueChange={(v) => setW(lora.node_id, "strength_model", Number(v[0].toFixed(2)))}
                   disabled={mode === "automatic" && lora.optional_slot}
