@@ -64,6 +64,35 @@ describe("prompt quality preflight", () => {
     expect(result.ready).toBe(true);
   });
 
+  test("reports the Z-Image composition guard corrections", () => {
+    const result = analyzePromptQuality({
+      positive: "photorealistic full-body portrait",
+      dna: {
+        identity: { age: 44 },
+        pose: {
+          action: "kneeling back arched",
+          distance: "full body",
+          focus: "butt",
+          hands: ["touching body", "gripping something", "behind head"],
+        },
+        hair: { style: "updo", length: "short bob" },
+        feet: { sole_presentation: "soles up", framing: "sole close-up" },
+        scene: { environment: "studio" },
+        lighting: { source: "softbox" },
+        skin: { tone: "dark brown" },
+      },
+      workflow: { prompt_style: "zimage" },
+    });
+    const codes = result.issues.map((item) => item.code);
+    expect(codes).toEqual(expect.arrayContaining([
+      "zimage-hand-guard",
+      "zimage-hair-guard",
+      "zimage-framing-guard",
+      "zimage-composition-guard",
+    ]));
+    expect(result.ready).toBe(true);
+  });
+
   test("blocks a subject age below 21", () => {
     const result = analyzePromptQuality({
       positive: "portrait",

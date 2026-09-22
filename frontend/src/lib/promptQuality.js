@@ -120,7 +120,31 @@ export function analyzePromptQuality({
     const feetRequested = !!(feet.sole_presentation || feet.framing || (feet.foot_act || []).length);
     const focus = String(dna?.pose?.focus || "").toLowerCase();
     if (feetRequested && focus && !["feet", "legs", "full frame"].includes(focus)) {
-      issues.push(issue("warning", "feet-focus", `Feet details are selected, but camera focus is set to “${dna.pose.focus}”.`));
+      issues.push(issue("warning", "feet-focus", `Feet details are selected, but composition priority is set to “${dna.pose.focus}”. Z-Image will keep that priority and treat feet as supporting detail.`));
+    }
+
+    if (profile === "zimage") {
+      const hands = Array.isArray(dna?.pose?.hands) ? dna.pose.hands.filter(Boolean) : [];
+      if (hands.length > 1) {
+        issues.push(issue("info", "zimage-hand-guard", `Z-Image guard will keep “${hands[hands.length - 1]}” and remove ${hands.length - 1} competing hand action${hands.length === 2 ? "" : "s"}.`));
+      }
+
+      const hairStyle = String(dna?.hair?.style || "").toLowerCase();
+      const hairLength = String(dna?.hair?.length || "").toLowerCase();
+      if (["updo", "ponytail"].includes(hairStyle) && ["pixie", "short bob"].includes(hairLength)) {
+        issues.push(issue("info", "zimage-hair-guard", "Z-Image guard will remove the incompatible short hair length from the tied-up hairstyle."));
+      }
+
+      const distance = String(dna?.pose?.distance || "").toLowerCase();
+      const feetFraming = String(feet.framing || "").toLowerCase();
+      const fullBody = ["full body", "wide shot"].includes(distance);
+      const feetCloseup = ["feet close-up", "sole close-up", "pov under foot", "low angle sole"].includes(feetFraming);
+      if (fullBody && feetCloseup && focus !== "feet") {
+        issues.push(issue("warning", "zimage-framing-guard", "Full-body framing conflicts with the selected foot close-up. Z-Image guard will preserve full-body framing and show the feet at a realistic scale."));
+      }
+      if (fullBody && feetRequested && ["butt", "hips"].includes(focus)) {
+        issues.push(issue("info", "zimage-composition-guard", "Z-Image guard will use a rear three-quarter full-body composition so the lower-body priority and complete feet remain physically achievable."));
+      }
     }
 
     const cast = String(dna?.scenario?.cast_size || "solo").toLowerCase();

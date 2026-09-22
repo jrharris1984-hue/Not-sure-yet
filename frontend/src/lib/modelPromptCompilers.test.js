@@ -1,6 +1,7 @@
 import { DEFAULT_DNA } from "./dna";
 import {
   resolvePromptCompiler,
+  resolveZImageComposition,
   buildZImagePrompts,
   buildQwenEditPrompts,
   buildWanImageToVideoPrompts,
@@ -52,6 +53,37 @@ describe("model-specific prompt compilers", () => {
     expect(textVideo.positive).toContain("walks through warm rain");
     expect(textVideo.positive).toContain("38");
     expect(textVideo.negative).toContain("temporal inconsistency");
+  });
+
+  it("resolves incompatible Z-Image composition choices before compiling", () => {
+    const dna = JSON.parse(JSON.stringify(DEFAULT_DNA));
+    dna.pose = {
+      ...dna.pose,
+      action: "kneeling back arched",
+      distance: "full body",
+      focus: "butt",
+      hands: ["touching body", "gripping something", "behind head"],
+    };
+    dna.feet = {
+      ...dna.feet,
+      sole_presentation: "soles up",
+      framing: "sole close-up",
+    };
+    dna.hair = { ...dna.hair, style: "updo", length: "short bob" };
+
+    const guard = resolveZImageComposition(dna);
+    expect(guard.dna.pose.hands).toEqual(["behind head"]);
+    expect(guard.dna.hair.length).toBe("");
+    expect(guard.dna.feet.framing).toBe("full body");
+    expect(guard.composition).toContain("rear three-quarter full-body");
+    expect(guard.adjustments.length).toBe(3);
+
+    const result = buildZImagePrompts({ dna });
+    expect(result.positive).toContain("PRIMARY COMPOSITION");
+    expect(result.positive).toContain("rear three-quarter full-body");
+    expect(result.positive).not.toContain("gripping something");
+    expect(result.negative).toContain("duplicated genitals");
+    expect(result.negative).toContain("finger-like toes");
   });
 
   it("uses edit and video instructions rather than the generic image prompt", () => {
