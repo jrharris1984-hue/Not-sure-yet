@@ -10,6 +10,7 @@ import {
   STORYBOOK_PRESETS,
   DEFAULT_DNA,
   SECTIONS,
+  HERITAGE_DENSITIES,
   createHeritageCharacterVariation,
 } from "@/lib/dna";
 import { Input } from "@/components/ui/input";
@@ -31,6 +32,7 @@ export default function PresetsMenu({ onApply, currentDna, sectionLocks = {}, fi
   const [description, setDescription] = useState("");
   const [draft, setDraft] = useState(null);
   const [heritageMode, setHeritageMode] = useState("complete");
+  const [heritageDensity, setHeritageDensity] = useState("balanced");
   const [lastHeritage, setLastHeritage] = useState(null);
   const qc = useQueryClient();
   const { data: customPresets = [] } = useQuery({
@@ -97,7 +99,8 @@ export default function PresetsMenu({ onApply, currentDna, sectionLocks = {}, fi
         currentDna || DEFAULT_DNA,
         preset.dna || {},
         sectionLocks,
-        fieldLocks
+        fieldLocks,
+        { density: heritageDensity }
       );
     }
 
@@ -178,6 +181,21 @@ export default function PresetsMenu({ onApply, currentDna, sectionLocks = {}, fi
                     Complete character
                   </button>
                 </div>
+                {heritageMode === "complete" && (
+                  <div>
+                    <div className="mb-1.5 text-[10px] font-mono uppercase tracking-widest text-zinc-500">Detail density</div>
+                    <div className="grid grid-cols-4 gap-1.5">
+                      {Object.entries(HERITAGE_DENSITIES).map(([key, option]) => (
+                        <button key={key} type="button" onClick={() => setHeritageDensity(key)}
+                          data-testid={`heritage-density-${key}`}
+                          className={`rounded-lg border px-1.5 py-2 text-[10px] sm:text-xs font-semibold ${heritageDensity === key ? "border-violet-400 bg-violet-500/15 text-violet-100" : "hairline text-zinc-400"}`}>
+                          {option.label}
+                        </button>
+                      ))}
+                    </div>
+                    <p className="mt-1.5 text-[10px] text-zinc-500">Optional details may stay empty. Feet are uncommon unless you choose them yourself.</p>
+                  </div>
+                )}
                 {lastHeritage && (
                   <button type="button" onClick={() => apply(lastHeritage, "variation")}
                     data-testid="btn-another-heritage-variation"
