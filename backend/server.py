@@ -64,6 +64,7 @@ class Character(BaseModel):
     tags: List[str] = Field(default_factory=list)
     favorite: bool = False
     raunch: bool = False  # graphic-vernacular prompt mode
+    prompt_language: str = "editorial"  # editorial | direct | explicit
     prompt_positive: str = ""
     prompt_negative: str = ""
     created_at: str = Field(default_factory=now_iso)
@@ -81,6 +82,7 @@ class CharacterUpsert(BaseModel):
     tags: Optional[List[str]] = None
     favorite: Optional[bool] = None
     raunch: Optional[bool] = None
+    prompt_language: Optional[str] = None
     prompt_positive: Optional[str] = None
     prompt_negative: Optional[str] = None
 
@@ -709,6 +711,7 @@ async def create_character(body: CharacterUpsert):
         tags=body.tags or [],
         favorite=body.favorite or False,
         raunch=body.raunch or False,
+        prompt_language=body.prompt_language or ("explicit" if body.raunch else "editorial"),
         prompt_positive=body.prompt_positive or "",
         prompt_negative=body.prompt_negative or "",
     )
