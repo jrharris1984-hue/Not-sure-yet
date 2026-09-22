@@ -76,4 +76,22 @@ describe("createHeritageCharacterVariation", () => {
     expect(result.identity.age).toBe(21);
     expect(result.physique.body_type).toBe("locked physique");
   });
+
+  it("keeps feet optional in balanced heritage characters and never changes Play", () => {
+    jest.spyOn(Math, "random").mockReturnValue(0.5);
+    const current = clone(DEFAULT_DNA);
+    current.feet = { ...current.feet, sole_presentation: "soles up", foot_act: ["keep act"] };
+    current.kink = { ...current.kink, restraint: ["keep kink"] };
+    const result = createHeritageCharacterVariation(
+      current,
+      { identity: { ethnicity: "jamaican" } },
+      {},
+      {},
+      { density: "balanced" }
+    );
+    expect(result.feet.sole_presentation).toBe("");
+    expect(result.feet.foot_act).toEqual(["keep act"]);
+    expect(result.kink.restraint).toEqual(["keep kink"]);
+    expect(result.pose.focus).not.toBe("feet");
+  });
 });
