@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { API_BASE, endpoints } from "@/lib/api";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { X, Download, Copy, ExternalLink, Trash2, CheckSquare, RotateCcw, Shuffle, Pencil, Film, Loader2, Info, ChevronLeft, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 
@@ -56,6 +56,9 @@ const isVideoUrl = (url = "") => /\.(webm|mp4|mov)(?:[?&]|$)/i.test(decodeURICom
 export default function Gallery() {
   const qc = useQueryClient();
   const nav = useNavigate();
+  const [searchParams] = useSearchParams();
+  const requestedRenderId = searchParams.get("render");
+  const returnTo = searchParams.get("returnTo");
   const { data: renders = [], isLoading } = useQuery({
     queryKey: ["renders"],
     queryFn: endpoints.listRenders,
@@ -66,6 +69,7 @@ export default function Gallery() {
   const [selectionMode, setSelectionMode] = useState(false);
   const [selected, setSelected] = useState([]);
   const swipeStartX = useRef(null);
+  const directOpenApplied = useRef(false);
 
   const removeOne = useMutation({
     mutationFn: (id) => endpoints.deleteRender(id),
@@ -159,6 +163,15 @@ export default function Gallery() {
     setLightbox(withOutput[nextIndex]);
     setShowDetails(false);
   };
+
+  useEffect(() => {
+    if (!requestedRenderId || directOpenApplied.current || !withOutput.length) return;
+    const requested = withOutput.find((render) => render.id === requestedRenderId);
+    if (requested) {
+      directOpenApplied.current = true;
+      setLightbox(requested);
+    }
+  }, [requestedRenderId, withOutput]);
 
   useEffect(() => {
     if (!lightbox) return undefined;
@@ -323,6 +336,13 @@ export default function Gallery() {
             className="relative w-full h-full md:h-auto max-w-6xl md:max-h-full flex flex-col md:flex-row md:gap-4"
           >
             {/* Mobile controls float over the image instead of covering it with metadata. */}
+            {returnTo && (
+              <button type="button" onClick={() => nav(returnTo)}
+                className="absolute left-3 top-[calc(.75rem+env(safe-area-inset-top,0px))] z-30 inline-flex h-10 items-center gap-1 rounded-full border border-white/20 bg-black/70 px-3 text-sm font-semibold text-white backdrop-blur-md"
+                data-testid="btn-return-to-builder">
+                <ChevronLeft className="h-4 w-4" /> Edit
+              </button>
+            )}
             <button
               type="button"
               onClick={() => { setLightbox(null); setShowDetails(false); }}
