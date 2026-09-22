@@ -90,6 +90,45 @@ export function resolveZImageComposition(dna = {}, options = {}) {
     adjustments.push("Removed the competing loose-hair length from the tied-up hairstyle.");
   }
 
+  // Resolve mutually exclusive descriptors before they reach the prompt. These
+  // conflicts are especially destructive in Z-Image because each phrase is
+  // individually rendered even when the combined body is impossible.
+  const bustSize = lower(resolved.physique.bust);
+  if (lower(resolved.physique.bust_shape) === "athletic" && !["", "flat", "small", "medium"].includes(bustSize)) {
+    resolved.physique.bust_shape = "natural";
+    adjustments.push("Replaced the small athletic bust-shape wording that conflicted with the selected large bust size.");
+  }
+  if (lower(resolved.hair.length) === "pixie" && ["wavy", "curly"].includes(hairStyle)) {
+    resolved.hair.style = "";
+    adjustments.push("Kept the pixie cut and removed the competing long wave/curl hairstyle wording.");
+  }
+  const bodyType = lower(resolved.physique.body_type);
+  const buttSize = lower(resolved.physique.butt);
+  if (lower(resolved.physique.hips) === "narrow" && (
+    ["curvy", "voluptuous", "plus size", "bbw", "pear", "hourglass"].includes(bodyType) ||
+    ["large", "very large", "huge", "hyper"].includes(buttSize)
+  )) {
+    resolved.physique.hips = "average";
+    adjustments.push("Replaced narrow hips that conflicted with the selected curvy lower-body proportions.");
+  }
+
+  const action = lower(resolved.pose.action);
+  const complexLegsUp = ["lying legs up", "on back legs up"].includes(action);
+  if (mode !== "extreme" && complexLegsUp) {
+    if (["close-up", "portrait", "waist-up", "detail shot"].includes(lower(resolved.pose.distance))) {
+      resolved.pose.distance = "full body";
+      adjustments.push("Changed the tight crop to full-body framing so the raised-leg pose can fit in one coherent frame.");
+    }
+    if (["over-shoulder", "pov", "back"].includes(lower(resolved.pose.angle))) {
+      resolved.pose.angle = "3/4";
+      adjustments.push("Changed the conflicting rear/POV angle to a three-quarter view for the raised-leg pose.");
+    }
+    if (arrayValue(resolved.pose.hands).some((item) => ["touching body", "between legs", "gripping something"].includes(lower(item)))) {
+      resolved.pose.hands = ["at sides"];
+      adjustments.push("Simplified the hand placement to prevent an orphan or duplicated arm in the raised-leg pose.");
+    }
+  }
+
   const focus = lower(resolved.pose.focus) || "full frame";
   const distance = lower(resolved.pose.distance);
   const fullBody = ["full body", "wide shot"].includes(distance);

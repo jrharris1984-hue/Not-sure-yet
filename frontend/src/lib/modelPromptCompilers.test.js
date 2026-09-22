@@ -164,6 +164,42 @@ describe("model-specific prompt compilers", () => {
     expect(result.negative).toContain("finger-like toes");
   });
 
+  it("removes contradictory body, hair, and raised-leg pose instructions", () => {
+    const dna = JSON.parse(JSON.stringify(DEFAULT_DNA));
+    dna.style.anatomy_mode = "natural";
+    dna.physique = {
+      ...dna.physique,
+      body_type: "plus size",
+      bust: "large",
+      bust_shape: "athletic",
+      butt: "large",
+      hips: "narrow",
+    };
+    dna.hair = { ...dna.hair, length: "pixie", style: "wavy" };
+    dna.pose = {
+      ...dna.pose,
+      action: "lying legs up",
+      angle: "over-shoulder",
+      distance: "close-up",
+      focus: "body",
+      hands: ["touching body"],
+    };
+
+    const guard = resolveZImageComposition(dna);
+    expect(guard.dna.physique.bust_shape).toBe("natural");
+    expect(guard.dna.physique.hips).toBe("average");
+    expect(guard.dna.hair.style).toBe("");
+    expect(guard.dna.pose).toMatchObject({ angle: "3/4", distance: "full body", hands: ["at sides"] });
+
+    const result = buildZImagePrompts({ dna });
+    expect(result.positive).toContain("large heavy D-cup breasts");
+    expect(result.positive).not.toContain("small athletic firm breasts");
+    expect(result.positive).toContain("short pixie cut");
+    expect(result.positive).not.toContain("loose beachy waves");
+    expect(result.positive).not.toContain("extreme close-up shot");
+    expect(result.positive).not.toContain("over-the-shoulder view");
+  });
+
   it("uses edit and video instructions rather than the generic image prompt", () => {
     const qwen = compileModelPrompts({
       workflowKind: "edit",
