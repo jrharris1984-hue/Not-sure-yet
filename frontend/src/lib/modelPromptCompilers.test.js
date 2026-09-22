@@ -92,6 +92,7 @@ describe("model-specific prompt compilers", () => {
     expect(result.positive).toContain("Change only");
     expect(result.positive).toContain("change the dress to blue");
     expect(result.positive).toContain("Preserve the subject's identity");
+    expect(result.positive).toContain("Keep one connected human body");
     expect(result.negative).toContain("unrequested changes");
   });
 
@@ -99,6 +100,7 @@ describe("model-specific prompt compilers", () => {
     const imageVideo = buildWanImageToVideoPrompts({ instruction: "slowly turns toward camera" });
     expect(imageVideo.positive).toContain("supplied starting image");
     expect(imageVideo.positive).toContain("slowly turns toward camera");
+    expect(imageVideo.positive).toContain("same number of people");
 
     const dna = JSON.parse(JSON.stringify(DEFAULT_DNA));
     dna.identity = { ...dna.identity, gender: "female", age: 38, ethnicity: "indian" };
@@ -107,6 +109,28 @@ describe("model-specific prompt compilers", () => {
     expect(textVideo.positive).toContain("walks through warm rain");
     expect(textVideo.positive).toContain("38");
     expect(textVideo.negative).toContain("temporal inconsistency");
+  });
+
+  it("applies the Natural human guard to Pony, Chroma, and standard still compilers", () => {
+    const dna = JSON.parse(JSON.stringify(DEFAULT_DNA));
+    dna.style.anatomy_mode = "natural";
+    dna.physique.bust = "hyper";
+    dna.pose.hands = ["touching body", "behind head"];
+    ["pony", "chroma", "standard"].forEach((promptStyle) => {
+      const result = compileModelPrompts({ promptStyle, dna });
+      expect(result.positive).toContain("NORMAL HUMAN ANATOMY REQUIRED");
+      expect(result.positive).not.toContain("hyper-inflated");
+      expect(result.guardAdjustments.length).toBeGreaterThan(0);
+    });
+  });
+
+  it("does not inject the solo-person guard into a multi-subject scene", () => {
+    const subjects = [
+      { id: "a", dna: JSON.parse(JSON.stringify(DEFAULT_DNA)) },
+      { id: "b", dna: JSON.parse(JSON.stringify(DEFAULT_DNA)) },
+    ];
+    const result = compileModelPrompts({ promptStyle: "chroma", dna: subjects[0].dna, subjects, isMulti: true });
+    expect(result.positive).not.toContain("exactly one adult person");
   });
 
   it("resolves incompatible Z-Image composition choices before compiling", () => {
@@ -128,7 +152,7 @@ describe("model-specific prompt compilers", () => {
     const guard = resolveZImageComposition(dna);
     expect(guard.dna.pose.hands).toEqual(["behind head"]);
     expect(guard.dna.hair.length).toBe("");
-    expect(guard.dna.feet.framing).toBe("full body");
+    expect(guard.dna.feet.framing).toBeUndefined();
     expect(guard.composition).toContain("rear three-quarter full-body");
     expect(guard.adjustments.length).toBe(3);
 
