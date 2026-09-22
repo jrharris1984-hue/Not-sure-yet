@@ -69,6 +69,7 @@ export default function Builder() {
   const [collapsed, setCollapsed] = useState({});     // {sectionKey|'_glance': bool}
   const [tags, setTags] = useState([]);
   const [raunch, setRaunch] = useState(false);
+  const [promptLanguage, setPromptLanguage] = useState("editorial");
   const [promptOverride, setPromptOverride] = useState("");
   const [negativePromptOverride, setNegativePromptOverride] = useState("");
   const [improvingPrompt, setImprovingPrompt] = useState(false);
@@ -117,7 +118,9 @@ export default function Builder() {
     setLocks(draft.locks || {});
     setCollapsed(draft.collapsed || {});
     setTags(Array.isArray(draft.tags) ? draft.tags : []);
-    setRaunch(!!draft.raunch);
+    const restoredLanguage = draft.promptLanguage || (draft.raunch ? "explicit" : "editorial");
+    setPromptLanguage(restoredLanguage);
+    setRaunch(restoredLanguage === "explicit");
     setPromptOverride(draft.promptOverride || "");
     setNegativePromptOverride(draft.negativePromptOverride || "");
     setWorkflowId(draft.workflowId || "");
@@ -346,7 +349,9 @@ export default function Builder() {
       setCollapsed(savedCollapsed);
     }
     setTags(Array.isArray(character.tags) ? character.tags : []);
-    setRaunch(!!character.raunch);
+    const savedLanguage = character.prompt_language || (character.raunch ? "explicit" : "editorial");
+    setPromptLanguage(savedLanguage);
+    setRaunch(savedLanguage === "explicit");
     restoreDraft(readBuilderDraft(id));
     draftHydrated.current = true;
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -355,7 +360,7 @@ export default function Builder() {
   useEffect(() => {
     if (!draftHydrated.current) return undefined;
     const timer = window.setTimeout(() => writeBuilderDraft(id, {
-      name, subjects, activeSubjectId, locks, collapsed, tags, raunch,
+      name, subjects, activeSubjectId, locks, collapsed, tags, raunch, promptLanguage,
       promptOverride, negativePromptOverride, workflowId, loraOverrides,
       editInstruction, preserveUnmentioned, repairTargets, repairInstruction,
       videoInstruction, videoFrames, videoFps, videoWidth, videoHeight,
@@ -363,7 +368,7 @@ export default function Builder() {
     }), 350);
     return () => window.clearTimeout(timer);
   }, [
-    id, name, subjects, activeSubjectId, locks, collapsed, tags, raunch,
+    id, name, subjects, activeSubjectId, locks, collapsed, tags, raunch, promptLanguage,
     promptOverride, negativePromptOverride, workflowId, loraOverrides,
     editInstruction, preserveUnmentioned, repairTargets, repairInstruction,
     videoInstruction, videoFrames, videoFps, videoWidth, videoHeight,
@@ -446,7 +451,14 @@ export default function Builder() {
   );
   const likenessPrompt = useMemo(() => likenessTriggerText(subjects), [subjects]);
   const acceptsLikenessPrompt = !["qwen_edit", "wan_i2v"].includes(activeCompiler);
-  const generatedPositive = acceptsLikenessPrompt && likenessPrompt ? `${likenessPrompt}, ${positive}` : positive;
+  const languageLead = acceptsLikenessPrompt
+    ? promptLanguage === "direct"
+      ? "clear literal adult scene description, direct unambiguous vocabulary"
+      : promptLanguage === "explicit"
+        ? "explicit adult scene, graphic unambiguous vocabulary"
+        : "editorial adult photography, tasteful descriptive vocabulary"
+    : "";
+  const generatedPositive = [languageLead, acceptsLikenessPrompt && likenessPrompt, positive].filter(Boolean).join(", ");
   const positiveBeforeLoraTriggers = promptOverride || generatedPositive;
   const finalPositive = loraTriggerWords.reduce(
     (text, trigger) => text.toLowerCase().includes(trigger.toLowerCase()) ? text : `${trigger}, ${text}`,
@@ -509,6 +521,7 @@ export default function Builder() {
         collapsed,
         tags,
         raunch,
+        prompt_language: promptLanguage,
         prompt_positive: finalPositive,
         prompt_negative: finalNegative,
       };
@@ -746,6 +759,7 @@ export default function Builder() {
     setCollapsed({});
     setTags([]);
     setRaunch(false);
+    setPromptLanguage("editorial");
     setLoraOverrides({});
     setReferenceImage(null);
     setReferencePreview("");
@@ -886,19 +900,22 @@ export default function Builder() {
                 setActiveDna(merged);
               }}
             />
-            <button
-              type="button"
-              onClick={() => setRaunch((v) => !v)}
-              data-testid="btn-toggle-raunch"
-              title={raunch ? "Raunch mode ON — graphic vernacular in Venice prompts" : "Raunch mode OFF — editorial vocabulary"}
-              className={`inline-flex items-center gap-1.5 rounded-lg border text-sm font-semibold px-3 py-2 ${
-                raunch
-                  ? "border-fuchsia-500/60 bg-fuchsia-500/15 text-fuchsia-200"
-                  : "border-hairline text-zinc-300 hover:bg-white/5"
-              }`}
-            >
-              <Flame className="h-4 w-4" /> {raunch ? "Raunch ON" : "Raunch"}
-            </button>
+            <label className="inline-flex items-center gap-1.5 rounded-lg border border-hairline bg-elevated px-2 py-1 text-sm text-zinc-300" title="Changes prompt vocabulary only; it never adds activities or changes DNA selections.">
+              <Flame className="h-4 w-4 text-fuchsia-300" />
+              <span className="hidden sm:inline text-xs">Language</span>
+              <select value={promptLanguage}
+                onChange={(event) => {
+                  const value = event.target.value;
+                  setPromptLanguage(value);
+                  setRaunch(value === "explicit");
+                }}
+                className="bg-transparent text-xs font-semibold outline-none"
+                data-testid="select-prompt-language">
+                <option value="editorial">Editorial</option>
+                <option value="direct">Direct</option>
+                <option value="explicit">Explicit</option>
+              </select>
+            </label>
             {!isNew && (
               <Link
                 to={`/shoot/new/${id}`}
