@@ -141,6 +141,15 @@ export function analyzePromptQuality({
       if (["updo", "ponytail"].includes(hairStyle) && ["pixie", "short bob"].includes(hairLength)) {
         issues.push(issue("info", "zimage-hair-guard", "Z-Image guard will remove the incompatible short hair length from the tied-up hairstyle."));
       }
+      if (hairLength === "pixie" && ["wavy", "curly"].includes(hairStyle)) {
+        issues.push(issue("info", "zimage-pixie-guard", "Z-Image guard will keep the pixie cut and remove the competing long wave/curl wording."));
+      }
+
+      const bust = String(dna?.physique?.bust || "").toLowerCase();
+      const bustShape = String(dna?.physique?.bust_shape || "").toLowerCase();
+      if (bustShape === "athletic" && !["", "flat", "small", "medium"].includes(bust)) {
+        issues.push(issue("info", "zimage-bust-guard", "Z-Image guard will remove the small athletic-chest wording that conflicts with the selected larger bust size."));
+      }
 
       const distance = String(dna?.pose?.distance || "").toLowerCase();
       const feetFraming = String(feet.framing || "").toLowerCase();
@@ -151,6 +160,13 @@ export function analyzePromptQuality({
       }
       if (fullBody && feetRequested && ["butt", "hips"].includes(focus)) {
         issues.push(issue("info", "zimage-composition-guard", "Z-Image guard will use a rear three-quarter full-body composition so the lower-body priority and complete feet remain physically achievable."));
+      }
+      const action = String(dna?.pose?.action || "").toLowerCase();
+      if (["lying legs up", "on back legs up"].includes(action) && (
+        ["close-up", "portrait", "waist-up", "detail shot"].includes(distance) ||
+        ["over-shoulder", "pov", "back"].includes(String(dna?.pose?.angle || "").toLowerCase())
+      )) {
+        issues.push(issue("warning", "zimage-raised-legs-guard", "Raised legs cannot fit reliably in the selected tight/rear framing. Z-Image guard will use a full-body three-quarter view and simplified hands."));
       }
     }
 
