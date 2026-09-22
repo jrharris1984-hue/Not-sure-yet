@@ -402,6 +402,13 @@ export const HERITAGE_DENSITIES = {
   surprise: { label: "Surprise me", optionalChance: 0.82, multiMax: 2, feetChance: 0.22 },
 };
 
+export const HERITAGE_CASTS = {
+  solo: { label: "Solo", castSize: "solo", castType: "none" },
+  twins: { label: "Twins", castSize: "duo", castType: "identical twins" },
+  sisters: { label: "Sisters", castSize: "duo", castType: "sisters" },
+  mother_daughter: { label: "Mother / Daughter", castSize: "duo", castType: "mother and daughter" },
+};
+
 const HERITAGE_CORE_FIELDS = {
   physique: new Set(["height", "body_type", "bust", "butt"]),
   face: new Set(["eye_shape", "eye_color", "jaw", "nose", "lips"]),
