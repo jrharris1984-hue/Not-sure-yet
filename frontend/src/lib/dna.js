@@ -332,6 +332,7 @@ export const SECTIONS = [
     key: "style",
     title: "Style",
     fields: [
+      { key: "anatomy_mode", type: "chips", label: "Human anatomy guard", options: ["natural", "enhanced", "extreme"], defaultValue: "natural" },
       { key: "render", type: "chips", label: "Render", options: ["photorealistic", "cinematic", "analog film", "octane", "editorial", "documentary", "35mm film"] },
       { key: "film_grain", type: "chips", label: "Film grain", options: ["none", "subtle", "medium", "heavy"] },
       { key: "artistic_tone", type: "chips", label: "Tone", options: ["natural", "moody", "vibrant", "desaturated", "high-contrast", "faded"] },
@@ -345,7 +346,7 @@ export const DEFAULT_DNA = SECTIONS.reduce((acc, s) => {
   s.fields.forEach((f) => {
     if (f.type === "slider") acc[s.key][f.key] = f.defaultValue ?? Math.round((f.min + f.max) / 2);
     else if (f.type === "chips_multi") acc[s.key][f.key] = [];
-    else acc[s.key][f.key] = "";
+    else acc[s.key][f.key] = f.defaultValue ?? "";
   });
   return acc;
 }, {});

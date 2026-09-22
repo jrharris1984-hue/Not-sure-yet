@@ -30,6 +30,60 @@ describe("model-specific prompt compilers", () => {
     expect(result.negative).not.toContain("score_9");
   });
 
+  it("uses Natural mode to suppress competing extreme anatomy and secondary feet priority", () => {
+    const dna = JSON.parse(JSON.stringify(DEFAULT_DNA));
+    dna.style.anatomy_mode = "natural";
+    dna.physique = {
+      ...dna.physique,
+      bust: "hyper",
+      butt: "hyper",
+      thighs: "massive",
+      hips: "extreme",
+      exaggeration: 100,
+    };
+    dna.pose = {
+      ...dna.pose,
+      angle: "pov",
+      distance: "full body",
+      focus: "body",
+    };
+    dna.feet = {
+      ...dna.feet,
+      sole_presentation: "sole showcase",
+      foot_size: "size queen",
+      pedicure: "painted red",
+      framing: "sole close-up",
+    };
+
+    const guard = resolveZImageComposition(dna);
+    expect(guard.anatomyMode).toBe("natural");
+    expect(guard.dna.physique.bust).toBe("large");
+    expect(guard.dna.physique.butt).toBe("large");
+    expect(guard.dna.physique.exaggeration).toBe(35);
+    expect(guard.dna.pose.angle).toBe("3/4");
+    expect(guard.dna.feet).toEqual({});
+    expect(guard.composition).toContain("exactly one adult person");
+
+    const result = buildZImagePrompts({ dna });
+    expect(result.positive).toContain("NORMAL HUMAN ANATOMY REQUIRED");
+    expect(result.positive).toContain("red-painted toenails");
+    expect(result.positive).not.toContain("PRIMARY FEET COMPOSITION");
+    expect(result.positive).not.toContain("hyper-inflated");
+    expect(result.positive.split(/\\s+/).length).toBeLessThanOrEqual(220);
+  });
+
+  it("preserves explicit extreme choices only when Extreme mode is selected", () => {
+    const dna = JSON.parse(JSON.stringify(DEFAULT_DNA));
+    dna.style.anatomy_mode = "extreme";
+    dna.physique.bust = "hyper";
+    dna.pose.focus = "feet";
+    dna.feet.foot_size = "size queen";
+    const guard = resolveZImageComposition(dna);
+    expect(guard.dna.physique.bust).toBe("hyper");
+    expect(guard.dna.feet.foot_size).toBe("size queen");
+    expect(guard.anatomyMode).toBe("extreme");
+  });
+
   it("turns Qwen requests into scoped edits with preservation language", () => {
     const result = buildQwenEditPrompts({
       instruction: "change the dress to blue",

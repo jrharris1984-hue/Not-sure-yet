@@ -54,6 +54,9 @@ const ZIMAGE_SIZE_REWRITES = [
   [/hyper-sized cartoonishly enormous ass, impossibly huge butt, extreme bubble/gi, "extremely full rounded buttocks"],
   [/flat chest, small AA cup, boyish chest/gi, "very small flat chest"],
   [/small athletic firm breasts, muscled chest/gi, "small athletic breasts"],
+  [/hyper-inflated impossibly huge breasts, cartoonishly enormous tits, gravity-defying/gi, "very large breasts with believable weight and attachment"],
+  [/enormous H-cup\+ tits, gigantic breasts, dramatic overflowing cleavage/gi, "very large breasts with believable weight"],
+  [/huge massive G-cup breasts, enormous cleavage, spilling out, gravity-affected/gi, "large breasts with realistic gravity"],
   [/detailed anatomy with natural proportions, anatomically correct body, realistic weight distribution, natural breast shape with realistic gravity, detailed vulva, visible labia, realistic skin flush, natural moisture/gi,
     "coherent human anatomy, realistic proportions, natural weight distribution, realistic joints and limb connections"],
 ];
@@ -67,7 +70,12 @@ export function resolveZImageComposition(dna = {}) {
   resolved.pose = { ...(resolved.pose || {}) };
   resolved.feet = { ...(resolved.feet || {}) };
   resolved.hair = { ...(resolved.hair || {}) };
+  resolved.physique = { ...(resolved.physique || {}) };
+  resolved.style = { ...(resolved.style || {}) };
 
+  const mode = ["natural", "enhanced", "extreme"].includes(lower(resolved.style.anatomy_mode))
+    ? lower(resolved.style.anatomy_mode)
+    : "natural";
   const adjustments = [];
   const hands = arrayValue(resolved.pose.hands).filter((item) => lower(item) !== "none");
   if (hands.length > 1) {
@@ -77,41 +85,98 @@ export function resolveZImageComposition(dna = {}) {
   }
 
   const hairStyle = lower(resolved.hair.style);
-  const hairLength = lower(resolved.hair.length);
-  if (["updo", "ponytail"].includes(hairStyle) && ["pixie", "short bob"].includes(hairLength)) {
+  if (["updo", "ponytail"].includes(hairStyle) && resolved.hair.length) {
     resolved.hair.length = "";
-    adjustments.push("Removed the incompatible short hair length from the selected tied-up hairstyle.");
+    adjustments.push("Removed the competing loose-hair length from the tied-up hairstyle.");
   }
 
   const focus = lower(resolved.pose.focus) || "full frame";
   const distance = lower(resolved.pose.distance);
-  const feetFraming = lower(resolved.feet.framing);
-  const solePresentation = lower(resolved.feet.sole_presentation);
-  const feetRequested = !!(solePresentation || feetFraming || arrayValue(resolved.feet.foot_act).length);
   const fullBody = ["full body", "wide shot"].includes(distance);
+  const feetFraming = lower(resolved.feet.framing);
   const feetCloseup = ["feet close-up", "sole close-up", "pov under foot", "low angle sole"].includes(feetFraming);
+  const feetRequested = !!(
+    resolved.feet.sole_presentation || feetFraming || resolved.feet.arch ||
+    resolved.feet.pedicure || resolved.feet.foot_size ||
+    arrayValue(resolved.feet.toes).length || arrayValue(resolved.feet.foot_act).length
+  );
+  const selectedPedicure = lower(resolved.feet.pedicure);
+  let supportingFeet = "";
 
-  if (fullBody && feetCloseup && focus !== "feet") {
-    resolved.feet.framing = "full body";
-    adjustments.push("Changed the feet close-up to full-body foot visibility so it matches the selected framing.");
+  if (mode !== "extreme" && fullBody && lower(resolved.pose.angle) === "pov") {
+    resolved.pose.angle = "3/4";
+    adjustments.push("Replaced first-person POV with a moderate three-quarter angle for coherent full-body anatomy.");
   }
+
+  if (mode === "natural") {
+    resolved.physique.exaggeration = Math.min(35, Number(resolved.physique.exaggeration || 0));
+    if (["hyper", "enormous", "huge"].includes(lower(resolved.physique.bust))) {
+      resolved.physique.bust = "large";
+      adjustments.push("Clamped the bust to a believable large proportion in Natural mode.");
+    }
+    if (["hyper", "huge"].includes(lower(resolved.physique.butt))) {
+      resolved.physique.butt = "large";
+      adjustments.push("Clamped the rear proportion to a believable large size in Natural mode.");
+    }
+    if (lower(resolved.physique.thighs) === "massive") resolved.physique.thighs = "thick";
+    if (lower(resolved.physique.hips) === "extreme") resolved.physique.hips = "wide";
+
+    if (focus !== "feet" && feetRequested) {
+      supportingFeet = selectedPedicure && selectedPedicure !== "natural nails"
+        ? `both naturally proportioned feet visible with ${selectedPedicure} toenails`
+        : "both naturally proportioned feet visible";
+      resolved.feet = {};
+      adjustments.push("Removed the competing PRIMARY FEET block because feet are not the composition priority.");
+    } else if (focus === "feet" && lower(resolved.feet.foot_size) === "size queen") {
+      resolved.feet.foot_size = "large";
+      adjustments.push("Reduced extreme foot enlargement to a realistic large size in Natural mode.");
+    }
+  } else if (mode === "enhanced") {
+    resolved.physique.exaggeration = Math.min(70, Number(resolved.physique.exaggeration || 0));
+    if (lower(resolved.physique.bust) === "hyper") resolved.physique.bust = "huge";
+    if (lower(resolved.physique.butt) === "hyper") resolved.physique.butt = "huge";
+    if (focus !== "feet" && feetCloseup) {
+      resolved.feet.framing = "full body";
+      adjustments.push("Downgraded the competing foot close-up while preserving enhanced foot details.");
+    }
+  }
+
+  if (fullBody && feetCloseup && focus !== "feet" && resolved.feet.framing) {
+    resolved.feet.framing = "full body";
+    adjustments.push("Changed the feet close-up to full-body foot visibility.");
+  }
+
+  const castSize = lower(resolved.scenario?.cast_size) || "solo";
+  const solo = !["duo", "threesome", "foursome", "group", "gangbang", "orgy"].includes(castSize);
+  const humanLead = mode === "natural"
+    ? "NORMAL HUMAN ANATOMY REQUIRED — believable adult proportions, one coherent torso and pelvis, exactly two arms and two legs, naturally sized hands and feet"
+    : mode === "enhanced"
+      ? "COHERENT HUMAN ANATOMY REQUIRED — enhanced proportions with one coherent torso and pelvis, exactly two arms and two legs"
+      : "COHERENT ANATOMY REQUIRED — one connected adult body with no duplicated body parts";
 
   let composition = "";
   if (focus === "feet") {
     composition = fullBody
-      ? "PRIMARY COMPOSITION — full character visible head to feet, both complete feet clearly visible and prominent without extreme lens enlargement"
-      : "PRIMARY COMPOSITION — feet are the single visual priority, both complete feet and ankles visible with realistic scale and perspective";
+      ? "PRIMARY COMPOSITION — full character visible head to feet, both complete feet visible at realistic perspective, feet prominent without filling the frame"
+      : "PRIMARY COMPOSITION — feet are the single visual priority, both complete feet and ankles visible with coherent scale and perspective";
   } else if (["butt", "hips"].includes(focus) && feetRequested && fullBody) {
-    composition = "PRIMARY COMPOSITION — rear three-quarter full-body view, face and complete body visible, buttocks prominent but not filling the frame, both complete feet naturally visible in an anatomically achievable position";
+    composition = "PRIMARY COMPOSITION — rear three-quarter full-body view, face and complete body visible, lower body prominent without filling the frame";
   } else if (["butt", "hips"].includes(focus)) {
-    composition = "PRIMARY COMPOSITION — rear three-quarter view with the lower body as the single visual priority, coherent pelvis and connected limbs, moderate perspective";
+    composition = "PRIMARY COMPOSITION — rear three-quarter view, lower body is the single visual priority, moderate perspective and connected limbs";
   } else if (focus === "face") {
     composition = "PRIMARY COMPOSITION — face is the single visual priority, coherent body perspective and no body part enlarged toward the lens";
   } else {
-    composition = "PRIMARY COMPOSITION — balanced full-character framing, coherent perspective, connected limbs, no competing body-part close-up";
+    composition = "PRIMARY COMPOSITION — balanced full-character framing, coherent perspective, no competing body-part close-up";
   }
 
-  return { dna: resolved, composition, adjustments };
+  const lead = [
+    humanLead,
+    solo && "exactly one adult person in the image, no background people or partial extra bodies",
+    composition,
+    supportingFeet,
+  ].filter(Boolean).join(", ");
+
+  return { dna: resolved, composition: lead, adjustments, anatomyMode: mode };
 }
 
 export function resolvePromptCompiler({ promptStyle = "", workflowKind = "", workflowName = "" } = {}) {
@@ -142,7 +207,10 @@ export function buildZImagePrompts({ dna = {}, subjects = [], isMulti = false, r
     .filter(Boolean)
     .join(", ");
   return {
-    positive: compactWords(dedupeClauses(guardedPositive), 360),
+    positive: compactWords(
+      dedupeClauses(guardedPositive),
+      primaryGuard.anatomyMode === "natural" ? 220 : primaryGuard.anatomyMode === "enhanced" ? 280 : 340
+    ),
     negative: ZIMAGE_NEGATIVE,
     guardAdjustments: primaryGuard.adjustments,
   };

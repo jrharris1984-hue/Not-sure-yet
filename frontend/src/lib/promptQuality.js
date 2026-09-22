@@ -124,6 +124,13 @@ export function analyzePromptQuality({
     }
 
     if (profile === "zimage") {
+      const anatomyMode = String(dna?.style?.anatomy_mode || "natural").toLowerCase();
+      if (anatomyMode === "extreme") {
+        issues.push(issue("warning", "zimage-anatomy-mode", "Extreme anatomy mode preserves hyper proportions and bypasses automatic post-render rejection. Anatomical failures are more likely."));
+      } else {
+        issues.push(issue("info", "zimage-anatomy-mode", `${anatomyMode === "enhanced" ? "Enhanced" : "Natural"} Human Guard is active. Completed still images will be inspected and malformed results can be retried automatically.`));
+      }
+
       const hands = Array.isArray(dna?.pose?.hands) ? dna.pose.hands.filter(Boolean) : [];
       if (hands.length > 1) {
         issues.push(issue("info", "zimage-hand-guard", `Z-Image guard will keep “${hands[hands.length - 1]}” and remove ${hands.length - 1} competing hand action${hands.length === 2 ? "" : "s"}.`));
