@@ -1571,7 +1571,10 @@ async def _run_anatomy_guard(render: Dict[str, Any], mode: str) -> Dict[str, Any
         "Judge structural plausibility only, not attractiveness, explicitness, morality, styling, or body size. "
         "Fail an image for an extra or partial unintended person, duplicated torso/pelvis/genitals, extra or missing "
         "limbs, disconnected joints, duplicated feet, hand-like feet, severely fused digits, or physically impossible "
-        "perspective. Do not fail merely for nudity, consensual adult content, unusual clothing, large natural features, "
+        "perspective. Trace every arm continuously from shoulder to elbow to wrist to hand and every leg from hip to knee "
+        "to ankle to foot. Fail orphan hands, arms emerging from thighs or unrelated body regions, duplicated or hidden-extra "
+        "limbs, fused torsos, and overlapping anatomy that cannot belong to one coherent person. Do not fail merely for nudity, "
+        "consensual adult content, unusual clothing, large natural features, "
         "or minor cosmetic imperfections. Return JSON containing passed (boolean), score (0-100 integer), issues "
         "(array of short strings), and summary (one short string). A score below 70 must set passed to false."
     )
