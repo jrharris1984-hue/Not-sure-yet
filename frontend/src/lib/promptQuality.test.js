@@ -93,6 +93,42 @@ describe("prompt quality preflight", () => {
     expect(result.ready).toBe(true);
   });
 
+  test("reports the active Z-Image anatomy guard mode", () => {
+    const natural = analyzePromptQuality({
+      positive: "photorealistic adult portrait",
+      dna: {
+        identity: { age: 44 },
+        style: { anatomy_mode: "natural" },
+        pose: { action: "standing" },
+        feet: {},
+        scene: { environment: "studio" },
+        lighting: { source: "softbox" },
+        skin: {},
+      },
+      workflow: { prompt_style: "zimage" },
+    });
+    expect(natural.issues.some((item) =>
+      item.code === "zimage-anatomy-mode" && item.severity === "info"
+    )).toBe(true);
+
+    const extreme = analyzePromptQuality({
+      positive: "photorealistic adult portrait",
+      dna: {
+        identity: { age: 44 },
+        style: { anatomy_mode: "extreme" },
+        pose: { action: "standing" },
+        feet: {},
+        scene: { environment: "studio" },
+        lighting: { source: "softbox" },
+        skin: {},
+      },
+      workflow: { prompt_style: "zimage" },
+    });
+    expect(extreme.issues.some((item) =>
+      item.code === "zimage-anatomy-mode" && item.severity === "warning"
+    )).toBe(true);
+  });
+
   test("blocks a subject age below 21", () => {
     const result = analyzePromptQuality({
       positive: "portrait",
