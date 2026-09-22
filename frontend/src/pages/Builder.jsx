@@ -29,6 +29,7 @@ import SubjectSwitcher from "@/components/SubjectSwitcher";
 import ChromaControls from "@/components/ChromaControls";
 import RenderRecipeSelector from "@/components/RenderRecipeSelector";
 import { getRenderRecipe, recipeFamily } from "@/lib/renderRecipes";
+import { readBuilderDraft, writeBuilderDraft, clearBuilderDraft } from "@/lib/builderDraft";
 import { Flame } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -51,6 +52,7 @@ export default function Builder() {
   const location = useLocation();
   const qc = useQueryClient();
   const galleryImportApplied = useRef(false);
+  const draftHydrated = useRef(false);
 
   const activeIdx = Math.max(0, SECTIONS.findIndex((s) => s.key === sectionParam));
   const activeSection = SECTIONS[activeIdx].key;
@@ -105,6 +107,41 @@ export default function Builder() {
     sampler: "euler",
     seed: "",
   });
+
+  const restoreDraft = (draft) => {
+    if (!draft) return false;
+    if (draft.name) setName(draft.name);
+    if (Array.isArray(draft.subjects) && draft.subjects.length) setSubjects(draft.subjects);
+    if (draft.activeSubjectId) setActiveSubjectId(draft.activeSubjectId);
+    setLocks(draft.locks || {});
+    setCollapsed(draft.collapsed || {});
+    setTags(Array.isArray(draft.tags) ? draft.tags : []);
+    setRaunch(!!draft.raunch);
+    setPromptOverride(draft.promptOverride || "");
+    setNegativePromptOverride(draft.negativePromptOverride || "");
+    setWorkflowId(draft.workflowId || "");
+    setLoraOverrides(draft.loraOverrides || {});
+    setEditInstruction(draft.editInstruction || "");
+    setPreserveUnmentioned(draft.preserveUnmentioned !== false);
+    setRepairTargets(draft.repairTargets || ["face", "hands"]);
+    setRepairInstruction(draft.repairInstruction || "");
+    setVideoInstruction(draft.videoInstruction || "");
+    setVideoFrames(draft.videoFrames || 41);
+    setVideoFps(draft.videoFps || 24);
+    setVideoWidth(draft.videoWidth || 640);
+    setVideoHeight(draft.videoHeight || 640);
+    setQualityTier(draft.qualityTier || "balanced");
+    if (draft.chromaSettings) setChromaSettings(draft.chromaSettings);
+    if (draft.activeRender) setActiveRender(draft.activeRender);
+    return true;
+  };
+
+  useEffect(() => {
+    if (!isNew || draftHydrated.current) return;
+    restoreDraft(readBuilderDraft(null));
+    draftHydrated.current = true;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isNew]);
 
   const { data: workflows = [] } = useQuery({ queryKey: ["workflows"], queryFn: endpoints.listWorkflows });
   const { data: settings } = useQuery({ queryKey: ["settings"], queryFn: endpoints.settings });
@@ -309,8 +346,28 @@ export default function Builder() {
     }
     setTags(Array.isArray(character.tags) ? character.tags : []);
     setRaunch(!!character.raunch);
+    restoreDraft(readBuilderDraft(id));
+    draftHydrated.current = true;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [character?.id]);
+
+  useEffect(() => {
+    if (!draftHydrated.current) return undefined;
+    const timer = window.setTimeout(() => writeBuilderDraft(id, {
+      name, subjects, activeSubjectId, locks, collapsed, tags, raunch,
+      promptOverride, negativePromptOverride, workflowId, loraOverrides,
+      editInstruction, preserveUnmentioned, repairTargets, repairInstruction,
+      videoInstruction, videoFrames, videoFps, videoWidth, videoHeight,
+      qualityTier, chromaSettings, activeRender,
+    }), 350);
+    return () => window.clearTimeout(timer);
+  }, [
+    id, name, subjects, activeSubjectId, locks, collapsed, tags, raunch,
+    promptOverride, negativePromptOverride, workflowId, loraOverrides,
+    editInstruction, preserveUnmentioned, repairTargets, repairInstruction,
+    videoInstruction, videoFrames, videoFps, videoWidth, videoHeight,
+    qualityTier, chromaSettings, activeRender,
+  ]);
 
   // Ensure active id is always valid.
   useEffect(() => {
@@ -678,6 +735,7 @@ export default function Builder() {
       "Reset this character? This clears all current selections, prompts, tags, locks, and the uploaded reference image. Saved characters and Gallery images will not be deleted."
     );
     if (!confirmed) return;
+    clearBuilderDraft(id);
     if (referencePreview) URL.revokeObjectURL(referencePreview);
     const fresh = makeSubject({ label: "A", dna: JSON.parse(JSON.stringify(DEFAULT_DNA)) });
     setName("Untitled");
@@ -1407,10 +1465,25 @@ export default function Builder() {
                 </div>
               )}
               {activeRender.output_files?.length > 0 && (
-                <div className="grid grid-cols-2 gap-2">
-                  {activeRender.output_files.map((u, i) => (
-                    <img key={i} src={u} alt="render" className="rounded-md border hairline w-full h-auto" />
-                  ))}
+                <div className="space-y-2">
+                  <div className="grid grid-cols-2 gap-2">
+                    {activeRender.output_files.map((u, i) => (
+                      <img key={i} src={u} alt="render" className="rounded-md border hairline w-full h-auto" />
+                    ))}
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button type="button"
+                      onClick={() => nav(`/gallery?render=${encodeURIComponent(activeRender.render_id || activeRender.id)}&returnTo=${encodeURIComponent(location.pathname)}`)}
+                      className="rounded-lg bg-emerald-500 px-3 py-2 text-sm font-semibold text-zinc-950 hover:bg-emerald-400"
+                      data-testid="btn-view-finished-render">
+                      View image
+                    </button>
+                    <button type="button" onClick={() => setActiveRender(null)}
+                      className="rounded-lg border hairline px-3 py-2 text-sm font-semibold text-zinc-200 hover:bg-white/5"
+                      data-testid="btn-continue-editing">
+                      Continue editing
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
