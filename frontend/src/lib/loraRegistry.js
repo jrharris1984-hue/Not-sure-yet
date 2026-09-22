@@ -85,6 +85,72 @@ export function workflowFamily(workflow = {}) {
 
 const normalized = (value) => String(value || "").toLowerCase().replaceAll("\\", "/");
 
+// Build the recommendation index from selected VALUES only. Searching a
+// serialized DNA object also searches its keys, so an empty `cum_state` field
+// used to recommend Cum Detail and an empty `feet` object recommended Foot
+// Detail on virtually every character.
+const EMPTY_SELECTIONS = new Set([
+  "", "none", "off", "default", "not set", "unspecified", "false", "null",
+]);
+
+function selectedDnaValues(value, path = [], result = []) {
+  if (Array.isArray(value)) {
+    value.forEach((item) => selectedDnaValues(item, path, result));
+    return result;
+  }
+  if (value && typeof value === "object") {
+    Object.entries(value).forEach(([key, child]) => selectedDnaValues(child, [...path, key], result));
+    return result;
+  }
+  if (typeof value !== "string" && typeof value !== "number") return result;
+  const text = normalized(value).trim();
+  if (!text || EMPTY_SELECTIONS.has(text)) return result;
+  // Numeric controls are useful context only when enabled. Zero-valued dials
+  // must not make an inactive section look selected.
+  if (typeof value === "number" && value <= 0) return result;
+  result.push({ path: path.join("."), text });
+  return result;
+}
+
+function keywordMatches(text, keyword) {
+  const needle = normalized(keyword).trim();
+  if (!needle) return false;
+  // Registry stems such as "urinат" intentionally match longer words. Normal
+  // words use boundaries so "sex" cannot accidentally match "sexy".
+  if (needle.endsWith("at")) return text.includes(needle);
+  const escaped = needle.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(`(^|[^a-z0-9])${escaped}([^a-z0-9]|$)`, "i").test(text);
+}
+
+function scoreEntry(entry, selections) {
+  const matches = [];
+  entry.keywords.forEach((keyword) => {
+    selections.forEach((selection) => {
+      if (!keywordMatches(selection.text, keyword)) return;
+      const words = normalized(keyword).split(/\s+/).filter(Boolean).length;
+      // Longer phrases are more intentional than broad one-word matches.
+      const specificity = words > 1 ? 6 + words : 2;
+      // Action/play fields should decide action LoRAs; appearance fields
+      // should decide body LoRAs. This prevents descriptive prose elsewhere
+      // from overpowering the actual UI selection.
+      const root = selection.path.split(".")[0];
+      const relevantRoots = entry.slot === "action"
+        ? ["scenario", "pose", "kink", "watersports", "intimate", "feet"]
+        : entry.slot === "body"
+          ? ["physique", "face", "hair", "skin", "intimate", "feet", "wardrobe"]
+          : ["style", "lighting", "camera", "scene", "skin"];
+      const sourceBonus = relevantRoots.includes(root) ? 3 : 0;
+      matches.push({ keyword, path: selection.path, points: specificity + sourceBonus });
+    });
+  });
+  const unique = [...new Map(matches.map((match) => [`${match.keyword}|${match.path}`, match])).values()];
+  return {
+    score: unique.reduce((total, match) => total + match.points, 0),
+    matchedKeywords: [...new Set(unique.map((match) => match.keyword))],
+    matchedPaths: [...new Set(unique.map((match) => match.path))],
+  };
+}
+
 export const LORA_STRENGTH_BUDGETS = {
   zimage: 1.7,
   chroma: 1.2,
@@ -106,14 +172,14 @@ const installedMatch = (entry, installed) => {
 
 export function planLoras({ workflow, dna, installed = [] }) {
   const family = workflowFamily(workflow);
-  const searchable = normalized(JSON.stringify(dna || {}));
+  const selections = selectedDnaValues(dna || {});
   const candidates = LORA_REGISTRY
     .filter((entry) => entry.family === family && entry.auto && entry.verified)
     .map((entry) => ({ ...entry, installedName: installedMatch(entry, installed) }))
     .filter((entry) => entry.installedName)
     .map((entry) => {
-      const matchedKeywords = entry.keywords.filter((keyword) => searchable.includes(keyword));
-      return { ...entry, matchedKeywords, score: matchedKeywords.length };
+      const match = scoreEntry(entry, selections);
+      return { ...entry, ...match };
     })
     .filter((entry) => entry.score > 0);
 
@@ -146,7 +212,7 @@ export function planLoras({ workflow, dna, installed = [] }) {
   }
   selected.forEach((entry) => {
     entry.reason = entry.matchedKeywords?.length
-      ? `Matched: ${entry.matchedKeywords.join(", ")}`
+      ? `Selected ${entry.matchedKeywords.join(", ")} in ${entry.matchedPaths.join(", ")}`
       : "Default realism finish for this workflow";
   });
 
