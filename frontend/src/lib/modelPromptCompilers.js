@@ -65,7 +65,7 @@ function normalizeZImageLanguage(value) {
   return ZIMAGE_SIZE_REWRITES.reduce((text, [pattern, replacement]) => text.replace(pattern, replacement), value);
 }
 
-export function resolveZImageComposition(dna = {}) {
+export function resolveZImageComposition(dna = {}, options = {}) {
   const resolved = JSON.parse(JSON.stringify(dna || {}));
   resolved.pose = { ...(resolved.pose || {}) };
   resolved.feet = { ...(resolved.feet || {}) };
@@ -123,7 +123,7 @@ export function resolveZImageComposition(dna = {}) {
 
     if (focus !== "feet" && feetRequested) {
       supportingFeet = selectedPedicure && selectedPedicure !== "natural nails"
-        ? `both naturally proportioned feet visible with ${selectedPedicure} toenails`
+        ? `both naturally proportioned feet visible with ${selectedPedicure.replace(/^painted\s+(.+)$/i, "$1-painted")} toenails`
         : "both naturally proportioned feet visible";
       resolved.feet = {};
       adjustments.push("Removed the competing PRIMARY FEET block because feet are not the composition priority.");
@@ -147,7 +147,7 @@ export function resolveZImageComposition(dna = {}) {
   }
 
   const castSize = lower(resolved.scenario?.cast_size) || "solo";
-  const solo = !["duo", "threesome", "foursome", "group", "gangbang", "orgy"].includes(castSize);
+  const solo = !options.forceMulti && !["duo", "threesome", "foursome", "group", "gangbang", "orgy"].includes(castSize);
   const humanLead = mode === "natural"
     ? "NORMAL HUMAN ANATOMY REQUIRED — believable adult proportions, one coherent torso and pelvis, exactly two arms and two legs, naturally sized hands and feet"
     : mode === "enhanced"
@@ -193,7 +193,7 @@ export function resolvePromptCompiler({ promptStyle = "", workflowKind = "", wor
 }
 
 export function buildZImagePrompts({ dna = {}, subjects = [], isMulti = false, raunch = false } = {}) {
-  const primaryGuard = resolveZImageComposition(dna);
+  const primaryGuard = resolveZImageComposition(dna, { forceMulti: isMulti });
   const guardedSubjects = isMulti
     ? (subjects || []).map((subject) => ({ ...subject, dna: resolveZImageComposition(subject?.dna || {}).dna }))
     : subjects;
@@ -223,6 +223,7 @@ export function buildQwenEditPrompts({ instruction = "", preserveUnmentioned = t
     positive: [
       `Change only the following: ${request}.`,
       preserveUnmentioned ? "Preserve the subject's identity, age, body proportions, pose, clothing, composition, lighting, background, and every detail not explicitly requested." : "",
+      "Keep one connected human body. Do not add, remove, duplicate, enlarge, or relocate limbs, hands, feet, fingers, toes, torso, pelvis, or facial features unless the request explicitly requires it.",
       "Make the edit seamless, photorealistic, and consistent with the source image.",
     ].filter(Boolean).join(" "),
     negative: "unrequested changes, identity drift, face replacement, body redesign, wardrobe change, background change, duplicated anatomy, edit seams, artifacts",
@@ -236,7 +237,7 @@ export function buildWanImageToVideoPrompts({ instruction = "" } = {}) {
     positive: compactWords([
       "Animate the supplied starting image as one continuous shot.", motion,
       "Preserve the existing adult subject, identity, anatomy, clothing, environment, lighting, and composition.",
-      "Use coherent natural motion with stable hands, feet, face, hair, and fabric from first frame to last.",
+      "Use coherent natural motion with stable hands, feet, face, hair, and fabric from first frame to last. Keep the same number of people and the same connected limbs in every frame; no body growth, duplication, melting, or sudden scale changes.",
     ].join(" "), 180),
     negative: WAN_NEGATIVE,
   };
@@ -257,11 +258,29 @@ export function buildWanTextToVideoPrompts({ dna = {}, subjects = [], isMulti = 
 
 export function compileModelPrompts({ promptStyle = "", workflowKind = "", workflowName = "", dna = {}, subjects = [], isMulti = false, raunch = false, editInstruction = "", videoInstruction = "", preserveUnmentioned = true } = {}) {
   const compiler = resolvePromptCompiler({ promptStyle, workflowKind, workflowName });
-  if (compiler === "pony") return isMulti ? buildMultiPonyPrompts(subjects, { raunch }) : buildPonyPrompts(dna, { raunch });
-  if (compiler === "chroma") return isMulti ? buildMultiChromaPrompts(subjects, { raunch }) : buildChromaPrompts(dna, { raunch });
+  const primaryGuard = resolveZImageComposition(dna, { forceMulti: isMulti });
+  const guardedSubjects = isMulti
+    ? (subjects || []).map((subject) => ({ ...subject, dna: resolveZImageComposition(subject?.dna || {}).dna }))
+    : subjects;
+  const withUniversalGuard = (prompts, family) => ({
+    ...prompts,
+    positive: compactWords(
+      dedupeClauses([primaryGuard.composition, prompts.positive].filter(Boolean).join(", ")),
+      family === "pony" ? 300 : family === "chroma" ? 360 : 340
+    ),
+    guardAdjustments: primaryGuard.adjustments,
+  });
+  if (compiler === "pony") return withUniversalGuard(
+    isMulti ? buildMultiPonyPrompts(guardedSubjects, { raunch }) : buildPonyPrompts(primaryGuard.dna, { raunch }),
+    "pony"
+  );
+  if (compiler === "chroma") return withUniversalGuard(
+    isMulti ? buildMultiChromaPrompts(guardedSubjects, { raunch }) : buildChromaPrompts(primaryGuard.dna, { raunch }),
+    "chroma"
+  );
   if (compiler === "zimage") return buildZImagePrompts({ dna, subjects, isMulti, raunch });
   if (compiler === "qwen_edit") return buildQwenEditPrompts({ instruction: editInstruction, preserveUnmentioned });
   if (compiler === "wan_i2v") return buildWanImageToVideoPrompts({ instruction: videoInstruction });
   if (compiler === "wan_t2v") return buildWanTextToVideoPrompts({ dna, subjects, isMulti, raunch, instruction: videoInstruction });
-  return basePrompts({ dna, subjects, isMulti, raunch });
+  return withUniversalGuard(basePrompts({ dna: primaryGuard.dna, subjects: guardedSubjects, isMulti, raunch }), "standard");
 }
