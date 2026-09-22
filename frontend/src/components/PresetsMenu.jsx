@@ -11,6 +11,7 @@ import {
   DEFAULT_DNA,
   SECTIONS,
   HERITAGE_DENSITIES,
+  HERITAGE_CASTS,
   createHeritageCharacterVariation,
 } from "@/lib/dna";
 import { Input } from "@/components/ui/input";
@@ -33,6 +34,7 @@ export default function PresetsMenu({ onApply, currentDna, sectionLocks = {}, fi
   const [draft, setDraft] = useState(null);
   const [heritageMode, setHeritageMode] = useState("complete");
   const [heritageDensity, setHeritageDensity] = useState("balanced");
+  const [heritageCast, setHeritageCast] = useState("solo");
   const [lastHeritage, setLastHeritage] = useState(null);
   const qc = useQueryClient();
   const { data: customPresets = [] } = useQuery({
@@ -104,7 +106,7 @@ export default function PresetsMenu({ onApply, currentDna, sectionLocks = {}, fi
       );
     }
 
-    onApply(next);
+    onApply(next, isHeritage ? { type: "heritage", cast: heritageCast } : { type: "preset" });
     if (isHeritage) {
       setLastHeritage(preset);
       toast.success(mode === "heritage" ? "Heritage applied" : "Complete heritage character created");
@@ -163,6 +165,19 @@ export default function PresetsMenu({ onApply, currentDna, sectionLocks = {}, fi
             </div>
             {category === "heritage" && (
               <div className="px-3 py-3 border-b hairline bg-amber-500/[0.04] space-y-2" data-testid="heritage-generation-options">
+                <div>
+                  <div className="mb-1.5 text-[10px] font-mono uppercase tracking-widest text-zinc-500">Choose cast first</div>
+                  <div className="grid grid-cols-4 gap-1.5">
+                    {Object.entries(HERITAGE_CASTS).map(([key, option]) => (
+                      <button key={key} type="button" onClick={() => setHeritageCast(key)}
+                        data-testid={`heritage-cast-${key}`}
+                        className={`rounded-lg border px-1.5 py-2 text-[10px] sm:text-xs font-semibold ${heritageCast === key ? "border-rose-400 bg-rose-500/15 text-rose-100" : "hairline text-zinc-400"}`}>
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
+                  <p className="mt-1.5 text-[10px] text-zinc-500">Family casts share heritage and recognizable traits. Every generated subject remains 21+.</p>
+                </div>
                 <div>
                   <div className="text-xs font-display font-bold text-amber-200">How should the heritage preset apply?</div>
                   <p className="mt-0.5 text-[10px] sm:text-[11px] text-zinc-500">
