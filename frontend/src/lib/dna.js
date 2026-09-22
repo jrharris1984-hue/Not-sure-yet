@@ -391,10 +391,53 @@ export const HERITAGE_VARIATION_FIELDS = {
   hair: null,
   skin: null,
   intimate: ["pubic_hair", "pussy", "nipples", "areolas"],
-  feet: ["sole_presentation", "pedicure", "foot_size", "hosiery"],
   wardrobe: ["outfit_preset"],
   pose: null,
 };
+
+export const HERITAGE_DENSITIES = {
+  simple: { label: "Simple", optionalChance: 0.18, multiMax: 1, feetChance: 0.02 },
+  balanced: { label: "Balanced", optionalChance: 0.42, multiMax: 1, feetChance: 0.07 },
+  detailed: { label: "Detailed", optionalChance: 0.68, multiMax: 2, feetChance: 0.14 },
+  surprise: { label: "Surprise me", optionalChance: 0.82, multiMax: 2, feetChance: 0.22 },
+};
+
+const HERITAGE_CORE_FIELDS = {
+  physique: new Set(["height", "body_type", "bust", "butt"]),
+  face: new Set(["eye_shape", "eye_color", "jaw", "nose", "lips"]),
+  hair: new Set(["length", "style", "color", "texture"]),
+  skin: new Set(["tone", "texture"]),
+  wardrobe: new Set(["outfit_preset"]),
+  pose: new Set(["action", "angle", "distance", "expression"]),
+};
+
+function randomizeHeritageSection(sectionKey, current, fieldLocks, density) {
+  const section = SECTIONS.find((item) => item.key === sectionKey);
+  const out = { ...current };
+  if (!section) return out;
+  const allowed = HERITAGE_VARIATION_FIELDS[sectionKey];
+  const allowedSet = allowed ? new Set(allowed) : null;
+  const core = HERITAGE_CORE_FIELDS[sectionKey] || new Set();
+  section.fields.forEach((field) => {
+    if (fieldLocks?.[field.key] || (allowedSet && !allowedSet.has(field.key))) return;
+    if (RANDOMIZE_PROTECTED_FIELDS[sectionKey]?.has(field.key)) return;
+    const shouldFill = core.has(field.key) || Math.random() < density.optionalChance;
+    if (!shouldFill) {
+      if (field.type === "chips_multi") out[field.key] = [];
+      else if (["chips", "pose_chips", "text"].includes(field.type)) out[field.key] = "";
+      return;
+    }
+    const pool = field.groups ? field.groups.flatMap((group) => group.options) : (field.options || []);
+    if (["chips", "pose_chips"].includes(field.type) && pool.length) out[field.key] = pick(pool);
+    else if (field.type === "chips_multi" && pool.length) {
+      const count = 1 + Math.floor(Math.random() * Math.max(1, density.multiMax));
+      out[field.key] = [...pool].sort(() => Math.random() - 0.5).slice(0, count);
+    } else if (field.type === "slider") {
+      out[field.key] = Math.floor(Math.random() * (field.max - field.min + 1)) + field.min;
+    }
+  });
+  return out;
+}
 
 // Builds a complete character around a selected heritage without touching Play,
 // fluids, selected acts, or the Explicit/Kink dials. null means every selectable
@@ -403,8 +446,10 @@ export function createHeritageCharacterVariation(
   currentDna = DEFAULT_DNA,
   presetDna = {},
   sectionLocks = {},
-  fieldLocks = {}
+  fieldLocks = {},
+  options = {}
 ) {
+  const density = HERITAGE_DENSITIES[options.density] || HERITAGE_DENSITIES.balanced;
   const next = {};
   Object.keys(DEFAULT_DNA).forEach((sectionKey) => {
     next[sectionKey] = {
@@ -424,13 +469,27 @@ export function createHeritageCharacterVariation(
     section.fields.forEach((field) => {
       if (allowed && !allowed.has(field.key)) locksForSection[field.key] = true;
     });
-    next[sectionKey] = randomizeSection(
-      sectionKey,
-      next[sectionKey],
-      locksForSection,
-      { preserveProtected: true }
-    );
+    next[sectionKey] = randomizeHeritageSection(sectionKey, next[sectionKey], locksForSection, density);
   });
+
+  // Feet are supporting detail in a heritage preset, never the default subject.
+  // They are only rolled occasionally and Play/fluids/acts remain untouched.
+  if (!sectionLocks?.feet && Math.random() < density.feetChance) {
+    const feetFields = new Set(["sole_presentation", "pedicure", "foot_size"]);
+    const feetLocks = { ...(fieldLocks?.feet || {}) };
+    const section = SECTIONS.find((item) => item.key === "feet");
+    section?.fields.forEach((field) => { if (!feetFields.has(field.key)) feetLocks[field.key] = true; });
+    next.feet = randomizeHeritageSection("feet", next.feet, feetLocks, density);
+  } else if (!sectionLocks?.feet) {
+    ["sole_presentation", "pedicure", "foot_size", "arch", "framing"].forEach((key) => {
+      if (!fieldLocks?.feet?.[key]) next.feet[key] = "";
+    });
+    if (!fieldLocks?.feet?.toes) next.feet.toes = [];
+  }
+
+  if (!sectionLocks?.pose && !fieldLocks?.pose?.focus) {
+    next.pose.focus = pick(["full frame", "full frame", "body", "body", "face"]);
+  }
 
   // Apply heritage, then restore every locked value. Locks always win over
   // presets and randomization, including locks on non-randomized preset fields.
