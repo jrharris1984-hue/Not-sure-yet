@@ -840,7 +840,10 @@ async def delete_character_preset(pid: str):
 
 @api.get("/characters/{cid}/renders")
 async def character_renders(cid: str):
-    docs = await db.renders.find({"character_id": cid}, {"_id": 0}).sort("created_at", -1).to_list(500)
+    docs = await db.renders.find(
+        {"character_id": cid, "hidden_from_gallery": {"$ne": True}},
+        {"_id": 0},
+    ).sort("created_at", -1).to_list(500)
     return docs
 
 
@@ -849,7 +852,10 @@ async def character_renders(cid: str):
 # ============================================================
 @api.get("/renders")
 async def list_renders(limit: int = 200):
-    return await db.renders.find({}, {"_id": 0}).sort("created_at", -1).to_list(limit)
+    return await db.renders.find(
+        {"hidden_from_gallery": {"$ne": True}},
+        {"_id": 0},
+    ).sort("created_at", -1).to_list(limit)
 
 
 @api.get("/renders/{rid}")
@@ -1504,9 +1510,109 @@ def _collect_comfy_outputs(base_url: str, outputs: Dict[str, Any]) -> tuple[List
     return [entry[2] for entry in collected], {k: v for k, v in variants.items() if v}
 
 
+def _guard_mode(render: Dict[str, Any], payload: Optional[Dict[str, Any]] = None) -> str:
+    dna = (payload or {}).get("dna") or render.get("dna_snapshot") or {}
+    mode = str((dna.get("style") or {}).get("anatomy_mode") or "natural").strip().lower()
+    return mode if mode in {"natural", "enhanced", "extreme"} else "natural"
+
+
+def _simplify_anatomy_retry_prompt(text: str) -> str:
+    replacements = {
+        r"hyper-inflated[^,]*": "large breasts with believable weight",
+        r"cartoonishly enormous[^,]*": "enhanced but believable proportions",
+        r"impossibly huge[^,]*": "large",
+        r"dominant size-queen soles": "naturally proportioned feet",
+        r"very large feet": "naturally sized feet",
+        r"first person POV": "moderate three-quarter camera view",
+        r"point of view shot": "moderate camera view",
+    }
+    cleaned = str(text or "")
+    for pattern, replacement in replacements.items():
+        cleaned = re.sub(pattern, replacement, cleaned, flags=re.IGNORECASE)
+    words = cleaned.split()
+    cleaned = " ".join(words[:190])
+    return (
+        "STRICT NORMAL HUMAN RETRY — exactly one adult person, one connected torso and pelvis, "
+        "exactly two arms, two hands, two legs and two feet, coherent joints, moderate perspective, "
+        "no body part filling the frame, " + cleaned
+    )
+
+
+async def _run_anatomy_guard(render: Dict[str, Any], mode: str) -> Dict[str, Any]:
+    if mode == "extreme":
+        return {"status": "skipped", "passed": True, "score": None, "issues": [], "summary": "Extreme mode bypasses automatic rejection."}
+
+    image_url = next((
+        url for url in (render.get("output_files") or [])
+        if not str(url).lower().split("?")[0].endswith((".mp4", ".webm", ".gif"))
+    ), "")
+    if not image_url:
+        return {"status": "skipped", "passed": True, "score": None, "issues": [], "summary": "No still image was available for anatomy inspection."}
+
+    vision_model = os.environ.get("VENICE_VISION_MODEL", "").strip()
+    venice_key = os.environ.get("VENICE_API_KEY", "").strip()
+    settings = await get_settings()
+    api_key = venice_key or settings.openrouter_api_key
+    if not vision_model or not api_key:
+        return {"status": "skipped", "passed": True, "score": None, "issues": [], "summary": "Venice vision is not configured; render was not blocked."}
+
+    async with httpx.AsyncClient(timeout=45.0) as hc:
+        image_response = await hc.get(image_url)
+    if image_response.status_code >= 400:
+        return {"status": "skipped", "passed": True, "score": None, "issues": [], "summary": "The rendered image could not be downloaded for inspection."}
+
+    mime = image_response.headers.get("content-type") or "image/png"
+    data_url = f"data:{mime};base64,{base64.b64encode(image_response.content).decode('ascii')}"
+    system = (
+        "You are a strict technical anatomy quality-control inspector for AI-generated images of adults. "
+        "Judge structural plausibility only, not attractiveness, explicitness, morality, styling, or body size. "
+        "Fail an image for an extra or partial unintended person, duplicated torso/pelvis/genitals, extra or missing "
+        "limbs, disconnected joints, duplicated feet, hand-like feet, severely fused digits, or physically impossible "
+        "perspective. Do not fail merely for nudity, consensual adult content, unusual clothing, large natural features, "
+        "or minor cosmetic imperfections. Return JSON containing passed (boolean), score (0-100 integer), issues "
+        "(array of short strings), and summary (one short string). A score below 70 must set passed to false."
+    )
+    payload = {
+        "model": vision_model,
+        "messages": [
+            {"role": "system", "content": system},
+            {"role": "user", "content": [
+                {"type": "text", "text": f"Anatomy guard mode: {mode}. Inspect this completed render."},
+                {"type": "image_url", "image_url": {"url": data_url}},
+            ]},
+        ],
+        "temperature": 0.1,
+        "response_format": {"type": "json_object"},
+    }
+    try:
+        async with httpx.AsyncClient(timeout=120.0) as hc:
+            response = await hc.post(
+                "https://api.venice.ai/api/v1/chat/completions",
+                headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+                json=payload,
+            )
+        if response.status_code >= 400:
+            return {"status": "skipped", "passed": True, "score": None, "issues": [], "summary": f"Venice anatomy inspection returned {response.status_code}; render was not blocked."}
+        result = extract_json(response.json()["choices"][0]["message"]["content"])
+        passed = bool(result.get("passed", False))
+        score = max(0, min(100, int(result.get("score", 0))))
+        return {
+            "status": "passed" if passed and score >= 70 else "failed",
+            "passed": passed and score >= 70,
+            "score": score,
+            "issues": [str(item)[:160] for item in (result.get("issues") or [])][:8],
+            "summary": str(result.get("summary", "")).strip()[:500],
+        }
+    except Exception as exc:
+        logger.warning(f"anatomy guard inspection failed: {exc}")
+        return {"status": "skipped", "passed": True, "score": None, "issues": [], "summary": "Anatomy inspection was unavailable; render was not blocked."}
+
+
 async def _poll_render_doc(rid: str) -> Optional[Dict[str, Any]]:
     doc = await db.renders.find_one({"id": rid}, {"_id": 0})
     if not doc or not doc.get("comfy_prompt_id"):
+        return doc
+    if doc.get("status") in {"rejected", "failed"} and doc.get("anatomy_guard_status") == "failed":
         return doc
     s = await get_settings()
     try:
@@ -1541,6 +1647,70 @@ async def _sync_queue_job(job: Dict[str, Any]) -> Dict[str, Any]:
         patch = {"status": "failed", "error": "The linked render record is missing.", "finished_at": now_iso(), "updated_at": now_iso()}
     else:
         status = render.get("status", "running")
+        payload = dict(job.get("payload") or {})
+        mode = _guard_mode(render, payload)
+        is_still_image = str(render.get("workflow_type") or "image") not in {"video", "text_video"}
+
+        if status == "done" and is_still_image and not render.get("anatomy_guard_status"):
+            await db.renders.update_one(
+                {"id": render_id},
+                {"$set": {"anatomy_guard_status": "checking", "updated_at": now_iso()}},
+            )
+            report = await _run_anatomy_guard(render, mode)
+            guard_patch = {
+                "anatomy_guard_mode": mode,
+                "anatomy_guard_status": report["status"],
+                "anatomy_guard_score": report["score"],
+                "anatomy_guard_issues": report["issues"],
+                "anatomy_guard_summary": report["summary"],
+                "updated_at": now_iso(),
+            }
+            await db.renders.update_one({"id": render_id}, {"$set": guard_patch})
+            render.update(guard_patch)
+
+            if not report["passed"]:
+                retries = int(job.get("anatomy_retries", 0) or 0)
+                if retries < 2:
+                    payload["seed"] = random.randint(1, 2**63 - 1)
+                    payload["prompt_positive"] = _simplify_anatomy_retry_prompt(payload.get("prompt_positive", ""))
+                    payload["prompt_negative"] = (
+                        str(payload.get("prompt_negative", "")) +
+                        ", extra person, partial person, duplicated body, duplicated pelvis, duplicated feet, "
+                        "extra limbs, disconnected limbs, impossible perspective"
+                    ).strip(", ")
+                    await db.renders.update_one(
+                        {"id": render_id},
+                        {"$set": {
+                            "status": "rejected",
+                            "hidden_from_gallery": True,
+                            "error": "Rejected by Normal Human Guard; a simplified retry was queued.",
+                            "updated_at": now_iso(),
+                        }},
+                    )
+                    retry_patch = {
+                        "status": "queued",
+                        "render_id": None,
+                        "payload": payload,
+                        "anatomy_retries": retries + 1,
+                        "error": None,
+                        "started_at": None,
+                        "finished_at": None,
+                        "updated_at": now_iso(),
+                    }
+                    await db.render_queue.update_one({"id": job["id"]}, {"$set": retry_patch})
+                    job.update(retry_patch)
+                    return job
+
+                status = "failed"
+                error = "Normal Human Guard rejected the render after two retries: " + (
+                    report["summary"] or "; ".join(report["issues"]) or "implausible anatomy"
+                )
+                await db.renders.update_one(
+                    {"id": render_id},
+                    {"$set": {"status": status, "hidden_from_gallery": True, "error": error, "updated_at": now_iso()}},
+                )
+                render["error"] = error
+
         patch = {"status": status, "error": render.get("error"), "updated_at": now_iso()}
         if status in QUEUE_TERMINAL:
             patch["finished_at"] = now_iso()
