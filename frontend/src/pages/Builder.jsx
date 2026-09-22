@@ -10,6 +10,7 @@ import {
   phaseOfSection,
   MAX_SUBJECTS, makeSubject, subjectsFromCharacter, subjectLabel,
   expectedSubjectCount, seedSubjectFromPairing,
+  HERITAGE_CASTS,
 } from "@/lib/dna";
 import { compileModelPrompts, resolvePromptCompiler } from "@/lib/modelPromptCompilers";
 import { analyzePromptQuality } from "@/lib/promptQuality";
@@ -843,11 +844,38 @@ export default function Builder() {
               currentDna={activeDna}
               sectionLocks={locks}
               fieldLocks={activeFieldLocks}
-              onApply={(preset) => {
+              onApply={(preset, context = {}) => {
                 const next = { ...preset };
                 Object.keys(locks).forEach((k) => { if (locks[k]) next[k] = activeDna[k]; });
-                setActiveDna(next);
-                toast.success(`Preset applied to Subject ${activeSubject.label}`);
+                if (context.type === "heritage") {
+                  const cast = HERITAGE_CASTS[context.cast] || HERITAGE_CASTS.solo;
+                  const primaryDna = {
+                    ...next,
+                    scenario: {
+                      ...(next.scenario || {}),
+                      cast_size: cast.castSize,
+                      cast_type: cast.castType,
+                    },
+                  };
+                  const primary = {
+                    ...(subjects[0] || activeSubject),
+                    label: "A",
+                    dna: primaryDna,
+                  };
+                  if (context.cast === "solo") {
+                    setSubjects([primary]);
+                    setActiveSubjectId(primary.id);
+                  } else {
+                    const relativeDna = seedSubjectFromPairing(primaryDna, 1);
+                    const relative = makeSubject({ label: "B", dna: relativeDna });
+                    setSubjects([primary, relative]);
+                    setActiveSubjectId(primary.id);
+                  }
+                  toast.success(`${cast.label} heritage cast created`);
+                } else {
+                  setActiveDna(next);
+                  toast.success(`Preset applied to Subject ${activeSubject.label}`);
+                }
               }}
             />
             <KinkPresetsMenu
