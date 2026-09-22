@@ -11,6 +11,9 @@ const installed = [
   "Z-Image\\Curated\\QQ Collection\\lora-doggy.safetensors",
   "Z-Image\\Curated\\QQ Collection\\lora-pov-doggy.safetensors",
   "Z-Image\\Curated\\QQ Collection\\lora-lingerie.safetensors",
+  "Z-Image\\Curated\\QQ Collection\\lora-cum.safetensors",
+  "Z-Image\\Curated\\QQ Collection\\lora-bukkake.safetensors",
+  "Z-Image\\girls pee.safetensors",
   "REALSTAGRAM_ZIMG.safetensors",
   "Flux_2-Turbo-LoRA_comfyui.safetensors",
 ];
@@ -53,6 +56,37 @@ describe("LoRA registry planner", () => {
     });
     expect(plan.selected.every((entry) => entry.family === "zimage")).toBe(true);
     expect(plan.selected.some((entry) => entry.id === "flux2-turbo")).toBe(false);
+  });
+
+  test("does not treat empty DNA property names as active selections", () => {
+    const plan = planLoras({
+      workflow: { name: "IMAGE · Z-image Turbo · NSFW" },
+      dna: {
+        feet: { sole_presentation: "", foot_act: [] },
+        intimate: { cum_state: [], squirt: "none" },
+        watersports: { source: "none" },
+        scenario: { explicit_level: 0, kink_level: 0 },
+      },
+      installed,
+    });
+    expect(plan.selected.some((entry) => entry.id === "qq-foot")).toBe(false);
+    expect(plan.selected.some((entry) => entry.id === "qq-cum")).toBe(false);
+    expect(plan.selected.some((entry) => entry.id === "z-pee")).toBe(false);
+  });
+
+  test("changes the action recommendation when the selected act changes", () => {
+    const cumPlan = planLoras({
+      workflow: { name: "IMAGE · Z-image Turbo · NSFW" },
+      dna: { intimate: { cum_state: ["visible semen"] } },
+      installed,
+    });
+    const bukkakePlan = planLoras({
+      workflow: { name: "IMAGE · Z-image Turbo · NSFW" },
+      dna: { scenario: { acts: ["bukkake"] } },
+      installed,
+    });
+    expect(cumPlan.selected.find((entry) => entry.slot === "action")?.id).toBe("qq-cum");
+    expect(bukkakePlan.selected.find((entry) => entry.slot === "action")?.id).toBe("qq-bukkake");
   });
 
   test("keeps automatic recommendations inside the family strength budget", () => {
