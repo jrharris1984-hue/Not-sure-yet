@@ -1,6 +1,8 @@
 import {
   DEFAULT_DNA,
+  HERITAGE_CASTS,
   createHeritageCharacterVariation,
+  seedSubjectFromPairing,
 } from "./dna";
 
 const clone = (value) => JSON.parse(JSON.stringify(value));
@@ -93,5 +95,22 @@ describe("createHeritageCharacterVariation", () => {
     expect(result.feet.foot_act).toEqual(["keep act"]);
     expect(result.kink.restraint).toEqual(["keep kink"]);
     expect(result.pose.focus).not.toBe("feet");
+  });
+
+  it("maps heritage cast choices to safe related adult subjects", () => {
+    expect(HERITAGE_CASTS.twins).toMatchObject({ castSize: "duo", castType: "identical twins" });
+    expect(HERITAGE_CASTS.sisters.castType).toBe("sisters");
+    expect(HERITAGE_CASTS.mother_daughter.castType).toBe("mother and daughter");
+
+    const mother = clone(DEFAULT_DNA);
+    mother.identity = { ...mother.identity, age: 48, ethnicity: "colombian" };
+    mother.scenario = { ...mother.scenario, cast_size: "duo", cast_type: "mother and daughter" };
+    const daughter = seedSubjectFromPairing(mother, 1);
+    expect(daughter.identity.ethnicity).toBe("colombian");
+    expect(daughter.identity.age).toBe(25);
+    expect(daughter.identity.age).toBeGreaterThanOrEqual(21);
+
+    const twins = { ...mother, scenario: { ...mother.scenario, cast_type: "identical twins" } };
+    expect(seedSubjectFromPairing(twins, 1).identity.age).toBe(48);
   });
 });
