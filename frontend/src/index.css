@@ -63,6 +63,10 @@ body {
   height: calc(4rem + env(safe-area-inset-bottom, 0px));
 }
 
+.mobile-builder-actions {
+  bottom: calc(4rem + env(safe-area-inset-bottom, 0px));
+}
+
 .pwa-install-banner {
   bottom: calc(4.6rem + env(safe-area-inset-bottom, 0px));
 }
@@ -165,4 +169,3 @@ code, pre, .font-mono {
 .text-rose    { color: #E85482; }
 .text-teal    { color: #38BDF8; }
 .text-fuchsia { color: #D946EF; }
-
