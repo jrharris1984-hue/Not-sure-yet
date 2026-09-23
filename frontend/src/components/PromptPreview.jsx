@@ -1,10 +1,11 @@
-import { Copy, Check, ShieldCheck, Wand2, Undo2, AlertTriangle, Sparkles, Loader2 } from "lucide-react";
+import { Copy, Check, ShieldCheck, Wand2, Undo2, AlertTriangle, Sparkles, Loader2, ChevronDown } from "lucide-react";
 import { useState, useMemo } from "react";
 import { toast } from "sonner";
 import { analyzePromptQuality, estimatePromptTokens } from "@/lib/promptQuality";
 
 export default function PromptPreview({ positive, negative, dna, workflow, context, optimized, improving, onImprove, onOptimize, onRestore }) {
   const [copied, setCopied] = useState(false);
+  const [expanded, setExpanded] = useState(false);
   const tokens = useMemo(() => estimatePromptTokens(positive), [positive]);
   const quality = useMemo(
     () => analyzePromptQuality({ positive, dna, workflow, context }),
@@ -55,9 +56,27 @@ export default function PromptPreview({ positive, negative, dna, workflow, conte
           </button>
         </div>
       </div>
-      <pre className="text-xs font-mono leading-relaxed bg-elevated rounded-lg p-3 border hairline whitespace-pre-wrap break-words text-amber-100/90 min-h-[80px]">
-{positive || "— fill the DNA form to build a prompt —"}
-      </pre>
+      <button type="button" onClick={() => setExpanded((value) => !value)}
+        className="w-full rounded-lg border hairline bg-elevated p-3 text-left" data-testid="btn-toggle-prompt-details">
+        <div className="flex items-start gap-2">
+          <span className="flex-1 text-xs font-mono leading-relaxed text-amber-100/90 line-clamp-3">
+            {positive || "— fill the DNA form to build a prompt —"}
+          </span>
+          <ChevronDown className={`h-4 w-4 shrink-0 text-zinc-500 transition-transform ${expanded ? "rotate-180" : ""}`} />
+        </div>
+        <div className="mt-2 text-[10px] text-zinc-500">{expanded ? "Hide full prompts" : "Show and edit full prompts"}</div>
+      </button>
+      {expanded && (
+        <div className="space-y-3" data-testid="prompt-expanded-details">
+          <pre className="text-xs font-mono leading-relaxed bg-elevated rounded-lg p-3 border hairline whitespace-pre-wrap break-words text-amber-100/90 max-h-72 overflow-y-auto">
+{positive}
+          </pre>
+          <div className="section-label">Negative</div>
+          <pre className="text-[11px] font-mono leading-relaxed bg-elevated rounded-lg p-3 border hairline whitespace-pre-wrap break-words text-zinc-400 max-h-40 overflow-y-auto">
+{negative}
+          </pre>
+        </div>
+      )}
       <div className="rounded-lg border hairline bg-black/20 p-3 space-y-2" data-testid="prompt-quality-preflight">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">
@@ -90,10 +109,6 @@ export default function PromptPreview({ positive, negative, dna, workflow, conte
           </ul>
         ) : <div className="text-[10px] text-emerald-300">Ready to render. No obvious conflicts or missing requirements detected.</div>}
       </div>
-      <div className="section-label">Negative</div>
-      <pre className="text-[11px] font-mono leading-relaxed bg-elevated rounded-lg p-3 border hairline whitespace-pre-wrap break-words text-zinc-400 max-h-40 overflow-y-auto">
-{negative}
-      </pre>
     </div>
   );
 }
