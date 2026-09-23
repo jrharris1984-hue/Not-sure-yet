@@ -19,6 +19,17 @@ const WARDROBE_SECTION = SECTIONS.find((s) => s.key === "wardrobe");
 const OUTFIT_FIELD = WARDROBE_SECTION.fields.find((f) => f.key === "outfit_preset");
 const ALL_OUTFITS = OUTFIT_FIELD.groups.flatMap((g) => g.options);
 const OUTFIT_GROUPS = OUTFIT_FIELD.groups;
+const FACE_SECTION = SECTIONS.find((s) => s.key === "face");
+const EXPRESSION_FIELD = FACE_SECTION?.fields.find((f) => f.key === "expression");
+const EXPRESSION_GROUPS = EXPRESSION_FIELD?.groups || (EXPRESSION_FIELD?.options?.length
+  ? [{ name: "Expressions", options: EXPRESSION_FIELD.options }]
+  : []);
+
+const CONTINUITY_PRESETS = [
+  { key: "maximum", label: "Maximum match", hint: "Same seed and locked location for the strongest visual continuity.", seedMode: "same", lockScenario: true },
+  { key: "balanced", label: "Consistent variety", hint: "Recommended: locked location with a small seed offset for each pose.", seedMode: "character_pose", lockScenario: true },
+  { key: "creative", label: "Creative", hint: "Fresh seeds allow more variety, with greater identity drift.", seedMode: "fresh", lockScenario: false },
+];
 
 export default function ShootSetup() {
   const { characterId } = useParams();
@@ -38,8 +49,10 @@ export default function ShootSetup() {
   const [packKey, setPackKey] = useState("editorial");
   const [manualPoses, setManualPoses] = useState([]);
   const [outfits, setOutfits] = useState([]); // list of outfit_preset strings
+  const [expressions, setExpressions] = useState([]);
+  const [continuity, setContinuity] = useState("balanced");
   const [lockScenario, setLockScenario] = useState(true);
-  const [seedMode, setSeedMode] = useState("fresh"); // same | character_pose | fresh
+  const [seedMode, setSeedMode] = useState("character_pose"); // same | character_pose | fresh
   const [baseSeed, setBaseSeed] = useState("");
   const [loraOverrides, setLoraOverrides] = useState({});
   const [name, setName] = useState("");
@@ -58,8 +71,12 @@ export default function ShootSetup() {
   const previewFrames = useMemo(() => {
     const poses = samplePoses({ mode: poseMode, packKey, manualPoses, count, allPoses: ALL_POSES });
     const outs = cycleOutfits(outfits.map((o) => ({ outfit_preset: o })), count);
-    return poses.map((p, i) => ({ pose_action: p, outfit_overrides: outs[i] || {} }));
-  }, [poseMode, packKey, manualPoses, count, outfits]);
+    return poses.map((p, i) => ({
+      pose_action: p,
+      outfit_overrides: outs[i] || {},
+      face_overrides: expressions.length ? { expression: expressions[i % expressions.length] } : {},
+    }));
+  }, [poseMode, packKey, manualPoses, count, outfits, expressions]);
 
   const create = useMutation({
     mutationFn: async () => {
@@ -90,6 +107,16 @@ export default function ShootSetup() {
   };
   const toggleOutfit = (o) => {
     setOutfits((cur) => (cur.includes(o) ? cur.filter((x) => x !== o) : [...cur, o]));
+  };
+  const toggleExpression = (expression) => {
+    setExpressions((current) => current.includes(expression)
+      ? current.filter((item) => item !== expression)
+      : [...current, expression]);
+  };
+  const applyContinuity = (preset) => {
+    setContinuity(preset.key);
+    setSeedMode(preset.seedMode);
+    setLockScenario(preset.lockScenario);
   };
 
   if (charLoading) return <div className="p-8 text-zinc-400">Loading character…</div>;
@@ -316,6 +343,16 @@ export default function ShootSetup() {
           {/* Advanced: scenario + seed */}
           <section className="pane p-4 sm:p-6 space-y-4" data-testid="shoot-advanced-panel">
             <div className="section-label">Consistency</div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              {CONTINUITY_PRESETS.map((preset) => (
+                <button key={preset.key} type="button" onClick={() => applyContinuity(preset)}
+                  data-testid={`btn-continuity-${preset.key}`}
+                  className={`text-left rounded-lg border p-3 transition-colors ${continuity === preset.key ? "border-emerald-500 bg-emerald-500/10" : "border-hairline hover:bg-white/5"}`}>
+                  <div className="font-display font-bold text-sm">{preset.label}</div>
+                  <div className="text-[11px] text-zinc-400 mt-1">{preset.hint}</div>
+                </button>
+              ))}
+            </div>
             <label className="flex items-center gap-3 cursor-pointer">
               <input
                 type="checkbox"
@@ -377,6 +414,27 @@ export default function ShootSetup() {
               )}
             </div>
           </section>
+
+          <section className="pane p-4 sm:p-6 space-y-4" data-testid="shoot-expression-panel">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <div className="section-label">Expression rotation</div>
+                <p className="text-xs text-zinc-500">Optional. Selected expressions cycle across the shoot while identity remains fixed.</p>
+              </div>
+              {expressions.length > 0 && <button type="button" onClick={() => setExpressions([])} className="text-[10px] font-mono uppercase tracking-widest text-zinc-400">clear</button>}
+            </div>
+            {EXPRESSION_GROUPS.map((group) => (
+              <div key={group.name}>
+                <div className="text-[10px] font-mono uppercase tracking-widest text-zinc-500 mb-1">{group.name}</div>
+                <div className="flex flex-wrap gap-1.5">
+                  {group.options.map((expression) => (
+                    <button key={expression} type="button" onClick={() => toggleExpression(expression)}
+                      className={`chip ${expressions.includes(expression) ? "active" : ""}`}>{expression}</button>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </section>
         </div>
 
         {/* Right column - preview + LoRA + dispatch */}
@@ -396,6 +454,7 @@ export default function ShootSetup() {
                     {f.outfit_overrides?.outfit_preset && (
                       <div className="text-amber-300/80 truncate">{f.outfit_overrides.outfit_preset}</div>
                     )}
+                    {f.face_overrides?.expression && <div className="text-cyan-300/80 truncate">{f.face_overrides.expression}</div>}
                   </div>
                 </div>
               ))}

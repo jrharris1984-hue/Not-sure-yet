@@ -83,6 +83,7 @@ export default function Builder() {
   const [loraOverrides, setLoraOverrides] = useState({});
   const [loraTriggerWords, setLoraTriggerWords] = useState([]);
   const [referenceImage, setReferenceImage] = useState(null);
+  const [sourceRenderId, setSourceRenderId] = useState(null);
   const [referencePreview, setReferencePreview] = useState("");
   const [referenceUploading, setReferenceUploading] = useState(false);
   const [faceStrength, setFaceStrength] = useState(1.1);
@@ -184,6 +185,7 @@ export default function Builder() {
     if (!incoming || !workflows.length || galleryImportApplied.current) return;
     galleryImportApplied.current = true;
     setReferenceImage(incoming);
+    setSourceRenderId(incoming.source_render_id || null);
     setReferencePreview(location.state?.previewUrl || "");
     const requestedKind = location.state?.targetKind;
     const target = workflows.find((workflow) => workflow.kind === requestedKind);
@@ -752,6 +754,10 @@ export default function Builder() {
         prompt_negative: finalNegative,
         workflow_id: workflowId,
         lora_overrides: effectiveLoraOverrides,
+        parent_render_id: sourceRenderId || undefined,
+        operation: sourceRenderId
+          ? (isVideoWorkflow ? "animate" : isFaceWorkflow ? "face_reference" : editMode === "new_pose" ? "new_pose" : "edit")
+          : "render",
         width: activeRecipeFamily === "image" ? chromaSettings.width : undefined,
         height: activeRecipeFamily === "image" ? chromaSettings.height : undefined,
         batch_size: activeRecipeFamily === "image" ? chromaSettings.batchSize : undefined,

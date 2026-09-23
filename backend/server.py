@@ -887,6 +887,8 @@ class DispatchBody(BaseModel):
     sampler_name: Optional[str] = None
     shoot_id: Optional[str] = None
     shoot_frame_index: Optional[int] = None
+    parent_render_id: Optional[str] = None
+    operation: str = "render"
     reference_image: Optional[str] = None  # ComfyUI input filename returned by /reference-images/upload
     face_strength: float = 1.1
     faceid_v2_strength: float = 1.4
@@ -1257,6 +1259,8 @@ async def _perform_dispatch(body: "DispatchBody") -> Dict[str, Any]:
     doc["render_recipe"] = body.model_dump()
     doc["shoot_id"] = body.shoot_id
     doc["shoot_frame_index"] = body.shoot_frame_index
+    doc["parent_render_id"] = body.parent_render_id
+    doc["operation"] = body.operation
     await db.renders.insert_one(doc)
     doc.pop("_id", None)
     return doc
@@ -1402,6 +1406,8 @@ async def recreate_render(rid: str, variation: bool = Query(False)):
     recipe = dict(recipe)
     recipe["shoot_id"] = None
     recipe["shoot_frame_index"] = None
+    recipe["parent_render_id"] = rid
+    recipe["operation"] = "variation" if variation else "recreate"
     if variation:
         recipe["seed"] = random.randint(0, 2**31 - 1)
     body = DispatchBody(**recipe)
@@ -1774,6 +1780,70 @@ class BulkRenderDeleteBody(BaseModel):
     ids: List[str] = Field(default_factory=list)
 
 
+class RenderAlbumBody(BaseModel):
+    album: str = ""
+
+
+class BulkRenderAlbumBody(BaseModel):
+    ids: List[str] = Field(default_factory=list)
+    album: str = ""
+
+
+@api.patch("/renders/{rid}/album")
+async def set_render_album(rid: str, body: RenderAlbumBody):
+    album = body.album.strip()[:80]
+    result = await db.renders.update_one(
+        {"id": rid},
+        {"$set": {"album": album, "updated_at": now_iso()}},
+    )
+    if not result.matched_count:
+        raise HTTPException(404, "Render not found")
+    return {"ok": True, "id": rid, "album": album}
+
+
+@api.post("/renders/albums/bulk")
+async def set_render_album_bulk(body: BulkRenderAlbumBody):
+    ids = list(dict.fromkeys(body.ids))[:200]
+    album = body.album.strip()[:80]
+    if not ids:
+        return {"ok": True, "updated": 0, "album": album}
+    result = await db.renders.update_many(
+        {"id": {"$in": ids}},
+        {"$set": {"album": album, "updated_at": now_iso()}},
+    )
+    return {"ok": True, "updated": result.modified_count, "album": album}
+
+
+@api.get("/renders/{rid}/versions")
+async def get_render_versions(rid: str):
+    root = await db.renders.find_one({"id": rid}, {"_id": 0})
+    if not root:
+        raise HTTPException(404, "Render not found")
+    for _ in range(25):
+        parent_id = root.get("parent_render_id")
+        if not parent_id:
+            break
+        parent = await db.renders.find_one({"id": parent_id}, {"_id": 0})
+        if not parent:
+            break
+        root = parent
+    chain = [root]
+    seen = {root.get("id")}
+    frontier = [root.get("id")]
+    while frontier and len(chain) < 100:
+        children = await db.renders.find(
+            {"parent_render_id": {"$in": frontier}}, {"_id": 0}
+        ).sort("created_at", 1).to_list(100)
+        frontier = []
+        for child in children:
+            if child.get("id") in seen:
+                continue
+            seen.add(child.get("id"))
+            frontier.append(child.get("id"))
+            chain.append(child)
+    return chain
+
+
 @api.post("/renders/delete-bulk")
 async def delete_renders_bulk(body: BulkRenderDeleteBody):
     ids = list(dict.fromkeys(body.ids))[:200]
@@ -1889,6 +1959,7 @@ class ShootFrame(BaseModel):
     index: int
     pose_action: str = ""
     outfit_overrides: Dict[str, Any] = Field(default_factory=dict)  # partial wardrobe overrides
+    face_overrides: Dict[str, Any] = Field(default_factory=dict)
     seed: Optional[int] = None
     render_id: Optional[str] = None
     status: str = "pending"  # pending | running | done | failed | offline | queued
@@ -1941,6 +2012,11 @@ def _apply_frame_to_dna(dna: Dict[str, Any], frame: Dict[str, Any], lock_scenari
         out.setdefault("wardrobe", {})
         for k, v in outfit.items():
             out["wardrobe"][k] = v
+    face = frame.get("face_overrides") or {}
+    if face:
+        out.setdefault("face", {})
+        for k, v in face.items():
+            out["face"][k] = v
     if not lock_scenario:
         # nothing to do — caller may pre-vary scenario in frames
         pass
@@ -1979,6 +2055,9 @@ async def _run_shoot_background(shoot_id: str):
             if isinstance(v, list):
                 aug_parts.extend([str(x) for x in v if x])
             elif v:
+                aug_parts.append(str(v))
+        for _k, v in (frame.face_overrides or {}).items():
+            if v:
                 aug_parts.append(str(v))
         if aug_parts:
             pos = ", ".join(aug_parts) + ", " + pos
@@ -2052,6 +2131,7 @@ async def create_shoot(body: ShootCreateBody, background_tasks: BackgroundTasks)
             index=i,
             pose_action=str(f.get("pose_action") or ""),
             outfit_overrides=f.get("outfit_overrides") or {},
+            face_overrides=f.get("face_overrides") or {},
             seed=int(seed),
             status="pending",
         ))
@@ -2145,6 +2225,9 @@ async def retry_shoot_frame(sid: str, frame_index: int, body: ShootRetryBody, ba
             if isinstance(v, list):
                 aug_parts.extend([str(x) for x in v if x])
             elif v:
+                aug_parts.append(str(v))
+        for _k, v in (frame.face_overrides or {}).items():
+            if v:
                 aug_parts.append(str(v))
         if aug_parts:
             pos = ", ".join(aug_parts) + ", " + pos

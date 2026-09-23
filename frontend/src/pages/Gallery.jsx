@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { API_BASE, endpoints } from "@/lib/api";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
-import { X, Download, Copy, ExternalLink, Trash2, CheckSquare, RotateCcw, Shuffle, Pencil, Film, Loader2, Info, ChevronLeft, ChevronRight, PersonStanding, BookOpen } from "lucide-react";
+import { X, Download, Copy, ExternalLink, Trash2, CheckSquare, RotateCcw, Shuffle, Pencil, Film, Loader2, Info, ChevronLeft, ChevronRight, PersonStanding, BookOpen, FolderPlus, Columns2, ScanFace } from "lucide-react";
 import { toast } from "sonner";
 
 async function downloadImage(url, filename) {
@@ -69,8 +69,15 @@ export default function Gallery() {
   const [showDetails, setShowDetails] = useState(false);
   const [selectionMode, setSelectionMode] = useState(false);
   const [selected, setSelected] = useState([]);
+  const [albumFilter, setAlbumFilter] = useState("all");
+  const [compareOpen, setCompareOpen] = useState(false);
   const swipeStartX = useRef(null);
   const directOpenApplied = useRef(false);
+  const { data: versions = [] } = useQuery({
+    queryKey: ["render-versions", lightbox?.id],
+    queryFn: () => endpoints.getRenderVersions(lightbox.id),
+    enabled: !!lightbox?.id,
+  });
 
   const removeOne = useMutation({
     mutationFn: (id) => endpoints.deleteRender(id),
@@ -143,6 +150,17 @@ export default function Gallery() {
     onError: (error) => toast.error(error?.response?.data?.detail || "Could not restore this render recipe"),
   });
 
+  const moveToAlbum = useMutation({
+    mutationFn: ({ ids, album }) => endpoints.setRenderAlbumBulk(ids, album),
+    onSuccess: (result) => {
+      qc.invalidateQueries({ queryKey: ["renders"] });
+      setSelected([]);
+      setSelectionMode(false);
+      toast.success(result.album ? `Moved to ${result.album}` : "Removed from album");
+    },
+    onError: (error) => toast.error(error?.response?.data?.detail || "Could not update album"),
+  });
+
   const confirmRemoveOne = (render) => {
     if (window.confirm("Remove this item from the Ultra Studio Gallery? The original ComfyUI output file will remain on disk.")) {
       removeOne.mutate(render.id);
@@ -165,13 +183,17 @@ export default function Gallery() {
   // The gallery only treats work that can still produce output as in flight.
   // Terminal records without media (cancelled/failed/offline) are not empty tiles.
   const withOutput = renders.filter((r) => primaryOutput(r));
+  const albums = [...new Set(withOutput.map((render) => render.album).filter(Boolean))].sort();
+  const displayedOutput = albumFilter === "all"
+    ? withOutput
+    : withOutput.filter((render) => (albumFilter === "unfiled" ? !render.album : render.album === albumFilter));
   const inFlight = renders.filter((r) => !primaryOutput(r) && ["queued", "dispatching", "running"].includes(r.status));
   const cancelled = renders.filter((r) => !primaryOutput(r) && r.status === "cancelled");
-  const lightboxIndex = lightbox ? withOutput.findIndex((r) => r.id === lightbox.id) : -1;
+  const lightboxIndex = lightbox ? displayedOutput.findIndex((r) => r.id === lightbox.id) : -1;
   const showAdjacent = (offset) => {
-    if (!withOutput.length || lightboxIndex < 0) return;
-    const nextIndex = (lightboxIndex + offset + withOutput.length) % withOutput.length;
-    setLightbox(withOutput[nextIndex]);
+    if (!displayedOutput.length || lightboxIndex < 0) return;
+    const nextIndex = (lightboxIndex + offset + displayedOutput.length) % displayedOutput.length;
+    setLightbox(displayedOutput[nextIndex]);
     setShowDetails(false);
   };
 
@@ -202,6 +224,17 @@ export default function Gallery() {
     }
   };
 
+  const promptForAlbum = () => {
+    if (!selected.length) return;
+    const album = window.prompt("Album name (leave blank to remove from an album):", "");
+    if (album === null) return;
+    moveToAlbum.mutate({ ids: selected, album });
+  };
+
+  const compared = selected.length === 2
+    ? selected.map((id) => withOutput.find((render) => render.id === id)).filter(Boolean)
+    : [];
+
   return (
     <div className="mx-auto max-w-[1400px] px-4 sm:px-6 py-6 sm:py-10 space-y-6">
       <div className="flex items-end justify-between gap-4 flex-wrap">
@@ -220,7 +253,7 @@ export default function Gallery() {
           </button>
         )}
         {(withOutput.length > 0 || cancelled.length > 0) && (
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             {cancelled.length > 0 && (
               <button type="button" onClick={confirmClearCancelled}
                 disabled={clearCancelled.isPending}
@@ -243,16 +276,41 @@ export default function Gallery() {
 
             )}
             {selectionMode && selected.length > 0 && (
-              <button type="button" onClick={confirmRemoveSelected}
-                disabled={removeMany.isPending}
-                className="inline-flex items-center gap-2 rounded-lg border border-red-500/50 bg-red-500/10 px-3 py-2 text-sm text-red-200 disabled:opacity-40"
-                data-testid="btn-gallery-delete-selected">
-                <Trash2 className="h-4 w-4" /> Remove {selected.length}
-              </button>
+              <>
+                <button type="button" onClick={promptForAlbum} disabled={moveToAlbum.isPending}
+                  className="inline-flex items-center gap-2 rounded-lg border hairline px-3 py-2 text-sm text-zinc-200 disabled:opacity-40"
+                  data-testid="btn-gallery-album-selected">
+                  <FolderPlus className="h-4 w-4" /> Album
+                </button>
+                {selected.length === 2 && (
+                  <button type="button" onClick={() => setCompareOpen(true)}
+                    className="inline-flex items-center gap-2 rounded-lg border border-cyan-500/50 bg-cyan-500/10 px-3 py-2 text-sm text-cyan-100"
+                    data-testid="btn-gallery-compare">
+                    <Columns2 className="h-4 w-4" /> Compare
+                  </button>
+                )}
+                <button type="button" onClick={confirmRemoveSelected}
+                  disabled={removeMany.isPending}
+                  className="inline-flex items-center gap-2 rounded-lg border border-red-500/50 bg-red-500/10 px-3 py-2 text-sm text-red-200 disabled:opacity-40"
+                  data-testid="btn-gallery-delete-selected">
+                  <Trash2 className="h-4 w-4" /> Remove {selected.length}
+                </button>
+              </>
             )}
           </div>
         )}
       </div>
+
+      {withOutput.length > 0 && (
+        <div className="flex gap-2 overflow-x-auto pb-1" data-testid="gallery-album-filter">
+          {[{ key: "all", label: `All ${withOutput.length}` }, { key: "unfiled", label: "Unfiled" }, ...albums.map((album) => ({ key: album, label: album }))].map((item) => (
+            <button key={item.key} type="button" onClick={() => setAlbumFilter(item.key)}
+              className={`shrink-0 rounded-full border px-3 py-1.5 text-xs ${albumFilter === item.key ? "border-amber-400 bg-amber-400/10 text-amber-200" : "hairline text-zinc-400"}`}>
+              {item.label}
+            </button>
+          ))}
+        </div>
+      )}
 
       {isLoading ? (
         <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2">
@@ -268,9 +326,9 @@ export default function Gallery() {
       ) : (
         <>
           {/* Thumbnail grid — dense, clean, contact-sheet style */}
-          {withOutput.length > 0 && (
+          {displayedOutput.length > 0 && (
             <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2" data-testid="gallery-grid">
-              {withOutput.map((r, i) => {
+              {displayedOutput.map((r, i) => {
                 const output = primaryOutput(r);
                 const checked = selected.includes(r.id);
                 return (
@@ -318,6 +376,7 @@ export default function Gallery() {
                     <span className="absolute top-1 right-1 z-10 text-[9px] font-mono px-1.5 py-0.5 rounded backdrop-blur-sm bg-black/60 text-emerald-300 pointer-events-none">
                       {isVideoUrl(output) ? "video" : r.output_variants?.enhanced?.length ? "enhanced" : "done"}
                     </span>
+                    {r.album && <span className="absolute bottom-1 left-1 z-10 max-w-[75%] truncate rounded bg-black/65 px-1.5 py-0.5 text-[9px] text-zinc-200 pointer-events-none">{r.album}</span>}
                   </div>
                 );
               })}
@@ -378,7 +437,7 @@ export default function Gallery() {
               <Info className="h-4 w-4" /> {showDetails ? "Hide details" : "Details"}
             </button>
 
-            {withOutput.length > 1 && (
+            {displayedOutput.length > 1 && (
               <>
                 <button type="button" onClick={() => showAdjacent(-1)}
                   className="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 z-30 h-11 w-11 grid place-items-center rounded-full border border-white/20 bg-black/65 text-white backdrop-blur-md"
@@ -391,7 +450,7 @@ export default function Gallery() {
                   <ChevronRight className="h-6 w-6" />
                 </button>
                 <div className="absolute left-1/2 top-[calc(.9rem+env(safe-area-inset-top,0px))] -translate-x-1/2 z-20 rounded-full bg-black/65 px-3 py-1 text-[11px] font-mono text-zinc-200">
-                  {lightboxIndex + 1} / {withOutput.length}
+                  {lightboxIndex + 1} / {displayedOutput.length}
                 </div>
               </>
             )}
@@ -455,6 +514,20 @@ export default function Gallery() {
                 )}
               </div>
 
+              {versions.length > 1 && (
+                <div>
+                  <div className="text-[9px] font-mono uppercase tracking-widest text-zinc-500 mb-1">Version history · {versions.length}</div>
+                  <div className="flex gap-2 overflow-x-auto pb-1">
+                    {versions.filter((version) => primaryOutput(version)).map((version) => (
+                      <button key={version.id} type="button" onClick={() => { setLightbox(version); setShowDetails(false); }}
+                        className={`h-14 w-14 shrink-0 overflow-hidden rounded-md border ${version.id === lightbox.id ? "border-amber-400" : "hairline"}`}>
+                        <img src={primaryOutput(version)} alt={version.operation || "version"} className="h-full w-full object-cover" />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {lightbox.prompt_positive && (
                 <div>
                   <div className="text-[9px] font-mono uppercase tracking-widest text-zinc-500 mb-1">Positive prompt</div>
@@ -488,14 +561,14 @@ export default function Gallery() {
                       disabled={reuseAsReference.isPending}
                       data-testid="btn-lightbox-edit-again"
                       className="inline-flex items-center justify-center gap-2 rounded-lg border hairline text-zinc-200 hover:bg-white/5 text-sm px-3 py-2 disabled:opacity-40">
-                      <Pencil className="h-4 w-4" /> Edit Again
+                      <Pencil className="h-4 w-4" /> Use Complete
                     </button>
                     <button type="button"
                       onClick={() => reuseAsReference.mutate({ render: lightbox, targetKind: "edit", referenceMode: "new_pose" })}
                       disabled={reuseAsReference.isPending}
                       data-testid="btn-lightbox-new-pose"
                       className="inline-flex items-center justify-center gap-2 rounded-lg border border-cyan-500/40 bg-cyan-500/10 text-cyan-100 hover:bg-cyan-500/20 text-sm px-3 py-2 disabled:opacity-40">
-                      <PersonStanding className="h-4 w-4" /> New Pose
+                      <PersonStanding className="h-4 w-4" /> Use Pose
                     </button>
                     <button type="button"
                       onClick={() => reuseAsReference.mutate({ render: lightbox, targetKind: "video" })}
@@ -505,6 +578,15 @@ export default function Gallery() {
                       <Film className="h-4 w-4" /> Animate
                     </button>
                   </div>
+                )}
+                {!isVideoUrl(primaryOutput(lightbox)) && (
+                  <button type="button"
+                    onClick={() => reuseAsReference.mutate({ render: lightbox, targetKind: "face" })}
+                    disabled={reuseAsReference.isPending}
+                    className="w-full inline-flex items-center justify-center gap-2 rounded-lg border border-pink-500/40 bg-pink-500/10 text-pink-100 hover:bg-pink-500/20 text-sm px-3 py-2 disabled:opacity-40"
+                    data-testid="btn-lightbox-use-face">
+                    <ScanFace className="h-4 w-4" /> Use Face
+                  </button>
                 )}
                 <button type="button"
                   onClick={() => openRecipe.mutate(lightbox)} disabled={openRecipe.isPending}
@@ -555,6 +637,24 @@ export default function Gallery() {
                 )}
               </div>
             </aside>
+          </div>
+        </div>
+      )}
+
+      {compareOpen && compared.length === 2 && (
+        <div className="fixed inset-0 z-[60] bg-black/95 p-4 sm:p-8" onClick={() => setCompareOpen(false)} data-testid="gallery-compare-modal">
+          <button type="button" onClick={() => setCompareOpen(false)} className="fixed right-4 top-4 z-10 h-10 w-10 rounded-full bg-black/70 text-white grid place-items-center"><X className="h-5 w-5" /></button>
+          <div className="mx-auto grid h-full max-w-7xl grid-cols-1 md:grid-cols-2 gap-3" onClick={(event) => event.stopPropagation()}>
+            {compared.map((render) => (
+              <div key={render.id} className="min-h-0 flex flex-col gap-2">
+                <div className="min-h-0 flex-1 grid place-items-center rounded-xl border hairline bg-black/40 overflow-hidden">
+                  {isVideoUrl(primaryOutput(render))
+                    ? <video src={primaryOutput(render)} controls className="max-h-full max-w-full object-contain" />
+                    : <img src={primaryOutput(render)} alt="comparison" className="max-h-full max-w-full object-contain" />}
+                </div>
+                <div className="text-xs text-zinc-300 font-mono truncate">{render.workflow_name || render.workflow_type} · seed {render.seed_used ?? "—"}</div>
+              </div>
+            ))}
           </div>
         </div>
       )}
