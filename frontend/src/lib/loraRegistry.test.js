@@ -14,6 +14,9 @@ const installed = [
   "Z-Image\\Curated\\QQ Collection\\lora-cum.safetensors",
   "Z-Image\\Curated\\QQ Collection\\lora-bukkake.safetensors",
   "Z-Image\\girls pee.safetensors",
+  "Z-Image\\Curated\\Body\\feet v2.1.safetensors",
+  "Z-Image\\Curated\\Quality\\Hands + Feet + skin v1.1.safetensors",
+  "Z-Image\\Curated\\Body\\Z-Breast-Slider.safetensors",
   "REALSTAGRAM_ZIMG.safetensors",
   "Flux_2-Turbo-LoRA_comfyui.safetensors",
 ];
@@ -87,6 +90,31 @@ describe("LoRA registry planner", () => {
     });
     expect(cumPlan.selected.find((entry) => entry.slot === "action")?.id).toBe("qq-cum");
     expect(bukkakePlan.selected.find((entry) => entry.slot === "action")?.id).toBe("qq-bukkake");
+  });
+
+  test("maps feet, pussy, and pee selections to their installed LoRA families", () => {
+    const feet = planLoras({
+      workflow: { name: "IMAGE · Z-image Turbo · NSFW" },
+      dna: { feet: { sole_presentation: "soles up", foot_act: ["foot worship"] } },
+      installed,
+    });
+    expect(feet.matches.some((entry) => ["z-feet-v2", "qq-foot"].includes(entry.id))).toBe(true);
+
+    const pussy = planLoras({
+      workflow: { name: "IMAGE · Z-image Turbo · NSFW" },
+      dna: { intimate: { pussy: "visible pussy with detailed labia" } },
+      installed: [...installed, "Z-Image\\Curated\\QQ Collection\\lora-pussy.safetensors"],
+    });
+    expect(pussy.selected.some((entry) => entry.id === "qq-pussy")).toBe(true);
+
+    for (const word of ["pee", "peeing", "piss", "pissing", "urinating"]) {
+      const plan = planLoras({
+        workflow: { name: "IMAGE · Z-image Turbo · NSFW" },
+        dna: { watersports: { notes: word } },
+        installed,
+      });
+      expect(plan.selected.some((entry) => entry.id === "z-pee")).toBe(true);
+    }
   });
 
   test("keeps automatic recommendations inside the family strength budget", () => {
