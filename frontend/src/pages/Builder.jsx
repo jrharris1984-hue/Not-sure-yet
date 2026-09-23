@@ -29,6 +29,7 @@ import MobileOverflow from "@/components/MobileOverflow";
 import SubjectSwitcher from "@/components/SubjectSwitcher";
 import ChromaControls from "@/components/ChromaControls";
 import RenderRecipeSelector from "@/components/RenderRecipeSelector";
+import SmartSetupPanel from "@/components/SmartSetupPanel";
 import { getRenderRecipe, recipeFamily } from "@/lib/renderRecipes";
 import { readBuilderDraft, writeBuilderDraft, clearBuilderDraft } from "@/lib/builderDraft";
 import { buildSameCharacterPoseInstruction, DEFAULT_POSE_LOCKS, SAME_CHARACTER_POSES } from "@/lib/sameCharacterPose";
@@ -56,6 +57,7 @@ export default function Builder() {
   const qc = useQueryClient();
   const galleryImportApplied = useRef(false);
   const draftHydrated = useRef(false);
+  const skipNextPromptReset = useRef(false);
 
   const activeIdx = Math.max(0, SECTIONS.findIndex((s) => s.key === sectionParam));
   const activeSection = SECTIONS[activeIdx].key;
@@ -202,6 +204,44 @@ export default function Builder() {
     nav(location.pathname, { replace: true, state: null });
   }, [location.pathname, location.state, nav, workflows]);
 
+  useEffect(() => {
+    const saved = location.state?.renderRecipe?.recipe;
+    if (!saved || !workflows.length || galleryImportApplied.current) return;
+    galleryImportApplied.current = true;
+    skipNextPromptReset.current = true;
+    if (Array.isArray(saved.subjects) && saved.subjects.length) {
+      const restored = saved.subjects.map((subject, index) => makeSubject({
+        label: subject.label || subjectLabel(index), dna: subject.dna || DEFAULT_DNA, likeness: subject.likeness,
+      }));
+      setSubjects(restored);
+      setActiveSubjectId(restored[0].id);
+    } else if (saved.dna) {
+      const restored = makeSubject({ label: "A", dna: saved.dna });
+      setSubjects([restored]);
+      setActiveSubjectId(restored.id);
+    }
+    if (saved.workflow_id && workflows.some((workflow) => workflow.id === saved.workflow_id)) setWorkflowId(saved.workflow_id);
+    setLoraOverrides(saved.lora_overrides || {});
+    setPromptOverride(saved.prompt_positive || "");
+    setNegativePromptOverride(saved.prompt_negative || "");
+    if (saved.reference_image) setReferenceImage({ name: saved.reference_image, type: "input", subfolder: "" });
+    if (saved.edit_instruction) setEditInstruction(saved.edit_instruction);
+    if (saved.video_instruction) setVideoInstruction(saved.video_instruction);
+    setPreserveUnmentioned(saved.preserve_unmentioned !== false);
+    setVideoFrames(saved.video_frames || 41);
+    setVideoFps(saved.video_fps || 24);
+    setVideoWidth(saved.video_width || 640);
+    setVideoHeight(saved.video_height || 640);
+    setChromaSettings((current) => ({ ...current,
+      width: saved.width || current.width, height: saved.height || current.height,
+      steps: saved.steps || current.steps, cfg: saved.cfg ?? current.cfg,
+      batchSize: saved.batch_size || current.batchSize, sampler: saved.sampler_name || current.sampler,
+      seed: saved.seed ?? current.seed,
+    }));
+    toast.success("Exact Gallery recipe restored in the editor");
+    nav(location.pathname, { replace: true, state: null });
+  }, [location.pathname, location.state, nav, workflows]);
+
   const activeWorkflow = workflows.find((w) => w.id === workflowId);
   const promptStyle = activeWorkflow?.prompt_style || "venice";
   const isFaceWorkflow = activeWorkflow?.kind === "face";
@@ -238,6 +278,23 @@ export default function Builder() {
     } else if (recipe.family === "edit") {
       setRepairStrength(recipe.repairStrength);
     }
+  };
+
+  const applySmartSetup = (recommendation) => {
+    const workflow = workflows.find((item) => item.id === recommendation.workflowId);
+    if (!workflow) return;
+    const compiler = resolvePromptCompiler({ promptStyle: workflow.prompt_style, workflowKind: workflow.kind, workflowName: workflow.name });
+    const recipe = getRenderRecipe(compiler, recommendation.qualityTier);
+    setWorkflowId(workflow.id);
+    setLoraOverrides({});
+    setQualityTier(recommendation.qualityTier);
+    if (recipe.family === "image") {
+      setChromaSettings((current) => ({ ...current, width: recipe.width, height: recipe.height, steps: recipe.steps, cfg: recipe.cfg, batchSize: recipe.batchSize, sampler: recipe.sampler }));
+    } else if (recipe.family === "video") {
+      setVideoFrames(recipe.videoFrames); setVideoFps(recipe.videoFps); setVideoWidth(recipe.videoWidth); setVideoHeight(recipe.videoHeight);
+    } else if (recipe.family === "edit") setRepairStrength(recipe.repairStrength);
+    window.dispatchEvent(new CustomEvent("ultra-studio:set-lora-mode", { detail: recommendation.loraMode }));
+    toast.success(`Smart setup applied · ${workflow.name}`);
   };
 
   useEffect(() => {
@@ -567,6 +624,10 @@ export default function Builder() {
     repairTargets, effectiveEditInstruction, videoInstruction, subjects.length,
   ]);
   useEffect(() => {
+    if (skipNextPromptReset.current) {
+      skipNextPromptReset.current = false;
+      return;
+    }
     setPromptOverride("");
     setNegativePromptOverride("");
   }, [generatedPositive, negative, workflowId]);
@@ -1171,6 +1232,8 @@ export default function Builder() {
 
         {/* Right - preview + AI + render */}
         <aside className="space-y-4 lg:sticky lg:top-20 lg:h-fit">
+          <SmartSetupPanel workflows={workflows} activeWorkflow={activeWorkflow} dna={activeDna}
+            subjectCount={subjects.length} hasReference={!!referenceImage?.name} onApply={applySmartSetup} />
           <PromptPreview
             positive={finalPositive}
             negative={finalNegative}
