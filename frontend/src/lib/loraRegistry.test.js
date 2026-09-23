@@ -34,7 +34,7 @@ describe("LoRA registry planner", () => {
     expect(found.some((entry) => entry.id === "flux2-turbo")).toBe(true);
   });
 
-  test("selects at most one LoRA per optional slot", () => {
+  test("selects only the strongest optional LoRA by default", () => {
     const plan = planLoras({
       workflow: { name: "IMAGE · Z-image Turbo · NSFW" },
       dna: {
@@ -45,10 +45,23 @@ describe("LoRA registry planner", () => {
       installed,
     });
     expect(plan.family).toBe("zimage");
-    expect(plan.selected.filter((entry) => entry.slot === "quality")).toHaveLength(1);
-    expect(plan.selected.filter((entry) => entry.slot === "body")).toHaveLength(1);
-    expect(plan.selected.filter((entry) => entry.slot === "action")).toHaveLength(1);
-    expect(plan.selected).toHaveLength(3);
+    expect(plan.selected).toHaveLength(1);
+    expect(plan.matches.length).toBeGreaterThan(1);
+  });
+
+  test("advanced mode can select one compatible LoRA per optional slot", () => {
+    const plan = planLoras({
+      workflow: { name: "IMAGE · Z-image Turbo · NSFW" },
+      dna: {
+        pose: { position: "POV doggy style from behind" },
+        feet: { focus: "detailed feet and soles" },
+        wardrobe: { outfit: "lingerie" },
+      },
+      installed,
+      stackMode: "advanced",
+    });
+    expect(plan.selected.length).toBeGreaterThan(1);
+    expect(new Set(plan.selected.map((entry) => entry.slot)).size).toBe(plan.selected.length);
   });
 
   test("does not recommend a LoRA from another model family", () => {
@@ -131,6 +144,15 @@ describe("LoRA registry planner", () => {
     expect(plan.selected.every((entry) => entry.reason)).toBe(true);
   });
 
+  test("uses no optional LoRA for weak or absent matches", () => {
+    const plan = planLoras({
+      workflow: { name: "IMAGE · Z-image Turbo · NSFW" },
+      dna: { identity: { age: 44, name: "Test" } },
+      installed,
+    });
+    expect(plan.selected).toHaveLength(0);
+  });
+
   test("filters assisted choices to the active workflow family", () => {
     const compatible = compatibleRegistryForWorkflow(
       { name: "IMAGE · Z-image Turbo · NSFW" },
@@ -154,5 +176,6 @@ describe("LoRA registry planner", () => {
     expect(health.warnings.some((warning) => warning.includes("not zimage"))).toBe(true);
     expect(health.warnings.some((warning) => warning.includes("conflicts"))).toBe(true);
     expect(health.warnings.some((warning) => warning.includes("budget"))).toBe(true);
+    expect(health.warnings.some((warning) => warning.includes("optional LoRAs"))).toBe(true);
   });
 });

@@ -11,12 +11,14 @@ import {
 } from "@/lib/loraRegistry";
 
 const MODE_KEY = "ultra-studio-lora-planner-mode";
+const STACK_MODE_KEY = "ultra-studio-lora-stack-mode";
 
 export default function LoraPanel({ workflowId, workflow, dna, values, onChange, onPlanChange }) {
   const [loras, setLoras] = useState([]);
   const [defaults, setDefaults] = useState({});
   const [installed, setInstalled] = useState([]);
   const [mode, setMode] = useState(() => localStorage.getItem(MODE_KEY) || "assisted");
+  const [stackMode, setStackMode] = useState(() => localStorage.getItem(STACK_MODE_KEY) || "single");
 
   useEffect(() => {
     const applyExternalMode = (event) => {
@@ -53,8 +55,8 @@ export default function LoraPanel({ workflowId, workflow, dna, values, onChange,
   }, [workflowId]);
 
   const plan = useMemo(
-    () => planLoras({ workflow: workflow || {}, dna: dna || {}, installed }),
-    [workflow, dna, installed]
+    () => planLoras({ workflow: workflow || {}, dna: dna || {}, installed, stackMode }),
+    [workflow, dna, installed, stackMode]
   );
   const recognizedEntries = useMemo(() => registryForInstalled(installed), [installed]);
   const recognizedCount = recognizedEntries.length;
@@ -91,14 +93,19 @@ export default function LoraPanel({ workflowId, workflow, dna, values, onChange,
   const setOptionalName = (lora, name) => {
     const current = cur(lora.node_id);
     const suggested = lora.slot_kind === "quality" ? 0.4 : lora.slot_kind === "body" ? 0.5 : 0.7;
-    onChange({
-      ...values,
-      [lora.node_id]: {
-        ...current,
-        lora_name: name,
-        strength_model: name && Number(current.strength_model) === 0 ? suggested : current.strength_model,
-      },
-    });
+    const next = { ...values };
+    if (stackMode === "single" && name) {
+      loras.filter((candidate) => candidate.optional_slot && candidate.node_id !== lora.node_id).forEach((candidate) => {
+        const base = defaults[candidate.node_id] || cur(candidate.node_id);
+        next[candidate.node_id] = { ...base, strength_model: 0 };
+      });
+    }
+    next[lora.node_id] = {
+      ...current,
+      lora_name: name,
+      strength_model: name && Number(current.strength_model) === 0 ? suggested : current.strength_model,
+    };
+    onChange(next);
   };
 
   const reset = (nid) => {
@@ -148,6 +155,12 @@ export default function LoraPanel({ workflowId, workflow, dna, values, onChange,
     const target = loras.find((lora) => lora.optional_slot && lora.slot_kind === entry.slot);
     if (!target) return;
     const next = { ...values };
+    if (stackMode === "single") {
+      loras.filter((lora) => lora.optional_slot).forEach((lora) => {
+        const base = defaults[lora.node_id] || cur(lora.node_id);
+        next[lora.node_id] = { ...base, strength_model: 0 };
+      });
+    }
     next[target.node_id] = {
       ...(defaults[target.node_id] || cur(target.node_id)),
       lora_name: entry.installedName,
@@ -165,6 +178,11 @@ export default function LoraPanel({ workflowId, workflow, dna, values, onChange,
     setMode(nextMode);
     localStorage.setItem(MODE_KEY, nextMode);
     if (nextMode === "manual") onPlanChange?.({ family, selected: [], triggerWords: [] });
+  };
+
+  const changeStackMode = (nextMode) => {
+    setStackMode(nextMode);
+    localStorage.setItem(STACK_MODE_KEY, nextMode);
   };
 
   // Automatic mode continuously follows DNA changes. Compare serialized values
@@ -212,6 +230,26 @@ export default function LoraPanel({ workflowId, workflow, dna, values, onChange,
         ))}
       </div>
 
+      {mode !== "manual" && (
+        <div className="grid grid-cols-2 gap-1 rounded-lg border hairline bg-black/20 p-1" data-testid="lora-stack-mode">
+          {[
+            ["single", "Single LoRA"],
+            ["advanced", "Advanced Stack"],
+          ].map(([key, label]) => (
+            <button key={key} type="button" onClick={() => changeStackMode(key)}
+              className={`rounded-md px-2 py-2 text-[10px] font-mono uppercase tracking-wide transition-colors ${stackMode === key ? "bg-emerald-500/15 text-emerald-300" : "text-zinc-500 hover:text-zinc-300"}`}
+              data-testid={`lora-stack-mode-${key}`}>
+              {label}
+            </button>
+          ))}
+          <p className="col-span-2 px-2 pb-1 text-[10px] text-zinc-500">
+            {stackMode === "single"
+              ? "Recommended: activates only the strongest compatible optional LoRA."
+              : "Allows up to one quality, body, and action LoRA. Higher distortion risk."}
+          </p>
+        </div>
+      )}
+
       <div className={`rounded-lg border p-3 space-y-2 ${stackHealth.status === "healthy"
         ? "border-emerald-500/25 bg-emerald-500/5"
         : "border-amber-500/30 bg-amber-500/5"}`} data-testid="lora-stack-health">
@@ -219,7 +257,7 @@ export default function LoraPanel({ workflowId, workflow, dna, values, onChange,
           {stackHealth.status === "healthy"
             ? <ShieldCheck className="h-4 w-4 text-emerald-400" />
             : <AlertTriangle className="h-4 w-4 text-amber-300" />}
-          <span className="text-xs font-semibold">Stack {stackHealth.status === "healthy" ? "healthy" : "needs review"}</span>
+          <span className="text-xs font-semibold">{stackMode === "single" ? "LoRA" : "Stack"} {stackHealth.status === "healthy" ? "healthy" : "needs review"}</span>
           <span className="ml-auto text-[10px] font-mono text-zinc-400">
             optional {stackHealth.totalStrength.toFixed(2)} / {stackHealth.budget.toFixed(2)}
           </span>
@@ -239,7 +277,7 @@ export default function LoraPanel({ workflowId, workflow, dna, values, onChange,
         <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-3 space-y-2" data-testid="lora-plan">
           <div className="flex items-center gap-2">
             <WandSparkles className="h-4 w-4 text-amber-300" />
-            <span className="text-xs font-semibold">Recommended for {family}</span>
+            <span className="text-xs font-semibold">{stackMode === "single" ? "Best match" : "Recommended stack"} for {family}</span>
           </div>
           {plan.selected.length ? (
             <div className="space-y-1.5">
@@ -261,11 +299,11 @@ export default function LoraPanel({ workflowId, workflow, dna, values, onChange,
                   className="mt-2 w-full rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs font-semibold text-amber-200 hover:bg-amber-500/20"
                   data-testid="apply-lora-plan"
                 >
-                  Apply recommendations
+                  {stackMode === "single" ? "Apply best LoRA" : "Apply recommendations"}
                 </button>
               )}
               {mode === "automatic" && (
-                <p className="text-[10px] text-zinc-500">Recommendations update automatically as the DNA changes.</p>
+                <p className="text-[10px] text-zinc-500">{stackMode === "single" ? "The strongest match updates automatically as the DNA changes." : "Recommendations update automatically as the DNA changes."}</p>
               )}
             </div>
           ) : (
