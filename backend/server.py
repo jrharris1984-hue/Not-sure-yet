@@ -1519,16 +1519,19 @@ def _guard_mode(render: Dict[str, Any], payload: Optional[Dict[str, Any]] = None
     return mode if mode in {"natural", "enhanced", "extreme"} else "natural"
 
 
-def _simplify_anatomy_retry_prompt(text: str) -> str:
+def _simplify_anatomy_retry_prompt(text: str, preserve_extreme: bool = False) -> str:
     replacements = {
-        r"hyper-inflated[^,]*": "large breasts with believable weight",
-        r"cartoonishly enormous[^,]*": "enhanced but believable proportions",
-        r"impossibly huge[^,]*": "large",
-        r"dominant size-queen soles": "naturally proportioned feet",
-        r"very large feet": "naturally sized feet",
         r"first person POV": "moderate three-quarter camera view",
         r"point of view shot": "moderate camera view",
     }
+    if not preserve_extreme:
+        replacements.update({
+            r"hyper-inflated[^,]*": "large breasts with believable weight",
+            r"cartoonishly enormous[^,]*": "enhanced but believable proportions",
+            r"impossibly huge[^,]*": "large",
+            r"dominant size-queen soles": "naturally proportioned feet",
+            r"very large feet": "naturally sized feet",
+        })
     cleaned = str(text or "")
     for pattern, replacement in replacements.items():
         cleaned = re.sub(pattern, replacement, cleaned, flags=re.IGNORECASE)
@@ -1542,9 +1545,6 @@ def _simplify_anatomy_retry_prompt(text: str) -> str:
 
 
 async def _run_anatomy_guard(render: Dict[str, Any], mode: str) -> Dict[str, Any]:
-    if mode == "extreme":
-        return {"status": "skipped", "passed": True, "score": None, "issues": [], "summary": "Extreme mode bypasses automatic rejection."}
-
     image_url = next((
         url for url in (render.get("output_files") or [])
         if not str(url).lower().split("?")[0].endswith((".mp4", ".webm", ".gif"))
@@ -1678,7 +1678,10 @@ async def _sync_queue_job(job: Dict[str, Any]) -> Dict[str, Any]:
                 retries = int(job.get("anatomy_retries", 0) or 0)
                 if retries < 2:
                     payload["seed"] = random.randint(1, 2**63 - 1)
-                    payload["prompt_positive"] = _simplify_anatomy_retry_prompt(payload.get("prompt_positive", ""))
+                    payload["prompt_positive"] = _simplify_anatomy_retry_prompt(
+                        payload.get("prompt_positive", ""),
+                        preserve_extreme=(mode == "extreme"),
+                    )
                     payload["prompt_negative"] = (
                         str(payload.get("prompt_negative", "")) +
                         ", extra person, partial person, duplicated body, duplicated pelvis, duplicated feet, "
