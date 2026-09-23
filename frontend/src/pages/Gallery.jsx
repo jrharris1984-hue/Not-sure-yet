@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { API_BASE, endpoints } from "@/lib/api";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
-import { X, Download, Copy, ExternalLink, Trash2, CheckSquare, RotateCcw, Shuffle, Pencil, Film, Loader2, Info, ChevronLeft, ChevronRight } from "lucide-react";
+import { X, Download, Copy, ExternalLink, Trash2, CheckSquare, RotateCcw, Shuffle, Pencil, Film, Loader2, Info, ChevronLeft, ChevronRight, PersonStanding } from "lucide-react";
 import { toast } from "sonner";
 
 async function downloadImage(url, filename) {
@@ -119,14 +119,15 @@ export default function Gallery() {
   });
 
   const reuseAsReference = useMutation({
-    mutationFn: ({ render, targetKind }) => endpoints.prepareRenderReference(render.id).then((reference) => ({ render, targetKind, reference })),
-    onSuccess: ({ render, targetKind, reference }) => {
+    mutationFn: ({ render, targetKind, referenceMode }) => endpoints.prepareRenderReference(render.id).then((reference) => ({ render, targetKind, referenceMode, reference })),
+    onSuccess: ({ render, targetKind, referenceMode, reference }) => {
       const path = render.character_id ? `/character/${render.character_id}` : "/character/new";
       nav(path, {
         state: {
           galleryReference: reference,
           previewUrl: primaryOutput(render),
           targetKind,
+          referenceMode,
         },
       });
     },
@@ -472,13 +473,20 @@ export default function Gallery() {
                   </button>
                 </div>
                 {!isVideoUrl(primaryOutput(lightbox)) && (
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                     <button type="button"
                       onClick={() => reuseAsReference.mutate({ render: lightbox, targetKind: "edit" })}
                       disabled={reuseAsReference.isPending}
                       data-testid="btn-lightbox-edit-again"
                       className="inline-flex items-center justify-center gap-2 rounded-lg border hairline text-zinc-200 hover:bg-white/5 text-sm px-3 py-2 disabled:opacity-40">
                       <Pencil className="h-4 w-4" /> Edit Again
+                    </button>
+                    <button type="button"
+                      onClick={() => reuseAsReference.mutate({ render: lightbox, targetKind: "edit", referenceMode: "new_pose" })}
+                      disabled={reuseAsReference.isPending}
+                      data-testid="btn-lightbox-new-pose"
+                      className="inline-flex items-center justify-center gap-2 rounded-lg border border-cyan-500/40 bg-cyan-500/10 text-cyan-100 hover:bg-cyan-500/20 text-sm px-3 py-2 disabled:opacity-40">
+                      <PersonStanding className="h-4 w-4" /> New Pose
                     </button>
                     <button type="button"
                       onClick={() => reuseAsReference.mutate({ render: lightbox, targetKind: "video" })}

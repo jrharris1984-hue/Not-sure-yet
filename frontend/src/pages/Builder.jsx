@@ -31,6 +31,7 @@ import ChromaControls from "@/components/ChromaControls";
 import RenderRecipeSelector from "@/components/RenderRecipeSelector";
 import { getRenderRecipe, recipeFamily } from "@/lib/renderRecipes";
 import { readBuilderDraft, writeBuilderDraft, clearBuilderDraft } from "@/lib/builderDraft";
+import { buildSameCharacterPoseInstruction, DEFAULT_POSE_LOCKS, SAME_CHARACTER_POSES } from "@/lib/sameCharacterPose";
 import { Flame } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -84,6 +85,10 @@ export default function Builder() {
   const [faceStrength, setFaceStrength] = useState(1.1);
   const [faceIdV2Strength, setFaceIdV2Strength] = useState(1.4);
   const [editInstruction, setEditInstruction] = useState("");
+  const [editMode, setEditMode] = useState("standard");
+  const [poseTarget, setPoseTarget] = useState("");
+  const [poseNotes, setPoseNotes] = useState("");
+  const [poseLocks, setPoseLocks] = useState(DEFAULT_POSE_LOCKS);
   const [preserveUnmentioned, setPreserveUnmentioned] = useState(true);
   const [enhancingEdit, setEnhancingEdit] = useState(false);
   const [repairTargets, setRepairTargets] = useState(["face", "hands"]);
@@ -126,6 +131,10 @@ export default function Builder() {
     setWorkflowId(draft.workflowId || "");
     setLoraOverrides(draft.loraOverrides || {});
     setEditInstruction(draft.editInstruction || "");
+    setEditMode(draft.editMode || "standard");
+    setPoseTarget(draft.poseTarget || "");
+    setPoseNotes(draft.poseNotes || "");
+    setPoseLocks({ ...DEFAULT_POSE_LOCKS, ...(draft.poseLocks || {}) });
     setPreserveUnmentioned(draft.preserveUnmentioned !== false);
     setRepairTargets(draft.repairTargets || ["face", "hands"]);
     setRepairInstruction(draft.repairInstruction || "");
@@ -165,7 +174,14 @@ export default function Builder() {
     const target = workflows.find((workflow) => workflow.kind === requestedKind);
     if (target) setWorkflowId(target.id);
     if (requestedKind === "edit") {
-      setEditInstruction("Describe the changes you want to make to this Gallery image.");
+      if (location.state?.referenceMode === "new_pose") {
+        setEditMode("new_pose");
+        setPreserveUnmentioned(true);
+        setEditInstruction("");
+      } else {
+        setEditMode("standard");
+        setEditInstruction("Describe the changes you want to make to this Gallery image.");
+      }
     } else if (requestedKind === "video") {
       setVideoInstruction("Describe how you want this Gallery image to move.");
     }
@@ -363,6 +379,7 @@ export default function Builder() {
       name, subjects, activeSubjectId, locks, collapsed, tags, raunch, promptLanguage,
       promptOverride, negativePromptOverride, workflowId, loraOverrides,
       editInstruction, preserveUnmentioned, repairTargets, repairInstruction,
+      editMode, poseTarget, poseNotes, poseLocks,
       videoInstruction, videoFrames, videoFps, videoWidth, videoHeight,
       qualityTier, chromaSettings, activeRender,
     }), 350);
@@ -371,6 +388,7 @@ export default function Builder() {
     id, name, subjects, activeSubjectId, locks, collapsed, tags, raunch, promptLanguage,
     promptOverride, negativePromptOverride, workflowId, loraOverrides,
     editInstruction, preserveUnmentioned, repairTargets, repairInstruction,
+    editMode, poseTarget, poseNotes, poseLocks,
     videoInstruction, videoFrames, videoFps, videoWidth, videoHeight,
     qualityTier, chromaSettings, activeRender,
   ]);
@@ -416,6 +434,12 @@ export default function Builder() {
   const setSection = (key, val) => setActiveDna({ ...activeDna, [key]: val });
 
   const isMulti = subjects.length > 1;
+  const poseInstruction = useMemo(() => buildSameCharacterPoseInstruction({
+    poseId: poseTarget,
+    notes: poseNotes,
+    locks: poseLocks,
+  }), [poseTarget, poseNotes, poseLocks]);
+  const effectiveEditInstruction = editMode === "new_pose" ? poseInstruction : editInstruction;
   const { positive, negative } = useMemo(
     () => {
       // A saved display name is useful in the library, but it is prompt noise
@@ -437,7 +461,7 @@ export default function Builder() {
         raunch,
         editInstruction: isEnhanceWorkflow
           ? (repairInstruction || `Repair only these areas: ${repairTargets.join(", ")}`)
-          : editInstruction,
+          : effectiveEditInstruction,
         videoInstruction,
         preserveUnmentioned,
       });
@@ -445,7 +469,7 @@ export default function Builder() {
     [
       subjects, isMulti, activeDna, activeSubject?.likeness?.enabled,
       promptStyle, activeWorkflow?.kind, activeWorkflow?.name, raunch,
-      editInstruction, repairInstruction, repairTargets, videoInstruction, preserveUnmentioned,
+      effectiveEditInstruction, repairInstruction, repairTargets, videoInstruction, preserveUnmentioned,
       isEnhanceWorkflow,
     ]
   );
@@ -469,12 +493,12 @@ export default function Builder() {
     hasReferenceImage: !!referenceImage?.name,
     editInstruction: isEnhanceWorkflow
       ? (repairInstruction || repairTargets.join(", "))
-      : editInstruction,
+      : effectiveEditInstruction,
     videoInstruction,
     subjectCount: subjects.length,
   }), [
     referenceImage?.name, isEnhanceWorkflow, repairInstruction,
-    repairTargets, editInstruction, videoInstruction, subjects.length,
+    repairTargets, effectiveEditInstruction, videoInstruction, subjects.length,
   ]);
   useEffect(() => {
     setPromptOverride("");
@@ -576,8 +600,8 @@ export default function Builder() {
       toast.error("Choose at least one repair target or write a repair instruction");
       return;
     }
-    if (isEditWorkflow && !editInstruction.trim()) {
-      toast.error("Describe the change you want Qwen to make");
+    if (isEditWorkflow && !effectiveEditInstruction.trim()) {
+      toast.error(editMode === "new_pose" ? "Choose a pose or describe the new body motion" : "Describe the change you want Qwen to make");
       return;
     }
     if (isVideoWorkflow && !referenceImage?.name) {
@@ -765,6 +789,10 @@ export default function Builder() {
     setReferencePreview("");
     setActiveRender(null);
     setEditInstruction("");
+    setEditMode("standard");
+    setPoseTarget("");
+    setPoseNotes("");
+    setPoseLocks(DEFAULT_POSE_LOCKS);
     setRepairTargets(["face", "hands"]);
     setRepairInstruction("");
     setRepairAnalysis("");
@@ -1346,6 +1374,18 @@ export default function Builder() {
               <p className="text-xs text-zinc-400">
                 Upload the image you want to change, then describe only the changes you want made.
               </p>
+              <div className="grid grid-cols-2 gap-1 rounded-lg border hairline bg-elevated p-1" role="tablist" aria-label="Qwen edit mode">
+                <button type="button" onClick={() => setEditMode("standard")}
+                  className={`rounded-md px-3 py-2 text-xs font-semibold ${editMode === "standard" ? "bg-cyan-500/20 text-cyan-100" : "text-zinc-400 hover:text-zinc-200"}`}
+                  data-testid="btn-edit-mode-standard">
+                  Standard edit
+                </button>
+                <button type="button" onClick={() => { setEditMode("new_pose"); setPreserveUnmentioned(true); }}
+                  className={`rounded-md px-3 py-2 text-xs font-semibold ${editMode === "new_pose" ? "bg-cyan-500/20 text-cyan-100" : "text-zinc-400 hover:text-zinc-200"}`}
+                  data-testid="btn-edit-mode-new-pose">
+                  Same character · New pose
+                </button>
+              </div>
               {referencePreview ? (
                 <div className="relative rounded-lg overflow-hidden border hairline bg-elevated">
                   <img src={referencePreview} alt="Source for editing" className="w-full max-h-72 object-contain" />
@@ -1368,14 +1408,64 @@ export default function Builder() {
                     className="hidden" data-testid="input-qwen-edit-source" />
                 </label>
               )}
-              <label className="block space-y-1">
-                <span className="text-xs uppercase tracking-widest text-zinc-500 font-mono">Edit instruction</span>
-                <Textarea rows={5} value={editInstruction}
-                  onChange={(event) => setEditInstruction(event.target.value)}
-                  placeholder="Example: Change the black dress to a red satin evening gown. Keep her face, pose, body, lighting, and background unchanged."
-                  className="bg-elevated border-hairline text-sm"
-                  data-testid="textarea-qwen-edit-instruction" />
-              </label>
+              {editMode === "standard" ? (
+                <label className="block space-y-1">
+                  <span className="text-xs uppercase tracking-widest text-zinc-500 font-mono">Edit instruction</span>
+                  <Textarea rows={5} value={editInstruction}
+                    onChange={(event) => setEditInstruction(event.target.value)}
+                    placeholder="Example: Change the black dress to a red satin evening gown. Keep her face, pose, body, lighting, and background unchanged."
+                    className="bg-elevated border-hairline text-sm"
+                    data-testid="textarea-qwen-edit-instruction" />
+                </label>
+              ) : (
+                <div className="space-y-4" data-testid="same-character-pose-panel">
+                  <div>
+                    <div className="mb-2 text-xs uppercase tracking-widest text-zinc-500 font-mono">Choose a new pose</div>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                      {SAME_CHARACTER_POSES.map((pose) => (
+                        <button key={pose.id} type="button" onClick={() => setPoseTarget(pose.id)}
+                          className={`rounded-lg border px-3 py-2 text-left text-xs ${poseTarget === pose.id ? "border-cyan-400 bg-cyan-500/15 text-cyan-100" : "border-hairline text-zinc-300 hover:bg-white/5"}`}
+                          data-testid={`btn-pose-${pose.id}`}>
+                          {pose.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <label className="block space-y-1">
+                    <span className="text-xs uppercase tracking-widest text-zinc-500 font-mono">Pose details (optional)</span>
+                    <Textarea rows={3} value={poseNotes}
+                      onChange={(event) => setPoseNotes(event.target.value)}
+                      placeholder="Example: left hand resting on the chair, right foot slightly forward, looking toward camera"
+                      className="bg-elevated border-hairline text-sm"
+                      data-testid="textarea-pose-notes" />
+                  </label>
+                  <div>
+                    <div className="mb-2 text-xs uppercase tracking-widest text-zinc-500 font-mono">Keep unchanged</div>
+                    <div className="grid grid-cols-2 gap-2">
+                      {Object.entries({
+                        face: "Face & identity", hair: "Hair", skin: "Skin & markings", body: "Body shape",
+                        clothing: "Clothing", expression: "Expression", background: "Background", lighting: "Lighting & style",
+                      }).map(([key, label]) => (
+                        <label key={key} className="flex items-center gap-2 rounded-lg border hairline px-3 py-2 text-xs text-zinc-300">
+                          <input type="checkbox" checked={poseLocks[key] !== false}
+                            onChange={(event) => setPoseLocks((current) => ({ ...current, [key]: event.target.checked }))}
+                            className="accent-cyan-400" data-testid={`checkbox-pose-lock-${key}`} />
+                          {label}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                  {poseInstruction && (
+                    <details className="rounded-lg border hairline bg-black/10 p-3">
+                      <summary className="cursor-pointer text-xs font-semibold text-cyan-200">Review protected edit instruction</summary>
+                      <p className="mt-2 whitespace-pre-wrap text-[11px] leading-relaxed text-zinc-400">{poseInstruction}</p>
+                    </details>
+                  )}
+                  <p className="text-[11px] text-zinc-500">
+                    Qwen edits the supplied pixels, so this mode is best for preserving the same person, wardrobe, and scene. Large pose changes may still need a second attempt.
+                  </p>
+                </div>
+              )}
               <label className="flex items-start gap-2 text-xs text-zinc-300">
                 <input type="checkbox" checked={preserveUnmentioned}
                   onChange={(event) => setPreserveUnmentioned(event.target.checked)}
@@ -1384,11 +1474,11 @@ export default function Builder() {
                 <span>Preserve identity, composition, and every detail I did not ask to change</span>
               </label>
               <button type="button" onClick={enhanceEditInstruction}
-                disabled={enhancingEdit || !editInstruction.trim()}
+                disabled={enhancingEdit || editMode === "new_pose" || !editInstruction.trim()}
                 className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm font-semibold text-amber-200 hover:bg-amber-500/20 disabled:opacity-40"
                 data-testid="btn-venice-enhance-edit">
                 {enhancingEdit ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-                Enhance instruction with Venice
+                {editMode === "new_pose" ? "Protected pose instruction active" : "Enhance instruction with Venice"}
               </button>
               <p className="text-[11px] text-zinc-500">
                 Venice only rewrites the instruction. Review and edit it before rendering.
