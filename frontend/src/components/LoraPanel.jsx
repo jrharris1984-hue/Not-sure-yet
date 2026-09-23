@@ -133,6 +133,23 @@ export default function LoraPanel({ workflowId, workflow, dna, values, onChange,
     notifyPlan();
   };
 
+  const applyMatch = (entry) => {
+    const target = loras.find((lora) => lora.optional_slot && lora.slot_kind === entry.slot);
+    if (!target) return;
+    const next = { ...values };
+    next[target.node_id] = {
+      ...(defaults[target.node_id] || cur(target.node_id)),
+      lora_name: entry.installedName,
+      strength_model: entry.defaultStrength,
+    };
+    onChange(next);
+    onPlanChange?.({
+      family: plan.family,
+      selected: [entry],
+      triggerWords: [...new Set(entry.triggerWords || [])],
+    });
+  };
+
   const changeMode = (nextMode) => {
     setMode(nextMode);
     localStorage.setItem(MODE_KEY, nextMode);
@@ -250,6 +267,24 @@ export default function LoraPanel({ workflowId, workflow, dna, values, onChange,
               <AlertTriangle className="h-3.5 w-3.5 shrink-0" />{warning}
             </div>
           ))}
+          {plan.matches?.some((entry) => !plan.selected.some((selected) => selected.id === entry.id)) && (
+            <div className="border-t border-white/5 pt-2 space-y-1.5" data-testid="lora-alternate-matches">
+              <div className="text-[9px] font-mono uppercase tracking-widest text-zinc-500">Other matching installed LoRAs</div>
+              {plan.matches
+                .filter((entry) => !plan.selected.some((selected) => selected.id === entry.id))
+                .slice(0, 8)
+                .map((entry) => (
+                  <button key={entry.id} type="button" onClick={() => applyMatch(entry)}
+                    className="w-full flex items-center gap-2 rounded-md border border-white/5 px-2 py-1.5 text-left hover:bg-white/5">
+                    <span className="flex-1 text-[10px] text-zinc-300">
+                      {entry.label}
+                      <span className="block text-[9px] text-zinc-600">{entry.reason}</span>
+                    </span>
+                    <span className="font-mono text-[9px] uppercase text-zinc-500">use {entry.slot}</span>
+                  </button>
+                ))}
+            </div>
+          )}
         </div>
       )}
 

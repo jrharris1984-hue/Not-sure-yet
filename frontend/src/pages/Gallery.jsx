@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { API_BASE, endpoints } from "@/lib/api";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { X, Download, Copy, ExternalLink, Trash2, CheckSquare, RotateCcw, Shuffle, Pencil, Film, Loader2, Info, ChevronLeft, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 
@@ -56,9 +56,10 @@ const isVideoUrl = (url = "") => /\.(webm|mp4|mov)(?:[?&]|$)/i.test(decodeURICom
 export default function Gallery() {
   const qc = useQueryClient();
   const nav = useNavigate();
+  const location = useLocation();
   const [searchParams] = useSearchParams();
   const requestedRenderId = searchParams.get("render");
-  const returnTo = searchParams.get("returnTo");
+  const returnTo = searchParams.get("returnTo") || location.state?.returnTo || "";
   const { data: renders = [], isLoading } = useQuery({
     queryKey: ["renders"],
     queryFn: endpoints.listRenders,
@@ -201,6 +202,13 @@ export default function Gallery() {
             {withOutput.length} finished · {inFlight.length} in flight. Tap a thumbnail to open.
           </p>
         </div>
+        {returnTo && (
+          <button type="button" onClick={() => nav(returnTo)}
+            className="inline-flex items-center gap-1 rounded-lg border hairline px-3 py-2 text-sm font-semibold text-zinc-200 hover:bg-white/5"
+            data-testid="btn-gallery-return-to-editor">
+            <ChevronLeft className="h-4 w-4" /> Back to editor
+          </button>
+        )}
         {(withOutput.length > 0 || cancelled.length > 0) && (
           <div className="flex gap-2">
             {cancelled.length > 0 && (
