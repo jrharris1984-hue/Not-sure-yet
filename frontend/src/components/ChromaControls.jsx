@@ -57,14 +57,6 @@ export default function ChromaControls({ value, onChange }) {
         </label>
 
         <label className="block">
-          <span className="mb-2 block text-[10px] font-mono uppercase tracking-widest text-zinc-500">Images</span>
-          <select value={value.batchSize} onChange={(e) => set({ batchSize: Number(e.target.value) })}
-            className="w-full rounded-lg border hairline bg-elevated px-3 py-2 text-sm text-zinc-100">
-            {[1, 2, 3, 4].map((n) => <option key={n} value={n}>{n} image{n > 1 ? "s" : ""}</option>)}
-          </select>
-        </label>
-
-        <label className="block">
           <span className="mb-2 block text-[10px] font-mono uppercase tracking-widest text-zinc-500">Sampler</span>
           <select value={value.sampler} onChange={(e) => set({ sampler: e.target.value })}
             className="w-full rounded-lg border hairline bg-elevated px-3 py-2 text-sm text-zinc-100">
