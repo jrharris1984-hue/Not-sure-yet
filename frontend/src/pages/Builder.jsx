@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, useRef } from "react";
 import { useParams, useNavigate, useLocation, Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Save, Shuffle, Download, Upload, Loader2, Play, ChevronLeft, ChevronRight, Camera, Sparkles, ChevronDown, ImagePlus, X, RotateCcw } from "lucide-react";
+import { Save, Shuffle, Download, Upload, Loader2, Play, ChevronLeft, ChevronRight, Camera, Sparkles, ChevronDown, ImagePlus, X, RotateCcw, SlidersHorizontal, ShieldCheck, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { endpoints } from "@/lib/api";
 import {
@@ -32,6 +32,7 @@ import RenderRecipeSelector from "@/components/RenderRecipeSelector";
 import { getRenderRecipe, recipeFamily } from "@/lib/renderRecipes";
 import { readBuilderDraft, writeBuilderDraft, clearBuilderDraft } from "@/lib/builderDraft";
 import { buildSameCharacterPoseInstruction, DEFAULT_POSE_LOCKS, SAME_CHARACTER_POSES } from "@/lib/sameCharacterPose";
+import { DEFAULT_REFERENCE_STRENGTHS, REFERENCE_RECIPES, preservationStrengthInstruction, referenceStudioSummary } from "@/lib/referenceStudio";
 import { Flame } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -89,6 +90,14 @@ export default function Builder() {
   const [poseTarget, setPoseTarget] = useState("");
   const [poseNotes, setPoseNotes] = useState("");
   const [poseLocks, setPoseLocks] = useState(DEFAULT_POSE_LOCKS);
+  const [referenceStudioView, setReferenceStudioView] = useState("simple");
+  const [referenceRecipe, setReferenceRecipe] = useState("balanced");
+  const [referenceStrengths, setReferenceStrengths] = useState(DEFAULT_REFERENCE_STRENGTHS);
+  const [poseReferenceImage, setPoseReferenceImage] = useState(null);
+  const [poseReferencePreview, setPoseReferencePreview] = useState("");
+  const [poseReferenceUploading, setPoseReferenceUploading] = useState(false);
+  const [poseReferenceAnalysis, setPoseReferenceAnalysis] = useState("");
+  const [analyzingPoseReference, setAnalyzingPoseReference] = useState(false);
   const [preserveUnmentioned, setPreserveUnmentioned] = useState(true);
   const [enhancingEdit, setEnhancingEdit] = useState(false);
   const [repairTargets, setRepairTargets] = useState(["face", "hands"]);
@@ -135,6 +144,10 @@ export default function Builder() {
     setPoseTarget(draft.poseTarget || "");
     setPoseNotes(draft.poseNotes || "");
     setPoseLocks({ ...DEFAULT_POSE_LOCKS, ...(draft.poseLocks || {}) });
+    setReferenceStudioView(draft.referenceStudioView || "simple");
+    setReferenceRecipe(draft.referenceRecipe || "balanced");
+    setReferenceStrengths({ ...DEFAULT_REFERENCE_STRENGTHS, ...(draft.referenceStrengths || {}) });
+    setPoseReferenceAnalysis(draft.poseReferenceAnalysis || "");
     setPreserveUnmentioned(draft.preserveUnmentioned !== false);
     setRepairTargets(draft.repairTargets || ["face", "hands"]);
     setRepairInstruction(draft.repairInstruction || "");
@@ -249,6 +262,47 @@ export default function Builder() {
     }
   };
 
+  const uploadPoseReference = async (file) => {
+    if (!file) return;
+    setPoseReferenceUploading(true);
+    try {
+      const uploaded = await endpoints.uploadReferenceImage(file);
+      if (poseReferencePreview) URL.revokeObjectURL(poseReferencePreview);
+      setPoseReferencePreview(URL.createObjectURL(file));
+      setPoseReferenceImage(uploaded);
+      setPoseReferenceAnalysis("");
+      toast.success("Pose reference uploaded · analyze it when ready");
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || "Pose reference upload failed");
+    } finally {
+      setPoseReferenceUploading(false);
+    }
+  };
+
+  const analyzePoseReference = async () => {
+    if (!poseReferenceImage?.name) {
+      toast.error("Upload a pose-reference image first");
+      return;
+    }
+    setAnalyzingPoseReference(true);
+    try {
+      const result = await endpoints.aiAnalyzePoseReference(poseReferenceImage.name);
+      setPoseReferenceAnalysis(result.pose_prompt || result.analysis || "");
+      toast.success("Venice extracted the pose without copying the reference identity");
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || "Venice could not analyze the pose reference");
+    } finally {
+      setAnalyzingPoseReference(false);
+    }
+  };
+
+  const clearPoseReference = () => {
+    if (poseReferencePreview) URL.revokeObjectURL(poseReferencePreview);
+    setPoseReferencePreview("");
+    setPoseReferenceImage(null);
+    setPoseReferenceAnalysis("");
+  };
+
   const toggleRepairTarget = (target) => {
     setRepairTargets((current) =>
       current.includes(target) ? current.filter((item) => item !== target) : [...current, target]
@@ -340,7 +394,8 @@ export default function Builder() {
 
   useEffect(() => () => {
     if (referencePreview) URL.revokeObjectURL(referencePreview);
-  }, [referencePreview]);
+    if (poseReferencePreview) URL.revokeObjectURL(poseReferencePreview);
+  }, [referencePreview, poseReferencePreview]);
 
   const { data: character } = useQuery({
     queryKey: ["character", id],
@@ -380,6 +435,7 @@ export default function Builder() {
       promptOverride, negativePromptOverride, workflowId, loraOverrides,
       editInstruction, preserveUnmentioned, repairTargets, repairInstruction,
       editMode, poseTarget, poseNotes, poseLocks,
+      referenceStudioView, referenceRecipe, referenceStrengths, poseReferenceAnalysis,
       videoInstruction, videoFrames, videoFps, videoWidth, videoHeight,
       qualityTier, chromaSettings, activeRender,
     }), 350);
@@ -389,6 +445,7 @@ export default function Builder() {
     promptOverride, negativePromptOverride, workflowId, loraOverrides,
     editInstruction, preserveUnmentioned, repairTargets, repairInstruction,
     editMode, poseTarget, poseNotes, poseLocks,
+    referenceStudioView, referenceRecipe, referenceStrengths, poseReferenceAnalysis,
     videoInstruction, videoFrames, videoFps, videoWidth, videoHeight,
     qualityTier, chromaSettings, activeRender,
   ]);
@@ -437,9 +494,18 @@ export default function Builder() {
   const poseInstruction = useMemo(() => buildSameCharacterPoseInstruction({
     poseId: poseTarget,
     notes: poseNotes,
+    poseAnalysis: poseReferenceAnalysis,
     locks: poseLocks,
-  }), [poseTarget, poseNotes, poseLocks]);
+    preservationInstruction: preservationStrengthInstruction(referenceStrengths),
+  }), [poseTarget, poseNotes, poseReferenceAnalysis, poseLocks, referenceStrengths]);
   const effectiveEditInstruction = editMode === "new_pose" ? poseInstruction : editInstruction;
+  const referenceSummary = useMemo(() => referenceStudioSummary({
+    sourceReady: !!referenceImage?.name,
+    poseId: poseTarget,
+    poseNotes,
+    poseAnalysis: poseReferenceAnalysis,
+    strengths: referenceStrengths,
+  }), [referenceImage?.name, poseTarget, poseNotes, poseReferenceAnalysis, referenceStrengths]);
   const { positive, negative } = useMemo(
     () => {
       // A saved display name is useful in the library, but it is prompt noise
@@ -793,6 +859,10 @@ export default function Builder() {
     setPoseTarget("");
     setPoseNotes("");
     setPoseLocks(DEFAULT_POSE_LOCKS);
+    setReferenceStudioView("simple");
+    setReferenceRecipe("balanced");
+    setReferenceStrengths(DEFAULT_REFERENCE_STRENGTHS);
+    clearPoseReference();
     setRepairTargets(["face", "hands"]);
     setRepairInstruction("");
     setRepairAnalysis("");
@@ -1419,6 +1489,37 @@ export default function Builder() {
                 </label>
               ) : (
                 <div className="space-y-4" data-testid="same-character-pose-panel">
+                  <div className="flex items-center justify-between gap-3 rounded-lg border border-cyan-500/25 bg-cyan-500/5 p-2">
+                    <div>
+                      <div className="text-xs font-bold text-cyan-100">Reference Studio</div>
+                      <div className="text-[10px] text-zinc-500">Same person, controlled motion</div>
+                    </div>
+                    <div className="flex rounded-md border hairline bg-black/20 p-0.5">
+                      {[["simple", "Simple"], ["advanced", "Advanced"]].map(([value, label]) => (
+                        <button key={value} type="button" onClick={() => setReferenceStudioView(value)}
+                          className={`rounded px-2.5 py-1.5 text-[11px] font-semibold ${referenceStudioView === value ? "bg-cyan-500/20 text-cyan-100" : "text-zinc-500"}`}
+                          data-testid={`btn-reference-view-${value}`}>
+                          {value === "advanced" && <SlidersHorizontal className="mr-1 inline h-3 w-3" />}{label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="mb-2 text-xs uppercase tracking-widest text-zinc-500 font-mono">Preservation recipe</div>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                      {REFERENCE_RECIPES.map((recipe) => (
+                        <button key={recipe.id} type="button" onClick={() => {
+                          setReferenceRecipe(recipe.id);
+                          setReferenceStrengths(recipe.strengths);
+                        }}
+                          className={`rounded-lg border p-3 text-left ${referenceRecipe === recipe.id ? "border-cyan-400 bg-cyan-500/10" : "border-hairline hover:bg-white/5"}`}
+                          data-testid={`btn-reference-recipe-${recipe.id}`}>
+                          <div className="text-xs font-bold text-zinc-100">{recipe.label}</div>
+                          <div className="mt-1 text-[10px] leading-snug text-zinc-500">{recipe.description}</div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                   <div>
                     <div className="mb-2 text-xs uppercase tracking-widest text-zinc-500 font-mono">Choose a new pose</div>
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
@@ -1431,6 +1532,43 @@ export default function Builder() {
                       ))}
                     </div>
                   </div>
+                  <div className="rounded-lg border border-dashed border-violet-500/35 bg-violet-500/5 p-3 space-y-3">
+                    <div>
+                      <div className="text-xs font-bold text-violet-100">Optional pose-reference image</div>
+                      <div className="mt-0.5 text-[10px] text-zinc-500">Use a second image for body positioning only. Its identity, body type, outfit, and setting are ignored.</div>
+                    </div>
+                    {poseReferencePreview ? (
+                      <div className="grid grid-cols-[96px_1fr] gap-3 items-center">
+                        <div className="relative overflow-hidden rounded-md border hairline">
+                          <img src={poseReferencePreview} alt="Pose reference" className="h-24 w-24 object-cover" />
+                          <button type="button" onClick={clearPoseReference}
+                            className="absolute right-1 top-1 rounded-full bg-black/75 p-1 text-white" aria-label="Remove pose reference">
+                            <X className="h-3 w-3" />
+                          </button>
+                        </div>
+                        <button type="button" onClick={analyzePoseReference}
+                          disabled={analyzingPoseReference}
+                          className="inline-flex items-center justify-center gap-2 rounded-lg border border-violet-500/40 bg-violet-500/10 px-3 py-2 text-xs font-semibold text-violet-100 disabled:opacity-40"
+                          data-testid="btn-analyze-pose-reference">
+                          {analyzingPoseReference ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                          {poseReferenceAnalysis ? "Analyze pose again" : "Extract pose with Venice"}
+                        </button>
+                      </div>
+                    ) : (
+                      <label className="flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-dashed border-violet-500/30 px-3 py-4 text-xs font-semibold text-violet-100 hover:bg-violet-500/10">
+                        {poseReferenceUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                        {poseReferenceUploading ? "Uploading…" : "Choose pose image"}
+                        <input type="file" accept="image/jpeg,image/png,image/webp" disabled={poseReferenceUploading}
+                          onChange={(event) => uploadPoseReference(event.target.files?.[0])}
+                          className="hidden" data-testid="input-pose-reference" />
+                      </label>
+                    )}
+                    {poseReferenceAnalysis && (
+                      <div className="rounded-md border border-violet-500/20 bg-black/15 p-2 text-[11px] leading-relaxed text-zinc-300" data-testid="pose-reference-analysis">
+                        <span className="font-semibold text-violet-200">Extracted pose: </span>{poseReferenceAnalysis}
+                      </div>
+                    )}
+                  </div>
                   <label className="block space-y-1">
                     <span className="text-xs uppercase tracking-widest text-zinc-500 font-mono">Pose details (optional)</span>
                     <Textarea rows={3} value={poseNotes}
@@ -1439,7 +1577,23 @@ export default function Builder() {
                       className="bg-elevated border-hairline text-sm"
                       data-testid="textarea-pose-notes" />
                   </label>
-                  <div>
+                  {referenceStudioView === "advanced" && <div>
+                    <div className="mb-2 text-xs uppercase tracking-widest text-zinc-500 font-mono">Preservation strengths</div>
+                    <div className="space-y-2 rounded-lg border hairline p-3">
+                      {Object.entries({ face: "Face & identity", body: "Body shape", clothing: "Outfit", background: "Scene", lighting: "Lighting" }).map(([key, label]) => (
+                        <label key={key} className="grid grid-cols-[90px_1fr_38px] items-center gap-2 text-[11px] text-zinc-300">
+                          <span>{label}</span>
+                          <input type="range" min="0" max="100" step="5" value={referenceStrengths[key]}
+                            onChange={(event) => {
+                              setReferenceRecipe("custom");
+                              setReferenceStrengths((current) => ({ ...current, [key]: Number(event.target.value) }));
+                            }} className="accent-cyan-400" data-testid={`range-reference-${key}`} />
+                          <span className="text-right font-mono text-cyan-200">{referenceStrengths[key]}%</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>}
+                  {referenceStudioView === "advanced" && <div>
                     <div className="mb-2 text-xs uppercase tracking-widest text-zinc-500 font-mono">Keep unchanged</div>
                     <div className="grid grid-cols-2 gap-2">
                       {Object.entries({
@@ -1454,35 +1608,47 @@ export default function Builder() {
                         </label>
                       ))}
                     </div>
-                  </div>
-                  {poseInstruction && (
+                  </div>}
+                  {referenceStudioView === "advanced" && poseInstruction && (
                     <details className="rounded-lg border hairline bg-black/10 p-3">
                       <summary className="cursor-pointer text-xs font-semibold text-cyan-200">Review protected edit instruction</summary>
                       <p className="mt-2 whitespace-pre-wrap text-[11px] leading-relaxed text-zinc-400">{poseInstruction}</p>
                     </details>
                   )}
                   <p className="text-[11px] text-zinc-500">
-                    Qwen edits the supplied pixels, so this mode is best for preserving the same person, wardrobe, and scene. Large pose changes may still need a second attempt.
+                    The character image owns identity and appearance. A pose-reference image contributes only body positioning.
                   </p>
                 </div>
               )}
-              <label className="flex items-start gap-2 text-xs text-zinc-300">
+              {editMode === "standard" && <label className="flex items-start gap-2 text-xs text-zinc-300">
                 <input type="checkbox" checked={preserveUnmentioned}
                   onChange={(event) => setPreserveUnmentioned(event.target.checked)}
                   className="mt-0.5 accent-cyan-400"
                   data-testid="checkbox-preserve-unmentioned" />
                 <span>Preserve identity, composition, and every detail I did not ask to change</span>
-              </label>
-              <button type="button" onClick={enhanceEditInstruction}
+              </label>}
+              {editMode === "new_pose" && (
+                <div className={`rounded-lg border p-3 ${referenceSummary.ready ? "border-emerald-500/30 bg-emerald-500/5" : "border-amber-500/30 bg-amber-500/5"}`} data-testid="reference-studio-summary">
+                  <div className="flex items-center gap-2 text-xs font-bold">
+                    {referenceSummary.ready ? <ShieldCheck className="h-4 w-4 text-emerald-300" /> : <AlertTriangle className="h-4 w-4 text-amber-300" />}
+                    <span className={referenceSummary.ready ? "text-emerald-100" : "text-amber-100"}>{referenceSummary.headline}</span>
+                  </div>
+                  <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-1 text-[10px] text-zinc-400">
+                    {referenceSummary.details.map((detail) => <div key={detail}>• {detail}</div>)}
+                  </div>
+                  {referenceSummary.warnings.map((warning) => <div key={warning} className="mt-2 text-[10px] text-amber-200">⚠ {warning}</div>)}
+                </div>
+              )}
+              {editMode === "standard" && <button type="button" onClick={enhanceEditInstruction}
                 disabled={enhancingEdit || editMode === "new_pose" || !editInstruction.trim()}
                 className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm font-semibold text-amber-200 hover:bg-amber-500/20 disabled:opacity-40"
                 data-testid="btn-venice-enhance-edit">
                 {enhancingEdit ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
                 {editMode === "new_pose" ? "Protected pose instruction active" : "Enhance instruction with Venice"}
-              </button>
-              <p className="text-[11px] text-zinc-500">
+              </button>}
+              {editMode === "standard" && <p className="text-[11px] text-zinc-500">
                 Venice only rewrites the instruction. Review and edit it before rendering.
-              </p>
+              </p>}
             </div>
           )}
           {isFaceWorkflow && (
