@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { API_BASE, endpoints } from "@/lib/api";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
-import { X, Download, Copy, ExternalLink, Trash2, CheckSquare, RotateCcw, Shuffle, Pencil, Film, Loader2, Info, ChevronLeft, ChevronRight, PersonStanding } from "lucide-react";
+import { X, Download, Copy, ExternalLink, Trash2, CheckSquare, RotateCcw, Shuffle, Pencil, Film, Loader2, Info, ChevronLeft, ChevronRight, PersonStanding, BookOpen } from "lucide-react";
 import { toast } from "sonner";
 
 async function downloadImage(url, filename) {
@@ -132,6 +132,15 @@ export default function Gallery() {
       });
     },
     onError: (error) => toast.error(error?.response?.data?.detail || "Could not reuse this Gallery image"),
+  });
+
+  const openRecipe = useMutation({
+    mutationFn: (render) => endpoints.getRenderRecipe(render.id).then((result) => ({ render, result })),
+    onSuccess: ({ render, result }) => {
+      const path = render.character_id ? `/character/${render.character_id}` : "/character/new";
+      nav(path, { state: { renderRecipe: result } });
+    },
+    onError: (error) => toast.error(error?.response?.data?.detail || "Could not restore this render recipe"),
   });
 
   const confirmRemoveOne = (render) => {
@@ -497,6 +506,12 @@ export default function Gallery() {
                     </button>
                   </div>
                 )}
+                <button type="button"
+                  onClick={() => openRecipe.mutate(lightbox)} disabled={openRecipe.isPending}
+                  data-testid="btn-lightbox-open-recipe"
+                  className="w-full inline-flex items-center justify-center gap-2 rounded-lg border border-cyan-500/40 bg-cyan-500/10 text-cyan-100 hover:bg-cyan-500/20 text-sm px-3 py-2 disabled:opacity-40">
+                  {openRecipe.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <BookOpen className="h-4 w-4" />} Open exact recipe
+                </button>
                 <button
                   onClick={() => downloadImage(primaryOutput(lightbox), `${lightbox.workflow_name || "render"}-${lightbox.id.slice(0, 8)}-enhanced.png`)}
                   data-testid="btn-lightbox-download"
