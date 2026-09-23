@@ -58,6 +58,7 @@ export default function AppShell({ children }) {
               <NavLink
                 key={n.to}
                 to={n.to}
+                state={n.to === "/gallery" && isBuilder ? { returnTo: loc.pathname } : undefined}
                 data-testid={n.testId}
                 className={({ isActive }) =>
                   `flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors ${
@@ -97,6 +98,7 @@ export default function AppShell({ children }) {
             <NavLink
               key={n.to}
               to={n.to}
+              state={n.to === "/gallery" && isBuilder ? { returnTo: loc.pathname } : undefined}
               data-testid={`${n.testId}-mobile`}
               className={({ isActive }) =>
                 `flex flex-col items-center justify-center gap-0.5 py-2.5 text-[10px] uppercase tracking-widest ${
