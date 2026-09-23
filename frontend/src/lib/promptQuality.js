@@ -126,7 +126,7 @@ export function analyzePromptQuality({
     if (profile === "zimage") {
       const anatomyMode = String(dna?.style?.anatomy_mode || "natural").toLowerCase();
       if (anatomyMode === "extreme") {
-        issues.push(issue("warning", "zimage-anatomy-mode", "Extreme anatomy mode preserves hyper proportions and bypasses automatic post-render rejection. Anatomical failures are more likely."));
+        issues.push(issue("warning", "zimage-anatomy-mode", "Extreme mode preserves exaggerated proportions, but the structural Human Guard still rejects extra limbs, disconnected joints, duplicated anatomy, and impossible body structure."));
       } else {
         issues.push(issue("info", "zimage-anatomy-mode", `${anatomyMode === "enhanced" ? "Enhanced" : "Natural"} Human Guard is active. Completed still images will be inspected and malformed results can be retried automatically.`));
       }
