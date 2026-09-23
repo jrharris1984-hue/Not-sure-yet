@@ -2204,6 +2204,10 @@ class VideoImageAnalysisBody(BaseModel):
     instruction: str = ""
 
 
+class PoseReferenceAnalysisBody(BaseModel):
+    reference_image: str
+
+
 class RepairImageAnalysisBody(BaseModel):
     reference_image: str
     targets: List[str] = Field(default_factory=list)
@@ -2488,6 +2492,67 @@ async def ai_analyze_video_image(body: VideoImageAnalysisBody):
         raise HTTPException(status_code=502, detail=f"Venice vision error: {response.status_code} {response.text[:400]}")
     result = extract_json(response.json()["choices"][0]["message"]["content"])
     return {"analysis": str(result.get("analysis", "")).strip(), "prompt": str(result.get("prompt", "")).strip()}
+
+
+@api.post("/ai/analyze-pose-reference")
+async def ai_analyze_pose_reference(body: PoseReferenceAnalysisBody):
+    """Extract pose geometry from an uploaded reference without copying its identity or styling."""
+    vision_model = os.environ.get("VENICE_VISION_MODEL", "").strip()
+    if not vision_model:
+        raise HTTPException(status_code=400, detail="Venice vision is not configured.")
+    venice_key = os.environ.get("VENICE_API_KEY", "").strip()
+    settings = await get_settings()
+    api_key = venice_key or settings.openrouter_api_key
+    if not api_key:
+        raise HTTPException(status_code=400, detail="Venice API key not configured.")
+
+    try:
+        async with httpx.AsyncClient(timeout=45.0) as hc:
+            image_response = await hc.get(
+                f"{settings.comfyui_url.rstrip('/')}/view",
+                params={"filename": body.reference_image, "type": "input", "subfolder": ""},
+            )
+        if image_response.status_code >= 400:
+            raise HTTPException(status_code=502, detail="Could not read the pose-reference image from ComfyUI.")
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Could not read the pose-reference image: {exc}")
+
+    mime = image_response.headers.get("content-type") or mimetypes.guess_type(body.reference_image)[0] or "image/png"
+    data_url = f"data:{mime};base64,{base64.b64encode(image_response.content).decode('ascii')}"
+    payload = {
+        "model": vision_model,
+        "messages": [
+            {"role": "system", "content": (
+                "You are a pose-reference analyst for image editing. Examine only body geometry and return JSON "
+                "with exactly two strings: analysis and pose_prompt. Describe torso orientation, head direction, "
+                "arm and hand placement, leg and foot placement, balance, weight distribution, camera-relative "
+                "orientation, and framing. Ignore and never describe the person's identity, face, age, ethnicity, "
+                "body size, clothing, nudity, background, or lighting. pose_prompt must be a concise instruction "
+                "for placing a different adult person into the observed pose with coherent connected anatomy."
+            )},
+            {"role": "user", "content": [
+                {"type": "text", "text": "Extract only the reusable pose and body positioning from this reference."},
+                {"type": "image_url", "image_url": {"url": data_url}},
+            ]},
+        ],
+        "temperature": 0.2,
+        "response_format": {"type": "json_object"},
+    }
+    async with httpx.AsyncClient(timeout=120.0) as hc:
+        response = await hc.post(
+            "https://api.venice.ai/api/v1/chat/completions",
+            headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+            json=payload,
+        )
+    if response.status_code >= 400:
+        raise HTTPException(status_code=502, detail=f"Venice vision error: {response.status_code} {response.text[:400]}")
+    result = extract_json(response.json()["choices"][0]["message"]["content"])
+    return {
+        "analysis": str(result.get("analysis", "")).strip(),
+        "pose_prompt": str(result.get("pose_prompt", "")).strip(),
+    }
 
 
 @api.post("/ai/analyze-repair-image")
