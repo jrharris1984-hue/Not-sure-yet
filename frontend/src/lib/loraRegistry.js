@@ -180,7 +180,16 @@ const installedMatch = (entry, installed) => {
   });
 };
 
-export function planLoras({ workflow, dna, installed = [] }) {
+const SLOT_PRIORITY = { action: 3, body: 2, quality: 1 };
+const MIN_AUTO_SCORE = 5;
+
+function rankCandidates(left, right) {
+  return right.score - left.score ||
+    (SLOT_PRIORITY[right.slot] || 0) - (SLOT_PRIORITY[left.slot] || 0) ||
+    left.defaultStrength - right.defaultStrength;
+}
+
+export function planLoras({ workflow, dna, installed = [], stackMode = "single" }) {
   const family = workflowFamily(workflow);
   const selections = selectedDnaValues(dna || {});
   const candidates = LORA_REGISTRY
@@ -191,25 +200,21 @@ export function planLoras({ workflow, dna, installed = [] }) {
       const match = scoreEntry(entry, selections);
       return { ...entry, ...match };
     })
-    .filter((entry) => entry.score > 0);
+    .filter((entry) => entry.score >= MIN_AUTO_SCORE)
+    .sort(rankCandidates);
 
   const selected = [];
-  for (const slot of ["quality", "body", "action"]) {
-    const choices = candidates
-      .filter((entry) => entry.slot === slot)
-      .sort((a, b) => b.score - a.score || a.defaultStrength - b.defaultStrength);
-    const choice = choices.find((entry) =>
-      !selected.some((picked) => picked.conflicts.includes(entry.id) || entry.conflicts.includes(picked.id))
-    );
-    if (choice) selected.push(choice);
-  }
-
-  // Realistic Z-Image requests benefit from the installed finish LoRA even when
-  // no literal style word is present. Never let it displace an explicit finish.
-  if (family === "zimage" && !selected.some((entry) => entry.slot === "quality")) {
-    const fallback = LORA_REGISTRY.find((entry) => entry.id === "realstagram");
-    const installedName = fallback && installedMatch(fallback, installed);
-    if (fallback && installedName) selected.unshift({ ...fallback, installedName, score: 0 });
+  if (stackMode === "advanced") {
+    for (const slot of ["action", "body", "quality"]) {
+      const choice = candidates
+        .filter((entry) => entry.slot === slot)
+        .find((entry) => !selected.some((picked) =>
+          picked.conflicts.includes(entry.id) || entry.conflicts.includes(picked.id)
+        ));
+      if (choice) selected.push(choice);
+    }
+  } else if (candidates.length) {
+    selected.push(candidates[0]);
   }
 
   const budget = LORA_STRENGTH_BUDGETS[family] || LORA_STRENGTH_BUDGETS.unknown;
@@ -233,7 +238,9 @@ export function planLoras({ workflow, dna, installed = [] }) {
     selected,
     matches: candidates
       .slice()
-      .sort((a, b) => b.score - a.score || a.defaultStrength - b.defaultStrength),
+      .sort(rankCandidates),
+    stackMode,
+    minimumScore: MIN_AUTO_SCORE,
     warnings: family === "unknown"
       ? ["This workflow has no verified LoRA compatibility profile. Use Manual mode."]
       : [],
@@ -284,6 +291,9 @@ export function loraStackHealth({ workflow = {}, overrides = {}, installed = [] 
   }
   if (totalStrength > budget) {
     warnings.push(`Optional LoRA strength ${totalStrength.toFixed(2)} exceeds the recommended ${budget.toFixed(2)} budget.`);
+  }
+  if (optional.length > 1) {
+    warnings.push(`${optional.length} optional LoRAs are active. Single-LoRA mode is recommended to reduce distortion.`);
   }
 
   return {
