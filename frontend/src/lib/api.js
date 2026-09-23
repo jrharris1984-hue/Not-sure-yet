@@ -88,6 +88,8 @@ export const endpoints = {
       reference_image: referenceImage,
       instruction,
     }).then((r) => r.data),
+  aiAnalyzePoseReference: (referenceImage) =>
+    api.post("/ai/analyze-pose-reference", { reference_image: referenceImage }).then((r) => r.data),
   aiAnalyzeRepairImage: (referenceImage, targets = [], instruction = "") =>
     api.post("/ai/analyze-repair-image", {
       reference_image: referenceImage,
