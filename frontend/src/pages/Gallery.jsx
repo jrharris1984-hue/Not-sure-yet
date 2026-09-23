@@ -501,140 +501,58 @@ export default function Gallery() {
                 </button>
               </div>
 
-              <div className="grid grid-cols-2 gap-2 text-[11px] font-mono">
-                <div className="rounded-md bg-elevated border hairline p-2">
-                  <div className="text-zinc-500 uppercase tracking-widest text-[9px]">Status</div>
-                  <div className="text-emerald-300 mt-0.5">done</div>
-                </div>
-                {lightbox.seed_used != null && (
-                  <div className="rounded-md bg-elevated border hairline p-2">
-                    <div className="text-zinc-500 uppercase tracking-widest text-[9px]">Seed</div>
-                    <div className="text-amber-300 mt-0.5 truncate">{lightbox.seed_used}</div>
-                  </div>
-                )}
-              </div>
-
-              {versions.length > 1 && (
-                <div>
-                  <div className="text-[9px] font-mono uppercase tracking-widest text-zinc-500 mb-1">Version history · {versions.length}</div>
-                  <div className="flex gap-2 overflow-x-auto pb-1">
-                    {versions.filter((version) => primaryOutput(version)).map((version) => (
-                      <button key={version.id} type="button" onClick={() => { setLightbox(version); setShowDetails(false); }}
-                        className={`h-14 w-14 shrink-0 overflow-hidden rounded-md border ${version.id === lightbox.id ? "border-amber-400" : "hairline"}`}>
-                        <img src={primaryOutput(version)} alt={version.operation || "version"} className="h-full w-full object-cover" />
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {lightbox.prompt_positive && (
-                <div>
-                  <div className="text-[9px] font-mono uppercase tracking-widest text-zinc-500 mb-1">Positive prompt</div>
-                  <div className="text-[11px] font-mono text-zinc-300 bg-elevated border hairline rounded-md p-2 max-h-32 overflow-y-auto scroll-fade whitespace-pre-wrap">
-                    {lightbox.prompt_positive}
-                  </div>
-                </div>
-              )}
-
-              <div className="flex flex-col gap-2 pt-2">
-                <div className="grid grid-cols-2 gap-2">
-                  <button type="button"
-                    onClick={() => recreate.mutate({ id: lightbox.id, variation: false })}
-                    disabled={recreate.isPending}
-                    data-testid="btn-lightbox-recreate"
-                    className="inline-flex items-center justify-center gap-2 rounded-lg border border-emerald-500/40 bg-emerald-500/10 text-emerald-200 hover:bg-emerald-500/20 text-sm px-3 py-2 disabled:opacity-40">
-                    {recreate.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />} Recreate
-                  </button>
-                  <button type="button"
-                    onClick={() => recreate.mutate({ id: lightbox.id, variation: true })}
-                    disabled={recreate.isPending}
-                    data-testid="btn-lightbox-variation"
-                    className="inline-flex items-center justify-center gap-2 rounded-lg border border-violet-500/40 bg-violet-500/10 text-violet-200 hover:bg-violet-500/20 text-sm px-3 py-2 disabled:opacity-40">
-                    <Shuffle className="h-4 w-4" /> Variation
-                  </button>
-                </div>
+              <div className="flex flex-col gap-2">
                 {!isVideoUrl(primaryOutput(lightbox)) && (
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                    <button type="button"
-                      onClick={() => reuseAsReference.mutate({ render: lightbox, targetKind: "edit" })}
-                      disabled={reuseAsReference.isPending}
-                      data-testid="btn-lightbox-edit-again"
-                      className="inline-flex items-center justify-center gap-2 rounded-lg border hairline text-zinc-200 hover:bg-white/5 text-sm px-3 py-2 disabled:opacity-40">
-                      <Pencil className="h-4 w-4" /> Use Complete
+                  <div className="grid grid-cols-2 gap-2">
+                    <button type="button" onClick={() => reuseAsReference.mutate({ render: lightbox, targetKind: "edit" })} disabled={reuseAsReference.isPending}
+                      data-testid="btn-lightbox-edit-again" className="inline-flex items-center justify-center gap-2 rounded-lg border hairline text-zinc-200 hover:bg-white/5 text-sm px-3 py-2 disabled:opacity-40">
+                      <Pencil className="h-4 w-4" /> Edit
                     </button>
-                    <button type="button"
-                      onClick={() => reuseAsReference.mutate({ render: lightbox, targetKind: "edit", referenceMode: "new_pose" })}
-                      disabled={reuseAsReference.isPending}
-                      data-testid="btn-lightbox-new-pose"
-                      className="inline-flex items-center justify-center gap-2 rounded-lg border border-cyan-500/40 bg-cyan-500/10 text-cyan-100 hover:bg-cyan-500/20 text-sm px-3 py-2 disabled:opacity-40">
-                      <PersonStanding className="h-4 w-4" /> Use Pose
+                    <button type="button" onClick={() => reuseAsReference.mutate({ render: lightbox, targetKind: "edit", referenceMode: "new_pose" })} disabled={reuseAsReference.isPending}
+                      data-testid="btn-lightbox-new-pose" className="inline-flex items-center justify-center gap-2 rounded-lg border border-cyan-500/40 bg-cyan-500/10 text-cyan-100 text-sm px-3 py-2 disabled:opacity-40">
+                      <PersonStanding className="h-4 w-4" /> New Pose
                     </button>
-                    <button type="button"
-                      onClick={() => reuseAsReference.mutate({ render: lightbox, targetKind: "video" })}
-                      disabled={reuseAsReference.isPending}
-                      data-testid="btn-lightbox-animate"
-                      className="inline-flex items-center justify-center gap-2 rounded-lg border hairline text-zinc-200 hover:bg-white/5 text-sm px-3 py-2 disabled:opacity-40">
+                    <button type="button" onClick={() => reuseAsReference.mutate({ render: lightbox, targetKind: "video" })} disabled={reuseAsReference.isPending}
+                      data-testid="btn-lightbox-animate" className="inline-flex items-center justify-center gap-2 rounded-lg border hairline text-zinc-200 hover:bg-white/5 text-sm px-3 py-2 disabled:opacity-40">
                       <Film className="h-4 w-4" /> Animate
                     </button>
+                    <button onClick={() => downloadImage(primaryOutput(lightbox), `${lightbox.workflow_name || "render"}-${lightbox.id.slice(0, 8)}-enhanced.png`)}
+                      data-testid="btn-lightbox-download" className="inline-flex items-center justify-center gap-2 rounded-lg bg-amber-500 text-black text-sm font-semibold px-3 py-2">
+                      <Download className="h-4 w-4" /> Download
+                    </button>
                   </div>
                 )}
-                {!isVideoUrl(primaryOutput(lightbox)) && (
-                  <button type="button"
-                    onClick={() => reuseAsReference.mutate({ render: lightbox, targetKind: "face" })}
-                    disabled={reuseAsReference.isPending}
-                    className="w-full inline-flex items-center justify-center gap-2 rounded-lg border border-pink-500/40 bg-pink-500/10 text-pink-100 hover:bg-pink-500/20 text-sm px-3 py-2 disabled:opacity-40"
-                    data-testid="btn-lightbox-use-face">
-                    <ScanFace className="h-4 w-4" /> Use Face
+                {isVideoUrl(primaryOutput(lightbox)) && (
+                  <button onClick={() => downloadImage(primaryOutput(lightbox), `${lightbox.workflow_name || "video"}-${lightbox.id.slice(0, 8)}.webm`)} className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-amber-500 text-black text-sm font-semibold px-3 py-2">
+                    <Download className="h-4 w-4" /> Download video
                   </button>
                 )}
-                <button type="button"
-                  onClick={() => openRecipe.mutate(lightbox)} disabled={openRecipe.isPending}
-                  data-testid="btn-lightbox-open-recipe"
-                  className="w-full inline-flex items-center justify-center gap-2 rounded-lg border border-cyan-500/40 bg-cyan-500/10 text-cyan-100 hover:bg-cyan-500/20 text-sm px-3 py-2 disabled:opacity-40">
-                  {openRecipe.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <BookOpen className="h-4 w-4" />} Open exact recipe
-                </button>
-                <button
-                  onClick={() => downloadImage(primaryOutput(lightbox), `${lightbox.workflow_name || "render"}-${lightbox.id.slice(0, 8)}-enhanced.png`)}
-                  data-testid="btn-lightbox-download"
-                  className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-black text-sm font-semibold px-3 py-2"
-                >
-                  <Download className="h-4 w-4" /> Download enhanced
-                </button>
-                {originalOutput(lightbox) && (
-                  <button
-                    onClick={() => downloadImage(originalOutput(lightbox), `${lightbox.workflow_name || "render"}-${lightbox.id.slice(0, 8)}-original.png`)}
-                    data-testid="btn-lightbox-download-original"
-                    className="w-full inline-flex items-center justify-center gap-2 rounded-lg border hairline text-zinc-200 hover:bg-white/5 text-sm px-3 py-2"
-                  >
-                    <Download className="h-4 w-4" /> Download original
-                  </button>
-                )}
-                <button
-                  onClick={() => { navigator.clipboard.writeText(lightbox.prompt_positive || ""); toast.success("Prompt copied"); }}
-                  data-testid="btn-lightbox-copy-prompt"
-                  className="w-full inline-flex items-center justify-center gap-2 rounded-lg border hairline text-zinc-200 hover:bg-white/5 text-sm px-3 py-2"
-                >
-                  <Copy className="h-4 w-4" /> Copy prompt
-                </button>
-                <button
-                  type="button"
-                  onClick={() => confirmRemoveOne(lightbox)}
-                  disabled={removeOne.isPending}
-                  data-testid="btn-lightbox-delete"
-                  className="w-full inline-flex items-center justify-center gap-2 rounded-lg border border-red-500/40 text-red-200 hover:bg-red-500/10 text-sm px-3 py-2 disabled:opacity-40"
-                >
-                  <Trash2 className="h-4 w-4" /> Remove from Gallery
-                </button>
-                {lightbox.character_id && (
-                  <Link
-                    to={`/character/${lightbox.character_id}`}
-                    data-testid="btn-lightbox-open-character"
-                    className="w-full inline-flex items-center justify-center gap-2 rounded-lg border hairline text-zinc-200 hover:bg-white/5 text-sm px-3 py-2"
-                  >
-                    <ExternalLink className="h-4 w-4" /> Open character
-                  </Link>
-                )}
+
+                <details className="rounded-lg border hairline bg-black/15 p-3" data-testid="gallery-render-details">
+                  <summary className="cursor-pointer text-xs font-semibold text-zinc-300">Details and more actions</summary>
+                  <div className="space-y-2 pt-3">
+                    <div className="grid grid-cols-2 gap-2 text-[11px] font-mono">
+                      <div className="rounded-md bg-elevated border hairline p-2"><div className="text-zinc-500 uppercase text-[9px]">Status</div><div className="text-emerald-300">done</div></div>
+                      {lightbox.seed_used != null && <div className="rounded-md bg-elevated border hairline p-2"><div className="text-zinc-500 uppercase text-[9px]">Seed</div><div className="text-amber-300 truncate">{lightbox.seed_used}</div></div>}
+                    </div>
+                    {versions.length > 1 && <div className="flex gap-2 overflow-x-auto pb-1">{versions.filter((version) => primaryOutput(version)).map((version) => <button key={version.id} type="button" onClick={() => setLightbox(version)} className={`h-14 w-14 shrink-0 overflow-hidden rounded-md border ${version.id === lightbox.id ? "border-amber-400" : "hairline"}`}><img src={primaryOutput(version)} alt="version" className="h-full w-full object-cover" /></button>)}</div>}
+                    {lightbox.prompt_positive && <div className="text-[11px] font-mono text-zinc-300 bg-elevated border hairline rounded-md p-2 max-h-32 overflow-y-auto whitespace-pre-wrap">{lightbox.prompt_positive}</div>}
+                    <div className="grid grid-cols-2 gap-2">
+                      <button type="button" onClick={() => recreate.mutate({ id: lightbox.id, variation: false })} disabled={recreate.isPending} data-testid="btn-lightbox-recreate" className="rounded-lg border hairline px-2 py-2 text-xs">Recreate</button>
+                      <button type="button" onClick={() => recreate.mutate({ id: lightbox.id, variation: true })} disabled={recreate.isPending} data-testid="btn-lightbox-variation" className="rounded-lg border hairline px-2 py-2 text-xs">Variation</button>
+                    </div>
+                    {!isVideoUrl(primaryOutput(lightbox)) && <button type="button" onClick={() => reuseAsReference.mutate({ render: lightbox, targetKind: "face" })} disabled={reuseAsReference.isPending} data-testid="btn-lightbox-use-face" className="w-full rounded-lg border hairline px-3 py-2 text-sm"><ScanFace className="inline h-4 w-4 mr-2" />Use Face</button>}
+                    <button type="button" onClick={() => openRecipe.mutate(lightbox)} disabled={openRecipe.isPending} data-testid="btn-lightbox-open-recipe" className="w-full rounded-lg border hairline px-3 py-2 text-sm"><BookOpen className="inline h-4 w-4 mr-2" />Open exact recipe</button>
+                    <button onClick={() => { navigator.clipboard.writeText(lightbox.prompt_positive || ""); toast.success("Prompt copied"); }} data-testid="btn-lightbox-copy-prompt" className="w-full rounded-lg border hairline px-3 py-2 text-sm"><Copy className="inline h-4 w-4 mr-2" />Copy prompt</button>
+                    {originalOutput(lightbox) && originalOutput(lightbox) !== primaryOutput(lightbox) && (
+                      <button onClick={() => downloadImage(originalOutput(lightbox), `${lightbox.workflow_name || "render"}-${lightbox.id.slice(0, 8)}-original.png`)} data-testid="btn-lightbox-download-original" className="w-full rounded-lg border hairline px-3 py-2 text-sm">
+                        <Download className="inline h-4 w-4 mr-2" />Download original
+                      </button>
+                    )}
+                    <button type="button" onClick={() => confirmRemoveOne(lightbox)} disabled={removeOne.isPending} data-testid="btn-lightbox-delete" className="w-full rounded-lg border border-red-500/40 px-3 py-2 text-sm text-red-200"><Trash2 className="inline h-4 w-4 mr-2" />Remove from Gallery</button>
+                    {lightbox.character_id && <Link to={`/character/${lightbox.character_id}`} data-testid="btn-lightbox-open-character" className="w-full inline-flex items-center justify-center gap-2 rounded-lg border hairline px-3 py-2 text-sm"><ExternalLink className="h-4 w-4" />Open character</Link>}
+                  </div>
+                </details>
               </div>
             </aside>
           </div>

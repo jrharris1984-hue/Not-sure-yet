@@ -6,7 +6,7 @@ import { MoreHorizontal } from "lucide-react";
  * On sm+ viewports it renders its children inline unchanged.
  * Use to declutter action-button rows on small screens.
  */
-export default function MobileOverflow({ children, testId = "mobile-overflow" }) {
+export default function MobileOverflow({ children, testId = "mobile-overflow", always = false, label = "More" }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
 
@@ -27,18 +27,19 @@ export default function MobileOverflow({ children, testId = "mobile-overflow" })
   return (
     <>
       {/* Inline on sm+ — no wrapper at all */}
-      <div className="hidden sm:contents">{children}</div>
+      {!always && <div className="hidden sm:contents">{children}</div>}
 
       {/* Kebab menu on <sm */}
-      <div ref={ref} className="sm:hidden relative">
+      <div ref={ref} className={`${always ? "relative" : "sm:hidden relative"}`}>
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}
           data-testid={`btn-${testId}`}
-          className="h-9 w-9 grid place-items-center rounded-lg border hairline text-zinc-200 hover:bg-white/5"
+          className={`${always ? "h-10 px-3 inline-flex gap-2" : "h-9 w-9 grid"} items-center justify-center rounded-lg border hairline text-zinc-200 hover:bg-white/5`}
           aria-label="More actions"
         >
           <MoreHorizontal className="h-4 w-4" />
+          {always && <span className="text-sm">{label}</span>}
         </button>
         {open && (
           <div

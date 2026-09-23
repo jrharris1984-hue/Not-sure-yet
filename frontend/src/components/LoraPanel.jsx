@@ -317,8 +317,9 @@ export default function LoraPanel({ workflowId, workflow, dna, values, onChange,
             </div>
           ))}
           {plan.matches?.some((entry) => !plan.selected.some((selected) => selected.id === entry.id)) && (
-            <div className="border-t border-white/5 pt-2 space-y-1.5" data-testid="lora-alternate-matches">
-              <div className="text-[9px] font-mono uppercase tracking-widest text-zinc-500">Other matching installed LoRAs</div>
+            <details className="border-t border-white/5 pt-2 space-y-1.5" data-testid="lora-alternate-matches">
+              <summary className="cursor-pointer text-[9px] font-mono uppercase tracking-widest text-zinc-400 hover:text-zinc-200">Change LoRA · other matches</summary>
+              <div className="space-y-1.5 pt-2">
               {plan.matches
                 .filter((entry) => !plan.selected.some((selected) => selected.id === entry.id))
                 .slice(0, 8)
@@ -332,12 +333,17 @@ export default function LoraPanel({ workflowId, workflow, dna, values, onChange,
                     <span className="font-mono text-[9px] uppercase text-zinc-500">use {entry.slot}</span>
                   </button>
                 ))}
-            </div>
+              </div>
+            </details>
           )}
         </div>
       )}
 
-      <div className="space-y-3">
+      <details open={mode === "manual" || stackMode === "advanced"} className="rounded-lg border hairline bg-black/10 p-3" data-testid="lora-technical-controls">
+        <summary className="cursor-pointer text-[10px] font-mono uppercase tracking-widest text-zinc-400 hover:text-zinc-200">
+          {mode === "manual" || stackMode === "advanced" ? "LoRA controls" : "Other available LoRAs and required workflow controls"}
+        </summary>
+      <div className="space-y-3 pt-3">
         {loras.map((lora) => {
           const c = cur(lora.node_id);
           const selectedRegistryEntry = recognizedEntries.find((entry) => entry.installedName === c.lora_name);
@@ -416,6 +422,7 @@ export default function LoraPanel({ workflowId, workflow, dna, values, onChange,
           );
         })}
       </div>
+      </details>
     </div>
   );
 }
