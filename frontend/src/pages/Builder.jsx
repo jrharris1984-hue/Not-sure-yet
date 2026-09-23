@@ -993,16 +993,16 @@ export default function Builder() {
           >
             {dispatching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />} Render
           </button>
-          <button
-            type="button"
-            onClick={resetCharacter}
-            data-testid="btn-reset-character"
-            className="inline-flex items-center gap-1.5 rounded-lg border border-red-500/30 px-3 py-2 text-sm font-semibold text-red-300 hover:bg-red-500/10"
-            title="Reset all current character selections"
-          >
-            <RotateCcw className="h-4 w-4" /> Reset
-          </button>
-          <MobileOverflow testId="builder-overflow">
+          <MobileOverflow testId="builder-overflow" always label="More">
+            <button
+              type="button"
+              onClick={resetCharacter}
+              data-testid="btn-reset-character"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-red-500/30 px-3 py-2 text-sm font-semibold text-red-300 hover:bg-red-500/10"
+              title="Reset all current character selections"
+            >
+              <RotateCcw className="h-4 w-4" /> Reset
+            </button>
             <button
               onClick={randomizeAllSubjects}
               data-testid="btn-randomize-all"
@@ -1111,6 +1111,27 @@ export default function Builder() {
         </div>
         </div>
         <TagInput value={tags} onChange={setTags} placeholder="tag this character (mood, ethnicity, persona)…" testId="builder-tags" />
+      </div>
+
+      <div className="md:hidden fixed inset-x-0 z-30 mobile-builder-actions border-t hairline bg-[#111017]/95 px-3 py-2 backdrop-blur-xl" data-testid="mobile-builder-actions">
+        <div className="grid grid-cols-4 gap-2">
+          <button type="button" onClick={() => activeIdx > 0 && goSection(SECTIONS[activeIdx - 1].key)} disabled={activeIdx === 0}
+            className="inline-flex items-center justify-center rounded-lg border hairline py-2.5 text-zinc-200 disabled:opacity-30" aria-label="Previous section">
+            <ChevronLeft className="h-4 w-4" />
+          </button>
+          <button type="button" onClick={() => save.mutate()} disabled={save.isPending}
+            className="inline-flex items-center justify-center gap-1 rounded-lg border border-amber-500/40 py-2.5 text-xs font-semibold text-amber-200">
+            <Save className="h-4 w-4" /> Save
+          </button>
+          <button type="button" onClick={doDispatch} disabled={dispatching || !workflowId}
+            className="inline-flex items-center justify-center gap-1 rounded-lg bg-emerald-500 py-2.5 text-xs font-semibold text-black disabled:opacity-40">
+            <Play className="h-4 w-4" /> Render
+          </button>
+          <button type="button" onClick={() => activeIdx < SECTIONS.length - 1 && goSection(SECTIONS[activeIdx + 1].key)} disabled={activeIdx === SECTIONS.length - 1}
+            className="inline-flex items-center justify-center rounded-lg border hairline py-2.5 text-zinc-200 disabled:opacity-30" aria-label="Next section">
+            <ChevronRight className="h-4 w-4" />
+          </button>
+        </div>
       </div>
 
       {activeWorkflow && (activeCompiler !== "qwen_edit" || isEnhanceWorkflow) && (
