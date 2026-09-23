@@ -33,9 +33,9 @@ const LOCK_TEXT = {
   lighting: "the same lighting, color treatment, and photographic style",
 };
 
-export function buildSameCharacterPoseInstruction({ poseId = "", notes = "", locks = DEFAULT_POSE_LOCKS } = {}) {
+export function buildSameCharacterPoseInstruction({ poseId = "", notes = "", poseAnalysis = "", locks = DEFAULT_POSE_LOCKS, preservationInstruction = "" } = {}) {
   const preset = SAME_CHARACTER_POSES.find((pose) => pose.id === poseId);
-  const requestedPose = [preset?.prompt, String(notes || "").trim()].filter(Boolean).join("; ");
+  const requestedPose = [preset?.prompt, String(notes || "").trim(), String(poseAnalysis || "").trim()].filter(Boolean).join("; ");
   if (!requestedPose) return "";
 
   const preserved = Object.entries(LOCK_TEXT)
@@ -45,7 +45,9 @@ export function buildSameCharacterPoseInstruction({ poseId = "", notes = "", loc
   return [
     `Repose the same adult person into this new body pose: ${requestedPose}.`,
     "Change only the body pose, limb placement, joint angles, and natural weight distribution required for the new pose.",
-    preserved.length ? `Preserve ${preserved.join("; ")}.` : "Preserve all recognizable identity details that are not explicitly changed.",
+    preservationInstruction
+      ? `Preservation priorities: ${preservationInstruction}.`
+      : preserved.length ? `Preserve ${preserved.join("; ")}.` : "Preserve all recognizable identity details that are not explicitly changed.",
     "Do not retain or overlay the old limb positions. Render one coherent, connected adult body with one head, one torso, exactly two arms, two hands, two legs, and two feet.",
     "Keep hands and feet anatomically plausible with correct joints and digit counts. Avoid duplicate limbs, fused anatomy, detached body parts, warped perspective, or extra people.",
     locks?.background !== false
