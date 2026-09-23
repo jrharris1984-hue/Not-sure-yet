@@ -19,6 +19,17 @@ export default function LoraPanel({ workflowId, workflow, dna, values, onChange,
   const [mode, setMode] = useState(() => localStorage.getItem(MODE_KEY) || "assisted");
 
   useEffect(() => {
+    const applyExternalMode = (event) => {
+      const requested = event.detail;
+      if (!["automatic", "assisted", "manual"].includes(requested)) return;
+      setMode(requested);
+      localStorage.setItem(MODE_KEY, requested);
+    };
+    window.addEventListener("ultra-studio:set-lora-mode", applyExternalMode);
+    return () => window.removeEventListener("ultra-studio:set-lora-mode", applyExternalMode);
+  }, []);
+
+  useEffect(() => {
     if (!workflowId) { setLoras([]); return; }
     let alive = true;
     endpoints.workflowLoras(workflowId).then((r) => {
