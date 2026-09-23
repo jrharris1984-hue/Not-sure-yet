@@ -31,6 +31,7 @@ import ChromaControls from "@/components/ChromaControls";
 import RenderRecipeSelector from "@/components/RenderRecipeSelector";
 import SmartSetupPanel from "@/components/SmartSetupPanel";
 import { getRenderRecipe, recipeFamily } from "@/lib/renderRecipes";
+import { createRenderSeeds, RENDER_COUNTS } from "@/lib/renderBatch";
 import { readBuilderDraft, writeBuilderDraft, clearBuilderDraft } from "@/lib/builderDraft";
 import { buildSameCharacterPoseInstruction, DEFAULT_POSE_LOCKS, SAME_CHARACTER_POSES } from "@/lib/sameCharacterPose";
 import { DEFAULT_REFERENCE_STRENGTHS, REFERENCE_RECIPES, preservationStrengthInstruction, referenceStudioSummary } from "@/lib/referenceStudio";
@@ -745,7 +746,9 @@ export default function Builder() {
     }
     setDispatching(true);
     try {
-      const r = await endpoints.dispatchRender({
+      const renderCount = activeRecipeFamily === "image" ? chromaSettings.batchSize : 1;
+      const renderSeeds = createRenderSeeds(renderCount, activeRecipeFamily === "image" ? chromaSettings.seed : "");
+      const request = {
         character_id: isNew ? undefined : id,
         // Send primary subject DNA (backward compat) + all subjects for future backend use.
         dna: subjects[0]?.dna || {},
@@ -760,11 +763,11 @@ export default function Builder() {
           : "render",
         width: activeRecipeFamily === "image" ? chromaSettings.width : undefined,
         height: activeRecipeFamily === "image" ? chromaSettings.height : undefined,
-        batch_size: activeRecipeFamily === "image" ? chromaSettings.batchSize : undefined,
+        // Queue separate jobs so every image has its own Gallery record and seed.
+        batch_size: activeRecipeFamily === "image" ? 1 : undefined,
         steps: activeRecipeFamily === "image" ? chromaSettings.steps : undefined,
         cfg: activeRecipeFamily === "image" ? chromaSettings.cfg : undefined,
         sampler_name: activeRecipeFamily === "image" ? chromaSettings.sampler : undefined,
-        seed: activeRecipeFamily === "image" && chromaSettings.seed !== "" ? Number(chromaSettings.seed) : undefined,
         reference_image: (isFaceWorkflow || isEditWorkflow || isEnhanceWorkflow || isVideoWorkflow) ? referenceImage?.name : undefined,
         face_strength: faceStrength,
         faceid_v2_strength: faceIdV2Strength,
@@ -779,9 +782,15 @@ export default function Builder() {
         video_fps: videoFps,
         video_width: videoWidth,
         video_height: videoHeight,
-      });
-      setActiveRender(r);
-      toast.success(r.status === "queued" ? `Added to queue${r.queue_position ? ` · position #${r.queue_position}` : ""}` : `Render ${r.status}`);
+      };
+      const renders = await Promise.all(renderSeeds.map((seed) => endpoints.dispatchRender({ ...request, seed })));
+      const firstRender = renders[0];
+      setActiveRender(firstRender);
+      toast.success(renders.length > 1
+        ? `${renders.length} images added to the queue with different seeds`
+        : firstRender.status === "queued"
+          ? `Added to queue${firstRender.queue_position ? ` · position #${firstRender.queue_position}` : ""}`
+          : `Render ${firstRender.status}`);
     } catch (e) {
       toast.error(e?.response?.data?.detail || "Dispatch failed");
     } finally {
@@ -985,6 +994,19 @@ export default function Builder() {
           >
             {save.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Save
           </button>
+          {activeRecipeFamily === "image" && (
+            <label className="inline-flex items-center gap-1.5 rounded-lg border hairline bg-elevated px-2 text-xs text-zinc-400" title="Number of images to queue with different seeds">
+              <span>Images</span>
+              <select
+                value={chromaSettings.batchSize}
+                onChange={(event) => setChromaSettings((current) => ({ ...current, batchSize: Number(event.target.value) }))}
+                data-testid="select-render-count"
+                className="bg-transparent py-2 text-sm font-semibold text-zinc-100 outline-none"
+              >
+                {RENDER_COUNTS.map((count) => <option key={count} value={count} className="bg-elevated">{count}</option>)}
+              </select>
+            </label>
+          )}
           <button
             onClick={doDispatch}
             disabled={dispatching || !workflowId}
