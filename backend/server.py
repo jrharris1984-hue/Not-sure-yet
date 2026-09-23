@@ -1384,6 +1384,17 @@ async def _render_recipe(rid: str) -> tuple[Dict[str, Any], Dict[str, Any]]:
     return render, recipe
 
 
+@api.get("/renders/{rid}/recipe")
+async def get_render_recipe(rid: str):
+    """Return the saved editor/generation recipe used by a Gallery render."""
+    render, recipe = await _render_recipe(rid)
+    return {
+        "render_id": rid,
+        "workflow_name": render.get("workflow_name"),
+        "recipe": recipe,
+    }
+
+
 @api.post("/renders/{rid}/recreate")
 async def recreate_render(rid: str, variation: bool = Query(False)):
     """Queue an exact recipe copy, optionally replacing only its seed."""
