@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, useRef } from "react";
 import { useParams, useNavigate, useLocation, Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Save, Shuffle, Download, Upload, Loader2, Play, ChevronLeft, ChevronRight, Camera, Sparkles, ChevronDown, ImagePlus, X, RotateCcw, SlidersHorizontal, ShieldCheck, AlertTriangle } from "lucide-react";
+import { Save, Shuffle, Download, Upload, Loader2, Play, ChevronLeft, ChevronRight, Camera, Sparkles, ChevronDown, ImagePlus, X, RotateCcw, SlidersHorizontal, ShieldCheck, AlertTriangle, Pencil, Film, Trash2, ScanFace } from "lucide-react";
 import { toast } from "sonner";
 import { endpoints } from "@/lib/api";
 import {
@@ -37,6 +37,25 @@ import { DEFAULT_REFERENCE_STRENGTHS, REFERENCE_RECIPES, preservationStrengthIns
 import { Flame } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+
+async function downloadRenderImage(url, filename = "render.png") {
+  try {
+    const response = await fetch(url, { mode: "cors" });
+    const blob = await response.blob();
+    const objectUrl = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = objectUrl;
+    anchor.download = filename;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    URL.revokeObjectURL(objectUrl);
+    toast.success("Downloaded");
+  } catch {
+    window.open(url, "_blank", "noopener");
+    toast.message("Opened image in a new tab");
+  }
+}
 
 const REPAIR_TARGETS = [
   ["face", "Face"],
@@ -1979,17 +1998,81 @@ export default function Builder() {
                       <img key={i} src={u} alt="render" className="rounded-md border hairline w-full h-auto" />
                     ))}
                   </div>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                    <button type="button"
+                      onClick={() => downloadRenderImage(activeRender.output_files[0], `render-${activeRender.id}.png`)}
+                      className="rounded-lg border hairline px-3 py-2 text-sm font-semibold text-zinc-200 hover:bg-white/5 flex items-center justify-center gap-2"
+                      data-testid="btn-download-finished-render">
+                      <Download className="h-4 w-4" /> Download
+                    </button>
+                    <button type="button"
+                      onClick={async () => {
+                        try {
+                          const reference = await endpoints.prepareRenderReference(activeRender.render_id || activeRender.id);
+                          setReferenceImage(reference);
+                          setSourceRenderId(activeRender.render_id || activeRender.id);
+                          setReferencePreview(activeRender.output_files[0]);
+                          setEditMode("standard");
+                          toast.success("Image loaded for editing");
+                        } catch (e) {
+                          toast.error(e?.response?.data?.detail || "Could not load image for editing");
+                        }
+                      }}
+                      className="rounded-lg border hairline px-3 py-2 text-sm font-semibold text-zinc-200 hover:bg-white/5 flex items-center justify-center gap-2">
+                      <Pencil className="h-4 w-4" /> Edit
+                    </button>
+                    <button type="button"
+                      onClick={async () => {
+                        try {
+                          const reference = await endpoints.prepareRenderReference(activeRender.render_id || activeRender.id);
+                          setReferenceImage(reference);
+                          setSourceRenderId(activeRender.render_id || activeRender.id);
+                          setReferencePreview(activeRender.output_files[0]);
+                          toast.success("Image loaded for animation");
+                        } catch (e) {
+                          toast.error(e?.response?.data?.detail || "Could not load image for animation");
+                        }
+                      }}
+                      className="rounded-lg border hairline px-3 py-2 text-sm font-semibold text-zinc-200 hover:bg-white/5 flex items-center justify-center gap-2">
+                      <Film className="h-4 w-4" /> Animate
+                    </button>
+                    <button type="button"
+                      onClick={async () => {
+                        try {
+                          const reference = await endpoints.prepareRenderReference(activeRender.render_id || activeRender.id);
+                          setReferenceImage(reference);
+                          setSourceRenderId(activeRender.render_id || activeRender.id);
+                          setReferencePreview(activeRender.output_files[0]);
+                          toast.success("Using selected image as reference");
+                        } catch (e) {
+                          toast.error(e?.response?.data?.detail || "Could not use image as reference");
+                        }
+                      }}
+                      className="rounded-lg border hairline px-3 py-2 text-sm font-semibold text-zinc-200 hover:bg-white/5 flex items-center justify-center gap-2">
+                      <ScanFace className="h-4 w-4" /> Reference
+                    </button>
+                    <button type="button"
+                      onClick={async () => {
+                        if (!window.confirm("Remove this render from the Gallery? The original ComfyUI output remains on disk.")) return;
+                        try {
+                          const renderId = activeRender.render_id || activeRender.id;
+                          await endpoints.deleteRender(renderId);
+                          setBatchRenders((current) => current.filter((render) => (render.render_id || render.id) !== renderId));
+                          setActiveRender(null);
+                          setSelectedBatchRenderId(null);
+                          toast.success("Removed from Gallery");
+                        } catch (e) {
+                          toast.error(e?.response?.data?.detail || "Could not remove render");
+                        }
+                      }}
+                      className="rounded-lg border border-red-500/30 px-3 py-2 text-sm font-semibold text-red-300 hover:bg-red-500/10 flex items-center justify-center gap-2">
+                      <Trash2 className="h-4 w-4" /> Delete
+                    </button>
                     <button type="button"
                       onClick={() => nav(`/gallery?render=${encodeURIComponent(activeRender.render_id || activeRender.id)}&returnTo=${encodeURIComponent(location.pathname)}`)}
                       className="rounded-lg bg-emerald-500 px-3 py-2 text-sm font-semibold text-zinc-950 hover:bg-emerald-400"
                       data-testid="btn-view-finished-render">
-                      View image
-                    </button>
-                    <button type="button" onClick={() => setActiveRender(null)}
-                      className="rounded-lg border hairline px-3 py-2 text-sm font-semibold text-zinc-200 hover:bg-white/5"
-                      data-testid="btn-continue-editing">
-                      Continue editing
+                      View in Gallery
                     </button>
                   </div>
                 </div>
