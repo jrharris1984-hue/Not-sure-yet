@@ -79,6 +79,7 @@ export default function Builder() {
   const [improvingPrompt, setImprovingPrompt] = useState(false);
   const [dispatching, setDispatching] = useState(false);
   const [activeRender, setActiveRender] = useState(null);
+  const [renderCount, setRenderCount] = useState(1);
   const [workflowId, setWorkflowId] = useState("");
   const [loraOverrides, setLoraOverrides] = useState({});
   const [loraTriggerWords, setLoraTriggerWords] = useState([]);
@@ -745,7 +746,14 @@ export default function Builder() {
     }
     setDispatching(true);
     try {
-      const r = await endpoints.dispatchRender({
+      const requestedCount = activeRecipeFamily === "image" ? renderCount : 1;
+      const baseSeed = activeRecipeFamily === "image" && chromaSettings.seed !== ""
+        ? Number(chromaSettings.seed)
+        : Math.floor(Math.random() * 2147483647);
+      const queuedRenders = [];
+      for (let imageIndex = 0; imageIndex < requestedCount; imageIndex += 1) {
+        const uniqueSeed = (baseSeed + imageIndex) % 2147483647;
+        const r = await endpoints.dispatchRender({
         character_id: isNew ? undefined : id,
         // Send primary subject DNA (backward compat) + all subjects for future backend use.
         dna: subjects[0]?.dna || {},
@@ -760,11 +768,11 @@ export default function Builder() {
           : "render",
         width: activeRecipeFamily === "image" ? chromaSettings.width : undefined,
         height: activeRecipeFamily === "image" ? chromaSettings.height : undefined,
-        batch_size: activeRecipeFamily === "image" ? chromaSettings.batchSize : undefined,
+        batch_size: activeRecipeFamily === "image" ? 1 : undefined,
         steps: activeRecipeFamily === "image" ? chromaSettings.steps : undefined,
         cfg: activeRecipeFamily === "image" ? chromaSettings.cfg : undefined,
         sampler_name: activeRecipeFamily === "image" ? chromaSettings.sampler : undefined,
-        seed: activeRecipeFamily === "image" && chromaSettings.seed !== "" ? Number(chromaSettings.seed) : undefined,
+        seed: activeRecipeFamily === "image" ? uniqueSeed : undefined,
         reference_image: (isFaceWorkflow || isEditWorkflow || isEnhanceWorkflow || isVideoWorkflow) ? referenceImage?.name : undefined,
         face_strength: faceStrength,
         faceid_v2_strength: faceIdV2Strength,
@@ -779,9 +787,17 @@ export default function Builder() {
         video_fps: videoFps,
         video_width: videoWidth,
         video_height: videoHeight,
-      });
-      setActiveRender(r);
-      toast.success(r.status === "queued" ? `Added to queue${r.queue_position ? ` · position #${r.queue_position}` : ""}` : `Render ${r.status}`);
+      
+        });
+        queuedRenders.push(r);
+      }
+      const latestRender = queuedRenders[queuedRenders.length - 1];
+      setActiveRender(latestRender);
+      toast.success(requestedCount > 1
+        ? `Added ${requestedCount} images to the queue · unique seeds`
+        : (latestRender.status === "queued"
+          ? `Added to queue${latestRender.queue_position ? ` · position #${latestRender.queue_position}` : ""}`
+          : `Render ${latestRender.status}`));
     } catch (e) {
       toast.error(e?.response?.data?.detail || "Dispatch failed");
     } finally {
@@ -985,6 +1001,20 @@ export default function Builder() {
           >
             {save.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Save
           </button>
+          {activeRecipeFamily === "image" && (
+            <select
+              data-testid="select-render-count"
+              value={renderCount}
+              onChange={(e) => setRenderCount(Number(e.target.value))}
+              disabled={dispatching}
+              className="bg-elevated border border-hairline rounded-lg px-3 py-2 text-sm text-zinc-100"
+              title="Number of images to queue with unique seeds"
+            >
+              {[1, 2, 4, 6, 8, 10].map((count) => (
+                <option key={count} value={count}>{count} image{count > 1 ? "s" : ""}</option>
+              ))}
+            </select>
+          )}
           <button
             onClick={doDispatch}
             disabled={dispatching || !workflowId}
