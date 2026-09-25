@@ -184,6 +184,15 @@ export default function Builder() {
     setQualityTier(draft.qualityTier || "balanced");
     if (draft.chromaSettings) setChromaSettings(draft.chromaSettings);
     if (draft.activeRender) setActiveRender(draft.activeRender);
+    if (Array.isArray(draft.batchRenders) && draft.batchRenders.length) {
+      setBatchRenders(draft.batchRenders);
+      setSelectedBatchRenderId(draft.selectedBatchRenderId || draft.batchRenders[0]?.id || null);
+      if (!draft.activeRender) {
+        const selected = draft.batchRenders.find((render) => render.id === draft.selectedBatchRenderId);
+        setActiveRender(selected || draft.batchRenders[0]);
+      }
+    }
+    if (draft.renderCount) setRenderCount(draft.renderCount);
     return true;
   };
 
@@ -193,6 +202,20 @@ export default function Builder() {
     draftHydrated.current = true;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isNew]);
+
+  // Persist the latest render session so a refresh/reopen can reconnect to the
+  // same queued/running batch instead of making it disappear from Builder.
+  useEffect(() => {
+    if (!draftHydrated.current) return;
+    const existing = readBuilderDraft(isNew ? null : id) || {};
+    writeBuilderDraft(isNew ? null : id, {
+      ...existing,
+      activeRender,
+      batchRenders,
+      selectedBatchRenderId,
+      renderCount,
+    });
+  }, [activeRender, batchRenders, selectedBatchRenderId, renderCount, id, isNew]);
 
   const { data: workflows = [] } = useQuery({ queryKey: ["workflows"], queryFn: endpoints.listWorkflows });
   const { data: settings } = useQuery({ queryKey: ["settings"], queryFn: endpoints.settings });
@@ -983,6 +1006,9 @@ export default function Builder() {
     setReferenceImage(null);
     setReferencePreview("");
     setActiveRender(null);
+    setBatchRenders([]);
+    setSelectedBatchRenderId(null);
+    setRenderCount(1);
     setEditInstruction("");
     setEditMode("standard");
     setPoseTarget("");
