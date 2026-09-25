@@ -80,6 +80,8 @@ export default function Builder() {
   const [dispatching, setDispatching] = useState(false);
   const [activeRender, setActiveRender] = useState(null);
   const [renderCount, setRenderCount] = useState(1);
+  const [batchRenders, setBatchRenders] = useState([]);
+  const [selectedBatchRenderId, setSelectedBatchRenderId] = useState(null);
   const [workflowId, setWorkflowId] = useState("");
   const [loraOverrides, setLoraOverrides] = useState({});
   const [loraTriggerWords, setLoraTriggerWords] = useState([]);
@@ -790,9 +792,12 @@ export default function Builder() {
       
         });
         queuedRenders.push(r);
+        setBatchRenders([...queuedRenders]);
       }
       const latestRender = queuedRenders[queuedRenders.length - 1];
-      setActiveRender(latestRender);
+      setBatchRenders(queuedRenders);
+      setSelectedBatchRenderId(queuedRenders[0]?.id || null);
+      setActiveRender(queuedRenders[0] || latestRender);
       toast.success(requestedCount > 1
         ? `Added ${requestedCount} images to the queue · unique seeds`
         : (latestRender.status === "queued"
@@ -804,6 +809,28 @@ export default function Builder() {
       setDispatching(false);
     }
   };
+
+  // Poll every render from the latest multi-image request so progress and
+  // thumbnails update independently as ComfyUI works through the queue.
+  useEffect(() => {
+    if (batchRenders.length <= 1) return;
+    const hasPending = batchRenders.some((render) => !["done", "failed", "offline", "cancelled"].includes(render.status));
+    if (!hasPending) return;
+    const t = setInterval(async () => {
+      const updated = await Promise.all(batchRenders.map(async (render) => {
+        if (["done", "failed", "offline", "cancelled"].includes(render.status)) return render;
+        try {
+          return await endpoints.pollRender(render.id);
+        } catch {
+          return render;
+        }
+      }));
+      setBatchRenders(updated);
+      const selected = updated.find((render) => render.id === selectedBatchRenderId);
+      if (selected) setActiveRender(selected);
+    }, 2500);
+    return () => clearInterval(t);
+  }, [batchRenders, selectedBatchRenderId]);
 
   // Poll active render for output
   useEffect(() => {
@@ -1842,6 +1869,66 @@ export default function Builder() {
             onPlanChange={(plan) => setLoraTriggerWords(plan.triggerWords || [])}
           />
           <AiAssistBar dna={activeDna} onApplyDna={(d) => setActiveDna({ ...DEFAULT_DNA, ...d })} />
+          {batchRenders.length > 1 && (
+            <div className="pane p-4 space-y-3" data-testid="batch-render-progress">
+              {(() => {
+                const completed = batchRenders.filter((r) => r.status === "done").length;
+                const failed = batchRenders.filter((r) => ["failed", "offline", "cancelled"].includes(r.status)).length;
+                return (
+                  <>
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <div className="section-label">Latest batch</div>
+                        <div className="text-sm text-zinc-300">
+                          {completed} of {batchRenders.length} completed{failed ? ` · ${failed} failed` : ""}
+                        </div>
+                      </div>
+                      <div className="text-xs text-zinc-500">{Math.round((completed / batchRenders.length) * 100)}%</div>
+                    </div>
+                    <div className="h-1.5 rounded-full bg-white/10 overflow-hidden">
+                      <div
+                        className="h-full bg-emerald-400 transition-all duration-300"
+                        style={{ width: `${(completed / batchRenders.length) * 100}%` }}
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-2">
+                      {batchRenders.map((render, index) => {
+                        const imageUrl = render.output_files?.[0];
+                        const selected = render.id === selectedBatchRenderId;
+                        return (
+                          <button
+                            type="button"
+                            key={render.id}
+                            onClick={() => {
+                              setSelectedBatchRenderId(render.id);
+                              setActiveRender(render);
+                            }}
+                            className={`relative aspect-[2/3] rounded-lg overflow-hidden border transition ${selected ? "border-emerald-400 ring-1 ring-emerald-400" : "border-white/10 hover:border-white/30"}`}
+                            title={`Image ${index + 1} · ${render.status}`}
+                          >
+                            {imageUrl ? (
+                              <img src={imageUrl} alt={`Batch result ${index + 1}`} className="w-full h-full object-cover" />
+                            ) : (
+                              <div className="w-full h-full flex flex-col items-center justify-center gap-2 bg-black/20 text-zinc-500 text-xs">
+                                {["failed", "offline", "cancelled"].includes(render.status)
+                                  ? <AlertTriangle className="h-5 w-5" />
+                                  : <Loader2 className="h-5 w-5 animate-spin" />}
+                                <span>{render.status}</span>
+                              </div>
+                            )}
+                            <span className="absolute left-1.5 top-1.5 rounded bg-black/70 px-1.5 py-0.5 text-[10px] text-white">
+                              {index + 1}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </>
+                );
+              })()}
+            </div>
+          )}
+
           {activeRender && (
             <div className="pane p-4 space-y-3" data-testid="render-status-panel">
               <div className="flex items-center justify-between">
