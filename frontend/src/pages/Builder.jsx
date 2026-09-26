@@ -342,12 +342,16 @@ export default function Builder() {
   useEffect(() => {
     const saved = location.state?.renderRecipe?.recipe;
     if (!saved || !workflows.length || galleryImportApplied.current || !editorHydrated) return;
+    const rebuildCurrent = location.state?.renderRecipeMode === "current";
     galleryImportApplied.current = true;
     setMobileStudioStep("create");
-    skipNextPromptReset.current = true;
+    skipNextPromptReset.current = !rebuildCurrent;
     if (Array.isArray(saved.subjects) && saved.subjects.length) {
       const restored = saved.subjects.map((subject, index) => makeSubject({
-        label: subject.label || subjectLabel(index), dna: subject.dna || DEFAULT_DNA, likeness: subject.likeness,
+        label: subject.label || subjectLabel(index),
+        dna: subject.dna || DEFAULT_DNA,
+        fieldLocks: subject.field_locks || {},
+        likeness: subject.likeness,
       }));
       setSubjects(restored);
       setActiveSubjectId(restored[0].id);
@@ -356,14 +360,20 @@ export default function Builder() {
       setSubjects([restored]);
       setActiveSubjectId(restored.id);
     }
+    setLocks(saved.locks || {});
+    if (saved.prompt_language) {
+      setPromptLanguage(saved.prompt_language);
+      setRaunch(saved.prompt_language === "explicit");
+    }
     if (saved.workflow_id && workflows.some((workflow) => workflow.id === saved.workflow_id)) setWorkflowId(saved.workflow_id);
     setLoraOverrides(saved.lora_overrides || {});
-    setPromptOverride(saved.prompt_positive || "");
-    setNegativePromptOverride(saved.prompt_negative || "");
+    setPromptOverride(rebuildCurrent ? "" : (saved.prompt_positive || ""));
+    setNegativePromptOverride(rebuildCurrent ? "" : (saved.prompt_negative || ""));
     if (saved.reference_image) setReferenceImage({ name: saved.reference_image, type: "input", subfolder: "" });
     if (saved.edit_instruction) setEditInstruction(saved.edit_instruction);
     if (saved.video_instruction) setVideoInstruction(saved.video_instruction);
     setPreserveUnmentioned(saved.preserve_unmentioned !== false);
+    if (saved.quality_tier) setQualityTier(saved.quality_tier);
     setVideoFrames(saved.video_frames || 41);
     setVideoFps(saved.video_fps || 24);
     setVideoWidth(saved.video_width || 640);
@@ -372,9 +382,11 @@ export default function Builder() {
       width: saved.width || current.width, height: saved.height || current.height,
       steps: saved.steps || current.steps, cfg: saved.cfg ?? current.cfg,
       batchSize: saved.batch_size || current.batchSize, sampler: saved.sampler_name || current.sampler,
-      seed: saved.seed ?? current.seed,
+      seed: rebuildCurrent ? "" : (saved.seed ?? current.seed),
     }));
-    toast.success("Exact Gallery recipe restored in the editor");
+    toast.success(rebuildCurrent
+      ? "Saved setup loaded with the current compiler · prompt overrides cleared"
+      : "Exact Gallery recipe restored in the editor");
     nav(location.pathname, { replace: true, state: null });
   }, [editorHydrated, location.pathname, location.state, nav, workflows]);
 
@@ -898,7 +910,15 @@ export default function Builder() {
         character_id: isNew ? undefined : id,
         // Send primary subject DNA (backward compat) + all subjects for future backend use.
         dna: subjects[0]?.dna || {},
-        subjects: subjects.map((s) => ({ label: s.label, dna: s.dna, likeness: s.likeness })),
+        subjects: subjects.map((s) => ({
+          label: s.label,
+          dna: s.dna,
+          field_locks: s.field_locks || {},
+          likeness: s.likeness,
+        })),
+        locks,
+        prompt_language: promptLanguage,
+        quality_tier: qualityTier,
         prompt_positive: finalPositive,
         prompt_negative: finalNegative,
         workflow_id: workflowId,
