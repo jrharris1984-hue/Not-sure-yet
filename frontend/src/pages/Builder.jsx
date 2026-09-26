@@ -26,6 +26,7 @@ import TagInput from "@/components/TagInput";
 import GroupedSectionRail from "@/components/GroupedSectionRail";
 import DnaAtAGlance from "@/components/DnaAtAGlance";
 import MobileOverflow from "@/components/MobileOverflow";
+import MobileStudioFlow, { MOBILE_STUDIO_STEPS, mobileStudioStepForSection } from "@/components/MobileStudioFlow";
 import SubjectSwitcher from "@/components/SubjectSwitcher";
 import ChromaControls from "@/components/ChromaControls";
 import RenderRecipeSelector from "@/components/RenderRecipeSelector";
@@ -85,6 +86,24 @@ export default function Builder() {
   const sectionUrl = (key) => `${basePath}/s/${key}`;
   const goSection = (key) => nav(sectionUrl(key));
 
+  const [mobileStudioStep, setMobileStudioStep] = useState(() => mobileStudioStepForSection(activeSection));
+  const activeMobileStudioIndex = Math.max(0, MOBILE_STUDIO_STEPS.findIndex((step) => step.id === mobileStudioStep));
+
+  const openMobileStudioStep = (stepId) => {
+    const step = MOBILE_STUDIO_STEPS.find((item) => item.id === stepId);
+    if (!step) return;
+    setMobileStudioStep(stepId);
+    if (step.sections.length && !step.sections.includes(activeSection)) {
+      nav(sectionUrl(step.sections[0]));
+    }
+    window.requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "smooth" }));
+  };
+
+  const moveMobileStudioStep = (direction) => {
+    const nextIndex = Math.max(0, Math.min(MOBILE_STUDIO_STEPS.length - 1, activeMobileStudioIndex + direction));
+    openMobileStudioStep(MOBILE_STUDIO_STEPS[nextIndex].id);
+  };
+
   const [name, setName] = useState("Untitled");
   // Multi-subject store: [{id, label, dna, field_locks}]. subjects[0] is Subject A (primary).
   const [subjects, setSubjects] = useState(() => [makeSubject({ label: "A" })]);
@@ -142,6 +161,11 @@ export default function Builder() {
   const [enhancingVideo, setEnhancingVideo] = useState(false);
   const [analyzingVideoImage, setAnalyzingVideoImage] = useState(false);
   const [videoImageAnalysis, setVideoImageAnalysis] = useState("");
+  useEffect(() => {
+    if (mobileStudioStep === "create") return;
+    setMobileStudioStep(mobileStudioStepForSection(activeSection));
+  }, [activeSection, mobileStudioStep]);
+
   const [chromaSettings, setChromaSettings] = useState({
     width: 768,
     height: 1152,
@@ -244,6 +268,7 @@ export default function Builder() {
     }
 
     galleryImportApplied.current = true;
+    setMobileStudioStep("create");
     setWorkflowId(target.id);
     setReferenceImage(incoming);
     setSourceRenderId(incoming.source_render_id || null);
@@ -284,6 +309,7 @@ export default function Builder() {
     const saved = location.state?.renderRecipe?.recipe;
     if (!saved || !workflows.length || galleryImportApplied.current || !editorHydrated) return;
     galleryImportApplied.current = true;
+    setMobileStudioStep("create");
     skipNextPromptReset.current = true;
     if (Array.isArray(saved.subjects) && saved.subjects.length) {
       const restored = saved.subjects.map((subject, index) => makeSubject({
@@ -1057,6 +1083,7 @@ export default function Builder() {
     setFaceIdV2Strength(1.4);
     setRepairStrength(0.45);
     setPreserveUnmentioned(true);
+    setMobileStudioStep("start");
     setChromaSettings({
       width: 768,
       height: 1152,
@@ -1088,7 +1115,7 @@ export default function Builder() {
             data-testid="select-workflow"
             value={workflowId}
             onChange={(e) => { setWorkflowId(e.target.value); setLoraOverrides({}); }}
-            className="bg-elevated border border-hairline rounded-lg px-3 py-2 text-sm text-zinc-100 w-full sm:w-auto sm:min-w-[200px]"
+            className={`${mobileStudioStep === "start" || mobileStudioStep === "create" ? "block" : "hidden md:block"} bg-elevated border border-hairline rounded-lg px-3 py-2 text-sm text-zinc-100 w-full sm:w-auto sm:min-w-[200px]`}
           >
             {workflows.length === 0 && <option value="">No workflows — open Settings</option>}
             {workflows.map((w) => (
@@ -1109,7 +1136,7 @@ export default function Builder() {
               value={renderCount}
               onChange={(e) => setRenderCount(Number(e.target.value))}
               disabled={dispatching}
-              className="bg-elevated border border-hairline rounded-lg px-3 py-2 text-sm text-zinc-100 flex-1 sm:flex-none"
+              className={`${mobileStudioStep === "create" ? "block" : "hidden md:block"} bg-elevated border border-hairline rounded-lg px-3 py-2 text-sm text-zinc-100 flex-1 sm:flex-none`}
               title="Number of images to queue with unique seeds"
             >
               {[1, 2, 4, 6, 8, 10].map((count) => (
@@ -1126,6 +1153,15 @@ export default function Builder() {
             {dispatching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />} Render
           </button>
           <MobileOverflow testId="builder-overflow" always label="More">
+            <button
+              type="button"
+              onClick={() => save.mutate()}
+              disabled={save.isPending}
+              data-testid="btn-save-character-mobile-menu"
+              className="md:hidden inline-flex items-center gap-1.5 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm font-semibold text-amber-200 disabled:opacity-40"
+            >
+              {save.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Save character
+            </button>
             <button
               type="button"
               onClick={resetCharacter}
@@ -1242,41 +1278,73 @@ export default function Builder() {
           </MobileOverflow>
         </div>
         </div>
-        <TagInput value={tags} onChange={setTags} placeholder="tag this character (mood, ethnicity, persona)…" testId="builder-tags" />
-      </div>
-
-      <div className="md:hidden fixed inset-x-0 z-30 mobile-builder-actions border-t hairline bg-[#111017]/95 px-2.5 py-2 backdrop-blur-xl shadow-[0_-12px_30px_rgba(0,0,0,0.28)]" data-testid="mobile-builder-actions">
-        <div className="grid grid-cols-4 gap-2">
-          <button type="button" onClick={() => activeIdx > 0 && goSection(SECTIONS[activeIdx - 1].key)} disabled={activeIdx === 0}
-            className="inline-flex items-center justify-center rounded-lg border hairline py-2.5 text-zinc-200 disabled:opacity-30" aria-label="Previous section">
-            <ChevronLeft className="h-4 w-4" />
-          </button>
-          <button type="button" onClick={() => save.mutate()} disabled={save.isPending}
-            className="inline-flex items-center justify-center gap-1 rounded-lg border border-amber-500/40 py-2.5 text-xs font-semibold text-amber-200">
-            <Save className="h-4 w-4" /> Save
-          </button>
-          <button type="button" onClick={doDispatch} disabled={dispatching || !workflowId}
-            className="inline-flex items-center justify-center gap-1 rounded-lg bg-emerald-500 py-2.5 text-xs font-semibold text-black disabled:opacity-40">
-            <Play className="h-4 w-4" /> Render
-          </button>
-          <button type="button" onClick={() => activeIdx < SECTIONS.length - 1 && goSection(SECTIONS[activeIdx + 1].key)} disabled={activeIdx === SECTIONS.length - 1}
-            className="inline-flex items-center justify-center rounded-lg border hairline py-2.5 text-zinc-200 disabled:opacity-30" aria-label="Next section">
-            <ChevronRight className="h-4 w-4" />
-          </button>
+        <div className={mobileStudioStep === "start" ? "block" : "hidden md:block"}>
+          <TagInput value={tags} onChange={setTags} placeholder="tag this character (mood, ethnicity, persona)…" testId="builder-tags" />
         </div>
       </div>
 
-      {activeWorkflow && (activeCompiler !== "qwen_edit" || isEnhanceWorkflow) && (
-        <RenderRecipeSelector
-          compiler={activeCompiler}
-          value={qualityTier}
-          onChange={applyQualityTier}
-        />
-      )}
+      <MobileStudioFlow
+        currentStep={mobileStudioStep}
+        activeSection={activeSection}
+        locks={locks}
+        sections={SECTIONS}
+        onStep={openMobileStudioStep}
+        onSection={(key) => {
+          setMobileStudioStep(mobileStudioStepForSection(key));
+          goSection(key);
+        }}
+      />
 
-      {isGoldenChroma && (
-        <ChromaControls value={chromaSettings} onChange={setChromaSettings} />
-      )}
+      <div className="md:hidden fixed inset-x-0 z-30 mobile-builder-actions border-t hairline bg-[#111017]/95 px-2.5 py-2 backdrop-blur-xl shadow-[0_-12px_30px_rgba(0,0,0,0.28)]" data-testid="mobile-builder-actions">
+        <div className="grid grid-cols-[0.9fr_1.4fr] gap-2">
+          <button
+            type="button"
+            onClick={() => moveMobileStudioStep(-1)}
+            disabled={activeMobileStudioIndex === 0}
+            className="inline-flex items-center justify-center gap-1.5 rounded-xl border hairline py-3 text-sm font-semibold text-zinc-200 disabled:opacity-30"
+            aria-label="Previous Studio step"
+            data-testid="btn-mobile-studio-back"
+          >
+            <ChevronLeft className="h-4 w-4" /> Back
+          </button>
+          {mobileStudioStep === "create" ? (
+            <button
+              type="button"
+              onClick={doDispatch}
+              disabled={dispatching || !workflowId}
+              className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-emerald-500 py-3 text-sm font-bold text-black disabled:opacity-40"
+              data-testid="btn-mobile-studio-render"
+            >
+              {dispatching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />} Render
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => moveMobileStudioStep(1)}
+              className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-amber-500 py-3 text-sm font-bold text-black"
+              data-testid="btn-mobile-studio-continue"
+            >
+              Continue <ChevronRight className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div className={mobileStudioStep === "create" ? "block" : "hidden md:block"}>
+        {activeWorkflow && (activeCompiler !== "qwen_edit" || isEnhanceWorkflow) && (
+          <RenderRecipeSelector
+            compiler={activeCompiler}
+            value={qualityTier}
+            onChange={applyQualityTier}
+          />
+        )}
+
+        {isGoldenChroma && (
+          <div className="mt-3 sm:mt-4">
+            <ChromaControls value={chromaSettings} onChange={setChromaSettings} />
+          </div>
+        )}
+      </div>
 
       {/* Subject switcher — appears when scenario expects >1 or user manually added subjects */}
       <SubjectSwitcher
@@ -1291,18 +1359,20 @@ export default function Builder() {
         onRandomizeActive={randomizeActive}
       />
 
-      <div className="pane px-3 py-2 flex items-center gap-2" data-testid="glance-header">
-        <button
-          type="button"
-          onClick={() => setCollapsed((cur) => ({ ...cur, _glance: !cur._glance }))}
-          data-testid="btn-collapse-glance"
-          className="flex items-center gap-2 text-left flex-1 group"
-        >
-          <ChevronDown className={`h-4 w-4 text-zinc-500 group-hover:text-zinc-200 transition-transform ${collapsed._glance ? "-rotate-90" : ""}`} />
-          <span className="section-label">DNA at a glance{isMulti ? ` · ${subjects.length} subjects` : ""}</span>
-        </button>
+      <div className={mobileStudioStep === "create" ? "space-y-2" : "hidden md:block md:space-y-2"}>
+        <div className="pane px-3 py-2 flex items-center gap-2" data-testid="glance-header">
+          <button
+            type="button"
+            onClick={() => setCollapsed((cur) => ({ ...cur, _glance: !cur._glance }))}
+            data-testid="btn-collapse-glance"
+            className="flex items-center gap-2 text-left flex-1 group"
+          >
+            <ChevronDown className={`h-4 w-4 text-zinc-500 group-hover:text-zinc-200 transition-transform ${collapsed._glance ? "-rotate-90" : ""}`} />
+            <span className="section-label">DNA at a glance{isMulti ? ` · ${subjects.length} subjects` : ""}</span>
+          </button>
+        </div>
+        {!collapsed._glance && <DnaAtAGlance dna={activeDna} name={name} subjects={isMulti ? subjects : undefined} />}
       </div>
-      {!collapsed._glance && <DnaAtAGlance dna={activeDna} name={name} subjects={isMulti ? subjects : undefined} />}
 
       <div className="grid grid-cols-1 lg:grid-cols-[260px_1fr_380px] gap-4">
         {/* Left rail - grouped-by-phase section nav (uses active subject's dna for filled dots) */}
@@ -1317,7 +1387,7 @@ export default function Builder() {
         </aside>
 
         {/* Mobile section chips — grouped by phase */}
-        <div className="lg:hidden overflow-x-auto scroll-fade -mx-3 px-3 flex gap-2 pb-1">
+        <div className="hidden md:flex lg:hidden overflow-x-auto scroll-fade -mx-3 px-3 gap-2 pb-1">
           {SECTIONS.map((s) => (
             <Link
               key={s.key}
@@ -1331,12 +1401,12 @@ export default function Builder() {
         </div>
 
         {/* Center - single active section */}
-        <div className="space-y-4">
-          <div className="flex items-center justify-between text-xs font-mono text-zinc-500">
+        <div className={`${mobileStudioStep === "create" ? "hidden md:block" : "block"} space-y-4`}>
+          <div className="hidden md:flex items-center justify-between text-xs font-mono text-zinc-500">
             <span>Step {activeIdx + 1} of {SECTIONS.length}{isMulti && ` · Subject ${activeSubject.label}`}</span>
             <span className={`uppercase tracking-widest section-label phase-${phaseOfSection(activeSection)}`}>{SECTIONS[activeIdx].title}</span>
           </div>
-          <div className="h-1 rounded-full bg-elevated overflow-hidden">
+          <div className="hidden md:block h-1 rounded-full bg-elevated overflow-hidden">
             <div
               className="h-full bg-amber-400 transition-all"
               style={{ width: `${((activeIdx + 1) / SECTIONS.length) * 100}%` }}
@@ -1390,7 +1460,7 @@ export default function Builder() {
         </div>
 
         {/* Right - preview + AI + render */}
-        <aside className="space-y-4 lg:sticky lg:top-20 lg:h-fit">
+        <aside className={`${mobileStudioStep === "create" ? "block" : "hidden md:block"} space-y-4 lg:sticky lg:top-20 lg:h-fit`}>
           <SmartSetupPanel workflows={workflows} activeWorkflow={activeWorkflow} dna={activeDna}
             subjectCount={subjects.length} hasReference={!!referenceImage?.name} onApply={applySmartSetup} />
           <PromptPreview
