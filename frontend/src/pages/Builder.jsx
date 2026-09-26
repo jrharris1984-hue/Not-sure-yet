@@ -1532,7 +1532,10 @@ export default function Builder() {
           onAnimate={() => reuseFinishedRender("video")}
           onBackCharacter={returnToCharacterFromResult}
           onGallery={() => nav(`/gallery?render=${encodeURIComponent(activeRender.render_id || activeRender.id)}&returnTo=${encodeURIComponent(location.pathname)}`)}
-          onDownload={(url) => downloadRenderImage(url, `render-${activeRender.render_id || activeRender.id}.png`)}
+          onDownload={(url) => downloadRenderImage(
+            url,
+            `render-${activeRender.render_id || activeRender.id}.${/\.(webm|mp4|mov)(?:[?&]|$)/i.test(decodeURIComponent(url)) ? "webm" : "png"}`
+          )}
           busy={postRenderBusy}
         />
       )}
