@@ -10,7 +10,7 @@ import { toast } from "sonner";
 // Users can collapse it to a slim pill or dismiss it (dismissal is per-session).
 export default function NowRenderingStrip() {
   const location = useLocation();
-  const [expanded, setExpanded] = useState(true);
+  const [expanded, setExpanded] = useState(() => typeof window !== "undefined" ? window.innerWidth >= 768 : true);
   const [dismissed, setDismissed] = useState(false);
   const [dismissedIds, setDismissedIds] = useState(new Set());
 
@@ -50,9 +50,9 @@ export default function NowRenderingStrip() {
   return (
     <div
       data-testid="now-rendering-strip"
-      className="fixed z-40 left-2 right-2 sm:left-4 sm:right-4 md:left-auto md:right-4 md:w-[420px] bottom-20 md:bottom-4 pointer-events-none"
+      className="fixed z-30 left-2 right-2 sm:left-4 sm:right-4 md:left-auto md:right-4 md:w-[420px] bottom-[calc(4.75rem+env(safe-area-inset-bottom))] md:bottom-4 pointer-events-none"
     >
-      <div className="pane glass pointer-events-auto shadow-2xl border-amber-500/30 overflow-hidden">
+      <div className="pane glass pointer-events-auto shadow-2xl border-amber-500/30 overflow-hidden max-h-[45vh] md:max-h-none">
         <header className="flex items-center gap-2 px-3 py-2 border-b hairline">
           <div className="relative">
             <Zap className="h-3.5 w-3.5 text-amber-300" />
