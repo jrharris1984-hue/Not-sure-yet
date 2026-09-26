@@ -117,8 +117,7 @@ export default function Gallery() {
     onSuccess: (result, variables) => {
       qc.invalidateQueries({ queryKey: ["renders"] });
       qc.invalidateQueries({ queryKey: ["queue"] });
-      setLightbox(null);
-      toast.success(variables.variation ? "Variation added to the render queue" : "Exact recipe added to the render queue", {
+      toast.success(variables.variation ? "Variation added to the render queue" : "Exact recreation added to the render queue", {
         description: result.queue_position ? `Queue position #${result.queue_position}` : undefined,
       });
     },
@@ -502,6 +501,38 @@ export default function Gallery() {
               </div>
 
               <div className="flex flex-col gap-2">
+                <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-2.5">
+                  <div className="mb-2 flex items-center justify-between gap-2">
+                    <div>
+                      <div className="text-xs font-bold text-amber-100">Reuse this render</div>
+                      <div className="mt-0.5 text-[10px] text-zinc-500">
+                        Recreate keeps the same seed{lightbox.seed_used != null ? ` · ${lightbox.seed_used}` : ""}. Variation changes only the seed.
+                      </div>
+                    </div>
+                    {recreate.isPending && <Loader2 className="h-4 w-4 animate-spin text-amber-300" />}
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => recreate.mutate({ id: lightbox.id, variation: false })}
+                      disabled={recreate.isPending}
+                      data-testid="btn-lightbox-recreate-primary"
+                      className="inline-flex items-center justify-center gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm font-semibold text-amber-100 hover:bg-amber-500/15 disabled:opacity-40"
+                    >
+                      <RotateCcw className="h-4 w-4" /> Recreate
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => recreate.mutate({ id: lightbox.id, variation: true })}
+                      disabled={recreate.isPending}
+                      data-testid="btn-lightbox-variation-primary"
+                      className="inline-flex items-center justify-center gap-2 rounded-lg border border-violet-500/40 bg-violet-500/10 px-3 py-2 text-sm font-semibold text-violet-100 hover:bg-violet-500/15 disabled:opacity-40"
+                    >
+                      <Shuffle className="h-4 w-4" /> Variation
+                    </button>
+                  </div>
+                </div>
+
                 {!isVideoUrl(primaryOutput(lightbox)) && (
                   <div className="grid grid-cols-2 gap-2">
                     <button type="button" onClick={() => reuseAsReference.mutate({ render: lightbox, targetKind: "edit" })} disabled={reuseAsReference.isPending}
@@ -537,10 +568,6 @@ export default function Gallery() {
                     </div>
                     {versions.length > 1 && <div className="flex gap-2 overflow-x-auto pb-1">{versions.filter((version) => primaryOutput(version)).map((version) => <button key={version.id} type="button" onClick={() => setLightbox(version)} className={`h-14 w-14 shrink-0 overflow-hidden rounded-md border ${version.id === lightbox.id ? "border-amber-400" : "hairline"}`}><img src={primaryOutput(version)} alt="version" className="h-full w-full object-cover" /></button>)}</div>}
                     {lightbox.prompt_positive && <div className="text-[11px] font-mono text-zinc-300 bg-elevated border hairline rounded-md p-2 max-h-32 overflow-y-auto whitespace-pre-wrap">{lightbox.prompt_positive}</div>}
-                    <div className="grid grid-cols-2 gap-2">
-                      <button type="button" onClick={() => recreate.mutate({ id: lightbox.id, variation: false })} disabled={recreate.isPending} data-testid="btn-lightbox-recreate" className="rounded-lg border hairline px-2 py-2 text-xs">Recreate</button>
-                      <button type="button" onClick={() => recreate.mutate({ id: lightbox.id, variation: true })} disabled={recreate.isPending} data-testid="btn-lightbox-variation" className="rounded-lg border hairline px-2 py-2 text-xs">Variation</button>
-                    </div>
                     {!isVideoUrl(primaryOutput(lightbox)) && <button type="button" onClick={() => reuseAsReference.mutate({ render: lightbox, targetKind: "face" })} disabled={reuseAsReference.isPending} data-testid="btn-lightbox-use-face" className="w-full rounded-lg border hairline px-3 py-2 text-sm"><ScanFace className="inline h-4 w-4 mr-2" />Use Face</button>}
                     <button type="button" onClick={() => openRecipe.mutate(lightbox)} disabled={openRecipe.isPending} data-testid="btn-lightbox-open-recipe" className="w-full rounded-lg border hairline px-3 py-2 text-sm"><BookOpen className="inline h-4 w-4 mr-2" />Open exact recipe</button>
                     <button onClick={() => { navigator.clipboard.writeText(lightbox.prompt_positive || ""); toast.success("Prompt copied"); }} data-testid="btn-lightbox-copy-prompt" className="w-full rounded-lg border hairline px-3 py-2 text-sm"><Copy className="inline h-4 w-4 mr-2" />Copy prompt</button>
