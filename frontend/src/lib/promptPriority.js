@@ -70,11 +70,45 @@ const rawDisplay = (value) => Array.isArray(value)
   ? value.filter((item) => isMeaningful(item, true)).map(clean).join(" and ")
   : clean(value);
 
-function literalRequirement(section, field, value) {
+function literalRequirement(section, field, value, locked = false) {
   const display = rawDisplay(value);
   if (!display && display !== "0") return "";
 
   const key = `${section}.${field}`;
+  const numeric = Number(value);
+  if (key === "physique.muscularity") {
+    if (numeric > 85) return "highly muscular fitness physique";
+    if (numeric > 60) return "athletic toned build";
+    return locked ? "natural non-muscular build" : "";
+  }
+  if (key === "physique.curves") {
+    if (numeric > 85) return "pronounced feminine curves";
+    if (numeric > 60) return "curved feminine silhouette";
+    return locked ? "moderate natural curves" : "";
+  }
+  if (key === "physique.exaggeration") {
+    if (numeric >= 85) return "hyper-exaggerated body proportions";
+    if (numeric >= 65) return "dramatically exaggerated body proportions";
+    if (numeric >= 40) return "enhanced body proportions";
+    return locked ? "natural body proportions" : "";
+  }
+  if (key === "skin.glow") {
+    if (numeric > 85) return "oiled glistening skin";
+    if (numeric > 60) return "dewy glowing skin";
+    return locked ? "natural non-glossy skin" : "";
+  }
+  if (key === "scenario.explicit_level") {
+    if (numeric >= 85) return "extreme explicit intensity";
+    if (numeric >= 65) return "high explicit intensity";
+    if (numeric > 40) return "explicit adult intensity";
+    return "";
+  }
+  if (key === "scenario.kink_level") {
+    if (numeric >= 85) return "extreme kink intensity";
+    if (numeric >= 65) return "high kink intensity";
+    if (numeric > 40) return "light kink intensity";
+    return "";
+  }
   if (key === "identity.age") return `${display}-year-old adult`;
   if (key === "identity.gender") return `${display} adult subject`;
   if (key === "scenario.cast_size") {
@@ -145,7 +179,7 @@ function collectSubjectItems(dna = {}, {
       if (!isMeaningful(value, locked)) return;
 
       const priority = fieldPriority(section, field, locked);
-      const literal = literalRequirement(section, field, value);
+      const literal = literalRequirement(section, field, value, locked);
       if (!literal) return;
       const subjectPrefix = subjectLabel ? `Subject ${subjectLabel} ` : "";
       const phrase = `${subjectPrefix}${literal}`;
