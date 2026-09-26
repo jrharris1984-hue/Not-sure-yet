@@ -1,5 +1,6 @@
 import { buildPrompts, buildMultiVenicePrompts, buildChromaPrompts, buildMultiChromaPrompts } from "@/lib/dna";
 import { buildPonyPrompts, buildMultiPonyPrompts } from "@/lib/ponyPrompts";
+import { buildPromptPriorityPlan, emptyPromptPriorityPlan, prioritizePrompt } from "@/lib/promptPriority";
 
 const ZIMAGE_NEGATIVE = [
   "low quality, blurry, out of focus, jpeg artifacts, oversharpened",
@@ -231,7 +232,15 @@ export function resolvePromptCompiler({ promptStyle = "", workflowKind = "", wor
   return "standard";
 }
 
-export function buildZImagePrompts({ dna = {}, subjects = [], isMulti = false, raunch = false } = {}) {
+export function buildZImagePrompts({
+  dna = {},
+  subjects = [],
+  isMulti = false,
+  raunch = false,
+  fieldLocks = {},
+  sectionLocks = {},
+  priorityPlan,
+} = {}) {
   const primaryGuard = resolveZImageComposition(dna, { forceMulti: isMulti });
   const guardedSubjects = isMulti
     ? (subjects || []).map((subject) => ({ ...subject, dna: resolveZImageComposition(subject?.dna || {}).dna }))
@@ -242,16 +251,29 @@ export function buildZImagePrompts({ dna = {}, subjects = [], isMulti = false, r
     isMulti,
     raunch,
   });
-  const guardedPositive = [primaryGuard.composition, normalizeZImageLanguage(base.positive)]
-    .filter(Boolean)
-    .join(", ");
+  const plan = priorityPlan || buildPromptPriorityPlan({
+    dna: primaryGuard.dna,
+    subjects: guardedSubjects,
+    isMulti,
+    raunch,
+    fieldLocks,
+    sectionLocks,
+  });
+  const prioritized = prioritizePrompt(
+    normalizeZImageLanguage(base.positive),
+    plan,
+    "zimage",
+    {
+      extraLead: [primaryGuard.composition],
+      budgetWords: primaryGuard.anatomyMode === "natural" ? 220 : primaryGuard.anatomyMode === "enhanced" ? 260 : 300,
+    }
+  );
   return {
-    positive: compactWords(
-      dedupeClauses(guardedPositive),
-      primaryGuard.anatomyMode === "natural" ? 220 : primaryGuard.anatomyMode === "enhanced" ? 280 : 340
-    ),
+    ...prioritized,
     negative: ZIMAGE_NEGATIVE,
     guardAdjustments: primaryGuard.adjustments,
+    priorityPlan: plan,
+    negativeStrategy: "zeroed",
   };
 }
 
@@ -283,43 +305,115 @@ export function buildWanImageToVideoPrompts({ instruction = "" } = {}) {
 }
 
 export function buildWanTextToVideoPrompts({ dna = {}, subjects = [], isMulti = false, raunch = false, instruction = "" } = {}) {
-  const base = buildZImagePrompts({ dna, subjects, isMulti, raunch });
+  const primaryGuard = resolveZImageComposition(dna, { forceMulti: isMulti });
+  const guardedSubjects = isMulti
+    ? (subjects || []).map((subject) => ({ ...subject, dna: resolveZImageComposition(subject?.dna || {}).dna }))
+    : subjects;
+  const base = basePrompts({ dna: primaryGuard.dna, subjects: guardedSubjects, isMulti, raunch });
   const motion = clean(instruction);
   return {
-    positive: compactWords([
-      "Single continuous cinematic shot.", base.positive,
+    positive: [
+      primaryGuard.composition,
+      "Single continuous cinematic shot.",
+      base.positive,
       motion && `Action over time: ${motion}.`,
       "Maintain consistent identity, anatomy, clothing, environment, and lighting across every frame. Use physically coherent body, hair, fabric, and camera motion.",
-    ].filter(Boolean).join(" "), 420),
+    ].filter(Boolean).join(", "),
     negative: WAN_NEGATIVE,
+    guardAdjustments: primaryGuard.adjustments,
   };
 }
 
-export function compileModelPrompts({ promptStyle = "", workflowKind = "", workflowName = "", dna = {}, subjects = [], isMulti = false, raunch = false, editInstruction = "", videoInstruction = "", preserveUnmentioned = true } = {}) {
+export function compileModelPrompts({
+  promptStyle = "",
+  workflowKind = "",
+  workflowName = "",
+  dna = {},
+  subjects = [],
+  isMulti = false,
+  raunch = false,
+  editInstruction = "",
+  videoInstruction = "",
+  preserveUnmentioned = true,
+  fieldLocks = {},
+  sectionLocks = {},
+} = {}) {
   const compiler = resolvePromptCompiler({ promptStyle, workflowKind, workflowName });
   const primaryGuard = resolveZImageComposition(dna, { forceMulti: isMulti });
   const guardedSubjects = isMulti
     ? (subjects || []).map((subject) => ({ ...subject, dna: resolveZImageComposition(subject?.dna || {}).dna }))
     : subjects;
-  const withUniversalGuard = (prompts, family) => ({
-    ...prompts,
-    positive: compactWords(
-      dedupeClauses([primaryGuard.composition, prompts.positive].filter(Boolean).join(", ")),
-      family === "pony" ? 300 : family === "chroma" ? 360 : 340
-    ),
-    guardAdjustments: primaryGuard.adjustments,
+  const priorityPlan = buildPromptPriorityPlan({
+    dna: primaryGuard.dna,
+    subjects: guardedSubjects,
+    isMulti,
+    raunch,
+    fieldLocks,
+    sectionLocks,
   });
-  if (compiler === "pony") return withUniversalGuard(
+
+  const attachDirectMeta = (prompts, negativeStrategy = "text") => ({
+    ...prompts,
+    priorityPlan: emptyPromptPriorityPlan(),
+    droppedClauses: [],
+    promptBudget: null,
+    promptWords: clean(prompts.positive).split(/\s+/).filter(Boolean).length,
+    omittedClauseCount: 0,
+    guardAdjustments: [],
+    negativeStrategy,
+  });
+
+  const withPriorityGuard = (prompts, family) => {
+    const prioritized = prioritizePrompt(
+      prompts.positive,
+      priorityPlan,
+      family,
+      { extraLead: [primaryGuard.composition] }
+    );
+    return {
+      ...prompts,
+      ...prioritized,
+      priorityPlan,
+      guardAdjustments: primaryGuard.adjustments,
+      negativeStrategy: "text",
+    };
+  };
+
+  if (compiler === "pony") return withPriorityGuard(
     isMulti ? buildMultiPonyPrompts(guardedSubjects, { raunch }) : buildPonyPrompts(primaryGuard.dna, { raunch }),
     "pony"
   );
-  if (compiler === "chroma") return withUniversalGuard(
+  if (compiler === "chroma") return withPriorityGuard(
     isMulti ? buildMultiChromaPrompts(guardedSubjects, { raunch }) : buildChromaPrompts(primaryGuard.dna, { raunch }),
     "chroma"
   );
-  if (compiler === "zimage") return buildZImagePrompts({ dna, subjects, isMulti, raunch });
-  if (compiler === "qwen_edit") return buildQwenEditPrompts({ instruction: editInstruction, preserveUnmentioned });
-  if (compiler === "wan_i2v") return buildWanImageToVideoPrompts({ instruction: videoInstruction });
-  if (compiler === "wan_t2v") return buildWanTextToVideoPrompts({ dna, subjects, isMulti, raunch, instruction: videoInstruction });
-  return withUniversalGuard(basePrompts({ dna: primaryGuard.dna, subjects: guardedSubjects, isMulti, raunch }), "standard");
+  if (compiler === "zimage") return buildZImagePrompts({
+    dna,
+    subjects,
+    isMulti,
+    raunch,
+    fieldLocks,
+    sectionLocks,
+    priorityPlan,
+  });
+  if (compiler === "qwen_edit") return attachDirectMeta(
+    buildQwenEditPrompts({ instruction: editInstruction, preserveUnmentioned })
+  );
+  if (compiler === "wan_i2v") return attachDirectMeta(
+    buildWanImageToVideoPrompts({ instruction: videoInstruction })
+  );
+  if (compiler === "wan_t2v") {
+    const prompts = buildWanTextToVideoPrompts({ dna, subjects, isMulti, raunch, instruction: videoInstruction });
+    const prioritized = prioritizePrompt(prompts.positive, priorityPlan, "wan_t2v");
+    return {
+      ...prompts,
+      ...prioritized,
+      priorityPlan,
+      negativeStrategy: "text",
+    };
+  }
+  return withPriorityGuard(
+    basePrompts({ dna: primaryGuard.dna, subjects: guardedSubjects, isMulti, raunch }),
+    "standard"
+  );
 }
