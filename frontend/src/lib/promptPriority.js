@@ -3,9 +3,9 @@ import { expandPrompt } from "@/lib/promptMap";
 export const PROMPT_BUDGET_WORDS = {
   zimage: 260,
   chroma: 330,
-  pony: 240,
+  pony: 160,
   standard: 320,
-  wan_t2v: 380,
+  wan_t2v: 340,
 };
 
 const MUST_FIELDS = new Set([
@@ -228,6 +228,7 @@ export function requirementPresent(text, item) {
 
 function clauseRank(clause, plan) {
   const normalized = normalize(clause);
+  if (/^(score \d|rating )/.test(normalized)) return -1;
   const matches = (item) => (item.matchTerms || []).some((term) => term && normalized.includes(term));
   if ((plan.mustMatch || []).some(matches)) return 0;
   if ((plan.important || []).some(matches)) return 1;
