@@ -1,8 +1,8 @@
 const IMAGE_RECIPES = {
   zimage: {
-    draft: { width: 768, height: 1024, steps: 6, cfg: 1.0, batchSize: 1, sampler: "euler", note: "Fast composition test" },
-    balanced: { width: 1024, height: 1024, steps: 8, cfg: 1.0, batchSize: 1, sampler: "euler", note: "Recommended Z-Image render" },
-    quality: { width: 1024, height: 1536, steps: 12, cfg: 1.0, batchSize: 1, sampler: "euler", note: "More detail and larger output" },
+    draft: { width: 768, height: 1024, steps: 6, cfg: 1.0, batchSize: 1, sampler: "res_multistep", note: "Fast composition test" },
+    balanced: { width: 1024, height: 1024, steps: 8, cfg: 1.0, batchSize: 1, sampler: "res_multistep", note: "Recommended Z-Image render" },
+    quality: { width: 1024, height: 1536, steps: 12, cfg: 1.0, batchSize: 1, sampler: "res_multistep", note: "More detail and larger output" },
   },
   chroma: {
     draft: { width: 768, height: 768, steps: 18, cfg: 3.4, batchSize: 1, sampler: "euler", note: "Quick Golden Chroma preview" },
