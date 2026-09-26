@@ -109,8 +109,8 @@ class WorkflowTemplate(BaseModel):
     model_config = ConfigDict(extra="ignore")
     id: str = Field(default_factory=new_id)
     name: str = "Untitled workflow"
-    kind: str = "image"  # image | video | edit | face | pony
-    prompt_style: str = "venice"  # venice | zimage | chroma | pony | qwen_edit | wan_i2v | wan_t2v
+    kind: str = "image"  # image | video | edit | face | pony | pose | refine
+    prompt_style: str = "venice"  # venice | zimage | chroma | flux | pony | qwen_edit | wan_i2v | wan_t2v
     json_str: str = ""
     positive_node_id: str = ""
     negative_node_id: str = ""
