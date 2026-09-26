@@ -281,6 +281,7 @@ function fallbackSegments(plan) {
 export function prioritizePrompt(basePositive = "", plan = emptyPromptPriorityPlan(), family = "standard", options = {}) {
   const budgetWords = Number(options.budgetWords || PROMPT_BUDGET_WORDS[family] || PROMPT_BUDGET_WORDS.standard);
   const extraLead = Array.isArray(options.extraLead) ? options.extraLead : [options.extraLead].filter(Boolean);
+  const preserveOrder = !!options.preserveOrder;
   const baseSegments = clean(basePositive).split(/,\s*/).filter(Boolean).map((text, index) => ({
     text,
     rank: clauseRank(text, plan),
@@ -293,13 +294,22 @@ export function prioritizePrompt(basePositive = "", plan = emptyPromptPriorityPl
   });
 
   const fallbacks = fallbackSegments(plan).filter((segment) => !presentBase.has(segment.source));
-  const segments = [
-    ...extraLead.filter(Boolean).map((text, index) => ({ text: clean(text), rank: -1, index: -1000 + index })),
-    ...baseSegments,
-    ...fallbacks.map((segment, index) => ({ ...segment, index: 10000 + index })),
-  ]
-    .filter((segment) => segment.text)
-    .sort((a, b) => (a.rank - b.rank) || (a.index - b.index));
+  const mustFallbacks = fallbacks.filter((segment) => segment.rank === 0);
+  const importantFallbacks = fallbacks.filter((segment) => segment.rank === 1);
+  const segments = (
+    preserveOrder
+      ? [
+          ...extraLead.filter(Boolean).map((text, index) => ({ text: clean(text), rank: -1, index: -1000 + index })),
+          ...mustFallbacks.map((segment, index) => ({ ...segment, index: -500 + index })),
+          ...baseSegments,
+          ...importantFallbacks.map((segment, index) => ({ ...segment, index: 10000 + index })),
+        ]
+      : [
+          ...extraLead.filter(Boolean).map((text, index) => ({ text: clean(text), rank: -1, index: -1000 + index })),
+          ...baseSegments,
+          ...fallbacks.map((segment, index) => ({ ...segment, index: 10000 + index })),
+        ].sort((a, b) => (a.rank - b.rank) || (a.index - b.index))
+  ).filter((segment) => segment.text);
 
   const seen = new Set();
   const kept = [];
