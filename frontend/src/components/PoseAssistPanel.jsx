@@ -15,6 +15,7 @@ export default function PoseAssistPanel({
   available = true,
   installing = false,
   onInstall,
+  systemStatus,
 }) {
   const stageLabel = stage === "foundation"
     ? "Stage 1 of 2 · building pose foundation"
@@ -76,6 +77,19 @@ export default function PoseAssistPanel({
                   {installing ? "Installing…" : "Install Pose Assist"}
                 </button>
               )}
+            </div>
+          )}
+
+          {available && systemStatus && (
+            <div className={
+              "rounded-lg border px-3 py-2 text-[10px] "
+              + (systemStatus.ready
+                ? "border-emerald-500/25 bg-emerald-500/[0.05] text-emerald-200"
+                : "border-amber-500/25 bg-amber-500/[0.05] text-amber-200")
+            }>
+              {systemStatus.ready
+                ? `Local pipeline ready · ${systemStatus.flux_model || "FLUX"} + Union ControlNet + DWPose`
+                : `Setup needs: ${(systemStatus.missing || []).join(", ") || "local ComfyUI check"}`}
             </div>
           )}
 
