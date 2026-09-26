@@ -228,8 +228,30 @@ export function analyzePromptQuality({
 
     const cast = String(dna?.scenario?.cast_size || "solo").toLowerCase();
     const expected = { solo: 1, duo: 2, threesome: 3, foursome: 4, group: 3, gangbang: 3, orgy: 4 }[cast] || 1;
-    if (Number(context.subjectCount || 1) < expected) {
-      issues.push(issue("warning", "cast-count", `The scenario requests ${cast}, but only ${context.subjectCount || 1} subject profile is configured.`));
+    const configuredSubjects = Number(context.subjectCount || 1);
+    if (configuredSubjects < expected) {
+      issues.push(issue("warning", "cast-count", `The scenario requests ${cast}, but only ${configuredSubjects} subject profile is configured.`));
+    }
+    if (configuredSubjects > 1) {
+      const multiAngle = String(dna?.pose?.angle || "").toLowerCase();
+      const multiDistance = String(dna?.pose?.distance || "").toLowerCase();
+      const multiFocus = String(dna?.pose?.focus || "").toLowerCase();
+      if (["from below", "pov"].includes(multiAngle)
+          && ["full body", "wide shot"].includes(multiDistance)
+          && multiFocus !== "feet") {
+        issues.push(issue(
+          "warning",
+          "multi-perspective",
+          "Multiple full-body subjects plus an extreme low/POV camera angle can enlarge foreground limbs and fuse bodies. The anatomy guard will switch to a safer three-quarter view."
+        ));
+      }
+      if (profile === "zimage") {
+        issues.push(issue(
+          "info",
+          "multi-model-route",
+          "For two or more people, Golden Chroma is usually the more stable first-pass workflow. Z-Image remains useful for single-subject anatomy or specialty detail."
+        ));
+      }
     }
   }
 
