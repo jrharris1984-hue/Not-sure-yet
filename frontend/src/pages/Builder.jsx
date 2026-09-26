@@ -303,6 +303,12 @@ export default function Builder() {
   }, [activeRender, batchRenders, selectedBatchRenderId, renderCount, id, isNew]);
 
   const { data: workflows = [] } = useQuery({ queryKey: ["workflows"], queryFn: endpoints.listWorkflows });
+  const { data: poseAssistStatus } = useQuery({
+    queryKey: ["pose-assist-status"],
+    queryFn: endpoints.poseAssistStatus,
+    enabled: poseAssistEnabled,
+    refetchInterval: poseAssistEnabled ? 15000 : false,
+  });
   const selectableWorkflows = useMemo(
     () => workflows.filter((workflow) => !["pose", "refine"].includes(workflow.kind)),
     [workflows]
@@ -464,6 +470,7 @@ export default function Builder() {
     try {
       const result = await endpoints.seedWorkflows();
       await qc.invalidateQueries({ queryKey: ["workflows"] });
+      await qc.invalidateQueries({ queryKey: ["pose-assist-status"] });
       toast.success("Pose Assist installed", {
         description: result?.added || result?.updated
           ? "Internal FLUX foundation and Chroma polish workflows are ready."
@@ -1455,7 +1462,10 @@ export default function Builder() {
   const mobileCreateIssues = useMemo(() => {
     const issues = [];
     if (!activeWorkflow) issues.push("Choose a workflow.");
-    if (poseAssistEnabled && !poseAssistAvailable) issues.push("Refresh bundled workflows in Settings to install Pose Assist.");
+    if (poseAssistEnabled && !poseAssistAvailable) issues.push("Install Pose Assist workflows.");
+    if (poseAssistEnabled && poseAssistStatus && !poseAssistStatus.ready && poseAssistAvailable) {
+      issues.push(`Pose Assist setup needs: ${(poseAssistStatus.missing || []).join(", ") || "local ComfyUI check"}.`);
+    }
     if (poseAssistEnabled && !poseReferenceImage?.name) issues.push("Add a pose reference for Pose Assist.");
     promptAnalysis.blockers.slice(0, 2).forEach((blocker) => {
       if (blocker?.message && !issues.includes(blocker.message)) issues.push(blocker.message);
@@ -1483,7 +1493,7 @@ export default function Builder() {
   }, [
     activeWorkflow, editMode, effectiveEditInstruction,
     isEditWorkflow, isEnhanceWorkflow, isFaceWorkflow, isTextVideoWorkflow, isVideoWorkflow,
-    poseAssistAvailable, poseAssistEnabled, poseReferenceImage?.name,
+    poseAssistAvailable, poseAssistEnabled, poseAssistStatus, poseReferenceImage?.name,
     promptAnalysis, referenceImage?.name, repairInstruction, repairTargets, subjects, videoInstruction,
   ]);
 
@@ -1760,6 +1770,7 @@ export default function Builder() {
               available={poseAssistAvailable}
               installing={installingPoseAssist}
               onInstall={installPoseAssist}
+              systemStatus={poseAssistStatus}
             />
           )}
           <PromptAlignmentCard
