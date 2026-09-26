@@ -33,6 +33,7 @@ import MobileStudioFlow, {
   mobileStudioSectionsForStep,
 } from "@/components/MobileStudioFlow";
 import MobileCreateReview from "@/components/MobileCreateReview";
+import PromptAlignmentCard from "@/components/PromptAlignmentCard";
 import MobileRenderResult from "@/components/MobileRenderResult";
 import SubjectSwitcher from "@/components/SubjectSwitcher";
 import ChromaControls from "@/components/ChromaControls";
@@ -699,7 +700,7 @@ export default function Builder() {
     poseAnalysis: poseReferenceAnalysis,
     strengths: referenceStrengths,
   }), [referenceImage?.name, poseTarget, poseNotes, poseReferenceAnalysis, referenceStrengths]);
-  const { positive, negative } = useMemo(
+  const compiledPrompt = useMemo(
     () => {
       // A saved display name is useful in the library, but it is prompt noise
       // when a real likeness LoRA is active. The LoRA trigger owns identity.
@@ -718,6 +719,8 @@ export default function Builder() {
         subjects: promptSubjects,
         isMulti,
         raunch,
+        fieldLocks: activeFieldLocks,
+        sectionLocks: locks,
         editInstruction: isEnhanceWorkflow
           ? (repairInstruction || `Repair only these areas: ${repairTargets.join(", ")}`)
           : effectiveEditInstruction,
@@ -727,11 +730,13 @@ export default function Builder() {
     },
     [
       subjects, isMulti, activeDna, activeSubject?.likeness?.enabled,
+      activeFieldLocks, locks,
       promptStyle, activeWorkflow?.kind, activeWorkflow?.name, raunch,
       effectiveEditInstruction, repairInstruction, repairTargets, videoInstruction, preserveUnmentioned,
       isEnhanceWorkflow,
     ]
   );
+  const { positive, negative } = compiledPrompt;
   const likenessPrompt = useMemo(() => likenessTriggerText(subjects), [subjects]);
   const acceptsLikenessPrompt = !["qwen_edit", "wan_i2v"].includes(activeCompiler);
   const languageLead = acceptsLikenessPrompt
@@ -750,15 +755,24 @@ export default function Builder() {
   const finalNegative = negativePromptOverride || negative;
   const preflightContext = useMemo(() => ({
     hasReferenceImage: !!referenceImage?.name,
+    hasNegativeOverride: !!negativePromptOverride.trim(),
     editInstruction: isEnhanceWorkflow
       ? (repairInstruction || repairTargets.join(", "))
       : effectiveEditInstruction,
     videoInstruction,
     subjectCount: subjects.length,
   }), [
-    referenceImage?.name, isEnhanceWorkflow, repairInstruction,
+    referenceImage?.name, negativePromptOverride, isEnhanceWorkflow, repairInstruction,
     repairTargets, effectiveEditInstruction, videoInstruction, subjects.length,
   ]);
+
+  const promptAnalysis = useMemo(() => analyzePromptQuality({
+    positive: finalPositive,
+    dna: activeDna,
+    workflow: activeWorkflow,
+    context: preflightContext,
+    compilerMeta: compiledPrompt,
+  }), [activeDna, activeWorkflow, compiledPrompt, finalPositive, preflightContext]);
   useEffect(() => {
     if (skipNextPromptReset.current) {
       skipNextPromptReset.current = false;
@@ -832,14 +846,8 @@ export default function Builder() {
       toast.error("Pick a workflow first (Settings → Workflow library)");
       return;
     }
-    const preflight = analyzePromptQuality({
-      positive: finalPositive,
-      dna: activeDna,
-      workflow: activeWorkflow,
-      context: preflightContext,
-    });
-    if (preflight.blockers.length) {
-      toast.error(preflight.blockers[0].message);
+    if (promptAnalysis.blockers.length) {
+      toast.error(promptAnalysis.blockers[0].message);
       return;
     }
     const incompleteLikeness = subjects.find((subject) => subject?.likeness?.enabled && (!subject.likeness.node_id || !subject.likeness.lora_name));
@@ -1258,13 +1266,7 @@ export default function Builder() {
   const mobileCreateIssues = useMemo(() => {
     const issues = [];
     if (!activeWorkflow) issues.push("Choose a workflow.");
-    const preflight = analyzePromptQuality({
-      positive: finalPositive,
-      dna: activeDna,
-      workflow: activeWorkflow,
-      context: preflightContext,
-    });
-    preflight.blockers.slice(0, 2).forEach((blocker) => {
+    promptAnalysis.blockers.slice(0, 2).forEach((blocker) => {
       if (blocker?.message && !issues.includes(blocker.message)) issues.push(blocker.message);
     });
     const incompleteLikeness = subjects.find((subject) => subject?.likeness?.enabled && (!subject.likeness.node_id || !subject.likeness.lora_name));
@@ -1288,9 +1290,9 @@ export default function Builder() {
     }
     return [...new Set(issues)];
   }, [
-    activeDna, activeWorkflow, editMode, effectiveEditInstruction, finalPositive,
+    activeWorkflow, editMode, effectiveEditInstruction,
     isEditWorkflow, isEnhanceWorkflow, isFaceWorkflow, isTextVideoWorkflow, isVideoWorkflow,
-    preflightContext, referenceImage?.name, repairInstruction, repairTargets, subjects, videoInstruction,
+    promptAnalysis, referenceImage?.name, repairInstruction, repairTargets, subjects, videoInstruction,
   ]);
 
   const batchIsFinished = batchRenders.length <= 1 || batchRenders.every((render) =>
@@ -1502,19 +1504,26 @@ export default function Builder() {
       />
 
       {mobileStudioStep === "create" && !showMobileResult && (
-        <MobileCreateReview
-          workflow={activeWorkflow}
-          compiler={activeCompiler}
-          family={activeRecipeFamily}
-          qualityTier={qualityTier}
-          onQualityTier={applyQualityTier}
-          renderCount={renderCount}
-          onRenderCount={setRenderCount}
-          summaries={mobileCreateSummaries}
-          issues={mobileCreateIssues}
-          mode={mobileStudioMode}
-          onRequestAdvanced={() => setMobileStudioMode("advanced")}
-        />
+        <>
+          <MobileCreateReview
+            workflow={activeWorkflow}
+            compiler={activeCompiler}
+            family={activeRecipeFamily}
+            qualityTier={qualityTier}
+            onQualityTier={applyQualityTier}
+            renderCount={renderCount}
+            onRenderCount={setRenderCount}
+            summaries={mobileCreateSummaries}
+            issues={mobileCreateIssues}
+            mode={mobileStudioMode}
+            onRequestAdvanced={() => setMobileStudioMode("advanced")}
+          />
+          <PromptAlignmentCard
+            analysis={promptAnalysis}
+            priorityPlan={compiledPrompt.priorityPlan}
+            mode={mobileStudioMode}
+          />
+        </>
       )}
 
       {showMobileResult && (
