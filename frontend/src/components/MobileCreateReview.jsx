@@ -136,7 +136,6 @@ export default function MobileCreateReview({
                 key={count}
                 type="button"
                 onClick={() => onRenderCount(count)}
-                disabled={!ready && false}
                 data-testid={`mobile-create-count-${count}`}
                 className={`rounded-lg border py-2.5 text-xs font-bold transition-colors ${
                   renderCount === count
