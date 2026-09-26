@@ -79,7 +79,7 @@ const REPAIR_TARGETS = [
 ];
 
 const RENDER_TERMINAL = new Set(["done", "failed", "offline", "cancelled"]);
-const wait = (ms) => new Promise((resolve) => window.setTimeout(resolve, ms));
+const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 async function waitForQueuedRender(queueId, onUpdate) {
   for (let attempt = 0; attempt < 240; attempt += 1) {
@@ -1123,6 +1123,7 @@ export default function Builder() {
     setActiveRender(null);
     setBatchRenders([]);
     setSelectedBatchRenderId(null);
+    setPoseAssistStage("");
   };
 
   const keepFinishedRender = () => {
@@ -1475,7 +1476,8 @@ export default function Builder() {
     && mobileStudioMode === "simple"
     && activeRender?.status === "done"
     && !!activeRender.output_files?.[0]
-    && batchIsFinished;
+    && batchIsFinished
+    && (!poseAssistEnabled || poseAssistStage === "done");
 
   return (
     <div className="mx-auto max-w-[1600px] px-2.5 sm:px-6 py-3 sm:py-6 space-y-3 sm:space-y-4">
