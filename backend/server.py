@@ -100,6 +100,7 @@ class Render(BaseModel):
     comfy_prompt_id: Optional[str] = None
     output_files: List[str] = Field(default_factory=list)
     output_variants: Dict[str, List[str]] = Field(default_factory=dict)
+    hidden_from_gallery: bool = False
     error: Optional[str] = None
     created_at: str = Field(default_factory=now_iso)
     updated_at: str = Field(default_factory=now_iso)
@@ -1025,6 +1026,7 @@ async def _perform_dispatch(body: "DispatchBody") -> Dict[str, Any]:
         prompt_positive=body.prompt_positive,
         prompt_negative=body.prompt_negative,
         workflow_type=wf_template.kind if wf_template else body.workflow_type,
+        hidden_from_gallery=bool(body.hidden_from_gallery),
     )
 
     if wf_template:
@@ -1546,6 +1548,7 @@ async def pose_assist_status():
         "t5_encoder": "",
         "clip_l_encoder": "",
         "dwpose_ready": False,
+        "chroma_refine_ready": False,
         "missing": [],
     }
 
@@ -1569,6 +1572,7 @@ async def pose_assist_status():
         result["t5_encoder"] = t5 or ""
         result["clip_l_encoder"] = clip_l or ""
         result["dwpose_ready"] = "DWPreprocessor" in info
+        result["chroma_refine_ready"] = "SplitSigmasDenoise" in info
 
         if not flux:
             result["missing"].append("FLUX.1 Dev checkpoint")
@@ -1578,6 +1582,8 @@ async def pose_assist_status():
             result["missing"].append("FLUX text encoders")
         if not result["dwpose_ready"]:
             result["missing"].append("DWPose preprocessor")
+        if not result["chroma_refine_ready"]:
+            result["missing"].append("Chroma low-denoise sampler support")
     except Exception:
         result["missing"].append("ComfyUI connection")
 
