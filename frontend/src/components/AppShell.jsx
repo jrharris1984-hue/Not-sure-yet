@@ -23,7 +23,7 @@ function ComfyStatus() {
   return (
     <div
       data-testid="comfyui-ws-status-badge"
-      className="flex items-center gap-2 rounded-full border hairline px-3 py-1.5 text-xs font-mono"
+      className="flex items-center gap-1.5 sm:gap-2 rounded-full border hairline px-2 sm:px-3 py-1 sm:py-1.5 text-[10px] sm:text-xs font-mono"
     >
       <span
         className={`h-2 w-2 rounded-full ${online ? "bg-emerald-400 shadow-[0_0_10px_rgba(16,185,129,0.6)]" : "bg-zinc-600"}`}
@@ -40,9 +40,9 @@ export default function AppShell({ children }) {
   return (
     <div className="min-h-screen flex flex-col">
       <header className="glass sticky top-0 z-40 border-b hairline">
-        <div className="mx-auto flex max-w-[1600px] items-center justify-between px-4 py-3 sm:px-6">
+        <div className="mx-auto flex max-w-[1600px] items-center justify-between px-3 py-2 sm:px-6 sm:py-3">
           <Link to="/" className="flex items-center gap-2" data-testid="brand-home">
-            <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-amber-500/20 to-rose-500/20 border border-amber-500/40 grid place-items-center">
+            <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-lg bg-gradient-to-br from-amber-500/20 to-rose-500/20 border border-amber-500/40 grid place-items-center">
               <Sparkles className="h-4 w-4 text-amber-400" />
             </div>
             <div className="leading-tight">
