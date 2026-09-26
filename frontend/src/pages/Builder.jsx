@@ -89,7 +89,9 @@ export default function Builder() {
   const [subjects, setSubjects] = useState(() => [makeSubject({ label: "A" })]);
   const [activeSubjectId, setActiveSubjectId] = useState(() => "");
   const [locks, setLocks] = useState({}); // section-level locks (shared across subjects — shot-level)
-  const [collapsed, setCollapsed] = useState({});     // {sectionKey|'_glance': bool}
+  const [collapsed, setCollapsed] = useState(() => ({
+    _glance: typeof window !== "undefined" ? window.innerWidth < 768 : false,
+  }));     // {sectionKey|'_glance': bool}
   const [tags, setTags] = useState([]);
   const [raunch, setRaunch] = useState(false);
   const [promptLanguage, setPromptLanguage] = useState("editorial");
@@ -1043,22 +1045,22 @@ export default function Builder() {
   const expectedCount = expectedSubjectCount(primaryDna);
 
   return (
-    <div className="mx-auto max-w-[1600px] px-3 sm:px-6 py-4 sm:py-6 space-y-4">
+    <div className="mx-auto max-w-[1600px] px-2.5 sm:px-6 py-3 sm:py-6 space-y-3 sm:space-y-4">
       {/* Header */}
-      <div className="pane p-3 sm:p-4 flex flex-col gap-3">
+      <div className="pane p-2.5 sm:p-4 flex flex-col gap-2.5 sm:gap-3">
         <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
           <Input
             data-testid="input-character-name"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="bg-elevated border-hairline text-lg font-display font-bold"
+            className="bg-elevated border-hairline text-base sm:text-lg font-display font-bold"
           />
           <div className="flex flex-wrap gap-2">
           <select
             data-testid="select-workflow"
             value={workflowId}
             onChange={(e) => { setWorkflowId(e.target.value); setLoraOverrides({}); }}
-            className="bg-elevated border border-hairline rounded-lg px-3 py-2 text-sm text-zinc-100 min-w-[200px]"
+            className="bg-elevated border border-hairline rounded-lg px-3 py-2 text-sm text-zinc-100 w-full sm:w-auto sm:min-w-[200px]"
           >
             {workflows.length === 0 && <option value="">No workflows — open Settings</option>}
             {workflows.map((w) => (
@@ -1069,7 +1071,7 @@ export default function Builder() {
             onClick={() => save.mutate()}
             disabled={save.isPending}
             data-testid="btn-save-character"
-            className="inline-flex items-center gap-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-black text-sm font-semibold px-3 py-2 disabled:opacity-40"
+            className="hidden md:inline-flex items-center gap-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-black text-sm font-semibold px-3 py-2 disabled:opacity-40"
           >
             {save.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Save
           </button>
@@ -1079,7 +1081,7 @@ export default function Builder() {
               value={renderCount}
               onChange={(e) => setRenderCount(Number(e.target.value))}
               disabled={dispatching}
-              className="bg-elevated border border-hairline rounded-lg px-3 py-2 text-sm text-zinc-100"
+              className="bg-elevated border border-hairline rounded-lg px-3 py-2 text-sm text-zinc-100 flex-1 sm:flex-none"
               title="Number of images to queue with unique seeds"
             >
               {[1, 2, 4, 6, 8, 10].map((count) => (
@@ -1091,7 +1093,7 @@ export default function Builder() {
             onClick={doDispatch}
             disabled={dispatching || !workflowId}
             data-testid="btn-dispatch-comfyui-render"
-            className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black text-sm font-semibold px-3 py-2 disabled:opacity-40"
+            className="hidden md:inline-flex items-center gap-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black text-sm font-semibold px-3 py-2 disabled:opacity-40"
           >
             {dispatching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />} Render
           </button>
@@ -1215,7 +1217,7 @@ export default function Builder() {
         <TagInput value={tags} onChange={setTags} placeholder="tag this character (mood, ethnicity, persona)…" testId="builder-tags" />
       </div>
 
-      <div className="md:hidden fixed inset-x-0 z-30 mobile-builder-actions border-t hairline bg-[#111017]/95 px-3 py-2 backdrop-blur-xl" data-testid="mobile-builder-actions">
+      <div className="md:hidden fixed inset-x-0 z-30 mobile-builder-actions border-t hairline bg-[#111017]/95 px-2.5 py-2 backdrop-blur-xl shadow-[0_-12px_30px_rgba(0,0,0,0.28)]" data-testid="mobile-builder-actions">
         <div className="grid grid-cols-4 gap-2">
           <button type="button" onClick={() => activeIdx > 0 && goSection(SECTIONS[activeIdx - 1].key)} disabled={activeIdx === 0}
             className="inline-flex items-center justify-center rounded-lg border hairline py-2.5 text-zinc-200 disabled:opacity-30" aria-label="Previous section">
@@ -1330,7 +1332,7 @@ export default function Builder() {
             collapsed={!!collapsed[activeSection]}
             onToggleCollapsed={() => setCollapsed((cur) => ({ ...cur, [activeSection]: !cur[activeSection] }))}
           />
-          <div className="flex items-center justify-between gap-2">
+          <div className="hidden md:flex items-center justify-between gap-2">
             <button
               onClick={() => activeIdx > 0 && goSection(SECTIONS[activeIdx - 1].key)}
               disabled={activeIdx === 0}
