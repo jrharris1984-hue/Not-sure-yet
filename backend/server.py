@@ -940,22 +940,45 @@ def _preferred_option(options: List[str], required: List[str], preferred: List[s
     )[0]
 
 
-async def _patch_pose_assist_model_choices(workflow: Dict[str, Any], comfyui_url: str) -> None:
-    """Best-effort model-name repair for portable Pose Assist seed workflows."""
+async def _patch_pose_assist_model_choices(workflow: Dict[str, Any], comfyui_url: str) -> List[str]:
+    """Repair portable Pose Assist model choices and return any missing dependencies."""
     try:
         async with httpx.AsyncClient(timeout=5.0) as hc:
             response = await hc.get(f"{comfyui_url.rstrip('/')}/object_info")
-        if response.status_code >= 400:
-            return
+        response.raise_for_status()
         info = response.json()
     except Exception as exc:
         logger.warning(f"Pose Assist model auto-detect unavailable: {exc}")
-        return
+        return ["ComfyUI connection"]
 
     unet_options = _combo_options(info, "UNETLoader", "unet_name")
     clip1_options = _combo_options(info, "DualCLIPLoader", "clip_name1")
     clip2_options = _combo_options(info, "DualCLIPLoader", "clip_name2")
+    clip_type_options = _combo_options(info, "DualCLIPLoader", "type")
     control_options = _combo_options(info, "ControlNetLoader", "control_net_name")
+    missing: List[str] = []
+
+    flux_model = _preferred_option(unet_options, ["flux", "dev"], ["fp8", "flux1"])
+    clip_l = (
+        _preferred_option(clip1_options, ["clip", "l"])
+        or _preferred_option(clip2_options, ["clip", "l"])
+    )
+    t5 = (
+        _preferred_option(clip2_options, ["t5", "xxl"], ["fp8", "scaled"])
+        or _preferred_option(clip1_options, ["t5", "xxl"], ["fp8", "scaled"])
+    )
+    control = _preferred_option(control_options, ["flux", "union"], ["pro", "2.0"])
+
+    if not flux_model:
+        missing.append("FLUX.1 Dev checkpoint")
+    if not clip_l:
+        missing.append("CLIP-L text encoder")
+    if not t5:
+        missing.append("T5-XXL text encoder")
+    if clip_type_options and "flux" not in clip_type_options:
+        missing.append("ComfyUI FLUX DualCLIPLoader support")
+    if not control:
+        missing.append("FLUX Union ControlNet")
 
     for node in workflow.values():
         if not isinstance(node, dict):
@@ -963,31 +986,24 @@ async def _patch_pose_assist_model_choices(workflow: Dict[str, Any], comfyui_url
         inputs = node.get("inputs", {})
         class_type = node.get("class_type")
 
-        if class_type == "UNETLoader" and "unet_name" in inputs and unet_options:
-            current = str(inputs.get("unet_name", ""))
-            if current not in unet_options:
-                choice = _preferred_option(unet_options, ["flux", "dev"], ["fp8", "flux1"])
-                if choice:
-                    logger.info(f"Pose Assist auto-selected FLUX model: {choice}")
-                    inputs["unet_name"] = choice
+        if class_type == "UNETLoader" and flux_model:
+            inputs["unet_name"] = flux_model
+            logger.info(f"Pose Assist selected FLUX model: {flux_model}")
 
         if class_type == "DualCLIPLoader":
-            if clip1_options and str(inputs.get("clip_name1", "")) not in clip1_options:
-                choice = _preferred_option(clip1_options, ["t5", "xxl"], ["fp8", "scaled"])
-                if choice:
-                    inputs["clip_name1"] = choice
-            if clip2_options and str(inputs.get("clip_name2", "")) not in clip2_options:
-                choice = _preferred_option(clip2_options, ["clip", "l"])
-                if choice:
-                    inputs["clip_name2"] = choice
+            # Official FLUX ordering is CLIP-L first, T5-XXL second.
+            if clip_l:
+                inputs["clip_name1"] = clip_l
+            if t5:
+                inputs["clip_name2"] = t5
+            if not clip_type_options or "flux" in clip_type_options:
+                inputs["type"] = "flux"
 
-        if class_type == "ControlNetLoader" and "control_net_name" in inputs and control_options:
-            current = str(inputs.get("control_net_name", ""))
-            if current not in control_options:
-                choice = _preferred_option(control_options, ["flux", "union"], ["pro", "2.0"])
-                if choice:
-                    logger.info(f"Pose Assist auto-selected ControlNet: {choice}")
-                    inputs["control_net_name"] = choice
+        if class_type == "ControlNetLoader" and control:
+            inputs["control_net_name"] = control
+            logger.info(f"Pose Assist selected ControlNet: {control}")
+
+    return missing
 
 
 def _patch_seed(workflow: Dict[str, Any], seed: int) -> int:
@@ -1099,7 +1115,16 @@ async def _perform_dispatch(body: "DispatchBody") -> Dict[str, Any]:
     # Pose Assist foundation: use the uploaded pose reference only for DWPose/
     # ControlNet geometry. The character prompt still owns identity and appearance.
     if wf_template and wf_template.kind == "pose":
-        await _patch_pose_assist_model_choices(workflow, s.comfyui_url)
+        pose_setup_missing = await _patch_pose_assist_model_choices(workflow, s.comfyui_url)
+        if pose_setup_missing:
+            r.status = "failed"
+            r.error = "Pose Assist setup needs: " + ", ".join(pose_setup_missing)
+            doc = r.model_dump()
+            doc["workflow_id"] = wf_template.id
+            doc["workflow_name"] = wf_template.name
+            await db.renders.insert_one(doc)
+            doc.pop("_id", None)
+            return doc
         if not body.reference_image:
             r.status = "failed"
             r.error = "Add a pose-reference image before using Pose Assist."
@@ -1578,8 +1603,10 @@ async def pose_assist_status():
             result["missing"].append("FLUX.1 Dev checkpoint")
         if not control:
             result["missing"].append("FLUX Union ControlNet")
-        if not t5 or not clip_l:
-            result["missing"].append("FLUX text encoders")
+        if not clip_l:
+            result["missing"].append("CLIP-L text encoder")
+        if not t5:
+            result["missing"].append("T5-XXL text encoder")
         if not result["dwpose_ready"]:
             result["missing"].append("DWPose preprocessor")
         if not result["chroma_refine_ready"]:
