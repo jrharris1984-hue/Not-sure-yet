@@ -1438,22 +1438,38 @@ export default function Builder() {
                 setActiveDna(merged);
               }}
             />
-            <label className="inline-flex items-center gap-1.5 rounded-lg border border-hairline bg-elevated px-2 py-1 text-sm text-zinc-300" title="Changes prompt vocabulary only; it never adds activities or changes DNA selections.">
-              <Flame className="h-4 w-4 text-fuchsia-300" />
-              <span className="hidden sm:inline text-xs">Language</span>
-              <select value={promptLanguage}
-                onChange={(event) => {
-                  const value = event.target.value;
-                  setPromptLanguage(value);
-                  setRaunch(value === "explicit");
-                }}
-                className="bg-transparent text-xs font-semibold outline-none"
-                data-testid="select-prompt-language">
-                <option value="editorial">Editorial</option>
-                <option value="direct">Direct</option>
-                <option value="explicit">Explicit</option>
-              </select>
-            </label>
+            <div
+              className="inline-flex items-center gap-1 rounded-lg border border-hairline bg-elevated p-1 text-sm text-zinc-300"
+              title="Changes prompt vocabulary only; it never adds activities or changes DNA selections."
+              data-testid="prompt-language-control"
+            >
+              <Flame className="ml-1 h-4 w-4 shrink-0 text-fuchsia-300" />
+              <span className="hidden sm:inline px-1 text-xs">Language</span>
+              {[
+                ["editorial", "Editorial"],
+                ["direct", "Direct"],
+                ["explicit", "Explicit"],
+              ].map(([value, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => {
+                    setPromptLanguage(value);
+                    setRaunch(value === "explicit");
+                  }}
+                  className={
+                    "rounded-md px-2 py-1 text-[10px] font-semibold transition "
+                    + (promptLanguage === value
+                      ? "bg-fuchsia-500/20 text-fuchsia-100 ring-1 ring-fuchsia-500/30"
+                      : "text-zinc-500 hover:bg-white/5 hover:text-zinc-200")
+                  }
+                  aria-pressed={promptLanguage === value}
+                  data-testid={`btn-prompt-language-${value}`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
             {!isNew && (
               <Link
                 to={`/shoot/new/${id}`}
