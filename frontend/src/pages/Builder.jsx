@@ -483,6 +483,25 @@ export default function Builder() {
     }
   };
 
+  const changePoseAssistEnabled = (enabled) => {
+    setPoseAssistEnabled(enabled);
+    setPoseAssistStage("");
+    if (!enabled) return;
+    setRenderCount(1);
+    const chroma = selectableWorkflows.find((workflow) =>
+      resolvePromptCompiler({
+        promptStyle: workflow.prompt_style,
+        workflowKind: workflow.kind,
+        workflowName: workflow.name,
+      }) === "chroma"
+    );
+    if (chroma && workflowId !== chroma.id) {
+      setWorkflowId(chroma.id);
+      setLoraOverrides({});
+      toast.message("Pose Assist uses Chroma for the final polish.");
+    }
+  };
+
   const applySmartSetup = (recommendation) => {
     const workflow = workflows.find((item) => item.id === recommendation.workflowId);
     if (!workflow) return;
@@ -1751,41 +1770,25 @@ export default function Builder() {
             onRequestAdvanced={() => setMobileStudioMode("advanced")}
           />
           {activeRecipeFamily === "image" && (
-            <PoseAssistPanel
-              enabled={poseAssistEnabled}
-              onEnabled={(enabled) => {
-                setPoseAssistEnabled(enabled);
-                setPoseAssistStage("");
-                if (enabled) {
-                  setRenderCount(1);
-                  const chroma = selectableWorkflows.find((workflow) =>
-                    resolvePromptCompiler({
-                      promptStyle: workflow.prompt_style,
-                      workflowKind: workflow.kind,
-                      workflowName: workflow.name,
-                    }) === "chroma"
-                  );
-                  if (chroma && workflowId !== chroma.id) {
-                    setWorkflowId(chroma.id);
-                    setLoraOverrides({});
-                    toast.message("Pose Assist uses Chroma for the final polish.");
-                  }
-                }
-              }}
-              preview={poseReferencePreview}
-              uploading={poseReferenceUploading}
-              onUpload={uploadPoseReference}
-              onClear={clearPoseReference}
-              strength={poseAssistStrength}
-              onStrength={setPoseAssistStrength}
-              polish={poseAssistPolish}
-              onPolish={setPoseAssistPolish}
-              stage={poseAssistStage}
-              available={poseAssistAvailable}
-              installing={installingPoseAssist}
-              onInstall={installPoseAssist}
-              systemStatus={poseAssistStatus}
-            />
+            <div className="md:hidden">
+              <PoseAssistPanel
+                enabled={poseAssistEnabled}
+                onEnabled={changePoseAssistEnabled}
+                preview={poseReferencePreview}
+                uploading={poseReferenceUploading}
+                onUpload={uploadPoseReference}
+                onClear={clearPoseReference}
+                strength={poseAssistStrength}
+                onStrength={setPoseAssistStrength}
+                polish={poseAssistPolish}
+                onPolish={setPoseAssistPolish}
+                stage={poseAssistStage}
+                available={poseAssistAvailable}
+                installing={installingPoseAssist}
+                onInstall={installPoseAssist}
+                systemStatus={poseAssistStatus}
+              />
+            </div>
           )}
           <PromptAlignmentCard
             analysis={promptAnalysis}
@@ -1861,6 +1864,28 @@ export default function Builder() {
               compiler={activeCompiler}
               value={qualityTier}
               onChange={applyQualityTier}
+            />
+          </div>
+        )}
+
+        {activeRecipeFamily === "image" && (
+          <div className="hidden md:block mt-3 sm:mt-4">
+            <PoseAssistPanel
+              enabled={poseAssistEnabled}
+              onEnabled={changePoseAssistEnabled}
+              preview={poseReferencePreview}
+              uploading={poseReferenceUploading}
+              onUpload={uploadPoseReference}
+              onClear={clearPoseReference}
+              strength={poseAssistStrength}
+              onStrength={setPoseAssistStrength}
+              polish={poseAssistPolish}
+              onPolish={setPoseAssistPolish}
+              stage={poseAssistStage}
+              available={poseAssistAvailable}
+              installing={installingPoseAssist}
+              onInstall={installPoseAssist}
+              systemStatus={poseAssistStatus}
             />
           </div>
         )}
