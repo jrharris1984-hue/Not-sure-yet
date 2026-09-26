@@ -12,6 +12,8 @@ export default function MobileOverflow({ children, testId = "mobile-overflow", a
 
   useEffect(() => {
     if (!open) return undefined;
+    const onModalClosed = () => setOpen(false);
+    window.addEventListener("ultra-studio:overflow-close", onModalClosed);
     const onDoc = (event) => {
       const target = event.target instanceof Element ? event.target : null;
       // Preset dialogs are rendered through document.body portals. Although
@@ -21,7 +23,10 @@ export default function MobileOverflow({ children, testId = "mobile-overflow", a
       if (!ref.current?.contains(event.target)) setOpen(false);
     };
     document.addEventListener("mousedown", onDoc);
-    return () => document.removeEventListener("mousedown", onDoc);
+    return () => {
+      document.removeEventListener("mousedown", onDoc);
+      window.removeEventListener("ultra-studio:overflow-close", onModalClosed);
+    };
   }, [open]);
 
   return (
