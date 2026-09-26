@@ -112,6 +112,7 @@ export default function PresetsMenu({ onApply, currentDna, sectionLocks = {}, fi
       toast.success(mode === "heritage" ? "Heritage applied" : "Complete heritage character created");
     }
     setOpen(false);
+    window.dispatchEvent(new CustomEvent("ultra-studio:overflow-close"));
   };
 
   return (

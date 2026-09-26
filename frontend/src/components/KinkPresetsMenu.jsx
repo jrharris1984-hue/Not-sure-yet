@@ -90,6 +90,7 @@ export default function KinkPresetsMenu({ currentDna, onApply }) {
     toast.success(`Applied adjusted "${selectedPreset.name}"`);
     setSelectedPreset(null);
     setOpen(false);
+    window.dispatchEvent(new CustomEvent("ultra-studio:overflow-close"));
   };
 
   const summary = selectedPreset ? kinkPresetChangeSummary(selectedPreset, sections) : [];
