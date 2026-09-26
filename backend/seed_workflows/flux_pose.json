@@ -185,25 +185,6 @@
       "title": "Apply DWPose Control"
     }
   },
-  "15": {
-    "inputs": {
-      "image": [
-        "12",
-        0
-      ],
-      "detect_hand": "enable",
-      "detect_body": "enable",
-      "detect_face": "enable",
-      "resolution": 768,
-      "bbox_detector": "yolox_l.onnx",
-      "pose_estimator": "dw-ll_ucoco_384_bs5.torchscript.pt",
-      "scale_stick_for_xinsr_cn": "disable"
-    },
-    "class_type": "DWPreprocessor",
-    "_meta": {
-      "title": "DWPose · Body + Hands + Face"
-    }
-  },
   "16": {
     "inputs": {
       "image": [
