@@ -1543,6 +1543,8 @@ async def pose_assist_status():
         "comfyui_online": False,
         "flux_model": "",
         "controlnet_model": "",
+        "t5_encoder": "",
+        "clip_l_encoder": "",
         "dwpose_ready": False,
         "missing": [],
     }
@@ -1556,16 +1558,24 @@ async def pose_assist_status():
 
         flux_options = _combo_options(info, "UNETLoader", "unet_name")
         control_options = _combo_options(info, "ControlNetLoader", "control_net_name")
+        clip1_options = _combo_options(info, "DualCLIPLoader", "clip_name1")
+        clip2_options = _combo_options(info, "DualCLIPLoader", "clip_name2")
         flux = _preferred_option(flux_options, ["flux", "dev"], ["fp8", "flux1"])
         control = _preferred_option(control_options, ["flux", "union"], ["pro", "2.0"])
+        t5 = _preferred_option(clip1_options, ["t5", "xxl"], ["fp8", "scaled"]) or _preferred_option(clip2_options, ["t5", "xxl"], ["fp8", "scaled"])
+        clip_l = _preferred_option(clip2_options, ["clip", "l"]) or _preferred_option(clip1_options, ["clip", "l"])
         result["flux_model"] = flux or ""
         result["controlnet_model"] = control or ""
+        result["t5_encoder"] = t5 or ""
+        result["clip_l_encoder"] = clip_l or ""
         result["dwpose_ready"] = "DWPreprocessor" in info
 
         if not flux:
             result["missing"].append("FLUX.1 Dev checkpoint")
         if not control:
             result["missing"].append("FLUX Union ControlNet")
+        if not t5 or not clip_l:
+            result["missing"].append("FLUX text encoders")
         if not result["dwpose_ready"]:
             result["missing"].append("DWPose preprocessor")
     except Exception:
