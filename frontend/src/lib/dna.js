@@ -1227,11 +1227,64 @@ export function buildChromaPrompts(dna = {}, opts = {}) {
   };
 }
 
+function _takeWords(text, maxWords) {
+  return String(text || "").split(/\s+/).filter(Boolean).slice(0, maxWords).join(" ").replace(/[,; ]+$/, "");
+}
+
+function _compactChromaSubject(subject, opts, maxWords) {
+  const dna = subject?.dna || {};
+  const label = subject?.label || "A";
+  const block = _veniceSubjectBlock(dna, opts);
+  const required = [
+    `Subject ${label}`,
+    block.pose && `pose: ${block.pose}`,
+    block.outfit && `wardrobe: ${block.outfit}`,
+  ].filter(Boolean).join(", ");
+  const supporting = [
+    block.subject,
+    block.intimate,
+    block.fluids,
+    block.playPriority,
+    block.feetPriority,
+  ].filter(Boolean).join(", ");
+
+  const requiredWords = required.split(/\s+/).filter(Boolean).length;
+  const remaining = Math.max(24, maxWords - requiredWords);
+  return [required, _takeWords(supporting, remaining)].filter(Boolean).join(", ");
+}
+
 export function buildMultiChromaPrompts(subjects = [], opts = {}) {
-  const base = buildMultiVenicePrompts(subjects, opts);
+  if (!Array.isArray(subjects) || subjects.length <= 1) {
+    return buildChromaPrompts(subjects?.[0]?.dna || {}, opts);
+  }
+
+  const primary = subjects[0]?.dna || {};
+  const shared = _veniceSharedBlock(primary, opts, subjects.length);
+  const subjectBudget = subjects.length <= 2 ? 105 : subjects.length === 3 ? 72 : 56;
+  const subjectClauses = subjects.map((subject) => _compactChromaSubject(subject, opts, subjectBudget));
+  const scenario = _takeWords(shared.scenario, subjects.length <= 2 ? 42 : 28);
+  const scene = _takeWords(shared.scene, 28);
+  const lighting = _takeWords(shared.lighting, 22);
+  const camera = _takeWords(shared.camera, 18);
+  const style = _takeWords(shared.style, 16);
+
+  const positive = [
+    "Natural high-end editorial photograph with realistic human anatomy and believable physical detail",
+    shared.castHeadcount,
+    "each adult is a separate complete person with one head, one torso and pelvis, two arms and two legs",
+    "keep visible separation between bodies; no merged torsos, shared limbs, stacked pelvises, duplicate legs or extra feet",
+    scenario && `scene action: ${scenario}`,
+    ...subjectClauses,
+    scene,
+    lighting,
+    camera,
+    style,
+    "anatomically coherent adults, natural joint placement, realistic limb count and perspective",
+  ].filter(Boolean).join("; ");
+
   return {
-    positive: _compactChromaText(base.positive),
-    negative: CHROMA_NEGATIVE + ", missing subject, merged bodies, fused people, duplicate face",
+    positive: _takeWords(positive, 345) + ".",
+    negative: CHROMA_NEGATIVE + ", missing subject, extra person, extra torso, extra pelvis, extra arm, extra leg, extra foot, duplicated anatomy, merged bodies, fused people, shared limbs, conjoined bodies, interpenetrating bodies, duplicate face",
   };
 }
 
