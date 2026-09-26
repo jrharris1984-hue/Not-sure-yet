@@ -77,6 +77,7 @@ export default function Builder() {
   const galleryImportApplied = useRef(false);
   const draftHydrated = useRef(false);
   const skipNextPromptReset = useRef(false);
+  const [editorHydrated, setEditorHydrated] = useState(false);
 
   const activeIdx = Math.max(0, SECTIONS.findIndex((s) => s.key === sectionParam));
   const activeSection = SECTIONS[activeIdx].key;
@@ -202,6 +203,7 @@ export default function Builder() {
     if (!isNew || draftHydrated.current) return;
     restoreDraft(readBuilderDraft(null));
     draftHydrated.current = true;
+    setEditorHydrated(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isNew]);
 
@@ -229,15 +231,26 @@ export default function Builder() {
 
   useEffect(() => {
     const incoming = location.state?.galleryReference;
-    if (!incoming || !workflows.length || galleryImportApplied.current) return;
+    if (!incoming || !workflows.length || galleryImportApplied.current || !editorHydrated) return;
+
+    const requestedKind = location.state?.targetKind;
+    const target = workflows.find((workflow) => workflow.kind === requestedKind);
+    if (!target) {
+      const label = requestedKind === "video" ? "image-to-video" : requestedKind === "face" ? "face-preserve" : "image-edit";
+      toast.error(`No ${label} workflow is configured. Add one in Settings first.`);
+      galleryImportApplied.current = true;
+      nav(location.pathname, { replace: true, state: null });
+      return;
+    }
+
     galleryImportApplied.current = true;
+    setWorkflowId(target.id);
     setReferenceImage(incoming);
     setSourceRenderId(incoming.source_render_id || null);
     setReferencePreview(location.state?.previewUrl || "");
-    const requestedKind = location.state?.targetKind;
-    const target = workflows.find((workflow) => workflow.kind === requestedKind);
-    if (target) setWorkflowId(target.id);
+
     if (requestedKind === "edit") {
+      setVideoInstruction("");
       if (location.state?.referenceMode === "new_pose") {
         setEditMode("new_pose");
         setPreserveUnmentioned(true);
@@ -247,15 +260,29 @@ export default function Builder() {
         setEditInstruction("Describe the changes you want to make to this Gallery image.");
       }
     } else if (requestedKind === "video") {
+      setEditMode("standard");
+      setEditInstruction("");
       setVideoInstruction("Describe how you want this Gallery image to move.");
+    } else if (requestedKind === "face") {
+      setEditMode("standard");
+      setEditInstruction("");
+      setVideoInstruction("");
     }
-    toast.success(requestedKind === "video" ? "Gallery image loaded for animation" : "Gallery image loaded for editing");
+
+    const message = requestedKind === "video"
+      ? "Gallery image loaded for animation"
+      : requestedKind === "face"
+        ? "Gallery image loaded as a face reference"
+        : location.state?.referenceMode === "new_pose"
+          ? "Gallery image loaded for a new pose"
+          : "Gallery image loaded for editing";
+    toast.success(message);
     nav(location.pathname, { replace: true, state: null });
-  }, [location.pathname, location.state, nav, workflows]);
+  }, [editorHydrated, location.pathname, location.state, nav, workflows]);
 
   useEffect(() => {
     const saved = location.state?.renderRecipe?.recipe;
-    if (!saved || !workflows.length || galleryImportApplied.current) return;
+    if (!saved || !workflows.length || galleryImportApplied.current || !editorHydrated) return;
     galleryImportApplied.current = true;
     skipNextPromptReset.current = true;
     if (Array.isArray(saved.subjects) && saved.subjects.length) {
@@ -289,7 +316,7 @@ export default function Builder() {
     }));
     toast.success("Exact Gallery recipe restored in the editor");
     nav(location.pathname, { replace: true, state: null });
-  }, [location.pathname, location.state, nav, workflows]);
+  }, [editorHydrated, location.pathname, location.state, nav, workflows]);
 
   const activeWorkflow = workflows.find((w) => w.id === workflowId);
   const promptStyle = activeWorkflow?.prompt_style || "venice";
@@ -531,6 +558,7 @@ export default function Builder() {
     setRaunch(savedLanguage === "explicit");
     restoreDraft(readBuilderDraft(id));
     draftHydrated.current = true;
+    setEditorHydrated(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [character?.id]);
 
