@@ -1763,7 +1763,7 @@ async def _sync_queue_job(job: Dict[str, Any]) -> Dict[str, Any]:
         mode = _guard_mode(render, payload)
         is_still_image = str(render.get("workflow_type") or "image") not in {"video", "text_video"}
 
-        if status == "done" and is_still_image and not render.get("anatomy_guard_status"):
+        if status == "done" and is_still_image and not render.get("hidden_from_gallery") and not render.get("anatomy_guard_status"):
             await db.renders.update_one(
                 {"id": render_id},
                 {"$set": {"anatomy_guard_status": "checking", "updated_at": now_iso()}},
