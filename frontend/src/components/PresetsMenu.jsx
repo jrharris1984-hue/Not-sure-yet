@@ -28,6 +28,9 @@ const DNA_CATALOG = Object.fromEntries(SECTIONS.map((section) => [
 
 export default function PresetsMenu({ onApply, currentDna, sectionLocks = {}, fieldLocks = {} }) {
   const [open, setOpen] = useState(false);
+  const closeMenu = () => {
+    closeMenu();
+  };
   const [q, setQ] = useState("");
   const [category, setCategory] = useState("stars");
   const [description, setDescription] = useState("");
@@ -130,7 +133,7 @@ export default function PresetsMenu({ onApply, currentDna, sectionLocks = {}, fi
         <div
           data-overflow-stay-open
           className="fixed inset-0 z-50 flex items-stretch sm:items-center justify-center p-0 sm:p-8 bg-black/70 backdrop-blur-sm"
-          onClick={() => setOpen(false)}
+          onClick={closeMenu}
           data-testid="presets-modal"
         >
           <div
@@ -143,7 +146,7 @@ export default function PresetsMenu({ onApply, currentDna, sectionLocks = {}, fi
               <span className="text-xs text-zinc-500 font-mono">{filtered.length}</span>
               <div className="flex-1" />
               <button
-                onClick={() => setOpen(false)}
+                onClick={closeMenu}
                 data-testid="btn-close-presets"
                 className="h-8 w-8 grid place-items-center rounded-md text-zinc-400 hover:bg-white/5"
               >
