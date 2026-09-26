@@ -13,6 +13,8 @@ export default function PoseAssistPanel({
   onPolish,
   stage = "",
   available = true,
+  installing = false,
+  onInstall,
 }) {
   const stageLabel = stage === "foundation"
     ? "Stage 1 of 2 · building pose foundation"
@@ -61,7 +63,19 @@ export default function PoseAssistPanel({
         <div className="border-t hairline px-3 py-3 space-y-3">
           {!available && (
             <div className="rounded-lg border border-amber-500/30 bg-amber-500/[0.07] px-3 py-2 text-[11px] text-amber-200">
-              Pose Assist workflows are not installed yet. Open Settings and choose Refresh bundled workflows once after merging this update.
+              <div>Pose Assist needs its two internal workflows installed once.</div>
+              {onInstall && (
+                <button
+                  type="button"
+                  onClick={onInstall}
+                  disabled={installing}
+                  className="mt-2 inline-flex items-center gap-1.5 rounded-md border border-amber-400/30 bg-amber-500/10 px-2.5 py-1.5 font-semibold text-amber-100 disabled:opacity-40"
+                  data-testid="btn-install-pose-assist"
+                >
+                  {installing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ImagePlus className="h-3.5 w-3.5" />}
+                  {installing ? "Installing…" : "Install Pose Assist"}
+                </button>
+              )}
             </div>
           )}
 
