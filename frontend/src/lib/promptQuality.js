@@ -1,3 +1,5 @@
+import { requirementPresent } from "@/lib/promptPriority";
+
 const PLACEHOLDER_SEGMENTS = new Set(["none", "average", "default", "n/a", "undefined", "null"]);
 
 const PROFILE_LIMITS = {
@@ -55,6 +57,7 @@ export function analyzePromptQuality({
   dna = {},
   workflow = {},
   context = {},
+  compilerMeta = {},
 } = {}) {
   const profile = promptProfile(workflow);
   const limits = PROFILE_LIMITS[profile];
@@ -77,6 +80,42 @@ export function analyzePromptQuality({
   }
   if (cleaned !== String(positive).trim() && duplicateCount === 0) {
     issues.push(issue("info", "placeholders", "Empty/default filler can be removed safely.", { fixable: true }));
+  }
+
+  const priorityPlan = compilerMeta?.priorityPlan || { mustMatch: [], important: [], detail: [] };
+  const missingMust = (priorityPlan.mustMatch || []).filter((item) => !requirementPresent(positive, item));
+  const droppedImportant = (compilerMeta?.droppedClauses || []).filter((item) => item.priority === "important");
+  const droppedDetail = (compilerMeta?.droppedClauses || []).filter((item) => item.priority === "detail");
+
+  if (missingMust.length) {
+    const preview = missingMust.slice(0, 3).map((item) => `${item.label}: ${item.value}`).join(", ");
+    issues.push(issue(
+      "warning",
+      "must-match-missing",
+      `${missingMust.length} must-match requirement${missingMust.length === 1 ? "" : "s"} may not be explicit in the final prompt: ${preview}.`
+    ));
+  }
+  if (droppedImportant.length) {
+    const preview = droppedImportant.slice(0, 3).map((item) => item.label).join(", ");
+    issues.push(issue(
+      "warning",
+      "priority-trim",
+      `${droppedImportant.length} important detail${droppedImportant.length === 1 ? "" : "s"} were trimmed to protect higher-priority instructions${preview ? `: ${preview}` : ""}.`
+    ));
+  } else if (droppedDetail.length) {
+    issues.push(issue(
+      "info",
+      "detail-trim",
+      `${droppedDetail.length} lower-priority detail${droppedDetail.length === 1 ? "" : "s"} were trimmed to keep the prompt focused.`
+    ));
+  }
+
+  if (compilerMeta?.negativeStrategy === "zeroed" && context.hasNegativeOverride) {
+    issues.push(issue(
+      "warning",
+      "negative-zeroed",
+      "This workflow uses zeroed negative conditioning, so a custom negative prompt will not steer the render the same way it does in Chroma or Pony."
+    ));
   }
 
   if (["qwen_edit", "wan_i2v"].includes(profile) && !context.hasReferenceImage) {
@@ -198,11 +237,35 @@ export function analyzePromptQuality({
   const warnings = issues.filter((entry) => entry.severity === "warning").length;
   const blockers = issues.filter((entry) => entry.blocking);
   const score = Math.max(0, 100 - (errors * 25) - (warnings * 10));
+
+  const mustCount = (priorityPlan.mustMatch || []).length;
+  const importantCount = (priorityPlan.important || []).length;
+  const alignmentPenalty =
+    (errors * 18)
+    + (warnings * 7)
+    + (missingMust.length * 10)
+    + (droppedImportant.length * 4);
+  const alignmentScore = Math.max(0, Math.min(100, 100 - alignmentPenalty));
+  const alignmentLabel = alignmentScore >= 90
+    ? "Strong match"
+    : alignmentScore >= 75
+      ? "Good match with notes"
+      : alignmentScore >= 55
+        ? "Review alignment"
+        : "Prompt overloaded";
+
   return {
     profile,
     profileLabel: limits.label,
     tokens,
     score,
+    alignmentScore,
+    alignmentLabel,
+    mustCount,
+    importantCount,
+    droppedImportantCount: droppedImportant.length,
+    droppedDetailCount: droppedDetail.length,
+    missingMust,
     issues,
     blockers,
     ready: blockers.length === 0,
