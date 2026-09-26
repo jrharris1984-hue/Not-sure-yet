@@ -955,7 +955,7 @@ export default function Builder() {
 
     if (poseAssistEnabled) {
       if (!poseAssistAvailable) {
-        toast.error("Pose Assist workflows are not installed. Open Settings and refresh bundled workflows once.");
+        toast.error("Pose Assist workflows are not installed. Use Install Pose Assist in the Create step.");
         return;
       }
       if (!poseReferenceImage?.name) {
