@@ -1,4 +1,4 @@
-import { AlertTriangle, CheckCircle2, LockKeyhole, Target } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Lock, Target } from "lucide-react";
 
 export default function PromptAlignmentCard({ analysis, priorityPlan, mode = "simple" }) {
   if (!analysis) return null;
@@ -53,7 +53,7 @@ export default function PromptAlignmentCard({ analysis, priorityPlan, mode = "si
       {must.length > 0 && (
         <div className="border-t hairline px-3 py-2.5">
           <div className="mb-1.5 flex items-center gap-1.5 text-[9px] font-mono uppercase tracking-wider text-zinc-600">
-            <LockKeyhole className="h-3.5 w-3.5" /> Must match
+            <Lock className="h-3.5 w-3.5" /> Must match
           </div>
           <div className="flex flex-wrap gap-1.5">
             {must.slice(0, mode === "advanced" ? 10 : 4).map((item) => (
