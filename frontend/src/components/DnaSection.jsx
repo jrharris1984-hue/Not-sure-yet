@@ -64,6 +64,9 @@ export default function DnaSection({
   onToggleFieldLock,
   collapsed = false,
   onToggleCollapsed,
+  simpleMode = false,
+  simpleFieldKeys = [],
+  onRequestAdvanced,
 }) {
   const set = (k, v) => {
     if (fieldLocks?.[k]) return; // ignore edits to a locked field
@@ -94,7 +97,7 @@ export default function DnaSection({
             title="AI suggest"
             onClick={onSuggest}
             data-testid={`btn-ai-suggest-${section.key}`}
-            className="h-8 w-8 sm:h-9 sm:w-9 grid place-items-center rounded-lg border hairline text-amber-300 hover:bg-amber-500/10"
+            className={`${simpleMode ? "hidden md:grid" : "grid"} h-8 w-8 sm:h-9 sm:w-9 place-items-center rounded-lg border hairline text-amber-300 hover:bg-amber-500/10`}
           >
             <Wand2 className="h-4 w-4" />
           </button>
@@ -112,7 +115,7 @@ export default function DnaSection({
             title="Reset section"
             onClick={onReset}
             data-testid={`btn-reset-${section.key}`}
-            className="h-8 w-8 sm:h-9 sm:w-9 grid place-items-center rounded-lg border hairline text-zinc-300 hover:bg-white/5"
+            className={`${simpleMode ? "hidden md:grid" : "grid"} h-8 w-8 sm:h-9 sm:w-9 place-items-center rounded-lg border hairline text-zinc-300 hover:bg-white/5`}
           >
             <RotateCcw className="h-4 w-4" />
           </button>
@@ -121,7 +124,7 @@ export default function DnaSection({
             title={locked ? "Unlock section" : "Lock section"}
             onClick={onToggleLock}
             data-testid={`btn-lock-${section.key}`}
-            className={`h-9 w-9 grid place-items-center rounded-lg border hairline ${
+            className={`${simpleMode ? "hidden md:grid" : "grid"} h-9 w-9 place-items-center rounded-lg border hairline ${
               locked ? "text-amber-300 bg-amber-500/10 border-amber-500/40" : "text-zinc-300 hover:bg-white/5"
             }`}
           >
@@ -136,7 +139,7 @@ export default function DnaSection({
           const fLocked = !!fieldLocks?.[f.key];
           const canLock = f.type === "slider" || f.type === "chips" || f.type === "pose_chips";
           return (
-          <div key={f.key} className={`space-y-2 ${fLocked ? "opacity-70" : ""}`}>
+          <div key={f.key} className={`${simpleMode && simpleFieldKeys.length && !simpleFieldKeys.includes(f.key) ? "hidden md:block" : "block"} space-y-2 ${fLocked ? "opacity-70" : ""}`}>
             <div className="flex items-center justify-between text-xs text-zinc-400 font-mono uppercase tracking-widest">
               <span className="flex items-center gap-1.5">
                 {f.label}
@@ -231,6 +234,16 @@ export default function DnaSection({
           );
         })}
       </div>
+      )}
+      {!collapsed && simpleMode && simpleFieldKeys.length > 0 && section.fields.some((field) => !simpleFieldKeys.includes(field.key)) && (
+        <button
+          type="button"
+          onClick={onRequestAdvanced}
+          className="md:hidden w-full rounded-lg border border-dashed hairline px-3 py-2.5 text-xs font-semibold text-zinc-500 hover:bg-white/[0.03] hover:text-zinc-300"
+          data-testid={`btn-advanced-fields-${section.key}`}
+        >
+          Show all {section.fields.length} {section.title.toLowerCase()} controls
+        </button>
       )}
     </section>
   );

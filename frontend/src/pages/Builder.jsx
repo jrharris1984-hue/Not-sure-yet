@@ -26,7 +26,12 @@ import TagInput from "@/components/TagInput";
 import GroupedSectionRail from "@/components/GroupedSectionRail";
 import DnaAtAGlance from "@/components/DnaAtAGlance";
 import MobileOverflow from "@/components/MobileOverflow";
-import MobileStudioFlow, { MOBILE_STUDIO_STEPS, mobileStudioStepForSection } from "@/components/MobileStudioFlow";
+import MobileStudioFlow, {
+  MOBILE_STUDIO_STEPS,
+  SIMPLE_FIELD_KEYS,
+  mobileStudioStepForSection,
+  mobileStudioSectionsForStep,
+} from "@/components/MobileStudioFlow";
 import SubjectSwitcher from "@/components/SubjectSwitcher";
 import ChromaControls from "@/components/ChromaControls";
 import RenderRecipeSelector from "@/components/RenderRecipeSelector";
@@ -87,14 +92,30 @@ export default function Builder() {
   const goSection = (key) => nav(sectionUrl(key));
 
   const [mobileStudioStep, setMobileStudioStep] = useState(() => mobileStudioStepForSection(activeSection));
+  const [mobileStudioMode, setMobileStudioMode] = useState(() => {
+    try {
+      return window.localStorage.getItem("ultra-studio-mobile-mode") === "advanced" ? "advanced" : "simple";
+    } catch {
+      return "simple";
+    }
+  });
   const activeMobileStudioIndex = Math.max(0, MOBILE_STUDIO_STEPS.findIndex((step) => step.id === mobileStudioStep));
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem("ultra-studio-mobile-mode", mobileStudioMode);
+    } catch {
+      // Local storage can be unavailable in private/restricted browser modes.
+    }
+  }, [mobileStudioMode]);
 
   const openMobileStudioStep = (stepId) => {
     const step = MOBILE_STUDIO_STEPS.find((item) => item.id === stepId);
     if (!step) return;
     setMobileStudioStep(stepId);
-    if (step.sections.length && !step.sections.includes(activeSection)) {
-      nav(sectionUrl(step.sections[0]));
+    const visibleSections = mobileStudioSectionsForStep(stepId, mobileStudioMode);
+    if (visibleSections.length && !visibleSections.includes(activeSection)) {
+      nav(sectionUrl(visibleSections[0]));
     }
     window.requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "smooth" }));
   };
@@ -102,6 +123,15 @@ export default function Builder() {
   const moveMobileStudioStep = (direction) => {
     const nextIndex = Math.max(0, Math.min(MOBILE_STUDIO_STEPS.length - 1, activeMobileStudioIndex + direction));
     openMobileStudioStep(MOBILE_STUDIO_STEPS[nextIndex].id);
+  };
+
+  const changeMobileStudioMode = (nextMode) => {
+    setMobileStudioMode(nextMode);
+    if (nextMode !== "simple") return;
+    const visibleSections = mobileStudioSectionsForStep(mobileStudioStep, "simple");
+    if (visibleSections.length && !visibleSections.includes(activeSection)) {
+      nav(sectionUrl(visibleSections[0]));
+    }
   };
 
   const [name, setName] = useState("Untitled");
@@ -1099,6 +1129,35 @@ export default function Builder() {
 
   const expectedCount = expectedSubjectCount(primaryDna);
 
+  const mobileStudioSummary = useMemo(() => {
+    const values = [];
+    if (mobileStudioStep === "start") {
+      values.push(activeDna.identity?.ethnicity, activeDna.identity?.archetype);
+      if (activeDna.identity?.age) values.push(`age ${activeDna.identity.age}`);
+    } else if (mobileStudioStep === "character") {
+      values.push(
+        activeDna.physique?.body_type,
+        activeDna.hair?.color,
+        activeDna.hair?.style,
+        activeDna.wardrobe?.outfit_preset
+      );
+    } else if (mobileStudioStep === "scene") {
+      values.push(
+        activeDna.pose?.action,
+        activeDna.scene?.environment,
+        activeDna.lighting?.mood || activeDna.lighting?.style
+      );
+    } else if (mobileStudioStep === "fine-tune") {
+      values.push(activeDna.scenario?.cast_size, activeDna.scenario?.roleplay);
+      if ((activeDna.scenario?.explicit_level || 0) > 0) values.push(`explicit ${activeDna.scenario.explicit_level}%`);
+      if ((activeDna.scenario?.kink_level || 0) > 0) values.push(`kink ${activeDna.scenario.kink_level}%`);
+    } else if (mobileStudioStep === "create") {
+      values.push(activeWorkflow?.name, qualityTier);
+      if (activeRecipeFamily === "image") values.push(`${renderCount} image${renderCount === 1 ? "" : "s"}`);
+    }
+    return values.filter((value) => value && value !== "none").slice(0, 4).join(" · ");
+  }, [activeDna, activeMobileStudioIndex, activeRecipeFamily, activeWorkflow?.name, mobileStudioStep, qualityTier, renderCount]);
+
   return (
     <div className="mx-auto max-w-[1600px] px-2.5 sm:px-6 py-3 sm:py-6 space-y-3 sm:space-y-4">
       {/* Header */}
@@ -1288,6 +1347,9 @@ export default function Builder() {
         activeSection={activeSection}
         locks={locks}
         sections={SECTIONS}
+        mode={mobileStudioMode}
+        summary={mobileStudioSummary}
+        onModeChange={changeMobileStudioMode}
         onStep={openMobileStudioStep}
         onSection={(key) => {
           setMobileStudioStep(mobileStudioStepForSection(key));
@@ -1340,7 +1402,7 @@ export default function Builder() {
         )}
 
         {isGoldenChroma && (
-          <div className="mt-3 sm:mt-4">
+          <div className={`${mobileStudioMode === "advanced" ? "block" : "hidden md:block"} mt-3 sm:mt-4`}>
             <ChromaControls value={chromaSettings} onChange={setChromaSettings} />
           </div>
         )}
@@ -1429,6 +1491,9 @@ export default function Builder() {
             })}
             collapsed={!!collapsed[activeSection]}
             onToggleCollapsed={() => setCollapsed((cur) => ({ ...cur, [activeSection]: !cur[activeSection] }))}
+            simpleMode={mobileStudioMode === "simple"}
+            simpleFieldKeys={SIMPLE_FIELD_KEYS[activeSection] || []}
+            onRequestAdvanced={() => setMobileStudioMode("advanced")}
           />
           <div className="hidden md:flex items-center justify-between gap-2">
             <button
@@ -1461,8 +1526,11 @@ export default function Builder() {
 
         {/* Right - preview + AI + render */}
         <aside className={`${mobileStudioStep === "create" ? "block" : "hidden md:block"} space-y-4 lg:sticky lg:top-20 lg:h-fit`}>
-          <SmartSetupPanel workflows={workflows} activeWorkflow={activeWorkflow} dna={activeDna}
-            subjectCount={subjects.length} hasReference={!!referenceImage?.name} onApply={applySmartSetup} />
+          <div className={mobileStudioMode === "advanced" ? "block" : "hidden md:block"}>
+            <SmartSetupPanel workflows={workflows} activeWorkflow={activeWorkflow} dna={activeDna}
+              subjectCount={subjects.length} hasReference={!!referenceImage?.name} onApply={applySmartSetup} />
+          </div>
+          <div className={mobileStudioMode === "advanced" ? "block" : "hidden md:block"}>
           <PromptPreview
             positive={finalPositive}
             negative={finalNegative}
@@ -1482,8 +1550,9 @@ export default function Builder() {
               toast.success("Generated prompt restored");
             }}
           />
+          </div>
           {activeWorkflow && promptStyle === "pony" && (
-            <div className="pane p-3 flex items-center gap-2" data-testid="pony-style-badge">
+            <div className={`${mobileStudioMode === "advanced" ? "flex" : "hidden md:flex"} pane p-3 items-center gap-2`} data-testid="pony-style-badge">
               <span className="text-[10px] font-mono uppercase tracking-widest text-rose-300 bg-rose-500/10 border border-rose-500/40 rounded px-1.5 py-0.5">pony style</span>
               <span className="text-[11px] text-zinc-400">score_9 prefix + booru tag weighting enabled</span>
             </div>
@@ -2000,20 +2069,22 @@ export default function Builder() {
               </label>
             </div>
           )}
-          <LikenessLoraPanel
-            workflowId={workflowId}
-            subject={activeSubject}
-            onChange={(likeness) => updateActiveSubject(() => ({ likeness }))}
-          />
-          <LoraPanel
-            workflowId={workflowId}
-            workflow={activeWorkflow}
-            dna={activeDna}
-            values={loraOverrides}
-            onChange={setLoraOverrides}
-            onPlanChange={(plan) => setLoraTriggerWords(plan.triggerWords || [])}
-          />
-          <AiAssistBar dna={activeDna} onApplyDna={(d) => setActiveDna({ ...DEFAULT_DNA, ...d })} />
+          <div className={`${mobileStudioMode === "advanced" ? "contents" : "hidden md:contents"}`}>
+            <LikenessLoraPanel
+              workflowId={workflowId}
+              subject={activeSubject}
+              onChange={(likeness) => updateActiveSubject(() => ({ likeness }))}
+            />
+            <LoraPanel
+              workflowId={workflowId}
+              workflow={activeWorkflow}
+              dna={activeDna}
+              values={loraOverrides}
+              onChange={setLoraOverrides}
+              onPlanChange={(plan) => setLoraTriggerWords(plan.triggerWords || [])}
+            />
+            <AiAssistBar dna={activeDna} onApplyDna={(d) => setActiveDna({ ...DEFAULT_DNA, ...d })} />
+          </div>
           {batchRenders.length > 1 && (
             <div className="pane p-4 space-y-3" data-testid="batch-render-progress">
               {(() => {
