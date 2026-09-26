@@ -33,6 +33,7 @@ import MobileStudioFlow, {
   mobileStudioSectionsForStep,
 } from "@/components/MobileStudioFlow";
 import MobileCreateReview from "@/components/MobileCreateReview";
+import MobileRenderResult from "@/components/MobileRenderResult";
 import SubjectSwitcher from "@/components/SubjectSwitcher";
 import ChromaControls from "@/components/ChromaControls";
 import RenderRecipeSelector from "@/components/RenderRecipeSelector";
@@ -154,6 +155,7 @@ export default function Builder() {
   const [renderCount, setRenderCount] = useState(1);
   const [batchRenders, setBatchRenders] = useState([]);
   const [selectedBatchRenderId, setSelectedBatchRenderId] = useState(null);
+  const [postRenderBusy, setPostRenderBusy] = useState("");
   const [workflowId, setWorkflowId] = useState("");
   const [loraOverrides, setLoraOverrides] = useState({});
   const [loraTriggerWords, setLoraTriggerWords] = useState([]);
@@ -939,6 +941,76 @@ export default function Builder() {
     }
   };
 
+  const clearFinishedRenderSession = () => {
+    setActiveRender(null);
+    setBatchRenders([]);
+    setSelectedBatchRenderId(null);
+  };
+
+  const keepFinishedRender = () => {
+    clearFinishedRenderSession();
+    qc.invalidateQueries({ queryKey: ["renders"] });
+    toast.success("Kept in Gallery");
+  };
+
+  const queueVariationFromFinishedRender = async () => {
+    if (!activeRender) return;
+    setPostRenderBusy("variation");
+    try {
+      const sourceId = activeRender.render_id || activeRender.id;
+      const queued = await endpoints.recreateRender(sourceId, true);
+      setBatchRenders([queued]);
+      setSelectedBatchRenderId(queued.id);
+      setActiveRender(queued);
+      qc.invalidateQueries({ queryKey: ["queue"] });
+      qc.invalidateQueries({ queryKey: ["renders"] });
+      toast.success("Variation added to the queue", {
+        description: queued.queue_position ? `Queue position #${queued.queue_position}` : undefined,
+      });
+    } catch (error) {
+      toast.error(error?.response?.data?.detail || "Could not queue a variation");
+    } finally {
+      setPostRenderBusy("");
+    }
+  };
+
+  const reuseFinishedRender = async (targetKind) => {
+    if (!activeRender) return;
+    const target = workflows.find((workflow) => workflow.kind === targetKind);
+    if (!target) {
+      toast.error(`No ${targetKind === "video" ? "image-to-video" : "image-edit"} workflow is configured. Add one in Settings first.`);
+      return;
+    }
+    setPostRenderBusy(targetKind === "video" ? "animate" : "edit");
+    try {
+      const sourceId = activeRender.render_id || activeRender.id;
+      const preview = activeRender.output_files?.[0] || "";
+      const reference = await endpoints.prepareRenderReference(sourceId);
+      setWorkflowId(target.id);
+      setLoraOverrides({});
+      setReferenceImage(reference);
+      setSourceRenderId(sourceId);
+      setReferencePreview(preview);
+      setEditMode("standard");
+      setEditInstruction("");
+      setVideoInstruction("");
+      clearFinishedRenderSession();
+      setMobileStudioMode("simple");
+      setMobileStudioStep("create");
+      toast.success(targetKind === "video" ? "Image ready to animate" : "Image ready to edit");
+      window.requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "smooth" }));
+    } catch (error) {
+      toast.error(error?.response?.data?.detail || `Could not load image for ${targetKind === "video" ? "animation" : "editing"}`);
+    } finally {
+      setPostRenderBusy("");
+    }
+  };
+
+  const returnToCharacterFromResult = () => {
+    clearFinishedRenderSession();
+    openMobileStudioStep("character");
+  };
+
   // Poll every render from the latest multi-image request so progress and
   // thumbnails update independently as ComfyUI works through the queue.
   useEffect(() => {
@@ -1221,6 +1293,15 @@ export default function Builder() {
     preflightContext, referenceImage?.name, repairInstruction, repairTargets, subjects, videoInstruction,
   ]);
 
+  const batchIsFinished = batchRenders.length <= 1 || batchRenders.every((render) =>
+    ["done", "failed", "offline", "cancelled"].includes(render.status)
+  );
+  const showMobileResult = mobileStudioStep === "create"
+    && mobileStudioMode === "simple"
+    && activeRender?.status === "done"
+    && !!activeRender.output_files?.[0]
+    && batchIsFinished;
+
   return (
     <div className="mx-auto max-w-[1600px] px-2.5 sm:px-6 py-3 sm:py-6 space-y-3 sm:space-y-4">
       {/* Header */}
@@ -1420,7 +1501,7 @@ export default function Builder() {
         }}
       />
 
-      {mobileStudioStep === "create" && (
+      {mobileStudioStep === "create" && !showMobileResult && (
         <MobileCreateReview
           workflow={activeWorkflow}
           compiler={activeCompiler}
@@ -1436,7 +1517,30 @@ export default function Builder() {
         />
       )}
 
-      <div className="md:hidden fixed inset-x-0 z-30 mobile-builder-actions border-t hairline bg-[#111017]/95 px-2.5 py-2 backdrop-blur-xl shadow-[0_-12px_30px_rgba(0,0,0,0.28)]" data-testid="mobile-builder-actions">
+      {showMobileResult && (
+        <MobileRenderResult
+          render={activeRender}
+          batch={batchRenders}
+          selectedId={selectedBatchRenderId}
+          onSelect={(render) => {
+            setSelectedBatchRenderId(render.id);
+            setActiveRender(render);
+          }}
+          onKeep={keepFinishedRender}
+          onVariation={queueVariationFromFinishedRender}
+          onEdit={() => reuseFinishedRender("edit")}
+          onAnimate={() => reuseFinishedRender("video")}
+          onBackCharacter={returnToCharacterFromResult}
+          onGallery={() => nav(`/gallery?render=${encodeURIComponent(activeRender.render_id || activeRender.id)}&returnTo=${encodeURIComponent(location.pathname)}`)}
+          onDownload={(url) => downloadRenderImage(
+            url,
+            `render-${activeRender.render_id || activeRender.id}.${/\.(webm|mp4|mov)(?:[?&]|$)/i.test(decodeURIComponent(url)) ? "webm" : "png"}`
+          )}
+          busy={postRenderBusy}
+        />
+      )}
+
+      <div className={`${showMobileResult ? "hidden" : "md:hidden"} fixed inset-x-0 z-30 mobile-builder-actions border-t hairline bg-[#111017]/95 px-2.5 py-2 backdrop-blur-xl shadow-[0_-12px_30px_rgba(0,0,0,0.28)]" data-testid="mobile-builder-actions">
         <div className="grid grid-cols-[0.9fr_1.4fr] gap-2">
           <button
             type="button"
@@ -2169,7 +2273,7 @@ export default function Builder() {
             <AiAssistBar dna={activeDna} onApplyDna={(d) => setActiveDna({ ...DEFAULT_DNA, ...d })} />
           </div>
           {batchRenders.length > 1 && (
-            <div className="pane p-4 space-y-3" data-testid="batch-render-progress">
+            <div className={`${showMobileResult ? "hidden md:block" : "block"} pane p-4 space-y-3`} data-testid="batch-render-progress">
               {(() => {
                 const completed = batchRenders.filter((r) => r.status === "done").length;
                 const failed = batchRenders.filter((r) => ["failed", "offline", "cancelled"].includes(r.status)).length;
@@ -2229,7 +2333,7 @@ export default function Builder() {
           )}
 
           {activeRender && (
-            <div className="pane p-4 space-y-3" data-testid="render-status-panel">
+            <div className={`${showMobileResult ? "hidden md:block" : "block"} pane p-4 space-y-3`} data-testid="render-status-panel">
               <div className="flex items-center justify-between">
                 <div className="section-label">Render</div>
                 <span
