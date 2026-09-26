@@ -7,12 +7,12 @@ const IMAGE_RECIPES = {
   chroma: {
     draft: { width: 768, height: 768, steps: 18, cfg: 3.4, batchSize: 1, sampler: "euler", note: "Quick Golden Chroma preview" },
     balanced: { width: 768, height: 1152, steps: 26, cfg: 3.8, batchSize: 1, sampler: "euler", note: "Recommended Golden Chroma render" },
-    quality: { width: 1024, height: 1536, steps: 34, cfg: 4.0, batchSize: 1, sampler: "dpmpp_2m", note: "Higher-detail portrait" },
+    quality: { width: 1024, height: 1536, steps: 34, cfg: 4.0, batchSize: 1, sampler: "euler", note: "Higher-detail portrait" },
   },
   pony: {
-    draft: { width: 768, height: 1024, steps: 20, cfg: 6.0, batchSize: 1, sampler: "euler", note: "Fast Pony composition test" },
-    balanced: { width: 832, height: 1216, steps: 30, cfg: 7.0, batchSize: 1, sampler: "dpmpp_2m", note: "Recommended Pony render" },
-    quality: { width: 1024, height: 1536, steps: 38, cfg: 7.0, batchSize: 1, sampler: "dpmpp_2m_sde", note: "Maximum Pony detail" },
+    draft: { width: 768, height: 1024, steps: 18, cfg: 6.5, batchSize: 1, sampler: "euler_ancestral", note: "Fast Pony composition test" },
+    balanced: { width: 832, height: 1216, steps: 25, cfg: 7.0, batchSize: 1, sampler: "euler_ancestral", note: "Recommended Pony render" },
+    quality: { width: 1024, height: 1536, steps: 32, cfg: 7.0, batchSize: 1, sampler: "euler_ancestral", note: "Higher-detail Pony render" },
   },
   standard: {
     draft: { width: 768, height: 1024, steps: 18, cfg: 4.0, batchSize: 1, sampler: "euler", note: "Quick preview" },
