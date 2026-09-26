@@ -124,6 +124,23 @@ export function analyzePromptQuality({
     }
 
     if (profile === "zimage") {
+      const zPose = String(dna?.pose?.action || "").toLowerCase();
+      const zAngle = String(dna?.pose?.angle || "").toLowerCase();
+      const zDistance = String(dna?.pose?.distance || "").toLowerCase();
+      const zFeetDensity = Object.values(feet).filter((value) => (
+        Array.isArray(value) ? value.filter(Boolean).length > 0 : Boolean(value) && value !== "none"
+      )).length;
+      const zComplexPose = ["kneeling", "squatting", "bending", "lying legs up", "on back legs up"].includes(zPose);
+      const zAwkwardAngle = ["pov", "over-shoulder", "back"].includes(zAngle);
+      const zTightCrop = ["portrait", "waist-up", "close-up", "detail shot"].includes(zDistance);
+
+      if (zComplexPose && zAwkwardAngle) {
+        issues.push(issue("warning", "zimage-overconstrained-pose", "The pose and camera angle are both demanding. Simplifying one of them usually improves alignment."));
+      }
+      if (zFeetDensity > 3 && zTightCrop && focus !== "feet") {
+        issues.push(issue("warning", "zimage-overconstrained-feet", "Several foot details are selected, but the current crop does not prioritize feet. Some of those details may be ignored."));
+      }
+
       const anatomyMode = String(dna?.style?.anatomy_mode || "natural").toLowerCase();
       if (anatomyMode === "extreme") {
         issues.push(issue("warning", "zimage-anatomy-mode", "Extreme mode preserves exaggerated proportions, but the structural Human Guard still rejects extra limbs, disconnected joints, duplicated anatomy, and impossible body structure."));

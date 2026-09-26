@@ -35,6 +35,13 @@ export default function SmartSetupPanel({ workflows, activeWorkflow, dna, subjec
             <span>LoRAs: {recommendation.loraMode}</span>
             <span className="col-span-2 inline-flex items-center gap-1"><ShieldCheck className="h-3 w-3 text-emerald-300" /> Anatomy review {recommendation.anatomyReview ? "enabled" : "workflow-specific"}</span>
           </div>
+          {recommendation.reasons?.length > 0 && (
+            <div className="mt-2 space-y-1 border-t border-cyan-500/10 pt-2 text-cyan-100/80">
+              {recommendation.reasons.slice(0, 3).map((reason) => (
+                <div key={reason}>Why: {reason}</div>
+              ))}
+            </div>
+          )}
           {recommendation.warnings.map((warning) => <div key={warning} className="mt-2 flex gap-1 text-amber-200"><AlertTriangle className="h-3 w-3 shrink-0" />{warning}</div>)}
         </div>
         <button type="button" onClick={() => onApply(recommendation)} disabled={!recommendation.workflowId}
