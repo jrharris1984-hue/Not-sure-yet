@@ -1587,7 +1587,7 @@ export default function Builder() {
         )}
 
         {isGoldenChroma && (
-          <div className={`${mobileStudioMode === "advanced" ? "block" : "hidden md:block"} mt-3 sm:mt-4`}>
+          <div className={(mobileStudioMode === "advanced" ? "block " : "hidden md:block ") + "mt-3 sm:mt-4"}>
             <ChromaControls value={chromaSettings} onChange={setChromaSettings} />
           </div>
         )}
