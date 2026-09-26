@@ -53,6 +53,29 @@ const primaryOutput = (render) => proxiedMediaUrl(render.output_variants?.enhanc
 const originalOutput = (render) => proxiedMediaUrl(render.output_variants?.original?.[0]);
 const isVideoUrl = (url = "") => /\.(webm|mp4|mov)(?:[?&]|$)/i.test(decodeURIComponent(url));
 
+const generationValue = (render, key) =>
+  render?.generation_settings?.[key] ?? render?.render_recipe?.[key] ?? null;
+
+const renderDimensions = (render) => {
+  const width = generationValue(render, "width");
+  const height = generationValue(render, "height");
+  return width && height ? `${width} × ${height}` : "—";
+};
+
+const renderOperationLabel = (render) => {
+  if (render?.operation === "variation") return "Variation";
+  if (render?.operation === "recreate") return "Recreate";
+  if (render?.parent_render_id) return "Derived";
+  return "Original";
+};
+
+const formatRenderDate = (value) => {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+};
+
 export default function Gallery() {
   const qc = useQueryClient();
   const nav = useNavigate();
@@ -444,7 +467,7 @@ export default function Gallery() {
                   <ChevronLeft className="h-6 w-6" />
                 </button>
                 <button type="button" onClick={() => showAdjacent(1)}
-                  className="absolute right-2 md:right-[21rem] sm:right-4 top-1/2 -translate-y-1/2 z-30 h-11 w-11 grid place-items-center rounded-full border border-white/20 bg-black/65 text-white backdrop-blur-md"
+                  className="absolute right-2 md:right-[25rem] sm:right-4 top-1/2 -translate-y-1/2 z-30 h-11 w-11 grid place-items-center rounded-full border border-white/20 bg-black/65 text-white backdrop-blur-md"
                   aria-label="Next gallery item" data-testid="btn-lightbox-next">
                   <ChevronRight className="h-6 w-6" />
                 </button>
@@ -478,11 +501,22 @@ export default function Gallery() {
             </div>
 
             {/* Meta column */}
-            <aside className={`${showDetails ? "flex" : "hidden"} md:flex flex-col fixed md:static inset-x-0 bottom-0 z-40 w-full md:w-80 shrink-0 pane rounded-b-none md:rounded-[14px] p-4 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] md:pb-4 space-y-3 max-h-[78dvh] md:max-h-[85vh] overflow-y-auto scroll-fade shadow-2xl`}>
+            <aside className={`${showDetails ? "flex" : "hidden"} md:flex flex-col fixed md:static inset-x-0 bottom-0 z-40 w-full md:w-96 shrink-0 pane rounded-t-2xl rounded-b-none md:rounded-[14px] p-4 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] md:pb-4 space-y-3 max-h-[84dvh] md:max-h-[85vh] overflow-y-auto scroll-fade shadow-2xl`}>
               <div className="flex items-start justify-between gap-2">
-                <div>
+                <div className="min-w-0">
                   <div className="section-label">Render</div>
-                  <div className="font-display font-bold text-sm mt-0.5">{lightbox.workflow_name || lightbox.workflow_type}</div>
+                  <div className="font-display font-bold text-base mt-0.5 truncate">{lightbox.workflow_name || lightbox.workflow_type}</div>
+                  <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                    <span className="rounded-full border hairline bg-elevated px-2 py-0.5 text-[9px] font-mono uppercase tracking-wide text-zinc-400">
+                      {lightbox.workflow_type || "image"}
+                    </span>
+                    <span className="rounded-full border border-violet-500/30 bg-violet-500/10 px-2 py-0.5 text-[9px] font-mono uppercase tracking-wide text-violet-200">
+                      {renderOperationLabel(lightbox)}
+                    </span>
+                    {formatRenderDate(lightbox.created_at) && (
+                      <span className="text-[9px] font-mono text-zinc-500">{formatRenderDate(lightbox.created_at)}</span>
+                    )}
+                  </div>
                 </div>
                 <button
                   onClick={() => setShowDetails(false)}
@@ -501,6 +535,63 @@ export default function Gallery() {
               </div>
 
               <div className="flex flex-col gap-2">
+                <section className="rounded-lg border hairline bg-black/10 p-2.5" data-testid="gallery-recipe-snapshot">
+                  <div className="mb-2 flex items-center justify-between gap-2">
+                    <div className="text-xs font-bold text-zinc-200">Recipe snapshot</div>
+                    <button type="button" onClick={() => openRecipe.mutate(lightbox)} disabled={openRecipe.isPending}
+                      className="text-[10px] font-semibold text-amber-300 hover:text-amber-200 disabled:opacity-40"
+                      data-testid="btn-lightbox-open-recipe-quick">
+                      Open exact recipe
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-2 gap-1.5 text-[10px] font-mono">
+                    <div className="rounded-md border hairline bg-elevated p-2">
+                      <div className="text-[8px] uppercase tracking-wider text-zinc-500">Seed</div>
+                      <div className="mt-0.5 truncate text-amber-200">{lightbox.seed_used ?? "—"}</div>
+                    </div>
+                    <div className="rounded-md border hairline bg-elevated p-2">
+                      <div className="text-[8px] uppercase tracking-wider text-zinc-500">Size</div>
+                      <div className="mt-0.5 text-zinc-200">{renderDimensions(lightbox)}</div>
+                    </div>
+                    <div className="rounded-md border hairline bg-elevated p-2">
+                      <div className="text-[8px] uppercase tracking-wider text-zinc-500">Steps · CFG</div>
+                      <div className="mt-0.5 text-zinc-200">{generationValue(lightbox, "steps") ?? "—"} · {generationValue(lightbox, "cfg") ?? "—"}</div>
+                    </div>
+                    <div className="rounded-md border hairline bg-elevated p-2">
+                      <div className="text-[8px] uppercase tracking-wider text-zinc-500">Sampler</div>
+                      <div className="mt-0.5 truncate text-zinc-200">{generationValue(lightbox, "sampler_name") || "—"}</div>
+                    </div>
+                  </div>
+                </section>
+
+                {versions.filter((version) => primaryOutput(version)).length > 1 && (
+                  <section className="rounded-lg border hairline bg-black/10 p-2.5" data-testid="gallery-version-family">
+                    <div className="mb-2 flex items-center justify-between gap-2">
+                      <div>
+                        <div className="text-xs font-bold text-zinc-200">Version family</div>
+                        <div className="text-[9px] text-zinc-500">{versions.filter((version) => primaryOutput(version)).length} related renders</div>
+                      </div>
+                    </div>
+                    <div className="flex gap-2 overflow-x-auto pb-1 scroll-fade">
+                      {versions.filter((version) => primaryOutput(version)).map((version) => (
+                        <button key={version.id} type="button" onClick={() => setLightbox(version)}
+                          className={`w-20 shrink-0 overflow-hidden rounded-lg border text-left ${version.id === lightbox.id ? "border-amber-400 bg-amber-500/10" : "hairline bg-elevated"}`}
+                          data-testid={`gallery-version-${version.id}`}>
+                          <div className="aspect-square overflow-hidden bg-black/30">
+                            {isVideoUrl(primaryOutput(version))
+                              ? <video src={primaryOutput(version)} muted playsInline preload="none" className="h-full w-full object-cover" />
+                              : <img src={primaryOutput(version)} alt="version" className="h-full w-full object-cover" />}
+                          </div>
+                          <div className="p-1.5">
+                            <div className="truncate text-[9px] font-bold text-zinc-200">{renderOperationLabel(version)}</div>
+                            <div className="truncate text-[8px] font-mono text-zinc-500">seed {version.seed_used ?? "—"}</div>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </section>
+                )}
+
                 <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-2.5">
                   <div className="mb-2 flex items-center justify-between gap-2">
                     <div>
@@ -563,13 +654,8 @@ export default function Gallery() {
                 )}
 
                 <details className="rounded-lg border hairline bg-black/15 p-3" data-testid="gallery-render-details">
-                  <summary className="cursor-pointer text-xs font-semibold text-zinc-300">Details and more actions</summary>
+                  <summary className="cursor-pointer text-xs font-semibold text-zinc-300">Prompt & advanced actions</summary>
                   <div className="space-y-2 pt-3">
-                    <div className="grid grid-cols-2 gap-2 text-[11px] font-mono">
-                      <div className="rounded-md bg-elevated border hairline p-2"><div className="text-zinc-500 uppercase text-[9px]">Status</div><div className="text-emerald-300">done</div></div>
-                      {lightbox.seed_used != null && <div className="rounded-md bg-elevated border hairline p-2"><div className="text-zinc-500 uppercase text-[9px]">Seed</div><div className="text-amber-300 truncate">{lightbox.seed_used}</div></div>}
-                    </div>
-                    {versions.length > 1 && <div className="flex gap-2 overflow-x-auto pb-1">{versions.filter((version) => primaryOutput(version)).map((version) => <button key={version.id} type="button" onClick={() => setLightbox(version)} className={`h-14 w-14 shrink-0 overflow-hidden rounded-md border ${version.id === lightbox.id ? "border-amber-400" : "hairline"}`}><img src={primaryOutput(version)} alt="version" className="h-full w-full object-cover" /></button>)}</div>}
                     {!isVideoUrl(primaryOutput(lightbox)) && (
                       <button type="button" onClick={() => reuseAsReference.mutate({ render: lightbox, targetKind: "edit", referenceMode: "new_pose" })} disabled={reuseAsReference.isPending}
                         data-testid="btn-lightbox-new-pose" className="w-full inline-flex items-center justify-center gap-2 rounded-lg border border-cyan-500/40 bg-cyan-500/10 px-3 py-2 text-sm text-cyan-100 disabled:opacity-40">
@@ -577,7 +663,6 @@ export default function Gallery() {
                       </button>
                     )}
                     {lightbox.prompt_positive && <div className="text-[11px] font-mono text-zinc-300 bg-elevated border hairline rounded-md p-2 max-h-32 overflow-y-auto whitespace-pre-wrap">{lightbox.prompt_positive}</div>}
-                    <button type="button" onClick={() => openRecipe.mutate(lightbox)} disabled={openRecipe.isPending} data-testid="btn-lightbox-open-recipe" className="w-full rounded-lg border hairline px-3 py-2 text-sm"><BookOpen className="inline h-4 w-4 mr-2" />Open exact recipe</button>
                     <button onClick={() => { navigator.clipboard.writeText(lightbox.prompt_positive || ""); toast.success("Prompt copied"); }} data-testid="btn-lightbox-copy-prompt" className="w-full rounded-lg border hairline px-3 py-2 text-sm"><Copy className="inline h-4 w-4 mr-2" />Copy prompt</button>
                     {originalOutput(lightbox) && originalOutput(lightbox) !== primaryOutput(lightbox) && (
                       <button onClick={() => downloadImage(originalOutput(lightbox), `${lightbox.workflow_name || "render"}-${lightbox.id.slice(0, 8)}-original.png`)} data-testid="btn-lightbox-download-original" className="w-full rounded-lg border hairline px-3 py-2 text-sm">
@@ -605,7 +690,15 @@ export default function Gallery() {
                     ? <video src={primaryOutput(render)} controls className="max-h-full max-w-full object-contain" />
                     : <img src={primaryOutput(render)} alt="comparison" className="max-h-full max-w-full object-contain" />}
                 </div>
-                <div className="text-xs text-zinc-300 font-mono truncate">{render.workflow_name || render.workflow_type} · seed {render.seed_used ?? "—"}</div>
+                <div className="rounded-lg border hairline bg-elevated p-2.5 text-[10px] font-mono">
+                  <div className="truncate text-xs font-bold text-zinc-200">{render.workflow_name || render.workflow_type}</div>
+                  <div className="mt-1 grid grid-cols-2 gap-x-3 gap-y-1 text-zinc-500">
+                    <span>seed <b className="text-amber-200">{render.seed_used ?? "—"}</b></span>
+                    <span>size <b className="text-zinc-200">{renderDimensions(render)}</b></span>
+                    <span>steps <b className="text-zinc-200">{generationValue(render, "steps") ?? "—"}</b></span>
+                    <span>cfg <b className="text-zinc-200">{generationValue(render, "cfg") ?? "—"}</b></span>
+                  </div>
+                </div>
               </div>
             ))}
           </div>
