@@ -167,9 +167,18 @@ export default function Gallery() {
     mutationFn: (render) => endpoints.getRenderRecipe(render.id).then((result) => ({ render, result })),
     onSuccess: ({ render, result }) => {
       const path = render.character_id ? `/character/${render.character_id}` : "/character/new";
-      nav(path, { state: { renderRecipe: result } });
+      nav(path, { state: { renderRecipe: result, renderRecipeMode: "exact" } });
     },
     onError: (error) => toast.error(error?.response?.data?.detail || "Could not restore this render recipe"),
+  });
+
+  const rebuildCurrentCompiler = useMutation({
+    mutationFn: (render) => endpoints.getRenderRecipe(render.id).then((result) => ({ render, result })),
+    onSuccess: ({ render, result }) => {
+      const path = render.character_id ? `/character/${render.character_id}` : "/character/new";
+      nav(path, { state: { renderRecipe: result, renderRecipeMode: "current" } });
+    },
+    onError: (error) => toast.error(error?.response?.data?.detail || "Could not rebuild this setup with the current compiler"),
   });
 
   const moveToAlbum = useMutation({
@@ -597,29 +606,39 @@ export default function Gallery() {
                     <div>
                       <div className="text-xs font-bold text-amber-100">Reuse this render</div>
                       <div className="mt-0.5 text-[10px] text-zinc-500">
-                        Recreate keeps the same seed{lightbox.seed_used != null ? ` · ${lightbox.seed_used}` : ""}. Variation changes only the seed.
+                        Exact uses the saved prompt + seed. Variation changes only the seed. Current Compiler rebuilds the prompt from today's app logic.
                       </div>
                     </div>
-                    {recreate.isPending && <Loader2 className="h-4 w-4 animate-spin text-amber-300" />}
+                    {(recreate.isPending || rebuildCurrentCompiler.isPending) && <Loader2 className="h-4 w-4 animate-spin text-amber-300" />}
                   </div>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
                     <button
                       type="button"
                       onClick={() => recreate.mutate({ id: lightbox.id, variation: false })}
-                      disabled={recreate.isPending}
+                      disabled={recreate.isPending || rebuildCurrentCompiler.isPending}
                       data-testid="btn-lightbox-recreate-primary"
-                      className="inline-flex items-center justify-center gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm font-semibold text-amber-100 hover:bg-amber-500/15 disabled:opacity-40"
+                      className="inline-flex items-center justify-center gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs font-semibold text-amber-100 hover:bg-amber-500/15 disabled:opacity-40"
                     >
-                      <RotateCcw className="h-4 w-4" /> Recreate
+                      <RotateCcw className="h-4 w-4" /> Recreate Exact
                     </button>
                     <button
                       type="button"
                       onClick={() => recreate.mutate({ id: lightbox.id, variation: true })}
-                      disabled={recreate.isPending}
+                      disabled={recreate.isPending || rebuildCurrentCompiler.isPending}
                       data-testid="btn-lightbox-variation-primary"
-                      className="inline-flex items-center justify-center gap-2 rounded-lg border border-violet-500/40 bg-violet-500/10 px-3 py-2 text-sm font-semibold text-violet-100 hover:bg-violet-500/15 disabled:opacity-40"
+                      className="inline-flex items-center justify-center gap-2 rounded-lg border border-violet-500/40 bg-violet-500/10 px-3 py-2 text-xs font-semibold text-violet-100 hover:bg-violet-500/15 disabled:opacity-40"
                     >
                       <Shuffle className="h-4 w-4" /> Variation
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => rebuildCurrentCompiler.mutate(lightbox)}
+                      disabled={recreate.isPending || rebuildCurrentCompiler.isPending}
+                      data-testid="btn-lightbox-rebuild-current"
+                      className="inline-flex items-center justify-center gap-2 rounded-lg border border-cyan-500/40 bg-cyan-500/10 px-3 py-2 text-xs font-semibold text-cyan-100 hover:bg-cyan-500/15 disabled:opacity-40"
+                      title="Open the saved DNA/settings in Builder, clear saved prompt overrides, and regenerate the prompt with the current compiler"
+                    >
+                      <BookOpen className="h-4 w-4" /> Current Compiler
                     </button>
                   </div>
                 </div>

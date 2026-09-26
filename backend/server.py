@@ -873,6 +873,9 @@ class DispatchBody(BaseModel):
     character_id: Optional[str] = None
     dna: Dict[str, Any] = Field(default_factory=dict)
     subjects: List[Dict[str, Any]] = Field(default_factory=list)
+    locks: Dict[str, bool] = Field(default_factory=dict)
+    prompt_language: str = "editorial"
+    quality_tier: Optional[str] = None
     prompt_positive: str = ""
     prompt_negative: str = ""
     workflow_id: Optional[str] = None
