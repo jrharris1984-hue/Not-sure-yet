@@ -1521,6 +1521,7 @@ export default function Builder() {
           <PromptAlignmentCard
             analysis={promptAnalysis}
             priorityPlan={compiledPrompt.priorityPlan}
+            adjustments={compiledPrompt.guardAdjustments || []}
             mode={mobileStudioMode}
           />
         </>
