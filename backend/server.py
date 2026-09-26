@@ -940,6 +940,32 @@ def _preferred_option(options: List[str], required: List[str], preferred: List[s
     )[0]
 
 
+def _preferred_flux1_dev_option(options: List[str]) -> Optional[str]:
+    """Select FLUX.1-dev only; FLUX.2 is not compatible with our FLUX.1 Union ControlNet."""
+    matches = []
+    for option in options:
+        lowered = option.lower()
+        compact = re.sub(r"[^a-z0-9]+", "", lowered)
+        if "dev" not in lowered:
+            continue
+        if "flux2" in compact:
+            continue
+        if "flux1" not in compact:
+            continue
+        matches.append(option)
+    if not matches:
+        return None
+    return sorted(
+        matches,
+        key=lambda option: (
+            -int("fp8" in option.lower()),
+            -int("mixed" in option.lower()),
+            len(option),
+            option.lower(),
+        ),
+    )[0]
+
+
 async def _patch_pose_assist_model_choices(workflow: Dict[str, Any], comfyui_url: str) -> List[str]:
     """Repair portable Pose Assist model choices and return any missing dependencies."""
     try:
@@ -958,7 +984,7 @@ async def _patch_pose_assist_model_choices(workflow: Dict[str, Any], comfyui_url
     control_options = _combo_options(info, "ControlNetLoader", "control_net_name")
     missing: List[str] = []
 
-    flux_model = _preferred_option(unet_options, ["flux", "dev"], ["fp8", "flux1"])
+    flux_model = _preferred_flux1_dev_option(unet_options)
     clip_l = (
         _preferred_option(clip1_options, ["clip", "l"])
         or _preferred_option(clip2_options, ["clip", "l"])
@@ -1588,7 +1614,7 @@ async def pose_assist_status():
         control_options = _combo_options(info, "ControlNetLoader", "control_net_name")
         clip1_options = _combo_options(info, "DualCLIPLoader", "clip_name1")
         clip2_options = _combo_options(info, "DualCLIPLoader", "clip_name2")
-        flux = _preferred_option(flux_options, ["flux", "dev"], ["fp8", "flux1"])
+        flux = _preferred_flux1_dev_option(flux_options)
         control = _preferred_option(control_options, ["flux", "union"], ["pro", "2.0"])
         t5 = _preferred_option(clip1_options, ["t5", "xxl"], ["fp8", "scaled"]) or _preferred_option(clip2_options, ["t5", "xxl"], ["fp8", "scaled"])
         clip_l = _preferred_option(clip2_options, ["clip", "l"]) or _preferred_option(clip1_options, ["clip", "l"])
@@ -1887,6 +1913,29 @@ async def _run_anatomy_guard(render: Dict[str, Any], mode: str) -> Dict[str, Any
         return {"status": "skipped", "passed": True, "score": None, "issues": [], "summary": "Anatomy inspection was unavailable; render was not blocked."}
 
 
+def _comfy_history_error(entry: Dict[str, Any]) -> Optional[str]:
+    status = entry.get("status") or {}
+    if status.get("status_str") != "error":
+        return None
+
+    for message in reversed(status.get("messages") or []):
+        if not isinstance(message, (list, tuple)) or len(message) < 2:
+            continue
+        event, payload = message[0], message[1]
+        if event not in {"execution_error", "execution_interrupted"}:
+            continue
+        payload = payload if isinstance(payload, dict) else {}
+        if event == "execution_interrupted":
+            return "ComfyUI execution was interrupted."
+        detail = str(payload.get("exception_message") or payload.get("exception_type") or "ComfyUI execution failed").strip()
+        node_id = payload.get("node_id")
+        node_type = payload.get("node_type")
+        node = " / ".join(str(value) for value in [node_id, node_type] if value)
+        return f"ComfyUI execution failed{f' at {node}' if node else ''}: {detail}"
+
+    return "ComfyUI execution failed."
+
+
 async def _poll_render_doc(rid: str) -> Optional[Dict[str, Any]]:
     doc = await db.renders.find_one({"id": rid}, {"_id": 0})
     if not doc or not doc.get("comfy_prompt_id"):
@@ -1901,15 +1950,25 @@ async def _poll_render_doc(rid: str) -> Optional[Dict[str, Any]]:
             hist = resp.json()
             entry = hist.get(doc["comfy_prompt_id"])
             if entry:
+                comfy_error = _comfy_history_error(entry)
                 outputs = entry.get("outputs", {})
                 files, variants = _collect_comfy_outputs(s.comfyui_url, outputs)
-                update = {
-                    "status": "done" if files else doc.get("status", "running"),
-                    "output_files": files,
-                    "output_variants": variants,
-                    "progress": 1.0 if files else doc.get("progress", 0.0),
-                    "updated_at": now_iso(),
-                }
+                if comfy_error:
+                    update = {
+                        "status": "failed",
+                        "error": comfy_error,
+                        "output_files": files,
+                        "output_variants": variants,
+                        "updated_at": now_iso(),
+                    }
+                else:
+                    update = {
+                        "status": "done" if files else doc.get("status", "running"),
+                        "output_files": files,
+                        "output_variants": variants,
+                        "progress": 1.0 if files else doc.get("progress", 0.0),
+                        "updated_at": now_iso(),
+                    }
                 await db.renders.update_one({"id": rid}, {"$set": update})
                 doc.update(update)
     except Exception as e:
