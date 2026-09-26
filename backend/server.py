@@ -1531,6 +1531,53 @@ async def dispatch_render(body: DispatchBody):
     return await _enqueue_render(body)
 
 
+@api.get("/pose-assist/status")
+async def pose_assist_status():
+    """Report whether the local ComfyUI install has the pieces Pose Assist needs."""
+    settings = await get_settings()
+    has_foundation = any(workflow.kind == "pose" for workflow in settings.workflows)
+    has_polish = any(workflow.kind == "refine" for workflow in settings.workflows)
+    result = {
+        "ready": False,
+        "workflows_ready": has_foundation and has_polish,
+        "comfyui_online": False,
+        "flux_model": "",
+        "controlnet_model": "",
+        "dwpose_ready": False,
+        "missing": [],
+    }
+
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as hc:
+            response = await hc.get(f"{settings.comfyui_url.rstrip('/')}/object_info")
+        response.raise_for_status()
+        info = response.json()
+        result["comfyui_online"] = True
+
+        flux_options = _combo_options(info, "UNETLoader", "unet_name")
+        control_options = _combo_options(info, "ControlNetLoader", "control_net_name")
+        flux = _preferred_option(flux_options, ["flux", "dev"], ["fp8", "flux1"])
+        control = _preferred_option(control_options, ["flux", "union"], ["pro", "2.0"])
+        result["flux_model"] = flux or ""
+        result["controlnet_model"] = control or ""
+        result["dwpose_ready"] = "DWPreprocessor" in info
+
+        if not flux:
+            result["missing"].append("FLUX.1 Dev checkpoint")
+        if not control:
+            result["missing"].append("FLUX Union ControlNet")
+        if not result["dwpose_ready"]:
+            result["missing"].append("DWPose preprocessor")
+    except Exception:
+        result["missing"].append("ComfyUI connection")
+
+    if not has_foundation or not has_polish:
+        result["missing"].append("Pose Assist workflows")
+
+    result["ready"] = not result["missing"]
+    return result
+
+
 async def _render_recipe(rid: str) -> tuple[Dict[str, Any], Dict[str, Any]]:
     render = await db.renders.find_one({"id": rid}, {"_id": 0})
     if not render:
