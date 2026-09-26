@@ -192,6 +192,7 @@ export default function Builder() {
   const [videoWidth, setVideoWidth] = useState(640);
   const [videoHeight, setVideoHeight] = useState(640);
   const [qualityTier, setQualityTier] = useState("balanced");
+  const [galleryRecipeMode, setGalleryRecipeMode] = useState("");
   const [enhancingVideo, setEnhancingVideo] = useState(false);
   const [analyzingVideoImage, setAnalyzingVideoImage] = useState(false);
   const [videoImageAnalysis, setVideoImageAnalysis] = useState("");
@@ -360,7 +361,7 @@ export default function Builder() {
       setSubjects([restored]);
       setActiveSubjectId(restored.id);
     }
-    setLocks(saved.locks || {});
+    if (saved.locks) setLocks(saved.locks);
     if (saved.prompt_language) {
       setPromptLanguage(saved.prompt_language);
       setRaunch(saved.prompt_language === "explicit");
@@ -384,6 +385,7 @@ export default function Builder() {
       batchSize: saved.batch_size || current.batchSize, sampler: saved.sampler_name || current.sampler,
       seed: rebuildCurrent ? "" : (saved.seed ?? current.seed),
     }));
+    setGalleryRecipeMode(rebuildCurrent ? "current" : "exact");
     toast.success(rebuildCurrent
       ? "Saved setup loaded with the current compiler · prompt overrides cleared"
       : "Exact Gallery recipe restored in the editor");
@@ -1326,6 +1328,19 @@ export default function Builder() {
 
   return (
     <div className="mx-auto max-w-[1600px] px-2.5 sm:px-6 py-3 sm:py-6 space-y-3 sm:space-y-4">
+      {galleryRecipeMode === "current" && (
+        <div className="pane border border-cyan-500/30 bg-cyan-500/[0.06] px-3 py-2.5 text-xs text-cyan-100" data-testid="current-compiler-rebuild-banner">
+          <div className="flex items-start gap-2">
+            <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-cyan-300" />
+            <div>
+              <div className="font-semibold">Rebuild with Current Compiler</div>
+              <div className="mt-0.5 text-[10px] text-zinc-400">
+                Saved DNA and generation settings were restored, saved prompt overrides were cleared, and the next render will use the current compiler with a new seed.
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       {/* Header */}
       <div className="pane p-2.5 sm:p-4 flex flex-col gap-2.5 sm:gap-3">
         <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
