@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 
 const renderId = (render) => render?.render_id || render?.id;
+const isVideoOutput = (url = "") => /\.(webm|mp4|mov)(?:[?&]|$)/i.test(decodeURIComponent(url));
 
 export default function MobileRenderResult({
   render,
@@ -29,6 +30,7 @@ export default function MobileRenderResult({
 
   const completedBatch = batch.filter((item) => item.status === "done" && item.output_files?.[0]);
   const showBatch = completedBatch.length > 1;
+  const isVideo = isVideoOutput(output);
 
   return (
     <section className="md:hidden space-y-3" data-testid="mobile-render-result">
@@ -46,12 +48,24 @@ export default function MobileRenderResult({
         </div>
 
         <div className="bg-black/25">
-          <img
-            src={output}
-            alt="Finished render"
-            className="max-h-[62dvh] w-full object-contain"
-            data-testid="mobile-render-result-image"
-          />
+          {isVideo ? (
+            <video
+              src={output}
+              controls
+              autoPlay
+              playsInline
+              loop
+              className="max-h-[62dvh] w-full object-contain"
+              data-testid="mobile-render-result-video"
+            />
+          ) : (
+            <img
+              src={output}
+              alt="Finished render"
+              className="max-h-[62dvh] w-full object-contain"
+              data-testid="mobile-render-result-image"
+            />
+          )}
         </div>
 
         {showBatch && (
@@ -73,7 +87,9 @@ export default function MobileRenderResult({
                     }`}
                     data-testid={`mobile-render-result-${index + 1}`}
                   >
-                    <img src={item.output_files[0]} alt={`Result ${index + 1}`} className="h-full w-full object-cover" />
+                    {isVideoOutput(item.output_files[0])
+                      ? <video src={item.output_files[0]} muted playsInline preload="metadata" className="h-full w-full object-cover" />
+                      : <img src={item.output_files[0]} alt={`Result ${index + 1}`} className="h-full w-full object-cover" />}
                     <span className="absolute left-1 top-1 rounded bg-black/70 px-1 py-0.5 text-[8px] text-white">{index + 1}</span>
                   </button>
                 );
@@ -94,7 +110,7 @@ export default function MobileRenderResult({
           <Check className="h-4 w-4" /> Keep this one
         </button>
 
-        <div className="grid grid-cols-3 gap-2">
+        <div className={`grid ${isVideo ? "grid-cols-1" : "grid-cols-3"} gap-2`}>
           <button
             type="button"
             onClick={onVariation}
@@ -105,7 +121,7 @@ export default function MobileRenderResult({
             <Shuffle className="h-4 w-4" />
             {busy === "variation" ? "Queueing…" : "Variation"}
           </button>
-          <button
+          {!isVideo && <button
             type="button"
             onClick={onEdit}
             disabled={!!busy}
@@ -114,8 +130,8 @@ export default function MobileRenderResult({
           >
             <Pencil className="h-4 w-4" />
             {busy === "edit" ? "Loading…" : "Edit"}
-          </button>
-          <button
+          </button>}
+          {!isVideo && <button
             type="button"
             onClick={onAnimate}
             disabled={!!busy}
@@ -124,7 +140,7 @@ export default function MobileRenderResult({
           >
             <Film className="h-4 w-4" />
             {busy === "animate" ? "Loading…" : "Animate"}
-          </button>
+          </button>}
         </div>
 
         <div className="grid grid-cols-3 gap-2">
@@ -141,7 +157,7 @@ export default function MobileRenderResult({
           <button type="button" onClick={() => onDownload(output)} disabled={!!busy}
             className="inline-flex items-center justify-center gap-1 rounded-lg border hairline px-2 py-2.5 text-[10px] font-semibold text-zinc-300 disabled:opacity-40"
             data-testid="btn-mobile-result-download">
-            <Download className="h-3.5 w-3.5" /> Save
+            <Download className="h-3.5 w-3.5" /> Download
           </button>
         </div>
       </div>
