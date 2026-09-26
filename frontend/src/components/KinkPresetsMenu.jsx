@@ -14,6 +14,9 @@ import {
 
 export default function KinkPresetsMenu({ currentDna, onApply }) {
   const [open, setOpen] = useState(false);
+  const closeMenu = () => {
+    closeMenu();
+  };
   const [q, setQ] = useState("");
   const [selectedPreset, setSelectedPreset] = useState(null);
   const [sections, setSections] = useState({});
@@ -141,7 +144,7 @@ export default function KinkPresetsMenu({ currentDna, onApply }) {
       {open && (
         <div
           className="fixed inset-0 z-50 flex items-start sm:items-center justify-center p-3 sm:p-8 bg-black/70 backdrop-blur-sm"
-          onClick={() => setOpen(false)}
+          onClick={closeMenu}
           data-testid="kink-presets-modal"
         >
           <div
@@ -168,7 +171,7 @@ export default function KinkPresetsMenu({ currentDna, onApply }) {
                 <Save className="h-3 w-3" /> save current
               </button>}
               <button
-                onClick={() => setOpen(false)}
+                onClick={closeMenu}
                 data-testid="btn-close-kink-presets"
                 className="h-8 w-8 grid place-items-center rounded-md text-zinc-400 hover:bg-white/5"
               >
