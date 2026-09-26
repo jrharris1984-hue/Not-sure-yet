@@ -133,6 +133,13 @@ export function resolveZImageComposition(dna = {}, options = {}) {
   const focus = lower(resolved.pose.focus) || "full frame";
   const distance = lower(resolved.pose.distance);
   const fullBody = ["full body", "wide shot"].includes(distance);
+
+  if (options.forceMulti && mode !== "extreme" && fullBody && focus !== "feet"
+      && ["from below", "pov"].includes(lower(resolved.pose.angle))) {
+    resolved.pose.angle = "3/4";
+    adjustments.push("Replaced the extreme low/POV angle with a three-quarter view so multiple full bodies remain separate and proportionate.");
+  }
+
   const feetFraming = lower(resolved.feet.framing);
   const feetCloseup = ["feet close-up", "sole close-up", "pov under foot", "low angle sole"].includes(feetFraming);
   const feetRequested = !!(
@@ -209,9 +216,14 @@ export function resolveZImageComposition(dna = {}, options = {}) {
     composition = "PRIMARY COMPOSITION — balanced full-character framing, coherent perspective, no competing body-part close-up";
   }
 
+  const multiBodyGuard = options.forceMulti
+    ? "MULTI-SUBJECT ANATOMY — each adult is a separate complete person with one head, one torso and pelvis, two arms and two legs; keep visible separation between torsos and pelvises; no merged bodies, shared limbs, stacked torsos or duplicated anatomy"
+    : "";
+
   const lead = [
     humanLead,
     solo && "exactly one adult person in the image, no background people or partial extra bodies",
+    multiBodyGuard,
     composition,
     supportingFeet,
   ].filter(Boolean).join(", ");
@@ -266,6 +278,7 @@ export function buildZImagePrompts({
     {
       extraLead: [primaryGuard.composition],
       budgetWords: primaryGuard.anatomyMode === "natural" ? 220 : primaryGuard.anatomyMode === "enhanced" ? 260 : 300,
+      preserveOrder: isMulti,
     }
   );
   return {
@@ -368,7 +381,7 @@ export function compileModelPrompts({
       prompts.positive,
       priorityPlan,
       family,
-      { extraLead: [primaryGuard.composition] }
+      { extraLead: [primaryGuard.composition], preserveOrder: isMulti }
     );
     return {
       ...prompts,
@@ -404,7 +417,7 @@ export function compileModelPrompts({
   );
   if (compiler === "wan_t2v") {
     const prompts = buildWanTextToVideoPrompts({ dna, subjects, isMulti, raunch, instruction: videoInstruction });
-    const prioritized = prioritizePrompt(prompts.positive, priorityPlan, "wan_t2v");
+    const prioritized = prioritizePrompt(prompts.positive, priorityPlan, "wan_t2v", { preserveOrder: isMulti });
     return {
       ...prompts,
       ...prioritized,

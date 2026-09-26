@@ -55,11 +55,11 @@ function workflowScore(workflow, target, dna, subjectCount, hasReference) {
     if (stillKind) score += 30;
 
     if (/z[- ]?image|zimage/.test(haystack)) {
-      if (intent.explicit) score += 35;
-      if (intent.feetFocus) score += 35;
-      if (intent.poseComplex) score += 20;
-      if (intent.detailHeavy) score += 15;
-      if (intent.multiSubject) score += 10;
+      if (intent.explicit) score += intent.multiSubject ? 20 : 35;
+      if (!intent.multiSubject && intent.feetFocus) score += 35;
+      if (!intent.multiSubject && intent.poseComplex) score += 20;
+      if (intent.detailHeavy) score += 10;
+      if (intent.multiSubject) score -= 25;
     }
 
     if (/chroma/.test(haystack)) {
@@ -67,7 +67,7 @@ function workflowScore(workflow, target, dna, subjectCount, hasReference) {
       if (!intent.feetFocus) score += 15;
       if (intent.identityHeavy) score += 15;
       if (!intent.poseComplex) score += 10;
-      if (intent.multiSubject) score += 5;
+      if (intent.multiSubject) score += 40;
     }
 
     if (/pony/.test(haystack)) {
@@ -103,12 +103,13 @@ export function recommendSmartSetup({ workflows = [], target = "still", dna = {}
   const selectedName = text(selected?.name || "");
   if (target === "still" && selected) {
     if (/z[- ]?image|zimage/.test(selectedName)) {
-      if (intent.poseComplex) reasons.push("Complex pose favors Z-Image's guarded composition path.");
-      if (intent.feetFocus) reasons.push("Feet-focused detail favors the Z-Image prompt guard.");
+      if (intent.poseComplex) reasons.push("Complex single-subject pose favors Z-Image's guarded composition path.");
+      if (intent.feetFocus) reasons.push("Feet-focused single-subject detail favors the Z-Image prompt guard.");
       if (intent.detailHeavy) reasons.push("High-detail character setup favors the Z-Image still workflow.");
       if (!reasons.length) reasons.push("Z-Image is the strongest match for this still-image request.");
     } else if (/chroma/.test(selectedName)) {
-      reasons.push(intent.identityHeavy
+      if (intent.multiSubject) reasons.push("Chroma is preferred for multi-person stills because it is more stable at keeping bodies separate.");
+      else reasons.push(intent.identityHeavy
         ? "Chroma is a strong fit for a detailed portrait-style identity."
         : "Chroma is a strong fit for a cleaner portrait-style still.");
     } else if (/pony/.test(selectedName)) {

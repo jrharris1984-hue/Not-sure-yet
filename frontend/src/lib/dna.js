@@ -813,11 +813,11 @@ export function buildMultiVenicePrompts(subjects = [], opts = {}) {
   const positive = _join([
     shared.qualityLead,
     shared.castHeadcount,
-    "clearly separated subjects, all subjects fully visible in the frame with distinct bodies and faces",
+    "clearly separated subjects, each person has an independent complete body, distinct face, torso, pelvis, arms and legs, no merged bodies or shared limbs",
     familyScene && "all depicted people are adults age 21 or older, recognizable shared family resemblance in facial structure and heritage while preserving distinct adult identities",
     shared.scenario && `PRIMARY SCENE ACTION — ${shared.scenario}`,
-    priorityClauses,
     clauses.join("; "),
+    priorityClauses,
     shared.scene,
     shared.lighting,
     shared.camera,
