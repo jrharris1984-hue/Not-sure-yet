@@ -302,6 +302,10 @@ export default function Builder() {
   }, [activeRender, batchRenders, selectedBatchRenderId, renderCount, id, isNew]);
 
   const { data: workflows = [] } = useQuery({ queryKey: ["workflows"], queryFn: endpoints.listWorkflows });
+  const selectableWorkflows = useMemo(
+    () => workflows.filter((workflow) => !["pose", "refine"].includes(workflow.kind)),
+    [workflows]
+  );
   const { data: settings } = useQuery({ queryKey: ["settings"], queryFn: endpoints.settings });
   useEffect(() => {
     if (!workflowId && workflows.length) {
@@ -1505,7 +1509,7 @@ export default function Builder() {
             className={`${mobileStudioStep === "start" || (mobileStudioStep === "create" && mobileStudioMode === "advanced") ? "block" : "hidden md:block"} bg-elevated border border-hairline rounded-lg px-3 py-2 text-sm text-zinc-100 w-full sm:w-auto sm:min-w-[200px]`}
           >
             {workflows.length === 0 && <option value="">No workflows — open Settings</option>}
-            {workflows.map((w) => (
+            {selectableWorkflows.map((w) => (
               <option key={w.id} value={w.id}>{w.kind.toUpperCase()} · {w.name}</option>
             ))}
           </select>
@@ -1520,9 +1524,9 @@ export default function Builder() {
           {activeRecipeFamily === "image" && (
             <select
               data-testid="select-render-count"
-              value={renderCount}
+              value={poseAssistEnabled ? 1 : renderCount}
               onChange={(e) => setRenderCount(Number(e.target.value))}
-              disabled={dispatching}
+              disabled={dispatching || poseAssistEnabled}
               className="hidden md:block bg-elevated border border-hairline rounded-lg px-3 py-2 text-sm text-zinc-100 flex-1 sm:flex-none"
               title="Number of images to queue with unique seeds"
             >
@@ -1533,11 +1537,11 @@ export default function Builder() {
           )}
           <button
             onClick={doDispatch}
-            disabled={dispatching || !workflowId}
+            disabled={dispatching || !workflowId || (poseAssistEnabled && (!poseAssistAvailable || !poseReferenceImage?.name))}
             data-testid="btn-dispatch-comfyui-render"
             className="hidden md:inline-flex items-center gap-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black text-sm font-semibold px-3 py-2 disabled:opacity-40"
           >
-            {dispatching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />} Render
+            {dispatching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />} {poseAssistEnabled ? "Pose Assist" : "Render"}
           </button>
           <MobileOverflow testId="builder-overflow" always label="More">
             <button
@@ -1709,13 +1713,33 @@ export default function Builder() {
             family={activeRecipeFamily}
             qualityTier={qualityTier}
             onQualityTier={applyQualityTier}
-            renderCount={renderCount}
+            renderCount={poseAssistEnabled ? 1 : renderCount}
             onRenderCount={setRenderCount}
             summaries={mobileCreateSummaries}
             issues={mobileCreateIssues}
             mode={mobileStudioMode}
             onRequestAdvanced={() => setMobileStudioMode("advanced")}
           />
+          {activeRecipeFamily === "image" && (
+            <PoseAssistPanel
+              enabled={poseAssistEnabled}
+              onEnabled={(enabled) => {
+                setPoseAssistEnabled(enabled);
+                setPoseAssistStage("");
+                if (enabled) setRenderCount(1);
+              }}
+              preview={poseReferencePreview}
+              uploading={poseReferenceUploading}
+              onUpload={uploadPoseReference}
+              onClear={clearPoseReference}
+              strength={poseAssistStrength}
+              onStrength={setPoseAssistStrength}
+              polish={poseAssistPolish}
+              onPolish={setPoseAssistPolish}
+              stage={poseAssistStage}
+              available={poseAssistAvailable}
+            />
+          )}
           <PromptAlignmentCard
             analysis={promptAnalysis}
             priorityPlan={compiledPrompt.priorityPlan}
@@ -1768,7 +1792,7 @@ export default function Builder() {
               className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-emerald-500 py-3 text-sm font-bold text-black disabled:opacity-40"
               data-testid="btn-mobile-studio-render"
             >
-              {dispatching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />} Render
+              {dispatching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />} {poseAssistEnabled ? "Generate" : "Render"}
             </button>
           ) : (
             <button
@@ -1922,7 +1946,7 @@ export default function Builder() {
         {/* Right - preview + AI + render */}
         <aside className={`${mobileStudioStep === "create" ? "block" : "hidden md:block"} space-y-4 lg:sticky lg:top-20 lg:h-fit`}>
           <div className={mobileStudioMode === "advanced" ? "block" : "hidden md:block"}>
-            <SmartSetupPanel workflows={workflows} activeWorkflow={activeWorkflow} dna={activeDna}
+            <SmartSetupPanel workflows={selectableWorkflows} activeWorkflow={activeWorkflow} dna={activeDna}
               subjectCount={subjects.length} hasReference={!!referenceImage?.name} onApply={applySmartSetup} />
           </div>
           <div className={mobileStudioMode === "advanced" ? "block" : "hidden md:block"}>
