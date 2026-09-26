@@ -73,9 +73,9 @@ export default function DnaSection({
   return (
     <section
       data-testid={`dna-section-${section.key}`}
-      className="pane p-4 sm:p-6 space-y-4"
+      className="pane p-3 sm:p-6 space-y-3 sm:space-y-4"
     >
-      <header className="flex items-center justify-between gap-2">
+      <header className="flex items-start sm:items-center justify-between gap-2">
         <button
           type="button"
           onClick={onToggleCollapsed}
@@ -94,7 +94,7 @@ export default function DnaSection({
             title="AI suggest"
             onClick={onSuggest}
             data-testid={`btn-ai-suggest-${section.key}`}
-            className="h-9 w-9 grid place-items-center rounded-lg border hairline text-amber-300 hover:bg-amber-500/10"
+            className="h-8 w-8 sm:h-9 sm:w-9 grid place-items-center rounded-lg border hairline text-amber-300 hover:bg-amber-500/10"
           >
             <Wand2 className="h-4 w-4" />
           </button>
@@ -103,7 +103,7 @@ export default function DnaSection({
             title="Randomize section"
             onClick={onRandomize}
             data-testid={`btn-randomize-${section.key}`}
-            className="h-9 w-9 grid place-items-center rounded-lg border hairline text-zinc-300 hover:bg-white/5"
+            className="h-8 w-8 sm:h-9 sm:w-9 grid place-items-center rounded-lg border hairline text-zinc-300 hover:bg-white/5"
           >
             <Shuffle className="h-4 w-4" />
           </button>
@@ -112,7 +112,7 @@ export default function DnaSection({
             title="Reset section"
             onClick={onReset}
             data-testid={`btn-reset-${section.key}`}
-            className="h-9 w-9 grid place-items-center rounded-lg border hairline text-zinc-300 hover:bg-white/5"
+            className="h-8 w-8 sm:h-9 sm:w-9 grid place-items-center rounded-lg border hairline text-zinc-300 hover:bg-white/5"
           >
             <RotateCcw className="h-4 w-4" />
           </button>
