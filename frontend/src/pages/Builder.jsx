@@ -210,6 +210,7 @@ export default function Builder() {
   const [poseAssistStrength, setPoseAssistStrength] = useState(0.90);
   const [poseAssistPolish, setPoseAssistPolish] = useState(0.30);
   const [poseAssistStage, setPoseAssistStage] = useState("");
+  const [installingPoseAssist, setInstallingPoseAssist] = useState(false);
   const [galleryRecipeMode, setGalleryRecipeMode] = useState("");
   const [enhancingVideo, setEnhancingVideo] = useState(false);
   const [analyzingVideoImage, setAnalyzingVideoImage] = useState(false);
@@ -455,6 +456,23 @@ export default function Builder() {
       setVideoHeight(recipe.videoHeight);
     } else if (recipe.family === "edit") {
       setRepairStrength(recipe.repairStrength);
+    }
+  };
+
+  const installPoseAssist = async () => {
+    setInstallingPoseAssist(true);
+    try {
+      const result = await endpoints.seedWorkflows();
+      await qc.invalidateQueries({ queryKey: ["workflows"] });
+      toast.success("Pose Assist installed", {
+        description: result?.added || result?.updated
+          ? "Internal FLUX foundation and Chroma polish workflows are ready."
+          : "Pose Assist workflows are already current.",
+      });
+    } catch (error) {
+      toast.error(error?.response?.data?.detail || "Could not install Pose Assist workflows.");
+    } finally {
+      setInstallingPoseAssist(false);
     }
   };
 
@@ -1740,6 +1758,8 @@ export default function Builder() {
               onPolish={setPoseAssistPolish}
               stage={poseAssistStage}
               available={poseAssistAvailable}
+              installing={installingPoseAssist}
+              onInstall={installPoseAssist}
             />
           )}
           <PromptAlignmentCard
