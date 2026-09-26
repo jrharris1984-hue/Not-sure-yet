@@ -121,7 +121,7 @@ export default function DnaSection({
           </button>
           <button
             type="button"
-            title={locked ? "Unlock section" : "Lock section"}
+            title={locked ? "Unlock section" : "Lock section — keep these values and prioritize them as Must Match"}
             onClick={onToggleLock}
             data-testid={`btn-lock-${section.key}`}
             className={`${simpleMode ? "hidden md:grid" : "grid"} h-9 w-9 place-items-center rounded-lg border hairline ${
@@ -156,7 +156,7 @@ export default function DnaSection({
                     type="button"
                     onClick={(e) => { e.preventDefault(); e.stopPropagation(); onToggleFieldLock(f.key); }}
                     data-testid={`btn-field-lock-${section.key}-${f.key}`}
-                    title={fLocked ? "Unlock — will be randomized" : "Lock — value stays put"}
+                    title={fLocked ? "Unlock — value can change again" : "Lock — keep this value and prioritize it as Must Match"}
                     className={`h-5 w-5 grid place-items-center rounded ${
                       fLocked ? "text-amber-300" : "text-zinc-500 hover:text-zinc-200"
                     }`}
