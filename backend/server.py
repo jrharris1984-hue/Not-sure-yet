@@ -913,6 +913,82 @@ class DispatchBody(BaseModel):
     video_height: int = 640
 
 
+def _combo_options(object_info: Dict[str, Any], node_type: str, input_name: str) -> List[str]:
+    try:
+        spec = object_info[node_type]["input"]["required"][input_name]
+        values = spec[0] if isinstance(spec, list) and spec else []
+        return [str(item) for item in values] if isinstance(values, list) else []
+    except Exception:
+        return []
+
+
+def _preferred_option(options: List[str], required: List[str], preferred: List[str] = []) -> Optional[str]:
+    matches = [
+        option for option in options
+        if all(token.lower() in option.lower() for token in required)
+    ]
+    if not matches:
+        return None
+    return sorted(
+        matches,
+        key=lambda option: (
+            -sum(1 for token in preferred if token.lower() in option.lower()),
+            len(option),
+            option.lower(),
+        ),
+    )[0]
+
+
+async def _patch_pose_assist_model_choices(workflow: Dict[str, Any], comfyui_url: str) -> None:
+    """Best-effort model-name repair for portable Pose Assist seed workflows."""
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as hc:
+            response = await hc.get(f"{comfyui_url.rstrip('/')}/object_info")
+        if response.status_code >= 400:
+            return
+        info = response.json()
+    except Exception as exc:
+        logger.warning(f"Pose Assist model auto-detect unavailable: {exc}")
+        return
+
+    unet_options = _combo_options(info, "UNETLoader", "unet_name")
+    clip1_options = _combo_options(info, "DualCLIPLoader", "clip_name1")
+    clip2_options = _combo_options(info, "DualCLIPLoader", "clip_name2")
+    control_options = _combo_options(info, "ControlNetLoader", "control_net_name")
+
+    for node in workflow.values():
+        if not isinstance(node, dict):
+            continue
+        inputs = node.get("inputs", {})
+        class_type = node.get("class_type")
+
+        if class_type == "UNETLoader" and "unet_name" in inputs and unet_options:
+            current = str(inputs.get("unet_name", ""))
+            if current not in unet_options:
+                choice = _preferred_option(unet_options, ["flux", "dev"], ["fp8", "flux1"])
+                if choice:
+                    logger.info(f"Pose Assist auto-selected FLUX model: {choice}")
+                    inputs["unet_name"] = choice
+
+        if class_type == "DualCLIPLoader":
+            if clip1_options and str(inputs.get("clip_name1", "")) not in clip1_options:
+                choice = _preferred_option(clip1_options, ["t5", "xxl"], ["fp8", "scaled"])
+                if choice:
+                    inputs["clip_name1"] = choice
+            if clip2_options and str(inputs.get("clip_name2", "")) not in clip2_options:
+                choice = _preferred_option(clip2_options, ["clip", "l"])
+                if choice:
+                    inputs["clip_name2"] = choice
+
+        if class_type == "ControlNetLoader" and "control_net_name" in inputs and control_options:
+            current = str(inputs.get("control_net_name", ""))
+            if current not in control_options:
+                choice = _preferred_option(control_options, ["flux", "union"], ["pro", "2.0"])
+                if choice:
+                    logger.info(f"Pose Assist auto-selected ControlNet: {choice}")
+                    inputs["control_net_name"] = choice
+
+
 def _patch_seed(workflow: Dict[str, Any], seed: int) -> int:
     """Overwrite `seed` and `noise_seed` on all sampler/noise nodes. Returns count patched."""
     count = 0
@@ -1021,6 +1097,7 @@ async def _perform_dispatch(body: "DispatchBody") -> Dict[str, Any]:
     # Pose Assist foundation: use the uploaded pose reference only for DWPose/
     # ControlNet geometry. The character prompt still owns identity and appearance.
     if wf_template and wf_template.kind == "pose":
+        await _patch_pose_assist_model_choices(workflow, s.comfyui_url)
         if not body.reference_image:
             r.status = "failed"
             r.error = "Add a pose-reference image before using Pose Assist."
