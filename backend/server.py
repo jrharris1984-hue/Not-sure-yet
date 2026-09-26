@@ -209,6 +209,8 @@ SEED_WORKFLOWS = [
     {"file": "wan_t2v.json", "name": "WAN 2.2 14B · Text → Video", "kind": "text_video", "prompt_style": "wan_t2v"},
     {"file": "face.json", "name": "Face-Preserved · IPAdapter FaceID", "kind": "face", "prompt_style": "venice"},
     {"file": "pony.json", "name": "Pony V6 XL · 5 LoRAs", "kind": "pony", "prompt_style": "pony"},
+    {"file": "flux_pose.json", "name": "Pose Assist · FLUX DWPose Foundation", "kind": "pose", "prompt_style": "flux"},
+    {"file": "chroma_refine.json", "name": "Pose Assist · Chroma Polish", "kind": "refine", "prompt_style": "chroma"},
 ]
 
 
@@ -876,6 +878,11 @@ class DispatchBody(BaseModel):
     locks: Dict[str, bool] = Field(default_factory=dict)
     prompt_language: str = "editorial"
     quality_tier: Optional[str] = None
+    control_strength: float = 0.9
+    control_start: float = 0.0
+    control_end: float = 0.65
+    refine_denoise: float = 0.30
+    hidden_from_gallery: bool = False
     prompt_positive: str = ""
     prompt_negative: str = ""
     workflow_id: Optional[str] = None
@@ -1010,6 +1017,84 @@ async def _perform_dispatch(body: "DispatchBody") -> Dict[str, Any]:
 
     positive_text = body.prompt_positive
     negative_text = body.prompt_negative
+
+    # Pose Assist foundation: use the uploaded pose reference only for DWPose/
+    # ControlNet geometry. The character prompt still owns identity and appearance.
+    if wf_template and wf_template.kind == "pose":
+        if not body.reference_image:
+            r.status = "failed"
+            r.error = "Add a pose-reference image before using Pose Assist."
+            doc = r.model_dump()
+            doc["workflow_id"] = wf_template.id
+            doc["workflow_name"] = wf_template.name
+            await db.renders.insert_one(doc)
+            doc.pop("_id", None)
+            return doc
+        image_patched = False
+        control_patched = False
+        for node in workflow.values():
+            if not isinstance(node, dict):
+                continue
+            inputs = node.get("inputs", {})
+            if node.get("class_type") == "LoadImage" and "image" in inputs:
+                inputs["image"] = body.reference_image
+                image_patched = True
+            if node.get("class_type") == "ControlNetApplyAdvanced":
+                if "strength" in inputs:
+                    inputs["strength"] = max(0.0, min(2.0, float(body.control_strength)))
+                if "start_percent" in inputs:
+                    inputs["start_percent"] = max(0.0, min(1.0, float(body.control_start)))
+                if "end_percent" in inputs:
+                    inputs["end_percent"] = max(0.0, min(1.0, float(body.control_end)))
+                control_patched = True
+        if not image_patched or not control_patched:
+            r.status = "failed"
+            r.error = "The Pose Assist foundation workflow is missing its pose image or ControlNet apply node."
+            doc = r.model_dump()
+            doc["workflow_id"] = wf_template.id
+            doc["workflow_name"] = wf_template.name
+            await db.renders.insert_one(doc)
+            doc.pop("_id", None)
+            return doc
+
+    # Pose Assist finish: Chroma receives the completed FLUX foundation image as
+    # img2img input. Denoise is intentionally low so the established pose survives.
+    if wf_template and wf_template.kind == "refine":
+        if not body.reference_image:
+            r.status = "failed"
+            r.error = "Pose Assist could not find the FLUX foundation image for Chroma polish."
+            doc = r.model_dump()
+            doc["workflow_id"] = wf_template.id
+            doc["workflow_name"] = wf_template.name
+            await db.renders.insert_one(doc)
+            doc.pop("_id", None)
+            return doc
+        image_patched = False
+        denoise_patched = False
+        for node in workflow.values():
+            if not isinstance(node, dict):
+                continue
+            inputs = node.get("inputs", {})
+            if node.get("class_type") == "LoadImage" and "image" in inputs:
+                inputs["image"] = body.reference_image
+                image_patched = True
+            if node.get("class_type") == "SplitSigmasDenoise" and "denoise" in inputs:
+                inputs["denoise"] = max(0.05, min(0.65, float(body.refine_denoise)))
+                denoise_patched = True
+            if node.get("class_type") == "KSampler" and "denoise" in inputs:
+                inputs["denoise"] = max(0.05, min(0.65, float(body.refine_denoise)))
+                denoise_patched = True
+        if not image_patched:
+            r.status = "failed"
+            r.error = "The Chroma polish workflow is missing its LoadImage node."
+            doc = r.model_dump()
+            doc["workflow_id"] = wf_template.id
+            doc["workflow_name"] = wf_template.name
+            await db.renders.insert_one(doc)
+            doc.pop("_id", None)
+            return doc
+        if not denoise_patched:
+            logger.warning("Pose Assist Chroma polish workflow has no configurable denoise node.")
 
     # Qwen Image Edit also consumes an uploaded source image, but its positive
     # prompt is a direct edit instruction rather than the character DNA prompt.
@@ -1264,6 +1349,7 @@ async def _perform_dispatch(body: "DispatchBody") -> Dict[str, Any]:
     doc["shoot_frame_index"] = body.shoot_frame_index
     doc["parent_render_id"] = body.parent_render_id
     doc["operation"] = body.operation
+    doc["hidden_from_gallery"] = bool(body.hidden_from_gallery)
     await db.renders.insert_one(doc)
     doc.pop("_id", None)
     return doc
