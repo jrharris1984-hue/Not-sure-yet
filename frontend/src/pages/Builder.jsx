@@ -1756,7 +1756,21 @@ export default function Builder() {
               onEnabled={(enabled) => {
                 setPoseAssistEnabled(enabled);
                 setPoseAssistStage("");
-                if (enabled) setRenderCount(1);
+                if (enabled) {
+                  setRenderCount(1);
+                  const chroma = selectableWorkflows.find((workflow) =>
+                    resolvePromptCompiler({
+                      promptStyle: workflow.prompt_style,
+                      workflowKind: workflow.kind,
+                      workflowName: workflow.name,
+                    }) === "chroma"
+                  );
+                  if (chroma && workflowId !== chroma.id) {
+                    setWorkflowId(chroma.id);
+                    setLoraOverrides({});
+                    toast.message("Pose Assist uses Chroma for the final polish.");
+                  }
+                }
               }}
               preview={poseReferencePreview}
               uploading={poseReferenceUploading}
