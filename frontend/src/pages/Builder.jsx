@@ -34,6 +34,7 @@ import MobileStudioFlow, {
 } from "@/components/MobileStudioFlow";
 import MobileCreateReview from "@/components/MobileCreateReview";
 import PromptAlignmentCard from "@/components/PromptAlignmentCard";
+import PoseAssistPanel from "@/components/PoseAssistPanel";
 import MobileRenderResult from "@/components/MobileRenderResult";
 import SubjectSwitcher from "@/components/SubjectSwitcher";
 import ChromaControls from "@/components/ChromaControls";
@@ -76,6 +77,19 @@ const REPAIR_TARGETS = [
   ["lighting", "Lighting & exposure"],
   ["artifacts", "Artifacts & noise"],
 ];
+
+const RENDER_TERMINAL = new Set(["done", "failed", "offline", "cancelled"]);
+const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+async function waitForQueuedRender(queueId, onUpdate) {
+  for (let attempt = 0; attempt < 240; attempt += 1) {
+    const render = await endpoints.pollRender(queueId);
+    if (onUpdate) onUpdate(render);
+    if (RENDER_TERMINAL.has(render.status)) return render;
+    await wait(2500);
+  }
+  throw new Error("Render timed out while waiting for ComfyUI.");
+}
 
 export default function Builder() {
   const { id, section: sectionParam } = useParams();
@@ -192,6 +206,11 @@ export default function Builder() {
   const [videoWidth, setVideoWidth] = useState(640);
   const [videoHeight, setVideoHeight] = useState(640);
   const [qualityTier, setQualityTier] = useState("balanced");
+  const [poseAssistEnabled, setPoseAssistEnabled] = useState(false);
+  const [poseAssistStrength, setPoseAssistStrength] = useState(0.90);
+  const [poseAssistPolish, setPoseAssistPolish] = useState(0.30);
+  const [poseAssistStage, setPoseAssistStage] = useState("");
+  const [installingPoseAssist, setInstallingPoseAssist] = useState(false);
   const [galleryRecipeMode, setGalleryRecipeMode] = useState("");
   const [enhancingVideo, setEnhancingVideo] = useState(false);
   const [analyzingVideoImage, setAnalyzingVideoImage] = useState(false);
@@ -244,6 +263,9 @@ export default function Builder() {
     setVideoWidth(draft.videoWidth || 640);
     setVideoHeight(draft.videoHeight || 640);
     setQualityTier(draft.qualityTier || "balanced");
+    setPoseAssistEnabled(!!draft.poseAssistEnabled);
+    if (typeof draft.poseAssistStrength === "number") setPoseAssistStrength(draft.poseAssistStrength);
+    if (typeof draft.poseAssistPolish === "number") setPoseAssistPolish(draft.poseAssistPolish);
     if (draft.chromaSettings) setChromaSettings(draft.chromaSettings);
     if (draft.activeRender) setActiveRender(draft.activeRender);
     if (Array.isArray(draft.batchRenders) && draft.batchRenders.length) {
@@ -281,6 +303,16 @@ export default function Builder() {
   }, [activeRender, batchRenders, selectedBatchRenderId, renderCount, id, isNew]);
 
   const { data: workflows = [] } = useQuery({ queryKey: ["workflows"], queryFn: endpoints.listWorkflows });
+  const { data: poseAssistStatus } = useQuery({
+    queryKey: ["pose-assist-status"],
+    queryFn: endpoints.poseAssistStatus,
+    enabled: poseAssistEnabled,
+    refetchInterval: poseAssistEnabled ? 15000 : false,
+  });
+  const selectableWorkflows = useMemo(
+    () => workflows.filter((workflow) => !["pose", "refine"].includes(workflow.kind)),
+    [workflows]
+  );
   const { data: settings } = useQuery({ queryKey: ["settings"], queryFn: endpoints.settings });
   useEffect(() => {
     if (!workflowId && workflows.length) {
@@ -393,6 +425,9 @@ export default function Builder() {
   }, [editorHydrated, location.pathname, location.state, nav, workflows]);
 
   const activeWorkflow = workflows.find((w) => w.id === workflowId);
+  const poseAssistFoundationWorkflow = workflows.find((w) => w.kind === "pose");
+  const poseAssistPolishWorkflow = workflows.find((w) => w.kind === "refine");
+  const poseAssistAvailable = !!poseAssistFoundationWorkflow && !!poseAssistPolishWorkflow;
   const promptStyle = activeWorkflow?.prompt_style || "venice";
   const isFaceWorkflow = activeWorkflow?.kind === "face";
   const isEditWorkflow = activeWorkflow?.kind === "edit";
@@ -427,6 +462,24 @@ export default function Builder() {
       setVideoHeight(recipe.videoHeight);
     } else if (recipe.family === "edit") {
       setRepairStrength(recipe.repairStrength);
+    }
+  };
+
+  const installPoseAssist = async () => {
+    setInstallingPoseAssist(true);
+    try {
+      const result = await endpoints.seedWorkflows();
+      await qc.invalidateQueries({ queryKey: ["workflows"] });
+      await qc.invalidateQueries({ queryKey: ["pose-assist-status"] });
+      toast.success("Pose Assist installed", {
+        description: result?.added || result?.updated
+          ? "Internal FLUX foundation and Chroma polish workflows are ready."
+          : "Pose Assist workflows are already current.",
+      });
+    } catch (error) {
+      toast.error(error?.response?.data?.detail || "Could not install Pose Assist workflows.");
+    } finally {
+      setInstallingPoseAssist(false);
     }
   };
 
@@ -645,7 +698,7 @@ export default function Builder() {
       editMode, poseTarget, poseNotes, poseLocks,
       referenceStudioView, referenceRecipe, referenceStrengths, poseReferenceAnalysis,
       videoInstruction, videoFrames, videoFps, videoWidth, videoHeight,
-      qualityTier, chromaSettings, activeRender,
+      qualityTier, poseAssistEnabled, poseAssistStrength, poseAssistPolish, chromaSettings, activeRender,
     }), 350);
     return () => window.clearTimeout(timer);
   }, [
@@ -655,7 +708,7 @@ export default function Builder() {
     editMode, poseTarget, poseNotes, poseLocks,
     referenceStudioView, referenceRecipe, referenceStrengths, poseReferenceAnalysis,
     videoInstruction, videoFrames, videoFps, videoWidth, videoHeight,
-    qualityTier, chromaSettings, activeRender,
+    qualityTier, poseAssistEnabled, poseAssistStrength, poseAssistPolish, chromaSettings, activeRender,
   ]);
 
   // Ensure active id is always valid.
@@ -899,6 +952,126 @@ export default function Builder() {
         : "Describe the movement you want WAN to create");
       return;
     }
+
+    if (poseAssistEnabled) {
+      if (!poseAssistAvailable) {
+        toast.error("Pose Assist workflows are not installed. Use Install Pose Assist in the Create step.");
+        return;
+      }
+      if (!poseReferenceImage?.name) {
+        toast.error("Choose a pose-reference image for Pose Assist.");
+        return;
+      }
+      if (activeRecipeFamily !== "image") {
+        toast.error("Pose Assist is currently available for still-image creation.");
+        return;
+      }
+
+      setDispatching(true);
+      setPoseAssistStage("foundation");
+      try {
+        const baseSeed = chromaSettings.seed !== ""
+          ? Number(chromaSettings.seed)
+          : Math.floor(Math.random() * 2147483647);
+        const sharedSubjects = subjects.map((s) => ({
+          label: s.label,
+          dna: s.dna,
+          field_locks: s.field_locks || {},
+          likeness: s.likeness,
+        }));
+        const foundationPrompt = [
+          "Follow the supplied pose reference closely. Preserve coherent human anatomy, subject count, joint placement, and limb connections.",
+          finalPositive,
+        ].filter(Boolean).join(" ");
+
+        const foundationQueued = await endpoints.dispatchRender({
+          character_id: isNew ? undefined : id,
+          dna: subjects[0]?.dna || {},
+          subjects: sharedSubjects,
+          locks,
+          prompt_language: promptLanguage,
+          quality_tier: qualityTier,
+          prompt_positive: foundationPrompt,
+          prompt_negative: finalNegative,
+          workflow_id: poseAssistFoundationWorkflow.id,
+          operation: "pose_foundation",
+          reference_image: poseReferenceImage.name,
+          control_strength: poseAssistStrength,
+          control_start: 0,
+          control_end: 0.65,
+          hidden_from_gallery: true,
+          width: chromaSettings.width,
+          height: chromaSettings.height,
+          batch_size: 1,
+          steps: qualityTier === "quality" ? 32 : qualityTier === "draft" ? 22 : 28,
+          sampler_name: "euler",
+          seed: baseSeed,
+        });
+        setBatchRenders([foundationQueued]);
+        setSelectedBatchRenderId(foundationQueued.id);
+        setActiveRender(foundationQueued);
+
+        const foundation = await waitForQueuedRender(foundationQueued.id, setActiveRender);
+        if (foundation.status !== "done") {
+          throw new Error(foundation.error || "FLUX pose foundation did not complete.");
+        }
+
+        const foundationId = foundation.render_id || foundation.id;
+        setPoseAssistStage("handoff");
+        const prepared = await endpoints.prepareRenderReference(foundationId);
+
+        setPoseAssistStage("polish");
+        const polishPrompt = [
+          "Preserve the supplied image's exact pose, limb placement, subject count, framing, and overall silhouette.",
+          finalPositive,
+          "Refine photographic realism, face detail, skin texture, lighting, and material detail without changing the established body geometry.",
+        ].filter(Boolean).join(" ");
+
+        const finalQueued = await endpoints.dispatchRender({
+          character_id: isNew ? undefined : id,
+          dna: subjects[0]?.dna || {},
+          subjects: sharedSubjects,
+          locks,
+          prompt_language: promptLanguage,
+          quality_tier: qualityTier,
+          prompt_positive: polishPrompt,
+          prompt_negative: finalNegative,
+          workflow_id: poseAssistPolishWorkflow.id,
+          parent_render_id: foundationId,
+          operation: "pose_polish",
+          reference_image: prepared.name,
+          refine_denoise: poseAssistPolish,
+          hidden_from_gallery: false,
+          steps: chromaSettings.steps,
+          cfg: chromaSettings.cfg,
+          sampler_name: chromaSettings.sampler,
+          seed: (baseSeed + 1) % 2147483647,
+        });
+        setBatchRenders([finalQueued]);
+        setSelectedBatchRenderId(finalQueued.id);
+        setActiveRender(finalQueued);
+
+        const finalRender = await waitForQueuedRender(finalQueued.id, setActiveRender);
+        setBatchRenders([finalRender]);
+        setSelectedBatchRenderId(finalRender.id);
+        setActiveRender(finalRender);
+
+        if (finalRender.status !== "done") {
+          throw new Error(finalRender.error || "Chroma polish did not complete.");
+        }
+
+        setPoseAssistStage("done");
+        qc.invalidateQueries({ queryKey: ["renders"] });
+        toast.success("Pose Assist complete · FLUX pose + Chroma polish");
+      } catch (error) {
+        setPoseAssistStage("");
+        toast.error(error?.response?.data?.detail || error?.message || "Pose Assist failed");
+      } finally {
+        setDispatching(false);
+      }
+      return;
+    }
+
     setDispatching(true);
     try {
       const requestedCount = activeRecipeFamily === "image" ? renderCount : 1;
@@ -975,6 +1148,7 @@ export default function Builder() {
     setActiveRender(null);
     setBatchRenders([]);
     setSelectedBatchRenderId(null);
+    setPoseAssistStage("");
   };
 
   const keepFinishedRender = () => {
@@ -1288,6 +1462,11 @@ export default function Builder() {
   const mobileCreateIssues = useMemo(() => {
     const issues = [];
     if (!activeWorkflow) issues.push("Choose a workflow.");
+    if (poseAssistEnabled && !poseAssistAvailable) issues.push("Install Pose Assist workflows.");
+    if (poseAssistEnabled && poseAssistStatus && !poseAssistStatus.ready && poseAssistAvailable) {
+      issues.push(`Pose Assist setup needs: ${(poseAssistStatus.missing || []).join(", ") || "local ComfyUI check"}.`);
+    }
+    if (poseAssistEnabled && !poseReferenceImage?.name) issues.push("Add a pose reference for Pose Assist.");
     promptAnalysis.blockers.slice(0, 2).forEach((blocker) => {
       if (blocker?.message && !issues.includes(blocker.message)) issues.push(blocker.message);
     });
@@ -1314,6 +1493,7 @@ export default function Builder() {
   }, [
     activeWorkflow, editMode, effectiveEditInstruction,
     isEditWorkflow, isEnhanceWorkflow, isFaceWorkflow, isTextVideoWorkflow, isVideoWorkflow,
+    poseAssistAvailable, poseAssistEnabled, poseAssistStatus, poseReferenceImage?.name,
     promptAnalysis, referenceImage?.name, repairInstruction, repairTargets, subjects, videoInstruction,
   ]);
 
@@ -1324,7 +1504,8 @@ export default function Builder() {
     && mobileStudioMode === "simple"
     && activeRender?.status === "done"
     && !!activeRender.output_files?.[0]
-    && batchIsFinished;
+    && batchIsFinished
+    && (!poseAssistEnabled || poseAssistStage === "done");
 
   return (
     <div className="mx-auto max-w-[1600px] px-2.5 sm:px-6 py-3 sm:py-6 space-y-3 sm:space-y-4">
@@ -1358,7 +1539,7 @@ export default function Builder() {
             className={`${mobileStudioStep === "start" || (mobileStudioStep === "create" && mobileStudioMode === "advanced") ? "block" : "hidden md:block"} bg-elevated border border-hairline rounded-lg px-3 py-2 text-sm text-zinc-100 w-full sm:w-auto sm:min-w-[200px]`}
           >
             {workflows.length === 0 && <option value="">No workflows — open Settings</option>}
-            {workflows.map((w) => (
+            {selectableWorkflows.map((w) => (
               <option key={w.id} value={w.id}>{w.kind.toUpperCase()} · {w.name}</option>
             ))}
           </select>
@@ -1373,9 +1554,9 @@ export default function Builder() {
           {activeRecipeFamily === "image" && (
             <select
               data-testid="select-render-count"
-              value={renderCount}
+              value={poseAssistEnabled ? 1 : renderCount}
               onChange={(e) => setRenderCount(Number(e.target.value))}
-              disabled={dispatching}
+              disabled={dispatching || poseAssistEnabled}
               className="hidden md:block bg-elevated border border-hairline rounded-lg px-3 py-2 text-sm text-zinc-100 flex-1 sm:flex-none"
               title="Number of images to queue with unique seeds"
             >
@@ -1386,11 +1567,11 @@ export default function Builder() {
           )}
           <button
             onClick={doDispatch}
-            disabled={dispatching || !workflowId}
+            disabled={dispatching || !workflowId || (poseAssistEnabled && (!poseAssistAvailable || !poseReferenceImage?.name))}
             data-testid="btn-dispatch-comfyui-render"
             className="hidden md:inline-flex items-center gap-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black text-sm font-semibold px-3 py-2 disabled:opacity-40"
           >
-            {dispatching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />} Render
+            {dispatching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />} {poseAssistEnabled ? "Pose Assist" : "Render"}
           </button>
           <MobileOverflow testId="builder-overflow" always label="More">
             <button
@@ -1562,13 +1743,50 @@ export default function Builder() {
             family={activeRecipeFamily}
             qualityTier={qualityTier}
             onQualityTier={applyQualityTier}
-            renderCount={renderCount}
+            renderCount={poseAssistEnabled ? 1 : renderCount}
             onRenderCount={setRenderCount}
             summaries={mobileCreateSummaries}
             issues={mobileCreateIssues}
             mode={mobileStudioMode}
             onRequestAdvanced={() => setMobileStudioMode("advanced")}
           />
+          {activeRecipeFamily === "image" && (
+            <PoseAssistPanel
+              enabled={poseAssistEnabled}
+              onEnabled={(enabled) => {
+                setPoseAssistEnabled(enabled);
+                setPoseAssistStage("");
+                if (enabled) {
+                  setRenderCount(1);
+                  const chroma = selectableWorkflows.find((workflow) =>
+                    resolvePromptCompiler({
+                      promptStyle: workflow.prompt_style,
+                      workflowKind: workflow.kind,
+                      workflowName: workflow.name,
+                    }) === "chroma"
+                  );
+                  if (chroma && workflowId !== chroma.id) {
+                    setWorkflowId(chroma.id);
+                    setLoraOverrides({});
+                    toast.message("Pose Assist uses Chroma for the final polish.");
+                  }
+                }
+              }}
+              preview={poseReferencePreview}
+              uploading={poseReferenceUploading}
+              onUpload={uploadPoseReference}
+              onClear={clearPoseReference}
+              strength={poseAssistStrength}
+              onStrength={setPoseAssistStrength}
+              polish={poseAssistPolish}
+              onPolish={setPoseAssistPolish}
+              stage={poseAssistStage}
+              available={poseAssistAvailable}
+              installing={installingPoseAssist}
+              onInstall={installPoseAssist}
+              systemStatus={poseAssistStatus}
+            />
+          )}
           <PromptAlignmentCard
             analysis={promptAnalysis}
             priorityPlan={compiledPrompt.priorityPlan}
@@ -1621,7 +1839,7 @@ export default function Builder() {
               className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-emerald-500 py-3 text-sm font-bold text-black disabled:opacity-40"
               data-testid="btn-mobile-studio-render"
             >
-              {dispatching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />} Render
+              {dispatching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />} {poseAssistEnabled ? "Generate" : "Render"}
             </button>
           ) : (
             <button
@@ -1775,7 +1993,7 @@ export default function Builder() {
         {/* Right - preview + AI + render */}
         <aside className={`${mobileStudioStep === "create" ? "block" : "hidden md:block"} space-y-4 lg:sticky lg:top-20 lg:h-fit`}>
           <div className={mobileStudioMode === "advanced" ? "block" : "hidden md:block"}>
-            <SmartSetupPanel workflows={workflows} activeWorkflow={activeWorkflow} dna={activeDna}
+            <SmartSetupPanel workflows={selectableWorkflows} activeWorkflow={activeWorkflow} dna={activeDna}
               subjectCount={subjects.length} hasReference={!!referenceImage?.name} onApply={applySmartSetup} />
           </div>
           <div className={mobileStudioMode === "advanced" ? "block" : "hidden md:block"}>
@@ -2393,7 +2611,7 @@ export default function Builder() {
             </div>
           )}
 
-          {activeRender && (
+          {activeRender && (!poseAssistEnabled || poseAssistStage === "done") && (
             <div className={`${showMobileResult ? "hidden md:block" : "block"} pane p-4 space-y-3`} data-testid="render-status-panel">
               <div className="flex items-center justify-between">
                 <div className="section-label">Render</div>

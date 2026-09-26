@@ -100,6 +100,7 @@ class Render(BaseModel):
     comfy_prompt_id: Optional[str] = None
     output_files: List[str] = Field(default_factory=list)
     output_variants: Dict[str, List[str]] = Field(default_factory=dict)
+    hidden_from_gallery: bool = False
     error: Optional[str] = None
     created_at: str = Field(default_factory=now_iso)
     updated_at: str = Field(default_factory=now_iso)
@@ -109,8 +110,8 @@ class WorkflowTemplate(BaseModel):
     model_config = ConfigDict(extra="ignore")
     id: str = Field(default_factory=new_id)
     name: str = "Untitled workflow"
-    kind: str = "image"  # image | video | edit | face | pony
-    prompt_style: str = "venice"  # venice | zimage | chroma | pony | qwen_edit | wan_i2v | wan_t2v
+    kind: str = "image"  # image | video | edit | face | pony | pose | refine
+    prompt_style: str = "venice"  # venice | zimage | chroma | flux | pony | qwen_edit | wan_i2v | wan_t2v
     json_str: str = ""
     positive_node_id: str = ""
     negative_node_id: str = ""
@@ -209,6 +210,8 @@ SEED_WORKFLOWS = [
     {"file": "wan_t2v.json", "name": "WAN 2.2 14B · Text → Video", "kind": "text_video", "prompt_style": "wan_t2v"},
     {"file": "face.json", "name": "Face-Preserved · IPAdapter FaceID", "kind": "face", "prompt_style": "venice"},
     {"file": "pony.json", "name": "Pony V6 XL · 5 LoRAs", "kind": "pony", "prompt_style": "pony"},
+    {"file": "flux_pose.json", "name": "Pose Assist · FLUX DWPose Foundation", "kind": "pose", "prompt_style": "flux"},
+    {"file": "chroma_refine.json", "name": "Pose Assist · Chroma Polish", "kind": "refine", "prompt_style": "chroma"},
 ]
 
 
@@ -876,6 +879,11 @@ class DispatchBody(BaseModel):
     locks: Dict[str, bool] = Field(default_factory=dict)
     prompt_language: str = "editorial"
     quality_tier: Optional[str] = None
+    control_strength: float = 0.9
+    control_start: float = 0.0
+    control_end: float = 0.65
+    refine_denoise: float = 0.30
+    hidden_from_gallery: bool = False
     prompt_positive: str = ""
     prompt_negative: str = ""
     workflow_id: Optional[str] = None
@@ -904,6 +912,82 @@ class DispatchBody(BaseModel):
     video_fps: int = 24
     video_width: int = 640
     video_height: int = 640
+
+
+def _combo_options(object_info: Dict[str, Any], node_type: str, input_name: str) -> List[str]:
+    try:
+        spec = object_info[node_type]["input"]["required"][input_name]
+        values = spec[0] if isinstance(spec, list) and spec else []
+        return [str(item) for item in values] if isinstance(values, list) else []
+    except Exception:
+        return []
+
+
+def _preferred_option(options: List[str], required: List[str], preferred: List[str] = []) -> Optional[str]:
+    matches = [
+        option for option in options
+        if all(token.lower() in option.lower() for token in required)
+    ]
+    if not matches:
+        return None
+    return sorted(
+        matches,
+        key=lambda option: (
+            -sum(1 for token in preferred if token.lower() in option.lower()),
+            len(option),
+            option.lower(),
+        ),
+    )[0]
+
+
+async def _patch_pose_assist_model_choices(workflow: Dict[str, Any], comfyui_url: str) -> None:
+    """Best-effort model-name repair for portable Pose Assist seed workflows."""
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as hc:
+            response = await hc.get(f"{comfyui_url.rstrip('/')}/object_info")
+        if response.status_code >= 400:
+            return
+        info = response.json()
+    except Exception as exc:
+        logger.warning(f"Pose Assist model auto-detect unavailable: {exc}")
+        return
+
+    unet_options = _combo_options(info, "UNETLoader", "unet_name")
+    clip1_options = _combo_options(info, "DualCLIPLoader", "clip_name1")
+    clip2_options = _combo_options(info, "DualCLIPLoader", "clip_name2")
+    control_options = _combo_options(info, "ControlNetLoader", "control_net_name")
+
+    for node in workflow.values():
+        if not isinstance(node, dict):
+            continue
+        inputs = node.get("inputs", {})
+        class_type = node.get("class_type")
+
+        if class_type == "UNETLoader" and "unet_name" in inputs and unet_options:
+            current = str(inputs.get("unet_name", ""))
+            if current not in unet_options:
+                choice = _preferred_option(unet_options, ["flux", "dev"], ["fp8", "flux1"])
+                if choice:
+                    logger.info(f"Pose Assist auto-selected FLUX model: {choice}")
+                    inputs["unet_name"] = choice
+
+        if class_type == "DualCLIPLoader":
+            if clip1_options and str(inputs.get("clip_name1", "")) not in clip1_options:
+                choice = _preferred_option(clip1_options, ["t5", "xxl"], ["fp8", "scaled"])
+                if choice:
+                    inputs["clip_name1"] = choice
+            if clip2_options and str(inputs.get("clip_name2", "")) not in clip2_options:
+                choice = _preferred_option(clip2_options, ["clip", "l"])
+                if choice:
+                    inputs["clip_name2"] = choice
+
+        if class_type == "ControlNetLoader" and "control_net_name" in inputs and control_options:
+            current = str(inputs.get("control_net_name", ""))
+            if current not in control_options:
+                choice = _preferred_option(control_options, ["flux", "union"], ["pro", "2.0"])
+                if choice:
+                    logger.info(f"Pose Assist auto-selected ControlNet: {choice}")
+                    inputs["control_net_name"] = choice
 
 
 def _patch_seed(workflow: Dict[str, Any], seed: int) -> int:
@@ -942,6 +1026,7 @@ async def _perform_dispatch(body: "DispatchBody") -> Dict[str, Any]:
         prompt_positive=body.prompt_positive,
         prompt_negative=body.prompt_negative,
         workflow_type=wf_template.kind if wf_template else body.workflow_type,
+        hidden_from_gallery=bool(body.hidden_from_gallery),
     )
 
     if wf_template:
@@ -1010,6 +1095,85 @@ async def _perform_dispatch(body: "DispatchBody") -> Dict[str, Any]:
 
     positive_text = body.prompt_positive
     negative_text = body.prompt_negative
+
+    # Pose Assist foundation: use the uploaded pose reference only for DWPose/
+    # ControlNet geometry. The character prompt still owns identity and appearance.
+    if wf_template and wf_template.kind == "pose":
+        await _patch_pose_assist_model_choices(workflow, s.comfyui_url)
+        if not body.reference_image:
+            r.status = "failed"
+            r.error = "Add a pose-reference image before using Pose Assist."
+            doc = r.model_dump()
+            doc["workflow_id"] = wf_template.id
+            doc["workflow_name"] = wf_template.name
+            await db.renders.insert_one(doc)
+            doc.pop("_id", None)
+            return doc
+        image_patched = False
+        control_patched = False
+        for node in workflow.values():
+            if not isinstance(node, dict):
+                continue
+            inputs = node.get("inputs", {})
+            if node.get("class_type") == "LoadImage" and "image" in inputs:
+                inputs["image"] = body.reference_image
+                image_patched = True
+            if node.get("class_type") == "ControlNetApplyAdvanced":
+                if "strength" in inputs:
+                    inputs["strength"] = max(0.0, min(2.0, float(body.control_strength)))
+                if "start_percent" in inputs:
+                    inputs["start_percent"] = max(0.0, min(1.0, float(body.control_start)))
+                if "end_percent" in inputs:
+                    inputs["end_percent"] = max(0.0, min(1.0, float(body.control_end)))
+                control_patched = True
+        if not image_patched or not control_patched:
+            r.status = "failed"
+            r.error = "The Pose Assist foundation workflow is missing its pose image or ControlNet apply node."
+            doc = r.model_dump()
+            doc["workflow_id"] = wf_template.id
+            doc["workflow_name"] = wf_template.name
+            await db.renders.insert_one(doc)
+            doc.pop("_id", None)
+            return doc
+
+    # Pose Assist finish: Chroma receives the completed FLUX foundation image as
+    # img2img input. Denoise is intentionally low so the established pose survives.
+    if wf_template and wf_template.kind == "refine":
+        if not body.reference_image:
+            r.status = "failed"
+            r.error = "Pose Assist could not find the FLUX foundation image for Chroma polish."
+            doc = r.model_dump()
+            doc["workflow_id"] = wf_template.id
+            doc["workflow_name"] = wf_template.name
+            await db.renders.insert_one(doc)
+            doc.pop("_id", None)
+            return doc
+        image_patched = False
+        denoise_patched = False
+        for node in workflow.values():
+            if not isinstance(node, dict):
+                continue
+            inputs = node.get("inputs", {})
+            if node.get("class_type") == "LoadImage" and "image" in inputs:
+                inputs["image"] = body.reference_image
+                image_patched = True
+            if node.get("class_type") == "SplitSigmasDenoise" and "denoise" in inputs:
+                inputs["denoise"] = max(0.05, min(0.65, float(body.refine_denoise)))
+                denoise_patched = True
+            if node.get("class_type") == "KSampler" and "denoise" in inputs:
+                inputs["denoise"] = max(0.05, min(0.65, float(body.refine_denoise)))
+                denoise_patched = True
+        if not image_patched:
+            r.status = "failed"
+            r.error = "The Chroma polish workflow is missing its LoadImage node."
+            doc = r.model_dump()
+            doc["workflow_id"] = wf_template.id
+            doc["workflow_name"] = wf_template.name
+            await db.renders.insert_one(doc)
+            doc.pop("_id", None)
+            return doc
+        if not denoise_patched:
+            logger.warning("Pose Assist Chroma polish workflow has no configurable denoise node.")
 
     # Qwen Image Edit also consumes an uploaded source image, but its positive
     # prompt is a direct edit instruction rather than the character DNA prompt.
@@ -1264,6 +1428,7 @@ async def _perform_dispatch(body: "DispatchBody") -> Dict[str, Any]:
     doc["shoot_frame_index"] = body.shoot_frame_index
     doc["parent_render_id"] = body.parent_render_id
     doc["operation"] = body.operation
+    doc["hidden_from_gallery"] = bool(body.hidden_from_gallery)
     await db.renders.insert_one(doc)
     doc.pop("_id", None)
     return doc
@@ -1366,6 +1531,67 @@ async def _enqueue_render(body: DispatchBody) -> Dict[str, Any]:
 @api.post("/renders/dispatch")
 async def dispatch_render(body: DispatchBody):
     return await _enqueue_render(body)
+
+
+@api.get("/pose-assist/status")
+async def pose_assist_status():
+    """Report whether the local ComfyUI install has the pieces Pose Assist needs."""
+    settings = await get_settings()
+    has_foundation = any(workflow.kind == "pose" for workflow in settings.workflows)
+    has_polish = any(workflow.kind == "refine" for workflow in settings.workflows)
+    result = {
+        "ready": False,
+        "workflows_ready": has_foundation and has_polish,
+        "comfyui_online": False,
+        "flux_model": "",
+        "controlnet_model": "",
+        "t5_encoder": "",
+        "clip_l_encoder": "",
+        "dwpose_ready": False,
+        "chroma_refine_ready": False,
+        "missing": [],
+    }
+
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as hc:
+            response = await hc.get(f"{settings.comfyui_url.rstrip('/')}/object_info")
+        response.raise_for_status()
+        info = response.json()
+        result["comfyui_online"] = True
+
+        flux_options = _combo_options(info, "UNETLoader", "unet_name")
+        control_options = _combo_options(info, "ControlNetLoader", "control_net_name")
+        clip1_options = _combo_options(info, "DualCLIPLoader", "clip_name1")
+        clip2_options = _combo_options(info, "DualCLIPLoader", "clip_name2")
+        flux = _preferred_option(flux_options, ["flux", "dev"], ["fp8", "flux1"])
+        control = _preferred_option(control_options, ["flux", "union"], ["pro", "2.0"])
+        t5 = _preferred_option(clip1_options, ["t5", "xxl"], ["fp8", "scaled"]) or _preferred_option(clip2_options, ["t5", "xxl"], ["fp8", "scaled"])
+        clip_l = _preferred_option(clip2_options, ["clip", "l"]) or _preferred_option(clip1_options, ["clip", "l"])
+        result["flux_model"] = flux or ""
+        result["controlnet_model"] = control or ""
+        result["t5_encoder"] = t5 or ""
+        result["clip_l_encoder"] = clip_l or ""
+        result["dwpose_ready"] = "DWPreprocessor" in info
+        result["chroma_refine_ready"] = "SplitSigmasDenoise" in info
+
+        if not flux:
+            result["missing"].append("FLUX.1 Dev checkpoint")
+        if not control:
+            result["missing"].append("FLUX Union ControlNet")
+        if not t5 or not clip_l:
+            result["missing"].append("FLUX text encoders")
+        if not result["dwpose_ready"]:
+            result["missing"].append("DWPose preprocessor")
+        if not result["chroma_refine_ready"]:
+            result["missing"].append("Chroma low-denoise sampler support")
+    except Exception:
+        result["missing"].append("ComfyUI connection")
+
+    if not has_foundation or not has_polish:
+        result["missing"].append("Pose Assist workflows")
+
+    result["ready"] = not result["missing"]
+    return result
 
 
 async def _render_recipe(rid: str) -> tuple[Dict[str, Any], Dict[str, Any]]:
@@ -1677,7 +1903,7 @@ async def _sync_queue_job(job: Dict[str, Any]) -> Dict[str, Any]:
         mode = _guard_mode(render, payload)
         is_still_image = str(render.get("workflow_type") or "image") not in {"video", "text_video"}
 
-        if status == "done" and is_still_image and not render.get("anatomy_guard_status"):
+        if status == "done" and is_still_image and not render.get("hidden_from_gallery") and not render.get("anatomy_guard_status"):
             await db.renders.update_one(
                 {"id": render_id},
                 {"$set": {"anatomy_guard_status": "checking", "updated_at": now_iso()}},
