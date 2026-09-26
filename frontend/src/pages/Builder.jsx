@@ -1540,7 +1540,7 @@ export default function Builder() {
         />
       )}
 
-      <div className={`${showMobileResult ? "hidden" : "md:hidden"} fixed inset-x-0 z-30 mobile-builder-actions border-t hairline bg-[#111017]/95 px-2.5 py-2 backdrop-blur-xl shadow-[0_-12px_30px_rgba(0,0,0,0.28)]" data-testid="mobile-builder-actions">
+      <div className={(showMobileResult ? "hidden " : "md:hidden ") + "fixed inset-x-0 z-30 mobile-builder-actions border-t hairline bg-[#111017]/95 px-2.5 py-2 backdrop-blur-xl shadow-[0_-12px_30px_rgba(0,0,0,0.28)]"} data-testid="mobile-builder-actions">
         <div className="grid grid-cols-[0.9fr_1.4fr] gap-2">
           <button
             type="button"
