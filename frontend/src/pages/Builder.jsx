@@ -923,6 +923,126 @@ export default function Builder() {
         : "Describe the movement you want WAN to create");
       return;
     }
+
+    if (poseAssistEnabled) {
+      if (!poseAssistAvailable) {
+        toast.error("Pose Assist workflows are not installed. Open Settings and refresh bundled workflows once.");
+        return;
+      }
+      if (!poseReferenceImage?.name) {
+        toast.error("Choose a pose-reference image for Pose Assist.");
+        return;
+      }
+      if (activeRecipeFamily !== "image") {
+        toast.error("Pose Assist is currently available for still-image creation.");
+        return;
+      }
+
+      setDispatching(true);
+      setPoseAssistStage("foundation");
+      try {
+        const baseSeed = chromaSettings.seed !== ""
+          ? Number(chromaSettings.seed)
+          : Math.floor(Math.random() * 2147483647);
+        const sharedSubjects = subjects.map((s) => ({
+          label: s.label,
+          dna: s.dna,
+          field_locks: s.field_locks || {},
+          likeness: s.likeness,
+        }));
+        const foundationPrompt = [
+          "Follow the supplied pose reference closely. Preserve coherent human anatomy, subject count, joint placement, and limb connections.",
+          finalPositive,
+        ].filter(Boolean).join(" ");
+
+        const foundationQueued = await endpoints.dispatchRender({
+          character_id: isNew ? undefined : id,
+          dna: subjects[0]?.dna || {},
+          subjects: sharedSubjects,
+          locks,
+          prompt_language: promptLanguage,
+          quality_tier: qualityTier,
+          prompt_positive: foundationPrompt,
+          prompt_negative: finalNegative,
+          workflow_id: poseAssistFoundationWorkflow.id,
+          operation: "pose_foundation",
+          reference_image: poseReferenceImage.name,
+          control_strength: poseAssistStrength,
+          control_start: 0,
+          control_end: 0.65,
+          hidden_from_gallery: true,
+          width: chromaSettings.width,
+          height: chromaSettings.height,
+          batch_size: 1,
+          steps: qualityTier === "quality" ? 32 : qualityTier === "draft" ? 22 : 28,
+          sampler_name: "euler",
+          seed: baseSeed,
+        });
+        setBatchRenders([foundationQueued]);
+        setSelectedBatchRenderId(foundationQueued.id);
+        setActiveRender(foundationQueued);
+
+        const foundation = await waitForQueuedRender(foundationQueued.id, setActiveRender);
+        if (foundation.status !== "done") {
+          throw new Error(foundation.error || "FLUX pose foundation did not complete.");
+        }
+
+        const foundationId = foundation.render_id || foundation.id;
+        setPoseAssistStage("handoff");
+        const prepared = await endpoints.prepareRenderReference(foundationId);
+
+        setPoseAssistStage("polish");
+        const polishPrompt = [
+          "Preserve the supplied image's exact pose, limb placement, subject count, framing, and overall silhouette.",
+          finalPositive,
+          "Refine photographic realism, face detail, skin texture, lighting, and material detail without changing the established body geometry.",
+        ].filter(Boolean).join(" ");
+
+        const finalQueued = await endpoints.dispatchRender({
+          character_id: isNew ? undefined : id,
+          dna: subjects[0]?.dna || {},
+          subjects: sharedSubjects,
+          locks,
+          prompt_language: promptLanguage,
+          quality_tier: qualityTier,
+          prompt_positive: polishPrompt,
+          prompt_negative: finalNegative,
+          workflow_id: poseAssistPolishWorkflow.id,
+          parent_render_id: foundationId,
+          operation: "pose_polish",
+          reference_image: prepared.name,
+          refine_denoise: poseAssistPolish,
+          hidden_from_gallery: false,
+          steps: chromaSettings.steps,
+          cfg: chromaSettings.cfg,
+          sampler_name: chromaSettings.sampler,
+          seed: (baseSeed + 1) % 2147483647,
+        });
+        setBatchRenders([finalQueued]);
+        setSelectedBatchRenderId(finalQueued.id);
+        setActiveRender(finalQueued);
+
+        const finalRender = await waitForQueuedRender(finalQueued.id, setActiveRender);
+        setBatchRenders([finalRender]);
+        setSelectedBatchRenderId(finalRender.id);
+        setActiveRender(finalRender);
+
+        if (finalRender.status !== "done") {
+          throw new Error(finalRender.error || "Chroma polish did not complete.");
+        }
+
+        setPoseAssistStage("done");
+        qc.invalidateQueries({ queryKey: ["renders"] });
+        toast.success("Pose Assist complete · FLUX pose + Chroma polish");
+      } catch (error) {
+        setPoseAssistStage("");
+        toast.error(error?.response?.data?.detail || error?.message || "Pose Assist failed");
+      } finally {
+        setDispatching(false);
+      }
+      return;
+    }
+
     setDispatching(true);
     try {
       const requestedCount = activeRecipeFamily === "image" ? renderCount : 1;
