@@ -34,6 +34,7 @@ import MobileStudioFlow, {
 } from "@/components/MobileStudioFlow";
 import MobileCreateReview from "@/components/MobileCreateReview";
 import PromptAlignmentCard from "@/components/PromptAlignmentCard";
+import PoseAssistPanel from "@/components/PoseAssistPanel";
 import MobileRenderResult from "@/components/MobileRenderResult";
 import SubjectSwitcher from "@/components/SubjectSwitcher";
 import ChromaControls from "@/components/ChromaControls";
@@ -76,6 +77,19 @@ const REPAIR_TARGETS = [
   ["lighting", "Lighting & exposure"],
   ["artifacts", "Artifacts & noise"],
 ];
+
+const RENDER_TERMINAL = new Set(["done", "failed", "offline", "cancelled"]);
+const wait = (ms) => new Promise((resolve) => window.setTimeout(resolve, ms));
+
+async function waitForQueuedRender(queueId, onUpdate) {
+  for (let attempt = 0; attempt < 240; attempt += 1) {
+    const render = await endpoints.pollRender(queueId);
+    if (onUpdate) onUpdate(render);
+    if (RENDER_TERMINAL.has(render.status)) return render;
+    await wait(2500);
+  }
+  throw new Error("Render timed out while waiting for ComfyUI.");
+}
 
 export default function Builder() {
   const { id, section: sectionParam } = useParams();
@@ -192,6 +206,10 @@ export default function Builder() {
   const [videoWidth, setVideoWidth] = useState(640);
   const [videoHeight, setVideoHeight] = useState(640);
   const [qualityTier, setQualityTier] = useState("balanced");
+  const [poseAssistEnabled, setPoseAssistEnabled] = useState(false);
+  const [poseAssistStrength, setPoseAssistStrength] = useState(0.90);
+  const [poseAssistPolish, setPoseAssistPolish] = useState(0.30);
+  const [poseAssistStage, setPoseAssistStage] = useState("");
   const [galleryRecipeMode, setGalleryRecipeMode] = useState("");
   const [enhancingVideo, setEnhancingVideo] = useState(false);
   const [analyzingVideoImage, setAnalyzingVideoImage] = useState(false);
@@ -244,6 +262,9 @@ export default function Builder() {
     setVideoWidth(draft.videoWidth || 640);
     setVideoHeight(draft.videoHeight || 640);
     setQualityTier(draft.qualityTier || "balanced");
+    setPoseAssistEnabled(!!draft.poseAssistEnabled);
+    if (typeof draft.poseAssistStrength === "number") setPoseAssistStrength(draft.poseAssistStrength);
+    if (typeof draft.poseAssistPolish === "number") setPoseAssistPolish(draft.poseAssistPolish);
     if (draft.chromaSettings) setChromaSettings(draft.chromaSettings);
     if (draft.activeRender) setActiveRender(draft.activeRender);
     if (Array.isArray(draft.batchRenders) && draft.batchRenders.length) {
@@ -393,6 +414,9 @@ export default function Builder() {
   }, [editorHydrated, location.pathname, location.state, nav, workflows]);
 
   const activeWorkflow = workflows.find((w) => w.id === workflowId);
+  const poseAssistFoundationWorkflow = workflows.find((w) => w.kind === "pose");
+  const poseAssistPolishWorkflow = workflows.find((w) => w.kind === "refine");
+  const poseAssistAvailable = !!poseAssistFoundationWorkflow && !!poseAssistPolishWorkflow;
   const promptStyle = activeWorkflow?.prompt_style || "venice";
   const isFaceWorkflow = activeWorkflow?.kind === "face";
   const isEditWorkflow = activeWorkflow?.kind === "edit";
@@ -645,7 +669,7 @@ export default function Builder() {
       editMode, poseTarget, poseNotes, poseLocks,
       referenceStudioView, referenceRecipe, referenceStrengths, poseReferenceAnalysis,
       videoInstruction, videoFrames, videoFps, videoWidth, videoHeight,
-      qualityTier, chromaSettings, activeRender,
+      qualityTier, poseAssistEnabled, poseAssistStrength, poseAssistPolish, chromaSettings, activeRender,
     }), 350);
     return () => window.clearTimeout(timer);
   }, [
@@ -655,7 +679,7 @@ export default function Builder() {
     editMode, poseTarget, poseNotes, poseLocks,
     referenceStudioView, referenceRecipe, referenceStrengths, poseReferenceAnalysis,
     videoInstruction, videoFrames, videoFps, videoWidth, videoHeight,
-    qualityTier, chromaSettings, activeRender,
+    qualityTier, poseAssistEnabled, poseAssistStrength, poseAssistPolish, chromaSettings, activeRender,
   ]);
 
   // Ensure active id is always valid.
@@ -1288,6 +1312,8 @@ export default function Builder() {
   const mobileCreateIssues = useMemo(() => {
     const issues = [];
     if (!activeWorkflow) issues.push("Choose a workflow.");
+    if (poseAssistEnabled && !poseAssistAvailable) issues.push("Refresh bundled workflows in Settings to install Pose Assist.");
+    if (poseAssistEnabled && !poseReferenceImage?.name) issues.push("Add a pose reference for Pose Assist.");
     promptAnalysis.blockers.slice(0, 2).forEach((blocker) => {
       if (blocker?.message && !issues.includes(blocker.message)) issues.push(blocker.message);
     });
@@ -1314,6 +1340,7 @@ export default function Builder() {
   }, [
     activeWorkflow, editMode, effectiveEditInstruction,
     isEditWorkflow, isEnhanceWorkflow, isFaceWorkflow, isTextVideoWorkflow, isVideoWorkflow,
+    poseAssistAvailable, poseAssistEnabled, poseReferenceImage?.name,
     promptAnalysis, referenceImage?.name, repairInstruction, repairTargets, subjects, videoInstruction,
   ]);
 
