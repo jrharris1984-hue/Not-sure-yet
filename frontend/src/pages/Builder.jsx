@@ -2611,7 +2611,7 @@ export default function Builder() {
             </div>
           )}
 
-          {activeRender && (
+          {activeRender && (!poseAssistEnabled || poseAssistStage === "done") && (
             <div className={`${showMobileResult ? "hidden md:block" : "block"} pane p-4 space-y-3`} data-testid="render-status-panel">
               <div className="flex items-center justify-between">
                 <div className="section-label">Render</div>
