@@ -50,7 +50,7 @@ export default function MobileOverflow({ children, testId = "mobile-overflow", a
               if (event.target.closest("[data-overflow-stay-open]")) return;
               setOpen(false);
             }}
-            className="absolute right-0 top-full mt-1 z-50 pane glass p-2 min-w-[220px] flex flex-col gap-1 shadow-2xl"
+            className="fixed sm:absolute left-3 right-3 sm:left-auto sm:right-0 bottom-[calc(5rem+env(safe-area-inset-bottom))] sm:bottom-auto sm:top-full sm:mt-1 z-[70] pane glass p-2 sm:min-w-[220px] max-h-[60vh] overflow-y-auto flex flex-col gap-1 shadow-2xl"
           >
             {children}
           </div>
