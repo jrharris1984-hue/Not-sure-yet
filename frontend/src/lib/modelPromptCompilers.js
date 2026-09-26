@@ -169,11 +169,15 @@ export function resolveZImageComposition(dna = {}, options = {}) {
     if (lower(resolved.physique.hips) === "extreme") resolved.physique.hips = "wide";
 
     if (focus !== "feet" && feetRequested) {
-      supportingFeet = selectedPedicure && selectedPedicure !== "natural nails"
-        ? `both naturally proportioned feet visible with ${selectedPedicure.replace(/^painted\s+(.+)$/i, "$1-painted")} toenails`
-        : "both naturally proportioned feet visible";
+      supportingFeet = options.forceMulti
+        ? ""
+        : selectedPedicure && selectedPedicure !== "natural nails"
+          ? `both naturally proportioned feet visible with ${selectedPedicure.replace(/^painted\s+(.+)$/i, "$1-painted")} toenails`
+          : "both naturally proportioned feet visible";
       resolved.feet = {};
-      adjustments.push("Removed the competing PRIMARY FEET block because feet are not the composition priority.");
+      adjustments.push(options.forceMulti
+        ? "Removed secondary feet requirements from the multi-subject composition so limb count and body separation stay higher priority."
+        : "Removed the competing PRIMARY FEET block because feet are not the composition priority.");
     } else if (focus === "feet" && lower(resolved.feet.foot_size) === "size queen") {
       resolved.feet.foot_size = "large";
       adjustments.push("Reduced extreme foot enlargement to a realistic large size in Natural mode.");
