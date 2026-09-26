@@ -195,11 +195,17 @@ export function resolveZImageComposition(dna = {}, options = {}) {
 
   const castSize = lower(resolved.scenario?.cast_size) || "solo";
   const solo = !options.forceMulti && !["duo", "threesome", "foursome", "group", "gangbang", "orgy"].includes(castSize);
-  const humanLead = mode === "natural"
-    ? "NORMAL HUMAN ANATOMY REQUIRED — believable adult proportions, one coherent torso and pelvis, exactly two arms and two legs, naturally sized hands and feet"
-    : mode === "enhanced"
-      ? "COHERENT HUMAN ANATOMY REQUIRED — enhanced proportions with one coherent torso and pelvis, exactly two arms and two legs"
-      : "COHERENT ANATOMY REQUIRED — one connected adult body with no duplicated body parts";
+  const humanLead = options.forceMulti
+    ? (mode === "natural"
+      ? "NORMAL HUMAN ANATOMY REQUIRED — each adult has one coherent torso and pelvis, exactly two arms and two legs, naturally sized hands and feet"
+      : mode === "enhanced"
+        ? "COHERENT HUMAN ANATOMY REQUIRED — each adult keeps one coherent torso and pelvis, exactly two arms and two legs"
+        : "COHERENT ANATOMY REQUIRED — each adult remains one connected body with no duplicated body parts")
+    : (mode === "natural"
+      ? "NORMAL HUMAN ANATOMY REQUIRED — believable adult proportions, one coherent torso and pelvis, exactly two arms and two legs, naturally sized hands and feet"
+      : mode === "enhanced"
+        ? "COHERENT HUMAN ANATOMY REQUIRED — enhanced proportions with one coherent torso and pelvis, exactly two arms and two legs"
+        : "COHERENT ANATOMY REQUIRED — one connected adult body with no duplicated body parts");
 
   let composition = "";
   if (focus === "feet") {
@@ -255,7 +261,7 @@ export function buildZImagePrompts({
 } = {}) {
   const primaryGuard = resolveZImageComposition(dna, { forceMulti: isMulti });
   const guardedSubjects = isMulti
-    ? (subjects || []).map((subject) => ({ ...subject, dna: resolveZImageComposition(subject?.dna || {}).dna }))
+    ? (subjects || []).map((subject) => ({ ...subject, dna: resolveZImageComposition(subject?.dna || {}, { forceMulti: true }).dna }))
     : subjects;
   const base = basePrompts({
     dna: primaryGuard.dna,
@@ -320,7 +326,7 @@ export function buildWanImageToVideoPrompts({ instruction = "" } = {}) {
 export function buildWanTextToVideoPrompts({ dna = {}, subjects = [], isMulti = false, raunch = false, instruction = "" } = {}) {
   const primaryGuard = resolveZImageComposition(dna, { forceMulti: isMulti });
   const guardedSubjects = isMulti
-    ? (subjects || []).map((subject) => ({ ...subject, dna: resolveZImageComposition(subject?.dna || {}).dna }))
+    ? (subjects || []).map((subject) => ({ ...subject, dna: resolveZImageComposition(subject?.dna || {}, { forceMulti: true }).dna }))
     : subjects;
   const base = basePrompts({ dna: primaryGuard.dna, subjects: guardedSubjects, isMulti, raunch });
   const motion = clean(instruction);
@@ -354,7 +360,7 @@ export function compileModelPrompts({
   const compiler = resolvePromptCompiler({ promptStyle, workflowKind, workflowName });
   const primaryGuard = resolveZImageComposition(dna, { forceMulti: isMulti });
   const guardedSubjects = isMulti
-    ? (subjects || []).map((subject) => ({ ...subject, dna: resolveZImageComposition(subject?.dna || {}).dna }))
+    ? (subjects || []).map((subject) => ({ ...subject, dna: resolveZImageComposition(subject?.dna || {}, { forceMulti: true }).dna }))
     : subjects;
   const priorityPlan = buildPromptPriorityPlan({
     dna: primaryGuard.dna,
@@ -396,8 +402,21 @@ export function compileModelPrompts({
     isMulti ? buildMultiPonyPrompts(guardedSubjects, { raunch }) : buildPonyPrompts(primaryGuard.dna, { raunch }),
     "pony"
   );
+  if (compiler === "chroma" && isMulti) {
+    const prompts = buildMultiChromaPrompts(guardedSubjects, { raunch });
+    return {
+      ...prompts,
+      priorityPlan,
+      droppedClauses: [],
+      promptBudget: 345,
+      promptWords: clean(prompts.positive).split(/\s+/).filter(Boolean).length,
+      omittedClauseCount: 0,
+      guardAdjustments: primaryGuard.adjustments,
+      negativeStrategy: "text",
+    };
+  }
   if (compiler === "chroma") return withPriorityGuard(
-    isMulti ? buildMultiChromaPrompts(guardedSubjects, { raunch }) : buildChromaPrompts(primaryGuard.dna, { raunch }),
+    buildChromaPrompts(primaryGuard.dna, { raunch }),
     "chroma"
   );
   if (compiler === "zimage") return buildZImagePrompts({
