@@ -265,7 +265,7 @@ export function buildZImagePrompts({
     "zimage",
     {
       extraLead: [primaryGuard.composition],
-      budgetWords: primaryGuard.anatomyMode === "natural" ? 240 : primaryGuard.anatomyMode === "enhanced" ? 280 : 340,
+      budgetWords: primaryGuard.anatomyMode === "natural" ? 220 : primaryGuard.anatomyMode === "enhanced" ? 260 : 300,
     }
   );
   return {
