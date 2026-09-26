@@ -977,6 +977,12 @@ export default function Builder() {
         toast.error("Pose Assist workflows are not installed. Use Install Pose Assist in the Create step.");
         return;
       }
+      const readiness = poseAssistStatus || await endpoints.poseAssistStatus();
+      if (!readiness?.ready) {
+        qc.setQueryData(["pose-assist-status"], readiness);
+        toast.error(`Pose Assist setup needs: ${(readiness?.missing || []).join(", ") || "local ComfyUI check"}`);
+        return;
+      }
       if (!poseReferenceImage?.name) {
         toast.error("Choose a pose-reference image for Pose Assist.");
         return;
@@ -1586,7 +1592,7 @@ export default function Builder() {
           )}
           <button
             onClick={doDispatch}
-            disabled={dispatching || !workflowId || (poseAssistEnabled && (!poseAssistAvailable || !poseReferenceImage?.name))}
+            disabled={dispatching || !workflowId || (poseAssistEnabled && (!poseAssistAvailable || !poseReferenceImage?.name || (poseAssistStatus && !poseAssistStatus.ready)))}
             data-testid="btn-dispatch-comfyui-render"
             className="hidden md:inline-flex items-center gap-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black text-sm font-semibold px-3 py-2 disabled:opacity-40"
           >
