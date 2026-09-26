@@ -32,6 +32,7 @@ import MobileStudioFlow, {
   mobileStudioStepForSection,
   mobileStudioSectionsForStep,
 } from "@/components/MobileStudioFlow";
+import MobileCreateReview from "@/components/MobileCreateReview";
 import SubjectSwitcher from "@/components/SubjectSwitcher";
 import ChromaControls from "@/components/ChromaControls";
 import RenderRecipeSelector from "@/components/RenderRecipeSelector";
@@ -1158,6 +1159,68 @@ export default function Builder() {
     return values.filter((value) => value && value !== "none").slice(0, 4).join(" · ");
   }, [activeDna, activeMobileStudioIndex, activeRecipeFamily, activeWorkflow?.name, mobileStudioStep, qualityTier, renderCount]);
 
+  const mobileCreateSummaries = useMemo(() => {
+    const compact = (...values) => values.filter((value) => value && value !== "none").slice(0, 4).join(" · ");
+    return {
+      character: compact(
+        activeDna.identity?.ethnicity,
+        activeDna.physique?.body_type,
+        activeDna.hair?.color,
+        activeDna.wardrobe?.outfit_preset
+      ),
+      scene: compact(
+        activeDna.pose?.action,
+        activeDna.scene?.environment,
+        activeDna.lighting?.mood || activeDna.lighting?.style,
+        activeDna.camera?.aspect_ratio
+      ),
+      fineTune: compact(
+        activeDna.scenario?.cast_size,
+        activeDna.scenario?.roleplay,
+        (activeDna.scenario?.explicit_level || 0) > 0 ? `explicit ${activeDna.scenario.explicit_level}%` : "",
+        (activeDna.scenario?.kink_level || 0) > 0 ? `kink ${activeDna.scenario.kink_level}%` : ""
+      ),
+    };
+  }, [activeDna]);
+
+  const mobileCreateIssues = useMemo(() => {
+    const issues = [];
+    if (!activeWorkflow) issues.push("Choose a workflow.");
+    const preflight = analyzePromptQuality({
+      positive: finalPositive,
+      dna: activeDna,
+      workflow: activeWorkflow,
+      context: preflightContext,
+    });
+    preflight.blockers.slice(0, 2).forEach((blocker) => {
+      if (blocker?.message && !issues.includes(blocker.message)) issues.push(blocker.message);
+    });
+    const incompleteLikeness = subjects.find((subject) => subject?.likeness?.enabled && (!subject.likeness.node_id || !subject.likeness.lora_name));
+    if (incompleteLikeness) issues.push(`Finish Likeness LoRA setup for Subject ${incompleteLikeness.label || "A"}.`);
+    if ((isFaceWorkflow || isEditWorkflow || isEnhanceWorkflow || isVideoWorkflow) && !referenceImage?.name) {
+      issues.push(
+        isFaceWorkflow ? "Add a face reference image." :
+        isVideoWorkflow ? "Add a starting image for the video." :
+        isEnhanceWorkflow ? "Add the image you want to repair." :
+        "Add the source image you want to edit."
+      );
+    }
+    if (isEnhanceWorkflow && repairTargets.length === 0 && !repairInstruction.trim()) {
+      issues.push("Choose a repair target or write a repair instruction.");
+    }
+    if (isEditWorkflow && !effectiveEditInstruction.trim()) {
+      issues.push(editMode === "new_pose" ? "Choose a new pose or describe the motion." : "Describe the image edit you want.");
+    }
+    if ((isVideoWorkflow || isTextVideoWorkflow) && !videoInstruction.trim()) {
+      issues.push(isTextVideoWorkflow ? "Describe the video you want to create." : "Describe how you want the image to move.");
+    }
+    return [...new Set(issues)];
+  }, [
+    activeDna, activeWorkflow, editMode, effectiveEditInstruction, finalPositive,
+    isEditWorkflow, isEnhanceWorkflow, isFaceWorkflow, isTextVideoWorkflow, isVideoWorkflow,
+    preflightContext, referenceImage?.name, repairInstruction, repairTargets, subjects, videoInstruction,
+  ]);
+
   return (
     <div className="mx-auto max-w-[1600px] px-2.5 sm:px-6 py-3 sm:py-6 space-y-3 sm:space-y-4">
       {/* Header */}
@@ -1174,7 +1237,7 @@ export default function Builder() {
             data-testid="select-workflow"
             value={workflowId}
             onChange={(e) => { setWorkflowId(e.target.value); setLoraOverrides({}); }}
-            className={`${mobileStudioStep === "start" || mobileStudioStep === "create" ? "block" : "hidden md:block"} bg-elevated border border-hairline rounded-lg px-3 py-2 text-sm text-zinc-100 w-full sm:w-auto sm:min-w-[200px]`}
+            className={`${mobileStudioStep === "start" || (mobileStudioStep === "create" && mobileStudioMode === "advanced") ? "block" : "hidden md:block"} bg-elevated border border-hairline rounded-lg px-3 py-2 text-sm text-zinc-100 w-full sm:w-auto sm:min-w-[200px]`}
           >
             {workflows.length === 0 && <option value="">No workflows — open Settings</option>}
             {workflows.map((w) => (
@@ -1195,7 +1258,7 @@ export default function Builder() {
               value={renderCount}
               onChange={(e) => setRenderCount(Number(e.target.value))}
               disabled={dispatching}
-              className={`${mobileStudioStep === "create" ? "block" : "hidden md:block"} bg-elevated border border-hairline rounded-lg px-3 py-2 text-sm text-zinc-100 flex-1 sm:flex-none`}
+              className="hidden md:block bg-elevated border border-hairline rounded-lg px-3 py-2 text-sm text-zinc-100 flex-1 sm:flex-none"
               title="Number of images to queue with unique seeds"
             >
               {[1, 2, 4, 6, 8, 10].map((count) => (
@@ -1357,6 +1420,22 @@ export default function Builder() {
         }}
       />
 
+      {mobileStudioStep === "create" && (
+        <MobileCreateReview
+          workflow={activeWorkflow}
+          compiler={activeCompiler}
+          family={activeRecipeFamily}
+          qualityTier={qualityTier}
+          onQualityTier={applyQualityTier}
+          renderCount={renderCount}
+          onRenderCount={setRenderCount}
+          summaries={mobileCreateSummaries}
+          issues={mobileCreateIssues}
+          mode={mobileStudioMode}
+          onRequestAdvanced={() => setMobileStudioMode("advanced")}
+        />
+      )}
+
       <div className="md:hidden fixed inset-x-0 z-30 mobile-builder-actions border-t hairline bg-[#111017]/95 px-2.5 py-2 backdrop-blur-xl shadow-[0_-12px_30px_rgba(0,0,0,0.28)]" data-testid="mobile-builder-actions">
         <div className="grid grid-cols-[0.9fr_1.4fr] gap-2">
           <button
@@ -1373,7 +1452,7 @@ export default function Builder() {
             <button
               type="button"
               onClick={doDispatch}
-              disabled={dispatching || !workflowId}
+              disabled={dispatching || !workflowId || mobileCreateIssues.length > 0}
               className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-emerald-500 py-3 text-sm font-bold text-black disabled:opacity-40"
               data-testid="btn-mobile-studio-render"
             >
@@ -1394,11 +1473,13 @@ export default function Builder() {
 
       <div className={mobileStudioStep === "create" ? "block" : "hidden md:block"}>
         {activeWorkflow && (activeCompiler !== "qwen_edit" || isEnhanceWorkflow) && (
-          <RenderRecipeSelector
-            compiler={activeCompiler}
-            value={qualityTier}
-            onChange={applyQualityTier}
-          />
+          <div className="hidden md:block">
+            <RenderRecipeSelector
+              compiler={activeCompiler}
+              value={qualityTier}
+              onChange={applyQualityTier}
+            />
+          </div>
         )}
 
         {isGoldenChroma && (
@@ -1408,20 +1489,22 @@ export default function Builder() {
         )}
       </div>
 
-      {/* Subject switcher — appears when scenario expects >1 or user manually added subjects */}
-      <SubjectSwitcher
-        subjects={subjects}
-        activeId={activeSubjectId}
-        expectedCount={expectedCount}
-        primaryLabel={subjects[0]?.label || "A"}
-        onSelect={setActiveSubjectId}
-        onAdd={addSubject}
-        onRemove={removeSubject}
-        onCopyFromPrimary={copyPrimaryToActive}
-        onRandomizeActive={randomizeActive}
-      />
+      {/* Subject controls stay available, but stay out of Simple Create review. */}
+      <div className={mobileStudioStep === "create" && mobileStudioMode === "simple" ? "hidden md:block" : "block"}>
+        <SubjectSwitcher
+          subjects={subjects}
+          activeId={activeSubjectId}
+          expectedCount={expectedCount}
+          primaryLabel={subjects[0]?.label || "A"}
+          onSelect={setActiveSubjectId}
+          onAdd={addSubject}
+          onRemove={removeSubject}
+          onCopyFromPrimary={copyPrimaryToActive}
+          onRandomizeActive={randomizeActive}
+        />
+      </div>
 
-      <div className={mobileStudioStep === "create" ? "space-y-2" : "hidden md:block md:space-y-2"}>
+      <div className={mobileStudioStep === "create" && mobileStudioMode === "advanced" ? "space-y-2" : "hidden md:block md:space-y-2"}>
         <div className="pane px-3 py-2 flex items-center gap-2" data-testid="glance-header">
           <button
             type="button"
