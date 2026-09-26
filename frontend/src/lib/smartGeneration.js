@@ -50,8 +50,8 @@ function workflowScore(workflow, target, dna, subjectCount, hasReference) {
   if (target === "face") score += workflow.kind === "face" ? 100 : 0;
 
   if (target === "still") {
-    const stillKind = ["image", "generate", "text_image"].includes(workflow.kind)
-      || !["edit", "enhance", "video", "text_video", "face"].includes(workflow.kind);
+    const stillKind = ["image", "generate", "text_image", "pony"].includes(workflow.kind)
+      || !["edit", "enhance", "video", "text_video", "face", "pose", "refine"].includes(workflow.kind);
     if (stillKind) score += 30;
 
     if (/z[- ]?image|zimage/.test(haystack)) {
