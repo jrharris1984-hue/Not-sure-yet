@@ -1,6 +1,6 @@
 import { AlertTriangle, CheckCircle2, Lock, Target } from "lucide-react";
 
-export default function PromptAlignmentCard({ analysis, priorityPlan, mode = "simple" }) {
+export default function PromptAlignmentCard({ analysis, priorityPlan, adjustments = [], mode = "simple" }) {
   if (!analysis) return null;
 
   const must = priorityPlan?.mustMatch || [];
@@ -66,6 +66,15 @@ export default function PromptAlignmentCard({ analysis, priorityPlan, mode = "si
                 +{must.length - (mode === "advanced" ? 10 : 4)} more
               </span>
             )}
+          </div>
+        </div>
+      )}
+
+      {adjustments.length > 0 && (
+        <div className="border-t hairline px-3 py-2.5">
+          <div className="mb-1.5 text-[9px] font-mono uppercase tracking-wider text-zinc-600">Compiler adjustments</div>
+          <div className="space-y-1 text-[10px] text-zinc-500">
+            {adjustments.slice(0, mode === "advanced" ? 5 : 2).map((item) => <div key={item}>• {item}</div>)}
           </div>
         </div>
       )}
