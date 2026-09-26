@@ -1489,18 +1489,20 @@ export default function Builder() {
         )}
       </div>
 
-      {/* Subject switcher — appears when scenario expects >1 or user manually added subjects */}
-      <SubjectSwitcher
-        subjects={subjects}
-        activeId={activeSubjectId}
-        expectedCount={expectedCount}
-        primaryLabel={subjects[0]?.label || "A"}
-        onSelect={setActiveSubjectId}
-        onAdd={addSubject}
-        onRemove={removeSubject}
-        onCopyFromPrimary={copyPrimaryToActive}
-        onRandomizeActive={randomizeActive}
-      />
+      {/* Subject controls stay available, but stay out of Simple Create review. */}
+      <div className={mobileStudioStep === "create" && mobileStudioMode === "simple" ? "hidden md:block" : "block"}>
+        <SubjectSwitcher
+          subjects={subjects}
+          activeId={activeSubjectId}
+          expectedCount={expectedCount}
+          primaryLabel={subjects[0]?.label || "A"}
+          onSelect={setActiveSubjectId}
+          onAdd={addSubject}
+          onRemove={removeSubject}
+          onCopyFromPrimary={copyPrimaryToActive}
+          onRandomizeActive={randomizeActive}
+        />
+      </div>
 
       <div className={mobileStudioStep === "create" && mobileStudioMode === "advanced" ? "space-y-2" : "hidden md:block md:space-y-2"}>
         <div className="pane px-3 py-2 flex items-center gap-2" data-testid="glance-header">
