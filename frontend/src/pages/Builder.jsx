@@ -1083,6 +1083,7 @@ export default function Builder() {
     setFaceIdV2Strength(1.4);
     setRepairStrength(0.45);
     setPreserveUnmentioned(true);
+    setMobileStudioStep("start");
     setChromaSettings({
       width: 768,
       height: 1152,
