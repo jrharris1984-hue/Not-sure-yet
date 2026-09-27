@@ -3,7 +3,7 @@ import { expandPrompt } from "@/lib/promptMap";
 export const PROMPT_BUDGET_WORDS = {
   zimage: 260,
   chroma: 330,
-  krea2: 320,
+  krea2: 300,
   pony: 160,
   standard: 320,
   wan_t2v: 340,
