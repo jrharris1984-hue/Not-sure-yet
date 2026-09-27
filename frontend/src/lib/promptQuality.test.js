@@ -30,6 +30,18 @@ describe("prompt quality preflight", () => {
       dna: { pose: { distance: "full body" } }, workflow,
     });
     expect(valid.blockers.map((item) => item.code)).not.toContain("krea-framing-prompt");
+
+    const kneesUp = analyzePromptQuality({
+      positive: "Knees-up photograph: show the subject from the top of the head to the knees.",
+      dna: { pose: { distance: "knees-up" } }, workflow,
+    });
+    expect(kneesUp.blockers.map((item) => item.code)).not.toContain("krea-framing-prompt");
+
+    const mismatched = analyzePromptQuality({
+      positive: "Waist-up photograph of an adult subject.",
+      dna: { pose: { distance: "thigh-up" } }, workflow,
+    });
+    expect(mismatched.blockers.map((item) => item.code)).toContain("krea-framing-prompt");
   });
 
   test("safe cleanup removes only exact duplicate clauses and filler", () => {

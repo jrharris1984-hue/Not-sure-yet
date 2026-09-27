@@ -561,7 +561,7 @@ export default function Builder() {
       dna: { ...subject.dna, pose: { ...(subject.dna?.pose || {}), distance } },
     })));
     setPromptOverride("");
-    toast.success(`${distance === "full body" ? "Full body" : "Waist-up"} framing applied to all subjects`);
+    toast.success(`${distance} framing applied to all subjects`);
   };
 
   useEffect(() => {
@@ -2134,7 +2134,7 @@ export default function Builder() {
               <div className="section-label">Krea 2 · magazine framing</div>
               <p className="text-xs text-zinc-400">Choose the crop for every subject. Face priority keeps the face clear within this shot.</p>
               <div className="flex gap-2">
-                {[["full body", "Full body"], ["waist-up", "Waist-up"]].map(([value, label]) => (
+                {[["full body", "Full body"], ["knees-up", "Knees-up"], ["thigh-up", "Thigh-up"], ["waist-up", "Waist-up"]].map(([value, label]) => (
                   <button key={value} type="button" onClick={() => setKreaFraming(value)}
                     className={`rounded-lg border px-3 py-2 text-xs font-semibold ${subjects.every((subject) => subject.dna?.pose?.distance === value) ? "border-cyan-400 bg-cyan-500/15 text-cyan-100" : "hairline text-zinc-300"}`}>
                     {label}

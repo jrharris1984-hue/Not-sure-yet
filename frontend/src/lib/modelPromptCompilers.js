@@ -348,13 +348,16 @@ function kreaPoseSentence(dna = {}, label = "") {
   const prefix = label ? `Subject ${label} pose and framing: ` : "Pose and framing: ";
   const feetPriority = lower(p.focus) === "feet" || kreaValue(feet.framing);
   const framing = lower(p.distance) || "full body";
-  const bodyCrop = ["full body", "wide shot", "waist-up"].includes(framing);
+  const bodyCrop = ["full body", "wide shot", "knees-up", "thigh-up", "waist-up"].includes(framing);
+  const cropDescription = {
+    "waist-up": "waist-up", "thigh-up": "head-to-mid-thigh", "knees-up": "head-to-knees",
+  }[framing] || "full-length";
   return kreaSentence(prefix, [
     p.action,
     p.body_language && `${p.body_language} body language`,
     p.angle && `${p.angle} view`,
     p.focus && (bodyCrop && lower(p.focus) === "face"
-      ? `face clearly visible within the ${framing === "waist-up" ? "waist-up" : "full-length"} composition`
+      ? `face clearly visible within the ${cropDescription} composition`
       : `${p.focus} composition priority`),
     p.hands?.length ? `hands ${p.hands.join(" and ")}` : "",
     feetPriority ? feet.framing : "",
@@ -370,6 +373,8 @@ function kreaFramingSentence(dna = {}) {
     "wide shot": "Wide environmental photograph: show the entire subject from head to feet with the setting clearly visible around them.",
     portrait: "Head-and-shoulders portrait: frame the face and shoulders; the rest of the body may be outside the image.",
     "waist-up": "Waist-up photograph: show the head, torso and arms down to the waist.",
+    "thigh-up": "Thigh-up photograph: show the subject from the top of the head to mid-thigh, with the torso, hips and upper legs visible.",
+    "knees-up": "Knees-up photograph: show the subject from the top of the head to the knees, with space around the body.",
     "close-up": "Close-up photograph: focus on the face and nearby details; the body may be outside the image.",
     "detail shot": "Tight detail photograph: frame the selected detail rather than the whole body.",
   };
@@ -512,7 +517,7 @@ export function buildKrea2Prompts({
   const missingMust = (priorityPlan.mustMatch || [])
     .filter((item) => !(item.key === "pose.focus"
       && lower(primary.pose?.focus) === "face"
-      && (!primary.pose?.distance || ["full body", "wide shot", "waist-up"].includes(lower(primary.pose.distance)))))
+      && (!primary.pose?.distance || ["full body", "wide shot", "waist-up", "thigh-up", "knees-up"].includes(lower(primary.pose.distance)))))
     .filter((item) => !requirementPresent(positive, item))
     .map((item) => item.phrase);
   if (missingMust.length) {

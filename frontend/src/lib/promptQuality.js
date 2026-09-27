@@ -88,7 +88,7 @@ export function analyzePromptQuality({
   const missingMust = (priorityPlan.mustMatch || [])
     .filter((item) => !(profile === "krea2" && item.key === "pose.focus"
       && String(dna?.pose?.focus || "").toLowerCase() === "face"
-      && ["", "full body", "wide shot", "waist-up"].includes(String(dna?.pose?.distance || "").toLowerCase())))
+      && ["", "full body", "wide shot", "waist-up", "thigh-up", "knees-up"].includes(String(dna?.pose?.distance || "").toLowerCase())))
     .filter((item) => !requirementPresent(positive, item));
   const droppedImportant = (compilerMeta?.droppedClauses || []).filter((item) => item.priority === "important");
   const droppedDetail = (compilerMeta?.droppedClauses || []).filter((item) => item.priority === "detail");
@@ -172,20 +172,26 @@ export function analyzePromptQuality({
     }
     if (profile === "krea2") {
       const distance = String(dna?.pose?.distance || "").toLowerCase();
-      if (["portrait", "close-up", "detail shot", "wide shot"].includes(distance)) {
-        issues.push(issue("error", "krea-framing-choice", "Krea 2 magazine framing is set to full body or waist-up. Choose one of those crops before rendering.", { blocking: true }));
+      if (!["", "full body", "knees-up", "thigh-up", "waist-up"].includes(distance)) {
+        issues.push(issue("error", "krea-framing-choice", "Choose Full body, Knees-up, Thigh-up, or Waist-up for Krea 2 before rendering.", { blocking: true }));
       }
-      if (!/(full[- ](?:length|body)|head[- ]to[- ]toe|head to (?:feet|soles)|waist[- ]up)/i.test(positive)) {
-        issues.push(issue("error", "krea-framing-prompt", "The final Krea 2 prompt does not clearly request full-body or waist-up framing. Restore the generated prompt or add that framing to your custom prompt.", { blocking: true }));
+      const framingPattern = {
+        "full body": /full[- ](?:length|body)|head[- ]to[- ]toe|head to (?:feet|soles)/i,
+        "knees-up": /knees[- ]up|head[- ]to[- ]knees|head to (?:the )?knees/i,
+        "thigh-up": /thigh[- ]up|head[- ]to[- ]mid[- ]thigh|head to mid[- ]thigh/i,
+        "waist-up": /waist[- ]up|head to (?:the )?waist/i,
+      }[distance || "full body"];
+      if (framingPattern && !framingPattern.test(positive)) {
+        issues.push(issue("error", "krea-framing-prompt", `The final Krea 2 prompt does not clearly request ${distance || "full body"} framing. Restore the generated prompt or add that crop to your custom prompt.`, { blocking: true }));
       }
       const selectedActions = Array.isArray(dna?.scenario?.acts) ? dna.scenario.acts.length : 0;
       const extraClauses = String(dna?.scenario?.extra_acts || "").split(/[,;]+/).filter((part) => part.trim()).length;
       if (selectedActions + extraClauses > 3) {
         issues.push(issue("warning", "krea-scene-overload", "Krea 2 has several competing scene details. Choose one main action and up to two supporting details for a more reliable image."));
       }
-      if ((!dna?.pose?.distance || ["full body", "wide shot"].includes(String(dna.pose.distance).toLowerCase()))
+      if ((!dna?.pose?.distance || ["full body", "knees-up", "thigh-up", "waist-up"].includes(String(dna.pose.distance).toLowerCase()))
         && String(dna?.pose?.focus || "").toLowerCase() === "face") {
-        issues.push(issue("info", "krea-face-in-frame", "Face focus will keep the face clear within a full-length composition; it will not request a face close-up."));
+        issues.push(issue("info", "krea-face-in-frame", "Face focus will keep the face clear within the selected body crop; it will not request a face close-up."));
       }
     }
     const skinTone = String(dna?.skin?.tone || "").toLowerCase();
