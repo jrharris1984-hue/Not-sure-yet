@@ -137,6 +137,7 @@ export const SECTIONS = [
     key: "wardrobe",
     title: "Wardrobe",
     fields: [
+      { key: "nudity_level", type: "slider", label: "Krea 2 nudity (0 use outfit → 100 nude)", min: 0, max: 100, step: 5, defaultValue: 0 },
       { key: "outfit_preset", type: "chips", label: "Outfit preset", groups: [
         { name: "Bare", options: ["nude", "topless", "bottomless", "just panties", "just a shirt", "boyfriend's shirt"] },
         { name: "Lingerie", options: ["boudoir lingerie", "sheer negligee", "silk robe open"] },

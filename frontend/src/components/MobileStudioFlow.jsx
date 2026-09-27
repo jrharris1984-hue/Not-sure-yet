@@ -48,7 +48,7 @@ export const SIMPLE_FIELD_KEYS = {
   physique: ["height", "body_type", "curves", "bust", "butt", "hips", "waist"],
   face: ["eye_shape", "eye_color", "jawline", "lips", "expression"],
   hair: ["style", "length", "color"],
-  wardrobe: ["outfit_preset", "footwear"],
+  wardrobe: ["nudity_level", "outfit_preset", "footwear"],
   pose: ["action", "angle", "distance", "body_language"],
   scene: ["environment", "indoor_outdoor", "era"],
   lighting: ["source", "style", "mood"],
