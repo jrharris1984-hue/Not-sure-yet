@@ -1838,7 +1838,7 @@ export default function Builder() {
             mode={mobileStudioMode}
             onRequestAdvanced={() => setMobileStudioMode("advanced")}
           />
-          {activeRecipeFamily === "image" && (
+          {activeRecipeFamily === "image" && !isKrea2 && (
             <div className="md:hidden">
               <PoseAssistPanel
                 enabled={poseAssistEnabled}
@@ -1948,7 +1948,7 @@ export default function Builder() {
           </div>
         )}
 
-        {activeRecipeFamily === "image" && (
+        {activeRecipeFamily === "image" && !isKrea2 && (
           <div className="hidden md:block mt-3 sm:mt-4">
             <PoseAssistPanel
               enabled={poseAssistEnabled}
