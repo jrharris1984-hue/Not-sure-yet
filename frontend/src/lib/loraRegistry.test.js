@@ -184,6 +184,20 @@ describe("LoRA registry planner", () => {
     expect(magazine.defaultStrength).toBe(0.8);
   });
 
+  test("does not offer workflow-required or identity LoRAs as optional choices", () => {
+    const local = [
+      "goldenchromaV1.safetensors",
+      "Flux_2-Turbo-LoRA_comfyui.safetensors",
+      "ip-adapter-faceid-plusv2_sd15_lora.safetensors",
+    ];
+    const chroma = compatibleInstalledLoras({ name: "Chroma1-HD · Golden T2I", prompt_style: "chroma" }, local);
+    const flux = compatibleInstalledLoras({ name: "Flux image", prompt_style: "flux" }, local);
+    const face = compatibleInstalledLoras({ name: "Face-Preserved", kind: "face" }, local);
+    expect(chroma.some((entry) => entry.id === "golden-chroma")).toBe(false);
+    expect(flux.some((entry) => entry.id === "flux2-turbo")).toBe(false);
+    expect(face.some((entry) => entry.id === "faceid-sd15")).toBe(false);
+  });
+
   test("includes SDXL-folder LoRAs for Pony but not for unrelated families", () => {
     const local = ["SDXL\\detail-slider.safetensors", "Flux\\flux-style.safetensors"];
     const pony = compatibleInstalledLoras({ name: "Pony V6 XL", prompt_style: "pony" }, local);
