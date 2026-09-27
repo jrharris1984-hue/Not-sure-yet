@@ -402,27 +402,27 @@ function kreaSharedShotSentences(dna = {}) {
         ? "Photorealistic documentary-style photograph."
         : "Photorealistic editorial photograph.";
 
-  const sceneSentence = kreaSentence("Setting: ", [
+  const sceneSentence = kreaSentence("The setting is ", [
     scene.environment,
     scene.background,
     scene.indoor_outdoor,
     scene.era,
     scene.props,
   ]);
-  const lightSentence = kreaSentence("Lighting: ", [
+  const lightSentence = kreaSentence("Lighting uses ", [
     lighting.source,
     lighting.direction && `${lighting.direction} direction`,
     lighting.color_temp && `${lighting.color_temp} color temperature`,
     lighting.style,
     lighting.mood,
   ]);
-  const cameraSentence = kreaSentence("Camera: ", [
+  const cameraSentence = kreaSentence("The camera uses ", [
     camera.lens && `${camera.lens} lens`,
     camera.aperture,
     camera.angle && `${camera.angle} angle`,
     camera.aspect_ratio && `${camera.aspect_ratio} aspect ratio`,
   ]);
-  const styleSentence = kreaSentence("Finish: ", [
+  const styleSentence = kreaSentence("The overall finish is ", [
     style.artistic_tone,
     style.film_grain && style.film_grain !== "none" ? `${style.film_grain} film grain` : "",
     style.extra,
@@ -463,11 +463,13 @@ export function buildKrea2Prompts({
       ? "Preserve enhanced proportions with coherent anatomy, connected limbs, realistic hands and feet, natural skin detail and consistent perspective."
       : "Use believable adult proportions, coherent anatomy, realistic hands and feet, natural skin texture, crisp facial detail and consistent perspective.";
 
+  const sharedShot = kreaSharedShotSentences(primary);
+  const [imageLead, ...shotDetails] = sharedShot;
   let positive = [
-    ...kreaSharedShotSentences(primary).slice(0, 1),
-    compositionLead,
     ...subjectBlocks,
-    ...kreaSharedShotSentences(primary).slice(1),
+    compositionLead,
+    ...shotDetails,
+    imageLead,
     realismTail,
   ].filter(Boolean).join(" ");
 
