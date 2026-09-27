@@ -153,6 +153,19 @@ export function analyzePromptQuality({
     if (profile === "krea2" && nudityLevel >= 55 && outfitPreset && !hasNudityChoice) {
       issues.push(issue("info", "nudity-overrides-outfit", "The Krea 2 nudity slider takes priority over the selected outfit at this level."));
     }
+    const wardrobe = dna?.wardrobe || {};
+    for (const [color, type, label] of [
+      ["hosiery_color", "hosiery_type", "pantyhose / stocking"],
+      ["heel_color", "heel_type", "heel"],
+      ["glasses_color", "glasses_style", "glasses"],
+    ]) {
+      if (wardrobe[color] && !wardrobe[type]) {
+        issues.push(issue("info", `${color}-without-type`, `Choose a ${label} type to include its selected color in the prompt.`));
+      }
+    }
+    if (wardrobe.heel_type && wardrobe.footwear && wardrobe.footwear !== "barefoot" && wardrobe.footwear !== wardrobe.heel_type) {
+      issues.push(issue("info", "heel-overrides-footwear", "Heel type takes priority over the general footwear selection."));
+    }
     if (profile === "krea2" && ["portrait", "close-up"].includes(String(dna?.pose?.distance || "").toLowerCase())
       && (hasSceneAction || hasNudityChoice)) {
       issues.push(issue("warning", "explicit-framing", "Portrait or close-up framing may crop out the adult scene details. Choose full body or a wider shot if those details must be visible."));
