@@ -2116,13 +2116,17 @@ export default function Builder() {
             <SmartSetupPanel workflows={selectableWorkflows} activeWorkflow={activeWorkflow} dna={activeDna}
               subjectCount={subjects.length} hasReference={!!referenceImage?.name} onApply={applySmartSetup} />
           </div>
-          <div className={mobileStudioMode === "advanced" ? "block" : "hidden md:block"}>
+          <div className={mobileStudioMode === "advanced" || mobileStudioStep === "create" ? "block" : "hidden md:block"}>
           <PromptPreview
             positive={finalPositive}
             negative={finalNegative}
             dna={activeDna}
             workflow={activeWorkflow}
             context={preflightContext}
+            compilerMeta={compiledPrompt}
+            recipe={activeRecipeFamily === "image" ? chromaSettings : null}
+            selectedLora={selectedLora}
+            imageCount={activeRecipeFamily === "image" && !poseAssistEnabled ? renderCount : 1}
             optimized={!!promptOverride}
             improving={improvingPrompt}
             onImprove={improveCompiledPrompt}
