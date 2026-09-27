@@ -555,6 +555,15 @@ export default function Builder() {
     toast.success(`Smart setup applied · ${workflow.name}`);
   };
 
+  const setKreaFraming = (distance) => {
+    setSubjects((current) => current.map((subject) => ({
+      ...subject,
+      dna: { ...subject.dna, pose: { ...(subject.dna?.pose || {}), distance } },
+    })));
+    setPromptOverride("");
+    toast.success(`${distance === "full body" ? "Full body" : "Waist-up"} framing applied to all subjects`);
+  };
+
   useEffect(() => {
     applyQualityTier("balanced");
     // Reset to the recommended recipe only when the selected model family changes.
@@ -2120,6 +2129,21 @@ export default function Builder() {
               subjectCount={subjects.length} hasReference={!!referenceImage?.name} onApply={applySmartSetup} />
           </div>
           <div className={mobileStudioMode === "advanced" || mobileStudioStep === "create" ? "block" : "hidden md:block"}>
+          {activeCompiler === "krea2" && (
+            <div className="pane p-4 mb-4 space-y-2" data-testid="krea-framing-control">
+              <div className="section-label">Krea 2 · magazine framing</div>
+              <p className="text-xs text-zinc-400">Choose the crop for every subject. Face priority keeps the face clear within this shot.</p>
+              <div className="flex gap-2">
+                {[["full body", "Full body"], ["waist-up", "Waist-up"]].map(([value, label]) => (
+                  <button key={value} type="button" onClick={() => setKreaFraming(value)}
+                    className={`rounded-lg border px-3 py-2 text-xs font-semibold ${subjects.every((subject) => subject.dna?.pose?.distance === value) ? "border-cyan-400 bg-cyan-500/15 text-cyan-100" : "hairline text-zinc-300"}`}>
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <p className="text-[11px] text-zinc-500">Selected scene details: {(activeDna.scenario?.acts || []).length + String(activeDna.scenario?.extra_acts || "").split(/[,;]+/).filter((part) => part.trim()).length}. Keep this to one main action and up to two supporting details. The preview below shows the exact prompt sent to ComfyUI.</p>
+            </div>
+          )}
           <PromptPreview
             positive={finalPositive}
             negative={finalNegative}
