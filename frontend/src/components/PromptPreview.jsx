@@ -74,6 +74,7 @@ export default function PromptPreview({ positive, negative, dna, workflow, conte
             <div>Steps {recipe?.steps ?? "workflow"} · CFG {recipe?.cfg ?? "workflow"} · sampler {recipe?.sampler || "workflow"}</div>
             <div>Seed {recipe?.seed !== "" && recipe?.seed != null ? `${recipe.seed} (incremented per image)` : "random, then incremented per image"}</div>
             <div>Optional LoRA {selectedLora?.name ? `${selectedLora.name} at ${Number(selectedLora.strength ?? 0.8).toFixed(2)}` : "none"}</div>
+            {selectedLora?.name && <div>LoRA prompt triggers: {selectedLora.triggerWords?.length ? selectedLora.triggerWords.join(", ") : "none configured"}</div>}
             {compilerMeta?.negativeStrategy === "zeroed" && <div className="text-amber-200">This workflow zeroes negative conditioning.</div>}
             <div className="mt-1 text-zinc-500">Installed model names and graph settings are confirmed by the backend when the job runs.</div>
           </div>
