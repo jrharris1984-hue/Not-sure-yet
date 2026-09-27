@@ -28,10 +28,17 @@ const IMPORTANT_FIELDS = new Set([
   "physique.curves",
   "physique.bust",
   "physique.bust_shape",
+  "physique.bust_scale",
+  "physique.implant_volume",
   "physique.butt",
+  "physique.butt_scale",
+  "physique.glute_shape",
   "physique.hips",
+  "physique.hip_scale",
   "physique.waist",
+  "physique.waist_scale",
   "physique.thighs",
+  "physique.thigh_scale",
   "face.eye_shape",
   "face.eye_color",
   "face.expression",
@@ -43,6 +50,11 @@ const IMPORTANT_FIELDS = new Set([
   "wardrobe.bottom",
   "wardrobe.underwear",
   "wardrobe.footwear",
+  "wardrobe.dress_style",
+  "wardrobe.skirt_style",
+  "wardrobe.garment_color",
+  "wardrobe.heel_type",
+  "wardrobe.hosiery_type",
   "scene.environment",
   "lighting.source",
   "lighting.style",
@@ -126,6 +138,17 @@ function literalRequirement(section, field, value, locked = false) {
   }
   if (key === "physique.body_type") return `${display} body type`;
   if (key === "physique.bust") return `${display} bust size`;
+  if (key === "physique.implant_volume") return `${display} cc visual implant reference`;
+  if (section === "physique" && key.endsWith("_scale")) {
+    const levels = {
+      bust_scale: ["small bust", "moderate bust", "full bust", "very large bust", "extremely oversized bust"],
+      butt_scale: ["small glutes", "moderate glutes", "full rounded glutes", "very large projected glutes", "extremely oversized projected glutes"],
+      thigh_scale: ["slim thighs", "moderate thighs", "full thighs", "very thick thighs", "extremely thick thighs"],
+      hip_scale: ["narrow hips", "moderate width hips", "wide hips", "very wide hips", "extremely wide hips"],
+      waist_scale: ["very narrow waist", "narrow waist", "average width waist", "wide waist", "very wide waist"],
+    };
+    return levels[field]?.[Math.min(4, Math.floor(numeric / 20))] || "";
+  }
   if (key === "physique.butt") return `${display} buttock size and shape`;
   if (key === "physique.hips") return `${display} hips`;
   if (key === "physique.thighs") return `${display} thighs`;
@@ -176,6 +199,13 @@ function collectSubjectItems(dna = {}, {
   Object.entries(dna || {}).forEach(([section, fields]) => {
     if (!fields || typeof fields !== "object" || Array.isArray(fields)) return;
     Object.entries(fields).forEach(([field, value]) => {
+      // The fine control replaces its older coarse chip in the compiler.
+      const fineControl = { bust: "bust_scale", butt: "butt_scale", hips: "hip_scale", waist: "waist_scale", thighs: "thigh_scale" }[field];
+      if (section === "physique" && fineControl && Number(fields[fineControl]) > 0) return;
+      if (section === "physique" && field === "bust_shape" && Number(fields.implant_volume) > 0) return;
+      if (section === "wardrobe" && (fields.dress_style || fields.skirt_style) && field === "outfit_preset") return;
+      if (section === "wardrobe" && fields.dress_style && ["top", "bottom"].includes(field)) return;
+      if (section === "wardrobe" && fields.skirt_style && field === "bottom") return;
       const locked = !!sectionLocks?.[section] || !!fieldLocks?.[section]?.[field];
       if (!isMeaningful(value, locked)) return;
 

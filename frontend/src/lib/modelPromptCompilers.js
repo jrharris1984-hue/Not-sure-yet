@@ -266,6 +266,12 @@ function kreaGenderLabel(value) {
   return "woman";
 }
 
+const kreaScale = (value, noun, labels) => {
+  const n = Number(value) || 0;
+  if (!n) return "";
+  return `${labels[Math.min(4, Math.floor(n / 20))]} ${noun}${n >= 80 ? " with stylized fantasy proportions" : ""}`;
+};
+
 function kreaSubjectSentence(dna = {}, label = "") {
   const id = dna.identity || {};
   const ph = dna.physique || {};
@@ -281,12 +287,14 @@ function kreaSubjectSentence(dna = {}, label = "") {
     ph.body_type && `${ph.body_type} body type`,
     Number(ph.muscularity || 0) > 60 ? (Number(ph.muscularity) > 85 ? "highly muscular build" : "athletic toned build") : "",
     Number(ph.curves || 0) > 60 ? (Number(ph.curves) > 85 ? "pronounced natural curves" : "curved silhouette") : "",
-    ph.bust && `${ph.bust} bust`,
-    ph.bust_shape && `${ph.bust_shape} breast shape`,
-    ph.waist && `${ph.waist} waist`,
-    ph.hips && `${ph.hips} hips`,
-    ph.butt && `${ph.butt} buttocks`,
-    ph.thighs && `${ph.thighs} thighs`,
+    kreaScale(ph.bust_scale, "bust", ["small", "moderate", "full", "very large", "extremely oversized"]) || (ph.bust && `${ph.bust} bust`),
+    ph.implant_volume > 0 ? "round augmented breast shape" : ph.bust_shape && `${ph.bust_shape} breast shape`,
+    Number(ph.implant_volume || 0) > 0 ? `augmented round implant look, ${ph.implant_volume} cc visual reference${ph.implant_volume >= 1500 ? " at fictional fantasy scale" : ""}` : "",
+    kreaScale(ph.waist_scale, "waist", ["very narrow", "narrow", "average", "wide", "very wide"]) || (ph.waist && `${ph.waist} waist`),
+    kreaScale(ph.hip_scale, "hips", ["narrow", "moderate-width", "wide", "very wide", "extremely wide"]) || (ph.hips && `${ph.hips} hips`),
+    kreaScale(ph.butt_scale, "glutes", ["small", "moderate", "full rounded", "very large projected", "extremely oversized projected"]) || (ph.butt && `${ph.butt} buttocks`),
+    ph.glute_shape,
+    kreaScale(ph.thigh_scale, "thighs", ["slim", "moderate", "full", "very thick", "extremely thick"]) || (ph.thighs && `${ph.thighs} thighs`),
     ph.legs && ph.legs !== "average" ? `${ph.legs} legs` : "",
     ph.proportions
   );
@@ -325,17 +333,21 @@ function kreaWardrobeSentence(dna = {}, label = "") {
   const suppressClothing = nudity >= 55;
   return kreaSentence(prefix, [
     nudityDirection,
-    suppressClothing ? "" : w.outfit_preset,
-    !suppressClothing && w.top && w.top !== "none" ? w.top : "",
-    !suppressClothing && w.bottom && w.bottom !== "none" ? w.bottom : "",
+    suppressClothing || w.dress_style || w.skirt_style ? "" : w.outfit_preset,
+    suppressClothing ? "" : w.dress_style,
+    suppressClothing ? "" : w.skirt_style,
+    !suppressClothing && !w.dress_style && w.top && w.top !== "none" ? w.top : "",
+    !suppressClothing && !w.dress_style && !w.skirt_style && w.bottom && w.bottom !== "none" ? w.bottom : "",
     !suppressClothing && w.underwear && w.underwear !== "none" ? w.underwear : "",
-    w.hosiery_type ? `${w.hosiery_color ? `${w.hosiery_color} ` : ""}${w.hosiery_type}` : "",
-    w.heel_type ? `${w.heel_color ? `${w.heel_color} ` : ""}${w.heel_type}` : w.footwear,
+    w.hosiery_type ? `${w.hosiery_color ? `${w.hosiery_color} ` : ""}${w.hosiery_pattern && w.hosiery_pattern !== "plain" ? `${w.hosiery_pattern} ` : ""}${w.hosiery_type}` : "",
+    w.heel_type ? `${w.heel_color ? `${w.heel_color} ` : ""}${w.heel_finish ? `${w.heel_finish} ` : ""}${w.heel_type}${w.heel_height ? `, ${w.heel_height} heel` : ""}` : w.footwear,
     w.glasses_style ? `${w.glasses_color ? `${w.glasses_color} ` : ""}${w.glasses_style}` : "",
     w.nail_color ? `${w.nail_color} fingernails` : "",
     w.nail_shape ? `${w.nail_shape} nail shape` : "",
     w.accessories,
     suppressClothing ? "" : w.material,
+    suppressClothing ? "" : w.garment_color && `${w.garment_color} outfit`,
+    suppressClothing ? "" : w.garment_pattern && w.garment_pattern !== "solid" && `${w.garment_pattern} fabric`,
     suppressClothing ? "" : w.palette,
     suppressClothing ? "" : w.fit,
     suppressClothing ? "" : w.state,
