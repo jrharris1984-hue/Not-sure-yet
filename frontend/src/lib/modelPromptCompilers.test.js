@@ -26,10 +26,34 @@ describe("model-specific prompt compilers", () => {
     dna.identity = { ...dna.identity, gender: "female", age: 44, ethnicity: "filipina" };
     dna.pose = { ...dna.pose, action: "standing", distance: "full body" };
     const result = compileModelPrompts({ promptStyle: "krea2", dna });
-    expect(result.positive).toContain("44");
-    expect(result.positive).toContain("NORMAL HUMAN ANATOMY REQUIRED");
+    expect(result.positive).toContain("44-year-old adult woman");
+    expect(result.positive).toContain("full body framing");
+    expect(result.positive).toContain("Photorealistic editorial photograph");
+    expect(result.positive).not.toContain("NORMAL HUMAN ANATOMY REQUIRED");
+    expect(result.profile).toBe("krea2-photo-directed-v1");
     expect(result.negative).toBe("");
     expect(result.negativeStrategy).toBe("zeroed");
+  });
+
+  it("orders Krea 2 prompts as subject and pose before camera/style details", () => {
+    const dna = JSON.parse(JSON.stringify(DEFAULT_DNA));
+    dna.identity = { ...dna.identity, gender: "female", age: 38, ethnicity: "colombian" };
+    dna.physique = { ...dna.physique, body_type: "hourglass", bust: "large", hips: "wide" };
+    dna.wardrobe = { ...dna.wardrobe, outfit_preset: "cocktail dress" };
+    dna.pose = { ...dna.pose, action: "standing hip out", distance: "full body", angle: "3/4" };
+    dna.scene = { ...dna.scene, environment: "studio" };
+    dna.lighting = { ...dna.lighting, source: "softbox", mood: "soft" };
+    dna.camera = { ...dna.camera, lens: "85mm", angle: "eye-level" };
+    const result = compileModelPrompts({ promptStyle: "krea2", dna });
+    const subjectAt = result.positive.indexOf("38-year-old adult woman");
+    const poseAt = result.positive.indexOf("standing hip out");
+    const cameraAt = result.positive.indexOf("85mm lens");
+    const styleAt = result.positive.indexOf("Photorealistic editorial photograph");
+    expect(subjectAt).toBeGreaterThanOrEqual(0);
+    expect(poseAt).toBeGreaterThan(subjectAt);
+    expect(cameraAt).toBeGreaterThan(poseAt);
+    expect(styleAt).toBeGreaterThan(cameraAt);
+    expect(result.promptWords).toBeLessThanOrEqual(300);
   });
 
   it("keeps Z-Image natural language compact and uses its own negative prompt", () => {
