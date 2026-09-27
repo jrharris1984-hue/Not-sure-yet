@@ -336,7 +336,6 @@ function kreaPoseSentence(dna = {}, label = "") {
   return kreaSentence(prefix, [
     p.action,
     p.body_language && `${p.body_language} body language`,
-    p.distance && `${p.distance} framing`,
     p.angle && `${p.angle} view`,
     p.focus && `${p.focus} composition priority`,
     p.hands?.length ? `hands ${p.hands.join(" and ")}` : "",
@@ -344,6 +343,19 @@ function kreaPoseSentence(dna = {}, label = "") {
     feetPriority ? feet.sole_presentation : "",
     feetPriority && feet.pedicure ? `${feet.pedicure} pedicure` : "",
   ]);
+}
+
+function kreaFramingSentence(dna = {}) {
+  const framing = lower(dna.pose?.distance) || "full body";
+  const directions = {
+    "full body": "Full-length photograph: show the entire subject from the top of the head to the soles of the feet, with space around the body in the frame.",
+    "wide shot": "Wide environmental photograph: show the entire subject from head to feet with the setting clearly visible around them.",
+    portrait: "Head-and-shoulders portrait: frame the face and shoulders; the rest of the body may be outside the image.",
+    "waist-up": "Waist-up photograph: show the head, torso and arms down to the waist.",
+    "close-up": "Close-up photograph: focus on the face and nearby details; the body may be outside the image.",
+    "detail shot": "Tight detail photograph: frame the selected detail rather than the whole body.",
+  };
+  return directions[framing] || directions["full body"];
 }
 
 function kreaAdultDetailSentence(dna = {}, label = "") {
@@ -467,6 +479,7 @@ export function buildKrea2Prompts({
   const [imageLead, ...shotDetails] = sharedShot;
   let positive = [
     ...subjectBlocks,
+    kreaFramingSentence(primary),
     compositionLead,
     ...shotDetails,
     imageLead,
