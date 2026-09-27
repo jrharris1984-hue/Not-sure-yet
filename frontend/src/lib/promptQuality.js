@@ -145,6 +145,9 @@ export function analyzePromptQuality({
     }
 
     if (!dna?.pose?.action) issues.push(issue("warning", "pose", "No main body position is selected, so pose consistency will be left to the model."));
+    if (profile === "krea2" && !dna?.pose?.distance) {
+      issues.push(issue("info", "krea-framing-default", "No framing was selected. Krea 2 will request a full-length image by default. Choose Pose → Framing if you want a portrait or close-up."));
+    }
     if (!dna?.scene?.environment) issues.push(issue("info", "scene", "No environment is selected; the model will invent the setting."));
     if (!dna?.lighting?.source && !dna?.lighting?.style) issues.push(issue("info", "lighting", "No lighting setup is selected; realism may vary between seeds."));
 
