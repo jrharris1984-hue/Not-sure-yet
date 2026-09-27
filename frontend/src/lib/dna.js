@@ -164,6 +164,18 @@ export const SECTIONS = [
       { key: "footwear", type: "chips", label: "Footwear", options: [
         "barefoot", "stiletto heels", "stripper heels", "thigh-high boots", "over-the-knee boots", "ankle boots", "combat boots", "sneakers", "platform heels", "sandals", "kitten heels", "cowgirl boots"
       ]},
+      { key: "hosiery_type", type: "chips", label: "Pantyhose & stockings", options: [
+        "sheer pantyhose", "opaque tights", "fishnet tights", "patterned tights", "seamed stockings", "lace-top thigh-high stockings", "stay-up stockings", "garter stockings"
+      ]},
+      { key: "hosiery_color", type: "chips", label: "Pantyhose / stocking color", options: ["nude", "black", "white", "red", "burgundy", "navy", "gray", "brown", "pink", "purple"] },
+      { key: "heel_type", type: "chips", label: "Heel type", options: [
+        "pointed-toe stilettos", "platform pumps", "ankle-strap heels", "open-toe heels", "peep-toe heels", "block heels", "kitten heels", "slingback heels", "strappy sandals"
+      ]},
+      { key: "heel_color", type: "chips", label: "Heel color", options: ["black", "white", "red", "nude", "silver", "gold", "pink", "blue", "purple", "clear"] },
+      { key: "nail_color", type: "chips", label: "Fingernail color", options: ["natural", "clear gloss", "French manicure", "nude", "white", "black", "red", "burgundy", "pink", "purple", "silver", "gold"] },
+      { key: "nail_shape", type: "chips", label: "Fingernail shape", options: ["short natural", "almond", "oval", "square", "coffin", "stiletto"] },
+      { key: "glasses_style", type: "chips", label: "Glasses", options: ["thin metal frames", "black rectangular frames", "round frames", "cat-eye frames", "oversized glasses", "clear frames", "sunglasses"] },
+      { key: "glasses_color", type: "chips", label: "Glasses color", options: ["black", "silver", "gold", "tortoiseshell", "clear", "red", "pink"] },
       { key: "accessories", type: "chips_multi", label: "Accessories (pick many)", options: [
         "choker", "leather collar", "leash", "handcuffs", "gloves", "opera gloves", "fishnet gloves", "garters", "stockings", "veil", "cat ears", "bunny ears", "devil horns", "angel wings", "sunglasses", "jewelry", "body chain", "belly chain"
       ]},
@@ -361,6 +373,7 @@ export const RANDOMIZE_PROTECTED_FIELDS = {
   intimate: new Set(["cum_state", "saliva", "squirt", "sweat", "lube", "tears"]),
   feet: new Set(["foot_state", "hosiery", "foot_act"]),
   scenario: new Set(["explicit_level", "kink_level"]),
+  wardrobe: new Set(["nudity_level", "hosiery_type", "hosiery_color", "heel_type", "heel_color", "nail_color", "nail_shape", "glasses_style", "glasses_color"]),
 };
 
 export function randomizeSection(sectionKey, current = {}, fieldLocks = {}, options = {}) {
@@ -1051,7 +1064,10 @@ function _veniceSubjectBlock(dna = {}, opts = {}) {
   if (wd.top && wd.top !== "none") outfitPieces.push(exp("wardrobe", "top"));
   if (wd.bottom && wd.bottom !== "none") outfitPieces.push(exp("wardrobe", "bottom"));
   if (wd.underwear && wd.underwear !== "none") outfitPieces.push(exp("wardrobe", "underwear"));
-  if (wd.footwear && wd.footwear !== "barefoot") outfitPieces.push(exp("wardrobe", "footwear"));
+  if (!wd.heel_type && wd.footwear && wd.footwear !== "barefoot") outfitPieces.push(exp("wardrobe", "footwear"));
+  if (wd.hosiery_type) outfitPieces.push(`${wd.hosiery_color ? `${wd.hosiery_color} ` : ""}${wd.hosiery_type}`);
+  if (wd.heel_type) outfitPieces.push(`${wd.heel_color ? `${wd.heel_color} ` : ""}${wd.heel_type}`);
+  if (wd.glasses_style) outfitPieces.push(`${wd.glasses_color ? `${wd.glasses_color} ` : ""}${wd.glasses_style}`);
   if (wd.accessories) {
     const accs = Array.isArray(wd.accessories) ? wd.accessories : [wd.accessories];
     accs.filter((a) => a && a !== "none").forEach((a) => outfitPieces.push(exp("wardrobe", "accessories") ? expandPrompt("wardrobe", "accessories", a) : a));
@@ -1062,6 +1078,8 @@ function _veniceSubjectBlock(dna = {}, opts = {}) {
     wd.palette && `${wd.palette} color palette`,
     wd.fit && `${wd.fit} fit`,
     wd.state && wd.state !== "fully clothed" && exp("wardrobe", "state"),
+    wd.nail_color && `${wd.nail_color} fingernails`,
+    wd.nail_shape && `${wd.nail_shape} nail shape`,
   ]);
   const outfit = join([outfitCore, outfitTail]);
 
