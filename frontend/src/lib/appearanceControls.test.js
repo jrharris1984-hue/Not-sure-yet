@@ -27,8 +27,24 @@ test("adult age range and categorized appearance options are available", () => {
 test.each(["chroma", "zimage", "krea2", "pony"])("%s respects fine appearance selections", (promptStyle) => {
   const { positive } = compileModelPrompts({ promptStyle, dna: configured() });
   expect(positive).toMatch(/80-year-old/);
-  expect(positive).toMatch(/5000 cc/);
+  expect(positive).toMatch(/fantasy-scale augmented bust/);
+  expect(positive).not.toMatch(/5000 cc/);
   expect(positive).toMatch(/emerald/);
   expect(positive).toMatch(/mermaid gown/);
   expect(positive).not.toMatch(/denim shorts/);
+});
+
+test.each([
+  [250, "subtle augmented bust"],
+  [600, "full augmented bust"],
+  [1200, "very large augmented bust"],
+  [2500, "exaggerated oversized augmented bust"],
+  [5000, "fantasy-scale augmented bust"],
+])("implant slider %i maps to recognizable visual direction", (implant_volume, expected) => {
+  const dna = configured();
+  dna.physique.implant_volume = implant_volume;
+  const { positive } = compileModelPrompts({ promptStyle: "krea2", dna });
+  expect(positive).toContain(expected);
+  expect(positive).not.toContain(`${implant_volume} cc`);
+  expect(positive).not.toContain("small bust");
 });

@@ -1,4 +1,5 @@
 import { expandPrompt } from "@/lib/promptMap";
+import { implantVisualPrompt } from "@/lib/implantVisualScale";
 
 export const PROMPT_BUDGET_WORDS = {
   zimage: 260,
@@ -138,7 +139,7 @@ function literalRequirement(section, field, value, locked = false) {
   }
   if (key === "physique.body_type") return `${display} body type`;
   if (key === "physique.bust") return `${display} bust size`;
-  if (key === "physique.implant_volume") return `${display} cc visual implant reference`;
+  if (key === "physique.implant_volume") return implantVisualPrompt(numeric);
   if (section === "physique" && key.endsWith("_scale")) {
     const levels = {
       bust_scale: ["small bust", "moderate bust", "full bust", "very large bust", "extremely oversized bust"],
@@ -201,6 +202,7 @@ function collectSubjectItems(dna = {}, {
     Object.entries(fields).forEach(([field, value]) => {
       // The fine control replaces its older coarse chip in the compiler.
       const fineControl = { bust: "bust_scale", butt: "butt_scale", hips: "hip_scale", waist: "waist_scale", thighs: "thigh_scale" }[field];
+      if (section === "physique" && ["bust", "bust_scale", "bust_shape"].includes(field) && Number(fields.implant_volume) > 0) return;
       if (section === "physique" && fineControl && Number(fields[fineControl]) > 0) return;
       if (section === "physique" && field === "bust_shape" && Number(fields.implant_volume) > 0) return;
       if (section === "wardrobe" && (fields.dress_style || fields.skirt_style) && field === "outfit_preset") return;
