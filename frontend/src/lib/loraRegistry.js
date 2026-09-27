@@ -422,11 +422,21 @@ export function compatibleInstalledLoras(workflow = {}, installed = []) {
   // subfolder. Show it only once, preferring the family-subfolder copy.
   const deduped = new Map();
   results.forEach((entry) => {
-    const basename = normalized(entry.installedName)
+    const normalizedPath = normalized(entry.installedName);
+    const basename = normalizedPath
       .split("/").pop()
       .replace(/\s*\(\d+\)(?=\.safetensors$)/, "");
     const existing = deduped.get(basename);
-    if (!existing || normalized(entry.installedName).includes(`/${family}/`) || normalized(entry.installedName).startsWith(`${family}/`)) {
+    const entryRegistered = !String(entry.id || "").startsWith("local:");
+    const existingRegistered = existing && !String(existing.id || "").startsWith("local:");
+    const entryInFamilyFolder = normalizedPath.includes(`/${family}/`) || normalizedPath.startsWith(`${family}/`);
+    const existingPath = existing ? normalized(existing.installedName) : "";
+    const existingInFamilyFolder = existingPath.includes(`/${family}/`) || existingPath.startsWith(`${family}/`);
+    if (
+      !existing ||
+      (!existingRegistered && entryRegistered) ||
+      (entryRegistered === existingRegistered && entryInFamilyFolder && !existingInFamilyFolder)
+    ) {
       deduped.set(basename, entry);
     }
   });
