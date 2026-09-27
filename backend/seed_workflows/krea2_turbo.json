@@ -59,9 +59,9 @@
       "height": 1024,
       "batch_size": 1
     },
-    "class_type": "EmptySD3LatentImage",
+    "class_type": "EmptyLatentImage",
     "_meta": {
-      "title": "Empty 16ch Latent"
+      "title": "Empty Krea 2 Latent"
     }
   },
   "7": {
