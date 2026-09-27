@@ -20,7 +20,7 @@ export const LORA_REGISTRY = [
   item("flux2-turbo", "Flux_2-Turbo-LoRA_comfyui.safetensors", "flux", "required", "Flux 2 Turbo", { defaultStrength: 0.8, verified: true }),
   item("flux-lustly", "flux_lustly-ai_v1.safetensors", "flux", "action", "Flux Adult Style", { categories:["adult"], defaultStrength:0.6 }),
   item("z-pee", "Z-Image\\girls pee.safetensors", "zimage", "action", "Girls Pee", { categories:["play","watersports"], triggerWords:["urinating","visible urine stream"], keywords:["pee","peeing","piss","pissing","urinat","watersport"], defaultStrength:0.72, auto:true, verified:true }),
-  item("golden-chroma", "goldenchromaV1.safetensors", "chroma", "quality", "Golden Chroma", { defaultStrength:0.7, verified:true }),
+  item("golden-chroma", "goldenchromaV1.safetensors", "chroma", "required", "Golden Chroma", { defaultStrength:0.7, verified:true }),
 
   // Krea 2 LoRAs installed for the local Krea 2 Turbo workflow. These stay
   // model-only and are intentionally single-select in the universal picker.
@@ -369,6 +369,7 @@ export function compatibleInstalledLoras(workflow = {}, installed = []) {
       LORA_REGISTRY.find((entry) => installedMatch(entry, [installedName]) && allowedFamilies.has(entry.family));
     const inferredFamily = registered?.family || inferredFamilyForInstalled(installedName);
     if (!allowedFamilies.has(inferredFamily)) return;
+    if (registered && ["required", "identity"].includes(registered.slot)) return;
     results.push({
       id: registered?.id || `local:${normalizedName}`,
       label: registered?.label || displayNameFromFile(installedName),
