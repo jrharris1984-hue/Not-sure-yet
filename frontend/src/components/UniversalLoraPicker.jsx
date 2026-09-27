@@ -21,7 +21,11 @@ export default function UniversalLoraPicker({ workflow, value, onChange }) {
     [workflow, installed]
   );
 
-  const selected = options.find((entry) => entry.installedName === value?.name);
+  const normalizedFile = (name = "") => String(name).replace(/\\/g, "/").toLowerCase();
+  const selected = options.find((entry) => entry.installedName === value?.name)
+    || options.find((entry) =>
+      normalizedFile(entry.installedName).split("/").pop() === normalizedFile(value?.name).split("/").pop()
+    );
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase();
     if (!needle) return options;
@@ -35,10 +39,18 @@ export default function UniversalLoraPicker({ workflow, value, onChange }) {
 
   useEffect(() => {
     if (!value?.name || !installed.length) return;
-    if (!options.some((entry) => entry.installedName === value.name)) {
+    if (!selected) {
       onChange({ name: "", strength: 0.8, triggerWords: [] });
+      return;
     }
-  }, [installed, options, value?.name, onChange]);
+    if (selected.installedName !== value.name) {
+      onChange({
+        name: selected.installedName,
+        strength: Number(value?.strength ?? selected.defaultStrength ?? 0.8),
+        triggerWords: value?.triggerWords?.length ? value.triggerWords : (selected.triggerWords || []),
+      });
+    }
+  }, [installed, selected, value?.name, value?.strength, value?.triggerWords, onChange]);
 
   const choose = (entry) => {
     if (!entry) {
