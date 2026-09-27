@@ -7,7 +7,7 @@ export const SECTIONS = [
     title: "Identity",
     fields: [
       { key: "gender", type: "chips", label: "Gender", options: ["female", "male", "non-binary", "androgynous"] },
-      { key: "age", type: "slider", label: "Age", min: 18, max: 70, step: 1 },
+      { key: "age", type: "slider", label: "Age (adult)", min: 21, max: 80, step: 1, defaultValue: 30 },
       { key: "ethnicity", type: "chips", label: "Ethnicity", groups: [
         { name: "Latin", options: ["latina", "mexican", "brazilian", "colombian", "puerto rican", "cuban", "dominican", "venezuelan", "argentinian", "peruvian"] },
         { name: "East Asian", options: ["east asian", "japanese", "korean", "chinese", "vietnamese", "thai", "filipina", "indonesian", "cambodian"] },
@@ -35,11 +35,22 @@ export const SECTIONS = [
       { key: "curves", type: "slider", label: "Curves", min: 0, max: 100, step: 1 },
       { key: "exaggeration", type: "slider", label: "Proportion exaggeration (natural → hyper)", min: 0, max: 100, step: 1 },
       { key: "bust", type: "chips", label: "Bust size", options: ["flat", "small", "medium", "large", "very large", "huge", "enormous", "hyper"] },
+      { key: "bust_scale", type: "slider", label: "Bust size detail (small → fantasy)", min: 0, max: 100, step: 1, defaultValue: 0 },
       { key: "bust_shape", type: "chips", label: "Bust shape", options: ["natural", "perky", "round", "teardrop", "athletic", "augmented", "gravity-defying"] },
+      { key: "implant_volume", type: "slider", label: "Implant volume reference (cc; 0 = none)", min: 0, max: 5000, step: 50, defaultValue: 0, help: "Visual fiction cue only; above ordinary implant ranges is fantasy styling, not a medical measurement or guarantee." },
       { key: "butt", type: "chips", label: "Butt", options: ["flat", "small", "toned", "round", "bubble", "large", "very large", "huge", "hyper"] },
+      { key: "butt_scale", type: "slider", label: "Glute size detail (small → fantasy)", min: 0, max: 100, step: 1, defaultValue: 0 },
+      { key: "glute_shape", type: "chips", label: "Glute shape / augmentation look", groups: [
+        { name: "Natural", options: ["natural rounded", "athletic lifted", "soft pear-shaped", "heart-shaped"] },
+        { name: "Enhanced", options: ["BBL-style fuller glutes", "high round projection", "pronounced upper shelf", "dramatic side projection"] },
+        { name: "Fantasy", options: ["fantasy oversized glutes", "extreme round projection"] },
+      ] },
       { key: "thighs", type: "chips", label: "Thighs", options: ["slim", "toned", "athletic", "thick", "very thick", "massive"] },
+      { key: "thigh_scale", type: "slider", label: "Thigh fullness (slim → fantasy)", min: 0, max: 100, step: 1, defaultValue: 0 },
       { key: "hips", type: "chips", label: "Hips", options: ["narrow", "average", "wide", "very wide", "extreme"] },
+      { key: "hip_scale", type: "slider", label: "Hip width (narrow → fantasy)", min: 0, max: 100, step: 1, defaultValue: 0 },
       { key: "waist", type: "chips", label: "Waist", options: ["thick", "average", "slim", "cinched", "tiny", "wasp-thin"] },
+      { key: "waist_scale", type: "slider", label: "Waist width (narrow → wide)", min: 0, max: 100, step: 1, defaultValue: 0 },
       { key: "shoulders", type: "chips", label: "Shoulders", options: ["narrow", "average", "broad", "athletic"] },
       { key: "legs", type: "chips", label: "Legs", options: ["short", "average", "long", "endless"] },
       { key: "proportions", type: "text", label: "Extra proportions notes" },
@@ -61,9 +72,20 @@ export const SECTIONS = [
     key: "hair",
     title: "Hair",
     fields: [
-      { key: "style", type: "chips", label: "Style", options: ["straight", "wavy", "curly", "coily", "braids", "updo", "ponytail", "messy"] },
+      { key: "style", type: "chips", label: "Style", groups: [
+        { name: "Loose", options: ["straight", "wavy", "curly", "coily", "messy", "beach waves", "blowout", "ringlets", "afro"] },
+        { name: "Short", options: ["pixie cut", "buzz cut", "asymmetric bob", "blunt bob", "shag", "wolf cut", "undercut"] },
+        { name: "Up", options: ["updo", "ponytail", "high ponytail", "low ponytail", "messy bun", "sleek bun", "chignon", "half-up"] },
+        { name: "Braids", options: ["braids", "box braids", "cornrows", "French braid", "Dutch braids", "fishtail braid", "locs", "twists"] },
+      ] },
       { key: "length", type: "chips", label: "Length", options: ["pixie", "short bob", "shoulder", "long", "waist-length"] },
-      { key: "color", type: "chips", label: "Color", options: ["jet black", "chestnut", "auburn", "fiery red", "platinum blonde", "honey blonde", "silver", "raven", "ombre"] },
+      { key: "color", type: "chips", label: "Color", groups: [
+        { name: "Dark", options: ["jet black", "raven", "espresso brown", "dark chocolate", "chestnut", "soft black"] },
+        { name: "Blonde", options: ["platinum blonde", "ash blonde", "honey blonde", "strawberry blonde", "sandy blonde", "golden blonde"] },
+        { name: "Red", options: ["auburn", "fiery red", "copper", "burgundy", "mahogany", "rose gold"] },
+        { name: "Gray", options: ["silver", "salt and pepper", "steel gray", "white", "pearl gray"] },
+        { name: "Creative", options: ["ombre", "balayage", "pink", "lavender", "purple", "blue", "teal", "emerald green"] },
+      ] },
       { key: "texture", type: "chips", label: "Texture", options: ["fine", "medium", "thick", "coarse"] },
       { key: "bangs", type: "chips", label: "Bangs", options: ["none", "curtain", "blunt", "side-swept", "wispy"] },
     ],
@@ -72,8 +94,15 @@ export const SECTIONS = [
     key: "skin",
     title: "Skin",
     fields: [
-      { key: "tone", type: "chips", label: "Tone", options: ["porcelain", "fair", "olive", "tan", "bronze", "dark brown", "ebony"] },
-      { key: "texture", type: "chips", label: "Texture", options: ["smooth", "natural pores", "textured", "matte", "dewy", "oiled", "sweat-glistening"] },
+      { key: "tone", type: "chips", label: "Tone", groups: [
+        { name: "Light", options: ["porcelain", "fair", "light beige", "peach", "light olive"] },
+        { name: "Medium", options: ["olive", "tan", "warm tan", "golden", "caramel", "bronze"] },
+        { name: "Deep", options: ["deep bronze", "dark brown", "rich brown", "mahogany", "ebony"] },
+      ] },
+      { key: "texture", type: "chips", label: "Texture", groups: [
+        { name: "Natural", options: ["natural pores", "fine lines", "visible skin texture", "freckled", "subtle acne marks", "mature skin texture"] },
+        { name: "Finish", options: ["smooth", "textured", "matte", "dewy", "oiled", "sweat-glistening", "satin skin finish"] },
+      ] },
       { key: "freckles", type: "chips", label: "Freckles", options: ["none", "light", "scattered", "heavy"] },
       { key: "tattoos", type: "text", label: "Tattoos" },
       { key: "glow", type: "slider", label: "Glow", min: 0, max: 100, step: 1 },
@@ -167,11 +196,52 @@ export const SECTIONS = [
       { key: "hosiery_type", type: "chips", label: "Pantyhose & stockings", options: [
         "sheer pantyhose", "opaque tights", "fishnet tights", "patterned tights", "seamed stockings", "lace-top thigh-high stockings", "stay-up stockings", "garter stockings"
       ]},
-      { key: "hosiery_color", type: "chips", label: "Pantyhose / stocking color", options: ["nude", "black", "white", "red", "burgundy", "navy", "gray", "brown", "pink", "purple"] },
-      { key: "heel_type", type: "chips", label: "Heel type", options: [
-        "pointed-toe stilettos", "platform pumps", "ankle-strap heels", "open-toe heels", "peep-toe heels", "block heels", "kitten heels", "slingback heels", "strappy sandals"
-      ]},
-      { key: "heel_color", type: "chips", label: "Heel color", options: ["black", "white", "red", "nude", "silver", "gold", "pink", "blue", "purple", "clear"] },
+      { key: "hosiery_color", type: "chips", label: "Pantyhose / stocking color", groups: [
+        { name: "Neutral", options: ["nude", "tan", "espresso", "black", "white", "gray", "brown"] },
+        { name: "Color", options: ["red", "burgundy", "navy", "royal blue", "emerald", "pink", "purple", "silver", "gold"] },
+      ] },
+      { key: "heel_type", type: "chips", label: "Heel type", groups: [
+        { name: "Pumps", options: ["pointed-toe stilettos", "round-toe pumps", "platform pumps", "slingback heels", "kitten heels", "block heels"] },
+        { name: "Sandals", options: ["strappy sandals", "ankle-strap heels", "open-toe heels", "peep-toe heels", "wedge sandals", "mule heels"] },
+        { name: "Statement", options: ["sculptural heels", "clear platform heels", "lace-up heels", "thigh-high heeled boots", "cone heels"] },
+      ] },
+      { key: "heel_color", type: "chips", label: "Heel color", groups: [
+        { name: "Neutral", options: ["black", "white", "ivory", "nude", "tan", "brown", "clear"] },
+        { name: "Color", options: ["red", "burgundy", "pink", "blue", "teal", "emerald", "purple"] },
+        { name: "Metallic", options: ["silver", "gold", "rose gold", "bronze", "chrome"] },
+      ] },
+      { key: "heel_height", type: "chips", label: "Heel height", groups: [
+        { name: "Low", options: ["flat", "kitten-height", "low 2-inch"] },
+        { name: "High", options: ["mid 3-inch", "high 4-inch", "very high 5-inch", "platform 6-inch"] },
+      ] },
+      { key: "heel_finish", type: "chips", label: "Heel finish / pattern", groups: [
+        { name: "Solid", options: ["matte", "patent leather", "suede", "satin", "metallic", "glitter"] },
+        { name: "Pattern", options: ["leopard print", "snakeskin print", "floral", "color-blocked", "rhinestone embellished"] },
+      ] },
+      { key: "hosiery_pattern", type: "chips", label: "Stocking design", groups: [
+        { name: "Classic", options: ["plain", "back seam", "cuban heel", "contrast welt", "lace top", "dotted"] },
+        { name: "Pattern", options: ["diamond fishnet", "fine fishnet", "floral lace", "polka dot", "geometric", "chevron", "striped", "argyle"] },
+        { name: "Finish", options: ["sheer 10 denier", "semi-sheer 30 denier", "opaque 80 denier", "shimmer", "ripped"] },
+      ] },
+      { key: "garment_color", type: "chips", label: "Outfit color", groups: [
+        { name: "Neutral", options: ["black", "white", "ivory", "cream", "beige", "taupe", "gray", "charcoal", "chocolate brown"] },
+        { name: "Warm", options: ["red", "burgundy", "coral", "orange", "mustard", "gold", "blush pink", "hot pink"] },
+        { name: "Cool", options: ["navy", "royal blue", "sky blue", "teal", "emerald", "sage green", "lavender", "purple", "silver"] },
+      ] },
+      { key: "dress_style", type: "chips", label: "Dress style", groups: [
+        { name: "Casual", options: ["sundress", "shirt dress", "wrap dress", "slip dress", "sweater dress", "denim dress"] },
+        { name: "Fitted", options: ["bodycon dress", "sheath dress", "bandage dress", "corset dress", "halter dress", "off-shoulder dress"] },
+        { name: "Formal", options: ["cocktail dress", "mermaid gown", "A-line gown", "ball gown", "column gown", "high-slit evening gown"] },
+      ] },
+      { key: "skirt_style", type: "chips", label: "Skirt style", groups: [
+        { name: "Short", options: ["micro-mini skirt", "mini skirt", "pleated mini skirt", "wrap mini skirt", "skater skirt"] },
+        { name: "Medium", options: ["pencil skirt", "A-line skirt", "circle skirt", "slip skirt", "tiered midi skirt"] },
+        { name: "Long", options: ["maxi skirt", "high-slit skirt", "mermaid skirt", "pleated maxi skirt"] },
+      ] },
+      { key: "garment_pattern", type: "chips", label: "Fabric design", groups: [
+        { name: "Classic", options: ["solid", "pinstripe", "plaid", "gingham", "polka dot", "color-blocked"] },
+        { name: "Decorative", options: ["floral", "paisley", "lace overlay", "embroidered", "sequined", "animal print", "geometric print"] },
+      ] },
       { key: "nail_color", type: "chips", label: "Fingernail color", options: ["natural", "clear gloss", "French manicure", "nude", "white", "black", "red", "burgundy", "pink", "purple", "silver", "gold"] },
       { key: "nail_shape", type: "chips", label: "Fingernail shape", options: ["short natural", "almond", "oval", "square", "coffin", "stiletto"] },
       { key: "glasses_style", type: "chips", label: "Glasses", options: ["thin metal frames", "black rectangular frames", "round frames", "cat-eye frames", "oversized glasses", "clear frames", "sunglasses"] },
@@ -373,7 +443,7 @@ export const RANDOMIZE_PROTECTED_FIELDS = {
   intimate: new Set(["cum_state", "saliva", "squirt", "sweat", "lube", "tears"]),
   feet: new Set(["foot_state", "hosiery", "foot_act"]),
   scenario: new Set(["explicit_level", "kink_level"]),
-  wardrobe: new Set(["nudity_level", "hosiery_type", "hosiery_color", "heel_type", "heel_color", "nail_color", "nail_shape", "glasses_style", "glasses_color"]),
+  wardrobe: new Set(["nudity_level", "hosiery_type", "hosiery_color", "hosiery_pattern", "heel_type", "heel_color", "heel_height", "heel_finish", "garment_color", "dress_style", "skirt_style", "garment_pattern", "nail_color", "nail_shape", "glasses_style", "glasses_color"]),
 };
 
 export function randomizeSection(sectionKey, current = {}, fieldLocks = {}, options = {}) {
@@ -962,6 +1032,15 @@ function _veniceSharedBlock(dna = {}, opts = {}, subjectCount = 1) {
 }
 
 // -------- Per-subject Venice block (identity/body/face/hair/skin/wardrobe/pose/intimate/feet/kink/ws) --------
+// Empty (zero) dials leave saved presets untouched. Numeric values are visual
+// direction, never a promise that the image model can measure anatomy exactly.
+function visualScale(value, noun, labels) {
+  const n = Number(value) || 0;
+  if (!n) return "";
+  const tier = n < 20 ? 0 : n < 40 ? 1 : n < 60 ? 2 : n < 80 ? 3 : 4;
+  return `${labels[tier]} ${noun}${n >= 80 ? " (stylized fantasy proportions)" : ""}`;
+}
+
 function _veniceSubjectBlock(dna = {}, opts = {}) {
   const raunch = !!opts.raunch;
   const val = (section, field) => dna?.[section]?.[field] || "";
@@ -1022,12 +1101,14 @@ function _veniceSubjectBlock(dna = {}, opts = {}) {
     bodyProfile,
     height,
     musc,
-    exp("physique", "bust") || (ph.bust && `${ph.bust} breasts`),
-    exp("physique", "bust_shape"),
-    exp("physique", "butt") || (ph.butt && `${ph.butt} butt`),
-    exp("physique", "thighs") || (ph.thighs && `${ph.thighs} thighs`),
-    exp("physique", "hips") || (ph.hips && `${ph.hips} hips`),
-    exp("physique", "waist"),
+    ph.bust_scale ? visualScale(ph.bust_scale, "bust", ["small", "moderate", "full", "very large", "extremely oversized"]) : exp("physique", "bust") || (ph.bust && `${ph.bust} breasts`),
+    ph.implant_volume > 0 ? "round augmented breast shape" : exp("physique", "bust_shape"),
+    ph.implant_volume > 0 && `augmented round breast silhouette, ${ph.implant_volume >= 1500 ? "fantasy oversized" : "full"} implant look (${ph.implant_volume} cc visual reference${ph.implant_volume >= 1500 ? ", fictional fantasy scale" : ""})`,
+    ph.butt_scale ? visualScale(ph.butt_scale, "glutes", ["small", "moderate", "full rounded", "very large projected", "extremely oversized projected"]) : exp("physique", "butt") || (ph.butt && `${ph.butt} butt`),
+    ph.glute_shape,
+    ph.thigh_scale ? visualScale(ph.thigh_scale, "thighs", ["slim", "moderate", "full", "very thick", "extremely thick"]) : exp("physique", "thighs") || (ph.thighs && `${ph.thighs} thighs`),
+    ph.hip_scale ? visualScale(ph.hip_scale, "hips", ["narrow", "moderate width", "wide", "very wide", "extremely wide"]) : exp("physique", "hips") || (ph.hips && `${ph.hips} hips`),
+    ph.waist_scale ? visualScale(ph.waist_scale, "waist", ["very narrow", "narrow", "average width", "wide", "very wide"]) : exp("physique", "waist"),
     ph.shoulders && ph.shoulders !== "average" && exp("physique", "shoulders"),
     ph.legs && ph.legs !== "average" && exp("physique", "legs"),
     ph.proportions,
@@ -1060,13 +1141,15 @@ function _veniceSubjectBlock(dna = {}, opts = {}) {
   // -------- Wardrobe --------
   const wd = dna.wardrobe || {};
   const outfitPieces = [];
-  if (wd.outfit_preset) outfitPieces.push(exp("wardrobe", "outfit_preset"));
-  if (wd.top && wd.top !== "none") outfitPieces.push(exp("wardrobe", "top"));
-  if (wd.bottom && wd.bottom !== "none") outfitPieces.push(exp("wardrobe", "bottom"));
+  if (wd.outfit_preset && !wd.dress_style && !wd.skirt_style) outfitPieces.push(exp("wardrobe", "outfit_preset"));
+  if (wd.dress_style) outfitPieces.push(wd.dress_style);
+  if (wd.skirt_style) outfitPieces.push(wd.skirt_style);
+  if (!wd.dress_style && wd.top && wd.top !== "none") outfitPieces.push(exp("wardrobe", "top"));
+  if (!wd.dress_style && !wd.skirt_style && wd.bottom && wd.bottom !== "none") outfitPieces.push(exp("wardrobe", "bottom"));
   if (wd.underwear && wd.underwear !== "none") outfitPieces.push(exp("wardrobe", "underwear"));
   if (!wd.heel_type && wd.footwear && wd.footwear !== "barefoot") outfitPieces.push(exp("wardrobe", "footwear"));
-  if (wd.hosiery_type) outfitPieces.push(`${wd.hosiery_color ? `${wd.hosiery_color} ` : ""}${wd.hosiery_type}`);
-  if (wd.heel_type) outfitPieces.push(`${wd.heel_color ? `${wd.heel_color} ` : ""}${wd.heel_type}`);
+  if (wd.hosiery_type) outfitPieces.push(`${wd.hosiery_color ? `${wd.hosiery_color} ` : ""}${wd.hosiery_pattern && wd.hosiery_pattern !== "plain" ? `${wd.hosiery_pattern} ` : ""}${wd.hosiery_type}`);
+  if (wd.heel_type) outfitPieces.push(`${wd.heel_color ? `${wd.heel_color} ` : ""}${wd.heel_finish ? `${wd.heel_finish} ` : ""}${wd.heel_type}${wd.heel_height ? `, ${wd.heel_height} heel` : ""}`);
   if (wd.glasses_style) outfitPieces.push(`${wd.glasses_color ? `${wd.glasses_color} ` : ""}${wd.glasses_style}`);
   if (wd.accessories) {
     const accs = Array.isArray(wd.accessories) ? wd.accessories : [wd.accessories];
@@ -1075,6 +1158,8 @@ function _veniceSubjectBlock(dna = {}, opts = {}) {
   const outfitCore = outfitPieces.length ? `wearing ${outfitPieces.join(", ")}` : "";
   const outfitTail = join([
     exp("wardrobe", "material"),
+    wd.garment_color && `${wd.garment_color} outfit color`,
+    wd.garment_pattern && wd.garment_pattern !== "solid" && `${wd.garment_pattern} fabric pattern`,
     wd.palette && `${wd.palette} color palette`,
     wd.fit && `${wd.fit} fit`,
     wd.state && wd.state !== "fully clothed" && exp("wardrobe", "state"),

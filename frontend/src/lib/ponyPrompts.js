@@ -372,12 +372,14 @@ function _ponySubjectBlock(dna = {}, opts = {}) {
     "realistic natural skin texture, visible pores, subtle skin imperfections",
     bodyProfile,
     ph.muscularity > 85 ? "muscular female, defined muscles" : ph.muscularity > 60 ? "athletic body, fit" : "",
-    w(exp("physique", "bust") || (ph.bust && `${ph.bust} breasts`), eWeight),
-    exp("physique", "bust_shape"),
-    w(exp("physique", "butt") || (ph.butt && `${ph.butt} ass`), eWeight),
-    w(exp("physique", "thighs") || (ph.thighs && `${ph.thighs} thighs`), eWeight),
-    w(exp("physique", "hips") || (ph.hips && `${ph.hips} hips`), eWeight),
-    exp("physique", "waist"),
+    w(ph.bust_scale ? `${ph.bust_scale >= 80 ? "fantasy oversized" : ph.bust_scale >= 60 ? "very large" : ph.bust_scale >= 40 ? "full" : "small"} breasts` : exp("physique", "bust") || (ph.bust && `${ph.bust} breasts`), eWeight),
+    ph.implant_volume > 0 ? "round augmented breasts" : exp("physique", "bust_shape"),
+    ph.implant_volume > 0 && `${ph.implant_volume} cc visual implant reference${ph.implant_volume >= 1500 ? ", fantasy scale" : ""}`,
+    w(ph.butt_scale ? `${ph.butt_scale >= 80 ? "fantasy oversized" : ph.butt_scale >= 60 ? "very large" : ph.butt_scale >= 40 ? "full" : "small"} glutes` : exp("physique", "butt") || (ph.butt && `${ph.butt} ass`), eWeight),
+    ph.glute_shape,
+    w(ph.thigh_scale ? `${ph.thigh_scale >= 60 ? "very thick" : ph.thigh_scale >= 40 ? "full" : "slim"} thighs` : exp("physique", "thighs") || (ph.thighs && `${ph.thighs} thighs`), eWeight),
+    w(ph.hip_scale ? `${ph.hip_scale >= 80 ? "fantasy wide" : ph.hip_scale >= 60 ? "very wide" : ph.hip_scale >= 40 ? "wide" : "narrow"} hips` : exp("physique", "hips") || (ph.hips && `${ph.hips} hips`), eWeight),
+    ph.waist_scale ? `${ph.waist_scale >= 80 ? "very wide" : ph.waist_scale >= 40 ? "average" : "narrow"} waist` : exp("physique", "waist"),
     ph.legs && ph.legs !== "average" && exp("physique", "legs"),
   ]);
 
@@ -399,11 +401,15 @@ function _ponySubjectBlock(dna = {}, opts = {}) {
 
   const wd = dna.wardrobe || {};
   const outfitPieces = [];
-  if (wd.outfit_preset) outfitPieces.push(exp("wardrobe", "outfit_preset"));
-  if (wd.top && wd.top !== "none") outfitPieces.push(exp("wardrobe", "top"));
-  if (wd.bottom && wd.bottom !== "none") outfitPieces.push(exp("wardrobe", "bottom"));
+  if (wd.outfit_preset && !wd.dress_style && !wd.skirt_style) outfitPieces.push(exp("wardrobe", "outfit_preset"));
+  if (wd.dress_style) outfitPieces.push(wd.dress_style);
+  if (wd.skirt_style) outfitPieces.push(wd.skirt_style);
+  if (!wd.dress_style && wd.top && wd.top !== "none") outfitPieces.push(exp("wardrobe", "top"));
+  if (!wd.dress_style && !wd.skirt_style && wd.bottom && wd.bottom !== "none") outfitPieces.push(exp("wardrobe", "bottom"));
   if (wd.underwear && wd.underwear !== "none") outfitPieces.push(exp("wardrobe", "underwear"));
-  if (wd.footwear && wd.footwear !== "barefoot") outfitPieces.push(exp("wardrobe", "footwear"));
+  if (!wd.heel_type && wd.footwear && wd.footwear !== "barefoot") outfitPieces.push(exp("wardrobe", "footwear"));
+  if (wd.heel_type) outfitPieces.push(`${wd.heel_color ? `${wd.heel_color} ` : ""}${wd.heel_finish ? `${wd.heel_finish} ` : ""}${wd.heel_type}${wd.heel_height ? ` ${wd.heel_height}` : ""}`);
+  if (wd.hosiery_type) outfitPieces.push(`${wd.hosiery_color ? `${wd.hosiery_color} ` : ""}${wd.hosiery_pattern && wd.hosiery_pattern !== "plain" ? `${wd.hosiery_pattern} ` : ""}${wd.hosiery_type}`);
   if (wd.accessories) {
     const accs = Array.isArray(wd.accessories) ? wd.accessories : [wd.accessories];
     accs.filter((a) => a && a !== "none").forEach((a) => outfitPieces.push(expandPrompt("wardrobe", "accessories", a, { raunch })));
@@ -411,6 +417,8 @@ function _ponySubjectBlock(dna = {}, opts = {}) {
   const outfitStr = join([
     outfitPieces.length ? `wearing ${outfitPieces.join(", ")}` : "",
     exp("wardrobe", "material"),
+    wd.garment_color && `${wd.garment_color} outfit`,
+    wd.garment_pattern && wd.garment_pattern !== "solid" && `${wd.garment_pattern} pattern`,
     wd.fit && `${wd.fit} fit`,
     wd.state && wd.state !== "fully clothed" && w(exp("wardrobe", "state"), 1.2),
   ]);

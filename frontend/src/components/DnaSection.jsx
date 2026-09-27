@@ -211,7 +211,7 @@ export default function DnaSection({
               />
             )}
             {f.type === "slider" && (
-              <Slider
+              <><Slider
                 data-testid={`slider-${section.key}-${f.key}`}
                 min={f.min}
                 max={f.max}
@@ -220,6 +220,8 @@ export default function DnaSection({
                 onValueChange={(v) => set(f.key, v[0])}
                 disabled={fLocked}
               />
+              {f.help && <p className="text-xs text-zinc-500 leading-relaxed">{f.help}</p>}
+              </>
             )}
             {f.type === "text" && (
               <Input
