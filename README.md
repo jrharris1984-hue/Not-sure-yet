@@ -1,7 +1,7 @@
 # Ultra Studio · Character DNA Builder
 
 Adult XXX character generator that dispatches to your local ComfyUI.
-FastAPI + React + MongoDB. Runs entirely on your machine — nothing leaves your LAN.
+FastAPI + React + MongoDB. Character data and renders are stored locally; optional AI Assist sends prompts to OpenRouter.
 
 ---
 
@@ -10,7 +10,7 @@ FastAPI + React + MongoDB. Runs entirely on your machine — nothing leaves your
 Prereqs: Docker Desktop (or Docker Engine + Compose v2).
 
 ```bash
-git clone <your-repo-url> ultra-studio
+git clone https://github.com/jrharris1984-hue/Not-sure-yet.git ultra-studio
 cd ultra-studio
 docker compose up -d --build
 ```
@@ -22,7 +22,7 @@ That's it. Open **http://localhost:3000**.
 - Mongo: `mongodb://localhost:27017` (auto-persisted to `./data/mongo`)
 - Renders: `./backend/renders` (mounted into the backend container)
 
-On first boot the backend seeds all 6 workflows automatically. Head to **Settings** and:
+On first boot the backend seeds the bundled workflows, including Krea 2 Turbo. Some require model files or ComfyUI nodes that you must install separately. Head to **Settings** and:
 
 1. Set **ComfyUI Server URL** to `http://host.docker.internal:8188` on macOS/Windows Docker Desktop, or `http://172.17.0.1:8188` on Linux — this is how a container reaches ComfyUI running on the host.
    - If you want to skip that, run ComfyUI in host-network mode or set `network_mode: host` on the backend service (Linux only).
@@ -108,10 +108,10 @@ The default Settings URL (`http://localhost:8188`) will Just Work in the native 
 ## Typical first-use flow
 
 1. **Settings** → verify COMFY badge is green. If not, tap the URL, fix, save.
-2. **Settings → Workflow library**: 6 workflows are pre-seeded (Chroma, Z-image Turbo, Qwen Edit, WAN 2.2 I2V, Face-Preserved, Pony V6 XL 5-LoRA). Change default if you prefer Pony.
+2. **Settings → Workflow library**: choose an installed workflow. The library includes Chroma, Z-Image, Qwen Edit, WAN, face, Pony, and Krea 2 recipes. Match each referenced model filename to your ComfyUI installation.
 3. Home → **New character** → run through the 13 sections (or hit **Star presets** → apply Ava Devine / Ebony Mystique / Gracie Bon etc.).
-4. Pick workflow from the dropdown → tune LoRA sliders (Pony workflow) → hit **Render**.
-5. Result lands in **Gallery** and on the character's page with the exact DNA snapshot.
+4. Pick a workflow, select at most one optional compatible LoRA in the LoRA picker, adjust its strength, and hit **Render**. The picker reads installed names from ComfyUI and adds known trigger words. Krea 2 uses the same picker. The legacy Private Magazine workflow is retained for saved recipes, but is hidden from the main workflow list.
+5. Choose 1, 2, 4, 6, 8, or 10 images for an image workflow. Each job receives a different seed and runs through the queue. The batch panel shows each result or failure; completed images also appear in **Gallery**.
 
 ---
 
@@ -126,7 +126,7 @@ The bundled workflows reference these files. If ComfyUI complains at dispatch, d
 | **Qwen Image Edit 2511**       | `qwen-image-edit-2511.safetensors`                       | —                                                                                                                |
 | **WAN 2.2 5B · Image → Video** | `wan2.2_5b.safetensors`                                  | —                                                                                                                |
 | **Face-Preserved · IPAdapter** | your SDXL base + `ip-adapter-faceid.bin`                 | InsightFace models                                                                                               |
-| **Pony V6 XL · 5 LoRAs**       | `realismByStableYogi_ponyV2.safetensors`                 | `Realism_Lora_By_Stable_Yogi_Pony_V2`, `real-skin-slider`, `detail-slider-lora-ponyxl-sdxl`, `body-weight-slider-pony`, `breasts-size-slider-pdxl` |
+| **Pony V6 XL**       | `realismByStableYogi_ponyV2.safetensors`                 | `Realism_Lora_By_Stable_Yogi_Pony_V2`, `real-skin-slider`, `detail-slider-lora-ponyxl-sdxl`, `body-weight-slider-pony`, `breasts-size-slider-pdxl` |
 
 If any file name in the seeded workflow doesn't match what you have locally, open **Settings → the workflow row → Workflow JSON** and edit the file name string in place, then Save.
 
@@ -141,10 +141,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\install-zimage-pee-lora.ps1
 ```
 
 Restart ComfyUI (or rescan models), refresh Ultra Studio, choose the LoRA in
-the matching **LoRA weights** slot. The Z-Image workflow provides independent
-**Quality**, **Body**, and **Action** slots. Selecting a file applies a
-conservative starting strength; resetting a slot returns it to the disabled
-`0.00` default. Use optional LoRAs only with a compatible base model.
+the matching **LoRA weights** slot. Select one compatible optional LoRA in the universal picker and adjust its strength. Avoid mixing models from different workflow families.
 
 For a menu of verified Z-Image Turbo quality, body, wardrobe, and optional
 adult-effect LoRAs, use the curated downloader instead:
@@ -173,12 +170,12 @@ resume, and files are organized under `models\loras\Z-Image\Curated`.
 
 ## Data & privacy
 
-Everything stays on your machine:
+By default, character data and renders stay on your machine:
 
 - **Character DNA + renders** — Mongo + local disk (`./backend/renders`).
 - **AI Assist prompts** — sent to OpenRouter only if you add a key; the model you configure is uncensored/NSFW-permissive.
 - **Render dispatch** — goes to *your* ComfyUI URL, nothing else.
-- **No auth, no telemetry, no external logging.** This is a single-user local tool.
+- **No authentication.** This is a single-user tool. The Compose ports are published on all interfaces by default; use host firewall rules or bind ports to `127.0.0.1` if other devices should not reach them. Do not expose MongoDB or the backend directly to the internet. The API settings response includes the configured OpenRouter key.
 
 # Install Ultra Studio on Android
 
@@ -203,3 +200,7 @@ To remove the Tailscale HTTPS proxy later:
 ```powershell
 tailscale serve reset
 ```
+
+## Updating an installed phone app
+
+After `git pull` and `docker compose up -d --build`, reopen or reload the app while connected. The service worker now checks the network for current scripts and styles and uses cached assets only if offline. If the device stays offline it may show the last cached shell; reconnect and reload before starting a new batch.

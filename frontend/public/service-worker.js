@@ -1,4 +1,4 @@
-const CACHE_NAME = "ultra-studio-shell-v1";
+const CACHE_NAME = "ultra-studio-shell-v2";
 const APP_SHELL = ["/", "/index.html", "/manifest.json", "/icons/icon-192.png", "/icons/icon-512.png"];
 
 self.addEventListener("install", (event) => {
@@ -24,7 +24,7 @@ self.addEventListener("fetch", (event) => {
       fetch(request)
         .then((response) => {
           const copy = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put("/index.html", copy));
+          if (response.ok) caches.open(CACHE_NAME).then((cache) => cache.put("/index.html", copy));
           return response;
         })
         .catch(() => caches.match("/index.html")),
@@ -34,10 +34,10 @@ self.addEventListener("fetch", (event) => {
 
   if (["style", "script", "font", "image"].includes(request.destination)) {
     event.respondWith(
-      caches.match(request).then((cached) => cached || fetch(request).then((response) => {
+      fetch(request).then((response) => {
         if (response.ok) caches.open(CACHE_NAME).then((cache) => cache.put(request, response.clone()));
         return response;
-      })),
+      }).catch(async () => (await caches.match(request)) || Response.error()),
     );
   }
 });
