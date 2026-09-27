@@ -11,6 +11,27 @@ describe("prompt quality preflight", () => {
     expect(promptProfile({ prompt_style: "pony" })).toBe("pony");
   });
 
+  test("blocks Krea tight crops and custom prompts that omit the selected magazine framing", () => {
+    const workflow = { prompt_style: "krea2" };
+    const tight = analyzePromptQuality({
+      positive: "Head-and-shoulders portrait of an adult subject.",
+      dna: { pose: { distance: "portrait" } }, workflow,
+    });
+    expect(tight.blockers.map((item) => item.code)).toContain("krea-framing-choice");
+
+    const custom = analyzePromptQuality({
+      positive: "Editorial photograph of an adult subject.",
+      dna: { pose: { distance: "full body" } }, workflow,
+    });
+    expect(custom.blockers.map((item) => item.code)).toContain("krea-framing-prompt");
+
+    const valid = analyzePromptQuality({
+      positive: "Full-length photograph of an adult subject from head to feet.",
+      dna: { pose: { distance: "full body" } }, workflow,
+    });
+    expect(valid.blockers.map((item) => item.code)).not.toContain("krea-framing-prompt");
+  });
+
   test("safe cleanup removes only exact duplicate clauses and filler", () => {
     expect(optimizePromptText("portrait, hourglass figure, portrait, none, soft light"))
       .toBe("portrait, hourglass figure, soft light");
