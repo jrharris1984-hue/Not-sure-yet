@@ -137,6 +137,18 @@ export function analyzePromptQuality({
 
   const generatedImageProfile = ["default", "zimage", "chroma", "krea2", "pony", "flux", "wan_t2v"].includes(profile);
   if (generatedImageProfile) {
+    const explicitLevel = Number(dna?.scenario?.explicit_level || 0);
+    const outfitPreset = String(dna?.wardrobe?.outfit_preset || "").toLowerCase();
+    const hasSceneAction = Boolean(dna?.scenario?.extra_acts?.trim())
+      || (Array.isArray(dna?.scenario?.acts) && dna.scenario.acts.length > 0);
+    const hasNudityChoice = ["nude", "topless", "bottomless"].includes(outfitPreset);
+    if (explicitLevel > 0 && !hasSceneAction && !hasNudityChoice) {
+      issues.push(issue("warning", "explicit-intent-missing", "Explicit level sets intensity but does not describe what appears in the image. Choose a Bare outfit or add specific adult scene details in Fine Tune."));
+    }
+    if (profile === "krea2" && ["portrait", "close-up"].includes(String(dna?.pose?.distance || "").toLowerCase())
+      && (hasSceneAction || hasNudityChoice)) {
+      issues.push(issue("warning", "explicit-framing", "Portrait or close-up framing may crop out the adult scene details. Choose full body or a wider shot if those details must be visible."));
+    }
     const skinTone = String(dna?.skin?.tone || "").toLowerCase();
     const lightSkin = ["fair", "pale", "porcelain", "ivory"];
     const darkSkin = ["tan", "brown", "dark", "ebony", "deep"];
