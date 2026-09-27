@@ -472,6 +472,9 @@ export default function Builder() {
   const isGoldenChroma = activeCompiler === "chroma";
   const isKrea2 = activeCompiler === "krea2";
   const activeRecipeFamily = recipeFamily(activeCompiler);
+  const renderSettings = isKrea2
+    ? { ...chromaSettings, steps: 8, cfg: 1, sampler: "euler" }
+    : chromaSettings;
   const kreaBaseBlocked = isKrea2 && krea2Status && !krea2Status.ready;
   const kreaRenderBlocked = !!kreaBaseBlocked;
 
@@ -1184,12 +1187,12 @@ export default function Builder() {
         operation: sourceRenderId
           ? (isVideoWorkflow ? "animate" : isFaceWorkflow ? "face_reference" : editMode === "new_pose" ? "new_pose" : "edit")
           : "render",
-        width: activeRecipeFamily === "image" ? chromaSettings.width : undefined,
-        height: activeRecipeFamily === "image" ? chromaSettings.height : undefined,
+        width: activeRecipeFamily === "image" ? renderSettings.width : undefined,
+        height: activeRecipeFamily === "image" ? renderSettings.height : undefined,
         batch_size: activeRecipeFamily === "image" ? 1 : undefined,
-        steps: activeRecipeFamily === "image" ? chromaSettings.steps : undefined,
-        cfg: activeRecipeFamily === "image" ? chromaSettings.cfg : undefined,
-        sampler_name: activeRecipeFamily === "image" ? chromaSettings.sampler : undefined,
+        steps: activeRecipeFamily === "image" ? renderSettings.steps : undefined,
+        cfg: activeRecipeFamily === "image" ? renderSettings.cfg : undefined,
+        sampler_name: activeRecipeFamily === "image" ? renderSettings.sampler : undefined,
         seed: activeRecipeFamily === "image" ? uniqueSeed : undefined,
         reference_image: (isFaceWorkflow || isEditWorkflow || isEnhanceWorkflow || isVideoWorkflow) ? referenceImage?.name : undefined,
         face_strength: faceStrength,
@@ -2124,7 +2127,7 @@ export default function Builder() {
             workflow={activeWorkflow}
             context={preflightContext}
             compilerMeta={compiledPrompt}
-            recipe={activeRecipeFamily === "image" ? chromaSettings : null}
+            recipe={activeRecipeFamily === "image" ? renderSettings : null}
             selectedLora={selectedLora}
             imageCount={activeRecipeFamily === "image" && !poseAssistEnabled ? renderCount : 1}
             optimized={!!promptOverride}

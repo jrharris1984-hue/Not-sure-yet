@@ -1235,6 +1235,12 @@ async def _patch_krea2_model_choices(
             continue
         inputs = node.get("inputs", {})
         class_type = node.get("class_type")
+        # Older bundled Krea recipes used the SD3 16-channel empty latent.
+        # Krea 2's official ComfyUI template uses EmptyLatentImage instead.
+        # Repair stored workflow copies at dispatch, not only new seed files.
+        if class_type == "EmptySD3LatentImage":
+            node["class_type"] = "EmptyLatentImage"
+            node.setdefault("_meta", {})["title"] = "Empty Krea 2 Latent"
         if class_type == "UNETLoader" and "unet_name" in inputs:
             inputs["unet_name"] = choices["model"]
         elif class_type == "CLIPLoader":
@@ -1687,6 +1693,11 @@ async def _perform_dispatch(body: "DispatchBody") -> Dict[str, Any]:
         "cfg": body.cfg,
         "sampler_name": body.sampler_name,
     }
+    if wf_template and wf_template.prompt_style == "krea2":
+        # Turbo's distilled sampling recipe must not inherit Chroma settings
+        # from an older saved builder draft or an exact Gallery recreation.
+        generation_overrides.update(steps=8, cfg=1.0, sampler_name="euler")
+        body.steps, body.cfg, body.sampler_name = 8, 1.0, "euler"
     for node in workflow.values():
         if not isinstance(node, dict):
             continue
