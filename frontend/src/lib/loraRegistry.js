@@ -40,6 +40,14 @@ export const LORA_REGISTRY = [
   item("krea-lngcon", "krea2_lngcon_v01_s1000.safetensors", "krea2", "body", "Krea 2 LNGCON", { defaultStrength:0.7, maxStrength:1.4, verified:true }),
   item("faceid-sd15", "ip-adapter-faceid-plusv2_sd15_lora.safetensors", "sd15", "identity", "IP-Adapter FaceID Plus v2", { defaultStrength:1, verified:true }),
 
+  // Pony's realism LoRA is part of the bundled base workflow. The other local
+  // Pony sliders remain optional one-at-a-time choices.
+  item("pony-realism-base", "Pony\\Realism_Lora_By_Stable_Yogi_Pony_V2.safetensors", "pony", "required", "Pony Realism Base", { defaultStrength:0.3, verified:true }),
+  item("pony-real-skin", "Pony\\real-skin-slider.safetensors", "pony", "quality", "Real Skin Slider · Pony", { defaultStrength:0.45, maxStrength:1.2, verified:true }),
+  item("pony-detail-slider", "Pony\\detail-slider-lora-ponyxl-sdxl.safetensors", "pony", "quality", "Detail Slider · Pony/SDXL", { defaultStrength:0.4, maxStrength:1.2, verified:true }),
+  item("pony-body-weight", "Pony\\body-weight-slider-pony.safetensors", "pony", "body", "Body Weight Slider · Pony", { defaultStrength:0.5, maxStrength:1.2, verified:true }),
+  item("pony-breast-size", "Pony\\breasts-size-slider-pdxl.safetensors", "pony", "body", "Breast Size Slider · Pony", { defaultStrength:0.5, maxStrength:1.2, verified:true }),
+
   // Curated Z-Image utility LoRAs installed by install-curated-zimage-loras.ps1.
   // Basename matching keeps these recognized regardless of their category folder.
   item("zit-hands-feet-skin", "Hands + Feet + skin v1.1.safetensors", "zimage", "quality", "Hands + Feet + Skin", { categories:["quality","anatomy","feet","skin"], triggerWords:["natural hands and feet","realistic skin texture"], keywords:["hands","fingers","feet","foot","toes","soles","skin texture","pores"], defaultStrength:0.38, auto:true, verified:true, conflicts:["z-detail-slider"] }),
