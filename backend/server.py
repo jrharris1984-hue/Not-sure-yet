@@ -111,7 +111,7 @@ class WorkflowTemplate(BaseModel):
     model_config = ConfigDict(extra="ignore")
     id: str = Field(default_factory=new_id)
     name: str = "Untitled workflow"
-    kind: str = "image"  # image | video | edit | face | pony | pose | refine | krea_style
+    kind: str = "image"  # image | variation | video | edit | face | pony | pose | refine | krea_style
     prompt_style: str = "venice"  # venice | zimage | chroma | krea2 | flux | pony | qwen_edit | wan_i2v | wan_t2v
     json_str: str = ""
     positive_node_id: str = ""
@@ -213,6 +213,7 @@ SEED_WORKFLOWS = [
     {"file": "pony.json", "name": "Pony V6 XL · 5 LoRAs", "kind": "pony", "prompt_style": "pony"},
     {"file": "flux_pose.json", "name": "Pose Assist · FLUX DWPose Foundation", "kind": "pose", "prompt_style": "flux"},
     {"file": "chroma_refine.json", "name": "Pose Assist · Chroma Polish", "kind": "refine", "prompt_style": "chroma"},
+    {"file": "chroma_variation.json", "name": "Chroma1-HD · Image Variations", "kind": "variation", "prompt_style": "chroma"},
     {"file": "krea2_turbo.json", "name": "Krea 2 Turbo", "kind": "image", "prompt_style": "krea2"},
     {"file": "krea2_private_magazine.json", "name": "Krea 2 Turbo · Private Magazine", "kind": "krea_style", "prompt_style": "krea2"},
 ]
@@ -1452,12 +1453,13 @@ async def _perform_dispatch(body: "DispatchBody") -> Dict[str, Any]:
             doc.pop("_id", None)
             return doc
 
-    # Pose Assist finish: Chroma receives the completed FLUX foundation image as
-    # img2img input. Denoise is intentionally low so the established pose survives.
-    if wf_template and wf_template.kind == "refine":
+    # Chroma image-to-image: the polish pass receives the FLUX foundation, while
+    # standalone variations receive the uploaded source photograph.
+    if wf_template and wf_template.kind in {"refine", "variation"}:
         if not body.reference_image:
             r.status = "failed"
-            r.error = "Pose Assist could not find the FLUX foundation image for Chroma polish."
+            r.error = ("Upload a source image for Image Variations." if wf_template.kind == "variation"
+                       else "Pose Assist could not find the FLUX foundation image for Chroma polish.")
             doc = r.model_dump()
             doc["workflow_id"] = wf_template.id
             doc["workflow_name"] = wf_template.name
@@ -1481,7 +1483,7 @@ async def _perform_dispatch(body: "DispatchBody") -> Dict[str, Any]:
                 denoise_patched = True
         if not image_patched:
             r.status = "failed"
-            r.error = "The Chroma polish workflow is missing its LoadImage node."
+            r.error = "The selected image workflow is missing its LoadImage node."
             doc = r.model_dump()
             doc["workflow_id"] = wf_template.id
             doc["workflow_name"] = wf_template.name
@@ -1489,7 +1491,7 @@ async def _perform_dispatch(body: "DispatchBody") -> Dict[str, Any]:
             doc.pop("_id", None)
             return doc
         if not denoise_patched:
-            logger.warning("Pose Assist Chroma polish workflow has no configurable denoise node.")
+            logger.warning("Chroma image-to-image workflow has no configurable denoise node.")
 
     # Qwen Image Edit also consumes an uploaded source image, but its positive
     # prompt is a direct edit instruction rather than the character DNA prompt.
