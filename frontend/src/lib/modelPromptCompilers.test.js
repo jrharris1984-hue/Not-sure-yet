@@ -35,6 +35,20 @@ describe("model-specific prompt compilers", () => {
     expect(result.negativeStrategy).toBe("zeroed");
   });
 
+  it("includes selected hosiery, heels, nails, and glasses in Krea wardrobe text", () => {
+    const dna = JSON.parse(JSON.stringify(DEFAULT_DNA));
+    dna.wardrobe = {
+      ...dna.wardrobe, hosiery_type: "sheer pantyhose", hosiery_color: "black",
+      heel_type: "platform pumps", heel_color: "red", nail_color: "burgundy",
+      glasses_style: "cat-eye frames", glasses_color: "gold",
+    };
+    const result = compileModelPrompts({ promptStyle: "krea2", dna });
+    expect(result.positive).toContain("black sheer pantyhose");
+    expect(result.positive).toContain("red platform pumps");
+    expect(result.positive).toContain("burgundy fingernails");
+    expect(result.positive).toContain("gold cat-eye frames");
+  });
+
   it("orders Krea 2 prompts as subject and pose before camera/style details", () => {
     const dna = JSON.parse(JSON.stringify(DEFAULT_DNA));
     dna.identity = { ...dna.identity, gender: "female", age: 38, ethnicity: "colombian" };
