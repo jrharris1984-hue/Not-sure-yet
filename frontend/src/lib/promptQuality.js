@@ -85,7 +85,11 @@ export function analyzePromptQuality({
   }
 
   const priorityPlan = compilerMeta?.priorityPlan || { mustMatch: [], important: [], detail: [] };
-  const missingMust = (priorityPlan.mustMatch || []).filter((item) => !requirementPresent(positive, item));
+  const missingMust = (priorityPlan.mustMatch || [])
+    .filter((item) => !(profile === "krea2" && item.key === "pose.focus"
+      && String(dna?.pose?.focus || "").toLowerCase() === "face"
+      && ["", "full body", "wide shot", "waist-up"].includes(String(dna?.pose?.distance || "").toLowerCase())))
+    .filter((item) => !requirementPresent(positive, item));
   const droppedImportant = (compilerMeta?.droppedClauses || []).filter((item) => item.priority === "important");
   const droppedDetail = (compilerMeta?.droppedClauses || []).filter((item) => item.priority === "detail");
 
@@ -154,6 +158,13 @@ export function analyzePromptQuality({
       issues.push(issue("warning", "explicit-framing", "Portrait or close-up framing may crop out the adult scene details. Choose full body or a wider shot if those details must be visible."));
     }
     if (profile === "krea2") {
+      const distance = String(dna?.pose?.distance || "").toLowerCase();
+      if (["portrait", "close-up", "detail shot", "wide shot"].includes(distance)) {
+        issues.push(issue("error", "krea-framing-choice", "Krea 2 magazine framing is set to full body or waist-up. Choose one of those crops before rendering.", { blocking: true }));
+      }
+      if (!/(full[- ](?:length|body)|head[- ]to[- ]toe|head to (?:feet|soles)|waist[- ]up)/i.test(positive)) {
+        issues.push(issue("error", "krea-framing-prompt", "The final Krea 2 prompt does not clearly request full-body or waist-up framing. Restore the generated prompt or add that framing to your custom prompt.", { blocking: true }));
+      }
       const selectedActions = Array.isArray(dna?.scenario?.acts) ? dna.scenario.acts.length : 0;
       const extraClauses = String(dna?.scenario?.extra_acts || "").split(/[,;]+/).filter((part) => part.trim()).length;
       if (selectedActions + extraClauses > 3) {
