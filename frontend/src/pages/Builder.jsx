@@ -173,7 +173,6 @@ export default function Builder() {
   const [postRenderBusy, setPostRenderBusy] = useState("");
   const [workflowId, setWorkflowId] = useState("");
   const [loraOverrides, setLoraOverrides] = useState({});
-  const [loraTriggerWords, setLoraTriggerWords] = useState([]);
   const [selectedLora, setSelectedLora] = useState({ name: "", strength: 0.8, triggerWords: [] });
   const [referenceImage, setReferenceImage] = useState(null);
   const [sourceRenderId, setSourceRenderId] = useState(null);
@@ -212,8 +211,6 @@ export default function Builder() {
   const [poseAssistPolish, setPoseAssistPolish] = useState(0.30);
   const [poseAssistStage, setPoseAssistStage] = useState("");
   const [installingPoseAssist, setInstallingPoseAssist] = useState(false);
-  const [kreaStyle, setKreaStyle] = useState("none");
-  const [kreaLoraStrength, setKreaLoraStrength] = useState(0.8);
   const [galleryRecipeMode, setGalleryRecipeMode] = useState("");
   const [enhancingVideo, setEnhancingVideo] = useState(false);
   const [analyzingVideoImage, setAnalyzingVideoImage] = useState(false);
@@ -274,8 +271,6 @@ export default function Builder() {
     setPoseAssistEnabled(!!draft.poseAssistEnabled);
     if (typeof draft.poseAssistStrength === "number") setPoseAssistStrength(draft.poseAssistStrength);
     if (typeof draft.poseAssistPolish === "number") setPoseAssistPolish(draft.poseAssistPolish);
-    setKreaStyle(draft.kreaStyle || "none");
-    if (typeof draft.kreaLoraStrength === "number") setKreaLoraStrength(draft.kreaLoraStrength);
     if (draft.chromaSettings) setChromaSettings(draft.chromaSettings);
     if (draft.activeRender) setActiveRender(draft.activeRender);
     if (Array.isArray(draft.batchRenders) && draft.batchRenders.length) {
@@ -421,15 +416,12 @@ export default function Builder() {
       if (savedWorkflow?.kind === "krea_style") {
         const baseKrea = workflows.find((workflow) => workflow.prompt_style === "krea2" && workflow.kind === "image");
         if (baseKrea) setWorkflowId(baseKrea.id);
-        setKreaStyle(saved.krea_style || "private_magazine");
       } else if (savedWorkflow) {
         setWorkflowId(savedWorkflow.id);
       }
     }
-    if (saved.krea_style) setKreaStyle(saved.krea_style);
-    if (typeof saved.krea_lora_strength === "number") setKreaLoraStrength(saved.krea_lora_strength);
     setSelectedLora({
-      name: saved.selected_lora_name || "",
+      name: saved.selected_lora_name || (saved.krea_style === "private_magazine" ? "Private_Magazine_2000s_v1.safetensors" : ""),
       strength: typeof saved.selected_lora_strength === "number"
         ? saved.selected_lora_strength
         : (typeof saved.krea_lora_strength === "number" ? saved.krea_lora_strength : 0.8),
@@ -466,7 +458,6 @@ export default function Builder() {
   const poseAssistFoundationWorkflow = workflows.find((w) => w.kind === "pose");
   const poseAssistPolishWorkflow = workflows.find((w) => w.kind === "refine");
   const poseAssistAvailable = !!poseAssistFoundationWorkflow && !!poseAssistPolishWorkflow;
-  const kreaPrivateWorkflow = workflows.find((w) => w.kind === "krea_style" && w.prompt_style === "krea2");
   const promptStyle = activeWorkflow?.prompt_style || "venice";
   const isFaceWorkflow = activeWorkflow?.kind === "face";
   const isEditWorkflow = activeWorkflow?.kind === "edit";
@@ -563,7 +554,6 @@ export default function Builder() {
 
   useEffect(() => {
     applyQualityTier("balanced");
-    if (activeCompiler !== "krea2") setKreaStyle("none");
     // Reset to the recommended recipe only when the selected model family changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeCompiler]);
@@ -761,7 +751,7 @@ export default function Builder() {
       referenceStudioView, referenceRecipe, referenceStrengths, poseReferenceAnalysis,
       videoInstruction, videoFrames, videoFps, videoWidth, videoHeight,
       qualityTier, poseAssistEnabled, poseAssistStrength, poseAssistPolish,
-      kreaStyle, kreaLoraStrength, selectedLora, chromaSettings, activeRender,
+      selectedLora, chromaSettings, activeRender,
     }), 350);
     return () => window.clearTimeout(timer);
   }, [
@@ -772,7 +762,7 @@ export default function Builder() {
     referenceStudioView, referenceRecipe, referenceStrengths, poseReferenceAnalysis,
     videoInstruction, videoFrames, videoFps, videoWidth, videoHeight,
     qualityTier, poseAssistEnabled, poseAssistStrength, poseAssistPolish,
-    kreaStyle, kreaLoraStrength, selectedLora, chromaSettings, activeRender,
+    selectedLora, chromaSettings, activeRender,
   ]);
 
   // Ensure active id is always valid.
@@ -879,7 +869,7 @@ export default function Builder() {
     : "";
   const generatedPositive = [languageLead, acceptsLikenessPrompt && likenessPrompt, positive].filter(Boolean).join(", ");
   const positiveBeforeLoraTriggers = promptOverride || generatedPositive;
-  const activeLoraTriggers = [...new Set([...(loraTriggerWords || []), ...(selectedLora.triggerWords || [])])];
+  const activeLoraTriggers = [...new Set(selectedLora.triggerWords || [])];
   const finalPositive = activeLoraTriggers.reduce(
     (text, trigger) => text.toLowerCase().includes(trigger.toLowerCase()) ? text : `${trigger}, ${text}`,
     positiveBeforeLoraTriggers
