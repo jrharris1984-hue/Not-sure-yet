@@ -24,9 +24,9 @@ export const LORA_REGISTRY = [
 
   // Krea 2 LoRAs installed for the local Krea 2 Turbo workflow. These stay
   // model-only and are intentionally single-select in the universal picker.
-  item("krea-private-1970s", "Private_Magazine_1970s_v1.safetensors", "krea2", "quality", "Private Magazine · 1970s", { categories:["style","editorial"], triggerWords:["privatemag"], defaultStrength:0.8, maxStrength:1.5, verified:true }),
+  item("krea-private-1970s", "Private_Magazine_1970s_v1.safetensors", "krea2", "quality", "Private Magazine · 1970s", { categories:["style","editorial"], defaultStrength:0.8, maxStrength:1.5, verified:true }),
   item("krea-private-1980s", "Private_Magazine_1980s_v1.safetensors", "krea2", "quality", "Private Magazine · 1980s", { categories:["style","editorial"], triggerWords:["privatemag"], defaultStrength:0.8, maxStrength:1.5, verified:true }),
-  item("krea-private-1990s", "Private_Magazine_1990s_v1.safetensors", "krea2", "quality", "Private Magazine · 1990s", { categories:["style","editorial"], triggerWords:["privatemag"], defaultStrength:0.8, maxStrength:1.5, verified:true }),
+  item("krea-private-1990s", "Private_Magazine_1990s_v1.safetensors", "krea2", "quality", "Private Magazine · 1990s", { categories:["style","editorial"], triggerWords:["90s magazine photography"], defaultStrength:0.8, maxStrength:1.5, verified:true }),
   item("krea-private-2000s", "Private_Magazine_2000s_v1.safetensors", "krea2", "quality", "Private Magazine · 2000s", { categories:["style","editorial"], triggerWords:["privatemag"], defaultStrength:0.8, maxStrength:1.5, verified:true }),
   item("krea-freya", "Freya_Krea2.safetensors", "krea2", "body", "Freya · Krea 2", { defaultStrength:0.8, maxStrength:1.5, verified:true }),
   item("krea-nicole", "Nicole_Nylan__OC__krea2_3345006_epoch_19.safetensors", "krea2", "body", "Nicole Nylan · Krea 2", { defaultStrength:0.8, maxStrength:1.5, verified:true }),

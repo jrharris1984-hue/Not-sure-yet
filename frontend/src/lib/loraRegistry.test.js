@@ -204,6 +204,7 @@ describe("LoRA registry planner", () => {
       "Krea2\\krea_feet_lora_v3.safetensors",
       "Krea2\\RLY-thot_shot-KREA2-briana-v1-trigger-rlybriana.safetensors",
       "Krea2\\Private_Magazine_1990s_v1.safetensors",
+      "Krea2\\Private_Magazine_1970s_v1.safetensors",
       "Krea2\\krea2_gotd_yummy_anus.safetensors",
       "Krea2\\krea2_gotd_yummy_anus (1).safetensors",
     ];
@@ -214,7 +215,8 @@ describe("LoRA registry planner", () => {
     expect(compatible.some((entry) => entry.label === "Cumshot · Krea 2")).toBe(true);
     expect(compatible.some((entry) => entry.label === "Feet Detail V3 · Krea 2")).toBe(true);
     expect(compatible.find((entry) => entry.label === "RLY Briana · Krea 2")?.triggerWords).toContain("rlybriana");
-    expect(compatible.find((entry) => entry.label === "Private Magazine · 1990s")?.triggerWords).toContain("privatemag");
+    expect(compatible.find((entry) => entry.label === "Private Magazine · 1990s")?.triggerWords).toEqual(["90s magazine photography"]);
+    expect(compatible.find((entry) => entry.label === "Private Magazine · 1970s")?.triggerWords).toEqual([]);
     expect(compatible.filter((entry) => entry.label.includes("Yummy Anus"))).toHaveLength(1);
   });
 

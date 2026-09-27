@@ -49,11 +49,13 @@ export default function UniversalLoraPicker({ workflow, value, onChange }) {
       onChange({ name: "", strength: 0.8, triggerWords: [] });
       return;
     }
-    if (selected.installedName !== value.name || (!editedTriggerFor && !value?.triggerWords?.length && selected.triggerWords?.length)) {
+    const oldMagazineTrigger = selected.id === "krea-private-1990s" && !editedTriggerFor
+      && value?.triggerWords?.length === 1 && value.triggerWords[0].toLowerCase() === "privatemag";
+    if (selected.installedName !== value.name || oldMagazineTrigger || (!editedTriggerFor && !value?.triggerWords?.length && selected.triggerWords?.length)) {
       onChange({
         name: selected.installedName,
         strength: Number(value?.strength ?? selected.defaultStrength ?? 0.8),
-        triggerWords: value?.triggerWords?.length ? value.triggerWords : (selected.triggerWords || []),
+        triggerWords: oldMagazineTrigger ? selected.triggerWords : (value?.triggerWords?.length ? value.triggerWords : (selected.triggerWords || [])),
       });
     }
   }, [installed, selected, value?.name, value?.strength, value?.triggerWords, editedTriggerFor, onChange]);
