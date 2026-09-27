@@ -342,11 +342,14 @@ function kreaPoseSentence(dna = {}, label = "") {
   const feet = dna.feet || {};
   const prefix = label ? `Subject ${label} pose and framing: ` : "Pose and framing: ";
   const feetPriority = lower(p.focus) === "feet" || kreaValue(feet.framing);
+  const fullLength = !p.distance || ["full body", "wide shot"].includes(lower(p.distance));
   return kreaSentence(prefix, [
     p.action,
     p.body_language && `${p.body_language} body language`,
     p.angle && `${p.angle} view`,
-    p.focus && `${p.focus} composition priority`,
+    p.focus && (fullLength && lower(p.focus) === "face"
+      ? "face clearly visible within the full-length composition"
+      : `${p.focus} composition priority`),
     p.hands?.length ? `hands ${p.hands.join(" and ")}` : "",
     feetPriority ? feet.framing : "",
     feetPriority ? feet.sole_presentation : "",
@@ -474,9 +477,11 @@ export function buildKrea2Prompts({
       kreaSubjectSentence(subjectDna, label),
       kreaPoseSentence(subjectDna, label),
       kreaWardrobeSentence(subjectDna, label),
-      kreaAdultDetailSentence(subjectDna, label),
     ].filter(Boolean);
   });
+  const sceneDetails = activeSubjects.map((subject, index) => kreaAdultDetailSentence(
+    subject?.dna || {}, subjectCount > 1 ? (subject?.label || String.fromCharCode(65 + index)) : ""
+  )).filter(Boolean);
 
   const realismTail = anatomyMode === "extreme"
     ? "Keep the requested stylization while preserving one connected body per person, readable joints, coherent hands and feet, realistic skin detail and consistent perspective."
@@ -487,17 +492,21 @@ export function buildKrea2Prompts({
   const sharedShot = kreaSharedShotSentences(primary);
   const [imageLead, ...shotDetails] = sharedShot;
   let positive = [
-    ...subjectBlocks,
     kreaFramingSentence(primary),
+    ...subjectBlocks,
     compositionLead,
     ...shotDetails,
     imageLead,
+    ...sceneDetails,
     realismTail,
   ].filter(Boolean).join(" ");
 
   // Krea 2's Qwen3-VL encoder responds well to concise natural language. Keep
   // must-match settings literal without turning the whole prompt into tag soup.
   const missingMust = (priorityPlan.mustMatch || [])
+    .filter((item) => !(item.key === "pose.focus"
+      && lower(primary.pose?.focus) === "face"
+      && (!primary.pose?.distance || ["full body", "wide shot"].includes(lower(primary.pose.distance)))))
     .filter((item) => !requirementPresent(positive, item))
     .map((item) => item.phrase);
   if (missingMust.length) {

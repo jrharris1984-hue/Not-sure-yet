@@ -153,6 +153,17 @@ export function analyzePromptQuality({
       && (hasSceneAction || hasNudityChoice)) {
       issues.push(issue("warning", "explicit-framing", "Portrait or close-up framing may crop out the adult scene details. Choose full body or a wider shot if those details must be visible."));
     }
+    if (profile === "krea2") {
+      const selectedActions = Array.isArray(dna?.scenario?.acts) ? dna.scenario.acts.length : 0;
+      const extraClauses = String(dna?.scenario?.extra_acts || "").split(/[,;]+/).filter((part) => part.trim()).length;
+      if (selectedActions + extraClauses > 3) {
+        issues.push(issue("warning", "krea-scene-overload", "Krea 2 has several competing scene details. Choose one main action and up to two supporting details for a more reliable image."));
+      }
+      if ((!dna?.pose?.distance || ["full body", "wide shot"].includes(String(dna.pose.distance).toLowerCase()))
+        && String(dna?.pose?.focus || "").toLowerCase() === "face") {
+        issues.push(issue("info", "krea-face-in-frame", "Face focus will keep the face clear within a full-length composition; it will not request a face close-up."));
+      }
+    }
     const skinTone = String(dna?.skin?.tone || "").toLowerCase();
     const lightSkin = ["fair", "pale", "porcelain", "ivory"];
     const darkSkin = ["tan", "brown", "dark", "ebony", "deep"];
