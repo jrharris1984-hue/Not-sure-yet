@@ -4,6 +4,7 @@ const PLACEHOLDER_SEGMENTS = new Set(["none", "average", "default", "n/a", "unde
 
 const PROFILE_LIMITS = {
   chroma: { label: "Golden Chroma", warningTokens: 480, hardTokens: 512 },
+  krea2: { label: "Krea 2 Turbo", warningTokens: 480, hardTokens: 640 },
   pony: { label: "Pony / CLIP", warningTokens: 180, hardTokens: 225 },
   zimage: { label: "Z-Image Turbo", warningTokens: 300, hardTokens: 420 },
   qwen_edit: { label: "Qwen Image Edit", warningTokens: 170, hardTokens: 260 },
@@ -26,6 +27,7 @@ export function promptProfile(workflow = {}) {
   if (kind === "video" || style === "wan_i2v") return "wan_i2v";
   if (kind === "text_video" || style === "wan_t2v") return "wan_t2v";
   if (haystack.includes("chroma")) return "chroma";
+  if (style === "krea2" || haystack.includes("krea 2") || haystack.includes("krea2")) return "krea2";
   if (haystack.includes("pony")) return "pony";
   if (haystack.includes("z-image") || haystack.includes("z image") || haystack.includes("z_image") || style === "zimage") return "zimage";
   if (haystack.includes("flux")) return "flux";
@@ -133,7 +135,7 @@ export function analyzePromptQuality({
     issues.push(issue("error", "adult-age", "The subject age must be 21 or older.", { blocking: true }));
   }
 
-  const generatedImageProfile = ["default", "zimage", "chroma", "pony", "flux", "wan_t2v"].includes(profile);
+  const generatedImageProfile = ["default", "zimage", "chroma", "krea2", "pony", "flux", "wan_t2v"].includes(profile);
   if (generatedImageProfile) {
     const skinTone = String(dna?.skin?.tone || "").toLowerCase();
     const lightSkin = ["fair", "pale", "porcelain", "ivory"];
