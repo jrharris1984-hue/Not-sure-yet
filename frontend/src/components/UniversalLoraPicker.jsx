@@ -8,6 +8,8 @@ export default function UniversalLoraPicker({ workflow, value, onChange }) {
   const [query, setQuery] = useState("");
   const [expanded, setExpanded] = useState(false);
   const [loadState, setLoadState] = useState("loading");
+  const [triggerInput, setTriggerInput] = useState("");
+  const [editedTriggerFor, setEditedTriggerFor] = useState("");
   const family = workflowFamily(workflow || {});
 
   useEffect(() => {
@@ -47,16 +49,21 @@ export default function UniversalLoraPicker({ workflow, value, onChange }) {
       onChange({ name: "", strength: 0.8, triggerWords: [] });
       return;
     }
-    if (selected.installedName !== value.name) {
+    if (selected.installedName !== value.name || (!editedTriggerFor && !value?.triggerWords?.length && selected.triggerWords?.length)) {
       onChange({
         name: selected.installedName,
         strength: Number(value?.strength ?? selected.defaultStrength ?? 0.8),
         triggerWords: value?.triggerWords?.length ? value.triggerWords : (selected.triggerWords || []),
       });
     }
-  }, [installed, selected, value?.name, value?.strength, value?.triggerWords, onChange]);
+  }, [installed, selected, value?.name, value?.strength, value?.triggerWords, editedTriggerFor, onChange]);
+
+  useEffect(() => {
+    setTriggerInput((value?.triggerWords || []).join(", "));
+  }, [value?.name, value?.triggerWords]);
 
   const choose = (entry) => {
+    setEditedTriggerFor("");
     if (!entry) {
       onChange({ name: "", strength: 0.8, triggerWords: [] });
       return;
@@ -65,6 +72,17 @@ export default function UniversalLoraPicker({ workflow, value, onChange }) {
       name: entry.installedName,
       strength: entry.defaultStrength ?? 0.8,
       triggerWords: entry.triggerWords || [],
+    });
+  };
+
+  const saveTriggers = () => {
+    if (!selected) return;
+    const triggerWords = [...new Set(triggerInput.split(/[,;\n]+/).map((word) => word.trim()).filter(Boolean))];
+    setEditedTriggerFor(selected.installedName);
+    onChange({
+      name: selected.installedName,
+      strength,
+      triggerWords,
     });
   };
 
@@ -190,7 +208,7 @@ export default function UniversalLoraPicker({ workflow, value, onChange }) {
               onChange={(event) => onChange({
                 name: selected.installedName,
                 strength: Number(event.target.value),
-                triggerWords: selected.triggerWords || [],
+                triggerWords: value?.triggerWords || [],
               })}
               className="w-full accent-fuchsia-400"
               data-testid="universal-lora-strength"
@@ -200,11 +218,17 @@ export default function UniversalLoraPicker({ workflow, value, onChange }) {
               <span>recommended {Number(selected.defaultStrength ?? 0.8).toFixed(2)}</span>
               <span>{maxStrength.toFixed(2)}</span>
             </div>
-            {selected.triggerWords?.length > 0 && (
-              <p className="mt-2 text-[10px] text-zinc-500">
-                Trigger added automatically: <span className="font-mono text-cyan-300">{selected.triggerWords.join(", ")}</span>
-              </p>
-            )}
+            <label className="mt-3 block text-[10px] text-zinc-400">
+              Prompt trigger words (comma-separated)
+              <input type="text" value={triggerInput} onChange={(event) => setTriggerInput(event.target.value)}
+                onBlur={saveTriggers} onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); }}
+                placeholder="Enter the trigger from this LoRA's model page, if it has one"
+                className="mt-1 w-full rounded-md border hairline bg-elevated px-2 py-2 font-mono text-xs text-zinc-100 outline-none focus:border-cyan-400/50"
+                data-testid="lora-trigger-words" />
+            </label>
+            <p className="mt-1 text-[10px] text-zinc-500">
+              {selected.triggerWords?.length ? "Known trigger loaded automatically. You can edit it." : "No verified trigger is configured for this LoRA. Add one only if its model page specifies it."}
+            </p>
           </div>
         )}
       </div>
