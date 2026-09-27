@@ -11,6 +11,7 @@ describe("model-aware render recipes", () => {
 
   test("keeps model families separate", () => {
     expect(recipeFamily("chroma")).toBe("image");
+    expect(recipeFamily("krea2")).toBe("image");
     expect(recipeFamily("qwen_edit")).toBe("edit");
     expect(recipeFamily("wan_i2v")).toBe("video");
     expect(recipeFamily("wan_t2v")).toBe("video");
@@ -29,6 +30,16 @@ describe("model-aware render recipes", () => {
     expect(recipe.repairStrength).toBe(0.45);
     expect(recipe.steps).toBeUndefined();
     expect(recipeSummary(recipe)).toContain("45%");
+  });
+
+  test("keeps Krea 2 Turbo on its 8-step distilled recipe", () => {
+    const draft = getRenderRecipe("krea2", "draft");
+    const balanced = getRenderRecipe("krea2", "balanced");
+    const quality = getRenderRecipe("krea2", "quality");
+    expect([draft.steps, balanced.steps, quality.steps]).toEqual([8, 8, 8]);
+    expect(balanced.cfg).toBe(1);
+    expect(balanced.sampler).toBe("euler");
+    expect(quality.height).toBeGreaterThan(balanced.height);
   });
 
   test("falls back to standard image settings", () => {

@@ -9,6 +9,11 @@ const IMAGE_RECIPES = {
     balanced: { width: 768, height: 1152, steps: 26, cfg: 3.8, batchSize: 1, sampler: "euler", note: "Recommended Golden Chroma render" },
     quality: { width: 1024, height: 1536, steps: 34, cfg: 4.0, batchSize: 1, sampler: "euler", note: "Higher-detail portrait" },
   },
+  krea2: {
+    draft: { width: 768, height: 1024, steps: 8, cfg: 1.0, batchSize: 1, sampler: "euler", note: "Fast Krea 2 Turbo portrait test" },
+    balanced: { width: 1024, height: 1024, steps: 8, cfg: 1.0, batchSize: 1, sampler: "euler", note: "Official Krea 2 Turbo baseline" },
+    quality: { width: 1024, height: 1536, steps: 8, cfg: 1.0, batchSize: 1, sampler: "euler", note: "Larger portrait canvas at the Turbo recipe" },
+  },
   pony: {
     draft: { width: 768, height: 1024, steps: 18, cfg: 6.5, batchSize: 1, sampler: "euler_ancestral", note: "Fast Pony composition test" },
     balanced: { width: 832, height: 1216, steps: 25, cfg: 7.0, batchSize: 1, sampler: "euler_ancestral", note: "Recommended Pony render" },

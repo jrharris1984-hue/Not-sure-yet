@@ -17,6 +17,19 @@ describe("model-specific prompt compilers", () => {
     expect(resolvePromptCompiler({ promptStyle: "venice", workflowKind: "text_video" })).toBe("wan_t2v");
     expect(resolvePromptCompiler({ promptStyle: "pony" })).toBe("pony");
     expect(resolvePromptCompiler({ promptStyle: "chroma" })).toBe("chroma");
+    expect(resolvePromptCompiler({ promptStyle: "krea2" })).toBe("krea2");
+    expect(resolvePromptCompiler({ workflowName: "Krea 2 Turbo" })).toBe("krea2");
+  });
+
+  it("compiles Krea 2 as a guarded still prompt with zeroed negative conditioning", () => {
+    const dna = JSON.parse(JSON.stringify(DEFAULT_DNA));
+    dna.identity = { ...dna.identity, gender: "female", age: 44, ethnicity: "filipina" };
+    dna.pose = { ...dna.pose, action: "standing", distance: "full body" };
+    const result = compileModelPrompts({ promptStyle: "krea2", dna });
+    expect(result.positive).toContain("44");
+    expect(result.positive).toContain("NORMAL HUMAN ANATOMY REQUIRED");
+    expect(result.negative).toBe("");
+    expect(result.negativeStrategy).toBe("zeroed");
   });
 
   it("keeps Z-Image natural language compact and uses its own negative prompt", () => {

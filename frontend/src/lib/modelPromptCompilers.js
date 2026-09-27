@@ -250,6 +250,7 @@ export function resolvePromptCompiler({ promptStyle = "", workflowKind = "", wor
   if (kind === "text_video" || style === "wan_t2v") return "wan_t2v";
   if (style === "pony" || kind === "pony" || name.includes("pony")) return "pony";
   if (style === "chroma" || name.includes("chroma")) return "chroma";
+  if (style === "krea2" || name.includes("krea 2") || name.includes("krea2")) return "krea2";
   if (style === "zimage" || name.includes("z-image") || name.includes("z image")) return "zimage";
   return "standard";
 }
@@ -423,6 +424,23 @@ export function compileModelPrompts({
     buildChromaPrompts(primaryGuard.dna, { raunch }),
     "chroma"
   );
+  if (compiler === "krea2") {
+    const prompts = basePrompts({ dna: primaryGuard.dna, subjects: guardedSubjects, isMulti, raunch });
+    const prioritized = prioritizePrompt(
+      prompts.positive,
+      priorityPlan,
+      "krea2",
+      { extraLead: [primaryGuard.composition], preserveOrder: isMulti }
+    );
+    return {
+      ...prompts,
+      ...prioritized,
+      negative: "",
+      priorityPlan,
+      guardAdjustments: primaryGuard.adjustments,
+      negativeStrategy: "zeroed",
+    };
+  }
   if (compiler === "zimage") return buildZImagePrompts({
     dna,
     subjects,

@@ -67,6 +67,7 @@ export const endpoints = {
   deleteWorkflow: (id) => api.delete(`/workflows/${id}`).then((r) => r.data),
   seedWorkflows: () => api.post("/workflows/seed").then((r) => r.data),
   poseAssistStatus: () => api.get("/pose-assist/status").then((r) => r.data),
+  krea2Status: () => api.get("/krea2/status").then((r) => r.data),
   reorderWorkflows: (order) => api.post("/workflows/reorder", { order }).then((r) => r.data),
   workflowLoras: (id) => api.get(`/workflows/${id}/loras`).then((r) => r.data),
   comfyLoras: () => api.get("/comfyui/loras").then((r) => r.data),

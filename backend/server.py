@@ -110,8 +110,8 @@ class WorkflowTemplate(BaseModel):
     model_config = ConfigDict(extra="ignore")
     id: str = Field(default_factory=new_id)
     name: str = "Untitled workflow"
-    kind: str = "image"  # image | video | edit | face | pony | pose | refine
-    prompt_style: str = "venice"  # venice | zimage | chroma | flux | pony | qwen_edit | wan_i2v | wan_t2v
+    kind: str = "image"  # image | video | edit | face | pony | pose | refine | krea_style
+    prompt_style: str = "venice"  # venice | zimage | chroma | krea2 | flux | pony | qwen_edit | wan_i2v | wan_t2v
     json_str: str = ""
     positive_node_id: str = ""
     negative_node_id: str = ""
@@ -212,6 +212,8 @@ SEED_WORKFLOWS = [
     {"file": "pony.json", "name": "Pony V6 XL · 5 LoRAs", "kind": "pony", "prompt_style": "pony"},
     {"file": "flux_pose.json", "name": "Pose Assist · FLUX DWPose Foundation", "kind": "pose", "prompt_style": "flux"},
     {"file": "chroma_refine.json", "name": "Pose Assist · Chroma Polish", "kind": "refine", "prompt_style": "chroma"},
+    {"file": "krea2_turbo.json", "name": "Krea 2 Turbo", "kind": "image", "prompt_style": "krea2"},
+    {"file": "krea2_private_magazine.json", "name": "Krea 2 Turbo · Private Magazine", "kind": "krea_style", "prompt_style": "krea2"},
 ]
 
 
@@ -896,6 +898,8 @@ class DispatchBody(BaseModel):
     steps: Optional[int] = None
     cfg: Optional[float] = None
     sampler_name: Optional[str] = None
+    krea_style: str = "none"
+    krea_lora_strength: float = 0.8
     shoot_id: Optional[str] = None
     shoot_frame_index: Optional[int] = None
     parent_render_id: Optional[str] = None
@@ -1032,6 +1036,107 @@ async def _patch_pose_assist_model_choices(workflow: Dict[str, Any], comfyui_url
     return missing
 
 
+
+def _preferred_private_magazine_lora(options: List[str]) -> Optional[str]:
+    """Find a locally installed Private Magazine Krea 2 LoRA without relying on its exact filename."""
+    ranked = []
+    for option in options:
+        lowered = option.lower().replace("_", " ").replace("-", " ")
+        compact = re.sub(r"[^a-z0-9]+", "", option.lower())
+        score = 0
+        if "privatemag" in compact:
+            score += 6
+        if "private" in lowered:
+            score += 3
+        if "magazine" in lowered:
+            score += 3
+        if "2000" in lowered:
+            score += 1
+        if score:
+            ranked.append((score, option))
+    if not ranked:
+        return None
+    return sorted(ranked, key=lambda item: (-item[0], len(item[1]), item[1].lower()))[0][1]
+
+
+async def _krea2_object_info(comfyui_url: str) -> Optional[Dict[str, Any]]:
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as hc:
+            response = await hc.get(f"{comfyui_url.rstrip('/')}/object_info")
+        response.raise_for_status()
+        return response.json()
+    except Exception as exc:
+        logger.warning(f"Krea 2 model auto-detect unavailable: {exc}")
+        return None
+
+
+def _krea2_choices(info: Dict[str, Any]) -> Dict[str, Any]:
+    unet_options = _combo_options(info, "UNETLoader", "unet_name")
+    clip_options = _combo_options(info, "CLIPLoader", "clip_name")
+    clip_types = _combo_options(info, "CLIPLoader", "type")
+    vae_options = _combo_options(info, "VAELoader", "vae_name")
+    lora_options = (
+        _combo_options(info, "LoraLoaderModelOnly", "lora_name")
+        or _combo_options(info, "LoraLoader", "lora_name")
+    )
+    return {
+        "model": _preferred_option(unet_options, ["krea2", "turbo"], ["fp8", "scaled"]),
+        "encoder": _preferred_option(clip_options, ["qwen3vl", "4b"], ["fp8", "scaled"]),
+        "vae": _preferred_option(vae_options, ["qwen", "image", "vae"]),
+        "clip_type_ready": (not clip_types) or ("krea2" in clip_types),
+        "private_magazine": _preferred_private_magazine_lora(lora_options),
+    }
+
+
+async def _patch_krea2_model_choices(
+    workflow: Dict[str, Any],
+    comfyui_url: str,
+    require_private_magazine: bool = False,
+    lora_strength: float = 0.8,
+) -> List[str]:
+    """Repair portable Krea 2 filenames and validate required local components."""
+    info = await _krea2_object_info(comfyui_url)
+    if not info:
+        return ["ComfyUI connection"]
+
+    choices = _krea2_choices(info)
+    missing: List[str] = []
+    if not choices["model"]:
+        missing.append("Krea 2 Turbo model")
+    if not choices["encoder"]:
+        missing.append("Qwen3-VL 4B text encoder")
+    if not choices["vae"]:
+        missing.append("Qwen Image VAE")
+    if not choices["clip_type_ready"]:
+        missing.append("ComfyUI Krea 2 CLIPLoader support")
+    if require_private_magazine and not choices["private_magazine"]:
+        missing.append("Private Magazine Krea 2 LoRA")
+
+    if missing:
+        return missing
+
+    for node in workflow.values():
+        if not isinstance(node, dict):
+            continue
+        inputs = node.get("inputs", {})
+        class_type = node.get("class_type")
+        if class_type == "UNETLoader" and "unet_name" in inputs:
+            inputs["unet_name"] = choices["model"]
+        elif class_type == "CLIPLoader":
+            if "clip_name" in inputs:
+                inputs["clip_name"] = choices["encoder"]
+            if "type" in inputs:
+                inputs["type"] = "krea2"
+        elif class_type == "VAELoader" and "vae_name" in inputs:
+            inputs["vae_name"] = choices["vae"]
+        elif class_type in {"LoraLoaderModelOnly", "LoraLoader"} and require_private_magazine:
+            if "lora_name" in inputs:
+                inputs["lora_name"] = choices["private_magazine"]
+            if "strength_model" in inputs:
+                inputs["strength_model"] = max(0.0, min(1.5, float(lora_strength)))
+
+    return []
+
 def _patch_seed(workflow: Dict[str, Any], seed: int) -> int:
     """Overwrite `seed` and `noise_seed` on all sampler/noise nodes. Returns count patched."""
     count = 0
@@ -1101,6 +1206,30 @@ async def _perform_dispatch(body: "DispatchBody") -> Dict[str, Any]:
         await db.renders.insert_one(doc)
         doc.pop("_id", None)
         return doc
+
+    # Krea 2 workflows use model-only style LoRAs and zeroed negative conditioning.
+    # Repair local filenames from ComfyUI object_info so shared/local model folders both work.
+    if wf_template and wf_template.prompt_style == "krea2":
+        wants_private = wf_template.kind == "krea_style" or body.krea_style == "private_magazine"
+        krea_missing = await _patch_krea2_model_choices(
+            workflow,
+            s.comfyui_url,
+            require_private_magazine=wants_private,
+            lora_strength=body.krea_lora_strength,
+        )
+        if krea_missing:
+            r.status = "failed"
+            r.error = "Krea 2 setup needs: " + ", ".join(krea_missing)
+            doc = r.model_dump()
+            doc["workflow_id"] = wf_template.id
+            doc["workflow_name"] = wf_template.name
+            await db.renders.insert_one(doc)
+            doc.pop("_id", None)
+            return doc
+
+        # The selected Private Magazine Krea 2 LoRA uses the documented trigger word.
+        if wants_private and "privatemag" not in body.prompt_positive.lower():
+            body.prompt_positive = "privatemag, " + body.prompt_positive
 
     # Face-preserve workflows require an uploaded reference image. Patch the
     # LoadImage and IPAdapter FaceID nodes dynamically so bundled workflows never
@@ -1642,6 +1771,53 @@ async def pose_assist_status():
 
     if not has_foundation or not has_polish:
         result["missing"].append("Pose Assist workflows")
+
+    result["ready"] = not result["missing"]
+    return result
+
+
+@api.get("/krea2/status")
+async def krea2_status():
+    """Report Krea 2 base readiness and optional Private Magazine LoRA availability."""
+    settings = await get_settings()
+    has_base_workflow = any(workflow.prompt_style == "krea2" and workflow.kind == "image" for workflow in settings.workflows)
+    has_private_workflow = any(workflow.prompt_style == "krea2" and workflow.kind == "krea_style" for workflow in settings.workflows)
+    result = {
+        "ready": False,
+        "base_workflow_ready": has_base_workflow,
+        "private_workflow_ready": has_private_workflow,
+        "comfyui_online": False,
+        "model": "",
+        "encoder": "",
+        "vae": "",
+        "private_magazine_lora": "",
+        "private_magazine_ready": False,
+        "missing": [],
+    }
+
+    info = await _krea2_object_info(settings.comfyui_url)
+    if not info:
+        result["missing"].append("ComfyUI connection")
+    else:
+        result["comfyui_online"] = True
+        choices = _krea2_choices(info)
+        result["model"] = choices["model"] or ""
+        result["encoder"] = choices["encoder"] or ""
+        result["vae"] = choices["vae"] or ""
+        result["private_magazine_lora"] = choices["private_magazine"] or ""
+        result["private_magazine_ready"] = bool(choices["private_magazine"] and has_private_workflow)
+
+        if not choices["model"]:
+            result["missing"].append("Krea 2 Turbo model")
+        if not choices["encoder"]:
+            result["missing"].append("Qwen3-VL 4B text encoder")
+        if not choices["vae"]:
+            result["missing"].append("Qwen Image VAE")
+        if not choices["clip_type_ready"]:
+            result["missing"].append("ComfyUI Krea 2 CLIPLoader support")
+
+    if not has_base_workflow:
+        result["missing"].append("Krea 2 workflow")
 
     result["ready"] = not result["missing"]
     return result
