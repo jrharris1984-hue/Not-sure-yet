@@ -2,6 +2,7 @@ import {
   planLoras,
   registryForInstalled,
   compatibleRegistryForWorkflow,
+  compatibleInstalledLoras,
   loraStackHealth,
   workflowFamily,
 } from "./loraRegistry";
@@ -26,6 +27,7 @@ describe("LoRA registry planner", () => {
     expect(workflowFamily({ name: "IMAGE · Z-image Turbo · NSFW" })).toBe("zimage");
     expect(workflowFamily({ name: "IMAGE · Chroma1-HD" })).toBe("chroma");
     expect(workflowFamily({ name: "VIDEO · WAN 2.2" })).toBe("wan22");
+    expect(workflowFamily({ name: "IMAGE · Krea 2 Turbo" })).toBe("krea2");
   });
 
   test("recognizes nested Windows paths", () => {
@@ -160,6 +162,47 @@ describe("LoRA registry planner", () => {
     );
     expect(compatible.every((entry) => entry.family === "zimage")).toBe(true);
     expect(compatible.some((entry) => entry.id === "flux2-turbo")).toBe(false);
+  });
+
+  test("shows only the matching Krea 2 LoRAs in the universal picker", () => {
+    const kreaInstalled = [
+      "Krea2\\Private_Magazine_2000s_v1.safetensors",
+      "Krea2\\Freya_Krea2.safetensors",
+      "Flux\\flux_lustly-ai_v1.safetensors",
+      "Private_Magazine_2000s_v1.safetensors",
+    ];
+    const compatible = compatibleInstalledLoras(
+      { name: "Krea 2 Turbo", prompt_style: "krea2" },
+      kreaInstalled
+    );
+    expect(compatible.some((entry) => entry.label.includes("Private Magazine"))).toBe(true);
+    expect(compatible.some((entry) => entry.label.includes("Freya"))).toBe(true);
+    expect(compatible.some((entry) => entry.family === "flux")).toBe(false);
+    expect(compatible.filter((entry) => entry.label.includes("Private Magazine"))).toHaveLength(1);
+    const magazine = compatible.find((entry) => entry.label.includes("Private Magazine"));
+    expect(magazine.triggerWords).toContain("privatemag");
+    expect(magazine.defaultStrength).toBe(0.8);
+  });
+
+  test("does not offer workflow-required or identity LoRAs as optional choices", () => {
+    const local = [
+      "goldenchromaV1.safetensors",
+      "Flux_2-Turbo-LoRA_comfyui.safetensors",
+      "ip-adapter-faceid-plusv2_sd15_lora.safetensors",
+    ];
+    const chroma = compatibleInstalledLoras({ name: "Chroma1-HD · Golden T2I", prompt_style: "chroma" }, local);
+    const flux = compatibleInstalledLoras({ name: "Flux image", prompt_style: "flux" }, local);
+    const face = compatibleInstalledLoras({ name: "Face-Preserved", kind: "face" }, local);
+    expect(chroma.some((entry) => entry.id === "golden-chroma")).toBe(false);
+    expect(flux.some((entry) => entry.id === "flux2-turbo")).toBe(false);
+    expect(face.some((entry) => entry.id === "faceid-sd15")).toBe(false);
+  });
+
+  test("includes SDXL-folder LoRAs for Pony but not for unrelated families", () => {
+    const local = ["SDXL\\detail-slider.safetensors", "Flux\\flux-style.safetensors"];
+    const pony = compatibleInstalledLoras({ name: "Pony V6 XL", prompt_style: "pony" }, local);
+    expect(pony.some((entry) => entry.installedName.includes("detail-slider"))).toBe(true);
+    expect(pony.some((entry) => entry.installedName.includes("flux-style"))).toBe(false);
   });
 
   test("warns about cross-family files, conflicts, and excessive strength", () => {

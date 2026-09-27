@@ -20,8 +20,33 @@ export const LORA_REGISTRY = [
   item("flux2-turbo", "Flux_2-Turbo-LoRA_comfyui.safetensors", "flux", "required", "Flux 2 Turbo", { defaultStrength: 0.8, verified: true }),
   item("flux-lustly", "flux_lustly-ai_v1.safetensors", "flux", "action", "Flux Adult Style", { categories:["adult"], defaultStrength:0.6 }),
   item("z-pee", "Z-Image\\girls pee.safetensors", "zimage", "action", "Girls Pee", { categories:["play","watersports"], triggerWords:["urinating","visible urine stream"], keywords:["pee","peeing","piss","pissing","urinat","watersport"], defaultStrength:0.72, auto:true, verified:true }),
-  item("golden-chroma", "goldenchromaV1.safetensors", "chroma", "quality", "Golden Chroma", { defaultStrength:0.7, verified:true }),
+  item("golden-chroma", "goldenchromaV1.safetensors", "chroma", "required", "Golden Chroma", { defaultStrength:0.7, verified:true }),
+
+  // Krea 2 LoRAs installed for the local Krea 2 Turbo workflow. These stay
+  // model-only and are intentionally single-select in the universal picker.
+  item("krea-private-1970s", "Private_Magazine_1970s_v1.safetensors", "krea2", "quality", "Private Magazine · 1970s", { categories:["style","editorial"], triggerWords:["privatemag"], defaultStrength:0.8, maxStrength:1.5, verified:true }),
+  item("krea-private-1980s", "Private_Magazine_1980s_v1.safetensors", "krea2", "quality", "Private Magazine · 1980s", { categories:["style","editorial"], triggerWords:["privatemag"], defaultStrength:0.8, maxStrength:1.5, verified:true }),
+  item("krea-private-1990s", "Private_Magazine_1990s_v1.safetensors", "krea2", "quality", "Private Magazine · 1990s", { categories:["style","editorial"], triggerWords:["privatemag"], defaultStrength:0.8, maxStrength:1.5, verified:true }),
+  item("krea-private-2000s", "Private_Magazine_2000s_v1.safetensors", "krea2", "quality", "Private Magazine · 2000s", { categories:["style","editorial"], triggerWords:["privatemag"], defaultStrength:0.8, maxStrength:1.5, verified:true }),
+  item("krea-freya", "Freya_Krea2.safetensors", "krea2", "body", "Freya · Krea 2", { defaultStrength:0.8, maxStrength:1.5, verified:true }),
+  item("krea-nicole", "Nicole_Nylan__OC__krea2_3345006_epoch_19.safetensors", "krea2", "body", "Nicole Nylan · Krea 2", { defaultStrength:0.8, maxStrength:1.5, verified:true }),
+  item("krea-laundromat", "Midnight_Laundromat__KREA2.safetensors", "krea2", "quality", "Midnight Laundromat · Krea 2", { categories:["style"], defaultStrength:0.8, maxStrength:1.5, verified:true }),
+  item("krea-retro-danish", "Krea2Retro_danish80sphoto-v2.safetensors", "krea2", "quality", "Danish 80s Photo · Krea 2", { categories:["style","retro"], defaultStrength:0.8, maxStrength:1.5, verified:true }),
+  item("krea-rly-briana", "RLY-thot_shot-KREA2-briana-v1-trigger-rlybriana.safetensors", "krea2", "body", "RLY Briana · Krea 2", { triggerWords:["rlybriana"], defaultStrength:0.8, maxStrength:1.5, verified:true }),
+  item("krea-hanging-breasts", "Hanging breasts, huge sagging boobs for Krea2 V1.safetensors", "krea2", "body", "Hanging Breasts · Krea 2", { defaultStrength:0.65, maxStrength:1.3, verified:true }),
+  item("krea-gigantic-breasts", "Gigantic breasts, breasts expansion for Krea2 V1.safetensors", "krea2", "body", "Gigantic Breasts · Krea 2", { defaultStrength:0.65, maxStrength:1.3, verified:true }),
+  item("krea-futanari-flaccid", "Futanari flaccid penis for Krea2 V1.safetensors", "krea2", "body", "Futanari Flaccid · Krea 2", { defaultStrength:0.65, maxStrength:1.3, verified:true }),
+  item("krea-futanari-bulge", "Futanari_bulge_V2_for_Krea2_krea2_3298669_epoch_10.safetensors", "krea2", "body", "Futanari Bulge V2 · Krea 2", { defaultStrength:0.65, maxStrength:1.3, verified:true }),
+  item("krea-lngcon", "krea2_lngcon_v01_s1000.safetensors", "krea2", "body", "Krea 2 LNGCON", { defaultStrength:0.7, maxStrength:1.4, verified:true }),
   item("faceid-sd15", "ip-adapter-faceid-plusv2_sd15_lora.safetensors", "sd15", "identity", "IP-Adapter FaceID Plus v2", { defaultStrength:1, verified:true }),
+
+  // Pony's realism LoRA is part of the bundled base workflow. The other local
+  // Pony sliders remain optional one-at-a-time choices.
+  item("pony-realism-base", "Pony\\Realism_Lora_By_Stable_Yogi_Pony_V2.safetensors", "pony", "required", "Pony Realism Base", { defaultStrength:0.3, verified:true }),
+  item("pony-real-skin", "Pony\\real-skin-slider.safetensors", "pony", "quality", "Real Skin Slider · Pony", { defaultStrength:0.45, maxStrength:1.2, verified:true }),
+  item("pony-detail-slider", "Pony\\detail-slider-lora-ponyxl-sdxl.safetensors", "pony", "quality", "Detail Slider · Pony/SDXL", { defaultStrength:0.4, maxStrength:1.2, verified:true }),
+  item("pony-body-weight", "Pony\\body-weight-slider-pony.safetensors", "pony", "body", "Body Weight Slider · Pony", { defaultStrength:0.5, maxStrength:1.2, verified:true }),
+  item("pony-breast-size", "Pony\\breasts-size-slider-pdxl.safetensors", "pony", "body", "Breast Size Slider · Pony", { defaultStrength:0.5, maxStrength:1.2, verified:true }),
 
   // Curated Z-Image utility LoRAs installed by install-curated-zimage-loras.ps1.
   // Basename matching keeps these recognized regardless of their category folder.
@@ -84,6 +109,7 @@ export const LORA_REGISTRY = [
 export function workflowFamily(workflow = {}) {
   const text = [workflow.name, workflow.kind, workflow.prompt_style].filter(Boolean).join(" ").toLowerCase();
   if (/z[- ]?image/.test(text)) return "zimage";
+  if (/krea\s*2|krea2/.test(text)) return "krea2";
   if (/chroma/.test(text)) return "chroma";
   if (/pony/.test(text)) return "pony";
   if (/wan/.test(text) || /video/.test(text)) return "wan22";
@@ -164,6 +190,7 @@ function scoreEntry(entry, selections) {
 export const LORA_STRENGTH_BUDGETS = {
   zimage: 1.7,
   chroma: 1.2,
+  krea2: 1.5,
   pony: 1.5,
   qwen_edit: 1.2,
   wan22: 1.0,
@@ -304,6 +331,79 @@ export function loraStackHealth({ workflow = {}, overrides = {}, installed = [] 
     warnings: [...new Set(warnings)],
     status: warnings.length ? "warning" : "healthy",
   };
+}
+
+
+function inferredFamilyForInstalled(name = "") {
+  const value = normalized(name);
+  if (/(^|\/)krea2\//.test(value) || /krea\s*2|krea2/.test(value)) return "krea2";
+  if (/(^|\/)z-?image\//.test(value) || /z[-_ ]?image|\bzit\b/.test(value)) return "zimage";
+  if (/(^|\/)pony\//.test(value) || /pony/.test(value)) return "pony";
+  if (/(^|\/)flux\//.test(value) || /flux/.test(value)) return "flux";
+  if (/(^|\/)wan\//.test(value) || /wan2|lightx2v/.test(value)) return "wan22";
+  if (/qwen/.test(value)) return "qwen_edit";
+  if (/(^|\/)sd15\//.test(value) || /sd15/.test(value)) return "sd15";
+  if (/(^|\/)sdxl\//.test(value) || /sdxl/.test(value)) return "sdxl";
+  if (/chroma/.test(value)) return "chroma";
+  return "unknown";
+}
+
+function displayNameFromFile(name = "") {
+  const base = normalized(name).split("/").pop() || String(name);
+  return base
+    .replace(/\.safetensors$/i, "")
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function inferredTriggerWords(name = "") {
+  const base = String(name).replace(/\\/g, "/").split("/").pop() || "";
+  const match = base.match(/trigger[-_ ]+([a-z0-9_-]+)/i);
+  if (!match) return [];
+  return [match[1].replace(/\.safetensors$/i, "").replace(/[_-]+/g, " ").trim()];
+}
+
+export function compatibleInstalledLoras(workflow = {}, installed = []) {
+  const family = workflowFamily(workflow);
+  const allowedFamilies = family === "pony" ? new Set(["pony", "sdxl"]) : new Set([family]);
+  const registryMatches = compatibleRegistryForWorkflow(workflow, installed);
+  const registryByInstalled = new Map(registryMatches.map((entry) => [normalized(entry.installedName), entry]));
+  const results = [];
+
+  installed.forEach((installedName) => {
+    const normalizedName = normalized(installedName);
+    const registered = registryByInstalled.get(normalizedName) ||
+      LORA_REGISTRY.find((entry) => installedMatch(entry, [installedName]) && allowedFamilies.has(entry.family));
+    const inferredFamily = registered?.family || inferredFamilyForInstalled(installedName);
+    if (!allowedFamilies.has(inferredFamily)) return;
+    if (registered && ["required", "identity"].includes(registered.slot)) return;
+    results.push({
+      id: registered?.id || `local:${normalizedName}`,
+      label: registered?.label || displayNameFromFile(installedName),
+      family: inferredFamily,
+      slot: registered?.slot || "manual",
+      installedName,
+      triggerWords: registered?.triggerWords?.length ? registered.triggerWords : inferredTriggerWords(installedName),
+      defaultStrength: registered?.defaultStrength ?? 0.8,
+      minStrength: registered?.minStrength ?? 0,
+      maxStrength: registered?.maxStrength ?? 1.5,
+      verified: !!registered?.verified,
+      categories: registered?.categories || [],
+    });
+  });
+
+  // The same file can exist in both the root LoRA folder and a family
+  // subfolder. Show it only once, preferring the family-subfolder copy.
+  const deduped = new Map();
+  results.forEach((entry) => {
+    const basename = normalized(entry.installedName).split("/").pop();
+    const existing = deduped.get(basename);
+    if (!existing || normalized(entry.installedName).includes(`/${family}/`) || normalized(entry.installedName).startsWith(`${family}/`)) {
+      deduped.set(basename, entry);
+    }
+  });
+  return [...deduped.values()].sort((a, b) => a.label.localeCompare(b.label));
 }
 
 export function registryForInstalled(installed = []) {

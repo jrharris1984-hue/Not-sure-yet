@@ -900,6 +900,9 @@ class DispatchBody(BaseModel):
     sampler_name: Optional[str] = None
     krea_style: str = "none"
     krea_lora_strength: float = 0.8
+    selected_lora_name: str = ""
+    selected_lora_strength: float = 0.8
+    selected_lora_triggers: List[str] = Field(default_factory=list)
     shoot_id: Optional[str] = None
     shoot_frame_index: Optional[int] = None
     parent_render_id: Optional[str] = None
@@ -925,6 +928,118 @@ def _combo_options(object_info: Dict[str, Any], node_type: str, input_name: str)
         return [str(item) for item in values] if isinstance(values, list) else []
     except Exception:
         return []
+
+
+def _normalized_lora_name(value: str) -> str:
+    return str(value or "").replace("\\", "/").strip().lower()
+
+
+def _all_lora_options(object_info: Dict[str, Any]) -> List[str]:
+    names = set()
+    for class_name, spec in object_info.items():
+        if "lora" not in str(class_name).lower() or not isinstance(spec, dict):
+            continue
+        required = spec.get("input", {}).get("required", {})
+        field = required.get("lora_name")
+        if isinstance(field, list) and field and isinstance(field[0], list):
+            names.update(str(name) for name in field[0] if name)
+    return sorted(names, key=str.lower)
+
+
+def _resolve_installed_lora(requested: str, installed: List[str]) -> Optional[str]:
+    wanted = _normalized_lora_name(requested)
+    if not wanted:
+        return None
+    exact = next((name for name in installed if _normalized_lora_name(name) == wanted), None)
+    if exact:
+        return exact
+    wanted_base = wanted.split("/")[-1]
+    basename_matches = [
+        name for name in installed
+        if _normalized_lora_name(name).split("/")[-1] == wanted_base
+    ]
+    return basename_matches[0] if len(basename_matches) == 1 else None
+
+
+def _next_workflow_node_id(workflow: Dict[str, Any]) -> str:
+    numeric = [int(str(key)) for key in workflow.keys() if str(key).isdigit()]
+    candidate = max(numeric + [900000]) + 1
+    while str(candidate) in workflow:
+        candidate += 1
+    return str(candidate)
+
+
+async def _inject_selected_lora(
+    workflow: Dict[str, Any],
+    comfyui_url: str,
+    requested_name: str,
+    strength: float,
+) -> tuple[Optional[str], int, Optional[str]]:
+    """Insert one model-only LoRA immediately before terminal sampler/guider model inputs.
+
+    This lets every compatible Ultra Studio workflow expose the same one-LoRA
+    selector without permanently modifying the bundled ComfyUI graph.
+    """
+    if not str(requested_name or "").strip():
+        return None, 0, None
+
+    try:
+        async with httpx.AsyncClient(timeout=8.0) as hc:
+            response = await hc.get(f"{comfyui_url.rstrip('/')}/object_info")
+        response.raise_for_status()
+        info = response.json()
+    except Exception as exc:
+        return None, 0, f"Could not verify the selected LoRA with ComfyUI: {exc}"
+
+    if "LoraLoaderModelOnly" not in info:
+        return None, 0, "ComfyUI does not expose the LoraLoaderModelOnly node required by the universal LoRA picker."
+
+    installed = _all_lora_options(info)
+    resolved = _resolve_installed_lora(requested_name, installed)
+    if not resolved:
+        return None, 0, f"Selected LoRA is not installed in ComfyUI: {requested_name}"
+
+    # Terminal model consumers are the safest insertion points because any
+    # built-in model sampling, IPAdapter, or required LoRA chain stays intact.
+    targets = []
+    for node_id, node in list(workflow.items()):
+        if not isinstance(node, dict):
+            continue
+        class_type = str(node.get("class_type", ""))
+        lowered = class_type.lower()
+        is_terminal = lowered.startswith("ksampler") or "guider" in lowered
+        if not is_terminal:
+            continue
+        inputs = node.get("inputs", {})
+        model_ref = inputs.get("model")
+        if isinstance(model_ref, list) and len(model_ref) >= 2 and str(model_ref[0]) in workflow:
+            targets.append((node_id, model_ref))
+
+    if not targets:
+        return None, 0, "The selected workflow has no supported terminal MODEL input for a user LoRA."
+
+    selected_strength = max(0.0, min(2.0, float(strength)))
+    by_source: Dict[tuple[str, int], str] = {}
+    injected = 0
+    for target_id, model_ref in targets:
+        source_key = (str(model_ref[0]), int(model_ref[1]))
+        lora_node_id = by_source.get(source_key)
+        if not lora_node_id:
+            lora_node_id = _next_workflow_node_id(workflow)
+            workflow[lora_node_id] = {
+                "inputs": {
+                    "model": [source_key[0], source_key[1]],
+                    "lora_name": resolved,
+                    "strength_model": selected_strength,
+                },
+                "class_type": "LoraLoaderModelOnly",
+                "_meta": {"title": "Ultra Studio · Selected LoRA"},
+            }
+            by_source[source_key] = lora_node_id
+            injected += 1
+        workflow[target_id]["inputs"]["model"] = [lora_node_id, 0]
+
+    return resolved, injected, None
 
 
 def _preferred_option(options: List[str], required: List[str], preferred: List[str] = []) -> Optional[str]:
@@ -1497,6 +1612,37 @@ async def _perform_dispatch(body: "DispatchBody") -> Dict[str, Any]:
             return doc
 
         positive_text = instruction
+
+    # Apply the universal one-LoRA selection after all model-specific graph
+    # patches are complete. Required workflow LoRAs remain untouched and the
+    # selected LoRA is inserted only at the terminal model input.
+    if body.selected_lora_name.strip():
+        resolved_lora, injected_count, lora_error = await _inject_selected_lora(
+            workflow,
+            s.comfyui_url,
+            body.selected_lora_name,
+            body.selected_lora_strength,
+        )
+        if lora_error:
+            r.status = "failed"
+            r.error = lora_error
+            doc = r.model_dump()
+            doc["workflow_id"] = wf_template.id if wf_template else None
+            doc["workflow_name"] = wf_template.name if wf_template else None
+            await db.renders.insert_one(doc)
+            doc.pop("_id", None)
+            return doc
+        body.selected_lora_name = resolved_lora or body.selected_lora_name
+        logger.info(
+            "Applied selected LoRA %s at %.2f through %s model path(s)",
+            body.selected_lora_name,
+            body.selected_lora_strength,
+            injected_count,
+        )
+        for trigger in body.selected_lora_triggers:
+            trigger_text = str(trigger or "").strip()
+            if trigger_text and trigger_text.lower() not in positive_text.lower():
+                positive_text = f"{trigger_text}, {positive_text}"
 
     # Store the exact instruction actually sent to the selected workflow so
     # Gallery metadata and copied prompts match the generated result.

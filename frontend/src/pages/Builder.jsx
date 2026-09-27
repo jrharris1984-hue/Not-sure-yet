@@ -19,7 +19,6 @@ import PromptPreview from "@/components/PromptPreview";
 import AiAssistBar from "@/components/AiAssistBar";
 import PresetsMenu from "@/components/PresetsMenu";
 import KinkPresetsMenu from "@/components/KinkPresetsMenu";
-import LoraPanel from "@/components/LoraPanel";
 import LikenessLoraPanel, { likenessOverrides, likenessTriggerText } from "@/components/LikenessLoraPanel";
 import LivePreview from "@/components/LivePreview";
 import TagInput from "@/components/TagInput";
@@ -38,7 +37,7 @@ import PoseAssistPanel from "@/components/PoseAssistPanel";
 import MobileRenderResult from "@/components/MobileRenderResult";
 import SubjectSwitcher from "@/components/SubjectSwitcher";
 import ChromaControls from "@/components/ChromaControls";
-import KreaStylePanel from "@/components/KreaStylePanel";
+import UniversalLoraPicker from "@/components/UniversalLoraPicker";
 import RenderRecipeSelector from "@/components/RenderRecipeSelector";
 import SmartSetupPanel from "@/components/SmartSetupPanel";
 import { getRenderRecipe, recipeFamily } from "@/lib/renderRecipes";
@@ -174,7 +173,7 @@ export default function Builder() {
   const [postRenderBusy, setPostRenderBusy] = useState("");
   const [workflowId, setWorkflowId] = useState("");
   const [loraOverrides, setLoraOverrides] = useState({});
-  const [loraTriggerWords, setLoraTriggerWords] = useState([]);
+  const [selectedLora, setSelectedLora] = useState({ name: "", strength: 0.8, triggerWords: [] });
   const [referenceImage, setReferenceImage] = useState(null);
   const [sourceRenderId, setSourceRenderId] = useState(null);
   const [referencePreview, setReferencePreview] = useState("");
@@ -212,8 +211,6 @@ export default function Builder() {
   const [poseAssistPolish, setPoseAssistPolish] = useState(0.30);
   const [poseAssistStage, setPoseAssistStage] = useState("");
   const [installingPoseAssist, setInstallingPoseAssist] = useState(false);
-  const [kreaStyle, setKreaStyle] = useState("none");
-  const [kreaLoraStrength, setKreaLoraStrength] = useState(0.8);
   const [galleryRecipeMode, setGalleryRecipeMode] = useState("");
   const [enhancingVideo, setEnhancingVideo] = useState(false);
   const [analyzingVideoImage, setAnalyzingVideoImage] = useState(false);
@@ -248,6 +245,11 @@ export default function Builder() {
     setNegativePromptOverride(draft.negativePromptOverride || "");
     setWorkflowId(draft.workflowId || "");
     setLoraOverrides(draft.loraOverrides || {});
+    setSelectedLora({
+      name: draft.selectedLora?.name || "",
+      strength: typeof draft.selectedLora?.strength === "number" ? draft.selectedLora.strength : 0.8,
+      triggerWords: Array.isArray(draft.selectedLora?.triggerWords) ? draft.selectedLora.triggerWords : [],
+    });
     setEditInstruction(draft.editInstruction || "");
     setEditMode(draft.editMode || "standard");
     setPoseTarget(draft.poseTarget || "");
@@ -269,8 +271,6 @@ export default function Builder() {
     setPoseAssistEnabled(!!draft.poseAssistEnabled);
     if (typeof draft.poseAssistStrength === "number") setPoseAssistStrength(draft.poseAssistStrength);
     if (typeof draft.poseAssistPolish === "number") setPoseAssistPolish(draft.poseAssistPolish);
-    setKreaStyle(draft.kreaStyle || "none");
-    if (typeof draft.kreaLoraStrength === "number") setKreaLoraStrength(draft.kreaLoraStrength);
     if (draft.chromaSettings) setChromaSettings(draft.chromaSettings);
     if (draft.activeRender) setActiveRender(draft.activeRender);
     if (Array.isArray(draft.batchRenders) && draft.batchRenders.length) {
@@ -416,13 +416,19 @@ export default function Builder() {
       if (savedWorkflow?.kind === "krea_style") {
         const baseKrea = workflows.find((workflow) => workflow.prompt_style === "krea2" && workflow.kind === "image");
         if (baseKrea) setWorkflowId(baseKrea.id);
-        setKreaStyle(saved.krea_style || "private_magazine");
       } else if (savedWorkflow) {
         setWorkflowId(savedWorkflow.id);
       }
     }
-    if (saved.krea_style) setKreaStyle(saved.krea_style);
-    if (typeof saved.krea_lora_strength === "number") setKreaLoraStrength(saved.krea_lora_strength);
+    setSelectedLora({
+      name: saved.selected_lora_name || (saved.krea_style === "private_magazine" ? "Private_Magazine_2000s_v1.safetensors" : ""),
+      strength: typeof saved.selected_lora_strength === "number"
+        ? saved.selected_lora_strength
+        : (typeof saved.krea_lora_strength === "number" ? saved.krea_lora_strength : 0.8),
+      triggerWords: Array.isArray(saved.selected_lora_triggers)
+        ? saved.selected_lora_triggers
+        : (saved.krea_style === "private_magazine" ? ["privatemag"] : []),
+    });
     setLoraOverrides(saved.lora_overrides || {});
     setPromptOverride(rebuildCurrent ? "" : (saved.prompt_positive || ""));
     setNegativePromptOverride(rebuildCurrent ? "" : (saved.prompt_negative || ""));
@@ -452,7 +458,6 @@ export default function Builder() {
   const poseAssistFoundationWorkflow = workflows.find((w) => w.kind === "pose");
   const poseAssistPolishWorkflow = workflows.find((w) => w.kind === "refine");
   const poseAssistAvailable = !!poseAssistFoundationWorkflow && !!poseAssistPolishWorkflow;
-  const kreaPrivateWorkflow = workflows.find((w) => w.kind === "krea_style" && w.prompt_style === "krea2");
   const promptStyle = activeWorkflow?.prompt_style || "venice";
   const isFaceWorkflow = activeWorkflow?.kind === "face";
   const isEditWorkflow = activeWorkflow?.kind === "edit";
@@ -468,9 +473,7 @@ export default function Builder() {
   const isKrea2 = activeCompiler === "krea2";
   const activeRecipeFamily = recipeFamily(activeCompiler);
   const kreaBaseBlocked = isKrea2 && krea2Status && !krea2Status.ready;
-  const kreaStyleBlocked = isKrea2 && kreaStyle === "private_magazine"
-    && (!kreaPrivateWorkflow || (krea2Status && !krea2Status.private_magazine_ready));
-  const kreaRenderBlocked = !!(kreaBaseBlocked || kreaStyleBlocked);
+  const kreaRenderBlocked = !!kreaBaseBlocked;
 
   const applyQualityTier = (tier) => {
     const recipe = getRenderRecipe(activeCompiler, tier);
@@ -551,7 +554,6 @@ export default function Builder() {
 
   useEffect(() => {
     applyQualityTier("balanced");
-    if (activeCompiler !== "krea2") setKreaStyle("none");
     // Reset to the recommended recipe only when the selected model family changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeCompiler]);
@@ -749,7 +751,7 @@ export default function Builder() {
       referenceStudioView, referenceRecipe, referenceStrengths, poseReferenceAnalysis,
       videoInstruction, videoFrames, videoFps, videoWidth, videoHeight,
       qualityTier, poseAssistEnabled, poseAssistStrength, poseAssistPolish,
-      kreaStyle, kreaLoraStrength, chromaSettings, activeRender,
+      selectedLora, chromaSettings, activeRender,
     }), 350);
     return () => window.clearTimeout(timer);
   }, [
@@ -760,7 +762,7 @@ export default function Builder() {
     referenceStudioView, referenceRecipe, referenceStrengths, poseReferenceAnalysis,
     videoInstruction, videoFrames, videoFps, videoWidth, videoHeight,
     qualityTier, poseAssistEnabled, poseAssistStrength, poseAssistPolish,
-    kreaStyle, kreaLoraStrength, chromaSettings, activeRender,
+    selectedLora, chromaSettings, activeRender,
   ]);
 
   // Ensure active id is always valid.
@@ -867,7 +869,8 @@ export default function Builder() {
     : "";
   const generatedPositive = [languageLead, acceptsLikenessPrompt && likenessPrompt, positive].filter(Boolean).join(", ");
   const positiveBeforeLoraTriggers = promptOverride || generatedPositive;
-  const finalPositive = loraTriggerWords.reduce(
+  const activeLoraTriggers = [...new Set(selectedLora.triggerWords || [])];
+  const finalPositive = activeLoraTriggers.reduce(
     (text, trigger) => text.toLowerCase().includes(trigger.toLowerCase()) ? text : `${trigger}, ${text}`,
     positiveBeforeLoraTriggers
   );
@@ -1012,16 +1015,6 @@ export default function Builder() {
         toast.error(`Krea 2 setup needs: ${(readiness?.missing || []).join(", ") || "local ComfyUI check"}`);
         return;
       }
-      if (kreaStyle === "private_magazine") {
-        if (!kreaPrivateWorkflow) {
-          toast.error("Private Magazine workflow is not installed. Refresh bundled workflows in Settings.");
-          return;
-        }
-        if (!readiness.private_magazine_ready) {
-          toast.error("Krea 2 setup needs: Private Magazine Krea 2 LoRA");
-          return;
-        }
-      }
     }
 
     if (poseAssistEnabled) {
@@ -1122,6 +1115,9 @@ export default function Builder() {
           steps: chromaSettings.steps,
           cfg: chromaSettings.cfg,
           sampler_name: chromaSettings.sampler,
+          selected_lora_name: selectedLora.name || "",
+          selected_lora_strength: selectedLora.strength,
+          selected_lora_triggers: selectedLora.triggerWords || [],
           seed: (baseSeed + 1) % 2147483647,
         });
         setBatchRenders([finalQueued]);
@@ -1173,10 +1169,13 @@ export default function Builder() {
         quality_tier: qualityTier,
         prompt_positive: finalPositive,
         prompt_negative: finalNegative,
-        workflow_id: isKrea2 && kreaStyle === "private_magazine" ? kreaPrivateWorkflow.id : workflowId,
+        workflow_id: workflowId,
         lora_overrides: effectiveLoraOverrides,
-        krea_style: isKrea2 ? kreaStyle : "none",
-        krea_lora_strength: isKrea2 ? kreaLoraStrength : 0.8,
+        krea_style: "none",
+        krea_lora_strength: 0.8,
+        selected_lora_name: selectedLora.name || "",
+        selected_lora_strength: selectedLora.strength,
+        selected_lora_triggers: selectedLora.triggerWords || [],
         parent_render_id: sourceRenderId || undefined,
         operation: sourceRenderId
           ? (isVideoWorkflow ? "animate" : isFaceWorkflow ? "face_reference" : editMode === "new_pose" ? "new_pose" : "edit")
@@ -1549,11 +1548,6 @@ export default function Builder() {
     if (isKrea2 && krea2Status && !krea2Status.ready) {
       issues.push(`Krea 2 setup needs: ${(krea2Status.missing || []).join(", ") || "local ComfyUI check"}.`);
     }
-    if (isKrea2 && kreaStyle === "private_magazine" && !kreaPrivateWorkflow) {
-      issues.push("Refresh bundled workflows to install Private Magazine support.");
-    } else if (isKrea2 && kreaStyle === "private_magazine" && krea2Status && !krea2Status.private_magazine_ready) {
-      issues.push("Install the Private Magazine Krea 2 LoRA.");
-    }
     promptAnalysis.blockers.slice(0, 2).forEach((blocker) => {
       if (blocker?.message && !issues.includes(blocker.message)) issues.push(blocker.message);
     });
@@ -1581,7 +1575,7 @@ export default function Builder() {
     activeWorkflow, editMode, effectiveEditInstruction,
     isEditWorkflow, isEnhanceWorkflow, isFaceWorkflow, isTextVideoWorkflow, isVideoWorkflow,
     poseAssistAvailable, poseAssistEnabled, poseAssistStatus, poseReferenceImage?.name,
-    isKrea2, krea2Status, kreaPrivateWorkflow, kreaStyle,
+    isKrea2, krea2Status,
     promptAnalysis, referenceImage?.name, repairInstruction, repairTargets, subjects, videoInstruction,
   ]);
 
@@ -1859,17 +1853,6 @@ export default function Builder() {
               />
             </div>
           )}
-          {isKrea2 && (
-            <div className="md:hidden">
-              <KreaStylePanel
-                style={kreaStyle}
-                onStyle={setKreaStyle}
-                strength={kreaLoraStrength}
-                onStrength={setKreaLoraStrength}
-                status={krea2Status}
-              />
-            </div>
-          )}
           <PromptAlignmentCard
             analysis={promptAnalysis}
             priorityPlan={compiledPrompt.priorityPlan}
@@ -1970,14 +1953,12 @@ export default function Builder() {
           </div>
         )}
 
-        {isKrea2 && (
-          <div className="hidden md:block mt-3 sm:mt-4">
-            <KreaStylePanel
-              style={kreaStyle}
-              onStyle={setKreaStyle}
-              strength={kreaLoraStrength}
-              onStrength={setKreaLoraStrength}
-              status={krea2Status}
+        {activeWorkflow && !["pose", "refine", "krea_style"].includes(activeWorkflow.kind) && (
+          <div className="mt-3 sm:mt-4">
+            <UniversalLoraPicker
+              workflow={activeWorkflow}
+              value={selectedLora}
+              onChange={setSelectedLora}
             />
           </div>
         )}
@@ -2657,14 +2638,6 @@ export default function Builder() {
               workflowId={workflowId}
               subject={activeSubject}
               onChange={(likeness) => updateActiveSubject(() => ({ likeness }))}
-            />
-            <LoraPanel
-              workflowId={workflowId}
-              workflow={activeWorkflow}
-              dna={activeDna}
-              values={loraOverrides}
-              onChange={setLoraOverrides}
-              onPlanChange={(plan) => setLoraTriggerWords(plan.triggerWords || [])}
             />
             <AiAssistBar dna={activeDna} onApplyDna={(d) => setActiveDna({ ...DEFAULT_DNA, ...d })} />
           </div>
