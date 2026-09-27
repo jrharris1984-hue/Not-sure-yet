@@ -314,17 +314,26 @@ function kreaSubjectSentence(dna = {}, label = "") {
 function kreaWardrobeSentence(dna = {}, label = "") {
   const w = dna.wardrobe || {};
   const prefix = label ? `Subject ${label} wardrobe: ` : "Wardrobe: ";
+  const nudity = Number(w.nudity_level || 0);
+  const nudityDirection = nudity >= 80 ? "fully nude, no clothing"
+    : nudity >= 55 ? "partially nude with exposed skin"
+      : nudity >= 30 ? "revealing clothing with some skin visible"
+        : nudity > 0 ? "clothed with a modestly suggestive look" : "";
+  // A high nudity setting is an explicit wardrobe choice. Do not repeat a
+  // contradictory outfit or garment from the saved character DNA.
+  const suppressClothing = nudity >= 55;
   return kreaSentence(prefix, [
-    w.outfit_preset,
-    w.top && w.top !== "none" ? w.top : "",
-    w.bottom && w.bottom !== "none" ? w.bottom : "",
-    w.underwear && w.underwear !== "none" ? w.underwear : "",
-    w.footwear,
-    w.accessories,
-    w.material,
-    w.palette,
-    w.fit,
-    w.state,
+    nudityDirection,
+    suppressClothing ? "" : w.outfit_preset,
+    !suppressClothing && w.top && w.top !== "none" ? w.top : "",
+    !suppressClothing && w.bottom && w.bottom !== "none" ? w.bottom : "",
+    !suppressClothing && w.underwear && w.underwear !== "none" ? w.underwear : "",
+    suppressClothing ? "" : w.footwear,
+    suppressClothing ? "" : w.accessories,
+    suppressClothing ? "" : w.material,
+    suppressClothing ? "" : w.palette,
+    suppressClothing ? "" : w.fit,
+    suppressClothing ? "" : w.state,
   ]);
 }
 
