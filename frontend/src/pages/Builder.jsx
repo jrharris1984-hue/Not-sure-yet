@@ -330,6 +330,10 @@ export default function Builder() {
     () => workflows.filter((workflow) => !["pose", "refine", "krea_style"].includes(workflow.kind)),
     [workflows]
   );
+  const internalWorkflows = useMemo(
+    () => workflows.filter((workflow) => ["pose", "refine", "krea_style"].includes(workflow.kind)),
+    [workflows]
+  );
   const { data: settings } = useQuery({ queryKey: ["settings"], queryFn: endpoints.settings });
   useEffect(() => {
     if (!workflowId && workflows.length) {
@@ -1670,12 +1674,19 @@ export default function Builder() {
             data-testid="select-workflow"
             value={workflowId}
             onChange={(e) => { setWorkflowId(e.target.value); setLoraOverrides({}); }}
-            className={`${mobileStudioStep === "start" || (mobileStudioStep === "create" && mobileStudioMode === "advanced") ? "block" : "hidden md:block"} bg-elevated border border-hairline rounded-lg px-3 py-2 text-sm text-zinc-100 w-full sm:w-auto sm:min-w-[200px]`}
+            className={`${mobileStudioStep === "start" || mobileStudioStep === "create" ? "block" : "hidden md:block"} bg-elevated border border-hairline rounded-lg px-3 py-2 text-sm text-zinc-100 w-full sm:w-auto sm:min-w-[200px]`}
           >
             {workflows.length === 0 && <option value="">No workflows — open Settings</option>}
             {selectableWorkflows.map((w) => (
               <option key={w.id} value={w.id}>{w.kind.toUpperCase()} · {w.name}</option>
             ))}
+            {internalWorkflows.length > 0 && (
+              <optgroup label="Used automatically (not standalone)">
+                {internalWorkflows.map((w) => (
+                  <option key={w.id} value={w.id} disabled>{w.name}</option>
+                ))}
+              </optgroup>
+            )}
           </select>
           <button
             onClick={() => save.mutate()}
