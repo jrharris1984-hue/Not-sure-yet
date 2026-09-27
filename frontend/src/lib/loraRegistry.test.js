@@ -198,6 +198,26 @@ describe("LoRA registry planner", () => {
     expect(face.some((entry) => entry.id === "faceid-sd15")).toBe(false);
   });
 
+  test("recognizes the expanded local Krea 2 library and known trigger tokens", () => {
+    const local = [
+      "Krea2\\KREA2_CUMSHOT_v1.safetensors",
+      "Krea2\\krea_feet_lora_v3.safetensors",
+      "Krea2\\RLY-thot_shot-KREA2-briana-v1-trigger-rlybriana.safetensors",
+      "Krea2\\Private_Magazine_1990s_v1.safetensors",
+      "Krea2\\krea2_gotd_yummy_anus.safetensors",
+      "Krea2\\krea2_gotd_yummy_anus (1).safetensors",
+    ];
+    const compatible = compatibleInstalledLoras(
+      { name: "Krea 2 Turbo", prompt_style: "krea2" },
+      local
+    );
+    expect(compatible.some((entry) => entry.label === "Cumshot · Krea 2")).toBe(true);
+    expect(compatible.some((entry) => entry.label === "Feet Detail V3 · Krea 2")).toBe(true);
+    expect(compatible.find((entry) => entry.label === "RLY Briana · Krea 2")?.triggerWords).toContain("rlybriana");
+    expect(compatible.find((entry) => entry.label === "Private Magazine · 1990s")?.triggerWords).toContain("privatemag");
+    expect(compatible.filter((entry) => entry.label.includes("Yummy Anus"))).toHaveLength(1);
+  });
+
   test("includes SDXL-folder LoRAs for Pony but not for unrelated families", () => {
     const local = ["SDXL\\detail-slider.safetensors", "Flux\\flux-style.safetensors"];
     const pony = compatibleInstalledLoras({ name: "Pony V6 XL", prompt_style: "pony" }, local);
