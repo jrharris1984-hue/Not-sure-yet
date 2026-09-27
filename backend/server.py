@@ -2302,6 +2302,17 @@ def _comfy_history_error(entry: Dict[str, Any]) -> Optional[str]:
     return "ComfyUI execution failed."
 
 
+COMFY_PROMPT_LOST_ERROR = "ComfyUI no longer has this prompt after a restart."
+
+
+def _comfy_queue_contains(queue: Dict[str, Any], prompt_id: str) -> bool:
+    return any(
+        isinstance(item, (list, tuple)) and len(item) > 1 and item[1] == prompt_id
+        for key in ("queue_running", "queue_pending")
+        for item in (queue.get(key) or [])
+    )
+
+
 async def _poll_render_doc(rid: str) -> Optional[Dict[str, Any]]:
     doc = await db.renders.find_one({"id": rid}, {"_id": 0})
     if not doc or not doc.get("comfy_prompt_id"):
@@ -2332,6 +2343,12 @@ async def _poll_render_doc(rid: str) -> Optional[Dict[str, Any]]:
                         "output_variants": variants,
                         "updated_at": now_iso(),
                     }
+                elif entry.get("status", {}).get("status_str") == "success" and not files:
+                    update = {
+                        "status": "failed",
+                        "error": "ComfyUI completed this prompt but returned no saved image or video.",
+                        "updated_at": now_iso(),
+                    }
                 else:
                     update = {
                         "status": "done" if files else doc.get("status", "running"),
@@ -2342,6 +2359,18 @@ async def _poll_render_doc(rid: str) -> Optional[Dict[str, Any]]:
                     }
                 await db.renders.update_one({"id": rid}, {"$set": update})
                 doc.update(update)
+            elif doc.get("status") == "running" and not doc.get("output_files"):
+                created = datetime.fromisoformat(doc["created_at"])
+                if (datetime.now(timezone.utc) - created).total_seconds() >= 90:
+                    # History is empty while the prompt is still executing. Only
+                    # recover when ComfyUI also confirms it is no longer queued.
+                    async with httpx.AsyncClient(timeout=6.0) as hc:
+                        queue_resp = await hc.get(f"{s.comfyui_url.rstrip('/')}/queue")
+                    queue_resp.raise_for_status()
+                    if not _comfy_queue_contains(queue_resp.json(), doc["comfy_prompt_id"]):
+                        update = {"status": "failed", "error": COMFY_PROMPT_LOST_ERROR, "updated_at": now_iso()}
+                        await db.renders.update_one({"id": rid}, {"$set": update})
+                        doc.update(update)
     except Exception as e:
         logger.warning(f"poll_render failed: {e}")
     return doc
@@ -2357,6 +2386,16 @@ async def _sync_queue_job(job: Dict[str, Any]) -> Dict[str, Any]:
     else:
         status = render.get("status", "running")
         payload = dict(job.get("payload") or {})
+        if status == "failed" and render.get("error") == COMFY_PROMPT_LOST_ERROR and int(job.get("recovery_attempts", 0)) < 1:
+            patch = {
+                "status": "queued", "render_id": None, "error": None,
+                "recovery_attempts": 1, "started_at": None, "finished_at": None,
+                "updated_at": now_iso(),
+            }
+            await db.render_queue.update_one({"id": job["id"]}, {"$set": patch})
+            job.update(patch)
+            logger.warning("ComfyUI lost prompt for queue job %s; requeued once", job["id"])
+            return job
         mode = _guard_mode(render, payload)
         is_still_image = str(render.get("workflow_type") or "image") not in {"video", "text_video"}
 
