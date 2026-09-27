@@ -1156,7 +1156,9 @@ export default function Builder() {
       const queuedRenders = [];
       for (let imageIndex = 0; imageIndex < requestedCount; imageIndex += 1) {
         const uniqueSeed = (baseSeed + imageIndex) % 2147483647;
-        const r = await endpoints.dispatchRender({
+        let r;
+        try {
+          r = await endpoints.dispatchRender({
         character_id: isNew ? undefined : id,
         // Send primary subject DNA (backward compat) + all subjects for future backend use.
         dna: subjects[0]?.dna || {},
@@ -1204,7 +1206,12 @@ export default function Builder() {
         video_width: videoWidth,
         video_height: videoHeight,
       
-        });
+          });
+        } catch (error) {
+          if (!queuedRenders.length) throw error;
+          toast.error(`${queuedRenders.length} of ${requestedCount} images queued. The next request failed: ${error?.response?.data?.detail || error.message}`);
+          break;
+        }
         queuedRenders.push(r);
         setBatchRenders([...queuedRenders]);
       }
@@ -1212,8 +1219,8 @@ export default function Builder() {
       setBatchRenders(queuedRenders);
       setSelectedBatchRenderId(queuedRenders[0]?.id || null);
       setActiveRender(queuedRenders[0] || latestRender);
-      toast.success(requestedCount > 1
-        ? `Added ${requestedCount} images to the queue · unique seeds`
+      if (queuedRenders.length === requestedCount) toast.success(requestedCount > 1
+        ? `Added ${queuedRenders.length} images to the queue · unique seeds`
         : (latestRender.status === "queued"
           ? `Added to queue${latestRender.queue_position ? ` · position #${latestRender.queue_position}` : ""}`
           : `Render ${latestRender.status}`));
@@ -1312,6 +1319,14 @@ export default function Builder() {
       }));
       setBatchRenders(updated);
       const selected = updated.find((render) => render.id === selectedBatchRenderId);
+      if (selected && updated.every((render) => RENDER_TERMINAL.has(render.status)) && selected.status !== "done") {
+        const firstSuccess = updated.find((render) => render.status === "done");
+        if (firstSuccess) {
+          setSelectedBatchRenderId(firstSuccess.id);
+          setActiveRender(firstSuccess);
+          return;
+        }
+      }
       if (selected) setActiveRender(selected);
     }, 2500);
     return () => clearInterval(t);
@@ -1584,10 +1599,15 @@ export default function Builder() {
   const batchIsFinished = batchRenders.length <= 1 || batchRenders.every((render) =>
     ["done", "failed", "offline", "cancelled"].includes(render.status)
   );
+  const finishedBatchSelection = batchIsFinished && batchRenders.length > 1
+    ? batchRenders.find((render) => render.id === selectedBatchRenderId && render.status === "done")
+      || batchRenders.find((render) => render.status === "done")
+    : null;
+  const mobileResultRender = finishedBatchSelection || activeRender;
   const showMobileResult = mobileStudioStep === "create"
     && mobileStudioMode === "simple"
-    && activeRender?.status === "done"
-    && !!activeRender.output_files?.[0]
+    && mobileResultRender?.status === "done"
+    && !!mobileResultRender.output_files?.[0]
     && batchIsFinished
     && (!poseAssistEnabled || poseAssistStage === "done");
 
@@ -1866,7 +1886,7 @@ export default function Builder() {
 
       {showMobileResult && (
         <MobileRenderResult
-          render={activeRender}
+          render={mobileResultRender}
           batch={batchRenders}
           selectedId={selectedBatchRenderId}
           onSelect={(render) => {
@@ -2644,7 +2664,7 @@ export default function Builder() {
             <AiAssistBar dna={activeDna} onApplyDna={(d) => setActiveDna({ ...DEFAULT_DNA, ...d })} />
           </div>
           {batchRenders.length > 1 && (
-            <div className={`${showMobileResult ? "hidden md:block" : "block"} pane p-4 space-y-3`} data-testid="batch-render-progress">
+            <div className="pane p-4 space-y-3" data-testid="batch-render-progress">
               {(() => {
                 const completed = batchRenders.filter((r) => r.status === "done").length;
                 const failed = batchRenders.filter((r) => ["failed", "offline", "cancelled"].includes(r.status)).length;
@@ -2657,12 +2677,12 @@ export default function Builder() {
                           {completed} of {batchRenders.length} completed{failed ? ` · ${failed} failed` : ""}
                         </div>
                       </div>
-                      <div className="text-xs text-zinc-500">{Math.round((completed / batchRenders.length) * 100)}%</div>
+                      <div className="text-xs text-zinc-500">{Math.round(((completed + failed) / batchRenders.length) * 100)}% processed</div>
                     </div>
                     <div className="h-1.5 rounded-full bg-white/10 overflow-hidden">
                       <div
                         className="h-full bg-emerald-400 transition-all duration-300"
-                        style={{ width: `${(completed / batchRenders.length) * 100}%` }}
+                        style={{ width: `${((completed + failed) / batchRenders.length) * 100}%` }}
                       />
                     </div>
                     <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-2">
@@ -2693,6 +2713,7 @@ export default function Builder() {
                             <span className="absolute left-1.5 top-1.5 rounded bg-black/70 px-1.5 py-0.5 text-[10px] text-white">
                               {index + 1}
                             </span>
+                            <span className="absolute bottom-1 left-1 rounded bg-black/75 px-1.5 py-0.5 text-[9px] text-white">{render.status}</span>
                           </button>
                         );
                       })}
