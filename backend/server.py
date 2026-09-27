@@ -850,7 +850,7 @@ async def delete_character_preset(pid: str):
 @api.get("/characters/{cid}/renders")
 async def character_renders(cid: str):
     docs = await db.renders.find(
-        {"character_id": cid, "hidden_from_gallery": {"$ne": True}},
+        {"character_id": cid, **_gallery_visibility_filter()},
         {"_id": 0},
     ).sort("created_at", -1).to_list(500)
     return docs
@@ -859,10 +859,22 @@ async def character_renders(cid: str):
 # ============================================================
 # Renders
 # ============================================================
+def _gallery_visibility_filter() -> Dict[str, Any]:
+    """Keep saved outputs visible even when the anatomy check rejected them.
+
+    Other hidden records, such as intermediate PoseAssist renders, remain hidden.
+    This also restores older rejected renders whose files are still in the DB.
+    """
+    return {"$or": [
+        {"hidden_from_gallery": {"$ne": True}},
+        {"anatomy_guard_status": "failed", "output_files": {"$exists": True, "$ne": []}},
+    ]}
+
+
 @api.get("/renders")
 async def list_renders(limit: int = 200):
     return await db.renders.find(
-        {"hidden_from_gallery": {"$ne": True}},
+        _gallery_visibility_filter(),
         {"_id": 0},
     ).sort("created_at", -1).to_list(limit)
 
@@ -2307,6 +2319,11 @@ async def _poll_render_doc(rid: str) -> Optional[Dict[str, Any]]:
                 comfy_error = _comfy_history_error(entry)
                 outputs = entry.get("outputs", {})
                 files, variants = _collect_comfy_outputs(s.comfyui_url, outputs)
+                # An incomplete/stale ComfyUI history response must not erase
+                # media already captured for a completed render.
+                if not files and doc.get("output_files"):
+                    files = doc["output_files"]
+                    variants = doc.get("output_variants", {})
                 if comfy_error:
                     update = {
                         "status": "failed",
@@ -2377,7 +2394,7 @@ async def _sync_queue_job(job: Dict[str, Any]) -> Dict[str, Any]:
                         {"id": render_id},
                         {"$set": {
                             "status": "rejected",
-                            "hidden_from_gallery": True,
+                            "hidden_from_gallery": False,
                             "error": "Rejected by Normal Human Guard; a simplified retry was queued.",
                             "updated_at": now_iso(),
                         }},
@@ -2402,7 +2419,7 @@ async def _sync_queue_job(job: Dict[str, Any]) -> Dict[str, Any]:
                 )
                 await db.renders.update_one(
                     {"id": render_id},
-                    {"$set": {"status": status, "hidden_from_gallery": True, "error": error, "updated_at": now_iso()}},
+                    {"$set": {"status": status, "hidden_from_gallery": False, "error": error, "updated_at": now_iso()}},
                 )
                 render["error"] = error
 

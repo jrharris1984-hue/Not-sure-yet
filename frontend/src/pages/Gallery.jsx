@@ -405,7 +405,7 @@ export default function Gallery() {
                       </button>
                     )}
                     <span className="absolute top-1 right-1 z-10 text-[9px] font-mono px-1.5 py-0.5 rounded backdrop-blur-sm bg-black/60 text-emerald-300 pointer-events-none">
-                      {isVideoUrl(output) ? "video" : r.output_variants?.enhanced?.length ? "enhanced" : "done"}
+                      {r.anatomy_guard_status === "failed" ? "QC flagged" : isVideoUrl(output) ? "video" : r.output_variants?.enhanced?.length ? "enhanced" : "done"}
                     </span>
                     {r.album && <span className="absolute bottom-1 left-1 z-10 max-w-[75%] truncate rounded bg-black/65 px-1.5 py-0.5 text-[9px] text-zinc-200 pointer-events-none">{r.album}</span>}
                   </div>
@@ -542,6 +542,13 @@ export default function Gallery() {
                   <X className="h-4 w-4" />
                 </button>
               </div>
+
+              {lightbox.anatomy_guard_status === "failed" && (
+                <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-100" role="status">
+                  Anatomy check flagged this image. The completed ComfyUI file is preserved in your gallery.
+                  {lightbox.anatomy_guard_summary && <p className="mt-1 text-amber-200/80">{lightbox.anatomy_guard_summary}</p>}
+                </div>
+              )}
 
               <div className="flex flex-col gap-2">
                 <section className="rounded-lg border hairline bg-black/10 p-2.5" data-testid="gallery-recipe-snapshot">
