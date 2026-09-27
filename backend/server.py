@@ -974,6 +974,7 @@ async def _inject_selected_lora(
     comfyui_url: str,
     requested_name: str,
     strength: float,
+    max_strength: float = 2.0,
 ) -> tuple[Optional[str], int, Optional[str]]:
     """Insert one model-only LoRA immediately before terminal sampler/guider model inputs.
 
@@ -1018,7 +1019,7 @@ async def _inject_selected_lora(
     if not targets:
         return None, 0, "The selected workflow has no supported terminal MODEL input for a user LoRA."
 
-    selected_strength = max(0.0, min(2.0, float(strength)))
+    selected_strength = max(0.0, min(max_strength, float(strength)))
     by_source: Dict[tuple[str, int], str] = {}
     injected = 0
     for target_id, model_ref in targets:
@@ -1628,6 +1629,7 @@ async def _perform_dispatch(body: "DispatchBody") -> Dict[str, Any]:
             s.comfyui_url,
             body.selected_lora_name,
             body.selected_lora_strength,
+            max_strength=3.5 if wf_template and wf_template.prompt_style == "krea2" else 2.0,
         )
         if lora_error:
             r.status = "failed"

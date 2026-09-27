@@ -216,8 +216,18 @@ describe("LoRA registry planner", () => {
     expect(compatible.some((entry) => entry.label === "Feet Detail V3 · Krea 2")).toBe(true);
     expect(compatible.find((entry) => entry.label === "RLY Briana · Krea 2")?.triggerWords).toContain("rlybriana");
     expect(compatible.find((entry) => entry.label === "Private Magazine · 1990s")?.triggerWords).toEqual(["90s magazine photography"]);
-    expect(compatible.find((entry) => entry.label === "Private Magazine · 1970s")?.triggerWords).toEqual([]);
+    expect(compatible.find((entry) => entry.label === "Private Magazine · 1970s")?.triggerWords).toEqual(["privatemag"]);
     expect(compatible.filter((entry) => entry.label.includes("Yummy Anus"))).toHaveLength(1);
+  });
+
+  test("uses version-specific Krea trigger tokens and the actual downloaded filename", () => {
+    const compatible = compatibleInstalledLoras(
+      { name: "Krea 2 Turbo", prompt_style: "krea2" },
+      ["Krea2\\KREA2_CUMSH0T_v1.safetensors", "Krea2\\seamless_pantyhose_v2_krea2.safetensors"]
+    );
+    expect(compatible.find((entry) => entry.id === "krea-cumshot")?.triggerWords).toEqual(["CUMSH0T"]);
+    expect(compatible.find((entry) => entry.id === "krea-cumshot")?.defaultStrength).toBe(2);
+    expect(compatible.find((entry) => entry.id === "krea-seamless-pantyhose")?.triggerWords).toEqual(["se@mless_p@ntyhose"]);
   });
 
   test("includes SDXL-folder LoRAs for Pony but not for unrelated families", () => {
