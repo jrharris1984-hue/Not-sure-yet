@@ -894,7 +894,7 @@ export default function Builder() {
   const positiveBeforeLoraTriggers = promptOverride || generatedPositive;
   const activeLoraTriggers = [...new Set([
     ...(selectedLora.name ? selectedLora.triggerWords || [] : []),
-    ...(activeCompiler === "krea2" && showSecondLora && secondaryLora.name ? secondaryLora.triggerWords || [] : []),
+    ...(showSecondLora && secondaryLora.name ? secondaryLora.triggerWords || [] : []),
   ])];
   const finalPositive = activeLoraTriggers.reduce(
     (text, trigger) => text.toLowerCase().includes(trigger.toLowerCase()) ? text : `${trigger}, ${text}`,
@@ -1077,7 +1077,7 @@ export default function Builder() {
         }));
         const foundationPrompt = [
           "Follow the supplied pose reference closely. Preserve coherent human anatomy, subject count, joint placement, and limb connections.",
-          finalPositive,
+          positiveBeforeLoraTriggers,
         ].filter(Boolean).join(" ");
 
         const foundationQueued = await endpoints.dispatchRender({
@@ -1144,6 +1144,9 @@ export default function Builder() {
           selected_lora_name: selectedLora.name || "",
           selected_lora_strength: selectedLora.strength,
           selected_lora_triggers: selectedLora.triggerWords || [],
+          selected_loras: [selectedLora, ...(showSecondLora ? [secondaryLora] : [])]
+            .filter((lora) => lora.name)
+            .map((lora) => ({ name: lora.name, strength: lora.strength, triggers: lora.triggerWords || [] })),
           seed: (baseSeed + 1) % 2147483647,
         });
         setBatchRenders([finalQueued]);
@@ -1204,7 +1207,7 @@ export default function Builder() {
         selected_lora_name: selectedLora.name || "",
         selected_lora_strength: selectedLora.strength,
         selected_lora_triggers: selectedLora.triggerWords || [],
-        selected_loras: [selectedLora, ...(activeCompiler === "krea2" && showSecondLora ? [secondaryLora] : [])]
+        selected_loras: [selectedLora, ...(showSecondLora ? [secondaryLora] : [])]
           .filter((lora) => lora.name)
           .map((lora) => ({ name: lora.name, strength: lora.strength, triggers: lora.triggerWords || [] })),
         parent_render_id: sourceRenderId || undefined,
@@ -2008,10 +2011,10 @@ export default function Builder() {
               workflow={activeWorkflow}
               value={selectedLora}
               onChange={setSelectedLora}
-              slotLabel={activeCompiler === "krea2" ? "LoRA 1" : "LoRA"}
-              excludedNames={activeCompiler === "krea2" && showSecondLora && secondaryLora.name ? [secondaryLora.name] : []}
+              slotLabel="LoRA 1"
+              excludedNames={showSecondLora && secondaryLora.name ? [secondaryLora.name] : []}
             />
-            {activeCompiler === "krea2" && (showSecondLora ? (
+            {showSecondLora ? (
               <div className="mt-3">
                 <button type="button" className="mb-2 text-xs text-zinc-400 underline" onClick={() => {
                   setSecondaryLora({ name: "", strength: 0.8, triggerWords: [] });
@@ -2020,12 +2023,12 @@ export default function Builder() {
                 <UniversalLoraPicker workflow={activeWorkflow} value={secondaryLora}
                   onChange={setSecondaryLora} slotLabel="LoRA 2"
                   excludedNames={selectedLora.name ? [selectedLora.name] : []} />
-                <p className="mt-2 text-xs text-zinc-500">Stacking LoRAs can change the result substantially. Adjust each strength if needed.</p>
+                <p className="mt-2 text-xs text-zinc-500">Stacking LoRAs can change the result substantially. Adjust each strength if needed.{poseAssistEnabled ? " Pose Assist applies these to the Chroma polish stage." : ""}</p>
               </div>
             ) : (
               <button type="button" className="mt-2 rounded-lg border hairline px-3 py-2 text-xs text-cyan-200 hover:bg-white/5"
                 onClick={() => setShowSecondLora(true)}>+ Add second LoRA</button>
-            ))}
+            )}
           </div>
         )}
 
@@ -2185,7 +2188,7 @@ export default function Builder() {
             compilerMeta={compiledPrompt}
             recipe={activeRecipeFamily === "image" ? renderSettings : null}
             selectedLora={selectedLora}
-            secondaryLora={activeCompiler === "krea2" && showSecondLora ? secondaryLora : null}
+            secondaryLora={showSecondLora ? secondaryLora : null}
             imageCount={activeRecipeFamily === "image" && !poseAssistEnabled ? renderCount : 1}
             optimized={!!promptOverride}
             improving={improvingPrompt}

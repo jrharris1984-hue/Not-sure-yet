@@ -992,8 +992,8 @@ async def _inject_selected_lora(
 ) -> tuple[Optional[str], int, Optional[str]]:
     """Insert one model-only LoRA immediately before terminal sampler/guider model inputs.
 
-    This lets every compatible Ultra Studio workflow expose the same one-LoRA
-    selector without permanently modifying the bundled ComfyUI graph.
+    This lets compatible workflows stack optional LoRAs without permanently
+    modifying the bundled ComfyUI graph.
     """
     if not str(requested_name or "").strip():
         return None, 0, None
@@ -1643,9 +1643,9 @@ async def _perform_dispatch(body: "DispatchBody") -> Dict[str, Any]:
     selected_loras = [item for item in selected_loras if str(item.get("name", "")).strip()]
     is_krea = bool(wf_template and wf_template.prompt_style == "krea2")
     names = [_normalized_lora_name(item["name"]) for item in selected_loras]
-    if len(names) > (2 if is_krea else 1) or len(names) != len(set(names)):
+    if len(names) > 2 or len(names) != len(set(names)):
         r.status = "failed"
-        r.error = "Select up to two different LoRAs for Krea, or one for other workflows."
+        r.error = "Select up to two different LoRAs for this workflow."
         doc = r.model_dump()
         await db.renders.insert_one(doc)
         doc.pop("_id", None)
