@@ -3,7 +3,7 @@ import { Check, Search, SlidersHorizontal, Sparkles } from "lucide-react";
 import { endpoints } from "@/lib/api";
 import { compatibleInstalledLoras, workflowFamily } from "@/lib/loraRegistry";
 
-export default function UniversalLoraPicker({ workflow, value, onChange }) {
+export default function UniversalLoraPicker({ workflow, value, onChange, slotLabel = "LoRA", excludedNames = [] }) {
   const [installed, setInstalled] = useState([]);
   const [query, setQuery] = useState("");
   const [expanded, setExpanded] = useState(false);
@@ -22,8 +22,10 @@ export default function UniversalLoraPicker({ workflow, value, onChange }) {
   }, [workflow?.id]);
 
   const options = useMemo(
-    () => compatibleInstalledLoras(workflow || {}, installed),
-    [workflow, installed]
+    () => compatibleInstalledLoras(workflow || {}, installed).filter((entry) =>
+      !excludedNames.some((name) => String(name).replace(/\\/g, "/").toLowerCase() === entry.installedName.replace(/\\/g, "/").toLowerCase())
+    ),
+    [workflow, installed, excludedNames]
   );
 
   const normalizedFile = (name = "") => String(name).replace(/\\/g, "/").toLowerCase();
@@ -98,9 +100,9 @@ export default function UniversalLoraPicker({ workflow, value, onChange }) {
         <div className="flex items-start gap-2">
           <Sparkles className="mt-0.5 h-4 w-4 text-cyan-300" />
           <div className="min-w-0">
-            <div className="section-label !text-cyan-300">LoRA</div>
+            <div className="section-label !text-cyan-300">{slotLabel}</div>
             <p className="mt-0.5 text-xs text-zinc-400">
-              One compatible LoRA at a time · {family === "unknown" ? "unclassified workflow" : family}
+              Select a compatible LoRA · {family === "unknown" ? "unclassified workflow" : family}
             </p>
           </div>
           <span className="ml-auto rounded border border-white/10 px-2 py-1 text-[10px] font-mono text-zinc-500">

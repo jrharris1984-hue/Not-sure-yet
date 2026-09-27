@@ -94,6 +94,7 @@ class Render(BaseModel):
     dna_snapshot: Dict[str, Any] = Field(default_factory=dict)
     prompt_positive: str = ""
     prompt_negative: str = ""
+    selected_loras: List[Dict[str, Any]] = Field(default_factory=list)
     workflow_type: str = "image"  # image | video
     status: str = "queued"  # queued | running | done | failed | offline
     progress: float = 0.0
@@ -903,6 +904,7 @@ class DispatchBody(BaseModel):
     selected_lora_name: str = ""
     selected_lora_strength: float = 0.8
     selected_lora_triggers: List[str] = Field(default_factory=list)
+    selected_loras: List[Dict[str, Any]] = Field(default_factory=list)
     shoot_id: Optional[str] = None
     shoot_frame_index: Optional[int] = None
     parent_render_id: Optional[str] = None
@@ -1620,16 +1622,31 @@ async def _perform_dispatch(body: "DispatchBody") -> Dict[str, Any]:
 
         positive_text = instruction
 
-    # Apply the universal one-LoRA selection after all model-specific graph
-    # patches are complete. Required workflow LoRAs remain untouched and the
-    # selected LoRA is inserted only at the terminal model input.
-    if body.selected_lora_name.strip():
+    # Apply optional LoRAs in order after model-specific graph patches.
+    selected_loras = body.selected_loras if body.selected_loras else ([{
+        "name": body.selected_lora_name,
+        "strength": body.selected_lora_strength,
+        "triggers": body.selected_lora_triggers,
+    }] if body.selected_lora_name.strip() else [])
+    selected_loras = [item for item in selected_loras if str(item.get("name", "")).strip()]
+    is_krea = bool(wf_template and wf_template.prompt_style == "krea2")
+    names = [_normalized_lora_name(item["name"]) for item in selected_loras]
+    if len(names) > (2 if is_krea else 1) or len(names) != len(set(names)):
+        r.status = "failed"
+        r.error = "Select up to two different LoRAs for Krea, or one for other workflows."
+        doc = r.model_dump()
+        await db.renders.insert_one(doc)
+        doc.pop("_id", None)
+        return doc
+    applied_loras = []
+    for item in selected_loras:
+        strength = float(item.get("strength", 0.8))
         resolved_lora, injected_count, lora_error = await _inject_selected_lora(
             workflow,
             s.comfyui_url,
-            body.selected_lora_name,
-            body.selected_lora_strength,
-            max_strength=3.5 if wf_template and wf_template.prompt_style == "krea2" else 2.0,
+            item["name"],
+            strength,
+            max_strength=3.5 if is_krea else 2.0,
         )
         if lora_error:
             r.status = "failed"
@@ -1640,17 +1657,19 @@ async def _perform_dispatch(body: "DispatchBody") -> Dict[str, Any]:
             await db.renders.insert_one(doc)
             doc.pop("_id", None)
             return doc
-        body.selected_lora_name = resolved_lora or body.selected_lora_name
+        resolved_name = resolved_lora or item["name"]
+        applied_loras.append({"name": resolved_name, "strength": strength, "triggers": item.get("triggers", [])})
         logger.info(
             "Applied selected LoRA %s at %.2f through %s model path(s)",
-            body.selected_lora_name,
-            body.selected_lora_strength,
+            resolved_name,
+            strength,
             injected_count,
         )
-        for trigger in body.selected_lora_triggers:
+        for trigger in item.get("triggers", []):
             trigger_text = str(trigger or "").strip()
             if trigger_text and trigger_text.lower() not in positive_text.lower():
                 positive_text = f"{trigger_text}, {positive_text}"
+    r.selected_loras = applied_loras
 
     # Store the exact instruction actually sent to the selected workflow so
     # Gallery metadata and copied prompts match the generated result.

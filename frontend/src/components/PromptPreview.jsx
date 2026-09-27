@@ -3,7 +3,7 @@ import { useState, useMemo } from "react";
 import { toast } from "sonner";
 import { analyzePromptQuality, estimatePromptTokens } from "@/lib/promptQuality";
 
-export default function PromptPreview({ positive, negative, dna, workflow, context, compilerMeta, recipe, selectedLora, imageCount = 1, optimized, improving, onImprove, onOptimize, onRestore }) {
+export default function PromptPreview({ positive, negative, dna, workflow, context, compilerMeta, recipe, selectedLora, secondaryLora, imageCount = 1, optimized, improving, onImprove, onOptimize, onRestore }) {
   const [copied, setCopied] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const tokens = useMemo(() => estimatePromptTokens(positive), [positive]);
@@ -75,6 +75,7 @@ export default function PromptPreview({ positive, negative, dna, workflow, conte
             <div>Seed {recipe?.seed !== "" && recipe?.seed != null ? `${recipe.seed} (incremented per image)` : "random, then incremented per image"}</div>
             <div>Optional LoRA {selectedLora?.name ? `${selectedLora.name} at ${Number(selectedLora.strength ?? 0.8).toFixed(2)}` : "none"}</div>
             {selectedLora?.name && <div>LoRA prompt triggers: {selectedLora.triggerWords?.length ? selectedLora.triggerWords.join(", ") : "none configured"}</div>}
+            {secondaryLora?.name && <div>Second LoRA {secondaryLora.name} at {Number(secondaryLora.strength ?? 0.8).toFixed(2)} · triggers: {secondaryLora.triggerWords?.length ? secondaryLora.triggerWords.join(", ") : "none configured"}</div>}
             {compilerMeta?.negativeStrategy === "zeroed" && <div className="text-amber-200">This workflow zeroes negative conditioning.</div>}
             <div className="mt-1 text-zinc-500">Installed model names and graph settings are confirmed by the backend when the job runs.</div>
           </div>

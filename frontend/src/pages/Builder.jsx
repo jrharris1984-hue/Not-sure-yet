@@ -174,6 +174,8 @@ export default function Builder() {
   const [workflowId, setWorkflowId] = useState("");
   const [loraOverrides, setLoraOverrides] = useState({});
   const [selectedLora, setSelectedLora] = useState({ name: "", strength: 0.8, triggerWords: [] });
+  const [secondaryLora, setSecondaryLora] = useState({ name: "", strength: 0.8, triggerWords: [] });
+  const [showSecondLora, setShowSecondLora] = useState(false);
   const [referenceImage, setReferenceImage] = useState(null);
   const [sourceRenderId, setSourceRenderId] = useState(null);
   const [referencePreview, setReferencePreview] = useState("");
@@ -250,6 +252,8 @@ export default function Builder() {
       strength: typeof draft.selectedLora?.strength === "number" ? draft.selectedLora.strength : 0.8,
       triggerWords: Array.isArray(draft.selectedLora?.triggerWords) ? draft.selectedLora.triggerWords : [],
     });
+    setSecondaryLora(draft.secondaryLora || { name: "", strength: 0.8, triggerWords: [] });
+    setShowSecondLora(Boolean(draft.showSecondLora || draft.secondaryLora?.name));
     setEditInstruction(draft.editInstruction || "");
     setEditMode(draft.editMode || "standard");
     setPoseTarget(draft.poseTarget || "");
@@ -421,14 +425,19 @@ export default function Builder() {
       }
     }
     setSelectedLora({
-      name: saved.selected_lora_name || (saved.krea_style === "private_magazine" ? "Private_Magazine_2000s_v1.safetensors" : ""),
-      strength: typeof saved.selected_lora_strength === "number"
-        ? saved.selected_lora_strength
+      name: saved.selected_loras?.[0]?.name || saved.selected_lora_name || (saved.krea_style === "private_magazine" ? "Private_Magazine_2000s_v1.safetensors" : ""),
+      strength: typeof (saved.selected_loras?.[0]?.strength ?? saved.selected_lora_strength) === "number"
+        ? (saved.selected_loras?.[0]?.strength ?? saved.selected_lora_strength)
         : (typeof saved.krea_lora_strength === "number" ? saved.krea_lora_strength : 0.8),
-      triggerWords: Array.isArray(saved.selected_lora_triggers)
-        ? saved.selected_lora_triggers
+      triggerWords: Array.isArray(saved.selected_loras?.[0]?.triggers || saved.selected_lora_triggers)
+        ? (saved.selected_loras?.[0]?.triggers || saved.selected_lora_triggers)
         : (saved.krea_style === "private_magazine" ? ["privatemag"] : []),
     });
+    setSecondaryLora(saved.selected_loras?.[1] ? {
+      name: saved.selected_loras[1].name, strength: saved.selected_loras[1].strength,
+      triggerWords: saved.selected_loras[1].triggers || [],
+    } : { name: "", strength: 0.8, triggerWords: [] });
+    setShowSecondLora(Boolean(saved.selected_loras?.[1]?.name));
     setLoraOverrides(saved.lora_overrides || {});
     setPromptOverride(rebuildCurrent ? "" : (saved.prompt_positive || ""));
     setNegativePromptOverride(rebuildCurrent ? "" : (saved.prompt_negative || ""));
@@ -763,7 +772,7 @@ export default function Builder() {
       referenceStudioView, referenceRecipe, referenceStrengths, poseReferenceAnalysis,
       videoInstruction, videoFrames, videoFps, videoWidth, videoHeight,
       qualityTier, poseAssistEnabled, poseAssistStrength, poseAssistPolish,
-      selectedLora, chromaSettings, activeRender,
+      selectedLora, secondaryLora, showSecondLora, chromaSettings, activeRender,
     }), 350);
     return () => window.clearTimeout(timer);
   }, [
@@ -774,7 +783,7 @@ export default function Builder() {
     referenceStudioView, referenceRecipe, referenceStrengths, poseReferenceAnalysis,
     videoInstruction, videoFrames, videoFps, videoWidth, videoHeight,
     qualityTier, poseAssistEnabled, poseAssistStrength, poseAssistPolish,
-    selectedLora, chromaSettings, activeRender,
+    selectedLora, secondaryLora, showSecondLora, chromaSettings, activeRender,
   ]);
 
   // Ensure active id is always valid.
@@ -883,7 +892,10 @@ export default function Builder() {
     : "";
   const generatedPositive = [languageLead, acceptsLikenessPrompt && likenessPrompt, positive].filter(Boolean).join(", ");
   const positiveBeforeLoraTriggers = promptOverride || generatedPositive;
-  const activeLoraTriggers = [...new Set(selectedLora.triggerWords || [])];
+  const activeLoraTriggers = [...new Set([
+    ...(selectedLora.name ? selectedLora.triggerWords || [] : []),
+    ...(activeCompiler === "krea2" && showSecondLora && secondaryLora.name ? secondaryLora.triggerWords || [] : []),
+  ])];
   const finalPositive = activeLoraTriggers.reduce(
     (text, trigger) => text.toLowerCase().includes(trigger.toLowerCase()) ? text : `${trigger}, ${text}`,
     positiveBeforeLoraTriggers
@@ -1192,6 +1204,9 @@ export default function Builder() {
         selected_lora_name: selectedLora.name || "",
         selected_lora_strength: selectedLora.strength,
         selected_lora_triggers: selectedLora.triggerWords || [],
+        selected_loras: [selectedLora, ...(activeCompiler === "krea2" && showSecondLora ? [secondaryLora] : [])]
+          .filter((lora) => lora.name)
+          .map((lora) => ({ name: lora.name, strength: lora.strength, triggers: lora.triggerWords || [] })),
         parent_render_id: sourceRenderId || undefined,
         operation: sourceRenderId
           ? (isVideoWorkflow ? "animate" : isFaceWorkflow ? "face_reference" : editMode === "new_pose" ? "new_pose" : "edit")
@@ -1993,7 +2008,24 @@ export default function Builder() {
               workflow={activeWorkflow}
               value={selectedLora}
               onChange={setSelectedLora}
+              slotLabel={activeCompiler === "krea2" ? "LoRA 1" : "LoRA"}
+              excludedNames={activeCompiler === "krea2" && showSecondLora && secondaryLora.name ? [secondaryLora.name] : []}
             />
+            {activeCompiler === "krea2" && (showSecondLora ? (
+              <div className="mt-3">
+                <button type="button" className="mb-2 text-xs text-zinc-400 underline" onClick={() => {
+                  setSecondaryLora({ name: "", strength: 0.8, triggerWords: [] });
+                  setShowSecondLora(false);
+                }}>Remove second LoRA</button>
+                <UniversalLoraPicker workflow={activeWorkflow} value={secondaryLora}
+                  onChange={setSecondaryLora} slotLabel="LoRA 2"
+                  excludedNames={selectedLora.name ? [selectedLora.name] : []} />
+                <p className="mt-2 text-xs text-zinc-500">Stacking LoRAs can change the result substantially. Adjust each strength if needed.</p>
+              </div>
+            ) : (
+              <button type="button" className="mt-2 rounded-lg border hairline px-3 py-2 text-xs text-cyan-200 hover:bg-white/5"
+                onClick={() => setShowSecondLora(true)}>+ Add second LoRA</button>
+            ))}
           </div>
         )}
 
@@ -2153,6 +2185,7 @@ export default function Builder() {
             compilerMeta={compiledPrompt}
             recipe={activeRecipeFamily === "image" ? renderSettings : null}
             selectedLora={selectedLora}
+            secondaryLora={activeCompiler === "krea2" && showSecondLora ? secondaryLora : null}
             imageCount={activeRecipeFamily === "image" && !poseAssistEnabled ? renderCount : 1}
             optimized={!!promptOverride}
             improving={improvingPrompt}
