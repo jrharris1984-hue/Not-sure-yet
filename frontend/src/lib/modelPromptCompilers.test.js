@@ -49,6 +49,16 @@ describe("model-specific prompt compilers", () => {
     expect(result.positive).toContain("gold cat-eye frames");
   });
 
+  it("keeps face emphasis within a selected knees-up Krea crop", () => {
+    const dna = JSON.parse(JSON.stringify(DEFAULT_DNA));
+    dna.pose = { ...dna.pose, distance: "knees-up", focus: "face" };
+    const result = compileModelPrompts({ promptStyle: "krea2", dna });
+    expect(result.positive).toContain("Knees-up photograph");
+    expect(result.positive).toContain("face clearly visible within the head-to-knees composition");
+    expect(result.positive).not.toContain("face composition priority");
+    expect(result.positive).not.toContain("face composition focus");
+  });
+
   it("orders Krea 2 prompts as subject and pose before camera/style details", () => {
     const dna = JSON.parse(JSON.stringify(DEFAULT_DNA));
     dna.identity = { ...dna.identity, gender: "female", age: 38, ethnicity: "colombian" };
