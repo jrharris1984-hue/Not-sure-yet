@@ -342,13 +342,14 @@ function kreaPoseSentence(dna = {}, label = "") {
   const feet = dna.feet || {};
   const prefix = label ? `Subject ${label} pose and framing: ` : "Pose and framing: ";
   const feetPriority = lower(p.focus) === "feet" || kreaValue(feet.framing);
-  const fullLength = !p.distance || ["full body", "wide shot"].includes(lower(p.distance));
+  const framing = lower(p.distance) || "full body";
+  const bodyCrop = ["full body", "wide shot", "waist-up"].includes(framing);
   return kreaSentence(prefix, [
     p.action,
     p.body_language && `${p.body_language} body language`,
     p.angle && `${p.angle} view`,
-    p.focus && (fullLength && lower(p.focus) === "face"
-      ? "face clearly visible within the full-length composition"
+    p.focus && (bodyCrop && lower(p.focus) === "face"
+      ? `face clearly visible within the ${framing === "waist-up" ? "waist-up" : "full-length"} composition`
       : `${p.focus} composition priority`),
     p.hands?.length ? `hands ${p.hands.join(" and ")}` : "",
     feetPriority ? feet.framing : "",
@@ -506,7 +507,7 @@ export function buildKrea2Prompts({
   const missingMust = (priorityPlan.mustMatch || [])
     .filter((item) => !(item.key === "pose.focus"
       && lower(primary.pose?.focus) === "face"
-      && (!primary.pose?.distance || ["full body", "wide shot"].includes(lower(primary.pose.distance)))))
+      && (!primary.pose?.distance || ["full body", "wide shot", "waist-up"].includes(lower(primary.pose.distance)))))
     .filter((item) => !requirementPresent(positive, item))
     .map((item) => item.phrase);
   if (missingMust.length) {
