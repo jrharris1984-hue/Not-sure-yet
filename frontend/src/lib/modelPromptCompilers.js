@@ -315,7 +315,8 @@ function kreaWardrobeSentence(dna = {}, label = "") {
   const w = dna.wardrobe || {};
   const prefix = label ? `Subject ${label} wardrobe: ` : "Wardrobe: ";
   const nudity = Number(w.nudity_level || 0);
-  const nudityDirection = nudity >= 80 ? "fully nude, no clothing"
+  const hasHosiery = Boolean(w.hosiery_type);
+  const nudityDirection = nudity >= 80 ? (hasHosiery ? "unclothed except for the selected hosiery and accessories" : "fully nude, no clothing except selected accessories")
     : nudity >= 55 ? "partially nude with exposed skin"
       : nudity >= 30 ? "revealing clothing with some skin visible"
         : nudity > 0 ? "clothed with a modestly suggestive look" : "";
@@ -328,8 +329,12 @@ function kreaWardrobeSentence(dna = {}, label = "") {
     !suppressClothing && w.top && w.top !== "none" ? w.top : "",
     !suppressClothing && w.bottom && w.bottom !== "none" ? w.bottom : "",
     !suppressClothing && w.underwear && w.underwear !== "none" ? w.underwear : "",
-    suppressClothing ? "" : w.footwear,
-    suppressClothing ? "" : w.accessories,
+    w.hosiery_type ? `${w.hosiery_color ? `${w.hosiery_color} ` : ""}${w.hosiery_type}` : "",
+    w.heel_type ? `${w.heel_color ? `${w.heel_color} ` : ""}${w.heel_type}` : w.footwear,
+    w.glasses_style ? `${w.glasses_color ? `${w.glasses_color} ` : ""}${w.glasses_style}` : "",
+    w.nail_color ? `${w.nail_color} fingernails` : "",
+    w.nail_shape ? `${w.nail_shape} nail shape` : "",
+    w.accessories,
     suppressClothing ? "" : w.material,
     suppressClothing ? "" : w.palette,
     suppressClothing ? "" : w.fit,
