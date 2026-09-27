@@ -7,13 +7,15 @@ export default function UniversalLoraPicker({ workflow, value, onChange }) {
   const [installed, setInstalled] = useState([]);
   const [query, setQuery] = useState("");
   const [expanded, setExpanded] = useState(false);
+  const [loadState, setLoadState] = useState("loading");
   const family = workflowFamily(workflow || {});
 
   useEffect(() => {
     let alive = true;
+    setLoadState("loading");
     endpoints.comfyLoras()
-      .then((result) => { if (alive) setInstalled(result.loras || []); })
-      .catch(() => { if (alive) setInstalled([]); });
+      .then((result) => { if (alive) { setInstalled(result.loras || []); setLoadState("ready"); } })
+      .catch(() => { if (alive) { setInstalled([]); setLoadState("error"); } });
     return () => { alive = false; };
   }, [workflow?.id]);
 
@@ -157,7 +159,13 @@ export default function UniversalLoraPicker({ workflow, value, onChange }) {
           </button>
         )}
 
-        {!options.length && (
+        {loadState !== "ready" && (
+          <div className="rounded-lg border hairline px-3 py-2 text-xs text-amber-200" role="status">
+            {loadState === "loading" ? "Checking installed LoRAs…" : "Could not read LoRAs from ComfyUI. Check the connection in Settings, then reload."}
+          </div>
+        )}
+
+        {loadState === "ready" && !options.length && (
           <div className="rounded-lg border hairline bg-black/10 px-3 py-3 text-xs text-zinc-500">
             No compatible LoRAs were detected for this workflow. Put model-matched LoRAs in a family folder such as
             <span className="font-mono text-zinc-400"> models/loras/Krea2</span>,
