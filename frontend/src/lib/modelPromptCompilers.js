@@ -1,6 +1,7 @@
 import { buildPrompts, buildMultiVenicePrompts, buildChromaPrompts, buildMultiChromaPrompts } from "@/lib/dna";
 import { buildPonyPrompts, buildMultiPonyPrompts } from "@/lib/ponyPrompts";
 import { buildPromptPriorityPlan, emptyPromptPriorityPlan, prioritizePrompt, requirementPresent } from "@/lib/promptPriority";
+import { implantVisualPrompt } from "@/lib/implantVisualScale";
 
 const ZIMAGE_NEGATIVE = [
   "low quality, blurry, out of focus, jpeg artifacts, oversharpened",
@@ -287,9 +288,9 @@ function kreaSubjectSentence(dna = {}, label = "") {
     ph.body_type && `${ph.body_type} body type`,
     Number(ph.muscularity || 0) > 60 ? (Number(ph.muscularity) > 85 ? "highly muscular build" : "athletic toned build") : "",
     Number(ph.curves || 0) > 60 ? (Number(ph.curves) > 85 ? "pronounced natural curves" : "curved silhouette") : "",
-    kreaScale(ph.bust_scale, "bust", ["small", "moderate", "full", "very large", "extremely oversized"]) || (ph.bust && `${ph.bust} bust`),
+    ph.implant_volume > 0 ? "" : kreaScale(ph.bust_scale, "bust", ["small", "moderate", "full", "very large", "extremely oversized"]) || (ph.bust && `${ph.bust} bust`),
     ph.implant_volume > 0 ? "round augmented breast shape" : ph.bust_shape && `${ph.bust_shape} breast shape`,
-    Number(ph.implant_volume || 0) > 0 ? `augmented round implant look, ${ph.implant_volume} cc visual reference${ph.implant_volume >= 1500 ? " at fictional fantasy scale" : ""}` : "",
+    implantVisualPrompt(ph.implant_volume),
     kreaScale(ph.waist_scale, "waist", ["very narrow", "narrow", "average", "wide", "very wide"]) || (ph.waist && `${ph.waist} waist`),
     kreaScale(ph.hip_scale, "hips", ["narrow", "moderate-width", "wide", "very wide", "extremely wide"]) || (ph.hips && `${ph.hips} hips`),
     kreaScale(ph.butt_scale, "glutes", ["small", "moderate", "full rounded", "very large projected", "extremely oversized projected"]) || (ph.butt && `${ph.butt} buttocks`),

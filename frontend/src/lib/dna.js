@@ -1,5 +1,6 @@
 // DNA schema + prompt builder + randomizer
 import { expandPrompt } from "@/lib/promptMap";
+import { implantVisualPrompt } from "@/lib/implantVisualScale";
 
 export const SECTIONS = [
   {
@@ -37,7 +38,7 @@ export const SECTIONS = [
       { key: "bust", type: "chips", label: "Bust size", options: ["flat", "small", "medium", "large", "very large", "huge", "enormous", "hyper"] },
       { key: "bust_scale", type: "slider", label: "Bust size detail (small → fantasy)", min: 0, max: 100, step: 1, defaultValue: 0 },
       { key: "bust_shape", type: "chips", label: "Bust shape", options: ["natural", "perky", "round", "teardrop", "athletic", "augmented", "gravity-defying"] },
-      { key: "implant_volume", type: "slider", label: "Implant volume reference (cc; 0 = none)", min: 0, max: 5000, step: 50, defaultValue: 0, help: "Visual fiction cue only; above ordinary implant ranges is fantasy styling, not a medical measurement or guarantee." },
+      { key: "implant_volume", type: "slider", label: "Implant visual size (cc reference; 0 = none)", min: 0, max: 5000, step: 50, defaultValue: 0, help: "The number is saved for your slider. Prompts use visual size and projection; high values describe fantasy proportions, not a medical measurement." },
       { key: "butt", type: "chips", label: "Butt", options: ["flat", "small", "toned", "round", "bubble", "large", "very large", "huge", "hyper"] },
       { key: "butt_scale", type: "slider", label: "Glute size detail (small → fantasy)", min: 0, max: 100, step: 1, defaultValue: 0 },
       { key: "glute_shape", type: "chips", label: "Glute shape / augmentation look", groups: [
@@ -1101,9 +1102,9 @@ function _veniceSubjectBlock(dna = {}, opts = {}) {
     bodyProfile,
     height,
     musc,
-    ph.bust_scale ? visualScale(ph.bust_scale, "bust", ["small", "moderate", "full", "very large", "extremely oversized"]) : exp("physique", "bust") || (ph.bust && `${ph.bust} breasts`),
+    ph.implant_volume > 0 ? "" : ph.bust_scale ? visualScale(ph.bust_scale, "bust", ["small", "moderate", "full", "very large", "extremely oversized"]) : exp("physique", "bust") || (ph.bust && `${ph.bust} breasts`),
     ph.implant_volume > 0 ? "round augmented breast shape" : exp("physique", "bust_shape"),
-    ph.implant_volume > 0 && `augmented round breast silhouette, ${ph.implant_volume >= 1500 ? "fantasy oversized" : "full"} implant look (${ph.implant_volume} cc visual reference${ph.implant_volume >= 1500 ? ", fictional fantasy scale" : ""})`,
+    implantVisualPrompt(ph.implant_volume),
     ph.butt_scale ? visualScale(ph.butt_scale, "glutes", ["small", "moderate", "full rounded", "very large projected", "extremely oversized projected"]) : exp("physique", "butt") || (ph.butt && `${ph.butt} butt`),
     ph.glute_shape,
     ph.thigh_scale ? visualScale(ph.thigh_scale, "thighs", ["slim", "moderate", "full", "very thick", "extremely thick"]) : exp("physique", "thighs") || (ph.thighs && `${ph.thighs} thighs`),
