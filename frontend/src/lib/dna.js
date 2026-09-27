@@ -7,7 +7,7 @@ export const SECTIONS = [
     title: "Identity",
     fields: [
       { key: "gender", type: "chips", label: "Gender", options: ["female", "male", "non-binary", "androgynous"] },
-      { key: "age", type: "slider", label: "Age (adult)", min: 21, max: 80, step: 1, defaultValue: 30 },
+      { key: "age", type: "slider", label: "Age (adult)", min: 18, max: 80, step: 1, defaultValue: 30 },
       { key: "ethnicity", type: "chips", label: "Ethnicity", groups: [
         { name: "Latin", options: ["latina", "mexican", "brazilian", "colombian", "puerto rican", "cuban", "dominican", "venezuelan", "argentinian", "peruvian"] },
         { name: "East Asian", options: ["east asian", "japanese", "korean", "chinese", "vietnamese", "thai", "filipina", "indonesian", "cambodian"] },

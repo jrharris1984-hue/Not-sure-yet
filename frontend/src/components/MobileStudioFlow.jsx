@@ -45,10 +45,10 @@ export const MOBILE_STUDIO_STEPS = [
 
 export const SIMPLE_FIELD_KEYS = {
   identity: ["gender", "age", "ethnicity", "archetype", "name"],
-  physique: ["height", "body_type", "curves", "bust", "butt", "hips", "waist"],
+  physique: ["height", "body_type", "curves", "bust", "bust_scale", "implant_volume", "butt", "butt_scale", "glute_shape", "hips", "waist"],
   face: ["eye_shape", "eye_color", "jawline", "lips", "expression"],
   hair: ["style", "length", "color"],
-  wardrobe: ["nudity_level", "outfit_preset", "footwear", "hosiery_type", "hosiery_color", "heel_type", "heel_color", "nail_color", "glasses_style"],
+  wardrobe: ["nudity_level", "outfit_preset", "dress_style", "skirt_style", "garment_color", "footwear", "hosiery_type", "hosiery_color", "hosiery_pattern", "heel_type", "heel_color", "heel_height", "nail_color", "glasses_style"],
   pose: ["action", "angle", "distance", "body_language"],
   scene: ["environment", "indoor_outdoor", "era"],
   lighting: ["source", "style", "mood"],

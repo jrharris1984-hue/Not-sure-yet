@@ -19,7 +19,7 @@ const configured = () => ({
 
 test("adult age range and categorized appearance options are available", () => {
   const age = SECTIONS.find((s) => s.key === "identity").fields.find((f) => f.key === "age");
-  expect([age.min, age.max]).toEqual([21, 80]);
+  expect([age.min, age.max]).toEqual([18, 80]);
   const wardrobe = SECTIONS.find((s) => s.key === "wardrobe");
   expect(wardrobe.fields.find((f) => f.key === "dress_style").groups.length).toBeGreaterThan(1);
 });
