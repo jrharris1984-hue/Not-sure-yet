@@ -157,6 +157,13 @@ export function analyzePromptQuality({
       issues.push(issue("warning", "wardrobe-conflict", `The “${outfit}” preset conflicts with selected ${garmentFields.join(" and ")} clothing fields.`));
     }
 
+    const distance = String(dna?.pose?.distance || "").toLowerCase();
+    const framing = String(dna?.feet?.framing || "").toLowerCase();
+    if (["portrait", "waist-up", "close-up", "detail shot"].includes(distance)
+      && ["feet close-up", "sole close-up", "pov under foot", "low angle sole"].includes(framing)) {
+      issues.push(issue("warning", "camera-conflict", `The “${distance}” crop and “${framing}” framing compete. Choose the part of the subject the camera should show first.`));
+    }
+
     const feet = dna?.feet || {};
     const feetRequested = !!(feet.sole_presentation || feet.framing || (feet.foot_act || []).length);
     const focus = String(dna?.pose?.focus || "").toLowerCase();
