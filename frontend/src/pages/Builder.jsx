@@ -180,6 +180,8 @@ export default function Builder() {
   const [sourceRenderId, setSourceRenderId] = useState(null);
   const [referencePreview, setReferencePreview] = useState("");
   const [referenceUploading, setReferenceUploading] = useState(false);
+  const [variationPrompt, setVariationPrompt] = useState("Same adult subject and same photograph. Preserve facial identity, body proportions, pose, outfit, background, camera angle, and lighting. Make only a slight natural variation in expression and small details.");
+  const [variationDenoise, setVariationDenoise] = useState(0.22);
   const [faceStrength, setFaceStrength] = useState(1.1);
   const [faceIdV2Strength, setFaceIdV2Strength] = useState(1.4);
   const [editInstruction, setEditInstruction] = useState("");
@@ -255,6 +257,8 @@ export default function Builder() {
     setSecondaryLora(draft.secondaryLora || { name: "", strength: 0.8, triggerWords: [] });
     setShowSecondLora(Boolean(draft.showSecondLora || draft.secondaryLora?.name));
     setEditInstruction(draft.editInstruction || "");
+    if (draft.variationPrompt) setVariationPrompt(draft.variationPrompt);
+    if (typeof draft.variationDenoise === "number") setVariationDenoise(draft.variationDenoise);
     setEditMode(draft.editMode || "standard");
     setPoseTarget(draft.poseTarget || "");
     setPoseNotes(draft.poseNotes || "");
@@ -444,6 +448,8 @@ export default function Builder() {
     setShowSecondLora(Boolean(saved.selected_loras?.[1]?.name));
     setLoraOverrides(saved.lora_overrides || {});
     setPromptOverride(rebuildCurrent ? "" : (saved.prompt_positive || ""));
+    if (saved.prompt_positive && !rebuildCurrent) setVariationPrompt(saved.prompt_positive);
+    if (typeof saved.refine_denoise === "number") setVariationDenoise(saved.refine_denoise);
     setNegativePromptOverride(rebuildCurrent ? "" : (saved.prompt_negative || ""));
     if (saved.reference_image) setReferenceImage({ name: saved.reference_image, type: "input", subfolder: "" });
     if (saved.edit_instruction) setEditInstruction(saved.edit_instruction);
@@ -475,6 +481,7 @@ export default function Builder() {
   const isFaceWorkflow = activeWorkflow?.kind === "face";
   const isEditWorkflow = activeWorkflow?.kind === "edit";
   const isEnhanceWorkflow = activeWorkflow?.kind === "enhance";
+  const isVariationWorkflow = activeWorkflow?.kind === "variation";
   const isVideoWorkflow = activeWorkflow?.kind === "video";
   const isTextVideoWorkflow = activeWorkflow?.kind === "text_video";
   const activeCompiler = resolvePromptCompiler({
@@ -772,6 +779,7 @@ export default function Builder() {
       name, subjects, activeSubjectId, locks, collapsed, tags, raunch, promptLanguage,
       promptOverride, negativePromptOverride, workflowId, loraOverrides,
       editInstruction, preserveUnmentioned, repairTargets, repairInstruction,
+      variationPrompt, variationDenoise,
       editMode, poseTarget, poseNotes, poseLocks,
       referenceStudioView, referenceRecipe, referenceStrengths, poseReferenceAnalysis,
       videoInstruction, videoFrames, videoFps, videoWidth, videoHeight,
@@ -783,6 +791,7 @@ export default function Builder() {
     id, name, subjects, activeSubjectId, locks, collapsed, tags, raunch, promptLanguage,
     promptOverride, negativePromptOverride, workflowId, loraOverrides,
     editInstruction, preserveUnmentioned, repairTargets, repairInstruction,
+    variationPrompt, variationDenoise,
     editMode, poseTarget, poseNotes, poseLocks,
     referenceStudioView, referenceRecipe, referenceStrengths, poseReferenceAnalysis,
     videoInstruction, videoFrames, videoFps, videoWidth, videoHeight,
@@ -895,7 +904,7 @@ export default function Builder() {
           : "editorial adult photography, tasteful descriptive vocabulary"
     : "";
   const generatedPositive = [languageLead, acceptsLikenessPrompt && likenessPrompt, positive].filter(Boolean).join(", ");
-  const positiveBeforeLoraTriggers = promptOverride || generatedPositive;
+  const positiveBeforeLoraTriggers = isVariationWorkflow ? variationPrompt : (promptOverride || generatedPositive);
   const activeLoraTriggers = [...new Set([
     ...(selectedLora.name ? selectedLora.triggerWords || [] : []),
     ...(showSecondLora && secondaryLora.name ? secondaryLora.triggerWords || [] : []),
@@ -904,7 +913,7 @@ export default function Builder() {
     (text, trigger) => text.toLowerCase().includes(trigger.toLowerCase()) ? text : `${trigger}, ${text}`,
     positiveBeforeLoraTriggers
   );
-  const finalNegative = negativePromptOverride || negative;
+  const finalNegative = isVariationWorkflow ? (negativePromptOverride || "") : (negativePromptOverride || negative);
   const preflightContext = useMemo(() => ({
     hasReferenceImage: !!referenceImage?.name,
     hasNegativeOverride: !!negativePromptOverride.trim(),
@@ -998,12 +1007,12 @@ export default function Builder() {
       toast.error("Pick a workflow first (Settings → Workflow library)");
       return;
     }
-    if (promptAnalysis.blockers.length) {
+    if (!isVariationWorkflow && promptAnalysis.blockers.length) {
       toast.error(promptAnalysis.blockers[0].message);
       return;
     }
     const incompleteLikeness = subjects.find((subject) => subject?.likeness?.enabled && (!subject.likeness.node_id || !subject.likeness.lora_name));
-    if (incompleteLikeness) {
+    if (!isVariationWorkflow && incompleteLikeness) {
       toast.error(`Finish the Likeness LoRA setup for Subject ${incompleteLikeness.label || "A"}`);
       return;
     }
@@ -1017,6 +1026,10 @@ export default function Builder() {
     }
     if (isEnhanceWorkflow && !referenceImage?.name) {
       toast.error("Upload an image before using Image Repair & Enhance");
+      return;
+    }
+    if (isVariationWorkflow && !referenceImage?.name) {
+      toast.error("Upload a source image before creating variations");
       return;
     }
     if (isEnhanceWorkflow && repairTargets.length === 0 && !repairInstruction.trim()) {
@@ -1047,7 +1060,7 @@ export default function Builder() {
       }
     }
 
-    if (poseAssistEnabled) {
+    if (poseAssistEnabled && !isVariationWorkflow) {
       if (!poseAssistAvailable) {
         toast.error("Pose Assist workflows are not installed. Use Install Pose Assist in the Create step.");
         return;
@@ -1215,7 +1228,7 @@ export default function Builder() {
           .filter((lora) => lora.name)
           .map((lora) => ({ name: lora.name, strength: lora.strength, triggers: lora.triggerWords || [] })),
         parent_render_id: sourceRenderId || undefined,
-        operation: sourceRenderId
+        operation: isVariationWorkflow ? "variation" : sourceRenderId
           ? (isVideoWorkflow ? "animate" : isFaceWorkflow ? "face_reference" : editMode === "new_pose" ? "new_pose" : "edit")
           : "render",
         width: activeRecipeFamily === "image" ? renderSettings.width : undefined,
@@ -1225,7 +1238,8 @@ export default function Builder() {
         cfg: activeRecipeFamily === "image" ? renderSettings.cfg : undefined,
         sampler_name: activeRecipeFamily === "image" ? renderSettings.sampler : undefined,
         seed: activeRecipeFamily === "image" ? uniqueSeed : undefined,
-        reference_image: (isFaceWorkflow || isEditWorkflow || isEnhanceWorkflow || isVideoWorkflow) ? referenceImage?.name : undefined,
+        reference_image: (isFaceWorkflow || isEditWorkflow || isEnhanceWorkflow || isVideoWorkflow || isVariationWorkflow) ? referenceImage?.name : undefined,
+        refine_denoise: isVariationWorkflow ? variationDenoise : undefined,
         face_strength: faceStrength,
         faceid_v2_strength: faceIdV2Strength,
         edit_instruction: isEnhanceWorkflow
@@ -1591,19 +1605,20 @@ export default function Builder() {
   const mobileCreateIssues = useMemo(() => {
     const issues = [];
     if (!activeWorkflow) issues.push("Choose a workflow.");
-    if (poseAssistEnabled && !poseAssistAvailable) issues.push("Install Pose Assist workflows.");
-    if (poseAssistEnabled && poseAssistStatus && !poseAssistStatus.ready && poseAssistAvailable) {
+    if (poseAssistEnabled && !isVariationWorkflow && !poseAssistAvailable) issues.push("Install Pose Assist workflows.");
+    if (poseAssistEnabled && !isVariationWorkflow && poseAssistStatus && !poseAssistStatus.ready && poseAssistAvailable) {
       issues.push(`Pose Assist setup needs: ${(poseAssistStatus.missing || []).join(", ") || "local ComfyUI check"}.`);
     }
-    if (poseAssistEnabled && !poseReferenceImage?.name) issues.push("Add a pose reference for Pose Assist.");
+    if (poseAssistEnabled && !isVariationWorkflow && !poseReferenceImage?.name) issues.push("Add a pose reference for Pose Assist.");
     if (isKrea2 && krea2Status && !krea2Status.ready) {
       issues.push(`Krea 2 setup needs: ${(krea2Status.missing || []).join(", ") || "local ComfyUI check"}.`);
     }
-    promptAnalysis.blockers.slice(0, 2).forEach((blocker) => {
+    (!isVariationWorkflow ? promptAnalysis.blockers : []).slice(0, 2).forEach((blocker) => {
       if (blocker?.message && !issues.includes(blocker.message)) issues.push(blocker.message);
     });
     const incompleteLikeness = subjects.find((subject) => subject?.likeness?.enabled && (!subject.likeness.node_id || !subject.likeness.lora_name));
-    if (incompleteLikeness) issues.push(`Finish Likeness LoRA setup for Subject ${incompleteLikeness.label || "A"}.`);
+    if (incompleteLikeness && !isVariationWorkflow) issues.push(`Finish Likeness LoRA setup for Subject ${incompleteLikeness.label || "A"}.`);
+    if (isVariationWorkflow && !referenceImage?.name) issues.push("Add the source image you want to vary.");
     if ((isFaceWorkflow || isEditWorkflow || isEnhanceWorkflow || isVideoWorkflow) && !referenceImage?.name) {
       issues.push(
         isFaceWorkflow ? "Add a face reference image." :
@@ -1624,7 +1639,7 @@ export default function Builder() {
     return [...new Set(issues)];
   }, [
     activeWorkflow, editMode, effectiveEditInstruction,
-    isEditWorkflow, isEnhanceWorkflow, isFaceWorkflow, isTextVideoWorkflow, isVideoWorkflow,
+    isEditWorkflow, isEnhanceWorkflow, isFaceWorkflow, isTextVideoWorkflow, isVideoWorkflow, isVariationWorkflow,
     poseAssistAvailable, poseAssistEnabled, poseAssistStatus, poseReferenceImage?.name,
     isKrea2, krea2Status,
     promptAnalysis, referenceImage?.name, repairInstruction, repairTargets, subjects, videoInstruction,
@@ -1699,9 +1714,9 @@ export default function Builder() {
           {activeRecipeFamily === "image" && (
             <select
               data-testid="select-render-count"
-              value={poseAssistEnabled ? 1 : renderCount}
+              value={poseAssistEnabled && !isVariationWorkflow ? 1 : renderCount}
               onChange={(e) => setRenderCount(Number(e.target.value))}
-              disabled={dispatching || poseAssistEnabled}
+              disabled={dispatching || (poseAssistEnabled && !isVariationWorkflow)}
               className="hidden md:block bg-elevated border border-hairline rounded-lg px-3 py-2 text-sm text-zinc-100 flex-1 sm:flex-none"
               title="Number of images to queue with unique seeds"
             >
@@ -1712,11 +1727,11 @@ export default function Builder() {
           )}
           <button
             onClick={doDispatch}
-            disabled={dispatching || !workflowId || kreaRenderBlocked || (poseAssistEnabled && (!poseAssistAvailable || !poseReferenceImage?.name || (poseAssistStatus && !poseAssistStatus.ready)))}
+            disabled={dispatching || !workflowId || kreaRenderBlocked || (poseAssistEnabled && !isVariationWorkflow && (!poseAssistAvailable || !poseReferenceImage?.name || (poseAssistStatus && !poseAssistStatus.ready)))}
             data-testid="btn-dispatch-comfyui-render"
             className="hidden md:inline-flex items-center gap-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black text-sm font-semibold px-3 py-2 disabled:opacity-40"
           >
-            {dispatching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />} {poseAssistEnabled ? "Pose Assist" : "Render"}
+            {dispatching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />} {poseAssistEnabled && !isVariationWorkflow ? "Pose Assist" : "Render"}
           </button>
           <MobileOverflow testId="builder-overflow" always label="More">
             <button
@@ -1888,14 +1903,14 @@ export default function Builder() {
             family={activeRecipeFamily}
             qualityTier={qualityTier}
             onQualityTier={applyQualityTier}
-            renderCount={poseAssistEnabled ? 1 : renderCount}
+            renderCount={poseAssistEnabled && !isVariationWorkflow ? 1 : renderCount}
             onRenderCount={setRenderCount}
             summaries={mobileCreateSummaries}
             issues={mobileCreateIssues}
             mode={mobileStudioMode}
             onRequestAdvanced={() => setMobileStudioMode("advanced")}
           />
-          {activeRecipeFamily === "image" && !isKrea2 && (
+          {activeRecipeFamily === "image" && !isKrea2 && !isVariationWorkflow && (
             <div className="md:hidden">
               <PoseAssistPanel
                 enabled={poseAssistEnabled}
@@ -1968,7 +1983,7 @@ export default function Builder() {
               className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-emerald-500 py-3 text-sm font-bold text-black disabled:opacity-40"
               data-testid="btn-mobile-studio-render"
             >
-              {dispatching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />} {poseAssistEnabled ? "Generate" : "Render"}
+              {dispatching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />} {poseAssistEnabled && !isVariationWorkflow ? "Generate" : "Render"}
             </button>
           ) : (
             <button
@@ -1994,7 +2009,7 @@ export default function Builder() {
           </div>
         )}
 
-        {activeRecipeFamily === "image" && !isKrea2 && (
+        {activeRecipeFamily === "image" && !isKrea2 && !isVariationWorkflow && (
           <div className="hidden md:block mt-3 sm:mt-4">
             <PoseAssistPanel
               enabled={poseAssistEnabled}
@@ -2200,7 +2215,7 @@ export default function Builder() {
             recipe={activeRecipeFamily === "image" ? renderSettings : null}
             selectedLora={selectedLora}
             secondaryLora={showSecondLora ? secondaryLora : null}
-            imageCount={activeRecipeFamily === "image" && !poseAssistEnabled ? renderCount : 1}
+            imageCount={activeRecipeFamily === "image" && (!poseAssistEnabled || isVariationWorkflow) ? renderCount : 1}
             optimized={!!promptOverride}
             improving={improvingPrompt}
             onImprove={improveCompiledPrompt}
@@ -2361,6 +2376,33 @@ export default function Builder() {
               <p className="text-[11px] text-zinc-500">
                 This 14B workflow is much heavier than the 5B Image → Video workflow. Test with 41 frames first.
               </p>
+            </div>
+          )}
+          {isVariationWorkflow && (
+            <div className="pane p-4 space-y-4" data-testid="image-variation-panel">
+              <div className="section-label">Image Variations · Chroma</div>
+              <p className="text-xs text-zinc-400">Upload the original image upright. The source sets the composition and aspect ratio. Choose multiple images above to try different seeds.</p>
+              {referencePreview ? (
+                <div className="relative max-w-sm rounded-lg overflow-hidden border border-hairline bg-elevated">
+                  <img src={referencePreview} alt="Source for variations" className="w-full max-h-80 object-contain" />
+                  <button type="button" onClick={clearReference} className="absolute right-2 top-2 rounded-full bg-black/70 p-2 text-white" aria-label="Remove source image"><X className="h-4 w-4" /></button>
+                </div>
+              ) : referenceImage?.name ? (
+                <div className="text-xs text-zinc-300">Source: {referenceImage.name} <button type="button" onClick={clearReference} className="ml-2 underline">Remove</button></div>
+              ) : (
+                <label className="flex min-h-28 cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-cyan-500/40 bg-cyan-500/5 p-4 text-center">
+                  {referenceUploading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Upload className="h-5 w-5" />}
+                  <span className="text-sm">{referenceUploading ? "Uploading…" : "Choose source image"}</span>
+                  <input type="file" accept="image/jpeg,image/png,image/webp" disabled={referenceUploading} onChange={(event) => uploadReference(event.target.files?.[0])} className="hidden" data-testid="input-variation-source" />
+                </label>
+              )}
+              <label className="block space-y-1"><span className="text-xs text-zinc-400">What should vary?</span>
+                <Textarea rows={4} value={variationPrompt} onChange={(event) => setVariationPrompt(event.target.value)} className="bg-elevated border-hairline text-sm" data-testid="textarea-variation-prompt" />
+              </label>
+              <label className="block space-y-2"><span className="text-xs text-zinc-400">Change strength: {variationDenoise.toFixed(2)}</span>
+                <input type="range" min="0.10" max="0.45" step="0.01" value={variationDenoise} onChange={(event) => setVariationDenoise(Number(event.target.value))} className="w-full" data-testid="slider-variation-denoise" />
+                <span className="block text-[11px] text-zinc-500">Start at 0.22. Lower values stay closer to the original; higher values change more details.</span>
+              </label>
             </div>
           )}
           {isEnhanceWorkflow && (
