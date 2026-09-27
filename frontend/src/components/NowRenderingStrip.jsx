@@ -59,7 +59,7 @@ export default function NowRenderingStrip() {
             <Zap className="h-3.5 w-3.5 text-amber-300" />
             <span className="absolute -top-0.5 -right-0.5 h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse" />
           </div>
-          <div className="section-label !text-amber-300">Now rendering · {active.length}</div>
+          <div className="section-label !text-amber-300">Render queue · {active.length}</div>
           <button
             type="button"
             onClick={() => setExpanded((v) => !v)}
@@ -89,13 +89,23 @@ export default function NowRenderingStrip() {
                 className="relative rounded-md overflow-hidden border hairline bg-elevated"
               >
                 <div className="relative aspect-video">
-                  <LivePreview
-                    clientId={r.render_id || r.id}
-                    enabled
-                    variant="card"
-                    testId={`now-rendering-preview-${r.id}`}
-                    onCancel={() => cancelOne(r.id)}
-                  />
+                  {r.status === "running" ? (
+                    <LivePreview
+                      clientId={r.render_id || r.id}
+                      enabled
+                      variant="card"
+                      testId={`now-rendering-preview-${r.id}`}
+                      onCancel={() => cancelOne(r.id)}
+                    />
+                  ) : (
+                    <div className="flex h-full flex-col items-center justify-center gap-2 text-xs text-zinc-300">
+                      <span>{r.status === "queued" ? `Waiting in queue${r.queue_position ? ` · #${r.queue_position}` : ""}` : "Preparing job"}</span>
+                      <button type="button" onClick={() => cancelOne(r.id)}
+                        className="inline-flex items-center gap-1 rounded-md bg-red-500/80 px-2 py-1 text-[10px] text-white">
+                        <Square className="h-3 w-3 fill-current" /> cancel
+                      </button>
+                    </div>
+                  )}
                 </div>
                 <div className="flex items-center gap-2 px-2 py-1.5 text-[10px] font-mono">
                   <span className="text-zinc-300 uppercase tracking-widest truncate flex-1">
