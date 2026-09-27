@@ -6,6 +6,7 @@ import { compatibleInstalledLoras, workflowFamily } from "@/lib/loraRegistry";
 export default function UniversalLoraPicker({ workflow, value, onChange }) {
   const [installed, setInstalled] = useState([]);
   const [query, setQuery] = useState("");
+  const [expanded, setExpanded] = useState(false);
   const family = workflowFamily(workflow || {});
 
   useEffect(() => {
@@ -36,6 +37,7 @@ export default function UniversalLoraPicker({ workflow, value, onChange }) {
         .includes(needle)
     );
   }, [options, query]);
+  const visibleOptions = query.trim() || expanded ? filtered : filtered.slice(0, 8);
 
   useEffect(() => {
     if (!value?.name || !installed.length) return;
@@ -116,7 +118,7 @@ export default function UniversalLoraPicker({ workflow, value, onChange }) {
             <span className="mt-0.5 block text-[9px] text-zinc-600">Base workflow only</span>
           </button>
 
-          {filtered.map((entry) => {
+          {visibleOptions.map((entry) => {
             const active = value?.name === entry.installedName;
             return (
               <button
@@ -143,6 +145,17 @@ export default function UniversalLoraPicker({ workflow, value, onChange }) {
             );
           })}
         </div>
+
+        {!query.trim() && options.length > 8 && (
+          <button
+            type="button"
+            onClick={() => setExpanded((current) => !current)}
+            className="w-full rounded-lg border hairline px-3 py-2 text-[10px] font-mono uppercase tracking-widest text-zinc-400 hover:bg-white/5 hover:text-zinc-200"
+            data-testid="lora-show-more"
+          >
+            {expanded ? "Show fewer LoRAs" : `Show ${options.length - 8} more compatible LoRAs`}
+          </button>
+        )}
 
         {!options.length && (
           <div className="rounded-lg border hairline bg-black/10 px-3 py-3 text-xs text-zinc-500">
