@@ -3,13 +3,13 @@ import { useState, useMemo } from "react";
 import { toast } from "sonner";
 import { analyzePromptQuality, estimatePromptTokens } from "@/lib/promptQuality";
 
-export default function PromptPreview({ positive, negative, dna, workflow, context, optimized, improving, onImprove, onOptimize, onRestore }) {
+export default function PromptPreview({ positive, negative, dna, workflow, context, compilerMeta, recipe, selectedLora, imageCount = 1, optimized, improving, onImprove, onOptimize, onRestore }) {
   const [copied, setCopied] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const tokens = useMemo(() => estimatePromptTokens(positive), [positive]);
   const quality = useMemo(
-    () => analyzePromptQuality({ positive, dna, workflow, context }),
-    [positive, dna, workflow, context]
+    () => analyzePromptQuality({ positive, dna, workflow, context, compilerMeta }),
+    [positive, dna, workflow, context, compilerMeta]
   );
   const lengthIssue = quality.issues.find((item) => item.code === "length");
   const hasBlockingIssue = quality.blockers.length > 0;
@@ -68,6 +68,15 @@ export default function PromptPreview({ positive, negative, dna, workflow, conte
       </button>
       {expanded && (
         <div className="space-y-3" data-testid="prompt-expanded-details">
+          <div className="rounded-lg border hairline bg-elevated p-3 text-[11px] text-zinc-300" data-testid="render-recipe-preview">
+            <div className="font-semibold text-zinc-100">What Render will send</div>
+            <div className="mt-1">{workflow?.name || "Choose a workflow"} · {imageCount} image{imageCount === 1 ? "" : "s"} · {recipe?.width || "workflow"} × {recipe?.height || "workflow"}</div>
+            <div>Steps {recipe?.steps ?? "workflow"} · CFG {recipe?.cfg ?? "workflow"} · sampler {recipe?.sampler || "workflow"}</div>
+            <div>Seed {recipe?.seed !== "" && recipe?.seed != null ? `${recipe.seed} (incremented per image)` : "random, then incremented per image"}</div>
+            <div>Optional LoRA {selectedLora?.name ? `${selectedLora.name} at ${Number(selectedLora.strength ?? 0.8).toFixed(2)}` : "none"}</div>
+            {compilerMeta?.negativeStrategy === "zeroed" && <div className="text-amber-200">This workflow zeroes negative conditioning.</div>}
+            <div className="mt-1 text-zinc-500">Installed model names and graph settings are confirmed by the backend when the job runs.</div>
+          </div>
           <pre className="text-xs font-mono leading-relaxed bg-elevated rounded-lg p-3 border hairline whitespace-pre-wrap break-words text-amber-100/90 max-h-72 overflow-y-auto">
 {positive}
           </pre>
@@ -108,6 +117,9 @@ export default function PromptPreview({ positive, negative, dna, workflow, conte
             ))}
           </ul>
         ) : <div className="text-[10px] text-emerald-300">Ready to render. No obvious conflicts or missing requirements detected.</div>}
+        {quality.issues.some((item) => item.code.includes("conflict") || item.code.includes("overconstrained")) && (
+          <p className="text-[10px] text-amber-200">Review the named character or scene fields above, then reopen this preview. Render uses the choices shown here.</p>
+        )}
       </div>
     </div>
   );

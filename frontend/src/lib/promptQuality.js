@@ -137,6 +137,22 @@ export function analyzePromptQuality({
 
   const generatedImageProfile = ["default", "zimage", "chroma", "krea2", "pony", "flux", "wan_t2v"].includes(profile);
   if (generatedImageProfile) {
+    const explicitLevel = Number(dna?.scenario?.explicit_level || 0);
+    const nudityLevel = Number(dna?.wardrobe?.nudity_level || 0);
+    const outfitPreset = String(dna?.wardrobe?.outfit_preset || "").toLowerCase();
+    const hasSceneAction = Boolean(dna?.scenario?.extra_acts?.trim())
+      || (Array.isArray(dna?.scenario?.acts) && dna.scenario.acts.length > 0);
+    const hasNudityChoice = ["nude", "topless", "bottomless"].includes(outfitPreset);
+    if (explicitLevel > 0 && !hasSceneAction && !hasNudityChoice && nudityLevel < 55) {
+      issues.push(issue("warning", "explicit-intent-missing", "Explicit level sets intensity but does not describe what appears in the image. Choose a Bare outfit or add specific adult scene details in Fine Tune."));
+    }
+    if (profile === "krea2" && nudityLevel >= 55 && outfitPreset && !hasNudityChoice) {
+      issues.push(issue("info", "nudity-overrides-outfit", "The Krea 2 nudity slider takes priority over the selected outfit at this level."));
+    }
+    if (profile === "krea2" && ["portrait", "close-up"].includes(String(dna?.pose?.distance || "").toLowerCase())
+      && (hasSceneAction || hasNudityChoice)) {
+      issues.push(issue("warning", "explicit-framing", "Portrait or close-up framing may crop out the adult scene details. Choose full body or a wider shot if those details must be visible."));
+    }
     const skinTone = String(dna?.skin?.tone || "").toLowerCase();
     const lightSkin = ["fair", "pale", "porcelain", "ivory"];
     const darkSkin = ["tan", "brown", "dark", "ebony", "deep"];
@@ -145,6 +161,9 @@ export function analyzePromptQuality({
     }
 
     if (!dna?.pose?.action) issues.push(issue("warning", "pose", "No main body position is selected, so pose consistency will be left to the model."));
+    if (profile === "krea2" && !dna?.pose?.distance) {
+      issues.push(issue("info", "krea-framing-default", "No framing was selected. Krea 2 will request a full-length image by default. Choose Pose → Framing if you want a portrait or close-up."));
+    }
     if (!dna?.scene?.environment) issues.push(issue("info", "scene", "No environment is selected; the model will invent the setting."));
     if (!dna?.lighting?.source && !dna?.lighting?.style) issues.push(issue("info", "lighting", "No lighting setup is selected; realism may vary between seeds."));
 
@@ -155,6 +174,13 @@ export function analyzePromptQuality({
     });
     if (["nude", "topless", "bottomless"].includes(outfit) && garmentFields.length) {
       issues.push(issue("warning", "wardrobe-conflict", `The “${outfit}” preset conflicts with selected ${garmentFields.join(" and ")} clothing fields.`));
+    }
+
+    const distance = String(dna?.pose?.distance || "").toLowerCase();
+    const framing = String(dna?.feet?.framing || "").toLowerCase();
+    if (["portrait", "waist-up", "close-up", "detail shot"].includes(distance)
+      && ["feet close-up", "sole close-up", "pov under foot", "low angle sole"].includes(framing)) {
+      issues.push(issue("warning", "camera-conflict", `The “${distance}” crop and “${framing}” framing compete. Choose the part of the subject the camera should show first.`));
     }
 
     const feet = dna?.feet || {};

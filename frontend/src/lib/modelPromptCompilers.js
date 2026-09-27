@@ -314,17 +314,26 @@ function kreaSubjectSentence(dna = {}, label = "") {
 function kreaWardrobeSentence(dna = {}, label = "") {
   const w = dna.wardrobe || {};
   const prefix = label ? `Subject ${label} wardrobe: ` : "Wardrobe: ";
+  const nudity = Number(w.nudity_level || 0);
+  const nudityDirection = nudity >= 80 ? "fully nude, no clothing"
+    : nudity >= 55 ? "partially nude with exposed skin"
+      : nudity >= 30 ? "revealing clothing with some skin visible"
+        : nudity > 0 ? "clothed with a modestly suggestive look" : "";
+  // A high nudity setting is an explicit wardrobe choice. Do not repeat a
+  // contradictory outfit or garment from the saved character DNA.
+  const suppressClothing = nudity >= 55;
   return kreaSentence(prefix, [
-    w.outfit_preset,
-    w.top && w.top !== "none" ? w.top : "",
-    w.bottom && w.bottom !== "none" ? w.bottom : "",
-    w.underwear && w.underwear !== "none" ? w.underwear : "",
-    w.footwear,
-    w.accessories,
-    w.material,
-    w.palette,
-    w.fit,
-    w.state,
+    nudityDirection,
+    suppressClothing ? "" : w.outfit_preset,
+    !suppressClothing && w.top && w.top !== "none" ? w.top : "",
+    !suppressClothing && w.bottom && w.bottom !== "none" ? w.bottom : "",
+    !suppressClothing && w.underwear && w.underwear !== "none" ? w.underwear : "",
+    suppressClothing ? "" : w.footwear,
+    suppressClothing ? "" : w.accessories,
+    suppressClothing ? "" : w.material,
+    suppressClothing ? "" : w.palette,
+    suppressClothing ? "" : w.fit,
+    suppressClothing ? "" : w.state,
   ]);
 }
 
@@ -336,7 +345,6 @@ function kreaPoseSentence(dna = {}, label = "") {
   return kreaSentence(prefix, [
     p.action,
     p.body_language && `${p.body_language} body language`,
-    p.distance && `${p.distance} framing`,
     p.angle && `${p.angle} view`,
     p.focus && `${p.focus} composition priority`,
     p.hands?.length ? `hands ${p.hands.join(" and ")}` : "",
@@ -344,6 +352,19 @@ function kreaPoseSentence(dna = {}, label = "") {
     feetPriority ? feet.sole_presentation : "",
     feetPriority && feet.pedicure ? `${feet.pedicure} pedicure` : "",
   ]);
+}
+
+function kreaFramingSentence(dna = {}) {
+  const framing = lower(dna.pose?.distance) || "full body";
+  const directions = {
+    "full body": "Full-length photograph: show the entire subject from the top of the head to the soles of the feet, with space around the body in the frame.",
+    "wide shot": "Wide environmental photograph: show the entire subject from head to feet with the setting clearly visible around them.",
+    portrait: "Head-and-shoulders portrait: frame the face and shoulders; the rest of the body may be outside the image.",
+    "waist-up": "Waist-up photograph: show the head, torso and arms down to the waist.",
+    "close-up": "Close-up photograph: focus on the face and nearby details; the body may be outside the image.",
+    "detail shot": "Tight detail photograph: frame the selected detail rather than the whole body.",
+  };
+  return directions[framing] || directions["full body"];
 }
 
 function kreaAdultDetailSentence(dna = {}, label = "") {
@@ -467,6 +488,7 @@ export function buildKrea2Prompts({
   const [imageLead, ...shotDetails] = sharedShot;
   let positive = [
     ...subjectBlocks,
+    kreaFramingSentence(primary),
     compositionLead,
     ...shotDetails,
     imageLead,
