@@ -38,6 +38,31 @@ export const LORA_REGISTRY = [
   item("krea-futanari-flaccid", "Futanari flaccid penis for Krea2 V1.safetensors", "krea2", "body", "Futanari Flaccid · Krea 2", { defaultStrength:0.65, maxStrength:1.3, verified:true }),
   item("krea-futanari-bulge", "Futanari_bulge_V2_for_Krea2_krea2_3298669_epoch_10.safetensors", "krea2", "body", "Futanari Bulge V2 · Krea 2", { defaultStrength:0.65, maxStrength:1.3, verified:true }),
   item("krea-lngcon", "krea2_lngcon_v01_s1000.safetensors", "krea2", "body", "Krea 2 LNGCON", { defaultStrength:0.7, maxStrength:1.4, verified:true }),
+  item("krea-meaty-pussy", "_Krea2__Meaty_Pussy_epoch_7.safetensors", "krea2", "body", "Meaty Pussy · Krea 2", { defaultStrength:0.65, maxStrength:1.3, verified:true }),
+  item("krea-third-person-selfie", "_Krea2__Taking_selfie_from_3rd-person_view_epoch_6.safetensors", "krea2", "quality", "Third-Person Selfie · Krea 2", { categories:["camera","selfie"], defaultStrength:0.75, maxStrength:1.4, verified:true }),
+  item("krea-bbw", "BBW_v1_s2000_Krea2.safetensors", "krea2", "body", "BBW · Krea 2", { defaultStrength:0.7, maxStrength:1.35, verified:true }),
+  item("krea-brkn-meaty-pussy", "brkn_krea2_meaty_pussy.safetensors", "krea2", "body", "BRKN Meaty Pussy · Krea 2", { defaultStrength:0.65, maxStrength:1.3, verified:true }),
+  item("krea-donghang-uniform", "donghang_uniform_krea2_3279335_epoch_10.safetensors", "krea2", "quality", "Donghang Uniform · Krea 2", { categories:["wardrobe"], defaultStrength:0.75, maxStrength:1.4, verified:true }),
+  item("krea-feet-v3", "krea_feet_lora_v3.safetensors", "krea2", "body", "Feet Detail V3 · Krea 2", { categories:["feet","detail"], defaultStrength:0.6, maxStrength:1.25, verified:true }),
+  item("krea-69", "Krea2_69_v1.0.safetensors", "krea2", "action", "69 · Krea 2", { categories:["pose","play"], defaultStrength:0.7, maxStrength:1.35, verified:true }),
+  item("krea-cumshot", "KREA2_CUMSHOT_v1.safetensors", "krea2", "action", "Cumshot · Krea 2", { categories:["play","fluid"], defaultStrength:0.7, maxStrength:1.35, verified:true }),
+  item("krea-fingering", "Krea2_fingering_V0.1.safetensors", "krea2", "action", "Fingering · Krea 2", { categories:["play"], defaultStrength:0.7, maxStrength:1.35, verified:true }),
+  item("krea-banana-breasts", "krea2_gotd_banana_breasts_v1.safetensors", "krea2", "body", "Banana Breasts · Krea 2", { defaultStrength:0.65, maxStrength:1.3, verified:true }),
+  item("krea-butterfly-pussy", "krea2_gotd_butterfly_pussy_low.safetensors", "krea2", "body", "Butterfly Pussy · Krea 2", { defaultStrength:0.65, maxStrength:1.3, verified:true }),
+  item("krea-cum-on-tongue", "krea2_gotd_cum_on_tongue2.0.safetensors", "krea2", "action", "Cum on Tongue · Krea 2", { categories:["play","fluid"], defaultStrength:0.7, maxStrength:1.35, verified:true }),
+  item("krea-open-panty", "krea2_gotd_openpanty.safetensors", "krea2", "action", "Open Panty · Krea 2", { categories:["wardrobe","pose"], defaultStrength:0.65, maxStrength:1.3, verified:true }),
+  item("krea-pussy-mix", "krea2_gotd_pussymix_2.0.safetensors", "krea2", "body", "Pussy Mix · Krea 2", { defaultStrength:0.65, maxStrength:1.3, verified:true }),
+  item("krea-spread-pussy", "krea2_gotd_spread_pussy.safetensors", "krea2", "action", "Spread Pussy · Krea 2", { categories:["pose","play"], defaultStrength:0.7, maxStrength:1.35, verified:true }),
+  item("krea-squirt-mix", "krea2_gotd_squirtmix_2.0.safetensors", "krea2", "action", "Squirt Mix · Krea 2", { categories:["play","fluid"], defaultStrength:0.7, maxStrength:1.35, verified:true }),
+  item("krea-yummy-anus", "krea2_gotd_yummy_anus.safetensors", "krea2", "body", "Yummy Anus · Krea 2", { defaultStrength:0.65, maxStrength:1.3, verified:true }),
+  item("krea-trans", "Krea2trans_V1.safetensors", "krea2", "body", "Trans · Krea 2", { defaultStrength:0.7, maxStrength:1.35, verified:true }),
+  item("krea-pawg", "KREA2PAWG.safetensors", "krea2", "body", "PAWG · Krea 2", { defaultStrength:0.7, maxStrength:1.35, verified:true }),
+  item("krea-turbo-svdquant", "krea2TurboSvdquant2_krea2TurboSvdquant_3101751.safetensors", "krea2", "quality", "Turbo SVD Quant · Krea 2", { categories:["utility"], defaultStrength:0.8, maxStrength:1.2, verified:true }),
+  item("krea-nature-huge-breasts", "nature_huge_breasts_krea2_3267676_epoch_10.safetensors", "krea2", "body", "Natural Huge Breasts · Krea 2", { defaultStrength:0.65, maxStrength:1.3, verified:true }),
+  item("krea-pearshape", "pearshape-body-hms-krea2-V1.safetensors", "krea2", "body", "Pear-Shape Body · Krea 2", { defaultStrength:0.7, maxStrength:1.35, verified:true }),
+  item("krea-pornmaster-breasts", "PornMaster_Breasts_Slider_Krea2_V1.safetensors", "krea2", "body", "PornMaster Breast Slider · Krea 2", { defaultStrength:0.65, maxStrength:1.3, verified:true }),
+  item("krea-pussy-hm", "PussyHM_krea2_epoch10.safetensors", "krea2", "body", "Pussy HM · Krea 2", { defaultStrength:0.65, maxStrength:1.3, verified:true }),
+  item("krea-seamless-pantyhose", "seamless_pantyhose_v2_krea2.safetensors", "krea2", "quality", "Seamless Pantyhose · Krea 2", { categories:["wardrobe"], defaultStrength:0.75, maxStrength:1.4, verified:true }),
   item("faceid-sd15", "ip-adapter-faceid-plusv2_sd15_lora.safetensors", "sd15", "identity", "IP-Adapter FaceID Plus v2", { defaultStrength:1, verified:true }),
 
   // Pony's realism LoRA is part of the bundled base workflow. The other local
@@ -397,9 +422,21 @@ export function compatibleInstalledLoras(workflow = {}, installed = []) {
   // subfolder. Show it only once, preferring the family-subfolder copy.
   const deduped = new Map();
   results.forEach((entry) => {
-    const basename = normalized(entry.installedName).split("/").pop();
+    const normalizedPath = normalized(entry.installedName);
+    const basename = normalizedPath
+      .split("/").pop()
+      .replace(/\s*\(\d+\)(?=\.safetensors$)/, "");
     const existing = deduped.get(basename);
-    if (!existing || normalized(entry.installedName).includes(`/${family}/`) || normalized(entry.installedName).startsWith(`${family}/`)) {
+    const entryRegistered = !String(entry.id || "").startsWith("local:");
+    const existingRegistered = existing && !String(existing.id || "").startsWith("local:");
+    const entryInFamilyFolder = normalizedPath.includes(`/${family}/`) || normalizedPath.startsWith(`${family}/`);
+    const existingPath = existing ? normalized(existing.installedName) : "";
+    const existingInFamilyFolder = existingPath.includes(`/${family}/`) || existingPath.startsWith(`${family}/`);
+    if (
+      !existing ||
+      (!existingRegistered && entryRegistered) ||
+      (entryRegistered === existingRegistered && entryInFamilyFolder && !existingInFamilyFolder)
+    ) {
       deduped.set(basename, entry);
     }
   });
