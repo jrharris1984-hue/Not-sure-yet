@@ -52,7 +52,7 @@ export const SIMPLE_FIELD_KEYS = {
   pose: ["action", "angle", "distance", "body_language"],
   scene: ["environment", "indoor_outdoor", "era"],
   lighting: ["source", "style", "mood"],
-  scenario: ["cast_size", "roleplay", "explicit_level", "kink_level"],
+  scenario: ["cast_size", "roleplay", "extra_acts", "explicit_level", "kink_level"],
 };
 
 export function mobileStudioStepForSection(sectionKey) {
