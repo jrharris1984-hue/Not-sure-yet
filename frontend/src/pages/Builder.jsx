@@ -861,11 +861,13 @@ export default function Builder() {
   const likenessPrompt = useMemo(() => likenessTriggerText(subjects), [subjects]);
   const acceptsLikenessPrompt = !["qwen_edit", "wan_i2v"].includes(activeCompiler);
   const languageLead = acceptsLikenessPrompt
-    ? promptLanguage === "direct"
-      ? "clear literal adult scene description, direct unambiguous vocabulary"
-      : promptLanguage === "explicit"
-        ? "explicit adult scene, graphic unambiguous vocabulary"
-        : "editorial adult photography, tasteful descriptive vocabulary"
+    ? activeCompiler === "krea2"
+      ? ""
+      : promptLanguage === "direct"
+        ? "clear literal adult scene description, direct unambiguous vocabulary"
+        : promptLanguage === "explicit"
+          ? "explicit adult scene, graphic unambiguous vocabulary"
+          : "editorial adult photography, tasteful descriptive vocabulary"
     : "";
   const generatedPositive = [languageLead, acceptsLikenessPrompt && likenessPrompt, positive].filter(Boolean).join(", ");
   const positiveBeforeLoraTriggers = promptOverride || generatedPositive;

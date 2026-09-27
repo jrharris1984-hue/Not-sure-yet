@@ -1,6 +1,6 @@
 import { buildPrompts, buildMultiVenicePrompts, buildChromaPrompts, buildMultiChromaPrompts } from "@/lib/dna";
 import { buildPonyPrompts, buildMultiPonyPrompts } from "@/lib/ponyPrompts";
-import { buildPromptPriorityPlan, emptyPromptPriorityPlan, prioritizePrompt } from "@/lib/promptPriority";
+import { buildPromptPriorityPlan, emptyPromptPriorityPlan, prioritizePrompt, requirementPresent } from "@/lib/promptPriority";
 
 const ZIMAGE_NEGATIVE = [
   "low quality, blurry, out of focus, jpeg artifacts, oversharpened",
@@ -241,6 +241,269 @@ export function resolveZImageComposition(dna = {}, options = {}) {
   return { dna: resolved, composition: lead, adjustments, anatomyMode: mode };
 }
 
+
+const kreaValue = (value) => {
+  if (Array.isArray(value)) return value.filter(Boolean).join(", ");
+  const text = clean(value);
+  return ["", "none", "default", "off"].includes(text.toLowerCase()) ? "" : text;
+};
+
+const kreaList = (...values) => values
+  .flatMap((value) => Array.isArray(value) ? value : [value])
+  .map(kreaValue)
+  .filter(Boolean);
+
+const kreaSentence = (lead, parts) => {
+  const body = kreaList(parts).join(", ");
+  return body ? `${lead}${body}.` : "";
+};
+
+function kreaGenderLabel(value) {
+  const gender = lower(value);
+  if (gender === "male") return "man";
+  if (gender === "non-binary") return "non-binary adult";
+  if (gender === "androgynous") return "androgynous adult";
+  return "woman";
+}
+
+function kreaSubjectSentence(dna = {}, label = "") {
+  const id = dna.identity || {};
+  const ph = dna.physique || {};
+  const face = dna.face || {};
+  const hair = dna.hair || {};
+  const skin = dna.skin || {};
+  const age = Number(id.age || 0);
+  const person = kreaGenderLabel(id.gender);
+  const head = age ? `${age}-year-old adult ${person}` : `adult ${person}`;
+  const body = kreaList(
+    id.ethnicity,
+    ph.height && ph.height !== "average" ? `${ph.height} height` : "",
+    ph.body_type && `${ph.body_type} body type`,
+    Number(ph.muscularity || 0) > 60 ? (Number(ph.muscularity) > 85 ? "highly muscular build" : "athletic toned build") : "",
+    Number(ph.curves || 0) > 60 ? (Number(ph.curves) > 85 ? "pronounced natural curves" : "curved silhouette") : "",
+    ph.bust && `${ph.bust} bust`,
+    ph.bust_shape && `${ph.bust_shape} breast shape`,
+    ph.waist && `${ph.waist} waist`,
+    ph.hips && `${ph.hips} hips`,
+    ph.butt && `${ph.butt} buttocks`,
+    ph.thighs && `${ph.thighs} thighs`,
+    ph.legs && ph.legs !== "average" ? `${ph.legs} legs` : "",
+    ph.proportions
+  );
+  const faceHair = kreaList(
+    face.eye_shape && `${face.eye_shape} eyes`,
+    face.eye_color && `${face.eye_color} eye color`,
+    face.jawline && `${face.jawline} jawline`,
+    face.nose && `${face.nose} nose`,
+    face.lips && `${face.lips} lips`,
+    face.expression && `${face.expression} expression`,
+    hair.color && `${hair.color} hair`,
+    hair.length && `${hair.length} hair length`,
+    hair.style && `${hair.style} hairstyle`,
+    hair.texture && `${hair.texture} hair texture`,
+    hair.bangs && hair.bangs !== "none" ? `${hair.bangs} bangs` : "",
+    skin.tone && `${skin.tone} skin`,
+    skin.texture && `${skin.texture} skin texture`,
+    skin.freckles && skin.freckles !== "none" ? `${skin.freckles} freckles` : "",
+    skin.tattoos
+  );
+  const prefix = label ? `Subject ${label}: ` : "";
+  return `${prefix}${[head, ...body, ...faceHair].filter(Boolean).join(", ")}.`;
+}
+
+function kreaWardrobeSentence(dna = {}, label = "") {
+  const w = dna.wardrobe || {};
+  const prefix = label ? `Subject ${label} wardrobe: ` : "Wardrobe: ";
+  return kreaSentence(prefix, [
+    w.outfit_preset,
+    w.top && w.top !== "none" ? w.top : "",
+    w.bottom && w.bottom !== "none" ? w.bottom : "",
+    w.underwear && w.underwear !== "none" ? w.underwear : "",
+    w.footwear,
+    w.accessories,
+    w.material,
+    w.palette,
+    w.fit,
+    w.state,
+  ]);
+}
+
+function kreaPoseSentence(dna = {}, label = "") {
+  const p = dna.pose || {};
+  const feet = dna.feet || {};
+  const prefix = label ? `Subject ${label} pose and framing: ` : "Pose and framing: ";
+  const feetPriority = lower(p.focus) === "feet" || kreaValue(feet.framing);
+  return kreaSentence(prefix, [
+    p.action,
+    p.body_language && `${p.body_language} body language`,
+    p.distance && `${p.distance} framing`,
+    p.angle && `${p.angle} view`,
+    p.focus && `${p.focus} composition priority`,
+    p.hands?.length ? `hands ${p.hands.join(" and ")}` : "",
+    feetPriority ? feet.framing : "",
+    feetPriority ? feet.sole_presentation : "",
+    feetPriority && feet.pedicure ? `${feet.pedicure} pedicure` : "",
+  ]);
+}
+
+function kreaAdultDetailSentence(dna = {}, label = "") {
+  const intimate = dna.intimate || {};
+  const scenario = dna.scenario || {};
+  const kink = dna.kink || {};
+  const ws = dna.watersports || {};
+  const prefix = label ? `Subject ${label} adult scene details: ` : "Adult scene details: ";
+  return kreaSentence(prefix, [
+    scenario.roleplay,
+    scenario.acts,
+    scenario.extra_acts,
+    intimate.pubic_hair,
+    intimate.pussy,
+    intimate.clit,
+    intimate.asshole,
+    intimate.nipples,
+    intimate.areolas,
+    intimate.piercings && intimate.piercings !== "none" ? intimate.piercings : "",
+    intimate.cum_state,
+    intimate.saliva,
+    intimate.squirt && intimate.squirt !== "none" ? intimate.squirt : "",
+    intimate.lactation && intimate.lactation !== "none" ? intimate.lactation : "",
+    intimate.sweat && intimate.sweat !== "none" ? intimate.sweat : "",
+    intimate.lube && intimate.lube !== "none" ? intimate.lube : "",
+    intimate.tears && intimate.tears !== "none" ? intimate.tears : "",
+    kink.restraint,
+    kink.gag,
+    kink.marks,
+    kink.sensation,
+    kink.humiliation,
+    kink.orgasm_control,
+    kink.power_dynamic && kink.power_dynamic !== "none" ? kink.power_dynamic : "",
+    kink.group_kink,
+    ws.source && ws.source !== "none" ? `${ws.source} watersports source` : "",
+    ws.direction,
+    ws.stream,
+    ws.container,
+    ws.wetness,
+    ws.desperation && ws.desperation !== "none" ? ws.desperation : "",
+    ws.aftermath,
+  ]);
+}
+
+function kreaSharedShotSentences(dna = {}) {
+  const scene = dna.scene || {};
+  const lighting = dna.lighting || {};
+  const camera = dna.camera || {};
+  const style = dna.style || {};
+  const render = lower(style.render);
+  const imageLead = render.includes("analog") || render.includes("35mm")
+    ? "Photorealistic analog editorial photograph."
+    : render === "cinematic"
+      ? "Photorealistic cinematic still with editorial realism."
+      : render === "documentary"
+        ? "Photorealistic documentary-style photograph."
+        : "Photorealistic editorial photograph.";
+
+  const sceneSentence = kreaSentence("The setting is ", [
+    scene.environment,
+    scene.background,
+    scene.indoor_outdoor,
+    scene.era,
+    scene.props,
+  ]);
+  const lightSentence = kreaSentence("Lighting uses ", [
+    lighting.source,
+    lighting.direction && `${lighting.direction} direction`,
+    lighting.color_temp && `${lighting.color_temp} color temperature`,
+    lighting.style,
+    lighting.mood,
+  ]);
+  const cameraSentence = kreaSentence("The camera uses ", [
+    camera.lens && `${camera.lens} lens`,
+    camera.aperture,
+    camera.angle && `${camera.angle} angle`,
+    camera.aspect_ratio && `${camera.aspect_ratio} aspect ratio`,
+  ]);
+  const styleSentence = kreaSentence("The overall finish is ", [
+    style.artistic_tone,
+    style.film_grain && style.film_grain !== "none" ? `${style.film_grain} film grain` : "",
+    style.extra,
+  ]);
+  return [imageLead, sceneSentence, lightSentence, cameraSentence, styleSentence].filter(Boolean);
+}
+
+export function buildKrea2Prompts({
+  dna = {},
+  subjects = [],
+  isMulti = false,
+  priorityPlan = emptyPromptPriorityPlan(),
+} = {}) {
+  const activeSubjects = isMulti && Array.isArray(subjects) && subjects.length
+    ? subjects
+    : [{ label: "", dna }];
+  const primary = activeSubjects[0]?.dna || dna || {};
+  const subjectCount = activeSubjects.length;
+  const anatomyMode = lower(primary.style?.anatomy_mode) || "natural";
+  const compositionLead = subjectCount > 1
+    ? `Compose exactly ${subjectCount} adult subjects as separate complete people. Keep each face, torso, pelvis, arms and legs visually distinct with no shared limbs or merged bodies.`
+    : "Compose exactly one complete adult subject with coherent body geometry and natural camera perspective.";
+
+  const subjectBlocks = activeSubjects.flatMap((subject, index) => {
+    const subjectDna = subject?.dna || {};
+    const label = subjectCount > 1 ? (subject?.label || String.fromCharCode(65 + index)) : "";
+    return [
+      kreaSubjectSentence(subjectDna, label),
+      kreaPoseSentence(subjectDna, label),
+      kreaWardrobeSentence(subjectDna, label),
+      kreaAdultDetailSentence(subjectDna, label),
+    ].filter(Boolean);
+  });
+
+  const realismTail = anatomyMode === "extreme"
+    ? "Keep the requested stylization while preserving one connected body per person, readable joints, coherent hands and feet, realistic skin detail and consistent perspective."
+    : anatomyMode === "enhanced"
+      ? "Preserve enhanced proportions with coherent anatomy, connected limbs, realistic hands and feet, natural skin detail and consistent perspective."
+      : "Use believable adult proportions, coherent anatomy, realistic hands and feet, natural skin texture, crisp facial detail and consistent perspective.";
+
+  const sharedShot = kreaSharedShotSentences(primary);
+  const [imageLead, ...shotDetails] = sharedShot;
+  let positive = [
+    ...subjectBlocks,
+    compositionLead,
+    ...shotDetails,
+    imageLead,
+    realismTail,
+  ].filter(Boolean).join(" ");
+
+  // Krea 2's Qwen3-VL encoder responds well to concise natural language. Keep
+  // must-match settings literal without turning the whole prompt into tag soup.
+  const missingMust = (priorityPlan.mustMatch || [])
+    .filter((item) => !requirementPresent(positive, item))
+    .map((item) => item.phrase);
+  if (missingMust.length) {
+    positive += ` Required details: ${missingMust.join(", ")}.`;
+  }
+  positive = clean(positive);
+
+  const allDroppable = [...(priorityPlan.important || []), ...(priorityPlan.detail || [])];
+  const droppedClauses = allDroppable
+    .filter((item) => !requirementPresent(positive, item))
+    .map((item) => ({
+      key: item.key,
+      label: item.label,
+      value: item.value,
+      priority: item.priority,
+    }));
+
+  return {
+    positive,
+    negative: "",
+    droppedClauses,
+    promptBudget: 300,
+    promptWords: positive.split(/\s+/).filter(Boolean).length,
+    omittedClauseCount: droppedClauses.length,
+    profile: "krea2-photo-directed-v1",
+  };
+}
+
 export function resolvePromptCompiler({ promptStyle = "", workflowKind = "", workflowName = "" } = {}) {
   const style = clean(promptStyle).toLowerCase();
   const kind = clean(workflowKind).toLowerCase();
@@ -425,17 +688,14 @@ export function compileModelPrompts({
     "chroma"
   );
   if (compiler === "krea2") {
-    const prompts = basePrompts({ dna: primaryGuard.dna, subjects: guardedSubjects, isMulti, raunch });
-    const prioritized = prioritizePrompt(
-      prompts.positive,
+    const prompts = buildKrea2Prompts({
+      dna: primaryGuard.dna,
+      subjects: guardedSubjects,
+      isMulti,
       priorityPlan,
-      "krea2",
-      { extraLead: [primaryGuard.composition], preserveOrder: isMulti }
-    );
+    });
     return {
       ...prompts,
-      ...prioritized,
-      negative: "",
       priorityPlan,
       guardAdjustments: primaryGuard.adjustments,
       negativeStrategy: "zeroed",
