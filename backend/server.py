@@ -1352,6 +1352,11 @@ async def _perform_dispatch(body: "DispatchBody") -> Dict[str, Any]:
     # Krea 2 workflows use model-only style LoRAs and zeroed negative conditioning.
     # Repair local filenames from ComfyUI object_info so shared/local model folders both work.
     if wf_template and wf_template.prompt_style == "krea2":
+        # Existing database templates may retain stale prompt-node IDs from a
+        # prior import. Resolve against the graph we actually send to ComfyUI.
+        detected_nodes = _detect_prompt_nodes(workflow)
+        pos_id = detected_nodes.get("positive_node_id", "")
+        neg_id = detected_nodes.get("negative_node_id", "")
         wants_private = wf_template.kind == "krea_style" or body.krea_style == "private_magazine"
         krea_missing = await _patch_krea2_model_choices(
             workflow,
@@ -1709,6 +1714,16 @@ async def _perform_dispatch(body: "DispatchBody") -> Dict[str, Any]:
         if key:
             inputs[key] = negative_text
             mapped["negative"] = True
+    if wf_template and wf_template.prompt_style == "krea2" and not mapped["positive"]:
+        r.status = "failed"
+        r.error = "Krea 2 prompt could not be connected to its text encoder. Re-seed the Krea workflow in Settings."
+        doc = r.model_dump()
+        doc["mapping"] = mapped
+        doc["workflow_id"] = wf_template.id
+        doc["workflow_name"] = wf_template.name
+        await db.renders.insert_one(doc)
+        doc.pop("_id", None)
+        return doc
 
     # Apply LoRA overrides. A likeness slot may replace the LoRA filename as
     # well as its weights; ordinary LoRA controls continue to send weights only.
