@@ -24,6 +24,11 @@ const IMAGE_RECIPES = {
     balanced: { width: 1024, height: 1024, steps: 8, cfg: 1.0, batchSize: 1, sampler: "euler", note: "Official Krea 2 Turbo baseline" },
     quality: { width: 1024, height: 1536, steps: 8, cfg: 1.0, batchSize: 1, sampler: "euler", note: "Larger portrait canvas at the Turbo recipe" },
   },
+  flux2_klein: {
+    draft: { width: 768, height: 768, steps: 4, cfg: 1.0, batchSize: 1, sampler: "euler", note: "Fast FLUX.2 Klein composition test" },
+    balanced: { width: 1024, height: 1024, steps: 4, cfg: 1.0, batchSize: 1, sampler: "euler", note: "FLUX.2 Klein 4B distilled baseline" },
+    quality: { width: 1024, height: 1536, steps: 4, cfg: 1.0, batchSize: 1, sampler: "euler", note: "Larger canvas · higher VRAM use" },
+  },
   pony: {
     draft: { width: 768, height: 1024, steps: 18, cfg: 6.5, batchSize: 1, sampler: "euler_ancestral", note: "Fast Pony composition test" },
     balanced: { width: 832, height: 1216, steps: 25, cfg: 7.0, batchSize: 1, sampler: "euler_ancestral", note: "Recommended Pony render" },

@@ -112,7 +112,7 @@ class WorkflowTemplate(BaseModel):
     id: str = Field(default_factory=new_id)
     name: str = "Untitled workflow"
     kind: str = "image"  # image | variation | video | edit | face | pony | pose | refine | krea_style
-    prompt_style: str = "venice"  # venice | sdxl | zimage | chroma | krea2 | flux | pony | qwen_edit | wan_i2v | wan_t2v
+    prompt_style: str = "venice"  # venice | sdxl | zimage | chroma | krea2 | flux2_klein | flux | pony | qwen_edit | wan_i2v | wan_t2v
     json_str: str = ""
     positive_node_id: str = ""
     negative_node_id: str = ""
@@ -220,6 +220,7 @@ SEED_WORKFLOWS = [
     {"file": "chroma_refine.json", "name": "Pose Assist · Chroma Polish", "kind": "refine", "prompt_style": "chroma"},
     {"file": "chroma_variation.json", "name": "Chroma1-HD · Image Variations", "kind": "variation", "prompt_style": "chroma"},
     {"file": "krea2_turbo.json", "name": "Krea 2 Turbo", "kind": "image", "prompt_style": "krea2"},
+    {"file": "flux2_klein_4b.json", "name": "FLUX.2 Klein 4B FP8", "kind": "image", "prompt_style": "flux2_klein"},
     {"file": "krea2_private_magazine.json", "name": "Krea 2 Turbo · Private Magazine", "kind": "krea_style", "prompt_style": "krea2"},
 ]
 
@@ -1748,6 +1749,10 @@ async def _perform_dispatch(body: "DispatchBody") -> Dict[str, Any]:
         "cfg": body.cfg,
         "sampler_name": body.sampler_name,
     }
+    if wf_template and wf_template.prompt_style == "flux2_klein":
+        # The distilled 4B template uses four steps and zeroed negative conditioning.
+        generation_overrides.update(steps=4, cfg=1.0, sampler_name="euler")
+        body.steps, body.cfg, body.sampler_name = 4, 1.0, "euler"
     if wf_template and wf_template.prompt_style == "krea2":
         # Turbo's distilled sampling recipe must not inherit Chroma settings
         # from an older saved builder draft or an exact Gallery recreation.

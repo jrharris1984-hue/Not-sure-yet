@@ -18,6 +18,7 @@ describe("model-specific prompt compilers", () => {
     expect(resolvePromptCompiler({ promptStyle: "pony" })).toBe("pony");
     expect(resolvePromptCompiler({ promptStyle: "chroma" })).toBe("chroma");
     expect(resolvePromptCompiler({ promptStyle: "krea2" })).toBe("krea2");
+    expect(resolvePromptCompiler({ promptStyle: "flux2_klein" })).toBe("flux2_klein");
     expect(resolvePromptCompiler({ promptStyle: "sdxl" })).toBe("sdxl");
     expect(resolvePromptCompiler({ promptStyle: "sdxl_dmd2" })).toBe("sdxl_dmd2");
     expect(resolvePromptCompiler({ workflowName: "SDXL · Juggernaut XL v9" })).toBe("sdxl");
@@ -51,6 +52,10 @@ describe("model-specific prompt compilers", () => {
   });
 
   it("keeps a reclining fantasy-scale Krea subject inside a full-body frame", () => {
+    const flux2 = compileModelPrompts({ promptStyle: "flux2_klein", dna: DEFAULT_DNA });
+    expect(flux2.positive).toBeTruthy();
+    expect(flux2.negativeStrategy).toBe("zeroed");
+    expect(flux2.negative).toBe("");
     const dna = JSON.parse(JSON.stringify(DEFAULT_DNA));
     dna.physique = { ...dna.physique, implant_volume: 3000 };
     dna.pose = { ...dna.pose, action: "lying down", distance: "full body" };

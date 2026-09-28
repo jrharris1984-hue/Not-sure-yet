@@ -56,6 +56,8 @@ describe("model-aware render recipes", () => {
   });
 
   test("falls back to standard image settings", () => {
+    const flux2 = getRenderRecipe("flux2_klein", "balanced");
+    expect([flux2.width, flux2.height, flux2.steps, flux2.cfg, flux2.sampler]).toEqual([1024, 1024, 4, 1, "euler"]);
     const recipe = getRenderRecipe("unknown-model", "balanced");
     expect(recipe.family).toBe("image");
     expect(recipe.width).toBeGreaterThan(0);

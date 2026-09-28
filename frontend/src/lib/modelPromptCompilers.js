@@ -594,6 +594,7 @@ export function resolvePromptCompiler({ promptStyle = "", workflowKind = "", wor
   if (style === "sdxl" || name.includes("juggernaut xl")) return "sdxl";
   if (style === "chroma" || name.includes("chroma")) return "chroma";
   if (style === "krea2" || name.includes("krea 2") || name.includes("krea2")) return "krea2";
+  if (style === "flux2_klein" || name.includes("flux.2 klein")) return "flux2_klein";
   if (style === "zimage" || name.includes("z-image") || name.includes("z image")) return "zimage";
   return "standard";
 }
@@ -753,6 +754,13 @@ export function compileModelPrompts({
   if (compiler === "sdxl" || compiler === "sdxl_dmd2") {
     const prompts = basePrompts({ dna: primaryGuard.dna, subjects: guardedSubjects, isMulti, raunch });
     return withPriorityGuard({ ...prompts, negative: "" }, "sdxl");
+  }
+  if (compiler === "flux2_klein") {
+    const prompts = basePrompts({ dna: primaryGuard.dna, subjects: guardedSubjects, isMulti, raunch });
+    return {
+      ...withPriorityGuard({ ...prompts, negative: "" }, "flux"),
+      negativeStrategy: "zeroed",
+    };
   }
   if (compiler === "chroma" && isMulti) {
     const prompts = buildMultiChromaPrompts(guardedSubjects, { raunch });
