@@ -19,6 +19,7 @@ describe("model-specific prompt compilers", () => {
     expect(resolvePromptCompiler({ promptStyle: "chroma" })).toBe("chroma");
     expect(resolvePromptCompiler({ promptStyle: "krea2" })).toBe("krea2");
     expect(resolvePromptCompiler({ promptStyle: "sdxl" })).toBe("sdxl");
+    expect(resolvePromptCompiler({ promptStyle: "sdxl_dmd2" })).toBe("sdxl_dmd2");
     expect(resolvePromptCompiler({ workflowName: "SDXL · Juggernaut XL v9" })).toBe("sdxl");
     expect(resolvePromptCompiler({ workflowName: "Krea 2 Turbo" })).toBe("krea2");
   });
@@ -31,6 +32,7 @@ describe("model-specific prompt compilers", () => {
     expect(result.positive).toContain("44-year-old adult");
     expect(result.positive).toMatch(/oversized|extremely/);
     expect(result.negativeStrategy).toBe("text");
+    expect(result.negative).toBe("");
     expect(result.promptBudget).toBe(150);
   });
 

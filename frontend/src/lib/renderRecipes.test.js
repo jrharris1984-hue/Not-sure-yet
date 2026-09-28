@@ -9,6 +9,11 @@ describe("model-aware render recipes", () => {
     expect(draft.width * draft.height).toBeLessThan(balanced.width * balanced.height);
     expect(quality.width * quality.height).toBeGreaterThan(balanced.width * balanced.height);
   });
+
+  test("uses a separate low-step DMD2 sampler recipe", () => {
+    const recipe = getRenderRecipe("sdxl_dmd2", "balanced");
+    expect([recipe.steps, recipe.cfg, recipe.sampler]).toEqual([4, 1.2, "lcm"]);
+  });
   test("uses conservative Z-Image Turbo settings", () => {
     const draft = getRenderRecipe("zimage", "draft");
     const quality = getRenderRecipe("zimage", "quality");

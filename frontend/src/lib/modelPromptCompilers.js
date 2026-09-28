@@ -582,6 +582,7 @@ export function resolvePromptCompiler({ promptStyle = "", workflowKind = "", wor
   if (kind === "video" || style === "wan_i2v") return "wan_i2v";
   if (kind === "text_video" || style === "wan_t2v") return "wan_t2v";
   if (style === "pony" || kind === "pony" || name.includes("pony")) return "pony";
+  if (style === "sdxl_dmd2") return "sdxl_dmd2";
   if (style === "sdxl" || name.includes("juggernaut xl")) return "sdxl";
   if (style === "chroma" || name.includes("chroma")) return "chroma";
   if (style === "krea2" || name.includes("krea 2") || name.includes("krea2")) return "krea2";
@@ -741,10 +742,10 @@ export function compileModelPrompts({
     isMulti ? buildMultiPonyPrompts(guardedSubjects, { raunch }) : buildPonyPrompts(primaryGuard.dna, { raunch }),
     "pony"
   );
-  if (compiler === "sdxl") return withPriorityGuard(
-    basePrompts({ dna: primaryGuard.dna, subjects: guardedSubjects, isMulti, raunch }),
-    "sdxl"
-  );
+  if (compiler === "sdxl" || compiler === "sdxl_dmd2") {
+    const prompts = basePrompts({ dna: primaryGuard.dna, subjects: guardedSubjects, isMulti, raunch });
+    return withPriorityGuard({ ...prompts, negative: "" }, "sdxl");
+  }
   if (compiler === "chroma" && isMulti) {
     const prompts = buildMultiChromaPrompts(guardedSubjects, { raunch });
     return {

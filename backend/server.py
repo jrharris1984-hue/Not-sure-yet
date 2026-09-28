@@ -204,6 +204,10 @@ def _detect_prompt_nodes(wf: Dict[str, Any]) -> Dict[str, str]:
 
 SEED_WORKFLOWS = [
     {"file": "sdxl.json", "name": "SDXL · Juggernaut XL v9", "kind": "image", "prompt_style": "sdxl"},
+    {"file": "sdxl_stable_yogi.json", "name": "SDXL · Realism by Stable Yogi XL V4", "kind": "image", "prompt_style": "sdxl"},
+    {"file": "sdxl_realporn.json", "name": "SDXL · RealPornSDXXXL v1", "kind": "image", "prompt_style": "sdxl"},
+    {"file": "sdxl_xxxray_dmd2.json", "name": "SDXL · xxxRay DMD2", "kind": "image", "prompt_style": "sdxl_dmd2"},
+    {"file": "pony_ultra_realistic.json", "name": "Pony · Ultra Realistic by Stable Yogi v2", "kind": "pony", "prompt_style": "pony"},
     {"file": "chroma.json", "name": "Chroma1-HD · Golden T2I", "kind": "image", "prompt_style": "chroma"},
     {"file": "zimage.json", "name": "Z-image Turbo · NSFW", "kind": "image", "prompt_style": "zimage"},
     {"file": "qwen.json", "name": "Qwen Image Edit 2511", "kind": "edit", "prompt_style": "qwen_edit"},

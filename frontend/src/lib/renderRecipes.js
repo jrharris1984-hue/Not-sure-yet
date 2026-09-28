@@ -1,4 +1,9 @@
 const IMAGE_RECIPES = {
+  sdxl_dmd2: {
+    draft: { width: 768, height: 1024, steps: 4, cfg: 1.2, batchSize: 1, sampler: "lcm", note: "Fast DMD2 test · normal scheduler" },
+    balanced: { width: 832, height: 1216, steps: 4, cfg: 1.2, batchSize: 1, sampler: "lcm", note: "DMD2 portrait · 4 steps, low CFG" },
+    quality: { width: 1024, height: 1024, steps: 6, cfg: 1.2, batchSize: 1, sampler: "lcm", note: "Larger DMD2 canvas · higher VRAM use" },
+  },
   sdxl: {
     draft: { width: 768, height: 1024, steps: 20, cfg: 5.0, batchSize: 1, sampler: "dpmpp_2m", note: "Quick SDXL portrait test · Karras scheduler" },
     balanced: { width: 832, height: 1216, steps: 35, cfg: 5.0, batchSize: 1, sampler: "dpmpp_2m", note: "Juggernaut XL v9 portrait baseline · Karras scheduler" },
