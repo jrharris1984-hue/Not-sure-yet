@@ -17,7 +17,7 @@ export const MOBILE_STUDIO_STEPS = [
     shortLabel: "Character",
     hint: "Body, face, hair & wardrobe",
     sections: ["physique", "face", "hair", "skin", "intimate", "feet", "wardrobe"],
-    simpleSections: ["physique", "face", "hair", "wardrobe"],
+    simpleSections: ["physique", "face", "hair", "feet", "wardrobe"],
   },
   {
     id: "scene",
@@ -50,6 +50,7 @@ export const SIMPLE_FIELD_KEYS = {
   physique: ["height", "body_type", "curves", "bust", "bust_scale", "implant_volume", "butt", "butt_scale", "glute_shape", "hips", "waist"],
   face: ["eye_shape", "eye_color", "jawline", "lips", "expression"],
   hair: ["style", "length", "color"],
+  feet: ["sole_presentation", "toes", "arch", "pedicure", "foot_size", "foot_state", "hosiery", "foot_act", "framing"],
   wardrobe: ["nudity_level", "outfit_preset", "dress_style", "skirt_style", "garment_color", "footwear", "hosiery_type", "hosiery_color", "hosiery_pattern", "heel_type", "heel_color", "heel_height", "nail_color", "glasses_style"],
   pose: ["action", "angle", "distance", "body_language"],
   scene: ["environment", "indoor_outdoor", "era"],
