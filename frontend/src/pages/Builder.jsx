@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { endpoints } from "@/lib/api";
 import {
   SECTIONS, DEFAULT_DNA,
-  randomizeDna, randomizeSection, randomizeWetDream, resetSection,
+  randomizeDna, randomizeSection, resetSection,
   phaseOfSection,
   MAX_SUBJECTS, makeSubject, subjectsFromCharacter, subjectLabel,
   expectedSubjectCount, seedSubjectFromPairing,
@@ -19,7 +19,6 @@ import DnaSection from "@/components/DnaSection";
 import PromptPreview from "@/components/PromptPreview";
 import AiAssistBar from "@/components/AiAssistBar";
 import PresetsMenu from "@/components/PresetsMenu";
-import KinkPresetsMenu from "@/components/KinkPresetsMenu";
 import LikenessLoraPanel, { likenessOverrides, likenessTriggerText } from "@/components/LikenessLoraPanel";
 import LivePreview from "@/components/LivePreview";
 import TagInput from "@/components/TagInput";
@@ -1496,10 +1495,6 @@ export default function Builder() {
     setSubjects((cur) => cur.map((s) => ({ ...s, dna: randomizeDna(s.dna, nonPlayLocks, s.field_locks) })));
     toast.success(`Randomized ${subjects.length} subject${subjects.length > 1 ? "s" : ""} · Play preserved`);
   };
-  const wetDreamActive = () => {
-    updateActiveSubject((s) => ({ dna: randomizeWetDream(s.dna, locks) }));
-    toast.success(`Wet dream · Subject ${activeSubject.label} 🎲`);
-  };
 
   const resetCharacter = () => {
     const confirmed = window.confirm(
@@ -1790,14 +1785,6 @@ export default function Builder() {
             >
               <Shuffle className="h-4 w-4" /> {isMulti ? "Randomize all" : "Randomize"}
             </button>
-            <button
-              onClick={wetDreamActive}
-              data-testid="btn-randomize-wet-dream"
-              title={isMulti ? `Wet dream on Subject ${activeSubject.label}` : "Spin feet + kink + watersports + fluids + explicit/kink dials"}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-fuchsia-500/50 bg-gradient-to-r from-fuchsia-500/15 to-amber-500/15 text-fuchsia-100 hover:from-fuchsia-500/25 hover:to-amber-500/25 text-sm font-semibold px-3 py-2"
-            >
-              <Sparkles className="h-4 w-4" /> Wet dream{isMulti ? ` · ${activeSubject.label}` : ""}
-            </button>
             <PresetsMenu
               currentDna={activeDna}
               sectionLocks={locks}
@@ -1834,14 +1821,6 @@ export default function Builder() {
                   setActiveDna(next);
                   toast.success(`Preset applied to Subject ${activeSubject.label}`);
                 }
-              }}
-            />
-            <KinkPresetsMenu
-              currentDna={activeDna}
-              onApply={(next) => {
-                const merged = { ...next };
-                Object.keys(locks).forEach((k) => { if (locks[k]) merged[k] = activeDna[k]; });
-                setActiveDna(merged);
               }}
             />
             <div
