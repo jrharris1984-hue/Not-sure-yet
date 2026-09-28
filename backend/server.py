@@ -2927,7 +2927,8 @@ async def get_shoot(sid: str):
     if render_ids:
         renders = await db.renders.find({"id": {"$in": render_ids}}, {"_id": 0}).to_list(len(render_ids))
     by_id = {r["id"]: r for r in renders}
-    doc["renders"] = [by_id.get(rid) for rid in render_ids]
+    # Keep one render slot for every frame, including pending frames without a render ID.
+    doc["renders"] = [by_id.get(frame.get("render_id")) for frame in doc.get("frames", [])]
     return doc
 
 
