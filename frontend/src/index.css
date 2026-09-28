@@ -168,3 +168,10 @@ code, pre, .font-mono {
 .text-rose    { color: #ff48ae; }
 .text-teal    { color: #00e5ff; }
 .text-fuchsia { color: #bd77ff; }
+
+/* Quick Create shows one editable stage at a time on desktop. The full
+   builder remains mounted and is revealed by the Full Studio switch. */
+@media (min-width: 768px) {
+  .quick-create-mode .quick-hide { display: none !important; }
+  .quick-create-mode #studio-sections { grid-column: 1 / -1; max-width: 900px; width: 100%; margin-inline: auto; }
+}

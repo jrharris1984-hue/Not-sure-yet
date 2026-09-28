@@ -117,6 +117,8 @@ export default function Builder() {
       return "simple";
     }
   });
+  const [desktopQuickMode, setDesktopQuickMode] = useState(true);
+  const [quickReview, setQuickReview] = useState(false);
   const activeMobileStudioIndex = Math.max(0, MOBILE_STUDIO_STEPS.findIndex((step) => step.id === mobileStudioStep));
 
   useEffect(() => {
@@ -1668,7 +1670,7 @@ export default function Builder() {
     && (!poseAssistEnabled || poseAssistStage === "done");
 
   return (
-    <div className="mx-auto max-w-[1600px] px-2.5 sm:px-6 py-3 sm:py-6 space-y-3 sm:space-y-4">
+    <div className={`mx-auto max-w-[1600px] px-2.5 sm:px-6 py-3 sm:py-6 space-y-3 sm:space-y-4 ${desktopQuickMode ? "quick-create-mode" : ""}`}>
       {galleryRecipeMode === "current" && (
         <div className="pane border border-cyan-500/30 bg-cyan-500/[0.06] px-3 py-2.5 text-xs text-cyan-100" data-testid="current-compiler-rebuild-banner">
           <div className="flex items-start gap-2">
@@ -1685,13 +1687,17 @@ export default function Builder() {
       {/* Header */}
       <div className="hidden md:flex items-center gap-2 rounded-xl border border-cyan-400/20 bg-black/40 p-2 text-xs" aria-label="Builder shortcuts">
         <span className="px-2 font-mono uppercase tracking-wider text-cyan-300">Studio</span>
-        {[["studio-model", "01 · Model"], ["studio-sections", "02 · Character"], ["studio-render", "03 · Render"]].map(([target, label]) => (
+        {!desktopQuickMode && [["studio-model", "01 · Model"], ["studio-sections", "02 · Character"], ["studio-render", "03 · Render"]].map(([target, label]) => (
           <button key={target} type="button" onClick={() => document.getElementById(target)?.scrollIntoView({ behavior: "smooth", block: "start" })}
             className="rounded-lg border hairline px-3 py-2 text-zinc-300 transition-colors hover:border-amber-400/50 hover:bg-amber-500/10 hover:text-amber-200">
             {label}
           </button>
         ))}
-        <span className="ml-auto hidden xl:inline pr-2 text-zinc-500">Choose a section · Set options · Render</span>
+        <span className="ml-auto hidden xl:inline pr-2 text-zinc-500">{desktopQuickMode ? "Start with the essentials. Full Studio keeps every option." : "All controls are available below."}</span>
+        <button type="button" onClick={() => { setDesktopQuickMode((value) => !value); setQuickReview(false); }}
+          data-testid="btn-desktop-studio-mode" className="ml-auto rounded-lg border border-cyan-400/40 px-3 py-2 font-semibold text-cyan-200 hover:bg-cyan-400/10">
+          {desktopQuickMode ? "Full Studio · all options" : "Quick Create"}
+        </button>
       </div>
       <div id="studio-model" className="pane scroll-mt-24 p-2.5 sm:p-4 flex flex-col gap-2.5 sm:gap-3">
         <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
@@ -1904,6 +1910,30 @@ export default function Builder() {
         </div>
       </div>
 
+      {desktopQuickMode && (
+        <section className="hidden md:block pane border-cyan-400/25 p-4" data-testid="desktop-quick-create">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <div className="section-label">Quick Create</div>
+              <p className="mt-1 text-sm text-zinc-400">Set the essentials, review the prompt, then render. Your other controls stay in Full Studio.</p>
+            </div>
+            <span className="rounded-full border border-amber-400/40 bg-amber-500/10 px-3 py-1 text-xs text-amber-200">{activeWorkflow?.name || "Choose a model"}</span>
+          </div>
+          <div className="mt-4 grid grid-cols-3 xl:grid-cols-6 gap-2">
+            {[["identity", "1 · Person"], ["physique", "2 · Body"], ["wardrobe", "3 · Outfit"], ["pose", "4 · Pose"], ["scene", "5 · Setting"]].map(([key, label]) => (
+              <button key={key} type="button" onClick={() => { setQuickReview(false); goSection(key); }}
+                className={`rounded-xl border px-3 py-3 text-left text-xs font-semibold transition-colors ${activeSection === key && !quickReview ? "border-amber-400/70 bg-amber-500/10 text-amber-100" : "hairline bg-elevated text-zinc-300 hover:border-cyan-400/50"}`}>
+                {label}
+              </button>
+            ))}
+            <button type="button" onClick={() => setQuickReview(true)}
+              className={`rounded-xl border px-3 py-3 text-left text-xs font-semibold ${quickReview ? "border-cyan-400/70 bg-cyan-500/10 text-cyan-100" : "hairline bg-elevated text-zinc-300 hover:border-cyan-400/50"}`}>
+              6 · Review
+            </button>
+          </div>
+        </section>
+      )}
+
       <MobileStudioFlow
         currentStep={mobileStudioStep}
         activeSection={activeSection}
@@ -2022,7 +2052,7 @@ export default function Builder() {
         </div>
       </div>
 
-      <div className={mobileStudioStep === "create" ? "block" : "hidden md:block"}>
+      <div className={`quick-hide ${mobileStudioStep === "create" ? "block" : "hidden md:block"}`}>
         {activeWorkflow && (activeCompiler !== "qwen_edit" || isEnhanceWorkflow) && (
           <div className="hidden md:block">
             <RenderRecipeSelector
@@ -2090,7 +2120,7 @@ export default function Builder() {
       </div>
 
       {/* Subject controls stay available, but stay out of Simple Create review. */}
-      <div className={mobileStudioStep === "create" && mobileStudioMode === "simple" ? "hidden md:block" : "block"}>
+      <div className={`quick-hide ${mobileStudioStep === "create" && mobileStudioMode === "simple" ? "hidden md:block" : "block"}`}>
         <SubjectSwitcher
           subjects={subjects}
           activeId={activeSubjectId}
@@ -2104,7 +2134,7 @@ export default function Builder() {
         />
       </div>
 
-      <div className={mobileStudioStep === "create" && mobileStudioMode === "advanced" ? "space-y-2" : "hidden md:block md:space-y-2"}>
+      <div className={`quick-hide ${mobileStudioStep === "create" && mobileStudioMode === "advanced" ? "space-y-2" : "hidden md:block md:space-y-2"}`}>
         <div className="pane px-3 py-2 flex items-center gap-2" data-testid="glance-header">
           <button
             type="button"
@@ -2121,7 +2151,7 @@ export default function Builder() {
 
       <div className="grid grid-cols-1 lg:grid-cols-[260px_1fr_380px] gap-4">
         {/* Left rail - grouped-by-phase section nav (uses active subject's dna for filled dots) */}
-        <aside className="hidden lg:block h-fit sticky top-20">
+        <aside className="quick-hide hidden lg:block h-fit sticky top-20">
           <GroupedSectionRail
             dna={activeDna}
             locks={locks}
@@ -2147,6 +2177,35 @@ export default function Builder() {
 
         {/* Center - single active section */}
         <div id="studio-sections" className={`${mobileStudioStep === "create" ? "hidden md:block" : "block"} scroll-mt-24 space-y-4`}>
+          {desktopQuickMode && quickReview ? (
+            <div className="hidden md:block pane border-cyan-400/30 p-5 space-y-4" data-testid="desktop-quick-review">
+              <div className="section-label">Ready to render</div>
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <div><span className="text-zinc-500">Model</span><div className="font-semibold">{activeWorkflow?.name || "Select a model"}</div></div>
+                <div><span className="text-zinc-500">Output</span><div className="font-semibold">{qualityTier} · {activeRecipeFamily === "image" ? `${renderCount} image${renderCount === 1 ? "" : "s"}` : activeRecipeFamily}</div></div>
+              </div>
+              <div className="rounded-xl border hairline bg-black/40 p-3 text-xs leading-relaxed text-zinc-300 max-h-44 overflow-y-auto">{finalPositive || "Choose the subject and scene to build a prompt."}</div>
+              {mobileCreateIssues.length > 0 && <div className="text-xs text-rose-300">{mobileCreateIssues.join(" ")}</div>}
+              <button type="button" onClick={doDispatch} disabled={dispatching || !workflowId || mobileCreateIssues.length > 0}
+                className="rounded-lg bg-amber-500 px-5 py-3 text-sm font-bold text-black disabled:opacity-40">
+                {dispatching ? "Rendering…" : "Render images"}
+              </button>
+              {activeRender && (
+                <div className="border-t hairline pt-4" data-testid="quick-create-result">
+                  <div className="section-label">Latest render · {activeRender.status}</div>
+                  {activeRender.error && <p className="mt-2 text-xs text-rose-300">{activeRender.error}</p>}
+                  {activeRender.output_files?.[0] ? (
+                    <Link to={`/gallery?render=${encodeURIComponent(activeRender.render_id || activeRender.id)}&returnTo=${encodeURIComponent(location.pathname)}`}
+                      className="mt-3 inline-block max-w-sm overflow-hidden rounded-xl border border-cyan-400/30">
+                      <img src={activeRender.output_files[0]} alt="Latest image · open in Gallery" className="max-h-80 w-full object-contain" />
+                      <span className="block p-2 text-center text-xs font-semibold text-cyan-200">Open full size in Gallery</span>
+                    </Link>
+                  ) : <p className="mt-2 text-xs text-zinc-400">Your image will appear here when it finishes.</p>}
+                </div>
+              )}
+            </div>
+          ) : null}
+          <div className={desktopQuickMode && quickReview ? "md:hidden" : "block"}>
           <div className="hidden md:flex items-center justify-between text-xs font-mono text-zinc-500">
             <span>Step {activeIdx + 1} of {SECTIONS.length}{isMulti && ` · Subject ${activeSubject.label}`}</span>
             <span className={`uppercase tracking-widest section-label phase-${phaseOfSection(activeSection)}`}>{SECTIONS[activeIdx].title}</span>
@@ -2205,10 +2264,11 @@ export default function Builder() {
               </button>
             )}
           </div>
+          </div>
         </div>
 
         {/* Right - preview + AI + render */}
-        <aside id="studio-render" className={`${mobileStudioStep === "create" ? "block" : "hidden md:block"} scroll-mt-24 space-y-4 lg:sticky lg:top-20 lg:h-fit`}>
+        <aside id="studio-render" className={`quick-hide ${mobileStudioStep === "create" ? "block" : "hidden md:block"} scroll-mt-24 space-y-4 lg:sticky lg:top-20 lg:h-fit`}>
           <div className={mobileStudioMode === "advanced" ? "block" : "hidden md:block"}>
             <SmartSetupPanel workflows={selectableWorkflows} activeWorkflow={activeWorkflow} dna={activeDna}
               subjectCount={subjects.length} hasReference={!!referenceImage?.name} onApply={applySmartSetup} />
