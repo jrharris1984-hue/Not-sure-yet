@@ -441,8 +441,11 @@ function _ponySubjectBlock(dna = {}, opts = {}) {
     w(exp("intimate", "pussy"), 1.2),
     im.clit && im.clit !== "hidden" && exp("intimate", "clit"),
     im.asshole && im.asshole !== "hidden" && exp("intimate", "asshole"),
-    w(exp("intimate", "nipples"), 1.1),
-    exp("intimate", "areolas"),
+    !(im.nipple_size || im.nipple_shape) && w(exp("intimate", "nipples"), 1.1),
+    !(im.areola_size || im.areola_shape || im.areola_color || im.areola_detail) && exp("intimate", "areolas"),
+    exp("intimate", "nipple_size"), exp("intimate", "nipple_shape"),
+    exp("intimate", "areola_size"), exp("intimate", "areola_shape"),
+    exp("intimate", "areola_color"), exp("intimate", "areola_detail"),
     im.body_hair && im.body_hair !== "hairless" && exp("intimate", "body_hair"),
     im.piercings && im.piercings !== "none" && exp("intimate", "piercings"),
   ]);
