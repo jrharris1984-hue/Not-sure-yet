@@ -1,9 +1,9 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Camera, ChevronLeft, RefreshCw, Trash2, Loader2 } from "lucide-react";
-import { endpoints } from "@/lib/api";
+import { Camera, ChevronLeft, ChevronRight, X, ExternalLink, RefreshCw, Trash2, Loader2 } from "lucide-react";
+import { API_BASE, endpoints } from "@/lib/api";
 import LivePreview from "@/components/LivePreview";
 
 const STATUS_COLOR = {
@@ -16,9 +16,27 @@ const STATUS_COLOR = {
   cancelled: "text-zinc-400",
 };
 
+function imageUrl(url) {
+  if (!url) return "";
+  try {
+    const parsed = new URL(url, window.location.origin);
+    const filename = parsed.searchParams.get("filename");
+    if (filename && parsed.pathname.endsWith("/view")) {
+      const query = new URLSearchParams({
+        filename,
+        subfolder: parsed.searchParams.get("subfolder") || "",
+        type: parsed.searchParams.get("type") || "output",
+      });
+      return `${API_BASE}/comfyui/media?${query.toString()}`;
+    }
+  } catch { /* Use the original URL. */ }
+  return url;
+}
+
 export default function ShootDetail() {
   const { shootId } = useParams();
   const qc = useQueryClient();
+  const [activeFrame, setActiveFrame] = useState(null);
 
   const { data: shoot, isLoading } = useQuery({
     queryKey: ["shoot", shootId],
@@ -64,6 +82,29 @@ export default function ShootDetail() {
   const del = useMutation({
     mutationFn: () => endpoints.deleteShoot(shootId),
     onSuccess: () => { toast.success("Shoot deleted"); window.history.back(); },
+  });
+
+  const images = (shoot?.frames || []).map((frame, index) => ({
+    index,
+    url: imageUrl(shoot?.renders?.[index]?.output_variants?.enhanced?.[0] || shoot?.renders?.[index]?.output_files?.[0]),
+    pose: frame.pose_action,
+  })).filter((frame) => frame.url);
+  const activePosition = images.findIndex((frame) => frame.index === activeFrame);
+  const selectedImage = images[activePosition];
+  const moveFrame = (direction) => {
+    if (activePosition < 0 || !images.length) return;
+    setActiveFrame(images[(activePosition + direction + images.length) % images.length].index);
+  };
+
+  useEffect(() => {
+    if (activeFrame === null) return undefined;
+    const onKeyDown = (event) => {
+      if (event.key === "Escape") setActiveFrame(null);
+      if (event.key === "ArrowLeft") moveFrame(-1);
+      if (event.key === "ArrowRight") moveFrame(1);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
   });
 
   if (isLoading) return <div className="p-8 text-zinc-400">Loading shoot…</div>;
@@ -123,7 +164,7 @@ export default function ShootDetail() {
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
         {shoot.frames.map((f, i) => {
           const r = shoot.renders?.[i];
-          const outputUrl = r?.output_files?.[0];
+          const outputUrl = imageUrl(r?.output_variants?.enhanced?.[0] || r?.output_files?.[0]);
           const status = f.status || r?.status || "pending";
           return (
             <div
@@ -133,7 +174,10 @@ export default function ShootDetail() {
             >
               <div className="relative aspect-square rounded-md border hairline bg-elevated overflow-hidden">
                 {outputUrl ? (
-                  <img src={outputUrl} alt={`frame ${i + 1}`} className="w-full h-full object-cover" />
+                  <button type="button" onClick={() => setActiveFrame(i)} aria-label={`View frame ${i + 1} full size`}
+                    data-testid={`btn-open-shoot-frame-${i}`} className="w-full h-full cursor-zoom-in">
+                    <img src={outputUrl} alt={`frame ${i + 1}`} className="w-full h-full object-cover" />
+                  </button>
                 ) : status === "running" && r?.id ? (
                   <LivePreview
                     clientId={r.id}
@@ -186,6 +230,33 @@ export default function ShootDetail() {
           );
         })}
       </div>
+      {selectedImage && (
+        <div className="fixed inset-0 z-50 bg-black/95 flex items-center justify-center p-3 sm:p-6"
+          role="dialog" aria-modal="true" aria-label={`Photo shoot frame ${selectedImage.index + 1}`}
+          data-testid="shoot-gallery-lightbox" onClick={() => setActiveFrame(null)}>
+          <div className="relative w-full h-full flex flex-col items-center justify-center gap-3" onClick={(event) => event.stopPropagation()}>
+            <div className="absolute top-0 right-0 z-10 flex items-center gap-2">
+              <a href={selectedImage.url} target="_blank" rel="noopener noreferrer" aria-label="Open full-size image in a new tab"
+                className="rounded-full border border-white/20 bg-black/70 p-2.5 text-white"><ExternalLink className="h-5 w-5" /></a>
+              <button type="button" onClick={() => setActiveFrame(null)} aria-label="Close photo shoot gallery"
+                className="rounded-full border border-white/20 bg-black/70 p-2.5 text-white"><X className="h-5 w-5" /></button>
+            </div>
+            {images.length > 1 && (
+              <button type="button" onClick={() => moveFrame(-1)} aria-label="Previous photo shoot image"
+                className="absolute left-0 top-1/2 z-10 -translate-y-1/2 rounded-full bg-black/70 p-2 text-white"
+                data-testid="btn-shoot-gallery-previous"><ChevronLeft className="h-6 w-6" /></button>
+            )}
+            <img src={selectedImage.url} alt={`Photo shoot frame ${selectedImage.index + 1}`}
+              className="max-w-full max-h-[82dvh] object-contain" data-testid="shoot-gallery-image" />
+            {images.length > 1 && (
+              <button type="button" onClick={() => moveFrame(1)} aria-label="Next photo shoot image"
+                className="absolute right-0 top-1/2 z-10 -translate-y-1/2 rounded-full bg-black/70 p-2 text-white"
+                data-testid="btn-shoot-gallery-next"><ChevronRight className="h-6 w-6" /></button>
+            )}
+            <div className="text-sm text-zinc-200 font-mono">{activePosition + 1} / {images.length}{selectedImage.pose ? ` · ${selectedImage.pose}` : ""}</div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
