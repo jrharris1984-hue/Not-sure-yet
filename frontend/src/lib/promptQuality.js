@@ -12,6 +12,7 @@ const PROFILE_LIMITS = {
   wan_i2v: { label: "WAN Image → Video", warningTokens: 120, hardTokens: 190 },
   wan_t2v: { label: "WAN Text → Video", warningTokens: 360, hardTokens: 480 },
   flux: { label: "Flux", warningTokens: 420, hardTokens: 512 },
+  flux2_klein: { label: "FLUX.2 Klein", warningTokens: 420, hardTokens: 512 },
   default: { label: "Selected model", warningTokens: 360, hardTokens: 512 },
 };
 
@@ -32,6 +33,7 @@ export function promptProfile(workflow = {}) {
   if (haystack.includes("pony")) return "pony";
   if (style === "sdxl" || style === "sdxl_dmd2" || haystack.includes("juggernaut xl")) return "sdxl";
   if (haystack.includes("z-image") || haystack.includes("z image") || haystack.includes("z_image") || style === "zimage") return "zimage";
+  if (style === "flux2_klein" || haystack.includes("flux.2 klein")) return "flux2_klein";
   if (haystack.includes("flux")) return "flux";
   return "default";
 }
@@ -141,7 +143,7 @@ export function analyzePromptQuality({
     issues.push(issue("error", "adult-age", "The subject age must be 21 or older.", { blocking: true }));
   }
 
-  const generatedImageProfile = ["default", "sdxl", "zimage", "chroma", "krea2", "pony", "flux", "wan_t2v"].includes(profile);
+  const generatedImageProfile = ["default", "sdxl", "zimage", "chroma", "krea2", "pony", "flux", "flux2_klein", "wan_t2v"].includes(profile);
   if (generatedImageProfile) {
     const explicitLevel = Number(dna?.scenario?.explicit_level || 0);
     const nudityLevel = Number(dna?.wardrobe?.nudity_level || 0);

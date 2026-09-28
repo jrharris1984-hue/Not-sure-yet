@@ -141,6 +141,7 @@ export const LORA_REGISTRY = [
 
 export function workflowFamily(workflow = {}) {
   const text = [workflow.name, workflow.kind, workflow.prompt_style].filter(Boolean).join(" ").toLowerCase();
+  if (/flux[. _-]?2.*klein|flux2_klein/.test(text)) return "flux2_klein";
   if (/z[- ]?image/.test(text)) return "zimage";
   if (/krea\s*2|krea2/.test(text)) return "krea2";
   if (/chroma/.test(text)) return "chroma";
@@ -370,6 +371,7 @@ export function loraStackHealth({ workflow = {}, overrides = {}, installed = [] 
 
 function inferredFamilyForInstalled(name = "") {
   const value = normalized(name);
+  if (/(^|\/)flux2_klein\//.test(value) || /flux[. _-]?2.*klein/.test(value)) return "flux2_klein";
   if (/(^|\/)krea2\//.test(value) || /krea\s*2|krea2/.test(value)) return "krea2";
   if (/(^|\/)z-?image\//.test(value) || /z[-_ ]?image|\bzit\b/.test(value)) return "zimage";
   if (/(^|\/)pony\//.test(value) || /pony/.test(value)) return "pony";
