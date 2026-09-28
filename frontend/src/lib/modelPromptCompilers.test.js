@@ -18,7 +18,20 @@ describe("model-specific prompt compilers", () => {
     expect(resolvePromptCompiler({ promptStyle: "pony" })).toBe("pony");
     expect(resolvePromptCompiler({ promptStyle: "chroma" })).toBe("chroma");
     expect(resolvePromptCompiler({ promptStyle: "krea2" })).toBe("krea2");
+    expect(resolvePromptCompiler({ promptStyle: "sdxl" })).toBe("sdxl");
+    expect(resolvePromptCompiler({ workflowName: "SDXL · Juggernaut XL v9" })).toBe("sdxl");
     expect(resolvePromptCompiler({ workflowName: "Krea 2 Turbo" })).toBe("krea2");
+  });
+
+  it("keeps adult identity and selected body controls in a bounded SDXL prompt", () => {
+    const dna = JSON.parse(JSON.stringify(DEFAULT_DNA));
+    dna.identity = { ...dna.identity, gender: "female", age: 44 };
+    dna.physique = { ...dna.physique, implant_volume: 5000, butt_scale: 100 };
+    const result = compileModelPrompts({ promptStyle: "sdxl", dna });
+    expect(result.positive).toContain("44-year-old adult");
+    expect(result.positive).toMatch(/oversized|extremely/);
+    expect(result.negativeStrategy).toBe("text");
+    expect(result.promptBudget).toBe(150);
   });
 
   it("compiles Krea 2 as a guarded still prompt with zeroed negative conditioning", () => {

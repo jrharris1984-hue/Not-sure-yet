@@ -1,6 +1,14 @@
 import { getRenderRecipe, recipeFamily, recipeSummary } from "./renderRecipes";
 
 describe("model-aware render recipes", () => {
+  test("uses the Juggernaut XL portrait baseline and scales by tier", () => {
+    const draft = getRenderRecipe("sdxl", "draft");
+    const balanced = getRenderRecipe("sdxl", "balanced");
+    const quality = getRenderRecipe("sdxl", "quality");
+    expect([balanced.width, balanced.height, balanced.steps, balanced.cfg, balanced.sampler]).toEqual([832, 1216, 35, 5, "dpmpp_2m"]);
+    expect(draft.width * draft.height).toBeLessThan(balanced.width * balanced.height);
+    expect(quality.width * quality.height).toBeGreaterThan(balanced.width * balanced.height);
+  });
   test("uses conservative Z-Image Turbo settings", () => {
     const draft = getRenderRecipe("zimage", "draft");
     const quality = getRenderRecipe("zimage", "quality");

@@ -112,7 +112,7 @@ class WorkflowTemplate(BaseModel):
     id: str = Field(default_factory=new_id)
     name: str = "Untitled workflow"
     kind: str = "image"  # image | variation | video | edit | face | pony | pose | refine | krea_style
-    prompt_style: str = "venice"  # venice | zimage | chroma | krea2 | flux | pony | qwen_edit | wan_i2v | wan_t2v
+    prompt_style: str = "venice"  # venice | sdxl | zimage | chroma | krea2 | flux | pony | qwen_edit | wan_i2v | wan_t2v
     json_str: str = ""
     positive_node_id: str = ""
     negative_node_id: str = ""
@@ -203,6 +203,7 @@ def _detect_prompt_nodes(wf: Dict[str, Any]) -> Dict[str, str]:
 
 
 SEED_WORKFLOWS = [
+    {"file": "sdxl.json", "name": "SDXL · Juggernaut XL v9", "kind": "image", "prompt_style": "sdxl"},
     {"file": "chroma.json", "name": "Chroma1-HD · Golden T2I", "kind": "image", "prompt_style": "chroma"},
     {"file": "zimage.json", "name": "Z-image Turbo · NSFW", "kind": "image", "prompt_style": "zimage"},
     {"file": "qwen.json", "name": "Qwen Image Edit 2511", "kind": "edit", "prompt_style": "qwen_edit"},

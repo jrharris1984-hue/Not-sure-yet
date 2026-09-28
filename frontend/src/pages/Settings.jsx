@@ -274,7 +274,7 @@ export default function Settings() {
             Top of the list is the fallback used when no default is set. Use the up/down arrows to reorder.
           </p>
           {workflows.length === 0 && (
-            <div className="text-sm text-zinc-500 text-center py-6">No workflows yet. Tap "Re-seed bundled 5" or "Add workflow".</div>
+            <div className="text-sm text-zinc-500 text-center py-6">No workflows yet. Tap "Refresh bundled workflows" or "Add workflow".</div>
           )}
         </div>
       </section>

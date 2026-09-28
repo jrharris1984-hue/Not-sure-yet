@@ -2,6 +2,7 @@ import { expandPrompt } from "@/lib/promptMap";
 import { implantVisualPrompt } from "@/lib/implantVisualScale";
 
 export const PROMPT_BUDGET_WORDS = {
+  sdxl: 150,
   zimage: 260,
   chroma: 330,
   krea2: 300,
