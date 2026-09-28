@@ -30,7 +30,7 @@ export function promptProfile(workflow = {}) {
   if (haystack.includes("chroma")) return "chroma";
   if (style === "krea2" || haystack.includes("krea 2") || haystack.includes("krea2")) return "krea2";
   if (haystack.includes("pony")) return "pony";
-  if (style === "sdxl" || haystack.includes("juggernaut xl")) return "sdxl";
+  if (style === "sdxl" || style === "sdxl_dmd2" || haystack.includes("juggernaut xl")) return "sdxl";
   if (haystack.includes("z-image") || haystack.includes("z image") || haystack.includes("z_image") || style === "zimage") return "zimage";
   if (haystack.includes("flux")) return "flux";
   return "default";

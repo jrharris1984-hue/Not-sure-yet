@@ -1692,9 +1692,16 @@ export default function Builder() {
             className={`${mobileStudioStep === "start" || mobileStudioStep === "create" ? "block" : "hidden md:block"} bg-elevated border border-hairline rounded-lg px-3 py-2 text-sm text-zinc-100 w-full sm:w-auto sm:min-w-[200px]`}
           >
             {workflows.length === 0 && <option value="">No workflows — open Settings</option>}
-            {selectableWorkflows.map((w) => (
+            {selectableWorkflows.filter((w) => !["sdxl", "sdxl_dmd2"].includes(w.prompt_style) && !w.name.startsWith("Pony · Ultra Realistic")).map((w) => (
               <option key={w.id} value={w.id}>{w.kind.toUpperCase()} · {w.name}</option>
             ))}
+            {selectableWorkflows.some((w) => ["sdxl", "sdxl_dmd2"].includes(w.prompt_style) || w.name.startsWith("Pony · Ultra Realistic")) && (
+              <optgroup label="SDXL and Pony checkpoints">
+                {selectableWorkflows.filter((w) => ["sdxl", "sdxl_dmd2"].includes(w.prompt_style) || w.name.startsWith("Pony · Ultra Realistic")).map((w) => (
+                  <option key={w.id} value={w.id}>{w.name}</option>
+                ))}
+              </optgroup>
+            )}
             {internalWorkflows.length > 0 && (
               <optgroup label="Used automatically (not standalone)">
                 {internalWorkflows.map((w) => (

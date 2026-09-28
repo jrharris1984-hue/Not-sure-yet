@@ -1,11 +1,11 @@
 {
   "1": {
     "inputs": {
-      "ckpt_name": "Juggernaut-XL_v9_RunDiffusionPhoto_v2.safetensors"
+      "ckpt_name": "xxxRay_dmd2.safetensors"
     },
     "class_type": "CheckpointLoaderSimple",
     "_meta": {
-      "title": "SDXL checkpoint (change filename if needed)"
+      "title": "Checkpoint: xxxRay_dmd2.safetensors"
     }
   },
   "2": {
@@ -48,10 +48,10 @@
   "5": {
     "inputs": {
       "seed": 0,
-      "steps": 35,
-      "cfg": 5.0,
-      "sampler_name": "dpmpp_2m",
-      "scheduler": "karras",
+      "steps": 4,
+      "cfg": 1.2,
+      "sampler_name": "lcm",
+      "scheduler": "normal",
       "denoise": 1.0,
       "model": [
         "1",
@@ -93,7 +93,7 @@
   },
   "7": {
     "inputs": {
-      "filename_prefix": "UltraStudio_SDXL",
+      "filename_prefix": "UltraStudio_sdxl_xxxray_dmd2",
       "images": [
         "6",
         0

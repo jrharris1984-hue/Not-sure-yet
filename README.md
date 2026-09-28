@@ -122,6 +122,10 @@ The bundled workflows reference these files. If ComfyUI complains at dispatch, d
 | Workflow                       | Checkpoint / model                                       | LoRAs / extras                                                                                                   |
 | ------------------------------ | -------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
 | **SDXL · Juggernaut XL v9** | `Juggernaut-XL_v9_RunDiffusionPhoto_v2.safetensors` in `models/checkpoints` | No extra VAE or custom nodes; 832×1216, DPM++ 2M Karras, 35 steps, CFG 5 by default. An SD 1.5 checkpoint cannot replace this SDXL checkpoint. |
+| **SDXL · Realism by Stable Yogi XL V4** | `realismByStableYogi_xlV4VAE.safetensors` | Uses the SDXL portrait recipe. |
+| **SDXL · RealPornSDXXXL v1** | `realpornsdxxl_v10.safetensors` | Uses the SDXL portrait recipe. |
+| **SDXL · xxxRay DMD2** | `xxxRay_dmd2.safetensors` | Separate fast recipe: LCM, 4 steps, CFG 1.2. |
+| **Pony · Ultra Realistic by Stable Yogi v2** | `ultraRealisticByStable_v20FP16.safetensors` | Uses Pony prompts and its own sampler recipe. |
 | **Chroma1-HD · Golden T2I**    | `chroma1-hd-golden.safetensors`                          | —                                                                                                                |
 | **Z-image Turbo · NSFW**       | `z-image_turbo_nsfw.safetensors`                         | —                                                                                                                |
 | **Qwen Image Edit 2511**       | `qwen-image-edit-2511.safetensors`                       | —                                                                                                                |
@@ -130,6 +134,8 @@ The bundled workflows reference these files. If ComfyUI complains at dispatch, d
 | **Pony V6 XL**       | `realismByStableYogi_ponyV2.safetensors`                 | `Realism_Lora_By_Stable_Yogi_Pony_V2`, `real-skin-slider`, `detail-slider-lora-ponyxl-sdxl`, `body-weight-slider-pony`, `breasts-size-slider-pdxl` |
 
 If any file name in the seeded workflow doesn't match what you have locally, open **Settings → the workflow row → Workflow JSON** and edit the file name string in place, then Save.
+
+The five SDXL/Pony choices appear together in the Builder workflow menu after **Settings → Refresh bundled workflows**. Each choice points to its own installed checkpoint, so switching models does not require editing JSON. The SDXL workflows start with an empty negative prompt; add a specific exclusion only when needed.
 
 ### Optional Z-Image effect LoRA
 

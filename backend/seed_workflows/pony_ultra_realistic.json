@@ -1,16 +1,16 @@
 {
   "1": {
     "inputs": {
-      "ckpt_name": "Juggernaut-XL_v9_RunDiffusionPhoto_v2.safetensors"
+      "ckpt_name": "ultraRealisticByStable_v20FP16.safetensors"
     },
     "class_type": "CheckpointLoaderSimple",
     "_meta": {
-      "title": "SDXL checkpoint (change filename if needed)"
+      "title": "Checkpoint: ultraRealisticByStable_v20FP16.safetensors"
     }
   },
   "2": {
     "inputs": {
-      "text": "Photorealistic portrait of one adult person, natural skin detail, coherent anatomy",
+      "text": "score_9, score_8_up, photorealistic portrait of one adult person",
       "clip": [
         "1",
         1
@@ -23,7 +23,7 @@
   },
   "3": {
     "inputs": {
-      "text": "",
+      "text": "score_4, score_5, low quality, blurry, deformed anatomy",
       "clip": [
         "1",
         1
@@ -48,10 +48,10 @@
   "5": {
     "inputs": {
       "seed": 0,
-      "steps": 35,
-      "cfg": 5.0,
-      "sampler_name": "dpmpp_2m",
-      "scheduler": "karras",
+      "steps": 25,
+      "cfg": 7.0,
+      "sampler_name": "euler_ancestral",
+      "scheduler": "normal",
       "denoise": 1.0,
       "model": [
         "1",
@@ -93,7 +93,7 @@
   },
   "7": {
     "inputs": {
-      "filename_prefix": "UltraStudio_SDXL",
+      "filename_prefix": "UltraStudio_pony_ultra_realistic",
       "images": [
         "6",
         0

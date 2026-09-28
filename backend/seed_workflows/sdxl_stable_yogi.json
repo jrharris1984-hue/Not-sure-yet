@@ -1,11 +1,11 @@
 {
   "1": {
     "inputs": {
-      "ckpt_name": "Juggernaut-XL_v9_RunDiffusionPhoto_v2.safetensors"
+      "ckpt_name": "realismByStableYogi_xlV4VAE.safetensors"
     },
     "class_type": "CheckpointLoaderSimple",
     "_meta": {
-      "title": "SDXL checkpoint (change filename if needed)"
+      "title": "Checkpoint: realismByStableYogi_xlV4VAE.safetensors"
     }
   },
   "2": {
@@ -93,7 +93,7 @@
   },
   "7": {
     "inputs": {
-      "filename_prefix": "UltraStudio_SDXL",
+      "filename_prefix": "UltraStudio_sdxl_stable_yogi",
       "images": [
         "6",
         0
