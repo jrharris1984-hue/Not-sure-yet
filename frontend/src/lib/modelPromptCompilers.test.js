@@ -50,6 +50,17 @@ describe("model-specific prompt compilers", () => {
     expect(result.negativeStrategy).toBe("zeroed");
   });
 
+  it("keeps a reclining fantasy-scale Krea subject inside a full-body frame", () => {
+    const dna = JSON.parse(JSON.stringify(DEFAULT_DNA));
+    dna.physique = { ...dna.physique, implant_volume: 3000 };
+    dna.pose = { ...dna.pose, action: "lying down", distance: "full body" };
+    const result = compileModelPrompts({ promptStyle: "krea2", dna });
+    expect(result.positive).toContain("both feet");
+    expect(result.positive).toContain("Do not crop to the face or shoulders");
+    expect(result.positive).toContain("fantasy-scale augmented bust");
+    expect(result.positive).not.toContain("Use believable adult proportions");
+  });
+
   it("includes selected hosiery, heels, nails, and glasses in Krea wardrobe text", () => {
     const dna = JSON.parse(JSON.stringify(DEFAULT_DNA));
     dna.wardrobe = {

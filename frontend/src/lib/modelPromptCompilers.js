@@ -386,6 +386,7 @@ function kreaPoseSentence(dna = {}, label = "") {
 
 function kreaFramingSentence(dna = {}) {
   const framing = lower(dna.pose?.distance) || "full body";
+  const reclining = /\b(lying|reclining|on back|on stomach)\b/.test(lower(dna.pose?.action));
   const directions = {
     "full body": "Full-length photograph: show the entire subject from the top of the head to the soles of the feet, with space around the body in the frame.",
     "wide shot": "Wide environmental photograph: show the entire subject from head to feet with the setting clearly visible around them.",
@@ -396,7 +397,9 @@ function kreaFramingSentence(dna = {}) {
     "close-up": "Close-up photograph: focus on the face and nearby details; the body may be outside the image.",
     "detail shot": "Tight detail photograph: frame the selected detail rather than the whole body.",
   };
-  const direction = directions[framing] || directions["full body"];
+  const direction = reclining && ["full body", "wide shot"].includes(framing)
+    ? "Wide full-length photograph from a suitable elevated camera position: the reclining subject fits entirely inside the frame, from the top of the head to both feet, with visible floor or bed space on every side. Do not crop to the face or shoulders."
+    : directions[framing] || directions["full body"];
   const bustVisible = Number(dna.physique?.implant_volume || 0) >= 3000
     && ["full body", "wide shot", "waist-up", "thigh-up", "knees-up"].includes(framing);
   return bustVisible
@@ -500,6 +503,8 @@ export function buildKrea2Prompts({
   const primary = activeSubjects[0]?.dna || dna || {};
   const subjectCount = activeSubjects.length;
   const anatomyMode = lower(primary.style?.anatomy_mode) || "natural";
+  const extremeBust = Number(primary.physique?.implant_volume || 0) >= 1500
+    || Number(primary.physique?.bust_scale || 0) >= 80;
   const compositionLead = subjectCount > 1
     ? `Compose exactly ${subjectCount} adult subjects as separate complete people. Keep each face, torso, pelvis, arms and legs visually distinct with no shared limbs or merged bodies.`
     : "Compose exactly one complete adult subject with coherent body geometry and natural camera perspective.";
@@ -517,7 +522,9 @@ export function buildKrea2Prompts({
     subject?.dna || {}, subjectCount > 1 ? (subject?.label || String.fromCharCode(65 + index)) : ""
   )).filter(Boolean);
 
-  const realismTail = anatomyMode === "extreme"
+  const realismTail = extremeBust
+    ? "Keep the deliberately exaggerated bust silhouette clearly visible while preserving one connected body, readable joints, natural skin detail and consistent perspective."
+    : anatomyMode === "extreme"
     ? "Keep the requested stylization while preserving one connected body per person, readable joints, coherent hands and feet, realistic skin detail and consistent perspective."
     : anatomyMode === "enhanced"
       ? "Preserve enhanced proportions with coherent anatomy, connected limbs, realistic hands and feet, natural skin detail and consistent perspective."
@@ -527,6 +534,7 @@ export function buildKrea2Prompts({
   const [imageLead, ...shotDetails] = sharedShot;
   let positive = [
     kreaFramingSentence(primary),
+    extremeBust && "The complete body and exaggerated upper-body silhouette must remain visible in this composition; use a wide camera view rather than a portrait crop.",
     ...subjectBlocks,
     compositionLead,
     ...shotDetails,
