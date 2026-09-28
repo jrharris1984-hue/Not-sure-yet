@@ -2099,7 +2099,7 @@ export default function Builder() {
       </div>
 
       {/* Subject controls stay available, but stay out of Simple Create review. */}
-      <div className={`quick-hide ${mobileStudioStep === "create" && mobileStudioMode === "simple" ? "hidden md:block" : "block"}`}>
+      {activeSection !== "identity" && <div className={`quick-hide ${mobileStudioStep === "create" && mobileStudioMode === "simple" ? "hidden md:block" : "block"}`}>
         <SubjectSwitcher
           subjects={subjects}
           activeId={activeSubjectId}
@@ -2111,7 +2111,7 @@ export default function Builder() {
           onCopyFromPrimary={copyPrimaryToActive}
           onRandomizeActive={randomizeActive}
         />
-      </div>
+      </div>}
 
       <div className={`quick-hide ${mobileStudioStep === "create" && mobileStudioMode === "advanced" ? "space-y-2" : "hidden md:block md:space-y-2"}`}>
         <div className="pane px-3 py-2 flex items-center gap-2" data-testid="glance-header">
@@ -2195,6 +2195,48 @@ export default function Builder() {
               style={{ width: `${((activeIdx + 1) / SECTIONS.length) * 100}%` }}
             />
           </div>
+          {activeSection === "identity" && (
+            <>
+            <div className="pane p-3 sm:p-4 space-y-3" data-testid="person-scenario-setup">
+              <div className="section-label">People &amp; scenario</div>
+              <p className="text-xs text-zinc-400">Choose a pairing here, then customize each person below. Selecting a pairing adds Subject B automatically.</p>
+              <div className="grid gap-3 sm:grid-cols-2">
+                {SECTIONS.find((section) => section.key === "scenario").fields.filter((field) => ["cast_size", "cast_type"].includes(field.key)).map((field) => (
+                  <label key={field.key} className="space-y-1 text-xs text-zinc-300">
+                    <span>{field.label}</span>
+                    <select
+                      data-testid={`person-${field.key}`}
+                      value={primaryDna.scenario?.[field.key] || (field.key === "cast_size" ? "solo" : "none")}
+                      onChange={(event) => setSubjects((cur) => cur.map((subject, index) => index === 0 ? {
+                        ...subject,
+                        dna: { ...subject.dna, scenario: {
+                          ...subject.dna.scenario,
+                          [field.key]: event.target.value,
+                          ...(field.key === "cast_type" && event.target.value !== "none" && (!subject.dna.scenario?.cast_size || subject.dna.scenario.cast_size === "solo") ? { cast_size: "duo" } : {}),
+                        } },
+                      } : subject))}
+                      className="w-full rounded-lg border hairline bg-elevated px-3 py-2 text-sm text-zinc-100"
+                    >
+                      {field.options.map((option) => <option key={option} value={option}>{option}</option>)}
+                    </select>
+                  </label>
+                ))}
+              </div>
+            </div>
+            <SubjectSwitcher
+              subjects={subjects}
+              activeId={activeSubjectId}
+              expectedCount={expectedCount}
+              primaryLabel={subjects[0]?.label || "A"}
+              onSelect={setActiveSubjectId}
+              onAdd={addSubject}
+              onRemove={removeSubject}
+              onCopyFromPrimary={copyPrimaryToActive}
+              onRandomizeActive={randomizeActive}
+              showAddForSingle
+            />
+            </>
+          )}
           <DnaSection
             key={`${activeSubjectId}-${activeSection}`}
             section={SECTIONS[activeIdx]}
