@@ -29,7 +29,8 @@ const DNA_CATALOG = Object.fromEntries(SECTIONS.map((section) => [
 export default function PresetsMenu({ onApply, currentDna, sectionLocks = {}, fieldLocks = {} }) {
   const [open, setOpen] = useState(false);
   const closeMenu = () => {
-    closeMenu();
+    setOpen(false);
+    window.dispatchEvent(new CustomEvent("ultra-studio:overflow-close"));
   };
   const [q, setQ] = useState("");
   const [category, setCategory] = useState("stars");
