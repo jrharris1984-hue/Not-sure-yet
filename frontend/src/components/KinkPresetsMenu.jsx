@@ -15,7 +15,9 @@ import {
 export default function KinkPresetsMenu({ currentDna, onApply }) {
   const [open, setOpen] = useState(false);
   const closeMenu = () => {
-    closeMenu();
+    setOpen(false);
+    setSelectedPreset(null);
+    window.dispatchEvent(new CustomEvent("ultra-studio:overflow-close"));
   };
   const [q, setQ] = useState("");
   const [selectedPreset, setSelectedPreset] = useState(null);
