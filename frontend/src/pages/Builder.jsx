@@ -11,6 +11,7 @@ import {
   MAX_SUBJECTS, makeSubject, subjectsFromCharacter, subjectLabel,
   expectedSubjectCount, seedSubjectFromPairing,
   HERITAGE_CASTS,
+  createHeritageCharacterVariation,
 } from "@/lib/dna";
 import { compileModelPrompts, resolvePromptCompiler } from "@/lib/modelPromptCompilers";
 import { translatePlainLanguage } from "@/lib/plainLanguagePrompt";
@@ -1465,6 +1466,21 @@ export default function Builder() {
     setActiveSubjectId(newSub.id);
     toast.success(`Subject ${label} added`);
   };
+  const randomizeCast = () => {
+    setSubjects((current) => {
+      const primary = current[0];
+      if (!primary) return current;
+      const primaryVariation = createHeritageCharacterVariation(primary.dna, {}, locks, primary.field_locks, { density: "detailed" });
+      const nextPrimary = { ...primary, dna: primaryVariation };
+      return [nextPrimary, ...current.slice(1).map((subject, index) => ({
+        ...subject,
+        dna: createHeritageCharacterVariation(
+          seedSubjectFromPairing(primaryVariation, index + 1), {}, locks, subject.field_locks, { density: "detailed" }
+        ),
+      }))];
+    });
+    toast.success("New character variation · pairing kept");
+  };
   const removeSubject = (subjectId) => {
     if (subjects.length <= 1) return;
     setSubjects((cur) => {
@@ -2222,6 +2238,10 @@ export default function Builder() {
                   </label>
                 ))}
               </div>
+              <button type="button" onClick={randomizeCast} data-testid="btn-randomize-cast"
+                className="inline-flex items-center gap-2 rounded-lg border border-cyan-400/40 bg-cyan-400/10 px-3 py-2 text-xs font-semibold text-cyan-100 hover:bg-cyan-400/20">
+                <Shuffle className="h-4 w-4" /> Randomize {subjects.length > 1 ? "both people" : "solo character"}
+              </button>
             </div>
             <SubjectSwitcher
               subjects={subjects}

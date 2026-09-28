@@ -140,10 +140,10 @@ export const SECTIONS = [
     title: "Feet",
     fields: [
       { key: "sole_presentation", type: "pose_chips", label: "Sole presentation", groups: [
-        { name: "Presentation", options: ["soles up", "soles together", "sole showcase", "sole toward camera", "one sole raised"] },
-        { name: "Detail", options: ["wrinkled soles", "smooth soles", "oiled soles", "dirty soles", "muddy soles", "freshly washed"] },
+        { name: "Presentation", options: ["soles up", "soles together", "sole showcase", "sole toward camera", "one sole raised", "both soles toward camera", "crossed ankles soles visible", "heel lifted toward camera"] },
+        { name: "Detail", options: ["wrinkled soles", "smooth soles", "oiled soles", "dirty soles", "muddy soles", "freshly washed", "arched soles", "detailed toe pads"] },
       ]},
-      { key: "toes", type: "chips_multi", label: "Toe action (pick many)", options: ["toe curl", "toe spread", "toe point", "toe suck", "toe ring", "toe scrunch", "big toe out", "toes in mouth"] },
+      { key: "toes", type: "chips_multi", label: "Toe action (pick many)", options: ["toe curl", "toe spread", "toe point", "toe suck", "toe ring", "toe scrunch", "big toe out", "toes in mouth", "wiggling toes", "toes flexed", "toes gripping fabric"] },
       { key: "arch", type: "chips", label: "Arch style", options: ["high arch", "medium arch", "flat arch", "defined arch", "banana arch"] },
       { key: "pedicure", type: "chips", label: "Pedicure", options: ["natural nails", "painted red", "painted black", "painted french", "painted pink", "chipped polish", "long nails", "sharp claws", "glitter polish"] },
       { key: "foot_size", type: "chips", label: "Foot size", options: ["petite", "average", "large", "size queen"] },
@@ -155,12 +155,12 @@ export const SECTIONS = [
       ]},
       { key: "foot_act", type: "chips_multi", label: "Foot act (pick many)", groups: [
         { name: "Solo", options: ["foot showcase", "foot posing", "foot tease", "arched foot", "toe suck self"] },
-        { name: "Worship", options: ["foot worship", "sole licking", "toe sucking", "foot kissing", "foot massage"] },
+        { name: "Worship", options: ["foot worship", "sole licking", "toe sucking", "foot kissing", "foot massage", "arch kissing", "heel kissing", "toe worship", "barefoot worship"] },
         { name: "Sex", options: ["footjob", "double footjob", "foot on cock", "foot in mouth POV"] },
         { name: "Dominance", options: ["foot on face", "foot smothering", "trampling", "standing on someone", "foot gag"] },
         { name: "Mess", options: ["cum on feet", "cum on soles", "cum between toes"] },
       ]},
-      { key: "framing", type: "chips", label: "Framing", options: ["full body", "waist-down", "knees-down", "feet close-up", "sole close-up", "POV under foot", "low angle sole"] },
+      { key: "framing", type: "chips", label: "Framing", options: ["full body", "waist-down", "knees-down", "feet close-up", "sole close-up", "POV under foot", "low angle sole", "ankle and arch close-up", "pedicure close-up", "both soles in foreground"] },
     ],
   },
   {
@@ -170,14 +170,14 @@ export const SECTIONS = [
       { key: "nudity_level", type: "slider", label: "Krea 2 nudity (0 use outfit → 100 nude)", min: 0, max: 100, step: 5, defaultValue: 0 },
       { key: "outfit_preset", type: "chips", label: "Outfit preset", groups: [
         { name: "Bare", options: ["nude", "topless", "bottomless", "just panties", "just a shirt", "boyfriend's shirt"] },
-        { name: "Lingerie", options: ["boudoir lingerie", "sheer negligee", "silk robe open"] },
+        { name: "Lingerie", options: ["boudoir lingerie", "sheer negligee", "silk robe open", "lace lingerie set", "satin slip", "corset and garters", "sheer bodysuit"] },
         { name: "Bikini", options: ["bikini", "micro bikini", "string bikini", "wet t-shirt"] },
         { name: "Roleplay", options: ["sexy schoolgirl", "naughty nurse", "french maid", "playboy bunny", "showgirl", "cheerleader", "secretary unbuttoned", "librarian undone", "biker chick", "cowgirl chaps", "cop uniform undone", "flight attendant undone"] },
         { name: "Fetish/Kink", options: ["dominatrix", "leather mistress", "latex catsuit", "kinky harness", "shibari rope", "fetish gimp"] },
         { name: "Adult Perf.", options: ["pole dancer", "gogo dancer", "stripper"] },
-        { name: "Formal", options: ["cocktail dress", "evening gown slit", "backless red carpet", "club outfit"] },
+        { name: "Formal", options: ["cocktail dress", "evening gown slit", "backless red carpet", "club outfit", "tailored pantsuit", "velvet gown", "sequined mini dress"] },
         { name: "Athletic", options: ["yoga wear", "gym set", "sports bra and shorts", "cheerleader off-duty"] },
-        { name: "Casual", options: ["streetwear", "casual home"] },
+        { name: "Casual", options: ["streetwear", "casual home", "oversized sweater", "denim jacket and skirt", "off-shoulder blouse", "summer romper", "cardigan and slip dress"] },
       ]},
       { key: "top", type: "chips", label: "Top", options: [
         "none", "sheer top", "mesh top", "lace bralette", "bikini top", "corset", "bustier", "crop top", "backless top", "keyhole top", "halter",
@@ -232,12 +232,12 @@ export const SECTIONS = [
       { key: "dress_style", type: "chips", label: "Dress style", groups: [
         { name: "Casual", options: ["sundress", "shirt dress", "wrap dress", "slip dress", "sweater dress", "denim dress"] },
         { name: "Fitted", options: ["bodycon dress", "sheath dress", "bandage dress", "corset dress", "halter dress", "off-shoulder dress"] },
-        { name: "Formal", options: ["cocktail dress", "mermaid gown", "A-line gown", "ball gown", "column gown", "high-slit evening gown"] },
+        { name: "Formal", options: ["cocktail dress", "mermaid gown", "A-line gown", "ball gown", "column gown", "high-slit evening gown", "empire-waist gown", "one-shoulder gown", "backless gown"] },
       ] },
       { key: "skirt_style", type: "chips", label: "Skirt style", groups: [
         { name: "Short", options: ["micro-mini skirt", "mini skirt", "pleated mini skirt", "wrap mini skirt", "skater skirt"] },
         { name: "Medium", options: ["pencil skirt", "A-line skirt", "circle skirt", "slip skirt", "tiered midi skirt"] },
-        { name: "Long", options: ["maxi skirt", "high-slit skirt", "mermaid skirt", "pleated maxi skirt"] },
+        { name: "Long", options: ["maxi skirt", "high-slit skirt", "mermaid skirt", "pleated maxi skirt", "satin maxi skirt", "wrap maxi skirt"] },
       ] },
       { key: "garment_pattern", type: "chips", label: "Fabric design", groups: [
         { name: "Classic", options: ["solid", "pinstripe", "plaid", "gingham", "polka dot", "color-blocked"] },
