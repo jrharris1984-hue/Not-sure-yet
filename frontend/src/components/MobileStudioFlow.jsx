@@ -1,4 +1,6 @@
-import { ChevronRight, SlidersHorizontal, Sparkles } from "lucide-react";
+import { useState } from "react";
+import { ChevronRight, Search, SlidersHorizontal, Sparkles, X } from "lucide-react";
+import { PHASES } from "@/lib/dna";
 
 export const MOBILE_STUDIO_STEPS = [
   {
@@ -76,10 +78,19 @@ export default function MobileStudioFlow({
   onSection,
   onModeChange,
 }) {
+  const [showSectionFinder, setShowSectionFinder] = useState(false);
+  const [sectionQuery, setSectionQuery] = useState("");
   const activeIndex = Math.max(0, MOBILE_STUDIO_STEPS.findIndex((step) => step.id === currentStep));
   const active = MOBILE_STUDIO_STEPS[activeIndex] || MOBILE_STUDIO_STEPS[0];
   const sectionMap = Object.fromEntries(sections.map((section) => [section.key, section]));
   const visibleSections = mobileStudioSectionsForStep(active.id, mode);
+  const jumpToSection = (key) => {
+    if (mode === "simple" && !mobileStudioSectionsForStep(mobileStudioStepForSection(key), "simple").includes(key)) {
+      onModeChange("advanced");
+    }
+    setShowSectionFinder(false);
+    onSection(key);
+  };
 
   return (
     <section className="md:hidden pane overflow-hidden" data-testid="mobile-studio-flow">
@@ -128,6 +139,38 @@ export default function MobileStudioFlow({
         )}
       </div>
 
+      <button type="button" onClick={() => setShowSectionFinder((open) => !open)}
+        data-testid="btn-mobile-section-finder" aria-expanded={showSectionFinder}
+        className="flex w-full items-center justify-between border-b hairline px-3 py-2.5 text-left text-xs font-semibold text-cyan-200">
+        <span className="flex items-center gap-2"><Search className="h-4 w-4" /> Jump to any section</span>
+        {showSectionFinder ? <X className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+      </button>
+      {showSectionFinder && (
+        <div className="border-b hairline bg-black/40 p-3" data-testid="mobile-section-finder">
+          <input type="search" value={sectionQuery} onChange={(event) => setSectionQuery(event.target.value)}
+            placeholder="Search all controls..." aria-label="Search all builder sections"
+            className="w-full rounded-lg border hairline bg-elevated px-3 py-2 text-sm text-white outline-none focus:border-cyan-400/60" />
+          <div className="mt-2 max-h-52 overflow-y-auto scroll-fade space-y-2">
+            {PHASES.map((phase) => {
+              const matches = phase.sections.filter((key) => {
+                const section = sectionMap[key];
+                return section && `${phase.label} ${section.title} ${key}`.toLowerCase().includes(sectionQuery.toLowerCase());
+              });
+              if (!matches.length) return null;
+              return <div key={phase.key}>
+                <div className={`section-label phase-${phase.key} py-1`}>{phase.label}</div>
+                <div className="grid grid-cols-2 gap-1.5">
+                  {matches.map((key) => <button type="button" key={key} onClick={() => jumpToSection(key)}
+                    data-testid={`mobile-jump-${key}`}
+                    className={`rounded-lg border px-3 py-2 text-left text-xs ${activeSection === key ? "border-cyan-400/60 bg-cyan-400/10 text-cyan-100" : "hairline bg-elevated text-zinc-300"}`}>
+                    {sectionMap[key].title}{locks[key] ? " · locked" : ""}
+                  </button>)}
+                </div>
+              </div>;
+            })}
+          </div>
+        </div>
+      )}
       <div className="grid grid-cols-5 border-b hairline bg-black/10">
         {MOBILE_STUDIO_STEPS.map((step, index) => {
           const selected = step.id === currentStep;

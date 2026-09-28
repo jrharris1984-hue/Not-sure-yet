@@ -11,6 +11,10 @@ module.exports = {
         mono: ["JetBrains Mono", "Menlo", "monospace"],
       },
       colors: {
+        /* Existing semantic amber/rose utilities now render as neon lime/pink. */
+        amber: { 50: "#f6ffe7", 100: "#e9ffc4", 200: "#dcffa1", 300: "#caff74", 400: "#b6ff45", 500: "#a6f52b", 600: "#83cf18", 700: "#5e9e16", 800: "#416d18", 900: "#294714", 950: "#152607" },
+        rose: { 50: "#fff0f9", 100: "#ffe0f2", 200: "#ffb5e0", 300: "#ff88cc", 400: "#ff59b4", 500: "#ff319f", 600: "#e51588", 700: "#ad1369", 800: "#76124c", 900: "#4b1032", 950: "#270a1c" },
+        sky: { 50: "#e8fdff", 100: "#c5faff", 200: "#98f6ff", 300: "#62eeff", 400: "#22e4fa", 500: "#00cfe8", 600: "#04a9c5", 700: "#0a8198", 800: "#0d596b", 900: "#103c48", 950: "#09232b" },
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
@@ -44,10 +48,10 @@ module.exports = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
-        obsidian: "#090A0F",
-        surface: "#12141C",
-        elevated: "#1A1D28",
-        hairline: "#222634",
+        obsidian: "#050507",
+        surface: "#0b0d11",
+        elevated: "#12161b",
+        hairline: "#292d34",
       },
       borderRadius: {
         lg: "var(--radius)",

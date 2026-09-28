@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ChevronDown, Lock } from "lucide-react";
+import { ChevronDown, Lock, Search } from "lucide-react";
 import { PHASES, SECTIONS, isSectionFilled } from "@/lib/dna";
 
 const PHASE_STYLES = {
@@ -17,15 +17,30 @@ export default function GroupedSectionRail({ dna, locks, activeSection, onSelect
   const [openPhases, setOpenPhases] = useState(() => ({
     body: true, intimate: activePhase === "intimate", style: activePhase === "style", play: activePhase === "play",
   }));
+  const [query, setQuery] = useState("");
   const toggle = (k) => setOpenPhases((s) => ({ ...s, [k]: !s[k] }));
+  const filter = query.trim().toLowerCase();
 
   return (
-    <div className="pane p-2 space-y-1" data-testid="grouped-section-rail">
-      <div className="section-label px-2 pt-1.5 pb-1">Sections</div>
+    <div className="pane p-2 space-y-1 max-h-[calc(100dvh-7rem)] overflow-y-auto scroll-fade" data-testid="grouped-section-rail">
+      <div className="px-2 pt-1.5 pb-2">
+        <div className="section-label">Find a control</div>
+        <label className="mt-2 flex items-center gap-2 rounded-lg border hairline bg-black/40 px-2.5 focus-within:border-cyan-400/60">
+          <Search className="h-3.5 w-3.5 text-cyan-300" />
+          <input type="search" value={query} onChange={(event) => setQuery(event.target.value)}
+            placeholder="Search sections..." aria-label="Search builder sections" data-testid="builder-section-search"
+            className="w-full bg-transparent py-2 text-xs text-white outline-none placeholder:text-zinc-500" />
+        </label>
+      </div>
       {PHASES.map((phase) => {
         const style = PHASE_STYLES[phase.key];
         const filledCount = phase.sections.filter((k) => isSectionFilled(k, dna)).length;
-        const isOpen = openPhases[phase.key];
+        const matches = phase.sections.filter((key) => {
+          const section = SECTIONS.find((item) => item.key === key);
+          return !filter || `${phase.label} ${section?.title || ""} ${key}`.toLowerCase().includes(filter);
+        });
+        if (!matches.length) return null;
+        const isOpen = !!filter || openPhases[phase.key];
         return (
           <div key={phase.key} className="rounded-md overflow-hidden">
             <button
@@ -56,7 +71,7 @@ export default function GroupedSectionRail({ dna, locks, activeSection, onSelect
             </button>
             {isOpen && (
               <div className="pb-1">
-                {phase.sections.map((secKey) => {
+                {matches.map((secKey) => {
                   const sec = SECTIONS.find((s) => s.key === secKey);
                   if (!sec) return null;
                   const active = activeSection === secKey;
@@ -90,6 +105,10 @@ export default function GroupedSectionRail({ dna, locks, activeSection, onSelect
           </div>
         );
       })}
+      {filter && !PHASES.some((phase) => phase.sections.some((key) => {
+        const section = SECTIONS.find((item) => item.key === key);
+        return `${phase.label} ${section?.title || ""} ${key}`.toLowerCase().includes(filter);
+      })) && <p className="px-2 py-3 text-xs text-zinc-500">No matching section</p>}
     </div>
   );
 }
