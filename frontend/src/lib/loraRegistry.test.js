@@ -28,6 +28,8 @@ describe("LoRA registry planner", () => {
     expect(workflowFamily({ name: "IMAGE · Chroma1-HD" })).toBe("chroma");
     expect(workflowFamily({ name: "VIDEO · WAN 2.2" })).toBe("wan22");
     expect(workflowFamily({ name: "IMAGE · Krea 2 Turbo" })).toBe("krea2");
+    expect(workflowFamily({ name: "SDXL · Juggernaut XL v9", prompt_style: "sdxl" })).toBe("sdxl");
+    expect(workflowFamily({ name: "SDXL · xxxRay DMD2", prompt_style: "sdxl_dmd2" })).toBe("sdxl");
   });
 
   test("recognizes nested Windows paths", () => {
@@ -235,6 +237,12 @@ describe("LoRA registry planner", () => {
     const pony = compatibleInstalledLoras({ name: "Pony V6 XL", prompt_style: "pony" }, local);
     expect(pony.some((entry) => entry.installedName.includes("detail-slider"))).toBe(true);
     expect(pony.some((entry) => entry.installedName.includes("flux-style"))).toBe(false);
+  });
+
+  test("shows installed SDXL-family LoRAs for the new SDXL workflows", () => {
+    const local = ["SDXL\\detail-slider.safetensors", "Pony\\pony-style.safetensors", "Flux\\flux-style.safetensors"];
+    const choices = compatibleInstalledLoras({ name: "SDXL · Juggernaut XL v9", prompt_style: "sdxl" }, local);
+    expect(choices.map((entry) => entry.installedName)).toEqual(["SDXL\\detail-slider.safetensors"]);
   });
 
   test("warns about cross-family files, conflicts, and excessive strength", () => {

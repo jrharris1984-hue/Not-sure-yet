@@ -102,8 +102,9 @@ export default function UniversalLoraPicker({ workflow, value, onChange, slotLab
           <div className="min-w-0">
             <div className="section-label !text-cyan-300">{slotLabel}</div>
             <p className="mt-0.5 text-xs text-zinc-400">
-              Select a compatible LoRA · {family === "unknown" ? "unclassified workflow" : family}
+              Installed LoRAs matched by model family · {family === "unknown" ? "unclassified workflow" : family}
             </p>
+            <p className="mt-0.5 text-[10px] text-zinc-500">Check the LoRA's stated base model; filename and folder matching cannot verify training compatibility.</p>
           </div>
           <span className="ml-auto rounded border border-white/10 px-2 py-1 text-[10px] font-mono text-zinc-500">
             {options.length} found
@@ -118,7 +119,7 @@ export default function UniversalLoraPicker({ workflow, value, onChange, slotLab
             <input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search compatible LoRAs..."
+              placeholder="Search model-family LoRAs..."
               className="w-full rounded-lg border hairline bg-elevated py-2 pl-9 pr-3 text-xs text-zinc-100 outline-none focus:border-cyan-500/50"
               data-testid="lora-search"
             />
@@ -177,7 +178,7 @@ export default function UniversalLoraPicker({ workflow, value, onChange, slotLab
             className="w-full rounded-lg border hairline px-3 py-2 text-[10px] font-mono uppercase tracking-widest text-zinc-400 hover:bg-white/5 hover:text-zinc-200"
             data-testid="lora-show-more"
           >
-            {expanded ? "Show fewer LoRAs" : `Show ${options.length - 8} more compatible LoRAs`}
+            {expanded ? "Show fewer LoRAs" : `Show ${options.length - 8} more LoRAs`}
           </button>
         )}
 
@@ -189,7 +190,7 @@ export default function UniversalLoraPicker({ workflow, value, onChange, slotLab
 
         {loadState === "ready" && !options.length && (
           <div className="rounded-lg border hairline bg-black/10 px-3 py-3 text-xs text-zinc-500">
-            No compatible LoRAs were detected for this workflow. Put model-matched LoRAs in a family folder such as
+            No model-family LoRAs were detected for this workflow. Put model-matched LoRAs in a family folder such as
             <span className="font-mono text-zinc-400"> models/loras/Krea2</span>,
             <span className="font-mono text-zinc-400"> /Flux</span>,
             <span className="font-mono text-zinc-400"> /Pony</span>, or another matching family folder, then restart ComfyUI.
