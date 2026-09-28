@@ -1683,7 +1683,17 @@ export default function Builder() {
         </div>
       )}
       {/* Header */}
-      <div className="pane p-2.5 sm:p-4 flex flex-col gap-2.5 sm:gap-3">
+      <div className="hidden md:flex items-center gap-2 rounded-xl border border-cyan-400/20 bg-black/40 p-2 text-xs" aria-label="Builder shortcuts">
+        <span className="px-2 font-mono uppercase tracking-wider text-cyan-300">Studio</span>
+        {[["studio-model", "01 · Model"], ["studio-sections", "02 · Character"], ["studio-render", "03 · Render"]].map(([target, label]) => (
+          <button key={target} type="button" onClick={() => document.getElementById(target)?.scrollIntoView({ behavior: "smooth", block: "start" })}
+            className="rounded-lg border hairline px-3 py-2 text-zinc-300 transition-colors hover:border-amber-400/50 hover:bg-amber-500/10 hover:text-amber-200">
+            {label}
+          </button>
+        ))}
+        <span className="ml-auto hidden xl:inline pr-2 text-zinc-500">Choose a section · Set options · Render</span>
+      </div>
+      <div id="studio-model" className="pane scroll-mt-24 p-2.5 sm:p-4 flex flex-col gap-2.5 sm:gap-3">
         <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
           <Input
             data-testid="input-character-name"
@@ -2136,7 +2146,7 @@ export default function Builder() {
         </div>
 
         {/* Center - single active section */}
-        <div className={`${mobileStudioStep === "create" ? "hidden md:block" : "block"} space-y-4`}>
+        <div id="studio-sections" className={`${mobileStudioStep === "create" ? "hidden md:block" : "block"} scroll-mt-24 space-y-4`}>
           <div className="hidden md:flex items-center justify-between text-xs font-mono text-zinc-500">
             <span>Step {activeIdx + 1} of {SECTIONS.length}{isMulti && ` · Subject ${activeSubject.label}`}</span>
             <span className={`uppercase tracking-widest section-label phase-${phaseOfSection(activeSection)}`}>{SECTIONS[activeIdx].title}</span>
@@ -2198,7 +2208,7 @@ export default function Builder() {
         </div>
 
         {/* Right - preview + AI + render */}
-        <aside className={`${mobileStudioStep === "create" ? "block" : "hidden md:block"} space-y-4 lg:sticky lg:top-20 lg:h-fit`}>
+        <aside id="studio-render" className={`${mobileStudioStep === "create" ? "block" : "hidden md:block"} scroll-mt-24 space-y-4 lg:sticky lg:top-20 lg:h-fit`}>
           <div className={mobileStudioMode === "advanced" ? "block" : "hidden md:block"}>
             <SmartSetupPanel workflows={selectableWorkflows} activeWorkflow={activeWorkflow} dna={activeDna}
               subjectCount={subjects.length} hasReference={!!referenceImage?.name} onApply={applySmartSetup} />
