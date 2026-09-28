@@ -290,7 +290,6 @@ function kreaSubjectSentence(dna = {}, label = "") {
     Number(ph.curves || 0) > 60 ? (Number(ph.curves) > 85 ? "pronounced natural curves" : "curved silhouette") : "",
     ph.implant_volume > 0 ? "" : kreaScale(ph.bust_scale, "bust", ["small", "moderate", "full", "very large", "extremely oversized"]) || (ph.bust && `${ph.bust} bust`),
     ph.implant_volume > 0 ? "round augmented breast shape" : ph.bust_shape && `${ph.bust_shape} breast shape`,
-    implantVisualPrompt(ph.implant_volume),
     kreaScale(ph.waist_scale, "waist", ["very narrow", "narrow", "average", "wide", "very wide"]) || (ph.waist && `${ph.waist} waist`),
     kreaScale(ph.hip_scale, "hips", ["narrow", "moderate-width", "wide", "very wide", "extremely wide"]) || (ph.hips && `${ph.hips} hips`),
     kreaScale(ph.butt_scale, "glutes", ["small", "moderate", "full rounded", "very large projected", "extremely oversized projected"]) || (ph.butt && `${ph.butt} buttocks`),
@@ -317,7 +316,9 @@ function kreaSubjectSentence(dna = {}, label = "") {
     skin.tattoos
   );
   const prefix = label ? `Subject ${label}: ` : "";
-  return `${prefix}${[head, ...body, ...faceHair].filter(Boolean).join(", ")}.`;
+  // Lead with the selected silhouette. Long lists of face and styling details
+  // otherwise bury the change the user is trying to see.
+  return `${prefix}${[head, implantVisualPrompt(ph.implant_volume), ...body, ...faceHair].filter(Boolean).join(", ")}.`;
 }
 
 function kreaWardrobeSentence(dna = {}, label = "") {
@@ -325,6 +326,7 @@ function kreaWardrobeSentence(dna = {}, label = "") {
   const prefix = label ? `Subject ${label} wardrobe: ` : "Wardrobe: ";
   const nudity = Number(w.nudity_level || 0);
   const hasHosiery = Boolean(w.hosiery_type);
+  const feetVisible = ["full body", "wide shot"].includes(lower(dna.pose?.distance || "full body"));
   const nudityDirection = nudity >= 80 ? (hasHosiery ? "unclothed except for the selected hosiery and accessories" : "fully nude, no clothing except selected accessories")
     : nudity >= 55 ? "partially nude with exposed skin"
       : nudity >= 30 ? "revealing clothing with some skin visible"
@@ -341,7 +343,7 @@ function kreaWardrobeSentence(dna = {}, label = "") {
     !suppressClothing && !w.dress_style && !w.skirt_style && w.bottom && w.bottom !== "none" ? w.bottom : "",
     !suppressClothing && w.underwear && w.underwear !== "none" ? w.underwear : "",
     w.hosiery_type ? `${w.hosiery_color ? `${w.hosiery_color} ` : ""}${w.hosiery_pattern && w.hosiery_pattern !== "plain" ? `${w.hosiery_pattern} ` : ""}${w.hosiery_type}` : "",
-    w.heel_type ? `${w.heel_color ? `${w.heel_color} ` : ""}${w.heel_finish ? `${w.heel_finish} ` : ""}${w.heel_type}${w.heel_height ? `, ${w.heel_height} heel` : ""}` : w.footwear,
+    feetVisible ? (w.heel_type ? `${w.heel_color ? `${w.heel_color} ` : ""}${w.heel_finish ? `${w.heel_finish} ` : ""}${w.heel_type}${w.heel_height ? `, ${w.heel_height} heel` : ""}` : w.footwear) : "",
     w.glasses_style ? `${w.glasses_color ? `${w.glasses_color} ` : ""}${w.glasses_style}` : "",
     w.nail_color ? `${w.nail_color} fingernails` : "",
     w.nail_shape ? `${w.nail_shape} nail shape` : "",
@@ -359,8 +361,9 @@ function kreaPoseSentence(dna = {}, label = "") {
   const p = dna.pose || {};
   const feet = dna.feet || {};
   const prefix = label ? `Subject ${label} pose and framing: ` : "Pose and framing: ";
-  const feetPriority = lower(p.focus) === "feet" || kreaValue(feet.framing);
   const framing = lower(p.distance) || "full body";
+  const feetVisible = ["full body", "wide shot"].includes(framing);
+  const feetPriority = feetVisible && (lower(p.focus) === "feet" || kreaValue(feet.framing));
   const bodyCrop = ["full body", "wide shot", "knees-up", "thigh-up", "waist-up"].includes(framing);
   const cropDescription = {
     "waist-up": "waist-up", "thigh-up": "head-to-mid-thigh", "knees-up": "head-to-knees",
@@ -369,10 +372,12 @@ function kreaPoseSentence(dna = {}, label = "") {
     p.action,
     p.body_language && `${p.body_language} body language`,
     p.angle && `${p.angle} view`,
-    p.focus && (bodyCrop && lower(p.focus) === "face"
+    p.focus && !(lower(p.focus) === "feet" && !feetVisible) && (bodyCrop && lower(p.focus) === "face"
       ? `face clearly visible within the ${cropDescription} composition`
       : `${p.focus} composition priority`),
     p.hands?.length ? `hands ${p.hands.join(" and ")}` : "",
+    Number(dna.physique?.implant_volume || 0) >= 3000 && lower(p.action).includes("leaning")
+      ? "keep the projected chest silhouette visible rather than hidden behind the near arm" : "",
     feetPriority ? feet.framing : "",
     feetPriority ? feet.sole_presentation : "",
     feetPriority && feet.pedicure ? `${feet.pedicure} pedicure` : "",
@@ -391,7 +396,12 @@ function kreaFramingSentence(dna = {}) {
     "close-up": "Close-up photograph: focus on the face and nearby details; the body may be outside the image.",
     "detail shot": "Tight detail photograph: frame the selected detail rather than the whole body.",
   };
-  return directions[framing] || directions["full body"];
+  const direction = directions[framing] || directions["full body"];
+  const bustVisible = Number(dna.physique?.implant_volume || 0) >= 3000
+    && ["full body", "wide shot", "waist-up", "thigh-up", "knees-up"].includes(framing);
+  return bustVisible
+    ? `${direction} Keep the torso and projected bust unmistakably visible, occupying substantial space in the frame.`
+    : direction;
 }
 
 function kreaAdultDetailSentence(dna = {}, label = "") {
@@ -528,6 +538,11 @@ export function buildKrea2Prompts({
   // Krea 2's Qwen3-VL encoder responds well to concise natural language. Keep
   // must-match settings literal without turning the whole prompt into tag soup.
   const missingMust = (priorityPlan.mustMatch || [])
+    .filter((item) => !(subjectCount === 1 && Number(primary.wardrobe?.nudity_level || 0) >= 55
+      && item.key === "wardrobe.outfit_preset"))
+    .filter((item) => !(subjectCount === 1 && lower(primary.pose?.focus) === "feet"
+      && !["full body", "wide shot"].includes(lower(primary.pose?.distance || "full body"))
+      && item.key === "pose.focus"))
     .filter((item) => !(item.key === "pose.focus"
       && lower(primary.pose?.focus) === "face"
       && (!primary.pose?.distance || ["full body", "wide shot", "waist-up", "thigh-up", "knees-up"].includes(lower(primary.pose.distance)))))

@@ -48,3 +48,21 @@ test.each([
   expect(positive).not.toContain(`${implant_volume} cc`);
   expect(positive).not.toContain("small bust");
 });
+
+test("Krea resolves an obscured bust, thigh-up crop, feet focus, and conflicting nude preset", () => {
+  const dna = configured();
+  dna.pose = { ...DEFAULT_DNA.pose, distance: "thigh-up", action: "leaning forward", angle: "profile", focus: "feet" };
+  dna.feet = { ...DEFAULT_DNA.feet, pedicure: "long nails" };
+  dna.wardrobe = {
+    ...DEFAULT_DNA.wardrobe, nudity_level: 60, outfit_preset: "nude", heel_type: "block heels",
+  };
+  const { positive } = compileModelPrompts({ promptStyle: "krea2", dna });
+  expect(positive).toContain("Thigh-up photograph");
+  expect(positive).toContain("projected bust unmistakably visible");
+  expect(positive).toContain("projected chest silhouette visible");
+  expect(positive).toContain("partially nude with exposed skin");
+  expect(positive).not.toContain("nude wardrobe");
+  expect(positive).not.toContain("feet composition priority");
+  expect(positive).not.toContain("long nails pedicure");
+  expect(positive).not.toContain("block heels");
+});
