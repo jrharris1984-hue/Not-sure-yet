@@ -145,6 +145,7 @@ export function workflowFamily(workflow = {}) {
   if (/krea\s*2|krea2/.test(text)) return "krea2";
   if (/chroma/.test(text)) return "chroma";
   if (/pony/.test(text)) return "pony";
+  if (/sdxl|juggernaut xl/.test(text)) return "sdxl";
   if (/wan/.test(text) || /video/.test(text)) return "wan22";
   if (/qwen|edit|enhance/.test(text)) return "qwen_edit";
   if (/flux/.test(text)) return "flux";
