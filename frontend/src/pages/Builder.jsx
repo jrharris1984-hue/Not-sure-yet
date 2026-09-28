@@ -1914,8 +1914,8 @@ export default function Builder() {
             </div>
             <span className="rounded-full border border-amber-400/40 bg-amber-500/10 px-3 py-1 text-xs text-amber-200">{activeWorkflow?.name || "Choose a model"}</span>
           </div>
-          <div className="mt-4 grid grid-cols-3 xl:grid-cols-6 gap-2">
-            {[["identity", "1 · Person"], ["physique", "2 · Body"], ["wardrobe", "3 · Outfit"], ["pose", "4 · Pose"], ["scene", "5 · Setting"]].map(([key, label]) => (
+          <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-7 gap-2">
+            {[["identity", "1 · Person"], ["physique", "2 · Body"], ["intimate", "3 · Intimate"], ["wardrobe", "4 · Outfit"], ["pose", "5 · Pose"], ["scene", "6 · Setting"]].map(([key, label]) => (
               <button key={key} type="button" onClick={() => { setQuickReview(false); goSection(key); }}
                 className={`rounded-xl border px-3 py-3 text-left text-xs font-semibold transition-colors ${activeSection === key && !quickReview ? "border-amber-400/70 bg-amber-500/10 text-amber-100" : "hairline bg-elevated text-zinc-300 hover:border-cyan-400/50"}`}>
                 {label}
@@ -1923,7 +1923,7 @@ export default function Builder() {
             ))}
             <button type="button" onClick={() => setQuickReview(true)}
               className={`rounded-xl border px-3 py-3 text-left text-xs font-semibold ${quickReview ? "border-cyan-400/70 bg-cyan-500/10 text-cyan-100" : "hairline bg-elevated text-zinc-300 hover:border-cyan-400/50"}`}>
-              6 · Review
+              7 · Review
             </button>
           </div>
         </section>
