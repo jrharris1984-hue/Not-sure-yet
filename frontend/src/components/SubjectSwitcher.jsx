@@ -2,8 +2,7 @@ import { User, Plus, X, Copy, Shuffle } from "lucide-react";
 import { MAX_SUBJECTS } from "@/lib/dna";
 
 // Horizontal tab strip of subjects (A, B, C, D) + Add/Remove/Copy actions.
-// Only renders if there are 2+ subjects OR the scenario expects multiple people
-// (in which case we always show the strip so the user can add subject B).
+// The Person step shows this even for a single subject so Subject B can be added early.
 export default function SubjectSwitcher({
   subjects,
   activeId,
@@ -14,8 +13,9 @@ export default function SubjectSwitcher({
   onRandomizeActive,
   expectedCount = 1,
   primaryLabel = "A",
+  showAddForSingle = false,
 }) {
-  const showStrip = subjects.length > 1 || expectedCount > 1;
+  const showStrip = showAddForSingle || subjects.length > 1 || expectedCount > 1;
   if (!showStrip) return null;
   const canAdd = subjects.length < MAX_SUBJECTS;
   return (
@@ -85,7 +85,7 @@ export default function SubjectSwitcher({
           className="inline-flex items-center gap-1 rounded-md border border-emerald-500/40 bg-emerald-500/10 text-emerald-200 hover:bg-emerald-500/20 disabled:opacity-30 disabled:cursor-not-allowed px-2.5 py-1.5 text-sm font-semibold"
           title={canAdd ? "Add another subject with its own DNA" : `Max ${MAX_SUBJECTS} subjects`}
         >
-          <Plus className="h-3.5 w-3.5" /> Add
+          <Plus className="h-3.5 w-3.5" /> {subjects.length === 1 ? "Add Subject B" : "Add"}
         </button>
       </div>
       <div className="ml-auto flex flex-wrap items-center gap-1.5">
