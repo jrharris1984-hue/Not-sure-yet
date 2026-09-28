@@ -13,6 +13,7 @@ import {
   HERITAGE_CASTS,
 } from "@/lib/dna";
 import { compileModelPrompts, resolvePromptCompiler } from "@/lib/modelPromptCompilers";
+import { translatePlainLanguage } from "@/lib/plainLanguagePrompt";
 import { analyzePromptQuality } from "@/lib/promptQuality";
 import DnaSection from "@/components/DnaSection";
 import PromptPreview from "@/components/PromptPreview";
@@ -163,6 +164,7 @@ export default function Builder() {
   const [raunch, setRaunch] = useState(false);
   const [promptLanguage, setPromptLanguage] = useState("editorial");
   const [promptOverride, setPromptOverride] = useState("");
+  const [plainLanguage, setPlainLanguage] = useState("");
   const [negativePromptOverride, setNegativePromptOverride] = useState("");
   const [improvingPrompt, setImprovingPrompt] = useState(false);
   const [dispatching, setDispatching] = useState(false);
@@ -246,6 +248,7 @@ export default function Builder() {
     setPromptLanguage(restoredLanguage);
     setRaunch(restoredLanguage === "explicit");
     setPromptOverride(draft.promptOverride || "");
+    setPlainLanguage(draft.plainLanguage || "");
     setNegativePromptOverride(draft.negativePromptOverride || "");
     setWorkflowId(draft.workflowId || "");
     setLoraOverrides(draft.loraOverrides || {});
@@ -777,7 +780,7 @@ export default function Builder() {
     if (!draftHydrated.current) return undefined;
     const timer = window.setTimeout(() => writeBuilderDraft(id, {
       name, subjects, activeSubjectId, locks, collapsed, tags, raunch, promptLanguage,
-      promptOverride, negativePromptOverride, workflowId, loraOverrides,
+      promptOverride, plainLanguage, negativePromptOverride, workflowId, loraOverrides,
       editInstruction, preserveUnmentioned, repairTargets, repairInstruction,
       variationPrompt, variationDenoise,
       editMode, poseTarget, poseNotes, poseLocks,
@@ -789,7 +792,7 @@ export default function Builder() {
     return () => window.clearTimeout(timer);
   }, [
     id, name, subjects, activeSubjectId, locks, collapsed, tags, raunch, promptLanguage,
-    promptOverride, negativePromptOverride, workflowId, loraOverrides,
+    promptOverride, plainLanguage, negativePromptOverride, workflowId, loraOverrides,
     editInstruction, preserveUnmentioned, repairTargets, repairInstruction,
     variationPrompt, variationDenoise,
     editMode, poseTarget, poseNotes, poseLocks,
@@ -892,6 +895,10 @@ export default function Builder() {
     ]
   );
   const { positive, negative } = compiledPrompt;
+  const translatedPlainLanguage = useMemo(
+    () => translatePlainLanguage(plainLanguage, activeCompiler),
+    [plainLanguage, activeCompiler]
+  );
   const likenessPrompt = useMemo(() => likenessTriggerText(subjects), [subjects]);
   const acceptsLikenessPrompt = !["qwen_edit", "wan_i2v"].includes(activeCompiler);
   const languageLead = acceptsLikenessPrompt
@@ -903,7 +910,7 @@ export default function Builder() {
           ? "explicit adult scene, graphic unambiguous vocabulary"
           : "editorial adult photography, tasteful descriptive vocabulary"
     : "";
-  const generatedPositive = [languageLead, acceptsLikenessPrompt && likenessPrompt, positive].filter(Boolean).join(", ");
+  const generatedPositive = [languageLead, acceptsLikenessPrompt && likenessPrompt, positive, translatedPlainLanguage.text].filter(Boolean).join(", ");
   const positiveBeforeLoraTriggers = isVariationWorkflow ? variationPrompt : (promptOverride || generatedPositive);
   const activeLoraTriggers = [...new Set([
     ...(selectedLora.name ? selectedLora.triggerWords || [] : []),
@@ -2212,6 +2219,18 @@ export default function Builder() {
               <p className="text-[11px] text-zinc-500">Selected scene details: {(activeDna.scenario?.acts || []).length + String(activeDna.scenario?.extra_acts || "").split(/[,;]+/).filter((part) => part.trim()).length}. Keep this to one main action and up to two supporting details. The preview below shows the exact prompt sent to ComfyUI.</p>
             </div>
           )}
+          <div className="pane p-4 mb-4 space-y-2" data-testid="plain-language-prompt">
+            <label htmlFor="plain-language-input" className="section-label">Describe it in your own words</label>
+            <Textarea id="plain-language-input" rows={2} value={plainLanguage}
+              onChange={(event) => setPlainLanguage(event.target.value)}
+              placeholder="Example: adult subject, 3000 cc breast implants, BBL, fitted dress" />
+            {translatedPlainLanguage.attributes.map((attribute) => (
+              <p key={attribute.key} className="text-xs text-zinc-400">
+                <span className="text-zinc-200">{attribute.source}</span> → {attribute.meaning}
+              </p>
+            ))}
+            {plainLanguage.trim() && <p className="text-xs text-zinc-400">Workflow translation: {translatedPlainLanguage.text || "Describe motion for image-to-video; the source image supplies appearance."}</p>}
+          </div>
           <PromptPreview
             positive={finalPositive}
             negative={finalNegative}
