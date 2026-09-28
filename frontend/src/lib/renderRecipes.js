@@ -1,4 +1,9 @@
 const IMAGE_RECIPES = {
+  sdxl: {
+    draft: { width: 768, height: 1024, steps: 20, cfg: 5.0, batchSize: 1, sampler: "dpmpp_2m", note: "Quick SDXL portrait test · Karras scheduler" },
+    balanced: { width: 832, height: 1216, steps: 35, cfg: 5.0, batchSize: 1, sampler: "dpmpp_2m", note: "Juggernaut XL v9 portrait baseline · Karras scheduler" },
+    quality: { width: 1024, height: 1536, steps: 40, cfg: 5.0, batchSize: 1, sampler: "dpmpp_2m", note: "Larger SDXL portrait · higher VRAM use" },
+  },
   zimage: {
     draft: { width: 768, height: 1024, steps: 6, cfg: 1.0, batchSize: 1, sampler: "res_multistep", note: "Fast composition test" },
     balanced: { width: 1024, height: 1024, steps: 8, cfg: 1.0, batchSize: 1, sampler: "res_multistep", note: "Recommended Z-Image render" },

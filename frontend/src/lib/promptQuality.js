@@ -3,6 +3,7 @@ import { requirementPresent } from "@/lib/promptPriority";
 const PLACEHOLDER_SEGMENTS = new Set(["none", "average", "default", "n/a", "undefined", "null"]);
 
 const PROFILE_LIMITS = {
+  sdxl: { label: "SDXL / CLIP", warningTokens: 175, hardTokens: 225 },
   chroma: { label: "Golden Chroma", warningTokens: 480, hardTokens: 512 },
   krea2: { label: "Krea 2 Turbo", warningTokens: 480, hardTokens: 640 },
   pony: { label: "Pony / CLIP", warningTokens: 180, hardTokens: 225 },
@@ -29,6 +30,7 @@ export function promptProfile(workflow = {}) {
   if (haystack.includes("chroma")) return "chroma";
   if (style === "krea2" || haystack.includes("krea 2") || haystack.includes("krea2")) return "krea2";
   if (haystack.includes("pony")) return "pony";
+  if (style === "sdxl" || haystack.includes("juggernaut xl")) return "sdxl";
   if (haystack.includes("z-image") || haystack.includes("z image") || haystack.includes("z_image") || style === "zimage") return "zimage";
   if (haystack.includes("flux")) return "flux";
   return "default";
@@ -139,7 +141,7 @@ export function analyzePromptQuality({
     issues.push(issue("error", "adult-age", "The subject age must be 21 or older.", { blocking: true }));
   }
 
-  const generatedImageProfile = ["default", "zimage", "chroma", "krea2", "pony", "flux", "wan_t2v"].includes(profile);
+  const generatedImageProfile = ["default", "sdxl", "zimage", "chroma", "krea2", "pony", "flux", "wan_t2v"].includes(profile);
   if (generatedImageProfile) {
     const explicitLevel = Number(dna?.scenario?.explicit_level || 0);
     const nudityLevel = Number(dna?.wardrobe?.nudity_level || 0);

@@ -108,7 +108,7 @@ The default Settings URL (`http://localhost:8188`) will Just Work in the native 
 ## Typical first-use flow
 
 1. **Settings** → verify COMFY badge is green. If not, tap the URL, fix, save.
-2. **Settings → Workflow library**: choose an installed workflow. The library includes Chroma, Z-Image, Qwen Edit, WAN, face, Pony, and Krea 2 recipes. Match each referenced model filename to your ComfyUI installation.
+2. **Settings → Workflow library**: choose an installed workflow. The library includes SDXL, Chroma, Z-Image, Qwen Edit, WAN, face, Pony, and Krea 2 recipes. For an existing installation, click **Refresh bundled workflows** to add newly shipped recipes. Match each referenced model filename to your ComfyUI installation.
 3. Home → **New character** → run through the 13 sections (or hit **Star presets** → apply Ava Devine / Ebony Mystique / Gracie Bon etc.).
 4. Pick a workflow, select at most one optional compatible LoRA in the LoRA picker, adjust its strength, and hit **Render**. The picker reads installed names from ComfyUI and adds known trigger words. Krea 2 uses the same picker. The legacy Private Magazine workflow is retained for saved recipes, but is hidden from the main workflow list.
 5. Choose 1, 2, 4, 6, 8, or 10 images for an image workflow. Each job receives a different seed and runs through the queue. The batch panel shows each result or failure; completed images also appear in **Gallery**.
@@ -121,6 +121,7 @@ The bundled workflows reference these files. If ComfyUI complains at dispatch, d
 
 | Workflow                       | Checkpoint / model                                       | LoRAs / extras                                                                                                   |
 | ------------------------------ | -------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| **SDXL · Juggernaut XL v9** | `Juggernaut-XL_v9_RunDiffusionPhoto_v2.safetensors` in `models/checkpoints` | No extra VAE or custom nodes; 832×1216, DPM++ 2M Karras, 35 steps, CFG 5 by default. An SD 1.5 checkpoint cannot replace this SDXL checkpoint. |
 | **Chroma1-HD · Golden T2I**    | `chroma1-hd-golden.safetensors`                          | —                                                                                                                |
 | **Z-image Turbo · NSFW**       | `z-image_turbo_nsfw.safetensors`                         | —                                                                                                                |
 | **Qwen Image Edit 2511**       | `qwen-image-edit-2511.safetensors`                       | —                                                                                                                |
