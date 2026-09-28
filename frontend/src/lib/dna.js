@@ -119,6 +119,28 @@ export const SECTIONS = [
       { key: "asshole", type: "chips", label: "Butthole", options: ["hidden", "tight", "visible", "puckered", "trimmed", "hairy", "bleached", "pierced", "spread"] },
       { key: "nipples", type: "chips", label: "Nipples", options: ["soft", "erect", "inverted", "small", "large", "puffy", "pierced"] },
       { key: "areolas", type: "chips", label: "Areolas", options: ["small pale", "medium pink", "large brown", "very large dark", "puffy dome"] },
+      { key: "nipple_size", type: "chips", label: "Nipple size", groups: [
+        { name: "Natural", options: ["very small nipple tips", "small nipple tips", "medium nipple tips", "large nipple tips"] },
+        { name: "Stylized", options: ["extra large nipple tips", "oversized nipple tips"] },
+      ] },
+      { key: "nipple_shape", type: "chips", label: "Nipple shape / projection", groups: [
+        { name: "Projection", options: ["flat nipples", "subtly raised nipples", "protruding nipples", "prominently projecting nipples"] },
+        { name: "Shape", options: ["rounded nipple tips", "conical nipple tips", "inverted nipples", "one inverted nipple"] },
+      ] },
+      { key: "areola_size", type: "chips", label: "Areola size", groups: [
+        { name: "Natural", options: ["small areolas", "medium areolas", "wide areolas"] },
+        { name: "Stylized", options: ["very wide areolas", "oversized areolas"] },
+      ] },
+      { key: "areola_shape", type: "chips", label: "Areola shape / contour", groups: [
+        { name: "Outline", options: ["round areolas", "oval areolas", "soft irregular areola edges"] },
+        { name: "Contour", options: ["flat areolas", "slightly raised areolas", "puffy raised areolas"] },
+      ] },
+      { key: "areola_color", type: "chips", label: "Areola color", groups: [
+        { name: "Light", options: ["pale pink areolas", "rose pink areolas", "peach areolas"] },
+        { name: "Medium", options: ["tan areolas", "warm brown areolas", "copper brown areolas"] },
+        { name: "Deep", options: ["deep brown areolas", "dark brown areolas"] },
+      ] },
+      { key: "areola_detail", type: "chips", label: "Areola detail", options: ["smooth areola texture", "subtle natural texture", "visible Montgomery glands", "soft color gradient", "defined areola border"] },
       { key: "body_hair", type: "chips", label: "Body hair", options: ["hairless", "light peach fuzz", "moderate", "heavy", "natural", "unshaven armpits"] },
       { key: "piercings", type: "chips", label: "Piercings", options: ["none", "nipple", "navel", "nose", "septum", "tongue", "clit hood", "labia", "multi"] },
       { key: "cum_state", type: "chips_multi", label: "Cum / mess (pick many)", groups: [
@@ -1191,8 +1213,14 @@ function _veniceSubjectBlock(dna = {}, opts = {}) {
     exp("intimate", "pussy"),
     im.clit && im.clit !== "hidden" && exp("intimate", "clit"),
     im.asshole && im.asshole !== "hidden" && exp("intimate", "asshole"),
-    exp("intimate", "nipples"),
-    exp("intimate", "areolas"),
+    !(im.nipple_size || im.nipple_shape) && exp("intimate", "nipples"),
+    !(im.areola_size || im.areola_shape || im.areola_color || im.areola_detail) && exp("intimate", "areolas"),
+    exp("intimate", "nipple_size"),
+    exp("intimate", "nipple_shape"),
+    exp("intimate", "areola_size"),
+    exp("intimate", "areola_shape"),
+    exp("intimate", "areola_color"),
+    exp("intimate", "areola_detail"),
     im.body_hair && im.body_hair !== "hairless" && exp("intimate", "body_hair"),
     im.piercings && im.piercings !== "none" && exp("intimate", "piercings"),
   ]);
