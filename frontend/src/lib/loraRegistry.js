@@ -91,6 +91,15 @@ export const LORA_REGISTRY = [
   item("z-breast-slider", "Z-Breast-Slider.safetensors", "zimage", "body", "Breast Slider", { categories:["body","physique"], triggerWords:["natural breast shape"], keywords:["breasts","breast","bust","cleavage","flat chest","small breasts","large breasts","huge breasts"], defaultStrength:0.46, auto:true, verified:true }),
   item("z-feet-v2", "feet v2.1.safetensors", "zimage", "body", "Feet Detail V2", { categories:["feet","detail"], triggerWords:["detailed human feet","five natural toes"], keywords:["feet","foot","toes","soles","sole showcase","footjob","foot worship","pedicure"], defaultStrength:0.48, auto:true, verified:true, conflicts:["qq-foot","qq-footing"] }),
 
+  // Z-Image Turbo versions and trained words checked against the supplied model-page screenshots.
+  // These are manual choices: several target the same body region and stacking them can distort anatomy.
+  item("zit-bubble-butt", "bubble_butt_ZIT_turbo_lora_2ks_v4.safetensors", "zimage", "body", "Bubble Butt · ZIT", { categories:["body","butt"], triggerWords:["bubble butt"], defaultStrength:0.7, maxStrength:1.2, verified:true }),
+  item("zit-fake-ass", "zit_fake_ass_v2.safetensors", "zimage", "body", "Fake Ass · ZIT", { categories:["body","butt"], triggerWords:["fake ass"], defaultStrength:0.7, maxStrength:1.0, verified:true }),
+  item("zit-fake-breasts", "zit_fake_breasts_v2.safetensors", "zimage", "body", "Fake Breasts · ZIT", { categories:["body","bust"], triggerWords:["fake breasts"], defaultStrength:0.7, maxStrength:1.0, verified:true }),
+  item("zit-gigabreasts", "GigaBreastsZit.safetensors", "zimage", "body", "Gigantic Breasts · ZIT", { categories:["body","bust"], triggerWords:["gigantic breasts"], defaultStrength:0.7, maxStrength:1.2, verified:true }),
+  item("zit-huge-breasts-mix", "hbm_v3hbm_bs4_2000.safetensors", "zimage", "body", "Huge Breasts Mix V3 · ZIT", { categories:["body","bust"], triggerWords:["huge breasts"], defaultStrength:0.8, maxStrength:1.1, verified:true }),
+  item("zit-hyper-gigantic", "hyper_gigantic_tits.safetensors", "zimage", "body", "Hyper Gigantic · ZIT", { categories:["body","bust"], triggerWords:["ZITHYPER"], defaultStrength:0.9, maxStrength:1.2, verified:true }),
+
   item("qq-anal", "Z-Image\\Curated\\QQ Collection\\lora-anal.safetensors", "zimage", "action", "Anal", { categories:["play"], triggerWords:["anal sex"], keywords:["anal"], defaultStrength:0.7, auto:true, verified:true }),
   item("qq-bbc", "Z-Image\\Curated\\QQ Collection\\lora-bbc-penis.safetensors", "zimage", "body", "BBC Penis", { categories:["anatomy"], triggerWords:["BBC penis"], keywords:["bbc","large penis"], defaultStrength:0.55, auto:true, verified:true }),
   item("qq-blowjob", "Z-Image\\Curated\\QQ Collection\\lora-blowjob.safetensors", "zimage", "action", "Blowjob", { categories:["play"], triggerWords:["blowjob"], keywords:["blowjob","oral sex","fellatio"], defaultStrength:0.7, auto:true, verified:true, conflicts:["qq-blowjob2","qq-penis-blowjob"] }),
@@ -420,7 +429,7 @@ export function compatibleInstalledLoras(workflow = {}, installed = []) {
       family: inferredFamily,
       slot: registered?.slot || "manual",
       installedName,
-      triggerWords: registered?.triggerWords?.length ? registered.triggerWords : inferredTriggerWords(installedName),
+      triggerWords: registered ? registered.triggerWords : inferredTriggerWords(installedName),
       defaultStrength: registered?.defaultStrength ?? 0.8,
       minStrength: registered?.minStrength ?? 0,
       maxStrength: registered?.maxStrength ?? 1.5,

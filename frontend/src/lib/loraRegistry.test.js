@@ -23,6 +23,16 @@ const installed = [
 ];
 
 describe("LoRA registry planner", () => {
+  test("loads documented Z-Image triggers from files in a family subfolder", () => {
+    const options = compatibleInstalledLoras({ name: "IMAGE · Z-image Turbo · NSFW" }, [
+      "Z-Image\\zit_fake_ass_v2.safetensors",
+      "Z-Image\\hbm_v3hbm_bs4_2000.safetensors",
+      "Z-Image\\hyper_gigantic_tits.safetensors",
+    ]);
+    expect(options.find((entry) => entry.id === "zit-fake-ass")?.triggerWords).toEqual(["fake ass"]);
+    expect(options.find((entry) => entry.id === "zit-huge-breasts-mix")?.triggerWords).toEqual(["huge breasts"]);
+    expect(options.find((entry) => entry.id === "zit-hyper-gigantic")?.triggerWords).toEqual(["ZITHYPER"]);
+  });
   test("detects workflow families", () => {
     expect(workflowFamily({ name: "IMAGE · Z-image Turbo · NSFW" })).toBe("zimage");
     expect(workflowFamily({ name: "IMAGE · Chroma1-HD" })).toBe("chroma");
