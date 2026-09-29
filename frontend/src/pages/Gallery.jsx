@@ -93,6 +93,7 @@ export default function Gallery() {
   const [selectionMode, setSelectionMode] = useState(false);
   const [selected, setSelected] = useState([]);
   const [albumFilter, setAlbumFilter] = useState("all");
+  const [showQcFlagged, setShowQcFlagged] = useState(true);
   const [thumbSize, setThumbSize] = useState("medium");
   const [pageSize, setPageSize] = useState(12);
   const [page, setPage] = useState(1);
@@ -127,6 +128,17 @@ export default function Gallery() {
       toast.success(`Removed ${result.deleted || 0} Gallery items`);
     },
     onError: (error) => toast.error(error?.response?.data?.detail || "Could not remove selected renders"),
+  });
+  const removeQcFlagged = useMutation({
+    mutationFn: endpoints.deleteQcFlaggedRenders,
+    onSuccess: (result) => {
+      setSelected([]);
+      setLightbox(null);
+      setPage(1);
+      qc.invalidateQueries({ queryKey: ["renders"] });
+      toast.success(`Removed ${result.deleted || 0} QC-flagged Gallery items`);
+    },
+    onError: (error) => toast.error(error?.response?.data?.detail || "Could not remove QC-flagged items"),
   });
 
   const clearCancelled = useMutation({
@@ -217,7 +229,8 @@ export default function Gallery() {
 
   // The gallery only treats work that can still produce output as in flight.
   // Terminal records without media (cancelled/failed/offline) are not empty tiles.
-  const withOutput = renders.filter((r) => primaryOutput(r));
+  const qcFlagged = renders.filter((r) => r.anatomy_guard_status === "failed" && primaryOutput(r));
+  const withOutput = renders.filter((r) => primaryOutput(r) && (showQcFlagged || r.anatomy_guard_status !== "failed"));
   const albums = [...new Set(withOutput.map((render) => render.album).filter(Boolean))].sort();
   const displayedOutput = albumFilter === "all"
     ? withOutput
@@ -366,6 +379,21 @@ export default function Gallery() {
         </div>
       )}
 
+      {qcFlagged.length > 0 && (
+        <div className="flex flex-wrap items-center gap-3 rounded-lg border hairline bg-elevated p-3 text-xs text-zinc-300" data-testid="gallery-qc-controls">
+          <button type="button" aria-pressed={showQcFlagged} data-testid="btn-gallery-show-qc"
+            onClick={() => { setShowQcFlagged((value) => !value); setSelected([]); setLightbox(null); setPage(1); }}
+            className={`rounded-lg border px-3 py-2 ${showQcFlagged ? "border-amber-400/50 bg-amber-400/10 text-amber-100" : "hairline"}`}>
+            Show QC-flagged images: {showQcFlagged ? "On" : "Off"}
+          </button>
+          <button type="button" disabled={removeQcFlagged.isPending} data-testid="btn-gallery-delete-all-qc"
+            onClick={() => window.confirm("Remove ALL QC-flagged renders from the Gallery, including older pages? Original ComfyUI files will remain on disk.") && removeQcFlagged.mutate()}
+            className="rounded-lg border border-red-500/40 px-3 py-2 text-red-200 hover:bg-red-500/10 disabled:opacity-40">
+            <Trash2 className="mr-1 inline h-3.5 w-3.5" /> Delete all QC-flagged
+          </button>
+        </div>
+      )}
+
       {isLoading ? (
         <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2">
           {Array.from({ length: 12 }).map((_, i) => (
@@ -389,7 +417,7 @@ export default function Gallery() {
                     className={`rounded-lg border px-2 py-1 capitalize ${thumbSize === size ? "border-cyan-400 text-cyan-100 bg-cyan-400/10" : "hairline"}`}>{size}</button>
                 ))}
                 <span className="ml-2">Per page</span>
-                {[12, 16, 20].map((size) => (
+                {[12, 16, 20, 24].map((size) => (
                   <button key={size} type="button" onClick={() => { setPageSize(size); setPage(1); }} aria-pressed={pageSize === size}
                     data-testid={`gallery-page-size-${size}`}
                     className={`rounded-lg border px-2 py-1 ${pageSize === size ? "border-amber-400 text-amber-100 bg-amber-400/10" : "hairline"}`}>{size}</button>
@@ -454,9 +482,20 @@ export default function Gallery() {
               })}
             </div>
           )}
-          {pageCount > 1 && <nav aria-label="Gallery pages" className="flex items-center justify-center gap-3 text-sm">
+          {pageCount > 1 && <nav aria-label="Gallery pages" className="flex flex-wrap items-center justify-center gap-3 text-sm">
             <button type="button" disabled={currentPage <= 1} onClick={() => setPage(currentPage - 1)} className="rounded-lg border hairline px-3 py-2 disabled:opacity-40">Previous</button>
             <span>Page {currentPage} of {pageCount}</span>
+            <label className="flex items-center gap-2">Go to page
+              <input key={currentPage} type="number" min="1" max={pageCount} defaultValue={currentPage}
+                aria-label="Go to gallery page" data-testid="gallery-page-jump"
+                onBlur={(event) => {
+                  const requested = Number(event.currentTarget.value);
+                  if (Number.isInteger(requested) && requested >= 1) setPage(Math.min(requested, pageCount));
+                  else event.currentTarget.value = String(currentPage);
+                }}
+                onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); }}
+                className="w-16 rounded-lg border hairline bg-elevated px-2 py-2 text-center text-zinc-100" />
+            </label>
             <button type="button" disabled={currentPage >= pageCount} onClick={() => setPage(currentPage + 1)} className="rounded-lg border hairline px-3 py-2 disabled:opacity-40">Next</button>
           </nav>}
 

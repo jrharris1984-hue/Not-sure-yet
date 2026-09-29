@@ -54,6 +54,7 @@ export const endpoints = {
   deleteRender: (id) => api.delete(`/renders/${id}`).then((r) => r.data),
   clearCancelledRenders: () => api.delete("/renders/cancelled").then((r) => r.data),
   deleteRenders: (ids) => api.post("/renders/delete-bulk", { ids }).then((r) => r.data),
+  deleteQcFlaggedRenders: () => api.post("/renders/delete-qc-flagged").then((r) => r.data),
   setRenderAlbum: (id, album) => api.patch(`/renders/${id}/album`, { album }).then((r) => r.data),
   setRenderAlbumBulk: (ids, album) => api.post("/renders/albums/bulk", { ids, album }).then((r) => r.data),
   getRenderVersions: (id) => api.get(`/renders/${id}/versions`).then((r) => r.data),
@@ -115,6 +116,8 @@ export const endpoints = {
   createShoot: (body) => api.post("/shoots", body).then((r) => r.data),
   listShoots: (params = {}) => api.get("/shoots", { params }).then((r) => r.data),
   getShoot: (id) => api.get(`/shoots/${id}`).then((r) => r.data),
+  setShootCover: (id, frameIndex) => api.patch(`/shoots/${id}/cover`, { frame_index: frameIndex }).then((r) => r.data),
+  downloadShootFrames: (id, frames) => api.post(`/shoots/${id}/download`, { frames }, { responseType: "blob" }).then((r) => r.data),
   deleteShoot: (id) => api.delete(`/shoots/${id}`).then((r) => r.data),
   retryShootFrame: (id, index, body = {}) => api.post(`/shoots/${id}/retry/${index}`, body).then((r) => r.data),
   // Kink presets

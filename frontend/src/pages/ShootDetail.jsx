@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Camera, ChevronLeft, ChevronRight, X, ExternalLink, RefreshCw, Trash2, Loader2 } from "lucide-react";
+import { Camera, ChevronLeft, ChevronRight, X, ExternalLink, RefreshCw, Trash2, Loader2, Download, Star } from "lucide-react";
 import { API_BASE, endpoints } from "@/lib/api";
 import LivePreview from "@/components/LivePreview";
 
@@ -37,6 +37,8 @@ export default function ShootDetail() {
   const { shootId } = useParams();
   const qc = useQueryClient();
   const [activeFrame, setActiveFrame] = useState(null);
+  const [selectedFrames, setSelectedFrames] = useState([]);
+  const [downloading, setDownloading] = useState(false);
 
   const { data: shoot, isLoading } = useQuery({
     queryKey: ["shoot", shootId],
@@ -91,6 +93,27 @@ export default function ShootDetail() {
   })).filter((frame) => frame.url);
   const activePosition = images.findIndex((frame) => frame.index === activeFrame);
   const selectedImage = images[activePosition];
+  const downloadFrames = async (indices) => {
+    if (!indices.length) return;
+    setDownloading(true);
+    try {
+      const blob = await endpoints.downloadShootFrames(shootId, indices);
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `shoot-${shootId.slice(0, 12)}.zip`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+    } catch { toast.error("Could not download selected images"); }
+    finally { setDownloading(false); }
+  };
+  const cover = useMutation({
+    mutationFn: (index) => endpoints.setShootCover(shootId, index),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["shoot", shootId] }); qc.invalidateQueries({ queryKey: ["shoots"] }); toast.success("Shoot cover updated"); },
+    onError: () => toast.error("Could not set shoot cover"),
+  });
   const moveFrame = (direction) => {
     if (activePosition < 0 || !images.length) return;
     setActiveFrame(images[(activePosition + direction + images.length) % images.length].index);
@@ -110,7 +133,7 @@ export default function ShootDetail() {
   if (isLoading) return <div className="p-8 text-zinc-400">Loading shoot…</div>;
   if (!shoot) return <div className="p-8 text-zinc-400">Shoot not found.</div>;
 
-  const doneCount = shoot.frames.filter((f) => f.status === "done").length;
+  const doneCount = shoot.rendered_count ?? shoot.frames.filter((f) => f.status === "done").length;
   const failedCount = shoot.frames.filter((f) => f.status === "failed").length;
   const offlineCount = shoot.frames.filter((f) => f.status === "offline").length;
 
@@ -142,6 +165,11 @@ export default function ShootDetail() {
             </div>
           </div>
         </div>
+        <div className="flex flex-wrap items-center gap-2">
+        {images.length > 0 && <button type="button" disabled={downloading} onClick={() => downloadFrames(images.map((image) => image.index))}
+          className="rounded-lg border hairline px-3 py-2 text-xs text-zinc-200"><Download className="mr-1 inline h-4 w-4" />Download entire shoot</button>}
+        {selectedFrames.length > 0 && <button type="button" disabled={downloading} onClick={() => downloadFrames(selectedFrames)}
+          className="rounded-lg border border-amber-500/50 px-3 py-2 text-xs text-amber-200"><Download className="mr-1 inline h-4 w-4" />Download selected ({selectedFrames.length})</button>}
         <button
           type="button"
           onClick={() => window.confirm("Delete this shoot and all its frames?") && del.mutate()}
@@ -150,6 +178,7 @@ export default function ShootDetail() {
         >
           <Trash2 className="h-3.5 w-3.5" /> Delete
         </button>
+        </div>
       </div>
 
       {/* Progress bar */}
@@ -165,7 +194,7 @@ export default function ShootDetail() {
         {shoot.frames.map((f, i) => {
           const r = shoot.renders?.[i];
           const outputUrl = imageUrl(r?.output_variants?.enhanced?.[0] || r?.output_files?.[0]);
-          const status = f.status || r?.status || "pending";
+          const status = outputUrl ? "done" : f.status || r?.status || "pending";
           return (
             <div
               key={i}
@@ -207,6 +236,13 @@ export default function ShootDetail() {
               <div className="text-[10px] font-mono text-zinc-400 truncate" title={f.pose_action}>
                 {f.pose_action || "—"}
               </div>
+              {outputUrl && <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+                <label className="flex items-center gap-1 text-zinc-200"><input type="checkbox" checked={selectedFrames.includes(i)}
+                  onChange={() => setSelectedFrames((current) => current.includes(i) ? current.filter((item) => item !== i) : [...current, i])} />Select</label>
+                <button type="button" onClick={() => cover.mutate(i)} disabled={cover.isPending}
+                  className={shoot.cover_frame_index === i ? "text-amber-300" : "text-zinc-400"} title="Set as shoot cover">
+                  <Star className={`h-4 w-4 ${shoot.cover_frame_index === i ? "fill-current" : ""}`} /></button>
+              </div>}
               {f.outfit_overrides?.outfit_preset && (
                 <div className="text-[10px] font-mono text-amber-300/80 truncate">
                   {f.outfit_overrides.outfit_preset}
@@ -236,6 +272,8 @@ export default function ShootDetail() {
           data-testid="shoot-gallery-lightbox" onClick={() => setActiveFrame(null)}>
           <div className="relative w-full h-full flex flex-col items-center justify-center gap-3" onClick={(event) => event.stopPropagation()}>
             <div className="absolute top-0 right-0 z-10 flex items-center gap-2">
+              <button type="button" onClick={() => downloadFrames([selectedImage.index])} disabled={downloading}
+                aria-label="Download this image" className="rounded-full border border-white/20 bg-black/70 p-2.5 text-white"><Download className="h-5 w-5" /></button>
               <a href={selectedImage.url} target="_blank" rel="noopener noreferrer" aria-label="Open full-size image in a new tab"
                 className="rounded-full border border-white/20 bg-black/70 p-2.5 text-white"><ExternalLink className="h-5 w-5" /></a>
               <button type="button" onClick={() => setActiveFrame(null)} aria-label="Close photo shoot gallery"

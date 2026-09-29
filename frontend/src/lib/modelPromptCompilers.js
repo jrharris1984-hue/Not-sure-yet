@@ -376,7 +376,7 @@ function kreaPoseSentence(dna = {}, label = "") {
     p.focus && !(lower(p.focus) === "feet" && !feetVisible) && (bodyCrop && lower(p.focus) === "face"
       ? `face clearly visible within the ${cropDescription} composition`
       : `${p.focus} composition priority`),
-    p.hands?.length ? `hands ${p.hands.join(" and ")}` : "",
+    arrayValue(p.hands).length ? `hands ${arrayValue(p.hands).slice(-1)[0]}` : "",
     Number(dna.physique?.implant_volume || 0) >= 3000 && lower(p.action).includes("leaning")
       ? "keep the projected chest silhouette visible rather than hidden behind the near arm" : "",
     feetPriority ? feet.framing : "",

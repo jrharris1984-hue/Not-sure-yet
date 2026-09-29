@@ -434,7 +434,7 @@ function _ponySubjectBlock(dna = {}, opts = {}) {
     exp("pose", "distance"),
     pose.focus && pose.focus !== "full frame" && exp("pose", "focus"),
     Array.isArray(pose.hands)
-      ? pose.hands.filter(Boolean).map((h) => expandPrompt("pose", "hands", h, { raunch })).join(", ")
+      ? pose.hands.filter(Boolean).slice(-1).map((h) => expandPrompt("pose", "hands", h, { raunch })).join(", ")
       : (pose.hands && exp("pose", "hands")),
     exp("pose", "body_language"),
   ]);
