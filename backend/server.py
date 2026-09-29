@@ -2350,10 +2350,32 @@ async def preview_improved_render(rid: str):
             f"Review: {str(report.get('summary') or '')[:300]}. "
             f"Missing: {json.dumps(report.get('missing') or [], ensure_ascii=False)[:600]}. "
             f"Saved prompt: {original[:7000]}")
-    result = extract_json(await openrouter_chat(system, user, response_format_json=True))
+    first_reply = await openrouter_chat(system, user, response_format_json=True)
+    try:
+        result = extract_json(first_reply)
+        if not isinstance(result, dict):
+            result = {}
+    except (HTTPException, ValueError):
+        result = {}
     proposed = str(result.get("prompt_positive") or "").strip()
     if len(proposed) < 30 or len(proposed) > 5000:
-        raise HTTPException(502, "AI did not return a usable corrected prompt")
+        # Ollama text models sometimes produce an empty or incomplete JSON reply
+        # for long saved prompts. Retry with a shorter request and plain text.
+        fallback_system = (
+            "Rewrite this image-generation prompt as one coherent visual scene under 180 words. "
+            "Keep the same number of adults, appearance, wardrobe, and requested setting. "
+            "Resolve conflicting camera and clothing directions. Return only the corrected prompt, "
+            "without JSON, explanation, or markdown."
+        )
+        fallback_user = (f"Subjects selected: {subject_count}. "
+                         f"Saved prompt: {original[:3000]}")
+        fallback = (await openrouter_chat(fallback_system, fallback_user)).strip()
+        fallback = re.sub(r"^```(?:text)?\s*|\s*```$", "", fallback).strip()
+        if 30 <= len(fallback) <= 5000 and not fallback.lower().startswith(("i cannot", "i can't", "sorry,")):
+            proposed = fallback
+            result = {"note": "The AI returned a plain-text revision. Review it before rendering."}
+    if len(proposed) < 30 or len(proposed) > 5000:
+        raise HTTPException(502, "The text model did not return a corrected prompt. Try again or choose a different text model in Settings.")
     return {"prompt_positive": proposed, "note": str(result.get("note") or "")[:400],
             "original_prompt": original, "workflow_name": render.get("workflow_name")}
 
