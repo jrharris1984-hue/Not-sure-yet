@@ -74,6 +74,21 @@ export function analyzePromptQuality({
   const duplicateCount = segments.length - new Set(segments).size;
   const issues = [];
 
+  const subjectCount = Number(context.subjectCount || 1);
+  if (subjectCount === 1 && /\b(kissing(?:\s+(?:another|each other|her|him|them))?|two\s+(?:adult\s+)?(?:women|people|subjects)|both\s+(?:women|people|subjects))\b/i.test(positive)) {
+    issues.push(issue("error", "subject-count-conflict", "One person is selected, but the prompt describes an interaction or two people. Choose a second subject or remove the interaction.", { blocking: true }));
+  }
+  if (subjectCount > 1 && /\b(exactly one (?:adult )?(?:person|subject)|single (?:adult )?(?:person|subject))\b/i.test(positive)) {
+    issues.push(issue("error", "subject-count-conflict", "Multiple people are selected, but the prompt asks for exactly one. Review Person and Scenario.", { blocking: true }));
+  }
+  if (/\b(?:full[- ](?:length|body|figure)|head[- ]to[- ]toe)\b/i.test(positive)
+    && /\b(?:extreme close[- ]up|tight (?:head|face) crop)\b/i.test(positive)) {
+    issues.push(issue("warning", "framing-conflict", "The prompt requests a full figure and an extreme close-up. Pick one camera distance before rendering."));
+  }
+  if (/\brear three[- ]quarter view\b/i.test(positive) && /\bhead[- ]on\b/i.test(positive)) {
+    issues.push(issue("warning", "view-conflict", "The prompt asks for both a rear three-quarter and head-on view. Pick one primary camera angle."));
+  }
+
   if (!String(positive).trim()) {
     issues.push(issue("error", "empty-prompt", "The selected workflow does not have a prompt or instruction yet.", { blocking: true }));
   }
