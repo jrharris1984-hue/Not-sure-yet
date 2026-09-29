@@ -145,13 +145,14 @@ export default function Settings() {
   const { data: settings } = useQuery({ queryKey: ["settings"], queryFn: endpoints.settings });
   const { data: workflows = [] } = useQuery({ queryKey: ["workflows"], queryFn: endpoints.listWorkflows });
   const { data: health } = useQuery({ queryKey: ["comfy-health"], queryFn: endpoints.comfyHealth, refetchInterval: 10000 });
+  const { data: ollama, refetch: checkOllama } = useQuery({ queryKey: ["ollama-models", settings?.ollama_url], queryFn: endpoints.ollamaModels, enabled: !!settings });
 
   const [form, setForm] = useState(null);
   useEffect(() => { if (settings && !form) setForm(settings); }, [settings, form]);
 
   const saveSettings = useMutation({
     mutationFn: (payload) => endpoints.updateSettings(payload || form),
-    onSuccess: () => { toast.success("Settings saved"); qc.invalidateQueries({ queryKey: ["settings"] }); qc.invalidateQueries({ queryKey: ["comfy-health"] }); },
+    onSuccess: () => { toast.success("Settings saved"); qc.invalidateQueries({ queryKey: ["settings"] }); qc.invalidateQueries({ queryKey: ["comfy-health"] }); qc.invalidateQueries({ queryKey: ["ollama-models"] }); },
     onError: (e) => toast.error(e?.response?.data?.detail || "Save failed"),
   });
 
@@ -282,8 +283,28 @@ export default function Settings() {
       <section className="pane p-5 space-y-4">
         <div className="flex items-center gap-2">
           <KeyRound className="h-4 w-4 text-amber-400" />
-          <div className="section-label">Venice.AI (AI Assist)</div>
+          <div className="section-label">AI Assist</div>
         </div>
+        <div className="flex flex-wrap gap-2 text-sm">
+          {["ollama", "venice"].map((provider) => <button key={provider} type="button" onClick={() => set("ai_provider", provider)}
+            aria-pressed={form.ai_provider === provider} className={`rounded-lg border px-3 py-2 ${form.ai_provider === provider ? "border-amber-400 text-amber-200" : "hairline text-zinc-400"}`}>
+            {provider === "ollama" ? "Local Ollama" : "Venice API"}</button>)}
+        </div>
+        {form.ai_provider === "ollama" && <div className="space-y-3">
+          <label className="block space-y-1"><span className="text-xs text-zinc-400">Ollama URL from the backend container</span>
+            <Input value={form.ollama_url || ""} onChange={(e) => set("ollama_url", e.target.value)} placeholder="http://host.docker.internal:11434" className="bg-elevated border-hairline font-mono" /></label>
+          <div className="text-xs text-zinc-400">{ollama?.online ? `${ollama.models.length} installed models found` : `Ollama unavailable${ollama?.error ? `: ${ollama.error}` : ""}`}
+            <button type="button" onClick={() => checkOllama()} className="ml-2 text-amber-300 underline">Check again</button></div>
+          {[ ["ollama_text_model", "Prompt assistant model"], ["ollama_vision_model", "Image review model"] ].map(([key, label]) =>
+            <label key={key} className="block space-y-1"><span className="text-xs text-zinc-400">{label}</span>
+              <select value={form[key] || ""} onChange={(e) => set(key, e.target.value)} className="w-full rounded-lg border hairline bg-elevated p-2 text-zinc-100">
+                <option value="">Auto detect installed model</option>
+                {(ollama?.models || []).map((model) => <option key={model} value={model}>{model}</option>)}
+                {form[key] && !ollama?.models?.includes(form[key]) && <option value={form[key]}>{form[key]} (saved)</option>}
+              </select></label>)}
+          <p className="text-xs text-zinc-500">Choose a vision capable model for image review. On Docker Desktop, host.docker.internal reaches Ollama running on Windows.</p>
+        </div>}
+        {form.ai_provider !== "ollama" && <>
         <div className="text-[11px] text-zinc-400 leading-relaxed">
           AI Assist is powered by <code className="text-amber-300">Venice.AI</code> (uncensored, NSFW-permissive).
           The API key and model are read from <code>backend/.env</code>:
@@ -304,10 +325,11 @@ export default function Settings() {
             className="bg-elevated border-hairline font-mono"
           />
         </label>
+        </>}
         <div className="flex justify-end">
           <button
             data-testid="btn-save-settings"
-            onClick={() => saveSettings.mutate({ openrouter_api_key: form.openrouter_api_key, openrouter_model: form.openrouter_model })}
+            onClick={() => saveSettings.mutate({ ai_provider: form.ai_provider, ollama_url: form.ollama_url, ollama_text_model: form.ollama_text_model, ollama_vision_model: form.ollama_vision_model, openrouter_api_key: form.openrouter_api_key, openrouter_model: form.openrouter_model })}
             disabled={saveSettings.isPending}
             className="inline-flex items-center gap-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-black text-sm font-semibold px-4 py-2.5 disabled:opacity-40"
           >

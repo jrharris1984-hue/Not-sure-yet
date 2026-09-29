@@ -29,6 +29,7 @@ export const api = axios.create({
 
 export const endpoints = {
   settings: () => api.get("/settings").then((r) => r.data),
+  ollamaModels: () => api.get("/ollama/models").then((r) => r.data),
   updateSettings: (body) => api.put("/settings", body).then((r) => r.data),
   comfyHealth: () => api.get("/comfyui/health").then((r) => r.data),
   listCharacters: (params = {}) => api.get("/characters", { params }).then((r) => r.data),
