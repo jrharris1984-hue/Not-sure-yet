@@ -5,6 +5,16 @@ import {
 } from "./promptQuality";
 
 describe("prompt quality preflight", () => {
+  test("blocks one-person prompts that also request a second person interaction", () => {
+    const result = analyzePromptQuality({
+      positive: "exactly one adult person, kissing, full figure, extreme close-up shot, rear three-quarter view, head-on",
+      dna: { identity: { age: 50 }, pose: { action: "standing" } },
+      workflow: { prompt_style: "chroma" },
+      context: { subjectCount: 1 },
+    });
+    expect(result.blockers.map((item) => item.code)).toContain("subject-count-conflict");
+    expect(result.issues.map((item) => item.code)).toEqual(expect.arrayContaining(["framing-conflict", "view-conflict"]));
+  });
   test("selects a model-aware profile", () => {
     expect(promptProfile({ name: "IMAGE · Z-image Turbo · NSFW" })).toBe("zimage");
     expect(promptProfile({ prompt_style: "chroma" })).toBe("chroma");

@@ -313,6 +313,8 @@ async def openrouter_chat(system: str, user: str, response_format_json: bool = F
             "options": {"temperature": 0.7}}
         if response_format_json:
             payload["format"] = "json"
+            payload["think"] = False
+            payload["options"] = {"temperature": 0.2, "num_ctx": 8192, "num_predict": 1400}
         try:
             async with httpx.AsyncClient(timeout=180.0) as hc:
                 response = await hc.post(f"{s.ollama_url.rstrip('/')}/api/chat", json=payload)
@@ -2317,6 +2319,55 @@ async def preview_missing_details(rid: str, selection: MissingRetrySelection):
 @api.post("/renders/{rid}/retry-missing")
 async def retry_missing_details(rid: str, selection: MissingRetrySelection):
     recipe = await _missing_retry_recipe(rid, selection)
+    return await _enqueue_render(DispatchBody(**recipe))
+
+
+class ImprovedRenderBody(BaseModel):
+    prompt_positive: str
+
+
+@api.post("/renders/{rid}/improve/preview")
+async def preview_improved_render(rid: str):
+    render, recipe = await _render_recipe(rid)
+    if str(render.get("workflow_type") or "image") in {"video", "text_video"}:
+        raise HTTPException(400, "Choose a still image to improve")
+    original = str(recipe.get("prompt_positive") or "").strip()
+    if not original:
+        raise HTTPException(400, "This render has no saved prompt")
+    subjects = recipe.get("subjects") or []
+    subject_count = len(subjects) if subjects else 1
+    report = render.get("alignment_review") or {}
+    system = (
+        "You edit image-generation prompts. Return ONLY a JSON object with keys prompt_positive and note. "
+        "Rewrite the prompt into one concise, coherent visual scene of at most 180 words. "
+        "Keep the saved number of adult subjects, requested appearance, and core wardrobe. "
+        "Resolve incompatible camera directions, framing, clothing and body-hair descriptions. "
+        "Do not add people, body parts, actions, or wardrobe that were not requested. "
+        "Prioritize coherent anatomy, readable joints, and one consistent perspective. "
+        "Do not promise a perfect image. Note briefly which conflicts you resolved."
+    )
+    user = (f"Subjects selected: {subject_count}. Workflow: {render.get('workflow_name') or 'image'}. "
+            f"Review: {str(report.get('summary') or '')[:300]}. "
+            f"Missing: {json.dumps(report.get('missing') or [], ensure_ascii=False)[:600]}. "
+            f"Saved prompt: {original[:7000]}")
+    result = extract_json(await openrouter_chat(system, user, response_format_json=True))
+    proposed = str(result.get("prompt_positive") or "").strip()
+    if len(proposed) < 30 or len(proposed) > 5000:
+        raise HTTPException(502, "AI did not return a usable corrected prompt")
+    return {"prompt_positive": proposed, "note": str(result.get("note") or "")[:400],
+            "original_prompt": original, "workflow_name": render.get("workflow_name")}
+
+
+@api.post("/renders/{rid}/improve")
+async def queue_improved_render(rid: str, body: ImprovedRenderBody):
+    _render, recipe = await _render_recipe(rid)
+    prompt = body.prompt_positive.strip()
+    if len(prompt) < 30 or len(prompt) > 5000:
+        raise HTTPException(400, "Provide a corrected prompt between 30 and 5000 characters")
+    recipe = dict(recipe)
+    recipe.update({"shoot_id": None, "shoot_frame_index": None, "parent_render_id": rid,
+                   "operation": "prompt_improvement", "seed": random.randint(0, 2**31 - 1),
+                   "prompt_positive": prompt})
     return await _enqueue_render(DispatchBody(**recipe))
 
 

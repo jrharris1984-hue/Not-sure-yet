@@ -50,7 +50,8 @@ export default function AiAssistBar({ dna, onApplyDna, aiProvider = "AI" }) {
 
   const applyDraft = () => {
     if (!draft) return;
-    const next = { ...dna };
+    // A new description starts a fresh character. Refinements preserve other choices.
+    const next = draft.source === "description" ? structuredClone(DEFAULT_DNA) : { ...dna };
     for (const { section, field, value } of draft.changes) {
       next[section] = { ...(next[section] || {}), [field]: value };
     }
@@ -70,7 +71,7 @@ export default function AiAssistBar({ dna, onApplyDna, aiProvider = "AI" }) {
         <ChevronDown className={`h-4 w-4 text-zinc-400 transition-transform duration-200 ${expanded ? "rotate-180" : ""}`} />
       </button>
       {expanded && <div className="space-y-3 ai-assist-reveal">
-      <p className="text-xs text-zinc-400">Describe the image or a change. Review the proposed settings before applying them.</p>
+      <p className="text-xs text-zinc-400">A new description replaces old character settings. Refine changes only the settings shown. Review them before rendering.</p>
 
       <div className="space-y-2">
         <div className="text-[11px] uppercase tracking-widest text-zinc-500 font-mono">Freeform → DNA</div>
@@ -97,6 +98,7 @@ export default function AiAssistBar({ dna, onApplyDna, aiProvider = "AI" }) {
 
       {draft && <div className="space-y-2 rounded-lg border border-cyan-500/40 bg-cyan-500/5 p-3" data-testid="ai-dna-preview">
         <div className="text-xs font-semibold text-cyan-100">Review {draft.changes.length} proposed settings</div>
+        {draft.source === "description" && <p className="text-[11px] text-amber-200">Applying a new description clears old character settings that are not listed here.</p>}
         <div className="max-h-48 space-y-1 overflow-y-auto text-xs text-zinc-300">
           {draft.changes.map(({ section, field, value, previous }) =>
             <div key={`${section}.${field}`} className="flex gap-2 border-b border-white/5 py-1">
