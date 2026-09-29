@@ -343,6 +343,7 @@ export default function Builder() {
     [workflows]
   );
   const { data: settings } = useQuery({ queryKey: ["settings"], queryFn: endpoints.settings });
+  const aiProvider = settings?.ai_provider === "ollama" ? "Ollama" : "Venice";
   useEffect(() => {
     if (!workflowId && workflows.length) {
       setWorkflowId(settings?.default_workflow_id || workflows[0].id);
@@ -636,9 +637,9 @@ export default function Builder() {
     try {
       const result = await endpoints.aiAnalyzePoseReference(poseReferenceImage.name);
       setPoseReferenceAnalysis(result.pose_prompt || result.analysis || "");
-      toast.success("Venice extracted the pose without copying the reference identity");
+      toast.success(`${aiProvider} extracted the pose without copying the reference identity`);
     } catch (e) {
-      toast.error(e?.response?.data?.detail || "Venice could not analyze the pose reference");
+      toast.error(e?.response?.data?.detail || `${aiProvider} could not analyze the pose reference`);
     } finally {
       setAnalyzingPoseReference(false);
     }
@@ -671,9 +672,9 @@ export default function Builder() {
       );
       setRepairAnalysis(result.analysis || "");
       if (result.prompt) setRepairInstruction(result.prompt);
-      toast.success("Venice inspected the image and drafted a repair instruction");
+      toast.success(`${aiProvider} inspected the image and drafted a repair instruction`);
     } catch (e) {
-      toast.error(e?.response?.data?.detail || "Venice could not inspect the image");
+      toast.error(e?.response?.data?.detail || `${aiProvider} could not inspect the image`);
     } finally {
       setAnalyzingRepair(false);
     }
@@ -688,9 +689,9 @@ export default function Builder() {
     try {
       const result = await endpoints.aiEditPrompt(editInstruction.trim(), preserveUnmentioned);
       setEditInstruction(result.prompt || editInstruction);
-      toast.success("Venice enhanced the edit instruction");
+      toast.success(`${aiProvider} enhanced the edit instruction`);
     } catch (e) {
-      toast.error(e?.response?.data?.detail || "Venice could not enhance the edit instruction");
+      toast.error(e?.response?.data?.detail || `${aiProvider} could not enhance the edit instruction`);
     } finally {
       setEnhancingEdit(false);
     }
@@ -708,9 +709,9 @@ export default function Builder() {
         isTextVideoWorkflow ? "text" : "image"
       );
       setVideoInstruction(result.prompt || videoInstruction);
-      toast.success(isTextVideoWorkflow ? "Venice expanded the video prompt" : "Venice enhanced the motion prompt");
+      toast.success(isTextVideoWorkflow ? `${aiProvider} expanded the video prompt` : `${aiProvider} enhanced the motion prompt`);
     } catch (e) {
-      toast.error(e?.response?.data?.detail || "Venice could not enhance the motion prompt");
+      toast.error(e?.response?.data?.detail || `${aiProvider} could not enhance the motion prompt`);
     } finally {
       setEnhancingVideo(false);
     }
@@ -726,9 +727,9 @@ export default function Builder() {
       const result = await endpoints.aiAnalyzeVideoImage(referenceImage.name, videoInstruction.trim());
       setVideoImageAnalysis(result.analysis || "");
       if (result.prompt) setVideoInstruction(result.prompt);
-      toast.success("Venice analyzed the starting image and drafted the motion prompt");
+      toast.success(`${aiProvider} analyzed the starting image and drafted the motion prompt`);
     } catch (e) {
-      toast.error(e?.response?.data?.detail || "Venice could not analyze the starting image");
+      toast.error(e?.response?.data?.detail || `${aiProvider} could not analyze the starting image`);
     } finally {
       setAnalyzingVideoImage(false);
     }
@@ -972,9 +973,9 @@ export default function Builder() {
       );
       setPromptOverride(result.positive || finalPositive);
       setNegativePromptOverride(result.negative || finalNegative);
-      toast.success("Venice improved the compiled prompt — review it before rendering");
+      toast.success(`${aiProvider} improved the compiled prompt — review it before rendering`);
     } catch (error) {
-      toast.error(error?.response?.data?.detail || "Venice could not improve the prompt");
+      toast.error(error?.response?.data?.detail || `${aiProvider} could not improve the prompt`);
     } finally {
       setImprovingPrompt(false);
     }
@@ -2403,6 +2404,7 @@ export default function Builder() {
             {plainLanguage.trim() && <p className="text-xs text-zinc-400">Workflow translation: {translatedPlainLanguage.text || "Describe motion for image-to-video; the source image supplies appearance."}</p>}
           </div>
           <PromptPreview
+            aiProvider={aiProvider}
             positive={finalPositive}
             negative={finalNegative}
             dna={activeDna}
@@ -2477,11 +2479,11 @@ export default function Builder() {
                 className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-cyan-500/40 bg-cyan-500/10 px-3 py-2 text-sm font-semibold text-cyan-200 hover:bg-cyan-500/20 disabled:opacity-40"
                 data-testid="btn-venice-analyze-video-image">
                 {analyzingVideoImage ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-                Analyze image + draft motion with Venice
+                Analyze image + draft motion with {aiProvider}
               </button>
               {videoImageAnalysis && (
                 <div className="rounded-lg border border-cyan-500/20 bg-cyan-500/5 p-3 text-xs text-zinc-300">
-                  <div className="mb-1 font-mono uppercase tracking-widest text-cyan-300">Venice image analysis</div>
+                  <div className="mb-1 font-mono uppercase tracking-widest text-cyan-300">{aiProvider} image analysis</div>
                   {videoImageAnalysis}
                 </div>
               )}
@@ -2490,7 +2492,7 @@ export default function Builder() {
                 className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm font-semibold text-amber-200 hover:bg-amber-500/20 disabled:opacity-40"
                 data-testid="btn-venice-enhance-video">
                 {enhancingVideo ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-                Enhance movement with Venice
+                Enhance movement with {aiProvider}
               </button>
               <div className="grid grid-cols-2 gap-3">
                 <label className="space-y-1">
@@ -2545,7 +2547,7 @@ export default function Builder() {
                 className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm font-semibold text-amber-200 hover:bg-amber-500/20 disabled:opacity-40"
                 data-testid="btn-venice-enhance-text-video">
                 {enhancingVideo ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-                Expand scene with Venice
+                Expand scene with {aiProvider}
               </button>
               <div className="grid grid-cols-2 gap-3">
                 <label className="space-y-1">
@@ -2609,7 +2611,7 @@ export default function Builder() {
                 <div className="section-label">Image Repair & Enhance</div>
               </div>
               <p className="text-xs text-zinc-400">
-                Upload an image, select only the areas that need correction, and optionally let Venice inspect it before Qwen performs the repair.
+                Upload an image, select only the areas that need correction, and optionally let {aiProvider} inspect it before Qwen performs the repair.
               </p>
               {referencePreview ? (
                 <div className="grid gap-3 sm:grid-cols-2">
@@ -2677,7 +2679,7 @@ export default function Builder() {
                 <span className="text-xs uppercase tracking-widest text-zinc-500 font-mono">Repair instruction</span>
                 <Textarea rows={6} value={repairInstruction}
                   onChange={(event) => setRepairInstruction(event.target.value)}
-                  placeholder="Optional: describe a specific defect or leave this blank and ask Venice to inspect the selected areas."
+                  placeholder={`Optional: describe a specific defect or leave this blank and ask ${aiProvider} to inspect the selected areas.`}
                   className="bg-elevated border-hairline text-sm"
                   data-testid="textarea-repair-instruction" />
               </label>
@@ -2686,11 +2688,11 @@ export default function Builder() {
                 className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-cyan-500/40 bg-cyan-500/10 px-3 py-2 text-sm font-semibold text-cyan-200 hover:bg-cyan-500/20 disabled:opacity-40"
                 data-testid="btn-venice-analyze-repair">
                 {analyzingRepair ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-                Inspect image and draft repair with Venice
+                Inspect image and draft repair with {aiProvider}
               </button>
               {repairAnalysis && (
                 <div className="rounded-lg border border-cyan-500/20 bg-cyan-500/5 p-3 text-xs text-zinc-300">
-                  <div className="mb-1 font-mono uppercase tracking-widest text-cyan-300">Venice inspection</div>
+                  <div className="mb-1 font-mono uppercase tracking-widest text-cyan-300">{aiProvider} inspection</div>
                   {repairAnalysis}
                 </div>
               )}
@@ -2815,7 +2817,7 @@ export default function Builder() {
                           className="inline-flex items-center justify-center gap-2 rounded-lg border border-violet-500/40 bg-violet-500/10 px-3 py-2 text-xs font-semibold text-violet-100 disabled:opacity-40"
                           data-testid="btn-analyze-pose-reference">
                           {analyzingPoseReference ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-                          {poseReferenceAnalysis ? "Analyze pose again" : "Extract pose with Venice"}
+                          {poseReferenceAnalysis ? "Analyze pose again" : `Extract pose with ${aiProvider}`}
                         </button>
                       </div>
                     ) : (
@@ -2908,10 +2910,10 @@ export default function Builder() {
                 className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm font-semibold text-amber-200 hover:bg-amber-500/20 disabled:opacity-40"
                 data-testid="btn-venice-enhance-edit">
                 {enhancingEdit ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-                {editMode === "new_pose" ? "Protected pose instruction active" : "Enhance instruction with Venice"}
+                {editMode === "new_pose" ? "Protected pose instruction active" : `Enhance instruction with ${aiProvider}`}
               </button>}
               {editMode === "standard" && <p className="text-[11px] text-zinc-500">
-                Venice only rewrites the instruction. Review and edit it before rendering.
+                {aiProvider} only rewrites the instruction. Review and edit it before rendering.
               </p>}
             </div>
           )}
@@ -2978,7 +2980,7 @@ export default function Builder() {
               subject={activeSubject}
               onChange={(likeness) => updateActiveSubject(() => ({ likeness }))}
             />
-            <AiAssistBar dna={activeDna} onApplyDna={(d) => setActiveDna({ ...DEFAULT_DNA, ...d })} />
+            <AiAssistBar dna={activeDna} aiProvider={aiProvider} onApplyDna={(d) => setActiveDna({ ...DEFAULT_DNA, ...d })} />
           </div>
           {batchRenders.length > 1 && (
             <div className="pane p-4 space-y-3" data-testid="batch-render-progress">

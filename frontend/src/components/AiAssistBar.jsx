@@ -4,7 +4,7 @@ import { Sparkles, Wand2, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { endpoints } from "@/lib/api";
 
-export default function AiAssistBar({ dna, onApplyDna }) {
+export default function AiAssistBar({ dna, onApplyDna, aiProvider = "AI" }) {
   const [text, setText] = useState("");
   const [refineText, setRefineText] = useState("");
   const [busy, setBusy] = useState("");
@@ -18,7 +18,7 @@ export default function AiAssistBar({ dna, onApplyDna }) {
       toast.success("DNA filled from description");
       setText("");
     } catch (e) {
-      toast.error(e?.response?.data?.detail || "AI freeform failed — check Venice API key in backend/.env");
+      toast.error(e?.response?.data?.detail || `${aiProvider} could not generate DNA`);
     } finally {
       setBusy("");
     }
@@ -43,7 +43,7 @@ export default function AiAssistBar({ dna, onApplyDna }) {
     <div className="pane p-4 space-y-3">
       <div className="flex items-center gap-2">
         <Sparkles className="h-4 w-4 text-amber-400" />
-        <div className="section-label">AI Assist · Venice</div>
+        <div className="section-label">AI Assist · {aiProvider}</div>
       </div>
 
       <div className="space-y-2">
