@@ -621,8 +621,7 @@ export default function Gallery() {
                   src={primaryOutput(lightbox)}
                   alt={lightbox.prompt_positive?.slice(0, 60) || "render"}
                   data-testid="gallery-lightbox-image"
-                  className="max-h-[100dvh] md:max-h-[85vh] max-w-full object-contain md:rounded-lg shadow-2xl"
-                  style={{ animation: `${slideDirection > 0 ? "gallery-slide-from-right" : "gallery-slide-from-left"} 220ms ease-out` }}
+                  className={`max-h-[100dvh] md:max-h-[85vh] max-w-full object-contain md:rounded-lg shadow-2xl ${slideDirection > 0 ? "gallery-slide-right" : "gallery-slide-left"}`}
                 />
               )}
             </div>
