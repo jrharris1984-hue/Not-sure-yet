@@ -2324,38 +2324,73 @@ async def retry_missing_details(rid: str, selection: MissingRetrySelection):
 
 class ImprovedRenderBody(BaseModel):
     prompt_positive: str
+    prompt_negative: Optional[str] = None
+
+
+class ImprovedRenderPreviewBody(BaseModel):
+    source_prompt: Optional[str] = None
+    instruction: str = ""
 
 
 @api.post("/renders/{rid}/improve/preview")
-async def preview_improved_render(rid: str):
+async def preview_improved_render(rid: str, body: ImprovedRenderPreviewBody):
     render, recipe = await _render_recipe(rid)
     if str(render.get("workflow_type") or "image") in {"video", "text_video"}:
         raise HTTPException(400, "Choose a still image to improve")
-    original = str(recipe.get("prompt_positive") or "").strip()
-    if not original:
-        raise HTTPException(400, "This render has no saved prompt")
+    original = str(body.source_prompt if body.source_prompt is not None else recipe.get("prompt_positive") or "").strip()
+    if len(original) < 30 or len(original) > 10000:
+        raise HTTPException(400, "Edit the source prompt to between 30 and 10000 characters")
+    instruction = body.instruction.strip()
+    if len(instruction) > 1000:
+        raise HTTPException(400, "Keep AI editing instructions under 1000 characters")
     subjects = recipe.get("subjects") or []
     subject_count = len(subjects) if subjects else 1
     report = render.get("alignment_review") or {}
     system = (
         "You edit image-generation prompts. Return ONLY a JSON object with keys prompt_positive and note. "
         "Rewrite the prompt into one concise, coherent visual scene of at most 180 words. "
-        "Keep the saved number of adult subjects, requested appearance, and core wardrobe. "
+        "Keep the saved number of adult subjects and details the user did not ask to change. "
         "Resolve incompatible camera directions, framing, clothing and body-hair descriptions. "
-        "Do not add people, body parts, actions, or wardrobe that were not requested. "
+        "Follow the user's editing instruction when provided; keep unrelated details from the source prompt. "
+        "Do not invent people, body parts, actions, or wardrobe beyond the source or instruction. "
         "Prioritize coherent anatomy, readable joints, and one consistent perspective. "
         "Do not promise a perfect image. Note briefly which conflicts you resolved."
     )
     user = (f"Subjects selected: {subject_count}. Workflow: {render.get('workflow_name') or 'image'}. "
             f"Review: {str(report.get('summary') or '')[:300]}. "
             f"Missing: {json.dumps(report.get('missing') or [], ensure_ascii=False)[:600]}. "
-            f"Saved prompt: {original[:7000]}")
-    result = extract_json(await openrouter_chat(system, user, response_format_json=True))
+            f"Editing instruction: {instruction or 'Resolve contradictions and improve clarity.'}. "
+            f"Source prompt: {original[:7000]}")
+    first_reply = await openrouter_chat(system, user, response_format_json=True)
+    try:
+        result = extract_json(first_reply)
+        if not isinstance(result, dict):
+            result = {}
+    except (HTTPException, ValueError):
+        result = {}
     proposed = str(result.get("prompt_positive") or "").strip()
     if len(proposed) < 30 or len(proposed) > 5000:
-        raise HTTPException(502, "AI did not return a usable corrected prompt")
+        # Ollama text models sometimes produce an empty or incomplete JSON reply
+        # for long saved prompts. Retry with a shorter request and plain text.
+        fallback_system = (
+            "Rewrite this image-generation prompt as one coherent visual scene under 180 words. "
+            "Keep the same number of adults and details the user did not ask to change. "
+            "Resolve conflicting camera and clothing directions. Return only the corrected prompt, "
+            "without JSON, explanation, or markdown."
+        )
+        fallback_user = (f"Subjects selected: {subject_count}. Editing instruction: "
+                         f"{instruction or 'Resolve contradictions and improve clarity.'}. "
+                         f"Source prompt: {original[:3000]}")
+        fallback = (await openrouter_chat(fallback_system, fallback_user)).strip()
+        fallback = re.sub(r"^```(?:text)?\s*|\s*```$", "", fallback).strip()
+        if 30 <= len(fallback) <= 5000 and not fallback.lower().startswith(("i cannot", "i can't", "sorry,")):
+            proposed = fallback
+            result = {"note": "The AI returned a plain-text revision. Review it before rendering."}
+    if len(proposed) < 30 or len(proposed) > 5000:
+        raise HTTPException(502, "The text model did not return a corrected prompt. Try again or choose a different text model in Settings.")
     return {"prompt_positive": proposed, "note": str(result.get("note") or "")[:400],
-            "original_prompt": original, "workflow_name": render.get("workflow_name")}
+            "original_prompt": original, "prompt_negative": str(recipe.get("prompt_negative") or ""),
+            "workflow_name": render.get("workflow_name")}
 
 
 @api.post("/renders/{rid}/improve")
@@ -2365,6 +2400,10 @@ async def queue_improved_render(rid: str, body: ImprovedRenderBody):
     if len(prompt) < 30 or len(prompt) > 5000:
         raise HTTPException(400, "Provide a corrected prompt between 30 and 5000 characters")
     recipe = dict(recipe)
+    if body.prompt_negative is not None:
+        if len(body.prompt_negative) > 5000:
+            raise HTTPException(400, "Keep the negative prompt under 5000 characters")
+        recipe["prompt_negative"] = body.prompt_negative
     recipe.update({"shoot_id": None, "shoot_frame_index": None, "parent_render_id": rid,
                    "operation": "prompt_improvement", "seed": random.randint(0, 2**31 - 1),
                    "prompt_positive": prompt})
