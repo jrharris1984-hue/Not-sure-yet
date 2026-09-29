@@ -31,6 +31,20 @@ const CONTINUITY_PRESETS = [
   { key: "creative", label: "Creative", hint: "Fresh seeds allow more variety, with greater identity drift.", seedMode: "fresh", lockScenario: false },
 ];
 
+const PAIRING_SHOTS = {
+  "mother and daughter": [
+    "Adult mother A is visibly older than adult daughter B; shared facial traits and heritage, separate recognizable faces, standing side by side in a family portrait",
+    "Adult mother A and adult daughter B walking together, matching facial structure, different adult ages, candid editorial portrait",
+    "Adult mother A seated beside adult daughter B, shared eyes and smile, warm portrait composition",
+  ],
+  "stepmom and stepdaughter": ["Adult stepmother A older than adult stepdaughter B, standing together for a composed portrait", "Two adult women with distinct identities walking side by side in an editorial scene"],
+  "twins": ["Two adult twin sisters with nearly identical faces and shared features, standing side by side", "Adult twins with matching faces and contrasting poses in one balanced frame"],
+  "identical twins": ["Two adult identical twins with closely matching facial features, posing side by side", "Adult identical twins with mirrored poses and matching appearance"],
+  "sisters": ["Two adult sisters with clear family resemblance but distinct faces, portrait together", "Adult sisters sharing facial traits in different poses, standing together"],
+  "aunt and niece": ["Adult aunt A older than adult niece B, family resemblance, seated portrait", "Adult aunt and niece walking together, distinct adult ages and similar features"],
+  "grandma and granddaughter": ["Adult grandmother A visibly older than adult granddaughter B, shared facial traits in a family portrait", "Adult grandmother and granddaughter standing together, distinct generations and coherent family resemblance"],
+};
+
 export default function ShootSetup() {
   const { characterId } = useParams();
   const nav = useNavigate();
@@ -60,6 +74,8 @@ export default function ShootSetup() {
     () => likenessOverrides(character?.subjects || []),
     [character?.subjects]
   );
+  const pairing = character?.subjects?.[0]?.dna?.scenario?.cast_type || character?.dna?.scenario?.cast_type || "none";
+  const shotScript = useMemo(() => PAIRING_SHOTS[pairing] || [], [pairing]);
 
   useEffect(() => {
     if (!workflowId && workflows.length) {
@@ -73,10 +89,11 @@ export default function ShootSetup() {
     const outs = cycleOutfits(outfits.map((o) => ({ outfit_preset: o })), count);
     return poses.map((p, i) => ({
       pose_action: p,
+      scene_direction: shotScript.length ? shotScript[i % shotScript.length] : "",
       outfit_overrides: outs[i] || {},
       face_overrides: expressions.length ? { expression: expressions[i % expressions.length] } : {},
     }));
-  }, [poseMode, packKey, manualPoses, count, outfits, expressions]);
+  }, [poseMode, packKey, manualPoses, count, outfits, expressions, shotScript]);
 
   const create = useMutation({
     mutationFn: async () => {
@@ -189,6 +206,10 @@ export default function ShootSetup() {
 
           {/* Pose source */}
           <section className="pane p-4 sm:p-6 space-y-4" data-testid="shoot-pose-panel">
+            {shotScript.length > 0 && <div className="rounded-lg border border-cyan-400/30 bg-cyan-400/5 p-3 text-xs text-cyan-100" data-testid="shoot-scenario-script">
+              <strong>Scenario shot script · {pairing}</strong>
+              <p className="mt-1 text-zinc-300">Each frame follows a portrait direction for the selected relationship. Character appearance and the shared location stay consistent.</p>
+            </div>}
             <div className="flex items-center justify-between">
               <div>
                 <div className="section-label">Poses</div>

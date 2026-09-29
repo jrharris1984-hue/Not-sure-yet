@@ -52,7 +52,7 @@ export const SIMPLE_FIELD_KEYS = {
   face: ["eye_shape", "eye_color", "jawline", "lips", "expression"],
   hair: ["style", "length", "color"],
   feet: ["sole_presentation", "toes", "arch", "pedicure", "foot_size", "foot_state", "hosiery", "foot_act", "framing"],
-  wardrobe: ["nudity_level", "outfit_preset", "dress_style", "skirt_style", "garment_color", "footwear", "hosiery_type", "hosiery_color", "hosiery_pattern", "heel_type", "heel_color", "heel_height", "nail_color", "glasses_style"],
+  wardrobe: ["nudity_level", "outfit_preset", "outfit_set", "outfit_set_color", "dress_style", "skirt_style", "garment_color", "footwear", "hosiery_type", "hosiery_color", "hosiery_pattern", "heel_type", "heel_color", "heel_height", "nail_color", "glasses_style"],
   pose: ["action", "angle", "distance", "body_language"],
   scene: ["environment", "indoor_outdoor", "era"],
   lighting: ["source", "style", "mood"],

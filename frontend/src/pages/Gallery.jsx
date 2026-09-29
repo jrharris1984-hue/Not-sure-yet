@@ -86,13 +86,16 @@ export default function Gallery() {
   const { data: renders = [], isLoading } = useQuery({
     queryKey: ["renders"],
     queryFn: endpoints.listRenders,
-    refetchInterval: 5000,
+    refetchInterval: 30000,
   });
   const [lightbox, setLightbox] = useState(null); // render object
   const [showDetails, setShowDetails] = useState(false);
   const [selectionMode, setSelectionMode] = useState(false);
   const [selected, setSelected] = useState([]);
   const [albumFilter, setAlbumFilter] = useState("all");
+  const [thumbSize, setThumbSize] = useState("medium");
+  const [page, setPage] = useState(1);
+  const [slideDirection, setSlideDirection] = useState(1);
   const [compareOpen, setCompareOpen] = useState(false);
   const swipeStartX = useRef(null);
   const directOpenApplied = useRef(false);
@@ -218,12 +221,16 @@ export default function Gallery() {
   const displayedOutput = albumFilter === "all"
     ? withOutput
     : withOutput.filter((render) => (albumFilter === "unfiled" ? !render.album : render.album === albumFilter));
+  const pageCount = Math.max(1, Math.ceil(displayedOutput.length / 12));
+  const currentPage = Math.min(page, pageCount);
+  const pageOutput = displayedOutput.slice((currentPage - 1) * 12, currentPage * 12);
   const inFlight = renders.filter((r) => !primaryOutput(r) && ["queued", "dispatching", "running"].includes(r.status));
   const cancelled = renders.filter((r) => !primaryOutput(r) && r.status === "cancelled");
   const lightboxIndex = lightbox ? displayedOutput.findIndex((r) => r.id === lightbox.id) : -1;
   const showAdjacent = (offset) => {
     if (!displayedOutput.length || lightboxIndex < 0) return;
     const nextIndex = (lightboxIndex + offset + displayedOutput.length) % displayedOutput.length;
+    setSlideDirection(offset);
     setLightbox(displayedOutput[nextIndex]);
     setShowDetails(false);
   };
@@ -335,7 +342,7 @@ export default function Gallery() {
       {withOutput.length > 0 && (
         <div className="flex gap-2 overflow-x-auto pb-1" data-testid="gallery-album-filter">
           {[{ key: "all", label: `All ${withOutput.length}` }, { key: "unfiled", label: "Unfiled" }, ...albums.map((album) => ({ key: album, label: album }))].map((item) => (
-            <button key={item.key} type="button" onClick={() => setAlbumFilter(item.key)}
+            <button key={item.key} type="button" onClick={() => { setAlbumFilter(item.key); setPage(1); }}
               className={`shrink-0 rounded-full border px-3 py-1.5 text-xs ${albumFilter === item.key ? "border-amber-400 bg-amber-400/10 text-amber-200" : "hairline text-zinc-400"}`}>
               {item.label}
             </button>
@@ -356,15 +363,27 @@ export default function Gallery() {
         </div>
       ) : (
         <>
+          {displayedOutput.length > 0 && (
+            <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-zinc-400">
+              <span>Showing {(currentPage - 1) * 12 + 1}–{Math.min(currentPage * 12, displayedOutput.length)} of {displayedOutput.length}</span>
+              <div className="flex items-center gap-2" data-testid="gallery-thumbnail-size">
+                <span>Thumbnails</span>
+                {["small", "medium", "large"].map((size) => (
+                  <button key={size} type="button" onClick={() => setThumbSize(size)} aria-pressed={thumbSize === size}
+                    className={`rounded-lg border px-2 py-1 capitalize ${thumbSize === size ? "border-cyan-400 text-cyan-100 bg-cyan-400/10" : "hairline"}`}>{size}</button>
+                ))}
+              </div>
+            </div>
+          )}
           {/* Thumbnail grid — dense, clean, contact-sheet style */}
           {displayedOutput.length > 0 && (
-            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2" data-testid="gallery-grid">
-              {displayedOutput.map((r, i) => {
+            <div className={`grid gap-2 ${thumbSize === "small" ? "grid-cols-3 sm:grid-cols-4 md:grid-cols-6" : thumbSize === "large" ? "grid-cols-2 sm:grid-cols-3" : "grid-cols-2 sm:grid-cols-3 md:grid-cols-4"}`} data-testid="gallery-grid">
+              {pageOutput.map((r, i) => {
                 const output = primaryOutput(r);
                 const checked = selected.includes(r.id);
                 return (
                   <div key={r.id}
-                    data-testid={`gallery-thumb-${i}`}
+                    data-testid={`gallery-thumb-${(currentPage - 1) * 12 + i}`}
                     className={`relative aspect-square rounded-lg overflow-hidden border bg-elevated group ${checked ? "border-amber-400 ring-2 ring-amber-400/50" : "hairline"}`}>
                     <button type="button"
                       onClick={() => {
@@ -413,6 +432,11 @@ export default function Gallery() {
               })}
             </div>
           )}
+          {pageCount > 1 && <nav aria-label="Gallery pages" className="flex items-center justify-center gap-3 text-sm">
+            <button type="button" disabled={currentPage <= 1} onClick={() => setPage(currentPage - 1)} className="rounded-lg border hairline px-3 py-2 disabled:opacity-40">Previous</button>
+            <span>Page {currentPage} of {pageCount}</span>
+            <button type="button" disabled={currentPage >= pageCount} onClick={() => setPage(currentPage + 1)} className="rounded-lg border hairline px-3 py-2 disabled:opacity-40">Next</button>
+          </nav>}
 
           {/* In-flight strip — small, at the bottom, so you can see what's cooking */}
           {inFlight.length > 0 && (
@@ -501,10 +525,12 @@ export default function Gallery() {
                   className="max-h-[100dvh] md:max-h-[85vh] max-w-full object-contain md:rounded-lg shadow-2xl" />
               ) : (
                 <img
+                  key={lightbox.id}
                   src={primaryOutput(lightbox)}
                   alt={lightbox.prompt_positive?.slice(0, 60) || "render"}
                   data-testid="gallery-lightbox-image"
                   className="max-h-[100dvh] md:max-h-[85vh] max-w-full object-contain md:rounded-lg shadow-2xl"
+                  style={{ animation: `${slideDirection > 0 ? "gallery-slide-from-right" : "gallery-slide-from-left"} 220ms ease-out` }}
                 />
               )}
             </div>

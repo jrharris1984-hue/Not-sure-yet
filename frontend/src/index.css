@@ -169,6 +169,15 @@ code, pre, .font-mono {
 .text-teal    { color: #00e5ff; }
 .text-fuchsia { color: #bd77ff; }
 
+@keyframes gallery-slide-from-right {
+  from { opacity: .55; transform: translateX(36px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+@keyframes gallery-slide-from-left {
+  from { opacity: .55; transform: translateX(-36px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
 /* Quick Create shows one editable stage at a time on desktop. The full
    builder remains mounted and is revealed by the Full Studio switch. */
 @media (min-width: 768px) {
