@@ -7,7 +7,7 @@ import { endpoints } from "@/lib/api";
 import {
   SECTIONS, DEFAULT_DNA,
   randomizeDna, randomizeSection, resetSection,
-  phaseOfSection,
+  PHASES, phaseOfSection,
   MAX_SUBJECTS, makeSubject, subjectsFromCharacter, subjectLabel,
   expectedSubjectCount, seedSubjectFromPairing,
   HERITAGE_CASTS,
@@ -1991,12 +1991,32 @@ export default function Builder() {
 
       {desktopQuickMode && (
         <section className="hidden md:block pane border-cyan-400/25 p-4" data-testid="desktop-quick-create">
-          <div className="flex items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <div className="section-label">Quick Create</div>
-              <p className="mt-1 text-sm text-zinc-400">Set the essentials, review the prompt, then render. Your other controls stay in Full Studio.</p>
+              <p className="mt-1 text-sm text-zinc-400">Set the essentials or jump directly to any character section.</p>
             </div>
             <span className="rounded-full border border-amber-400/40 bg-amber-500/10 px-3 py-1 text-xs text-amber-200">{activeWorkflow?.name || "Choose a model"}</span>
+          </div>
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <label htmlFor="quick-section-jump" className="text-xs font-semibold text-cyan-200">Jump to section</label>
+            <select id="quick-section-jump" data-testid="quick-section-jump"
+              value={quickReview ? "review" : activeSection}
+              onChange={(event) => {
+                if (event.target.value === "review") setQuickReview(true);
+                else { setQuickReview(false); goSection(event.target.value); }
+              }}
+              className="min-w-[220px] max-w-full rounded-lg border hairline bg-elevated px-3 py-2 text-sm text-zinc-100">
+              {PHASES.map((phase) => (
+                <optgroup key={phase.key} label={phase.label}>
+                  {phase.sections.map((key) => {
+                    const section = SECTIONS.find((item) => item.key === key);
+                    return section && <option key={key} value={key}>{section.title}</option>;
+                  })}
+                </optgroup>
+              ))}
+              <option value="review">Review & render</option>
+            </select>
           </div>
           <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-7 gap-2">
             {[["identity", "1 · Person"], ["physique", "2 · Body"], ["intimate", "3 · Intimate"], ["wardrobe", "4 · Outfit"], ["pose", "5 · Pose"], ["scene", "6 · Setting"]].map(([key, label]) => (
@@ -2029,15 +2049,7 @@ export default function Builder() {
       />
 
       <div className={mobileStudioStep === "start" ? "block" : "hidden md:block"}>
-        <AiAssistBar dna={activeDna} aiProvider={aiProvider}
-          onApplyDna={(draft) => { setActiveDna(draft); setPlainLanguage(""); }}
-          onApplySubjects={(draftSubjects) => {
-            setSubjects(draftSubjects);
-            setActiveSubjectId(draftSubjects[0].id);
-            setPlainLanguage("");
-            setPromptOverride("");
-            setNegativePromptOverride("");
-          }} />
+        <AiAssistBar dna={activeDna} aiProvider={aiProvider} onApplyDna={(draft) => { setActiveDna(draft); setPlainLanguage(""); }} />
       </div>
 
       {mobileStudioStep === "create" && !showMobileResult && (
