@@ -371,6 +371,29 @@ export default function Builder() {
     setSourceRenderId(incoming.source_render_id || null);
     setReferencePreview(location.state?.previewUrl || "");
 
+    if (location.state?.referenceMode === "keep_character") {
+      const saved = location.state.characterRecipe || {};
+      const restored = Array.isArray(saved.subjects) && saved.subjects.length
+        ? saved.subjects.map((subject, index) => makeSubject({
+          label: subject.label || subjectLabel(index),
+          dna: subject.dna || DEFAULT_DNA,
+          fieldLocks: subject.field_locks || {},
+          likeness: subject.likeness,
+        }))
+        : [makeSubject({ label: "A", dna: saved.dna || DEFAULT_DNA })];
+      setSubjects(restored);
+      setActiveSubjectId(restored[0].id);
+      setLocks(saved.locks || {});
+      setPromptLanguage(saved.prompt_language || "editorial");
+      setPromptOverride("");
+      setNegativePromptOverride("");
+      setPlainLanguage("");
+      setSelectedLora({ name: "", strength: 0.8, triggerWords: [] });
+      setSecondaryLora({ name: "", strength: 0.8, triggerWords: [] });
+      setShowSecondLora(false);
+      setLoraOverrides({});
+    }
+
     if (requestedKind === "edit") {
       setVideoInstruction("");
       if (location.state?.referenceMode === "new_pose") {
@@ -394,7 +417,9 @@ export default function Builder() {
     const message = requestedKind === "video"
       ? "Gallery image loaded for animation"
       : requestedKind === "face"
-        ? "Gallery image loaded as a face reference"
+        ? location.state?.referenceMode === "keep_character"
+          ? "Character and face reference loaded. Change pose, expression, or outfit before rendering."
+          : "Gallery image loaded as a face reference"
         : location.state?.referenceMode === "new_pose"
           ? "Gallery image loaded for a new pose"
           : "Gallery image loaded for editing";
@@ -2921,11 +2946,12 @@ export default function Builder() {
             <div className="pane p-4 space-y-4" data-testid="face-reference-panel">
               <div className="flex items-center gap-2">
                 <ImagePlus className="h-4 w-4 text-amber-400" />
-                <div className="section-label">Face Preserve Reference</div>
+                <div className="section-label">Keep this character · Face Preserve</div>
               </div>
               <p className="text-xs text-zinc-400">
                 Upload a clear photograph of one adult face. The photo is sent directly to your local ComfyUI input folder.
               </p>
+              <p className="text-xs text-amber-200/80">Adjust the character’s pose, expression, or wardrobe in the editor. Face Preserve uses this image to guide facial identity; results may still vary with the model and reference quality.</p>
               {referencePreview ? (
                 <div className="relative rounded-lg overflow-hidden border hairline bg-elevated">
                   <img src={referencePreview} alt="Face reference" className="w-full max-h-72 object-contain" />
