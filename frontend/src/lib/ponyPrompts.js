@@ -402,6 +402,8 @@ function _ponySubjectBlock(dna = {}, opts = {}) {
 
   const wd = dna.wardrobe || {};
   const outfitPieces = [];
+  if (wd.outfit_set) outfitPieces.push(`${wd.outfit_set_color ? `${wd.outfit_set_color} ` : ""}${wd.outfit_set}`);
+  if (!wd.outfit_set) {
   if (wd.outfit_preset && !wd.dress_style && !wd.skirt_style) outfitPieces.push(exp("wardrobe", "outfit_preset"));
   if (wd.dress_style) outfitPieces.push(wd.dress_style);
   if (wd.skirt_style) outfitPieces.push(wd.skirt_style);
@@ -414,6 +416,7 @@ function _ponySubjectBlock(dna = {}, opts = {}) {
   if (wd.accessories) {
     const accs = Array.isArray(wd.accessories) ? wd.accessories : [wd.accessories];
     accs.filter((a) => a && a !== "none").forEach((a) => outfitPieces.push(expandPrompt("wardrobe", "accessories", a, { raunch })));
+  }
   }
   const outfitStr = join([
     outfitPieces.length ? `wearing ${outfitPieces.join(", ")}` : "",

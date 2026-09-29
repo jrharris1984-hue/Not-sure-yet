@@ -22,7 +22,12 @@ export const SECTIONS = [
         { name: "Mixed", options: ["mixed", "blasian", "afro-latina", "eurasian", "mulatto", "mestiza", "creole", "amerasian"] },
         { name: "Mediterranean", options: ["mediterranean", "greek"] },
       ]},
-      { key: "archetype", type: "chips", label: "Archetype", options: ["girl next door", "femme fatale", "warrior", "pirate", "cyberpunk", "goth", "cottagecore", "athlete", "queen"] },
+      { key: "archetype", type: "chips", label: "Archetype (character theme)", groups: [
+        { name: "Everyday", options: ["girl next door", "athlete", "artist", "socialite", "scholar"] },
+        { name: "Royal & cinematic", options: ["queen", "Bollywood princess", "Indian royal", "Arabian princess", "desert queen", "regal heroine"] },
+        { name: "Fantasy & action", options: ["warrior", "pirate", "superheroine", "sorceress", "space explorer"] },
+        { name: "Style", options: ["femme fatale", "cyberpunk", "goth", "cottagecore", "vintage starlet"] },
+      ] },
       { key: "name", type: "text", label: "Name" },
     ],
   },
@@ -200,7 +205,19 @@ export const SECTIONS = [
         { name: "Formal", options: ["cocktail dress", "evening gown slit", "backless red carpet", "club outfit", "tailored pantsuit", "velvet gown", "sequined mini dress"] },
         { name: "Athletic", options: ["yoga wear", "gym set", "sports bra and shorts", "cheerleader off-duty"] },
         { name: "Casual", options: ["streetwear", "casual home", "oversized sweater", "denim jacket and skirt", "off-shoulder blouse", "summer romper", "cardigan and slip dress"] },
+        { name: "Indian & Bollywood", options: ["embroidered lehenga choli with dupatta", "silk sari with fitted blouse", "ornate anarkali suit", "sharara set with dupatta", "gharara set with embroidered kurta", "Bollywood princess gown with jewelry"] },
+        { name: "Arabian inspired", options: ["embroidered kaftan", "formal abaya with matching headscarf", "ornate jalabiya", "beaded evening kaftan"] },
       ]},
+      { key: "outfit_set", type: "chips", label: "Complete outfit set", groups: [
+        { name: "Lingerie sets", options: ["lace balconette set with matching panties, garter belt, stockings and heels", "satin push-up bra set with matching briefs, sheer thigh-highs and stilettos", "embroidered bralette and high-waist panties with seamed stockings and pumps", "sheer mesh bra and thong with fishnet stockings and platform heels", "silk corset and matching panties with garters, lace stockings and heels"] },
+        { name: "Costume sets", options: ["French maid dress with apron, matching lingerie, stockings and heels", "classic maid dress with lace headpiece, stockings and pumps", "superheroine bodysuit with matching cape, gloves and boots", "armored heroine suit with matching cape, belt and boots", "royal princess gown with matching jewelry, veil and heels"] },
+        { name: "Cultural fashion sets", options: ["Bollywood royal lehenga choli with dupatta, jewelry and embroidered heels", "Indian silk sari with matching blouse, bangles and sandals", "embroidered anarkali with dupatta, earrings and embellished flats", "formal embroidered kaftan with matching jewelry and sandals", "ornate abaya with matching scarf, jewelry and shoes"] },
+      ] },
+      { key: "outfit_set_color", type: "chips", label: "Set color", groups: [
+        { name: "Classic", options: ["black", "white", "ivory", "red", "burgundy", "navy", "gold", "silver"] },
+        { name: "Bright", options: ["emerald", "royal blue", "hot pink", "saffron", "turquoise", "purple"] },
+        { name: "Soft", options: ["blush", "champagne", "lavender", "sage", "peach"] },
+      ] },
       { key: "top", type: "chips", label: "Top", options: [
         "none", "sheer top", "mesh top", "lace bralette", "bikini top", "corset", "bustier", "crop top", "backless top", "keyhole top", "halter",
         "tube top", "strapless", "wet t-shirt", "unbuttoned blouse", "ripped shirt", "nipple pasties", "leather harness", "cage bra", "chainmail top"
@@ -804,6 +821,7 @@ export function seedSubjectFromPairing(primaryDna = {}, subjectIndex = 1) {
     clone.identity = { ...clone.identity, age: Math.max(21, (primaryAge || 27) + ageOffset), name: "" };
     // Preserve the recognizable family traits while allowing the user to edit either sister.
     clone.face = { ...clone.face, expression: DEFAULT_DNA.face.expression };
+    clone.hair = { ...clone.hair, style: clone.hair?.style === "wavy" ? "half-up" : "wavy" };
     return clone;
   }
   if (pairing === "best friends" || pairing === "roommates") {
@@ -811,11 +829,10 @@ export function seedSubjectFromPairing(primaryDna = {}, subjectIndex = 1) {
   } else if (pairing === "mother and daughter") {
     // Clone inherited appearance, then create an unmistakable adult generation gap.
     const relative = JSON.parse(JSON.stringify(primaryDna || DEFAULT_DNA));
-    const primaryIsMother = primaryAge >= 39;
     relative.identity = {
       ...relative.identity,
-      age: primaryIsMother ? Math.max(21, primaryAge - 23) : Math.max(40, primaryAge + 23),
-      archetype: primaryIsMother ? "girl next door" : "queen",
+      age: Math.max(21, (primaryAge || 44) - 23),
+      archetype: "girl next door",
       name: "",
     };
     relative.face = { ...relative.face, expression: DEFAULT_DNA.face.expression };
@@ -1164,7 +1181,9 @@ function _veniceSubjectBlock(dna = {}, opts = {}) {
   // -------- Wardrobe --------
   const wd = dna.wardrobe || {};
   const outfitPieces = [];
-  if (wd.outfit_preset && !wd.dress_style && !wd.skirt_style) outfitPieces.push(exp("wardrobe", "outfit_preset"));
+  if (wd.outfit_set) outfitPieces.push(`${wd.outfit_set_color ? `${wd.outfit_set_color} ` : ""}${wd.outfit_set}`);
+  if (!wd.outfit_set) {
+  if (!wd.outfit_set && wd.outfit_preset && !wd.dress_style && !wd.skirt_style) outfitPieces.push(exp("wardrobe", "outfit_preset"));
   if (wd.dress_style) outfitPieces.push(wd.dress_style);
   if (wd.skirt_style) outfitPieces.push(wd.skirt_style);
   if (!wd.dress_style && wd.top && wd.top !== "none") outfitPieces.push(exp("wardrobe", "top"));
@@ -1177,6 +1196,7 @@ function _veniceSubjectBlock(dna = {}, opts = {}) {
   if (wd.accessories) {
     const accs = Array.isArray(wd.accessories) ? wd.accessories : [wd.accessories];
     accs.filter((a) => a && a !== "none").forEach((a) => outfitPieces.push(exp("wardrobe", "accessories") ? expandPrompt("wardrobe", "accessories", a) : a));
+  }
   }
   const outfitCore = outfitPieces.length ? `wearing ${outfitPieces.join(", ")}` : "";
   const outfitTail = join([

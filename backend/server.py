@@ -879,11 +879,11 @@ def _gallery_visibility_filter() -> Dict[str, Any]:
 
 
 @api.get("/renders")
-async def list_renders(limit: int = 200):
+async def list_renders(limit: int = 200, skip: int = 0):
     return await db.renders.find(
         _gallery_visibility_filter(),
         {"_id": 0},
-    ).sort("created_at", -1).to_list(limit)
+    ).sort([("created_at", -1), ("id", -1)]).skip(max(0, skip)).to_list(max(1, min(limit, 200)))
 
 
 @api.get("/renders/{rid}")
@@ -2710,6 +2710,7 @@ class ShootFrame(BaseModel):
     model_config = ConfigDict(extra="ignore")
     index: int
     pose_action: str = ""
+    scene_direction: str = ""
     outfit_overrides: Dict[str, Any] = Field(default_factory=dict)  # partial wardrobe overrides
     face_overrides: Dict[str, Any] = Field(default_factory=dict)
     seed: Optional[int] = None
@@ -2803,6 +2804,8 @@ async def _run_shoot_background(shoot_id: str):
         aug_parts = []
         if frame.pose_action:
             aug_parts.append(frame.pose_action)
+        if frame.scene_direction:
+            aug_parts.append(frame.scene_direction)
         for _k, v in (frame.outfit_overrides or {}).items():
             if isinstance(v, list):
                 aug_parts.extend([str(x) for x in v if x])
@@ -2882,6 +2885,7 @@ async def create_shoot(body: ShootCreateBody, background_tasks: BackgroundTasks)
         frames.append(ShootFrame(
             index=i,
             pose_action=str(f.get("pose_action") or ""),
+            scene_direction=str(f.get("scene_direction") or ""),
             outfit_overrides=f.get("outfit_overrides") or {},
             face_overrides=f.get("face_overrides") or {},
             seed=int(seed),
@@ -2974,6 +2978,8 @@ async def retry_shoot_frame(sid: str, frame_index: int, body: ShootRetryBody, ba
         aug_parts = []
         if frame.pose_action:
             aug_parts.append(frame.pose_action)
+        if frame.scene_direction:
+            aug_parts.append(frame.scene_direction)
         for _k, v in (frame.outfit_overrides or {}).items():
             if isinstance(v, list):
                 aug_parts.extend([str(x) for x in v if x])

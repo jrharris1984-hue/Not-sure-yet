@@ -11,7 +11,6 @@ import {
   MAX_SUBJECTS, makeSubject, subjectsFromCharacter, subjectLabel,
   expectedSubjectCount, seedSubjectFromPairing,
   HERITAGE_CASTS,
-  createHeritageCharacterVariation,
 } from "@/lib/dna";
 import { compileModelPrompts, resolvePromptCompiler } from "@/lib/modelPromptCompilers";
 import { translatePlainLanguage } from "@/lib/plainLanguagePrompt";
@@ -842,7 +841,13 @@ export default function Builder() {
   const setActiveDna = (newDna) => updateActiveSubject(() => ({ dna: newDna }));
   const setActiveFieldLocks = (newLocks) => updateActiveSubject(() => ({ field_locks: newLocks }));
 
-  const setSection = (key, val) => setActiveDna({ ...activeDna, [key]: val });
+  const setSection = (key, val) => {
+    if (key === "identity" && ["mother and daughter", "stepmom and stepdaughter"].includes(primaryDna.scenario?.cast_type)) {
+      const age = Number(val.age) || 21;
+      val = { ...val, age: activeSubjectIdx === 0 ? Math.max(44, age) : Math.min(Math.max(21, age), Math.max(21, Number(primaryDna.identity?.age || 44) - 18)) };
+    }
+    setActiveDna({ ...activeDna, [key]: val });
+  };
 
   const isMulti = subjects.length > 1;
   const poseInstruction = useMemo(() => buildSameCharacterPoseInstruction({
@@ -1470,16 +1475,62 @@ export default function Builder() {
     setSubjects((current) => {
       const primary = current[0];
       if (!primary) return current;
-      const primaryVariation = createHeritageCharacterVariation(primary.dna, {}, locks, primary.field_locks, { density: "detailed" });
+      const identity = locks.identity ? primary.dna.identity : randomizeSection("identity", primary.dna.identity, primary.field_locks?.identity);
+      const pairing = primary.dna.scenario?.cast_type;
+      const nextIdentity = { ...identity, name: primary.dna.identity?.name || "", age: Math.max(["mother and daughter", "stepmom and stepdaughter", "aunt and niece", "grandma and granddaughter"].includes(pairing) ? 44 : 21, Number(identity.age) || 21), gender: "female" };
+      const primaryVariation = { ...primary.dna, identity: nextIdentity };
+      ["physique", "face", "hair", "skin"].forEach((section) => {
+        if (!locks[section]) primaryVariation[section] = randomizeSection(section, primary.dna[section], primary.field_locks?.[section]);
+      });
       const nextPrimary = { ...primary, dna: primaryVariation };
       return [nextPrimary, ...current.slice(1).map((subject, index) => ({
         ...subject,
-        dna: createHeritageCharacterVariation(
-          seedSubjectFromPairing(primaryVariation, index + 1), {}, locks, subject.field_locks, { density: "detailed" }
-        ),
+        dna: { ...subject.dna, ...Object.fromEntries(["identity", "physique", "face", "hair", "skin"].map((section) => [section,
+          locks[section] ? subject.dna[section] : seedSubjectFromPairing(primaryVariation, index + 1)[section]])),
+          identity: { ...(locks.identity ? subject.dna.identity : seedSubjectFromPairing(primaryVariation, index + 1).identity), name: subject.dna.identity?.name || "", gender: "female" },
+        },
       }))];
     });
-    toast.success("New character variation · pairing kept");
+    toast.success("People randomized · scene and outfits kept");
+  };
+  const randomizePerson = () => {
+    setSubjects((current) => {
+      const subject = current.find((item) => item.id === activeSubjectId);
+      if (!subject) return current;
+      const dna = { ...subject.dna };
+      for (const section of ["identity", "physique", "face", "hair", "skin"]) {
+        if (!locks[section]) dna[section] = randomizeSection(section, subject.dna[section], subject.field_locks?.[section]);
+      }
+      const pairing = primaryDna.scenario?.cast_type;
+      const isMotherPair = ["mother and daughter", "stepmom and stepdaughter"].includes(pairing);
+      const minAge = activeSubjectIdx === 0 && isMotherPair ? 44 : 21;
+      const age = Math.max(minAge, Number(dna.identity?.age) || 21);
+      dna.identity = { ...dna.identity, name: subject.dna.identity?.name || "", age: activeSubjectIdx > 0 && isMotherPair ? Math.min(age, Math.max(21, Number(primaryDna.identity?.age || 44) - 18)) : age };
+      if (activeSubjectIdx > 0 && ["twins", "identical twins"].includes(pairing)) {
+        dna.identity = { ...primaryDna.identity, name: subject.dna.identity?.name || "" };
+        dna.face = { ...primaryDna.face };
+      }
+      return current.map((item) => {
+        if (item.id === activeSubjectId) return { ...item, dna };
+        if (activeSubjectIdx === 0 && isMotherPair && item.id !== activeSubjectId) {
+          return { ...item, dna: { ...item.dna, identity: { ...item.dna.identity,
+            age: Math.min(Number(item.dna.identity?.age) || 21, Math.max(21, dna.identity.age - 18)),
+          } } };
+        }
+        return item;
+      });
+    });
+    toast.success(`Subject ${activeSubject.label} randomized · outfit and scene kept`);
+  };
+  const randomizeScene = () => {
+    setSubjects((current) => current.map((subject, index) => {
+      const next = { ...subject.dna };
+      for (const section of index === 0 ? ["pose", "scene", "lighting", "camera", "style"] : ["pose"]) {
+        if (!locks[section]) next[section] = randomizeSection(section, subject.dna[section], subject.field_locks?.[section]);
+      }
+      return { ...subject, dna: next };
+    }));
+    toast.success("Scene randomized · people kept");
   };
   const removeSubject = (subjectId) => {
     if (subjects.length <= 1) return;
@@ -1511,7 +1562,6 @@ export default function Builder() {
     setSubjects((cur) => cur.map((s) => ({ ...s, dna: randomizeDna(s.dna, nonPlayLocks, s.field_locks) })));
     toast.success(`Randomized ${subjects.length} subject${subjects.length > 1 ? "s" : ""} · Play preserved`);
   };
-
   const resetCharacter = () => {
     const confirmed = window.confirm(
       "Reset this character? This clears all current selections, prompts, tags, locks, and the uploaded reference image. Saved characters and Gallery images will not be deleted."
@@ -2225,7 +2275,9 @@ export default function Builder() {
                       value={primaryDna.scenario?.[field.key] || (field.key === "cast_size" ? "solo" : "none")}
                       onChange={(event) => setSubjects((cur) => cur.map((subject, index) => index === 0 ? {
                         ...subject,
-                        dna: { ...subject.dna, scenario: {
+                        dna: { ...subject.dna,
+                          ...(field.key === "cast_type" && ["mother and daughter", "stepmom and stepdaughter"].includes(event.target.value) ? { identity: { ...subject.dna.identity, age: Math.max(44, Number(subject.dna.identity?.age) || 44), gender: "female" } } : {}),
+                          scenario: {
                           ...subject.dna.scenario,
                           [field.key]: event.target.value,
                           ...(field.key === "cast_type" && event.target.value !== "none" && (!subject.dna.scenario?.cast_size || subject.dna.scenario.cast_size === "solo") ? { cast_size: "duo" } : {}),
@@ -2238,9 +2290,17 @@ export default function Builder() {
                   </label>
                 ))}
               </div>
-              <button type="button" onClick={randomizeCast} data-testid="btn-randomize-cast"
+              <button type="button" onClick={randomizePerson} data-testid="btn-randomize-person"
                 className="inline-flex items-center gap-2 rounded-lg border border-cyan-400/40 bg-cyan-400/10 px-3 py-2 text-xs font-semibold text-cyan-100 hover:bg-cyan-400/20">
-                <Shuffle className="h-4 w-4" /> Randomize {subjects.length > 1 ? "both people" : "solo character"}
+                <Shuffle className="h-4 w-4" /> Randomize person
+              </button>
+              {subjects.length > 1 && <button type="button" onClick={randomizeCast} data-testid="btn-randomize-group"
+                className="ml-2 inline-flex items-center gap-2 rounded-lg border border-fuchsia-400/40 bg-fuchsia-400/10 px-3 py-2 text-xs font-semibold text-fuchsia-100 hover:bg-fuchsia-400/20">
+                <Shuffle className="h-4 w-4" /> Randomize group · female
+              </button>}
+              <button type="button" onClick={randomizeScene} data-testid="btn-randomize-scene"
+                className="ml-2 inline-flex items-center gap-2 rounded-lg border hairline px-3 py-2 text-xs font-semibold text-zinc-200 hover:bg-white/5">
+                <Shuffle className="h-4 w-4" /> Randomize scene
               </button>
             </div>
             <SubjectSwitcher

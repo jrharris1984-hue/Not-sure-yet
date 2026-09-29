@@ -39,7 +39,15 @@ export const endpoints = {
   deleteCharacter: (id) => api.delete(`/characters/${id}`).then((r) => r.data),
   duplicateCharacter: (id) => api.post(`/characters/${id}/duplicate`).then((r) => r.data),
   characterRenders: (id) => api.get(`/characters/${id}/renders`).then((r) => r.data),
-  listRenders: () => api.get("/renders").then((r) => r.data),
+  listRenders: async () => {
+    const results = [];
+    const pageSize = 200;
+    for (let skip = 0; ; skip += pageSize) {
+      const batch = (await api.get("/renders", { params: { limit: pageSize, skip } })).data;
+      results.push(...batch);
+      if (batch.length < pageSize) return results;
+    }
+  },
   listQueue: () => api.get("/queue").then((r) => r.data),
   retryQueueJob: (id) => api.post(`/queue/${id}/retry`).then((r) => r.data),
   clearCompletedQueue: () => api.delete("/queue/completed").then((r) => r.data),
