@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { Camera, ChevronLeft, ChevronRight, X, ExternalLink, RefreshCw, Trash2, Loader2, Download, Star } from "lucide-react";
 import { API_BASE, endpoints } from "@/lib/api";
 import LivePreview from "@/components/LivePreview";
+import { orderedShootFrames } from "@/lib/shootReview";
 
 const STATUS_COLOR = {
   done: "text-emerald-300",
@@ -41,6 +42,8 @@ export default function ShootDetail() {
   const swipeStartX = useRef(null);
   const [selectedFrames, setSelectedFrames] = useState([]);
   const [downloading, setDownloading] = useState(false);
+  const [bestFirst, setBestFirst] = useState(false);
+  const [reviewProgress, setReviewProgress] = useState(null);
 
   const { data: shoot, isLoading } = useQuery({
     queryKey: ["shoot", shootId],
@@ -88,7 +91,7 @@ export default function ShootDetail() {
     onSuccess: () => { toast.success("Shoot deleted"); window.history.back(); },
   });
 
-  const images = (shoot?.frames || []).map((frame, index) => ({
+  const images = orderedShootFrames(shoot?.frames || [], shoot?.renders, bestFirst).map(({ frame, index }) => ({
     index,
     url: imageUrl(shoot?.renders?.[index]?.output_variants?.enhanced?.[0] || shoot?.renders?.[index]?.output_files?.[0]),
     pose: frame.pose_action,
@@ -116,6 +119,21 @@ export default function ShootDetail() {
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["shoot", shootId] }); qc.invalidateQueries({ queryKey: ["shoots"] }); toast.success("Shoot cover updated"); },
     onError: () => toast.error("Could not set shoot cover"),
   });
+  const reviewSelected = async () => {
+    const targets = selectedFrames.filter((index) => shoot.renders?.[index]?.output_files?.length);
+    if (!targets.length) return;
+    for (let position = 0; position < targets.length; position += 1) {
+      setReviewProgress({ current: position + 1, total: targets.length });
+      try {
+        await endpoints.reviewRenderAlignment(shoot.renders[targets[position]].id);
+        qc.invalidateQueries({ queryKey: ["shoot", shootId] });
+      } catch (error) {
+        toast.error(`Frame ${targets[position] + 1}: ${error?.response?.data?.detail || "Review failed"}`);
+      }
+    }
+    setReviewProgress(null);
+    toast.success("Selected frame reviews finished");
+  };
   const moveFrame = (direction) => {
     if (activePosition < 0 || !images.length) return;
     setSlideDirection(direction);
@@ -195,9 +213,19 @@ export default function ShootDetail() {
       </div>
 
       {/* Frames grid */}
+      <div className="flex flex-wrap items-center gap-2 text-xs">
+        <button type="button" onClick={() => setBestFirst((value) => !value)} aria-pressed={bestFirst}
+          className={`rounded-lg border px-3 py-2 ${bestFirst ? "border-cyan-400 bg-cyan-500/15 text-cyan-100" : "hairline text-zinc-300"}`}>
+          {bestFirst ? "Best reviewed first ✓" : "Show best reviewed first"}
+        </button>
+        <button type="button" disabled={!selectedFrames.length || !!reviewProgress} onClick={reviewSelected}
+          className="rounded-lg border border-amber-500/40 px-3 py-2 text-amber-200 disabled:opacity-40">
+          {reviewProgress ? `Reviewing ${reviewProgress.current}/${reviewProgress.total}…` : `Review selected (${selectedFrames.length})`}
+        </button>
+        <span className="text-zinc-500">Ranking compares matched, missing, and uncertain details; it is not an image quality score.</span>
+      </div>
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-        {shoot.frames.map((f, i) => {
-          const r = shoot.renders?.[i];
+        {orderedShootFrames(shoot.frames, shoot.renders, bestFirst).map(({ frame: f, index: i, render: r }) => {
           const outputUrl = imageUrl(r?.output_variants?.enhanced?.[0] || r?.output_files?.[0]);
           const status = outputUrl ? "done" : f.status || r?.status || "pending";
           return (
@@ -241,6 +269,12 @@ export default function ShootDetail() {
               <div className="text-[10px] font-mono text-zinc-400 truncate" title={f.pose_action}>
                 {f.pose_action || "—"}
               </div>
+              {r?.alignment_review && <div className="text-[10px] text-cyan-200" title={r.alignment_review.summary || ""}>
+                {r.alignment_review.matched?.length || 0} matched · {r.alignment_review.missing?.length || 0} missing
+              </div>}
+              {outputUrl && !r?.alignment_review && <div className="text-[10px] text-zinc-500">
+                {r?.alignment_review_status === "reviewing" ? "Reviewing image…" : "Not reviewed yet"}
+              </div>}
               {outputUrl && <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
                 <label className="flex items-center gap-1 text-zinc-200"><input type="checkbox" checked={selectedFrames.includes(i)}
                   onChange={() => setSelectedFrames((current) => current.includes(i) ? current.filter((item) => item !== i) : [...current, i])} />Select</label>

@@ -13,6 +13,7 @@ import {
   HERITAGE_CASTS,
 } from "@/lib/dna";
 import { compileModelPrompts, resolvePromptCompiler } from "@/lib/modelPromptCompilers";
+import { batchSeed } from "@/lib/batchSeeds";
 import { translatePlainLanguage } from "@/lib/plainLanguagePrompt";
 import { analyzePromptQuality } from "@/lib/promptQuality";
 import DnaSection from "@/components/DnaSection";
@@ -171,6 +172,7 @@ export default function Builder() {
   const [dispatching, setDispatching] = useState(false);
   const [activeRender, setActiveRender] = useState(null);
   const [renderCount, setRenderCount] = useState(1);
+  const [batchSeedMode, setBatchSeedMode] = useState("explore");
   const [batchRenders, setBatchRenders] = useState([]);
   const [selectedBatchRenderId, setSelectedBatchRenderId] = useState(null);
   const [postRenderBusy, setPostRenderBusy] = useState("");
@@ -1239,7 +1241,7 @@ export default function Builder() {
         : Math.floor(Math.random() * 2147483647);
       const queuedRenders = [];
       for (let imageIndex = 0; imageIndex < requestedCount; imageIndex += 1) {
-        const uniqueSeed = (baseSeed + imageIndex) % 2147483647;
+        const uniqueSeed = batchSeed(baseSeed, imageIndex, batchSeedMode);
         let r;
         try {
           r = await endpoints.dispatchRender({
@@ -1842,6 +1844,12 @@ export default function Builder() {
               ))}
             </select>
           )}
+          {activeRecipeFamily === "image" && renderCount > 1 && <select value={batchSeedMode}
+            onChange={(event) => setBatchSeedMode(event.target.value)} title="Explore uses widely spaced seeds; Nearby uses consecutive seeds. Both keep your selected prompt."
+            className="hidden md:block bg-elevated border border-hairline rounded-lg px-3 py-2 text-sm text-zinc-100">
+            <option value="explore">Explore different seeds</option>
+            <option value="nearby">Nearby seeds</option>
+          </select>}
           <button
             onClick={doDispatch}
             disabled={dispatching || !workflowId || kreaRenderBlocked || (poseAssistEnabled && !isVariationWorkflow && (!poseAssistAvailable || !poseReferenceImage?.name || (poseAssistStatus && !poseAssistStatus.ready)))}
@@ -2035,6 +2043,14 @@ export default function Builder() {
             mode={mobileStudioMode}
             onRequestAdvanced={() => setMobileStudioMode("advanced")}
           />
+          {activeRecipeFamily === "image" && renderCount > 1 && <label className="md:hidden pane p-3 flex items-center justify-between gap-3 text-xs text-zinc-200">
+            Batch variety
+            <select value={batchSeedMode} onChange={(event) => setBatchSeedMode(event.target.value)}
+              className="bg-elevated border border-hairline rounded-lg px-2 py-2 text-xs text-zinc-100">
+              <option value="explore">Explore different seeds</option>
+              <option value="nearby">Nearby seeds</option>
+            </select>
+          </label>}
           {activeRecipeFamily === "image" && !isKrea2 && !isVariationWorkflow && (
             <div className="md:hidden">
               <PoseAssistPanel

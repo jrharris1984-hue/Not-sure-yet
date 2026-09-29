@@ -3027,6 +3027,8 @@ class ShootFrame(BaseModel):
     scene_direction: str = ""
     outfit_overrides: Dict[str, Any] = Field(default_factory=dict)  # partial wardrobe overrides
     face_overrides: Dict[str, Any] = Field(default_factory=dict)
+    prompt_positive: str = ""
+    prompt_negative: str = ""
     seed: Optional[int] = None
     render_id: Optional[str] = None
     status: str = "pending"  # pending | running | done | failed | offline | queued
@@ -3113,8 +3115,8 @@ async def _run_shoot_background(shoot_id: str):
         # any per-frame prompt overrides sent by the client through outfit changes only.
         # The client should send desired positive/negative in ShootCreateBody? Actually to keep
         # it simple, we use character's saved prompts and append a per-frame override string.
-        pos = char.get("prompt_positive", "")
-        neg = char.get("prompt_negative", "")
+        pos = frame.prompt_positive or char.get("prompt_positive", "")
+        neg = frame.prompt_negative if frame.prompt_positive else char.get("prompt_negative", "")
         # Simple augmentation: prepend pose_action + outfit overrides
         aug_parts = []
         if frame.pose_action:
@@ -3129,7 +3131,7 @@ async def _run_shoot_background(shoot_id: str):
         for _k, v in (frame.face_overrides or {}).items():
             if v:
                 aug_parts.append(str(v))
-        if aug_parts:
+        if aug_parts and not frame.prompt_positive:
             pos = ", ".join(aug_parts) + ", " + pos
 
         seed = frame.seed
@@ -3203,6 +3205,8 @@ async def create_shoot(body: ShootCreateBody, background_tasks: BackgroundTasks)
             scene_direction=str(f.get("scene_direction") or ""),
             outfit_overrides=f.get("outfit_overrides") or {},
             face_overrides=f.get("face_overrides") or {},
+            prompt_positive=str(f.get("prompt_positive") or "")[:10000],
+            prompt_negative=str(f.get("prompt_negative") or "")[:10000],
             seed=int(seed),
             status="pending",
         ))
@@ -3369,8 +3373,8 @@ async def retry_shoot_frame(sid: str, frame_index: int, body: ShootRetryBody, ba
         if frame.render_id:
             await db.renders.delete_one({"id": frame.render_id})
         per_dna = _apply_frame_to_dna(char.get("dna") or {}, frame.model_dump(), shoot.lock_scenario)
-        pos = char.get("prompt_positive", "")
-        neg = char.get("prompt_negative", "")
+        pos = frame.prompt_positive or char.get("prompt_positive", "")
+        neg = frame.prompt_negative if frame.prompt_positive else char.get("prompt_negative", "")
         aug_parts = []
         if frame.pose_action:
             aug_parts.append(frame.pose_action)
@@ -3384,7 +3388,7 @@ async def retry_shoot_frame(sid: str, frame_index: int, body: ShootRetryBody, ba
         for _k, v in (frame.face_overrides or {}).items():
             if v:
                 aug_parts.append(str(v))
-        if aug_parts:
+        if aug_parts and not frame.prompt_positive:
             pos = ", ".join(aug_parts) + ", " + pos
         body_disp = DispatchBody(
             character_id=shoot.character_id,
