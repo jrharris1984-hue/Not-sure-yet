@@ -2282,21 +2282,41 @@ async def _auto_alignment_review(rid: str) -> None:
         await db.renders.update_one({"id": rid}, {"$set": {"alignment_review_status": "unavailable"}})
 
 
-@api.post("/renders/{rid}/retry-missing")
-async def retry_missing_details(rid: str):
+class MissingRetrySelection(BaseModel):
+    indices: List[int] = Field(default_factory=list)
+
+
+async def _missing_retry_recipe(rid: str, selection: MissingRetrySelection) -> Dict[str, Any]:
     render, recipe = await _render_recipe(rid)
     report = render.get("alignment_review") or {}
     missing = report.get("missing") or []
     if not missing:
         raise HTTPException(400, "Review this image and select a render with missing details first")
-    instructions = [str(item.get("retry_instruction") or "").strip() for item in missing if isinstance(item, dict)]
-    instructions = [item for item in instructions if item][:6]
+    indices = selection.indices if selection.indices else list(range(len(missing)))
+    if len(indices) > 6 or len(set(indices)) != len(indices) or any(index < 0 or index >= len(missing) for index in indices):
+        raise HTTPException(400, "Choose up to six valid missing details")
+    instructions = [str(missing[index].get("retry_instruction") or "").strip()
+                    for index in indices if isinstance(missing[index], dict)]
+    instructions = [item for item in instructions if item]
     if not instructions:
         raise HTTPException(400, "No retry instructions were found")
     recipe = dict(recipe)
     recipe.update({"shoot_id": None, "shoot_frame_index": None, "parent_render_id": rid,
                    "operation": "alignment_retry", "seed": random.randint(0, 2**31 - 1)})
     recipe["prompt_positive"] = f"Required corrections: {'; '.join(instructions)}. {recipe.get('prompt_positive') or ''}"[:10000]
+    return recipe
+
+
+@api.post("/renders/{rid}/retry-missing/preview")
+async def preview_missing_details(rid: str, selection: MissingRetrySelection):
+    recipe = await _missing_retry_recipe(rid, selection)
+    return {"prompt_positive": recipe["prompt_positive"], "workflow_id": recipe.get("workflow_id"),
+            "width": recipe.get("width"), "height": recipe.get("height")}
+
+
+@api.post("/renders/{rid}/retry-missing")
+async def retry_missing_details(rid: str, selection: MissingRetrySelection):
+    recipe = await _missing_retry_recipe(rid, selection)
     return await _enqueue_render(DispatchBody(**recipe))
 
 

@@ -64,7 +64,8 @@ export const endpoints = {
   prepareRenderReference: (id) => api.post(`/renders/${id}/prepare-reference`).then((r) => r.data),
   getRenderRecipe: (id) => api.get(`/renders/${id}/recipe`).then((r) => r.data),
   reviewRenderAlignment: (id) => api.post(`/renders/${id}/alignment`).then((r) => r.data),
-  retryMissingDetails: (id) => api.post(`/renders/${id}/retry-missing`).then((r) => r.data),
+  previewMissingDetails: (id, indices) => api.post(`/renders/${id}/retry-missing/preview`, { indices }).then((r) => r.data),
+  retryMissingDetails: ({ id, indices }) => api.post(`/renders/${id}/retry-missing`, { indices }).then((r) => r.data),
   uploadReferenceImage: (file) => {
     const form = new FormData();
     form.append("image", file);
