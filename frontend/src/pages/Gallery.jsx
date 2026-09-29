@@ -94,6 +94,7 @@ export default function Gallery() {
   const [selected, setSelected] = useState([]);
   const [albumFilter, setAlbumFilter] = useState("all");
   const [thumbSize, setThumbSize] = useState("medium");
+  const [pageSize, setPageSize] = useState(12);
   const [page, setPage] = useState(1);
   const [slideDirection, setSlideDirection] = useState(1);
   const [compareOpen, setCompareOpen] = useState(false);
@@ -221,9 +222,9 @@ export default function Gallery() {
   const displayedOutput = albumFilter === "all"
     ? withOutput
     : withOutput.filter((render) => (albumFilter === "unfiled" ? !render.album : render.album === albumFilter));
-  const pageCount = Math.max(1, Math.ceil(displayedOutput.length / 12));
+  const pageCount = Math.max(1, Math.ceil(displayedOutput.length / pageSize));
   const currentPage = Math.min(page, pageCount);
-  const pageOutput = displayedOutput.slice((currentPage - 1) * 12, currentPage * 12);
+  const pageOutput = displayedOutput.slice((currentPage - 1) * pageSize, currentPage * pageSize);
   const pageIds = pageOutput.map((render) => render.id);
   const pageFullySelected = pageIds.length > 0 && pageIds.every((id) => selected.includes(id));
   const togglePageSelection = () => {
@@ -380,12 +381,18 @@ export default function Gallery() {
         <>
           {displayedOutput.length > 0 && (
             <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-zinc-400">
-              <span>Showing {(currentPage - 1) * 12 + 1}–{Math.min(currentPage * 12, displayedOutput.length)} of {displayedOutput.length}</span>
-              <div className="flex items-center gap-2" data-testid="gallery-thumbnail-size">
+              <span>Showing {(currentPage - 1) * pageSize + 1}–{Math.min(currentPage * pageSize, displayedOutput.length)} of {displayedOutput.length}</span>
+              <div className="flex flex-wrap items-center gap-2" data-testid="gallery-thumbnail-size">
                 <span>Thumbnails</span>
                 {["small", "medium", "large"].map((size) => (
                   <button key={size} type="button" onClick={() => setThumbSize(size)} aria-pressed={thumbSize === size}
                     className={`rounded-lg border px-2 py-1 capitalize ${thumbSize === size ? "border-cyan-400 text-cyan-100 bg-cyan-400/10" : "hairline"}`}>{size}</button>
+                ))}
+                <span className="ml-2">Per page</span>
+                {[12, 16, 20].map((size) => (
+                  <button key={size} type="button" onClick={() => { setPageSize(size); setPage(1); }} aria-pressed={pageSize === size}
+                    data-testid={`gallery-page-size-${size}`}
+                    className={`rounded-lg border px-2 py-1 ${pageSize === size ? "border-amber-400 text-amber-100 bg-amber-400/10" : "hairline"}`}>{size}</button>
                 ))}
               </div>
             </div>
@@ -398,7 +405,7 @@ export default function Gallery() {
                 const checked = selected.includes(r.id);
                 return (
                   <div key={r.id}
-                    data-testid={`gallery-thumb-${(currentPage - 1) * 12 + i}`}
+                    data-testid={`gallery-thumb-${(currentPage - 1) * pageSize + i}`}
                     className={`relative aspect-square rounded-lg overflow-hidden border bg-elevated group ${checked ? "border-amber-400 ring-2 ring-amber-400/50" : "hairline"}`}>
                     <button type="button"
                       onClick={() => {
