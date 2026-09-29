@@ -1758,6 +1758,29 @@ export default function Builder() {
     && batchIsFinished
     && (!poseAssistEnabled || poseAssistStage === "done");
 
+  const sectionNavigation = (position) => (
+    <div className="hidden md:flex items-center justify-between gap-2" aria-label={`${position} section navigation`}>
+      <button type="button" onClick={() => activeIdx > 0 && goSection(SECTIONS[activeIdx - 1].key)}
+        disabled={activeIdx === 0} data-testid={`btn-section-prev${position === "top" ? "-top" : ""}`}
+        className="inline-flex items-center gap-1.5 rounded-lg border hairline px-4 py-2.5 text-sm text-zinc-200 hover:bg-white/5 disabled:opacity-30">
+        <ChevronLeft className="h-4 w-4" /> {activeIdx > 0 ? SECTIONS[activeIdx - 1].title : "Prev"}
+      </button>
+      {activeIdx < SECTIONS.length - 1 ? (
+        <button type="button" onClick={() => goSection(SECTIONS[activeIdx + 1].key)}
+          data-testid={`btn-section-next${position === "top" ? "-top" : ""}`}
+          className="inline-flex items-center gap-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-black text-sm font-semibold px-4 py-2.5">
+          {SECTIONS[activeIdx + 1].title} <ChevronRight className="h-4 w-4" />
+        </button>
+      ) : (
+        <button type="button" onClick={() => save.mutate()}
+          data-testid={`btn-section-finish${position === "top" ? "-top" : ""}`}
+          className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black text-sm font-semibold px-4 py-2.5">
+          Finish & Save <Save className="h-4 w-4" />
+        </button>
+      )}
+    </div>
+  );
+
   return (
     <div className={`mx-auto max-w-[1600px] px-2.5 sm:px-6 py-3 sm:py-6 space-y-3 sm:space-y-4 ${desktopQuickMode ? "quick-create-mode" : ""}`}>
       {galleryRecipeMode === "current" && (
@@ -2327,6 +2350,13 @@ export default function Builder() {
               style={{ width: `${((activeIdx + 1) / SECTIONS.length) * 100}%` }}
             />
           </div>
+          {desktopQuickMode && <div className="hidden md:block">
+            <SubjectSwitcher subjects={subjects} activeId={activeSubjectId} expectedCount={expectedCount}
+              primaryLabel={subjects[0]?.label || "A"} onSelect={setActiveSubjectId}
+              onAdd={addSubject} onRemove={removeSubject} onCopyFromPrimary={copyPrimaryToActive}
+              onRandomizeActive={randomizeActive} showAddForSingle />
+          </div>}
+          {sectionNavigation("top")}
           {activeSection === "identity" && (
             <>
             <div className="pane p-3 sm:p-4 space-y-3" data-testid="person-scenario-setup">
@@ -2369,7 +2399,7 @@ export default function Builder() {
                 <Shuffle className="h-4 w-4" /> Randomize scene
               </button>
             </div>
-            <SubjectSwitcher
+            <div className="quick-hide"><SubjectSwitcher
               subjects={subjects}
               activeId={activeSubjectId}
               expectedCount={expectedCount}
@@ -2380,7 +2410,7 @@ export default function Builder() {
               onCopyFromPrimary={copyPrimaryToActive}
               onRandomizeActive={randomizeActive}
               showAddForSingle
-            />
+            /></div>
             </>
           )}
           <DnaSection
@@ -2404,33 +2434,7 @@ export default function Builder() {
             simpleFieldKeys={SIMPLE_FIELD_KEYS[activeSection] || []}
             onRequestAdvanced={() => setMobileStudioMode("advanced")}
           />
-          <div className="hidden md:flex items-center justify-between gap-2">
-            <button
-              onClick={() => activeIdx > 0 && goSection(SECTIONS[activeIdx - 1].key)}
-              disabled={activeIdx === 0}
-              data-testid="btn-section-prev"
-              className="inline-flex items-center gap-1.5 rounded-lg border hairline px-4 py-2.5 text-sm text-zinc-200 hover:bg-white/5 disabled:opacity-30"
-            >
-              <ChevronLeft className="h-4 w-4" /> {activeIdx > 0 ? SECTIONS[activeIdx - 1].title : "Prev"}
-            </button>
-            {activeIdx < SECTIONS.length - 1 ? (
-              <button
-                onClick={() => goSection(SECTIONS[activeIdx + 1].key)}
-                data-testid="btn-section-next"
-                className="inline-flex items-center gap-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-black text-sm font-semibold px-4 py-2.5"
-              >
-                {SECTIONS[activeIdx + 1].title} <ChevronRight className="h-4 w-4" />
-              </button>
-            ) : (
-              <button
-                onClick={() => save.mutate()}
-                data-testid="btn-section-finish"
-                className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black text-sm font-semibold px-4 py-2.5"
-              >
-                Finish & Save <Save className="h-4 w-4" />
-              </button>
-            )}
-          </div>
+          {sectionNavigation("bottom")}
           </div>
         </div>
 
