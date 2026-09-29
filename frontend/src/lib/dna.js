@@ -362,7 +362,7 @@ export const SECTIONS = [
     key: "scenario",
     title: "Scenario",
     fields: [
-      { key: "cast_size", type: "chips", label: "Cast size", options: ["solo", "duo", "threesome", "foursome", "group", "gangbang", "orgy"] },
+      { key: "cast_size", type: "chips", label: "Cast size", options: ["solo", "duo", "trio", "threesome", "foursome", "group", "gangbang", "orgy"] },
       { key: "cast_type", type: "chips", label: "Cast pairing", options: [
         "none", "twins", "identical twins", "sisters", "best friends", "roommates",
         "mother and daughter", "stepmom and stepdaughter", "aunt and niece",
@@ -800,6 +800,7 @@ export function expectedSubjectCount(dna = {}) {
   if (cs === "orgy" || cs === "gangbang") return Math.min(MAX_SUBJECTS, 4);
   if (cs === "group") return Math.min(MAX_SUBJECTS, 4);
   if (cs === "foursome") return 4;
+  if (cs === "trio") return 3;
   if (cs === "threesome") return 3;
   if (cs === "duo") return 2;
   if (isPairing) return 2;

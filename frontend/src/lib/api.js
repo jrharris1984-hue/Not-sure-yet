@@ -87,6 +87,7 @@ export const endpoints = {
   workflowLoras: (id) => api.get(`/workflows/${id}/loras`).then((r) => r.data),
   comfyLoras: () => api.get("/comfyui/loras").then((r) => r.data),
   aiFreeform: (text) => api.post("/ai/freeform", { text }).then((r) => r.data),
+  aiSceneDraft: (text) => api.post("/ai/scene-draft", { text }).then((r) => r.data),
   aiCharacterPreset: (description, catalog) =>
     api.post("/ai/character-preset", { description, catalog }).then((r) => r.data),
   aiRefine: (dna, instruction) => api.post("/ai/refine", { dna, instruction }).then((r) => r.data),

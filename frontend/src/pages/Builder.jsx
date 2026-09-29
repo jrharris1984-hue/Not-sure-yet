@@ -2029,7 +2029,15 @@ export default function Builder() {
       />
 
       <div className={mobileStudioStep === "start" ? "block" : "hidden md:block"}>
-        <AiAssistBar dna={activeDna} aiProvider={aiProvider} onApplyDna={(draft) => { setActiveDna(draft); setPlainLanguage(""); }} />
+        <AiAssistBar dna={activeDna} aiProvider={aiProvider}
+          onApplyDna={(draft) => { setActiveDna(draft); setPlainLanguage(""); }}
+          onApplySubjects={(draftSubjects) => {
+            setSubjects(draftSubjects);
+            setActiveSubjectId(draftSubjects[0].id);
+            setPlainLanguage("");
+            setPromptOverride("");
+            setNegativePromptOverride("");
+          }} />
       </div>
 
       {mobileStudioStep === "create" && !showMobileResult && (

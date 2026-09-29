@@ -4,8 +4,9 @@ import { Sparkles, Wand2, Loader2, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 import { endpoints } from "@/lib/api";
 import { DEFAULT_DNA } from "@/lib/dna";
+import { normalizeAiSceneSubjects } from "@/lib/aiSceneDraft";
 
-export default function AiAssistBar({ dna, onApplyDna, aiProvider = "AI" }) {
+export default function AiAssistBar({ dna, onApplyDna, onApplySubjects, aiProvider = "AI" }) {
   const [text, setText] = useState("");
   const [refineText, setRefineText] = useState("");
   const [busy, setBusy] = useState("");
@@ -26,8 +27,10 @@ export default function AiAssistBar({ dna, onApplyDna, aiProvider = "AI" }) {
     if (!text.trim()) return;
     setBusy("freeform");
     try {
-      const res = await endpoints.aiFreeform(text.trim());
-      previewDraft(res.dna, "description");
+      const res = await endpoints.aiSceneDraft(text.trim());
+      const subjects = normalizeAiSceneSubjects(res.subjects);
+      if (!subjects.length) throw new Error("AI did not propose separate adult subjects");
+      setDraft({ source: "scene", subjects });
     } catch (e) {
       toast.error(e?.response?.data?.detail || e.message || `${aiProvider} could not generate DNA`);
     } finally {
@@ -50,8 +53,15 @@ export default function AiAssistBar({ dna, onApplyDna, aiProvider = "AI" }) {
 
   const applyDraft = () => {
     if (!draft) return;
+    if (draft.source === "scene") {
+      onApplySubjects(draft.subjects);
+      toast.success(`${draft.subjects.length} adult subject${draft.subjects.length === 1 ? "" : "s"} added. Review their settings before rendering.`);
+      setDraft(null);
+      setText("");
+      return;
+    }
     // A new description starts a fresh character. Refinements preserve other choices.
-    const next = draft.source === "description" ? structuredClone(DEFAULT_DNA) : { ...dna };
+    const next = draft.source === "description" ? JSON.parse(JSON.stringify(DEFAULT_DNA)) : { ...dna };
     for (const { section, field, value } of draft.changes) {
       next[section] = { ...(next[section] || {}), [field]: value };
     }
@@ -71,7 +81,7 @@ export default function AiAssistBar({ dna, onApplyDna, aiProvider = "AI" }) {
         <ChevronDown className={`h-4 w-4 text-zinc-400 transition-transform duration-200 ${expanded ? "rotate-180" : ""}`} />
       </button>
       {expanded && <div className="space-y-3 ai-assist-reveal">
-      <p className="text-xs text-zinc-400">A new description replaces old character settings. Refine changes only the settings shown. Review them before rendering.</p>
+      <p className="text-xs text-zinc-400">Describe one to four adults. AI will propose a separate profile for each person. Refine changes only the current subject.</p>
 
       <div className="space-y-2">
         <div className="text-[11px] uppercase tracking-widest text-zinc-500 font-mono">Freeform → DNA</div>
@@ -79,7 +89,7 @@ export default function AiAssistBar({ dna, onApplyDna, aiProvider = "AI" }) {
           value={text}
           onChange={(e) => setText(e.target.value)}
           rows={2}
-          placeholder='e.g. "curvy redhead pirate on a beach at dusk, cinematic lighting"'
+          placeholder='e.g. "two adult friends in a garden, one with silver hair and one with dark curls"'
           className="bg-elevated border-hairline text-zinc-100 text-sm"
           data-testid="input-ai-freeform"
         />
@@ -90,13 +100,23 @@ export default function AiAssistBar({ dna, onApplyDna, aiProvider = "AI" }) {
           className="inline-flex items-center gap-2 rounded-lg bg-amber-500 hover:bg-amber-400 disabled:opacity-40 text-black text-sm font-semibold px-3 py-2 transition-colors"
         >
           {busy === "freeform" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />}
-          Generate DNA
+          Draft scene
         </button>
       </div>
 
       <div className="h-px bg-hairline" />
 
       {draft && <div className="space-y-2 rounded-lg border border-cyan-500/40 bg-cyan-500/5 p-3" data-testid="ai-dna-preview">
+        {draft.source === "scene" ? <>
+          <div className="text-xs font-semibold text-cyan-100">Review {draft.subjects.length} adult subject{draft.subjects.length === 1 ? "" : "s"}</div>
+          <p className="text-[11px] text-amber-200">Applying this scene replaces the current subject profiles. You can edit each person afterward.</p>
+          <div className="max-h-52 space-y-2 overflow-y-auto">
+            {draft.subjects.map((subject) => <div key={subject.id} className="rounded-lg border hairline p-2 text-xs text-zinc-300">
+              <span className="font-semibold text-cyan-100">Subject {subject.label}</span> · age {subject.dna.identity.age}
+              <div>{[subject.dna.identity.ethnicity, subject.dna.hair.color, subject.dna.hair.style, subject.dna.wardrobe.outfit_preset].filter(Boolean).join(" · ") || "Review profile after applying"}</div>
+            </div>)}
+          </div>
+        </> : <>
         <div className="text-xs font-semibold text-cyan-100">Review {draft.changes.length} proposed settings</div>
         {draft.source === "description" && <p className="text-[11px] text-amber-200">Applying a new description clears old character settings that are not listed here.</p>}
         <div className="max-h-48 space-y-1 overflow-y-auto text-xs text-zinc-300">
@@ -106,6 +126,7 @@ export default function AiAssistBar({ dna, onApplyDna, aiProvider = "AI" }) {
               <span className="break-words">{previous ? `${String(previous)} → ` : ""}{Array.isArray(value) ? value.join(", ") : String(value)}</span>
             </div>)}
         </div>
+        </>}
         <div className="flex gap-2">
           <button type="button" onClick={applyDraft} className="rounded-lg bg-cyan-400 px-3 py-2 text-xs font-semibold text-black">Apply settings</button>
           <button type="button" onClick={() => setDraft(null)} className="rounded-lg border hairline px-3 py-2 text-xs text-zinc-300">Discard</button>

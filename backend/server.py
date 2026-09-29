@@ -3549,6 +3549,52 @@ async def ai_freeform(body: FreeformBody):
     return {"dna": extract_json(out)}
 
 
+@api.post("/ai/scene-draft")
+async def ai_scene_draft(body: FreeformBody):
+    description = body.text.strip()
+    if not description:
+        raise HTTPException(400, "Describe the scene first")
+    if len(description) > 3000:
+        raise HTTPException(400, "Keep the description under 3000 characters")
+    family = re.search(r"\b(mother|daughter|son|father|sister|brother|aunt|uncle|niece|nephew|grandmother|granddaughter)\b", description, re.I)
+    sexual = re.search(r"\b(genitals?|pubic|nude|naked|sexual|sex|erotic|fetish|lingerie|breasts?|nipples?|pussy|penis)\b", description, re.I)
+    if family and sexual:
+        raise HTTPException(400, "Use a nonsexual description for family portraits")
+    system = (
+        "Convert a description into structured settings for one to four distinct ADULT people. "
+        "Return only JSON: {\"subjects\":[{\"dna\":{...}}]}. Keep people in the order described. "
+        "Every subject must have identity.age at least 21. Do not merge people into one DNA object. "
+        "Use separate face, hair, physique and wardrobe settings for each person. "
+        "Shared pose and scene may be repeated. Do not invent extra people. "
+        "Family scenes must be nonsexual. " + DNA_SCHEMA_HINT
+    )
+    result = extract_json(await openrouter_chat(system, description, response_format_json=True))
+    subjects = result.get("subjects")
+    if not isinstance(subjects, list) or not 1 <= len(subjects) <= 4:
+        raise HTTPException(502, "AI did not return one to four separate people. Try a shorter description with the number of adults stated.")
+    explicit_count = re.search(r"\b(one|two|three|four|[1-4])\s+(?:adult\s+)?(?:people|persons|subjects|men|women|friends|models)\b", description, re.I)
+    if explicit_count:
+        requested = {"one": 1, "two": 2, "three": 3, "four": 4}.get(explicit_count.group(1).lower(), None)
+        requested = requested or int(explicit_count.group(1))
+        if len(subjects) != requested:
+            raise HTTPException(502, f"AI proposed {len(subjects)} people, but you requested {requested}. Please retry the scene draft.")
+    cleaned = []
+    for subject in subjects:
+        dna = subject.get("dna") if isinstance(subject, dict) else None
+        if not isinstance(dna, dict):
+            raise HTTPException(502, "AI returned a person without settings. Try again.")
+        identity = dna.get("identity") if isinstance(dna.get("identity"), dict) else {}
+        try:
+            age_text = str(identity.get("age") or "")
+            age_match = re.search(r"\d{1,3}", age_text)
+            age = int(age_match.group()) if age_match else 21
+        except (TypeError, ValueError):
+            age = 21
+        dna["identity"] = {**identity, "age": max(21, age)}
+        cleaned.append({"dna": dna})
+    return {"subjects": cleaned}
+
+
 @api.post("/ai/character-preset")
 async def ai_character_preset(body: CharacterPresetAiBody):
     description = body.description.strip()
