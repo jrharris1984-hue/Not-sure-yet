@@ -22,6 +22,14 @@ That's it. Open **http://localhost:3000**.
 - Mongo: `mongodb://localhost:27017` (auto-persisted to `./data/mongo`)
 - Renders: `./backend/renders` (mounted into the backend container)
 
+To let **Gallery → Also delete files from disk** remove ComfyUI output files, set the host output folder in the project-root `.env` before restarting Docker. For example on Windows:
+
+```dotenv
+COMFYUI_OUTPUT_DIR=G:/Comfy.ui/output
+```
+
+Then run `docker compose up -d --build`. Docker Desktop must allow access to that drive. The app normally removes only Gallery records; the disk deletion checkbox and confirmation are required to delete files. If you move ComfyUI's output folder later, update this `.env` value and restart Docker. Already-generated files must be in the mapped folder to be removed from disk through Gallery.
+
 On first boot the backend seeds the bundled workflows, including Krea 2 Turbo. Some require model files or ComfyUI nodes that you must install separately. Head to **Settings** and:
 
 1. Set **ComfyUI Server URL** to `http://host.docker.internal:8188` on macOS/Windows Docker Desktop, or `http://172.17.0.1:8188` on Linux — this is how a container reaches ComfyUI running on the host.

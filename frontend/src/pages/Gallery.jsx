@@ -98,6 +98,7 @@ export default function Gallery() {
   const [showDetails, setShowDetails] = useState(false);
   const [selectionMode, setSelectionMode] = useState(false);
   const [selected, setSelected] = useState([]);
+  const [deleteFiles, setDeleteFiles] = useState(false);
   const [albumFilter, setAlbumFilter] = useState("all");
   const [showQcFlagged, setShowQcFlagged] = useState(true);
   const [thumbSize, setThumbSize] = useState("medium");
@@ -114,24 +115,24 @@ export default function Gallery() {
   });
 
   const removeOne = useMutation({
-    mutationFn: (id) => endpoints.deleteRender(id),
-    onSuccess: (_result, id) => {
+    mutationFn: ({ id, files }) => endpoints.deleteRender(id, files),
+    onSuccess: (result, { id }) => {
       setSelected((current) => current.filter((item) => item !== id));
       if (lightbox?.id === id) setLightbox(null);
       qc.invalidateQueries({ queryKey: ["renders"] });
-      toast.success("Removed from Gallery");
+      toast.success(result.files_deleted ? `Removed from Gallery and deleted ${result.files_deleted} file(s)` : "Removed from Gallery");
     },
     onError: (error) => toast.error(error?.response?.data?.detail || "Could not remove render"),
   });
 
   const removeMany = useMutation({
-    mutationFn: (ids) => endpoints.deleteRenders(ids),
+    mutationFn: ({ ids, files }) => endpoints.deleteRenders(ids, files),
     onSuccess: (result) => {
       setSelected([]);
       setSelectionMode(false);
       setLightbox(null);
       qc.invalidateQueries({ queryKey: ["renders"] });
-      toast.success(`Removed ${result.deleted || 0} Gallery items`);
+      toast.success(`Removed ${result.deleted || 0} Gallery items${result.files_deleted ? ` and deleted ${result.files_deleted} file(s)` : ""}`);
     },
     onError: (error) => toast.error(error?.response?.data?.detail || "Could not remove selected renders"),
   });
@@ -142,7 +143,7 @@ export default function Gallery() {
       setLightbox(null);
       setPage(1);
       qc.invalidateQueries({ queryKey: ["renders"] });
-      toast.success(`Removed ${result.deleted || 0} QC-flagged Gallery items`);
+      toast.success(`Removed ${result.deleted || 0} QC-flagged Gallery items${result.files_deleted ? ` and deleted ${result.files_deleted} file(s)` : ""}`);
     },
     onError: (error) => toast.error(error?.response?.data?.detail || "Could not remove QC-flagged items"),
   });
@@ -240,15 +241,21 @@ export default function Gallery() {
   });
 
   const confirmRemoveOne = (render) => {
-    if (window.confirm("Remove this item from the Ultra Studio Gallery? The original ComfyUI output file will remain on disk.")) {
-      removeOne.mutate(render.id);
+    const message = deleteFiles
+      ? "Permanently delete this image and its ComfyUI output files from your hard drive? This cannot be undone."
+      : "Remove this item from the Ultra Studio Gallery? The ComfyUI output files will remain on disk.";
+    if (window.confirm(message)) {
+      removeOne.mutate({ id: render.id, files: deleteFiles });
     }
   };
 
   const confirmRemoveSelected = () => {
     if (!selected.length) return;
-    if (window.confirm(`Remove ${selected.length} selected items from the Ultra Studio Gallery? Original ComfyUI files will remain on disk.`)) {
-      removeMany.mutate(selected);
+    const message = deleteFiles
+      ? `Permanently delete ${selected.length} selected images and their ComfyUI output files from your hard drive? This cannot be undone.`
+      : `Remove ${selected.length} selected items from the Ultra Studio Gallery? ComfyUI output files will remain on disk.`;
+    if (window.confirm(message)) {
+      removeMany.mutate({ ids: selected, files: deleteFiles });
     }
   };
 
@@ -395,6 +402,10 @@ export default function Gallery() {
                 </button>
               </>
             )}
+            <label className="inline-flex items-center gap-2 text-xs text-zinc-300" data-testid="toggle-delete-gallery-files">
+              <input type="checkbox" checked={deleteFiles} onChange={(event) => setDeleteFiles(event.target.checked)} />
+              Also delete files from disk
+            </label>
           </div>
         )}
       </div>
@@ -418,7 +429,9 @@ export default function Gallery() {
             Show QC-flagged images: {showQcFlagged ? "On" : "Off"}
           </button>
           <button type="button" disabled={removeQcFlagged.isPending} data-testid="btn-gallery-delete-all-qc"
-            onClick={() => window.confirm("Remove ALL QC-flagged renders from the Gallery, including older pages? Original ComfyUI files will remain on disk.") && removeQcFlagged.mutate()}
+            onClick={() => window.confirm(deleteFiles
+              ? "Permanently delete ALL QC-flagged renders and their ComfyUI output files from your hard drive? This cannot be undone."
+              : "Remove ALL QC-flagged renders from the Gallery, including older pages? ComfyUI files will remain on disk.") && removeQcFlagged.mutate(deleteFiles)}
             className="rounded-lg border border-red-500/40 px-3 py-2 text-red-200 hover:bg-red-500/10 disabled:opacity-40">
             <Trash2 className="mr-1 inline h-3.5 w-3.5" /> Delete all QC-flagged
           </button>
@@ -839,6 +852,10 @@ export default function Gallery() {
                         <Download className="inline h-4 w-4 mr-2" />Download original
                       </button>
                     )}
+                    <label className="flex items-center gap-2 text-xs text-red-200" data-testid="toggle-delete-gallery-files-lightbox">
+                      <input type="checkbox" checked={deleteFiles} onChange={(event) => setDeleteFiles(event.target.checked)} />
+                      Also delete ComfyUI files from disk
+                    </label>
                     <button type="button" onClick={() => confirmRemoveOne(lightbox)} disabled={removeOne.isPending} data-testid="btn-lightbox-delete" className="w-full rounded-lg border border-red-500/40 px-3 py-2 text-sm text-red-200"><Trash2 className="inline h-4 w-4 mr-2" />Remove from Gallery</button>
                     {lightbox.character_id && <Link to={`/character/${lightbox.character_id}`} data-testid="btn-lightbox-open-character" className="w-full inline-flex items-center justify-center gap-2 rounded-lg border hairline px-3 py-2 text-sm"><ExternalLink className="h-4 w-4" />Open character</Link>}
                   </div>

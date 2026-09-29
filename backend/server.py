@@ -30,6 +30,7 @@ load_dotenv(ROOT_DIR / ".env")
 
 RENDERS_DIR = ROOT_DIR / "renders"
 RENDERS_DIR.mkdir(parents=True, exist_ok=True)
+COMFYUI_OUTPUT_DIR = Path(os.environ.get("COMFYUI_OUTPUT_DIR", "/comfyui-output"))
 
 mongo_url = os.environ["MONGO_URL"]
 client = AsyncIOMotorClient(mongo_url)
@@ -2724,14 +2725,58 @@ async def delete_cancelled_renders():
     }
 
 
+def _comfy_output_paths(renders: List[Dict[str, Any]]) -> List[Path]:
+    """Resolve only ComfyUI output URLs inside the configured output mount."""
+    root = COMFYUI_OUTPUT_DIR.resolve()
+    paths = set()
+    for render in renders:
+        variants = render.get("output_variants") or {}
+        for url in (render.get("output_files") or []) + (variants.get("enhanced") or []):
+            params = parse_qs(urlparse(str(url)).query)
+            if (params.get("type") or ["output"])[0] != "output":
+                raise HTTPException(400, "Only ComfyUI output files can be deleted from disk.")
+            filename = (params.get("filename") or [""])[0]
+            subfolder = (params.get("subfolder") or [""])[0]
+            if not filename or Path(filename).name != filename or Path(filename).is_absolute():
+                raise HTTPException(400, "An image has an invalid ComfyUI output filename.")
+            path = (root / subfolder / filename).resolve()
+            if not path.is_relative_to(root) or not path.is_file():
+                raise HTTPException(400, f"Output file is unavailable in the configured ComfyUI folder: {filename}")
+            paths.add(path)
+    return sorted(paths)
+
+
+async def _delete_gallery_records(ids: List[str], delete_files: bool = False) -> Dict[str, Any]:
+    renders = await db.renders.find({"id": {"$in": ids}}, {"_id": 0}).to_list(len(ids))
+    files = _comfy_output_paths(renders) if delete_files else []
+    if delete_files and renders and not files:
+        raise HTTPException(400, "No ComfyUI output files were recorded for these images.")
+    if delete_files:
+        # A reused output must remain available to any other Gallery record.
+        urls = [url for render in renders for url in (render.get("output_files") or []) +
+                ((render.get("output_variants") or {}).get("enhanced") or [])]
+        shared = await db.renders.find_one({"id": {"$nin": ids}, "$or": [
+            {"output_files": {"$in": urls}}, {"output_variants.enhanced": {"$in": urls}},
+        ]}, {"_id": 1}) if urls else None
+        if shared:
+            raise HTTPException(409, "An output file is also used by another Gallery item. Remove that item too, or remove Gallery records only.")
+        try:
+            for path in files:
+                path.unlink()
+        except OSError as exc:
+            raise HTTPException(502, f"Could not delete a ComfyUI output file: {exc}") from exc
+    result = await db.renders.delete_many({"id": {"$in": ids}})
+    return {"ok": True, "deleted": result.deleted_count, "files_deleted": len(files)}
+
+
 @api.delete("/renders/{rid}")
-async def delete_render(rid: str):
-    await db.renders.delete_one({"id": rid})
-    return {"ok": True}
+async def delete_render(rid: str, delete_files: bool = False):
+    return await _delete_gallery_records([rid], delete_files)
 
 
 class BulkRenderDeleteBody(BaseModel):
     ids: List[str] = Field(default_factory=list)
+    delete_files: bool = False
 
 
 class RenderAlbumBody(BaseModel):
@@ -2803,14 +2848,15 @@ async def delete_renders_bulk(body: BulkRenderDeleteBody):
     ids = list(dict.fromkeys(body.ids))[:200]
     if not ids:
         return {"ok": True, "deleted": 0}
-    result = await db.renders.delete_many({"id": {"$in": ids}})
-    return {"ok": True, "deleted": result.deleted_count}
+    return await _delete_gallery_records(ids, body.delete_files)
 
 
 @api.post("/renders/delete-qc-flagged")
-async def delete_qc_flagged_renders():
-    result = await db.renders.delete_many({"anatomy_guard_status": "failed"})
-    return {"ok": True, "deleted": result.deleted_count}
+async def delete_qc_flagged_renders(delete_files: bool = False):
+    ids = [render["id"] for render in await db.renders.find(
+        {"anatomy_guard_status": "failed"}, {"_id": 0, "id": 1}
+    ).to_list(None)]
+    return await _delete_gallery_records(ids, delete_files) if ids else {"ok": True, "deleted": 0, "files_deleted": 0}
 
 
 async def _cancel_render_doc(rid: str) -> Dict[str, Any]:
