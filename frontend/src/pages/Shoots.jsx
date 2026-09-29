@@ -61,6 +61,7 @@ export default function Shoots() {
                 key={s.id}
                 data-testid={`shoot-card-${i}`}
                 className="pane overflow-hidden hover:border-zinc-700 transition-colors"
+                aria-label={`Open photo shoot gallery: ${s.name}`}
               >
                 <div className="aspect-video bg-elevated">
                   {s.cover_image ? <img src={coverUrl(s.cover_image)} alt={`${s.name} cover`} className="h-full w-full object-cover" />
@@ -82,6 +83,7 @@ export default function Shoots() {
                   <div className="h-full bg-amber-400" style={{ width: `${Math.round((s.progress || 0) * 100)}%` }} />
                 </div>
                 <div className="text-[11px] font-mono text-zinc-500">{done}/{s.count} rendered</div>
+                <div className="text-xs font-semibold text-amber-200">Open shoot gallery →</div>
                 </div>
               </Link>
             );
