@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -37,6 +37,8 @@ export default function ShootDetail() {
   const { shootId } = useParams();
   const qc = useQueryClient();
   const [activeFrame, setActiveFrame] = useState(null);
+  const [slideDirection, setSlideDirection] = useState(1);
+  const swipeStartX = useRef(null);
   const [selectedFrames, setSelectedFrames] = useState([]);
   const [downloading, setDownloading] = useState(false);
 
@@ -116,6 +118,7 @@ export default function ShootDetail() {
   });
   const moveFrame = (direction) => {
     if (activePosition < 0 || !images.length) return;
+    setSlideDirection(direction);
     setActiveFrame(images[(activePosition + direction + images.length) % images.length].index);
   };
 
@@ -284,8 +287,18 @@ export default function ShootDetail() {
                 className="absolute left-0 top-1/2 z-10 -translate-y-1/2 rounded-full bg-black/70 p-2 text-white"
                 data-testid="btn-shoot-gallery-previous"><ChevronLeft className="h-6 w-6" /></button>
             )}
-            <img src={selectedImage.url} alt={`Photo shoot frame ${selectedImage.index + 1}`}
-              className="max-w-full max-h-[82dvh] object-contain" data-testid="shoot-gallery-image" />
+            <div className="flex min-h-0 w-full flex-1 items-center justify-center touch-pan-y"
+              onTouchStart={(event) => { swipeStartX.current = event.touches[0]?.clientX ?? null; }}
+              onTouchEnd={(event) => {
+                if (swipeStartX.current === null) return;
+                const delta = (event.changedTouches[0]?.clientX ?? swipeStartX.current) - swipeStartX.current;
+                swipeStartX.current = null;
+                if (Math.abs(delta) >= 50) moveFrame(delta > 0 ? -1 : 1);
+              }}>
+              <img key={selectedImage.index} src={selectedImage.url} alt={`Photo shoot frame ${selectedImage.index + 1}`}
+                className={`max-w-full max-h-[82dvh] object-contain ${slideDirection > 0 ? "gallery-slide-right" : "gallery-slide-left"}`}
+                data-testid="shoot-gallery-image" />
+            </div>
             {images.length > 1 && (
               <button type="button" onClick={() => moveFrame(1)} aria-label="Next photo shoot image"
                 className="absolute right-0 top-1/2 z-10 -translate-y-1/2 rounded-full bg-black/70 p-2 text-white"
