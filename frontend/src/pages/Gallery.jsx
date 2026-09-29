@@ -92,6 +92,9 @@ export default function Gallery() {
   const [retrySelection, setRetrySelection] = useState(null);
   const [retryPreview, setRetryPreview] = useState(null);
   useEffect(() => { setRetrySelection(null); setRetryPreview(null); }, [lightbox?.id, lightbox?.alignment_review?.reviewed_at]);
+  const [improvePreview, setImprovePreview] = useState(null);
+  const [improvePrompt, setImprovePrompt] = useState("");
+  useEffect(() => { setImprovePreview(null); setImprovePrompt(""); }, [lightbox?.id]);
   useEffect(() => {
     if (!lightbox?.id) return;
     const updated = renders.find((render) => render.id === lightbox.id);
@@ -194,6 +197,21 @@ export default function Gallery() {
     mutationFn: ({ id, indices }) => endpoints.previewMissingDetails(id, indices),
     onSuccess: (result) => setRetryPreview(result),
     onError: (error) => toast.error(error?.response?.data?.detail || "Could not preview the correction"),
+  });
+  const previewImprovement = useMutation({
+    mutationFn: endpoints.previewImprovedRender,
+    onSuccess: (result) => { setImprovePreview(result); setImprovePrompt(result.prompt_positive); },
+    onError: (error) => toast.error(error?.response?.data?.detail || "Could not prepare an improved prompt"),
+  });
+  const queueImprovement = useMutation({
+    mutationFn: endpoints.queueImprovedRender,
+    onSuccess: (result) => {
+      qc.invalidateQueries({ queryKey: ["renders"] });
+      qc.invalidateQueries({ queryKey: ["queue"] });
+      toast.success("Improved render added to the queue", { description: result.queue_position ? `Queue position #${result.queue_position}` : undefined });
+      setImprovePreview(null);
+    },
+    onError: (error) => toast.error(error?.response?.data?.detail || "Could not queue improved render"),
   });
 
   const reuseAsReference = useMutation({
@@ -733,6 +751,30 @@ export default function Gallery() {
                       </button>
                     </div>}
                   </div>}
+                </div>}
+              </section>}
+
+              {!isVideoUrl(primaryOutput(lightbox)) && <section className="rounded-lg border border-purple-500/30 bg-purple-500/5 p-3 text-xs space-y-2" data-testid="gallery-improve-render">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <div className="font-semibold text-purple-100">Improve this render</div>
+                    <p className="text-zinc-400">AI resolves conflicting prompt directions. Review its changes before spending another render.</p>
+                  </div>
+                  <button type="button" onClick={() => previewImprovement.mutate(lightbox.id)} disabled={previewImprovement.isPending}
+                    className="rounded-lg border border-purple-500/40 px-3 py-2 font-semibold text-purple-100 disabled:opacity-40">
+                    {previewImprovement.isPending ? "Preparing…" : "Suggest a better prompt"}
+                  </button>
+                </div>
+                {improvePreview && <div className="space-y-2 rounded-lg border border-purple-500/20 bg-black/20 p-2">
+                  {improvePreview.note && <p className="text-purple-200">{improvePreview.note}</p>}
+                  <label htmlFor="improve-render-prompt" className="block font-semibold text-zinc-200">Corrected prompt · edit before rendering</label>
+                  <textarea id="improve-render-prompt" rows={7} value={improvePrompt} onChange={(event) => setImprovePrompt(event.target.value)}
+                    className="w-full rounded-lg border hairline bg-elevated p-2 font-mono text-xs text-zinc-100" />
+                  <button type="button" disabled={queueImprovement.isPending || improvePrompt.trim().length < 30}
+                    onClick={() => queueImprovement.mutate({ id: lightbox.id, prompt_positive: improvePrompt })}
+                    className="rounded-lg border border-purple-400/50 bg-purple-500/20 px-3 py-2 font-semibold text-purple-100 disabled:opacity-40">
+                    {queueImprovement.isPending ? "Queuing…" : "Render with corrected prompt"}
+                  </button>
                 </div>}
               </section>}
 
