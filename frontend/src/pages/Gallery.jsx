@@ -224,6 +224,13 @@ export default function Gallery() {
   const pageCount = Math.max(1, Math.ceil(displayedOutput.length / 12));
   const currentPage = Math.min(page, pageCount);
   const pageOutput = displayedOutput.slice((currentPage - 1) * 12, currentPage * 12);
+  const pageIds = pageOutput.map((render) => render.id);
+  const pageFullySelected = pageIds.length > 0 && pageIds.every((id) => selected.includes(id));
+  const togglePageSelection = () => {
+    setSelected((current) => pageIds.every((id) => current.includes(id))
+      ? current.filter((id) => !pageIds.includes(id))
+      : [...new Set([...current, ...pageIds])]);
+  };
   const inFlight = renders.filter((r) => !primaryOutput(r) && ["queued", "dispatching", "running"].includes(r.status));
   const cancelled = renders.filter((r) => !primaryOutput(r) && r.status === "cancelled");
   const lightboxIndex = lightbox ? displayedOutput.findIndex((r) => r.id === lightbox.id) : -1;
@@ -312,6 +319,14 @@ export default function Gallery() {
               <CheckSquare className="h-4 w-4" /> {selectionMode ? "Cancel" : "Select"}
             </button>
 
+            )}
+            {selectionMode && pageIds.length > 0 && (
+              <button type="button" onClick={togglePageSelection}
+                data-testid="btn-gallery-select-page"
+                aria-pressed={pageFullySelected}
+                className="inline-flex items-center gap-2 rounded-lg border hairline px-3 py-2 text-sm text-zinc-200 hover:bg-white/5">
+                <CheckSquare className="h-4 w-4" /> {pageFullySelected ? "Deselect this page" : `Select all on this page (${pageIds.length})`}
+              </button>
             )}
             {selectionMode && selected.length > 0 && (
               <>
