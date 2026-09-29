@@ -142,8 +142,10 @@ export default function ShootDetail() {
       <div className="flex items-start justify-between gap-4">
         <div className="flex items-start gap-3">
           <Link
-            to={shoot.character_id ? `/character/${shoot.character_id}` : "/"}
+            to="/shoots"
             data-testid="btn-shoot-back"
+            aria-label="Back to photo shoots"
+            title="Back to photo shoots"
             className="mt-1 text-zinc-400 hover:text-zinc-100"
           >
             <ChevronLeft className="h-5 w-5" />
