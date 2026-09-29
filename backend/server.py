@@ -129,6 +129,10 @@ class Settings(BaseModel):
     comfyui_url: str = "http://localhost:8188"
     openrouter_api_key: str = ""
     openrouter_model: str = "cognitivecomputations/dolphin-mixtral-8x7b"
+    ai_provider: str = "venice"  # venice | ollama
+    ollama_url: str = "http://host.docker.internal:11434"
+    ollama_text_model: str = ""
+    ollama_vision_model: str = ""
     workflows: List[WorkflowTemplate] = Field(default_factory=list)
     default_workflow_id: str = ""
     # deprecated legacy fields (kept for older docs)
@@ -298,9 +302,23 @@ async def openrouter_chat(system: str, user: str, response_format_json: bool = F
     """Chat completion via Venice.AI (uncensored NSFW-permissive LLM).
     Falls back to Settings.openrouter_api_key if a legacy key is stored there and no
     VENICE_API_KEY is present, but by default reads from env."""
+    s = await get_settings()
+    if s.ai_provider == "ollama":
+        model = await _ollama_model(s, vision=False)
+        payload = {"model": model, "stream": False, "messages": [
+            {"role": "system", "content": system}, {"role": "user", "content": user}],
+            "options": {"temperature": 0.7}}
+        if response_format_json:
+            payload["format"] = "json"
+        try:
+            async with httpx.AsyncClient(timeout=180.0) as hc:
+                response = await hc.post(f"{s.ollama_url.rstrip('/')}/api/chat", json=payload)
+                response.raise_for_status()
+            return response.json()["message"]["content"]
+        except (httpx.HTTPError, KeyError, ValueError) as exc:
+            raise HTTPException(502, f"Ollama text request failed: {exc}") from exc
     venice_key = os.environ.get("VENICE_API_KEY", "").strip()
     venice_model = os.environ.get("VENICE_MODEL", "venice-uncensored").strip() or "venice-uncensored"
-    s = await get_settings()
     # Prefer env-configured Venice key. If missing, allow the legacy Settings.openrouter_api_key
     # (users who stored a Venice key there still get served).
     api_key = venice_key or s.openrouter_api_key
@@ -329,6 +347,51 @@ async def openrouter_chat(system: str, user: str, response_format_json: bool = F
             raise HTTPException(status_code=502, detail=f"Venice error: {r.status_code} {r.text[:400]}")
         data = r.json()
     return data["choices"][0]["message"]["content"]
+
+
+async def _ollama_model(settings: Settings, vision: bool) -> str:
+    explicit = settings.ollama_vision_model if vision else settings.ollama_text_model
+    if explicit:
+        return explicit
+    try:
+        async with httpx.AsyncClient(timeout=8.0) as hc:
+            response = await hc.get(f"{settings.ollama_url.rstrip('/')}/api/tags")
+            response.raise_for_status()
+        models = [item.get("name", "") for item in response.json().get("models", [])]
+    except (httpx.HTTPError, ValueError) as exc:
+        raise HTTPException(502, f"Ollama is unreachable at {settings.ollama_url}: {exc}") from exc
+    prefixes = ("qwen3-vl", "qwen2.5vl", "llava") if vision else ("dolphin3", "dolphin", "llama")
+    selected = next((name for prefix in prefixes for name in models if name.lower().startswith(prefix)), "")
+    if not selected:
+        raise HTTPException(400, f"No {'vision' if vision else 'text'} model found in Ollama. Select an installed model in Settings.")
+    return selected
+
+
+@api.get("/ollama/models")
+async def ollama_models():
+    settings = await get_settings()
+    try:
+        async with httpx.AsyncClient(timeout=8.0) as hc:
+            response = await hc.get(f"{settings.ollama_url.rstrip('/')}/api/tags")
+            response.raise_for_status()
+        return {"online": True, "models": [item.get("name", "") for item in response.json().get("models", [])]}
+    except (httpx.HTTPError, ValueError) as exc:
+        return {"online": False, "models": [], "error": str(exc)}
+
+
+async def _ollama_vision_json(settings: Settings, system: str, user: str, image_bytes: bytes) -> Dict[str, Any]:
+    model = await _ollama_model(settings, vision=True)
+    payload = {"model": model, "stream": False, "format": "json", "messages": [
+        {"role": "system", "content": system},
+        {"role": "user", "content": user, "images": [base64.b64encode(image_bytes).decode("ascii")]},
+    ], "options": {"temperature": 0.2}}
+    try:
+        async with httpx.AsyncClient(timeout=180.0) as hc:
+            response = await hc.post(f"{settings.ollama_url.rstrip('/')}/api/chat", json=payload)
+            response.raise_for_status()
+        return extract_json(response.json()["message"]["content"])
+    except (httpx.HTTPError, KeyError, ValueError) as exc:
+        raise HTTPException(502, f"Ollama vision request failed: {exc}") from exc
 
 
 def extract_json(text: str) -> Dict[str, Any]:
@@ -374,7 +437,7 @@ async def read_settings():
 @api.put("/settings", response_model=Settings)
 async def update_settings(body: Dict[str, Any] = Body(...)):
     current = (await get_settings()).model_dump()
-    allowed = {"comfyui_url", "openrouter_api_key", "openrouter_model",
+    allowed = {"comfyui_url", "openrouter_api_key", "openrouter_model", "ai_provider", "ollama_url", "ollama_text_model", "ollama_vision_model",
                "image_workflow_json", "video_workflow_json",
                "positive_prompt_node_id", "negative_prompt_node_id",
                "default_workflow_id"}
@@ -2263,7 +2326,7 @@ async def _run_anatomy_guard(render: Dict[str, Any], mode: str) -> Dict[str, Any
     venice_key = os.environ.get("VENICE_API_KEY", "").strip()
     settings = await get_settings()
     api_key = venice_key or settings.openrouter_api_key
-    if not vision_model or not api_key:
+    if settings.ai_provider != "ollama" and (not vision_model or not api_key):
         return {"status": "skipped", "passed": True, "score": None, "issues": [], "summary": "Venice vision is not configured; render was not blocked."}
 
     async with httpx.AsyncClient(timeout=45.0) as hc:
@@ -2298,6 +2361,13 @@ async def _run_anatomy_guard(render: Dict[str, Any], mode: str) -> Dict[str, Any
         "response_format": {"type": "json_object"},
     }
     try:
+        if settings.ai_provider == "ollama":
+            result = await _ollama_vision_json(settings, system, f"Anatomy guard mode: {mode}. Inspect this completed render.", image_response.content)
+            passed = result.get("passed") is True
+            score = max(0, min(100, int(result.get("score", 0))))
+            return {"status": "passed" if passed and score >= 70 else "failed", "passed": passed and score >= 70,
+                    "score": score, "issues": [str(item)[:160] for item in (result.get("issues") or [])][:8],
+                    "summary": str(result.get("summary", "")).strip()[:500]}
         async with httpx.AsyncClient(timeout=120.0) as hc:
             response = await hc.post(
                 "https://api.venice.ai/api/v1/chat/completions",
@@ -3391,15 +3461,15 @@ async def ai_video_prompt(body: VideoPromptBody):
 async def ai_analyze_video_image(body: VideoImageAnalysisBody):
     """Analyze an uploaded starting frame with a Venice vision model and draft a WAN motion prompt."""
     vision_model = os.environ.get("VENICE_VISION_MODEL", "").strip()
-    if not vision_model:
+    s = await get_settings()
+    if s.ai_provider != "ollama" and not vision_model:
         raise HTTPException(
             status_code=400,
             detail="Venice vision is not configured. Add VENICE_VISION_MODEL to backend/.env and restart the backend.",
         )
     venice_key = os.environ.get("VENICE_API_KEY", "").strip()
-    s = await get_settings()
     api_key = venice_key or s.openrouter_api_key
-    if not api_key:
+    if s.ai_provider != "ollama" and not api_key:
         raise HTTPException(status_code=400, detail="Venice API key not configured.")
 
     try:
@@ -3438,6 +3508,9 @@ async def ai_analyze_video_image(body: VideoImageAnalysisBody):
         "temperature": 0.5,
         "response_format": {"type": "json_object"},
     }
+    if s.ai_provider == "ollama":
+        result = await _ollama_vision_json(s, system, f"Requested motion: {requested_motion}", image_response.content)
+        return {"analysis": str(result.get("analysis", "")).strip(), "prompt": str(result.get("prompt", "")).strip()}
     async with httpx.AsyncClient(timeout=120.0) as hc:
         response = await hc.post(
             "https://api.venice.ai/api/v1/chat/completions",
@@ -3454,12 +3527,12 @@ async def ai_analyze_video_image(body: VideoImageAnalysisBody):
 async def ai_analyze_pose_reference(body: PoseReferenceAnalysisBody):
     """Extract pose geometry from an uploaded reference without copying its identity or styling."""
     vision_model = os.environ.get("VENICE_VISION_MODEL", "").strip()
-    if not vision_model:
+    settings = await get_settings()
+    if settings.ai_provider != "ollama" and not vision_model:
         raise HTTPException(status_code=400, detail="Venice vision is not configured.")
     venice_key = os.environ.get("VENICE_API_KEY", "").strip()
-    settings = await get_settings()
     api_key = venice_key or settings.openrouter_api_key
-    if not api_key:
+    if settings.ai_provider != "ollama" and not api_key:
         raise HTTPException(status_code=400, detail="Venice API key not configured.")
 
     try:
@@ -3496,6 +3569,10 @@ async def ai_analyze_pose_reference(body: PoseReferenceAnalysisBody):
         "temperature": 0.2,
         "response_format": {"type": "json_object"},
     }
+    if settings.ai_provider == "ollama":
+        result = await _ollama_vision_json(settings, payload["messages"][0]["content"],
+                                           "Extract only the reusable pose and body positioning from this reference.", image_response.content)
+        return {"analysis": str(result.get("analysis", "")).strip(), "pose_prompt": str(result.get("pose_prompt", "")).strip()}
     async with httpx.AsyncClient(timeout=120.0) as hc:
         response = await hc.post(
             "https://api.venice.ai/api/v1/chat/completions",
@@ -3515,12 +3592,12 @@ async def ai_analyze_pose_reference(body: PoseReferenceAnalysisBody):
 async def ai_analyze_repair_image(body: RepairImageAnalysisBody):
     """Inspect an uploaded image and draft a conservative Qwen repair instruction."""
     vision_model = os.environ.get("VENICE_VISION_MODEL", "").strip()
-    if not vision_model:
+    s = await get_settings()
+    if s.ai_provider != "ollama" and not vision_model:
         raise HTTPException(status_code=400, detail="Venice vision is not configured.")
     venice_key = os.environ.get("VENICE_API_KEY", "").strip()
-    s = await get_settings()
     api_key = venice_key or s.openrouter_api_key
-    if not api_key:
+    if s.ai_provider != "ollama" and not api_key:
         raise HTTPException(status_code=400, detail="Venice API key not configured.")
 
     try:
@@ -3559,6 +3636,10 @@ async def ai_analyze_repair_image(body: RepairImageAnalysisBody):
         "temperature": 0.3,
         "response_format": {"type": "json_object"},
     }
+    if s.ai_provider == "ollama":
+        result = await _ollama_vision_json(s, payload["messages"][0]["content"],
+                                           f"Repair targets: {requested_targets}\nUser note: {user_note}", image_response.content)
+        return {"analysis": str(result.get("analysis", "")).strip(), "prompt": str(result.get("prompt", "")).strip()}
     async with httpx.AsyncClient(timeout=120.0) as hc:
         response = await hc.post(
             "https://api.venice.ai/api/v1/chat/completions",
