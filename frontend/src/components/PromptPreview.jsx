@@ -3,7 +3,7 @@ import { useState, useMemo } from "react";
 import { toast } from "sonner";
 import { analyzePromptQuality, estimatePromptTokens } from "@/lib/promptQuality";
 
-export default function PromptPreview({ positive, negative, dna, workflow, context, compilerMeta, recipe, selectedLora, secondaryLora, imageCount = 1, optimized, improving, onImprove, onOptimize, onRestore }) {
+export default function PromptPreview({ positive, negative, dna, workflow, context, compilerMeta, recipe, selectedLora, secondaryLora, imageCount = 1, optimized, improving, onImprove, onOptimize, onRestore, aiProvider = "AI" }) {
   const [copied, setCopied] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const tokens = useMemo(() => estimatePromptTokens(positive), [positive]);
@@ -40,11 +40,11 @@ export default function PromptPreview({ positive, negative, dna, workflow, conte
             disabled={improving || !positive}
             data-testid="btn-venice-improve-prompt"
             className="inline-flex items-center gap-1.5 rounded-md border border-purple-500/40 bg-purple-500/10 px-2.5 py-1.5 text-xs text-purple-200 hover:bg-purple-500/20 disabled:opacity-50"
-            title="Ask Venice to improve the compiled positive and negative prompts without changing selected DNA"
+            title={`Ask ${aiProvider} to improve the compiled positive and negative prompts without changing selected DNA`}
           >
             {improving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
-            <span className="hidden sm:inline">{improving ? "Improving…" : "Improve with Venice"}</span>
-            <span className="sm:hidden">Venice</span>
+            <span className="hidden sm:inline">{improving ? "Improving…" : `Improve with ${aiProvider}`}</span>
+            <span className="sm:hidden">{aiProvider}</span>
           </button>
           <button
             onClick={copy}
