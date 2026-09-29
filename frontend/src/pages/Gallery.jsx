@@ -89,6 +89,9 @@ export default function Gallery() {
     refetchInterval: 30000,
   });
   const [lightbox, setLightbox] = useState(null); // render object
+  const [retrySelection, setRetrySelection] = useState(null);
+  const [retryPreview, setRetryPreview] = useState(null);
+  useEffect(() => { setRetrySelection(null); setRetryPreview(null); }, [lightbox?.id, lightbox?.alignment_review?.reviewed_at]);
   useEffect(() => {
     if (!lightbox?.id) return;
     const updated = renders.find((render) => render.id === lightbox.id);
@@ -186,6 +189,11 @@ export default function Gallery() {
       toast.success("Retry added to the render queue", { description: result.queue_position ? `Queue position #${result.queue_position}` : undefined });
     },
     onError: (error) => toast.error(error?.response?.data?.detail || "Could not retry missing details"),
+  });
+  const previewMissing = useMutation({
+    mutationFn: ({ id, indices }) => endpoints.previewMissingDetails(id, indices),
+    onSuccess: (result) => setRetryPreview(result),
+    onError: (error) => toast.error(error?.response?.data?.detail || "Could not preview the correction"),
   });
 
   const reuseAsReference = useMutation({
@@ -695,16 +703,36 @@ export default function Gallery() {
                   {lightbox.alignment_review.matched?.length > 0 && <p className="text-emerald-200">Matched: {lightbox.alignment_review.matched.join(" · ")}</p>}
                   {lightbox.alignment_review.missing?.length > 0 && <div>
                     <div className="font-semibold text-amber-200">Missing or different</div>
-                    <ul className="ml-4 list-disc space-y-1">{lightbox.alignment_review.missing.map((item, index) =>
-                      <li key={index}><span className="capitalize">{item.category}:</span> {item.detail}</li>)}</ul>
+                    <div className="mt-2 space-y-2">{lightbox.alignment_review.missing.map((item, index) =>
+                      <label key={index} className="flex items-start gap-2 rounded border border-amber-500/20 p-2">
+                        <input type="checkbox" checked={retrySelection === null || retrySelection.includes(index)}
+                          onChange={() => {
+                            const current = retrySelection ?? lightbox.alignment_review.missing.map((_, i) => i);
+                            setRetrySelection(current.includes(index) ? current.filter((i) => i !== index) : [...current, index]);
+                            setRetryPreview(null);
+                          }} className="mt-0.5 accent-amber-400" />
+                        <span><span className="capitalize">{item.category}:</span> {item.detail}</span>
+                      </label>)}</div>
                   </div>}
                   {lightbox.alignment_review.uncertain?.length > 0 && <p className="text-zinc-400">Hard to tell: {lightbox.alignment_review.uncertain.join(" · ")}</p>}
                   {lightbox.alignment_review.reference_used && <p className="text-zinc-500">Compared with this character’s chosen default image.</p>}
-                  {lightbox.alignment_review.missing?.length > 0 && <button type="button" disabled={retryMissing.isPending}
-                    onClick={() => retryMissing.mutate(lightbox.id)} data-testid="btn-gallery-retry-missing"
-                    className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 font-semibold text-amber-100 disabled:opacity-40">
-                    {retryMissing.isPending ? "Queuing…" : "Retry missing details"}
-                  </button>}
+                  {lightbox.alignment_review.missing?.length > 0 && <div className="space-y-2">
+                    <button type="button" disabled={previewMissing.isPending || retrySelection?.length === 0}
+                      onClick={() => previewMissing.mutate({ id: lightbox.id, indices: retrySelection ?? lightbox.alignment_review.missing.map((_, i) => i) })}
+                      data-testid="btn-gallery-retry-missing"
+                      className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 font-semibold text-amber-100 disabled:opacity-40">
+                      {previewMissing.isPending ? "Preparing preview…" : "Preview correction"}
+                    </button>
+                    {retryPreview && <div className="space-y-2 rounded-lg border border-amber-500/30 bg-black/30 p-3">
+                      <p className="font-semibold text-amber-100">Prompt for the new render</p>
+                      <p className="max-h-36 overflow-y-auto whitespace-pre-wrap break-words text-zinc-300">{retryPreview.prompt_positive}</p>
+                      <button type="button" disabled={retryMissing.isPending}
+                        onClick={() => retryMissing.mutate({ id: lightbox.id, indices: retrySelection ?? lightbox.alignment_review.missing.map((_, i) => i) })}
+                        className="rounded-lg border border-amber-500/50 bg-amber-500/20 px-3 py-2 font-semibold text-amber-100 disabled:opacity-40">
+                        {retryMissing.isPending ? "Queuing…" : "Render with this correction"}
+                      </button>
+                    </div>}
+                  </div>}
                 </div>}
               </section>}
 
