@@ -66,3 +66,19 @@ test("Krea resolves an obscured bust, thigh-up crop, feet focus, and conflicting
   expect(positive).not.toContain("long nails pedicure");
   expect(positive).not.toContain("block heels");
 });
+
+test.each(["sdxl", "pony", "chroma", "zimage", "flux2_klein", "krea2", "wan_t2v"])("%s applies shared nudity without a conflicting outfit", (promptStyle) => {
+  const dna = configured();
+  dna.wardrobe.nudity_level = 85;
+  const { positive } = compileModelPrompts({ promptStyle, dna, videoInstruction: "slow camera pan" });
+  expect(positive).toMatch(/fully nude/i);
+  expect(positive).not.toMatch(/mermaid gown|denim shorts/i);
+});
+
+test.each(["sdxl", "pony", "chroma", "zimage", "krea2"])("%s can keep lingerie with nudity", (promptStyle) => {
+  const dna = configured();
+  dna.wardrobe = { ...DEFAULT_DNA.wardrobe, outfit_set: "lace balconette set with matching panties, garter belt, stockings and heels", nudity_level: 85, nudity_outfit: "keep lingerie" };
+  const { positive } = compileModelPrompts({ promptStyle, dna });
+  expect(positive).toMatch(/partially nude/i);
+  expect(positive).toMatch(/lace balconette set/i);
+});

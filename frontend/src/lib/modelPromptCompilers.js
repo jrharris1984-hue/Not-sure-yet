@@ -2,6 +2,7 @@ import { buildPrompts, buildMultiVenicePrompts, buildChromaPrompts, buildMultiCh
 import { buildPonyPrompts, buildMultiPonyPrompts } from "@/lib/ponyPrompts";
 import { buildPromptPriorityPlan, emptyPromptPriorityPlan, prioritizePrompt, requirementPresent } from "@/lib/promptPriority";
 import { implantVisualPrompt } from "@/lib/implantVisualScale";
+import { wardrobeNudity } from "@/lib/wardrobeNudity";
 
 const ZIMAGE_NEGATIVE = [
   "low quality, blurry, out of focus, jpeg artifacts, oversharpened",
@@ -324,16 +325,10 @@ function kreaSubjectSentence(dna = {}, label = "") {
 function kreaWardrobeSentence(dna = {}, label = "") {
   const w = dna.wardrobe || {};
   const prefix = label ? `Subject ${label} wardrobe: ` : "Wardrobe: ";
-  const nudity = Number(w.nudity_level || 0);
-  const hasHosiery = Boolean(w.hosiery_type);
+  const { direction: nudityDirection, suppressClothing } = wardrobeNudity(w);
   const feetVisible = ["full body", "wide shot"].includes(lower(dna.pose?.distance || "full body"));
-  const nudityDirection = nudity >= 80 ? (hasHosiery ? "unclothed except for the selected hosiery and accessories" : "fully nude, no clothing except selected accessories")
-    : nudity >= 55 ? "partially nude with exposed skin"
-      : nudity >= 30 ? "revealing clothing with some skin visible"
-        : nudity > 0 ? "clothed with a modestly suggestive look" : "";
   // A high nudity setting is an explicit wardrobe choice. Do not repeat a
   // contradictory outfit or garment from the saved character DNA.
-  const suppressClothing = nudity >= 55;
   return kreaSentence(prefix, [
     nudityDirection,
     !suppressClothing && w.outfit_set ? `${w.outfit_set_color ? `${w.outfit_set_color} ` : ""}${w.outfit_set}` : "",
@@ -553,7 +548,7 @@ export function buildKrea2Prompts({
   // Krea 2's Qwen3-VL encoder responds well to concise natural language. Keep
   // must-match settings literal without turning the whole prompt into tag soup.
   const missingMust = (priorityPlan.mustMatch || [])
-    .filter((item) => !(subjectCount === 1 && Number(primary.wardrobe?.nudity_level || 0) >= 55
+    .filter((item) => !(subjectCount === 1 && wardrobeNudity(primary.wardrobe).suppressClothing
       && item.key === "wardrobe.outfit_preset"))
     .filter((item) => !(subjectCount === 1 && lower(primary.pose?.focus) === "feet"
       && !["full body", "wide shot"].includes(lower(primary.pose?.distance || "full body"))

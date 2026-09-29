@@ -1,4 +1,5 @@
 import { requirementPresent } from "@/lib/promptPriority";
+import { wardrobeNudity } from "@/lib/wardrobeNudity";
 
 const PLACEHOLDER_SEGMENTS = new Set(["none", "average", "default", "n/a", "undefined", "null"]);
 
@@ -154,8 +155,8 @@ export function analyzePromptQuality({
     if (explicitLevel > 0 && !hasSceneAction && !hasNudityChoice && nudityLevel < 55) {
       issues.push(issue("warning", "explicit-intent-missing", "Explicit level sets intensity but does not describe what appears in the image. Choose a Bare outfit or add specific adult scene details in Fine Tune."));
     }
-    if (profile === "krea2" && nudityLevel >= 55 && outfitPreset && !hasNudityChoice) {
-      issues.push(issue("info", "nudity-overrides-outfit", "The Krea 2 nudity slider takes priority over the selected outfit at this level."));
+    if (wardrobeNudity(dna?.wardrobe).suppressClothing && outfitPreset && !hasNudityChoice) {
+      issues.push(issue("info", "nudity-overrides-outfit", "The nudity slider takes priority over the selected outfit at this level."));
     }
     const wardrobe = dna?.wardrobe || {};
     for (const [color, type, label] of [

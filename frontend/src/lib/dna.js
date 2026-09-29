@@ -1,6 +1,7 @@
 // DNA schema + prompt builder + randomizer
 import { expandPrompt } from "@/lib/promptMap";
 import { implantVisualPrompt } from "@/lib/implantVisualScale";
+import { wardrobeNudity } from "@/lib/wardrobeNudity";
 
 export const SECTIONS = [
   {
@@ -194,7 +195,8 @@ export const SECTIONS = [
     key: "wardrobe",
     title: "Wardrobe",
     fields: [
-      { key: "nudity_level", type: "slider", label: "Krea 2 nudity (0 use outfit → 100 nude)", min: 0, max: 100, step: 5, defaultValue: 0 },
+      { key: "nudity_level", type: "slider", label: "Nudity (all workflows: 0 use outfit → 100 nude)", min: 0, max: 100, step: 5, defaultValue: 0 },
+      { key: "nudity_outfit", type: "chips", label: "Nudity with outfit", options: ["remove outfit", "keep lingerie"] },
       { key: "outfit_preset", type: "chips", label: "Outfit preset", groups: [
         { name: "Bare", options: ["nude", "topless", "bottomless", "just panties", "just a shirt", "boyfriend's shirt"] },
         { name: "Lingerie", options: ["boudoir lingerie", "sheer negligee", "silk robe open", "lace lingerie set", "satin slip", "corset and garters", "sheer bodysuit"] },
@@ -1188,9 +1190,10 @@ function _veniceSubjectBlock(dna = {}, opts = {}) {
 
   // -------- Wardrobe --------
   const wd = dna.wardrobe || {};
+  const nudity = wardrobeNudity(wd);
   const outfitPieces = [];
-  if (wd.outfit_set) outfitPieces.push(`${wd.outfit_set_color ? `${wd.outfit_set_color} ` : ""}${wd.outfit_set}`);
-  if (!wd.outfit_set) {
+  if (!nudity.suppressClothing && wd.outfit_set) outfitPieces.push(`${wd.outfit_set_color ? `${wd.outfit_set_color} ` : ""}${wd.outfit_set}`);
+  if (!nudity.suppressClothing && !wd.outfit_set) {
   if (!wd.outfit_set && wd.outfit_preset && !wd.dress_style && !wd.skirt_style) outfitPieces.push(exp("wardrobe", "outfit_preset"));
   if (wd.dress_style) outfitPieces.push(wd.dress_style);
   if (wd.skirt_style) outfitPieces.push(wd.skirt_style);
@@ -1208,16 +1211,20 @@ function _veniceSubjectBlock(dna = {}, opts = {}) {
   }
   const outfitCore = outfitPieces.length ? `wearing ${outfitPieces.join(", ")}` : "";
   const outfitTail = join([
-    exp("wardrobe", "material"),
-    wd.garment_color && `${wd.garment_color} outfit color`,
-    wd.garment_pattern && wd.garment_pattern !== "solid" && `${wd.garment_pattern} fabric pattern`,
-    wd.palette && `${wd.palette} color palette`,
-    wd.fit && `${wd.fit} fit`,
-    wd.state && wd.state !== "fully clothed" && exp("wardrobe", "state"),
+    !nudity.suppressClothing && exp("wardrobe", "material"),
+    !nudity.suppressClothing && wd.garment_color && `${wd.garment_color} outfit color`,
+    !nudity.suppressClothing && wd.garment_pattern && wd.garment_pattern !== "solid" && `${wd.garment_pattern} fabric pattern`,
+    !nudity.suppressClothing && wd.palette && `${wd.palette} color palette`,
+    !nudity.suppressClothing && wd.fit && `${wd.fit} fit`,
+    !nudity.suppressClothing && wd.state && wd.state !== "fully clothed" && exp("wardrobe", "state"),
     wd.nail_color && `${wd.nail_color} fingernails`,
     wd.nail_shape && `${wd.nail_shape} nail shape`,
   ]);
-  const outfit = join([outfitCore, outfitTail]);
+  const outfit = join([
+    nudity.direction, outfitCore,
+    nudity.suppressClothing && wd.hosiery_type && `${wd.hosiery_color ? `${wd.hosiery_color} ` : ""}${wd.hosiery_type}`,
+    outfitTail,
+  ]);
 
   // -------- Pose --------
   const pose = dna.pose || {};

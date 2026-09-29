@@ -2,6 +2,7 @@
 // Pony expects: score_9, score_8_up, score_7_up, rating_explicit, source_photo (or source_anime), then tag list.
 import { expandPrompt } from "@/lib/promptMap";
 import { implantVisualPrompt } from "@/lib/implantVisualScale";
+import { wardrobeNudity } from "@/lib/wardrobeNudity";
 
 // Booru-style tag weighting: wrap phrase in (x:1.3) format
 const w = (phrase, weight) => phrase && weight && weight !== 1 ? `(${phrase}:${weight})` : phrase;
@@ -401,9 +402,10 @@ function _ponySubjectBlock(dna = {}, opts = {}) {
   ]);
 
   const wd = dna.wardrobe || {};
+  const nudity = wardrobeNudity(wd);
   const outfitPieces = [];
-  if (wd.outfit_set) outfitPieces.push(`${wd.outfit_set_color ? `${wd.outfit_set_color} ` : ""}${wd.outfit_set}`);
-  if (!wd.outfit_set) {
+  if (!nudity.suppressClothing && wd.outfit_set) outfitPieces.push(`${wd.outfit_set_color ? `${wd.outfit_set_color} ` : ""}${wd.outfit_set}`);
+  if (!nudity.suppressClothing && !wd.outfit_set) {
   if (wd.outfit_preset && !wd.dress_style && !wd.skirt_style) outfitPieces.push(exp("wardrobe", "outfit_preset"));
   if (wd.dress_style) outfitPieces.push(wd.dress_style);
   if (wd.skirt_style) outfitPieces.push(wd.skirt_style);
@@ -419,12 +421,14 @@ function _ponySubjectBlock(dna = {}, opts = {}) {
   }
   }
   const outfitStr = join([
+    nudity.direction,
     outfitPieces.length ? `wearing ${outfitPieces.join(", ")}` : "",
-    exp("wardrobe", "material"),
-    wd.garment_color && `${wd.garment_color} outfit`,
-    wd.garment_pattern && wd.garment_pattern !== "solid" && `${wd.garment_pattern} pattern`,
-    wd.fit && `${wd.fit} fit`,
-    wd.state && wd.state !== "fully clothed" && w(exp("wardrobe", "state"), 1.2),
+    nudity.suppressClothing && wd.hosiery_type && `${wd.hosiery_color ? `${wd.hosiery_color} ` : ""}${wd.hosiery_type}`,
+    !nudity.suppressClothing && exp("wardrobe", "material"),
+    !nudity.suppressClothing && wd.garment_color && `${wd.garment_color} outfit`,
+    !nudity.suppressClothing && wd.garment_pattern && wd.garment_pattern !== "solid" && `${wd.garment_pattern} pattern`,
+    !nudity.suppressClothing && wd.fit && `${wd.fit} fit`,
+    !nudity.suppressClothing && wd.state && wd.state !== "fully clothed" && w(exp("wardrobe", "state"), 1.2),
   ]);
 
   const pose = dna.pose || {};
