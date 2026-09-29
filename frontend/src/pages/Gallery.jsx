@@ -89,6 +89,12 @@ export default function Gallery() {
     refetchInterval: 30000,
   });
   const [lightbox, setLightbox] = useState(null); // render object
+  useEffect(() => {
+    if (!lightbox?.id) return;
+    const updated = renders.find((render) => render.id === lightbox.id);
+    if (updated && (updated.alignment_review_status !== lightbox.alignment_review_status
+      || updated.alignment_review?.reviewed_at !== lightbox.alignment_review?.reviewed_at)) setLightbox(updated);
+  }, [renders, lightbox]);
   const [showDetails, setShowDetails] = useState(false);
   const [selectionMode, setSelectionMode] = useState(false);
   const [selected, setSelected] = useState([]);
@@ -161,6 +167,24 @@ export default function Gallery() {
       });
     },
     onError: (error) => toast.error(error?.response?.data?.detail || "Could not recreate this render"),
+  });
+  const reviewAlignment = useMutation({
+    mutationFn: endpoints.reviewRenderAlignment,
+    onSuccess: (result, id) => {
+      setLightbox((current) => current?.id === id ? { ...current, alignment_review: result, alignment_review_status: "done" } : current);
+      qc.invalidateQueries({ queryKey: ["renders"] });
+      toast.success("Image review complete");
+    },
+    onError: (error) => toast.error(error?.response?.data?.detail || "Could not review this image"),
+  });
+  const retryMissing = useMutation({
+    mutationFn: endpoints.retryMissingDetails,
+    onSuccess: (result) => {
+      qc.invalidateQueries({ queryKey: ["renders"] });
+      qc.invalidateQueries({ queryKey: ["queue"] });
+      toast.success("Retry added to the render queue", { description: result.queue_position ? `Queue position #${result.queue_position}` : undefined });
+    },
+    onError: (error) => toast.error(error?.response?.data?.detail || "Could not retry missing details"),
   });
 
   const reuseAsReference = useMutation({
@@ -636,6 +660,33 @@ export default function Gallery() {
                   {lightbox.anatomy_guard_summary && <p className="mt-1 text-amber-200/80">{lightbox.anatomy_guard_summary}</p>}
                 </div>
               )}
+
+              {!isVideoUrl(primaryOutput(lightbox)) && <section className="rounded-lg border border-cyan-500/30 bg-cyan-500/5 p-3 text-xs" data-testid="gallery-alignment-review">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-bold text-cyan-100">Image vs. selections</span>
+                  <button type="button" onClick={() => reviewAlignment.mutate(lightbox.id)} disabled={reviewAlignment.isPending || lightbox.alignment_review_status === "reviewing"}
+                    className="rounded-lg border border-cyan-500/40 px-2 py-1.5 text-cyan-100 disabled:opacity-40" data-testid="btn-gallery-review-image">
+                    {reviewAlignment.isPending ? "Reviewing…" : lightbox.alignment_review ? "Review again" : "Review image"}
+                  </button>
+                </div>
+                {lightbox.alignment_review_status === "reviewing" && !lightbox.alignment_review && <p className="mt-2 text-cyan-200">Local image review is running. Results will appear here when ready.</p>}
+                {lightbox.alignment_review && <div className="mt-2 space-y-2 text-zinc-300">
+                  <p>{lightbox.alignment_review.summary}</p>
+                  {lightbox.alignment_review.matched?.length > 0 && <p className="text-emerald-200">Matched: {lightbox.alignment_review.matched.join(" · ")}</p>}
+                  {lightbox.alignment_review.missing?.length > 0 && <div>
+                    <div className="font-semibold text-amber-200">Missing or different</div>
+                    <ul className="ml-4 list-disc space-y-1">{lightbox.alignment_review.missing.map((item, index) =>
+                      <li key={index}><span className="capitalize">{item.category}:</span> {item.detail}</li>)}</ul>
+                  </div>}
+                  {lightbox.alignment_review.uncertain?.length > 0 && <p className="text-zinc-400">Hard to tell: {lightbox.alignment_review.uncertain.join(" · ")}</p>}
+                  {lightbox.alignment_review.reference_used && <p className="text-zinc-500">Compared with this character’s chosen default image.</p>}
+                  {lightbox.alignment_review.missing?.length > 0 && <button type="button" disabled={retryMissing.isPending}
+                    onClick={() => retryMissing.mutate(lightbox.id)} data-testid="btn-gallery-retry-missing"
+                    className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 font-semibold text-amber-100 disabled:opacity-40">
+                    {retryMissing.isPending ? "Queuing…" : "Retry missing details"}
+                  </button>}
+                </div>}
+              </section>}
 
               <div className="flex flex-col gap-2">
                 <section className="rounded-lg border hairline bg-black/10 p-2.5" data-testid="gallery-recipe-snapshot">

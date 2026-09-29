@@ -15,6 +15,7 @@ import base64
 import mimetypes
 import io
 import zipfile
+from PIL import Image
 from pathlib import Path
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
@@ -33,6 +34,7 @@ RENDERS_DIR.mkdir(parents=True, exist_ok=True)
 mongo_url = os.environ["MONGO_URL"]
 client = AsyncIOMotorClient(mongo_url)
 db = client[os.environ["DB_NAME"]]
+ollama_vision_gate = asyncio.Semaphore(1)
 
 app = FastAPI(title="Ultra Studio DNA Builder")
 api = APIRouter(prefix="/api")
@@ -379,16 +381,24 @@ async def ollama_models():
         return {"online": False, "models": [], "error": str(exc)}
 
 
-async def _ollama_vision_json(settings: Settings, system: str, user: str, image_bytes: bytes) -> Dict[str, Any]:
+async def _ollama_vision_json(settings: Settings, system: str, user: str, image_bytes: bytes, reference_bytes: Optional[bytes] = None) -> Dict[str, Any]:
     model = await _ollama_model(settings, vision=True)
-    payload = {"model": model, "stream": False, "format": "json", "messages": [
+    def compact_image(data: bytes) -> str:
+        with Image.open(io.BytesIO(data)) as source:
+            image = source.convert("RGB")
+            image.thumbnail((1152, 1152))
+            output = io.BytesIO()
+            image.save(output, format="JPEG", quality=84)
+        return base64.b64encode(output.getvalue()).decode("ascii")
+    payload = {"model": model, "stream": False, "format": "json", "keep_alive": 0, "messages": [
         {"role": "system", "content": system},
-        {"role": "user", "content": user, "images": [base64.b64encode(image_bytes).decode("ascii")]},
+        {"role": "user", "content": user, "images": [compact_image(data) for data in (image_bytes, reference_bytes) if data]},
     ], "options": {"temperature": 0.2}}
     try:
-        async with httpx.AsyncClient(timeout=180.0) as hc:
-            response = await hc.post(f"{settings.ollama_url.rstrip('/')}/api/chat", json=payload)
-            response.raise_for_status()
+        async with ollama_vision_gate:
+            async with httpx.AsyncClient(timeout=180.0) as hc:
+                response = await hc.post(f"{settings.ollama_url.rstrip('/')}/api/chat", json=payload)
+                response.raise_for_status()
         return extract_json(response.json()["message"]["content"])
     except (httpx.HTTPError, KeyError, ValueError) as exc:
         raise HTTPException(502, f"Ollama vision request failed: {exc}") from exc
@@ -2152,6 +2162,103 @@ async def get_render_recipe(rid: str):
     }
 
 
+async def _render_image_bytes(render: Dict[str, Any], settings: Settings) -> bytes:
+    variants = render.get("output_variants") or {}
+    candidates = (variants.get("enhanced") or []) + (render.get("output_files") or [])
+    url = next((str(item) for item in candidates if item and not urlparse(str(item)).path.lower().endswith((".mp4", ".webm", ".mov"))), "")
+    query = parse_qs(urlparse(url).query)
+    filename = (query.get("filename") or [""])[0]
+    if not filename:
+        raise HTTPException(400, "This render has no reviewable image")
+    try:
+        async with httpx.AsyncClient(timeout=90.0) as hc:
+            response = await hc.get(f"{settings.comfyui_url.rstrip('/')}/view", params={
+                "filename": filename, "subfolder": (query.get("subfolder") or [""])[0],
+                "type": (query.get("type") or ["output"])[0],
+            })
+            response.raise_for_status()
+        return response.content
+    except httpx.HTTPError as exc:
+        raise HTTPException(502, f"Could not load the render from ComfyUI: {exc}") from exc
+
+
+@api.post("/renders/{rid}/alignment")
+async def review_render_alignment(rid: str):
+    render = await db.renders.find_one({"id": rid}, {"_id": 0})
+    if not render:
+        raise HTTPException(404, "Render not found")
+    settings = await get_settings()
+    if settings.ai_provider != "ollama":
+        raise HTTPException(400, "Select Local Ollama and a vision model in Settings for image review")
+    image = await _render_image_bytes(render, settings)
+    dna = render.get("dna_snapshot") or {}
+    fields = {section: dna.get(section) or {} for section in ("identity", "face", "hair", "physique", "wardrobe", "pose")}
+    character = await db.characters.find_one({"id": render.get("character_id")}, {"_id": 0}) if render.get("character_id") else None
+    reference = None
+    if character and character.get("default_image_render_id"):
+        ref = await db.renders.find_one({"id": character["default_image_render_id"], "character_id": character["id"]}, {"_id": 0})
+        if ref and ref["id"] != rid:
+            try:
+                reference = await _render_image_bytes(ref, settings)
+            except HTTPException:
+                pass
+    system = (
+        "Inspect an AI generated image against its saved request. The first image is the render; "
+        "if a second image exists, it is the character reference. Return only JSON with keys summary "
+        "(short string), matched (array of short strings), missing (array of objects with category, "
+        "detail, retry_instruction), uncertain (array of short strings). Categories must be one of "
+        "identity, wardrobe, pose, framing, anatomy, other. List a missing detail only if it was "
+        "explicitly requested and visually assessable; mark occluded or ambiguous details uncertain. "
+        "Compare facial identity only when a reference image is provided. Ignore artistic preference, "
+        "moral judgments, and body size plausibility. Retry instructions must be concise visual directions "
+        "for a new render, without inventing new content."
+    )
+    user = f"Saved selection: {json.dumps(fields, ensure_ascii=False)[:6000]}\nOriginal prompt: {str(render.get('prompt_positive') or '')[:3500]}\nEvaluate the first image."
+    result = await _ollama_vision_json(settings, system, user, image, reference)
+    allowed = {"identity", "wardrobe", "pose", "framing", "anatomy", "other"}
+    missing = []
+    for item in result.get("missing") or []:
+        if not isinstance(item, dict):
+            continue
+        detail = str(item.get("detail") or "").strip()[:180]
+        instruction = str(item.get("retry_instruction") or "").strip()[:240]
+        if detail and instruction:
+            missing.append({"category": item.get("category") if item.get("category") in allowed else "other",
+                            "detail": detail, "retry_instruction": instruction})
+    report = {"summary": str(result.get("summary") or "").strip()[:400],
+              "matched": [str(x)[:160] for x in (result.get("matched") or []) if isinstance(x, str)][:12],
+              "missing": missing[:10], "uncertain": [str(x)[:160] for x in (result.get("uncertain") or []) if isinstance(x, str)][:10],
+              "reference_used": reference is not None, "reviewed_at": now_iso()}
+    await db.renders.update_one({"id": rid}, {"$set": {"alignment_review": report, "alignment_review_status": "done"}})
+    return report
+
+
+async def _auto_alignment_review(rid: str) -> None:
+    try:
+        await review_render_alignment(rid)
+    except Exception as exc:
+        logger.warning("automatic alignment review failed for %s: %s", rid, exc)
+        await db.renders.update_one({"id": rid}, {"$set": {"alignment_review_status": "unavailable"}})
+
+
+@api.post("/renders/{rid}/retry-missing")
+async def retry_missing_details(rid: str):
+    render, recipe = await _render_recipe(rid)
+    report = render.get("alignment_review") or {}
+    missing = report.get("missing") or []
+    if not missing:
+        raise HTTPException(400, "Review this image and select a render with missing details first")
+    instructions = [str(item.get("retry_instruction") or "").strip() for item in missing if isinstance(item, dict)]
+    instructions = [item for item in instructions if item][:6]
+    if not instructions:
+        raise HTTPException(400, "No retry instructions were found")
+    recipe = dict(recipe)
+    recipe.update({"shoot_id": None, "shoot_frame_index": None, "parent_render_id": rid,
+                   "operation": "alignment_retry", "seed": random.randint(0, 2**31 - 1)})
+    recipe["prompt_positive"] = f"Required corrections: {'; '.join(instructions)}. {recipe.get('prompt_positive') or ''}"[:10000]
+    return await _enqueue_render(DispatchBody(**recipe))
+
+
 @api.post("/renders/{rid}/recreate")
 async def recreate_render(rid: str, variation: bool = Query(False)):
     """Queue an exact recipe copy, optionally replacing only its seed."""
@@ -2573,6 +2680,16 @@ async def _sync_queue_job(job: Dict[str, Any]) -> Dict[str, Any]:
                     {"$set": {"status": status, "hidden_from_gallery": False, "error": error, "updated_at": now_iso()}},
                 )
                 render["error"] = error
+
+        if status == "done" and is_still_image and not render.get("hidden_from_gallery"):
+            settings = await get_settings()
+            if settings.ai_provider == "ollama":
+                claimed = await db.renders.update_one(
+                    {"id": render_id, "alignment_review_status": {"$exists": False}},
+                    {"$set": {"alignment_review_status": "reviewing"}},
+                )
+                if claimed.modified_count:
+                    asyncio.create_task(_auto_alignment_review(render_id))
 
         patch = {"status": status, "error": render.get("error"), "updated_at": now_iso()}
         if status in QUEUE_TERMINAL:
