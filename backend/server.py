@@ -363,7 +363,7 @@ async def _ollama_model(settings: Settings, vision: bool) -> str:
         models = [item.get("name", "") for item in response.json().get("models", [])]
     except (httpx.HTTPError, ValueError) as exc:
         raise HTTPException(502, f"Ollama is unreachable at {settings.ollama_url}: {exc}") from exc
-    prefixes = ("qwen3-vl", "qwen2.5vl", "llava") if vision else ("dolphin3", "dolphin", "llama")
+    prefixes = ("qwen3-vl", "qwen2.5vl", "llava") if vision else ("dolphin3", "dolphin", "qwen3-vl:8b-instruct", "qwen3", "llama")
     selected = next((name for prefix in prefixes for name in models if name.lower().startswith(prefix)), "")
     if not selected:
         raise HTTPException(400, f"No {'vision' if vision else 'text'} model found in Ollama. Select an installed model in Settings.")

@@ -2028,6 +2028,10 @@ export default function Builder() {
         }}
       />
 
+      <div className={mobileStudioStep === "start" ? "block" : "hidden md:block"}>
+        <AiAssistBar dna={activeDna} aiProvider={aiProvider} onApplyDna={setActiveDna} />
+      </div>
+
       {mobileStudioStep === "create" && !showMobileResult && (
         <>
           <MobileCreateReview
@@ -3022,7 +3026,6 @@ export default function Builder() {
               subject={activeSubject}
               onChange={(likeness) => updateActiveSubject(() => ({ likeness }))}
             />
-            <AiAssistBar dna={activeDna} aiProvider={aiProvider} onApplyDna={(d) => setActiveDna({ ...DEFAULT_DNA, ...d })} />
           </div>
           {batchRenders.length > 1 && (
             <div className="pane p-4 space-y-3" data-testid="batch-render-progress">

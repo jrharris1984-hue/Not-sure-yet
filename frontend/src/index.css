@@ -180,6 +180,12 @@ code, pre, .font-mono {
 .gallery-slide-right { animation: gallery-slide-from-right 220ms ease-out; }
 .gallery-slide-left { animation: gallery-slide-from-left 220ms ease-out; }
 
+@keyframes ai-assist-enter {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.ai-assist-reveal { animation: ai-assist-enter 180ms ease-out; }
+
 button:not(:disabled), a[role="button"] {
   transition: scale 120ms ease, filter 120ms ease;
 }
@@ -189,6 +195,7 @@ button:not(:disabled):active, a[role="button"]:active {
 }
 @media (prefers-reduced-motion: reduce) {
   .gallery-slide-right, .gallery-slide-left { animation: none; }
+  .ai-assist-reveal { animation: none; }
   button:not(:disabled), a[role="button"] { transition: none; }
 }
 
