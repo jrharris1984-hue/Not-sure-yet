@@ -2029,7 +2029,7 @@ export default function Builder() {
       />
 
       <div className={mobileStudioStep === "start" ? "block" : "hidden md:block"}>
-        <AiAssistBar dna={activeDna} aiProvider={aiProvider} onApplyDna={setActiveDna} />
+        <AiAssistBar dna={activeDna} aiProvider={aiProvider} onApplyDna={(draft) => { setActiveDna(draft); setPlainLanguage(""); }} />
       </div>
 
       {mobileStudioStep === "create" && !showMobileResult && (
