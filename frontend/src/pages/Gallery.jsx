@@ -126,7 +126,8 @@ export default function Gallery() {
       setSelected((current) => current.filter((item) => item !== id));
       if (lightbox?.id === id) setLightbox(null);
       qc.invalidateQueries({ queryKey: ["renders"] });
-      toast.success(result.files_deleted ? `Removed from Gallery and deleted ${result.files_deleted} file(s)` : "Removed from Gallery");
+      if (result.files_unavailable) toast.warning(`Removed from Gallery. ${result.files_unavailable} file(s) were not found in the configured ComfyUI output folder and may remain elsewhere on disk.`);
+      else toast.success(result.files_deleted ? `Removed from Gallery and deleted ${result.files_deleted} file(s)` : "Removed from Gallery");
     },
     onError: (error) => toast.error(error?.response?.data?.detail || "Could not remove render"),
   });
@@ -138,7 +139,8 @@ export default function Gallery() {
       setSelectionMode(false);
       setLightbox(null);
       qc.invalidateQueries({ queryKey: ["renders"] });
-      toast.success(`Removed ${result.deleted || 0} Gallery items${result.files_deleted ? ` and deleted ${result.files_deleted} file(s)` : ""}`);
+      if (result.files_unavailable) toast.warning(`Removed ${result.deleted || 0} Gallery items and deleted ${result.files_deleted || 0} file(s). ${result.files_unavailable} file(s) were not found in the configured output folder and may remain elsewhere on disk.`);
+      else toast.success(`Removed ${result.deleted || 0} Gallery items${result.files_deleted ? ` and deleted ${result.files_deleted} file(s)` : ""}`);
     },
     onError: (error) => toast.error(error?.response?.data?.detail || "Could not remove selected renders"),
   });
@@ -149,7 +151,8 @@ export default function Gallery() {
       setLightbox(null);
       setPage(1);
       qc.invalidateQueries({ queryKey: ["renders"] });
-      toast.success(`Removed ${result.deleted || 0} QC-flagged Gallery items${result.files_deleted ? ` and deleted ${result.files_deleted} file(s)` : ""}`);
+      if (result.files_unavailable) toast.warning(`Removed ${result.deleted || 0} QC-flagged Gallery items and deleted ${result.files_deleted || 0} file(s). ${result.files_unavailable} file(s) were not found in the configured output folder and may remain elsewhere on disk.`);
+      else toast.success(`Removed ${result.deleted || 0} QC-flagged Gallery items${result.files_deleted ? ` and deleted ${result.files_deleted} file(s)` : ""}`);
     },
     onError: (error) => toast.error(error?.response?.data?.detail || "Could not remove QC-flagged items"),
   });
