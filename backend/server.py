@@ -391,19 +391,31 @@ async def _ollama_vision_json(settings: Settings, system: str, user: str, image_
             output = io.BytesIO()
             image.save(output, format="JPEG", quality=84)
         return base64.b64encode(output.getvalue()).decode("ascii")
-    payload = {"model": model, "stream": False, "format": "json", "think": False, "keep_alive": 0, "messages": [
+    payload = {"model": model, "stream": False, "format": "json", "think": False, "keep_alive": "5m", "messages": [
         {"role": "system", "content": system},
         {"role": "user", "content": user, "images": [compact_image(data) for data in (image_bytes, reference_bytes) if data]},
-    ], "options": {"temperature": 0.2}}
+    ], "options": {"temperature": 0.2, "num_ctx": 8192, "num_predict": 2048}}
     try:
         async with ollama_vision_gate:
             async with httpx.AsyncClient(timeout=180.0) as hc:
                 response = await hc.post(f"{settings.ollama_url.rstrip('/')}/api/chat", json=payload)
                 response.raise_for_status()
-        message = response.json().get("message") or {}
+                result = response.json()
+                if not (result.get("message") or {}).get("content", "").strip():
+                    # Some Qwen vision tags return an empty final message when thinking
+                    # is disabled. Retry once using the model's default thinking mode.
+                    retry_payload = {**payload, "options": {**payload["options"], "num_predict": 3072}}
+                    retry_payload.pop("think", None)
+                    response = await hc.post(f"{settings.ollama_url.rstrip('/')}/api/chat", json=retry_payload)
+                    response.raise_for_status()
+                    result = response.json()
+        message = result.get("message") or {}
         content = message.get("content") or ""
         if not content.strip():
-            raise HTTPException(502, "Ollama returned an empty image review. Try Review image again or choose a different vision model in Settings.")
+            reason = result.get("done_reason") or "unknown"
+            logger.warning("Ollama vision %s returned no content after retry (done_reason=%s, thinking_chars=%s)",
+                           model, reason, len(message.get("thinking") or ""))
+            raise HTTPException(502, f"Ollama {model} returned no image review after retry (reason: {reason}). Check Ollama's logs or choose a different vision model in Settings.")
         return extract_json(content)
     except (httpx.HTTPError, KeyError, ValueError) as exc:
         raise HTTPException(502, f"Ollama vision request failed: {exc}") from exc
