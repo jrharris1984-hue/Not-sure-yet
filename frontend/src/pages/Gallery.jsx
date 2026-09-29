@@ -94,7 +94,16 @@ export default function Gallery() {
   useEffect(() => { setRetrySelection(null); setRetryPreview(null); }, [lightbox?.id, lightbox?.alignment_review?.reviewed_at]);
   const [improvePreview, setImprovePreview] = useState(null);
   const [improvePrompt, setImprovePrompt] = useState("");
-  useEffect(() => { setImprovePreview(null); setImprovePrompt(""); }, [lightbox?.id]);
+  const [improveSource, setImproveSource] = useState("");
+  const [improveNegative, setImproveNegative] = useState("");
+  const [improveInstruction, setImproveInstruction] = useState("");
+  useEffect(() => {
+    setImprovePreview(null);
+    setImprovePrompt("");
+    setImproveSource(lightbox?.prompt_positive || "");
+    setImproveNegative(lightbox?.prompt_negative || "");
+    setImproveInstruction("");
+  }, [lightbox?.id, lightbox?.prompt_positive, lightbox?.prompt_negative]);
   useEffect(() => {
     if (!lightbox?.id) return;
     const updated = renders.find((render) => render.id === lightbox.id);
@@ -761,20 +770,31 @@ export default function Gallery() {
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div>
                     <div className="font-semibold text-purple-100">Improve this render</div>
-                    <p className="text-zinc-400">AI resolves conflicting prompt directions. Review its changes before spending another render.</p>
+                    <p className="text-zinc-400">Edit the saved prompt or tell AI what to change. Review the result before rendering.</p>
                   </div>
-                  <button type="button" onClick={() => previewImprovement.mutate(lightbox.id)} disabled={previewImprovement.isPending}
-                    className="rounded-lg border border-purple-500/40 px-3 py-2 font-semibold text-purple-100 disabled:opacity-40">
-                    {previewImprovement.isPending ? "Preparing…" : "Suggest a better prompt"}
-                  </button>
                 </div>
+                <label htmlFor="improve-source-prompt" className="block font-semibold text-zinc-200">Original positive prompt · edit a copy</label>
+                <textarea id="improve-source-prompt" rows={5} value={improveSource} onChange={(event) => { setImproveSource(event.target.value); setImprovePreview(null); }}
+                  data-testid="improve-source-prompt" className="w-full rounded-lg border hairline bg-elevated p-2 font-mono text-xs text-zinc-100" />
+                <label htmlFor="improve-instruction" className="block font-semibold text-zinc-200">Tell AI what to change</label>
+                <textarea id="improve-instruction" rows={2} value={improveInstruction} onChange={(event) => setImproveInstruction(event.target.value)}
+                  maxLength={1000} placeholder="e.g. Keep both people, switch to a full-body view, and simplify the background"
+                  data-testid="improve-instruction" className="w-full rounded-lg border hairline bg-elevated p-2 text-xs text-zinc-100" />
+                <button type="button" onClick={() => previewImprovement.mutate({ id: lightbox.id, source_prompt: improveSource, instruction: improveInstruction })}
+                  disabled={previewImprovement.isPending || improveSource.trim().length < 30}
+                  className="rounded-lg border border-purple-500/40 px-3 py-2 font-semibold text-purple-100 disabled:opacity-40">
+                  {previewImprovement.isPending ? "Preparing…" : "Edit prompt with AI"}
+                </button>
                 {improvePreview && <div className="space-y-2 rounded-lg border border-purple-500/20 bg-black/20 p-2">
                   {improvePreview.note && <p className="text-purple-200">{improvePreview.note}</p>}
                   <label htmlFor="improve-render-prompt" className="block font-semibold text-zinc-200">Corrected prompt · edit before rendering</label>
                   <textarea id="improve-render-prompt" rows={7} value={improvePrompt} onChange={(event) => setImprovePrompt(event.target.value)}
                     className="w-full rounded-lg border hairline bg-elevated p-2 font-mono text-xs text-zinc-100" />
+                  <label htmlFor="improve-negative-prompt" className="block font-semibold text-zinc-200">Negative prompt · optional</label>
+                  <textarea id="improve-negative-prompt" rows={3} value={improveNegative} onChange={(event) => setImproveNegative(event.target.value)}
+                    className="w-full rounded-lg border hairline bg-elevated p-2 font-mono text-xs text-zinc-100" />
                   <button type="button" disabled={queueImprovement.isPending || improvePrompt.trim().length < 30}
-                    onClick={() => queueImprovement.mutate({ id: lightbox.id, prompt_positive: improvePrompt })}
+                    onClick={() => queueImprovement.mutate({ id: lightbox.id, prompt_positive: improvePrompt, prompt_negative: improveNegative })}
                     className="rounded-lg border border-purple-400/50 bg-purple-500/20 px-3 py-2 font-semibold text-purple-100 disabled:opacity-40">
                     {queueImprovement.isPending ? "Queuing…" : "Render with corrected prompt"}
                   </button>

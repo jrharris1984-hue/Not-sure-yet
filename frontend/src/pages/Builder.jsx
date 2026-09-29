@@ -2012,50 +2012,6 @@ export default function Builder() {
         </div>
       </div>
 
-      {desktopQuickMode && (
-        <section className="hidden md:block pane border-cyan-400/25 p-4" data-testid="desktop-quick-create">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <div className="section-label">Quick Create</div>
-              <p className="mt-1 text-sm text-zinc-400">Set the essentials or jump directly to any character section.</p>
-            </div>
-            <span className="rounded-full border border-amber-400/40 bg-amber-500/10 px-3 py-1 text-xs text-amber-200">{activeWorkflow?.name || "Choose a model"}</span>
-          </div>
-          <div className="mt-3 flex flex-wrap items-center gap-2">
-            <label htmlFor="quick-section-jump" className="text-xs font-semibold text-cyan-200">Jump to section</label>
-            <select id="quick-section-jump" data-testid="quick-section-jump"
-              value={quickReview ? "review" : activeSection}
-              onChange={(event) => {
-                if (event.target.value === "review") setQuickReview(true);
-                else { setQuickReview(false); goSection(event.target.value); }
-              }}
-              className="min-w-[220px] max-w-full rounded-lg border hairline bg-elevated px-3 py-2 text-sm text-zinc-100">
-              {PHASES.map((phase) => (
-                <optgroup key={phase.key} label={phase.label}>
-                  {phase.sections.map((key) => {
-                    const section = SECTIONS.find((item) => item.key === key);
-                    return section && <option key={key} value={key}>{section.title}</option>;
-                  })}
-                </optgroup>
-              ))}
-              <option value="review">Review & render</option>
-            </select>
-          </div>
-          <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-7 gap-2">
-            {[["identity", "1 · Person"], ["physique", "2 · Body"], ["intimate", "3 · Intimate"], ["wardrobe", "4 · Outfit"], ["pose", "5 · Pose"], ["scene", "6 · Setting"]].map(([key, label]) => (
-              <button key={key} type="button" onClick={() => { setQuickReview(false); goSection(key); }}
-                className={`rounded-xl border px-3 py-3 text-left text-xs font-semibold transition-colors ${activeSection === key && !quickReview ? "border-amber-400/70 bg-amber-500/10 text-amber-100" : "hairline bg-elevated text-zinc-300 hover:border-cyan-400/50"}`}>
-                {label}
-              </button>
-            ))}
-            <button type="button" onClick={() => setQuickReview(true)}
-              className={`rounded-xl border px-3 py-3 text-left text-xs font-semibold ${quickReview ? "border-cyan-400/70 bg-cyan-500/10 text-cyan-100" : "hairline bg-elevated text-zinc-300 hover:border-cyan-400/50"}`}>
-              7 · Review
-            </button>
-          </div>
-        </section>
-      )}
-
       <MobileStudioFlow
         currentStep={mobileStudioStep}
         activeSection={activeSection}
@@ -2319,6 +2275,50 @@ export default function Builder() {
 
         {/* Center - single active section */}
         <div id="studio-sections" className={`${mobileStudioStep === "create" ? "hidden md:block" : "block"} scroll-mt-24 space-y-4`}>
+      {desktopQuickMode && (
+        <section className="hidden md:block pane border-cyan-400/25 p-4" data-testid="desktop-quick-create">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <div className="section-label">Quick Create</div>
+              <p className="mt-1 text-sm text-zinc-400">Set the essentials or jump directly to any character section.</p>
+            </div>
+            <span className="rounded-full border border-amber-400/40 bg-amber-500/10 px-3 py-1 text-xs text-amber-200">{activeWorkflow?.name || "Choose a model"}</span>
+          </div>
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <label htmlFor="quick-section-jump" className="text-xs font-semibold text-cyan-200">Jump to section</label>
+            <select id="quick-section-jump" data-testid="quick-section-jump"
+              value={quickReview ? "review" : activeSection}
+              onChange={(event) => {
+                if (event.target.value === "review") setQuickReview(true);
+                else { setQuickReview(false); goSection(event.target.value); }
+              }}
+              className="min-w-[220px] max-w-full rounded-lg border hairline bg-elevated px-3 py-2 text-sm text-zinc-100">
+              {PHASES.map((phase) => (
+                <optgroup key={phase.key} label={phase.label}>
+                  {phase.sections.map((key) => {
+                    const section = SECTIONS.find((item) => item.key === key);
+                    return section && <option key={key} value={key}>{section.title}</option>;
+                  })}
+                </optgroup>
+              ))}
+              <option value="review">Review & render</option>
+            </select>
+          </div>
+          <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-7 gap-2">
+            {[["identity", "1 · Person"], ["physique", "2 · Body"], ["intimate", "3 · Intimate"], ["wardrobe", "4 · Outfit"], ["pose", "5 · Pose"], ["scene", "6 · Setting"]].map(([key, label]) => (
+              <button key={key} type="button" onClick={() => { setQuickReview(false); goSection(key); }}
+                className={`rounded-xl border px-3 py-3 text-left text-xs font-semibold transition-colors ${activeSection === key && !quickReview ? "border-amber-400/70 bg-amber-500/10 text-amber-100" : "hairline bg-elevated text-zinc-300 hover:border-cyan-400/50"}`}>
+                {label}
+              </button>
+            ))}
+            <button type="button" onClick={() => setQuickReview(true)}
+              className={`rounded-xl border px-3 py-3 text-left text-xs font-semibold ${quickReview ? "border-cyan-400/70 bg-cyan-500/10 text-cyan-100" : "hairline bg-elevated text-zinc-300 hover:border-cyan-400/50"}`}>
+              7 · Review
+            </button>
+          </div>
+        </section>
+      )}
+
           {desktopQuickMode && quickReview ? (
             <div className="hidden md:block pane border-cyan-400/30 p-5 space-y-4" data-testid="desktop-quick-review">
               <div className="section-label">Ready to render</div>

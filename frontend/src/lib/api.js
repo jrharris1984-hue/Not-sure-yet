@@ -66,8 +66,8 @@ export const endpoints = {
   reviewRenderAlignment: (id) => api.post(`/renders/${id}/alignment`).then((r) => r.data),
   previewMissingDetails: (id, indices) => api.post(`/renders/${id}/retry-missing/preview`, { indices }).then((r) => r.data),
   retryMissingDetails: ({ id, indices }) => api.post(`/renders/${id}/retry-missing`, { indices }).then((r) => r.data),
-  previewImprovedRender: (id) => api.post(`/renders/${id}/improve/preview`).then((r) => r.data),
-  queueImprovedRender: ({ id, prompt_positive }) => api.post(`/renders/${id}/improve`, { prompt_positive }).then((r) => r.data),
+  previewImprovedRender: ({ id, source_prompt, instruction }) => api.post(`/renders/${id}/improve/preview`, { source_prompt, instruction }).then((r) => r.data),
+  queueImprovedRender: ({ id, prompt_positive, prompt_negative }) => api.post(`/renders/${id}/improve`, { prompt_positive, prompt_negative }).then((r) => r.data),
   uploadReferenceImage: (file) => {
     const form = new FormData();
     form.append("image", file);
