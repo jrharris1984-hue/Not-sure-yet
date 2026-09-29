@@ -188,8 +188,14 @@ export default function Gallery() {
   });
 
   const reuseAsReference = useMutation({
-    mutationFn: ({ render, targetKind, referenceMode }) => endpoints.prepareRenderReference(render.id).then((reference) => ({ render, targetKind, referenceMode, reference })),
-    onSuccess: ({ render, targetKind, referenceMode, reference }) => {
+    mutationFn: async ({ render, targetKind, referenceMode }) => {
+      const [reference, saved] = await Promise.all([
+        endpoints.prepareRenderReference(render.id),
+        referenceMode === "keep_character" ? endpoints.getRenderRecipe(render.id) : Promise.resolve(null),
+      ]);
+      return { render, targetKind, referenceMode, reference, saved };
+    },
+    onSuccess: ({ render, targetKind, referenceMode, reference, saved }) => {
       const path = render.character_id ? `/character/${render.character_id}` : "/character/new";
       nav(path, {
         state: {
@@ -197,6 +203,7 @@ export default function Gallery() {
           previewUrl: primaryOutput(render),
           targetKind,
           referenceMode,
+          characterRecipe: saved?.recipe,
         },
       });
     },
@@ -799,10 +806,10 @@ export default function Gallery() {
                         data-testid="btn-lightbox-animate" className="inline-flex min-w-0 flex-col items-center justify-center gap-1 rounded-lg border border-emerald-500/30 bg-emerald-500/5 text-emerald-100 hover:bg-emerald-500/10 text-xs font-semibold px-2 py-2.5 disabled:opacity-40">
                         <Film className="h-4 w-4" /> Animate
                       </button>
-                      <button type="button" onClick={() => reuseAsReference.mutate({ render: lightbox, targetKind: "face" })} disabled={reuseAsReference.isPending}
-                        data-testid="btn-lightbox-reference" title="Use this image with the Face Preserve workflow"
+                      <button type="button" onClick={() => reuseAsReference.mutate({ render: lightbox, targetKind: "face", referenceMode: "keep_character" })} disabled={reuseAsReference.isPending}
+                        data-testid="btn-lightbox-reference" title="Use this image as the face reference and restore its character selections"
                         className="inline-flex min-w-0 flex-col items-center justify-center gap-1 rounded-lg border border-rose-500/30 bg-rose-500/5 text-rose-100 hover:bg-rose-500/10 text-xs font-semibold px-2 py-2.5 disabled:opacity-40">
-                        <ScanFace className="h-4 w-4" /> Reference
+                        <ScanFace className="h-4 w-4" /> Keep character
                       </button>
                     </div>
                     <button onClick={() => downloadImage(primaryOutput(lightbox), `${lightbox.workflow_name || "render"}-${lightbox.id.slice(0, 8)}-enhanced.png`)}
