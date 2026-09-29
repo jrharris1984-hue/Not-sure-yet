@@ -1,5 +1,6 @@
 import { expandPrompt } from "@/lib/promptMap";
 import { implantVisualPrompt } from "@/lib/implantVisualScale";
+import { wardrobeNudity } from "@/lib/wardrobeNudity";
 
 export const PROMPT_BUDGET_WORDS = {
   sdxl: 150,
@@ -206,6 +207,9 @@ function collectSubjectItems(dna = {}, {
       if (section === "physique" && ["bust", "bust_scale", "bust_shape"].includes(field) && Number(fields.implant_volume) > 0) return;
       if (section === "physique" && fineControl && Number(fields[fineControl]) > 0) return;
       if (section === "physique" && field === "bust_shape" && Number(fields.implant_volume) > 0) return;
+      if (section === "wardrobe" && ["nudity_level", "nudity_outfit"].includes(field)) return;
+      if (section === "wardrobe" && wardrobeNudity(fields).suppressClothing
+        && ["outfit_set", "outfit_preset", "dress_style", "skirt_style", "top", "bottom", "underwear", "material", "garment_color", "garment_pattern", "fit", "state"].includes(field)) return;
       if (section === "wardrobe" && (fields.dress_style || fields.skirt_style) && field === "outfit_preset") return;
       if (section === "wardrobe" && fields.dress_style && ["top", "bottom"].includes(field)) return;
       if (section === "wardrobe" && fields.skirt_style && field === "bottom") return;
