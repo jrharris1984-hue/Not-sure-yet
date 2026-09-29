@@ -2836,10 +2836,11 @@ async def delete_cancelled_renders():
     }
 
 
-def _comfy_output_paths(renders: List[Dict[str, Any]]) -> List[Path]:
-    """Resolve only ComfyUI output URLs inside the configured output mount."""
+def _comfy_output_paths(renders: List[Dict[str, Any]]) -> tuple[List[Path], int]:
+    """Resolve recorded output URLs, counting files absent from the current mount."""
     root = COMFYUI_OUTPUT_DIR.resolve()
     paths = set()
+    unavailable = set()
     for render in renders:
         variants = render.get("output_variants") or {}
         for url in (render.get("output_files") or []) + (variants.get("enhanced") or []):
@@ -2851,17 +2852,18 @@ def _comfy_output_paths(renders: List[Dict[str, Any]]) -> List[Path]:
             if not filename or Path(filename).name != filename or Path(filename).is_absolute():
                 raise HTTPException(400, "An image has an invalid ComfyUI output filename.")
             path = (root / subfolder / filename).resolve()
-            if not path.is_relative_to(root) or not path.is_file():
-                raise HTTPException(400, f"Output file is unavailable in the configured ComfyUI folder: {filename}")
-            paths.add(path)
-    return sorted(paths)
+            if not path.is_relative_to(root):
+                raise HTTPException(400, "An image has an invalid ComfyUI output subfolder.")
+            if path.is_file():
+                paths.add(path)
+            else:
+                unavailable.add(path)
+    return sorted(paths), len(unavailable)
 
 
 async def _delete_gallery_records(ids: List[str], delete_files: bool = False) -> Dict[str, Any]:
     renders = await db.renders.find({"id": {"$in": ids}}, {"_id": 0}).to_list(len(ids))
-    files = _comfy_output_paths(renders) if delete_files else []
-    if delete_files and renders and not files:
-        raise HTTPException(400, "No ComfyUI output files were recorded for these images.")
+    files, unavailable = _comfy_output_paths(renders) if delete_files else ([], 0)
     if delete_files:
         # A reused output must remain available to any other Gallery record.
         urls = [url for render in renders for url in (render.get("output_files") or []) +
@@ -2877,7 +2879,8 @@ async def _delete_gallery_records(ids: List[str], delete_files: bool = False) ->
         except OSError as exc:
             raise HTTPException(502, f"Could not delete a ComfyUI output file: {exc}") from exc
     result = await db.renders.delete_many({"id": {"$in": ids}})
-    return {"ok": True, "deleted": result.deleted_count, "files_deleted": len(files)}
+    return {"ok": True, "deleted": result.deleted_count, "files_deleted": len(files),
+            "files_unavailable": unavailable}
 
 
 @api.delete("/renders/{rid}")
