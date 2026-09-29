@@ -3,6 +3,7 @@ import { Input } from "@/components/ui/input";
 import { Shuffle, RotateCcw, Lock, LockOpen, Wand2, ChevronDown } from "lucide-react";
 import PoseIcon from "@/components/PoseIcon";
 import GroupedChips from "@/components/GroupedChips";
+import { normalizeMultiSelection } from "@/lib/dna";
 
 export function ChipRow({ options, value, onChange, testIdPrefix }) {
   return (
@@ -170,7 +171,7 @@ export default function DnaSection({
               <GroupedChips
                 groups={f.groups || [{ name: "All", options: f.options || [] }]}
                 value={Array.isArray(value[f.key]) ? value[f.key] : []}
-                onChange={(v) => set(f.key, v)}
+                onChange={(v) => set(f.key, normalizeMultiSelection(f, v, Array.isArray(value[f.key]) ? value[f.key] : []))}
                 testIdPrefix={`chip-${section.key}-${f.key}`}
                 variant="chips"
                 multi
@@ -179,7 +180,7 @@ export default function DnaSection({
             {f.type === "chips" && f.groups && (
               <GroupedChips
                 groups={f.groups}
-                value={value[f.key] || ""}
+                value={Array.isArray(value[f.key]) ? value[f.key].at(-1) || "" : value[f.key] || ""}
                 onChange={(v) => set(f.key, v)}
                 testIdPrefix={`chip-${section.key}-${f.key}`}
                 variant="chips"
@@ -188,7 +189,7 @@ export default function DnaSection({
             {f.type === "chips" && !f.groups && (
               <ChipRow
                 options={f.options}
-                value={value[f.key] || ""}
+                value={Array.isArray(value[f.key]) ? value[f.key].at(-1) || "" : value[f.key] || ""}
                 onChange={(v) => set(f.key, v)}
                 testIdPrefix={`chip-${section.key}-${f.key}`}
               />

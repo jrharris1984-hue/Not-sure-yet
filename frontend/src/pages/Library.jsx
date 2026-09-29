@@ -1,16 +1,27 @@
 import { Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Copy, Trash2, Star, StarOff, Plus, Search, Camera } from "lucide-react";
+import { Copy, Trash2, Star, StarOff, Plus, Search, Camera, Image as ImageIcon, X } from "lucide-react";
 import { useState } from "react";
-import { endpoints } from "@/lib/api";
+import { API_BASE, endpoints } from "@/lib/api";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
+
+function characterImageUrl(url) {
+  if (!url) return "";
+  try {
+    const parsed = new URL(url, window.location.origin);
+    if (parsed.pathname.endsWith("/view") && parsed.searchParams.has("filename"))
+      return `${API_BASE}/comfyui/media?${parsed.searchParams.toString()}`;
+  } catch { /* Use the supplied URL. */ }
+  return url;
+}
 
 export default function Library() {
   const [q, setQ] = useState("");
   const [onlyFav, setOnlyFav] = useState(false);
   const [activeTags, setActiveTags] = useState([]);
   const [tagsExpanded, setTagsExpanded] = useState(false);
+  const [imageCharacter, setImageCharacter] = useState(null);
   const qc = useQueryClient();
   const { data: chars = [], isLoading } = useQuery({
     queryKey: ["characters", q, onlyFav, activeTags],
@@ -46,6 +57,16 @@ export default function Library() {
   const fav = useMutation({
     mutationFn: ({ id, v }) => endpoints.updateCharacter(id, { favorite: v }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["characters"] }),
+  });
+  const { data: characterImages = [] } = useQuery({
+    queryKey: ["character-renders", imageCharacter?.id],
+    queryFn: () => endpoints.characterRenders(imageCharacter.id),
+    enabled: !!imageCharacter,
+  });
+  const chooseImage = useMutation({
+    mutationFn: (renderId) => endpoints.updateCharacter(imageCharacter.id, { default_image_render_id: renderId }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["characters"] }); setImageCharacter(null); toast.success("Default image updated"); },
+    onError: () => toast.error("Could not set the character image"),
   });
 
   return (
@@ -171,21 +192,13 @@ export default function Library() {
             <div
               key={c.id}
               data-testid={`character-library-card-${i}`}
-              className="pane relative overflow-hidden flex flex-col gap-3 hover:border-zinc-600 transition-colors group"
-              style={{ minHeight: "260px" }}
+              className="pane relative overflow-hidden flex flex-col hover:border-zinc-600 transition-colors group"
             >
-              {c.thumbnail && (
-                <>
-                  <img
-                    src={c.thumbnail}
-                    alt=""
-                    aria-hidden
-                    className="absolute inset-0 w-full h-full object-cover opacity-45 group-hover:opacity-65 transition-opacity"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/70 to-black/20 pointer-events-none" />
-                </>
-              )}
-              <div className="relative p-4 flex flex-col gap-3 flex-1">
+              <Link to={`/character/${c.id}`} className="block aspect-[3/4] bg-elevated" aria-label={`Open ${c.name || "Untitled"}`}>
+                {c.thumbnail ? <img src={characterImageUrl(c.thumbnail)} alt={c.name || "Character image"} className="h-full w-full object-cover" />
+                  : <div className="flex h-full items-center justify-center text-zinc-500"><ImageIcon className="h-10 w-10" /></div>}
+              </Link>
+              <div className="p-3 flex flex-col gap-2 flex-1">
                 <div className="flex items-start justify-between gap-2">
                   <Link to={`/character/${c.id}`} className="min-w-0 flex-1">
                     <div className="hidden sm:block text-[10px] uppercase tracking-widest text-zinc-400 font-mono">
@@ -201,20 +214,11 @@ export default function Library() {
                     {c.favorite ? <Star className="h-4 w-4 fill-current" /> : <StarOff className="h-4 w-4" />}
                   </button>
                 </div>
-                <div className="hidden sm:block text-xs text-zinc-300 line-clamp-2 font-mono">{c.prompt_positive || "no prompt yet"}</div>
-                {Array.isArray(c.tags) && c.tags.length > 0 && (
-                  <div className="flex flex-wrap gap-1" data-testid={`tags-${i}`}>
-                    {c.tags.slice(0, 3).map((t) => (
-                      <span key={t} className="text-[10px] font-mono rounded-full bg-black/50 backdrop-blur-sm border border-zinc-700/60 text-zinc-200 px-1.5 py-0.5">
-                        {t}
-                      </span>
-                    ))}
-                    {c.tags.length > 3 && (
-                      <span className="text-[10px] font-mono text-zinc-400">+{c.tags.length - 3}</span>
-                    )}
-                  </div>
-                )}
                 <div className="mt-auto flex items-center gap-1">
+                <button type="button" onClick={() => setImageCharacter(c)} data-testid={`btn-character-image-${i}`}
+                  className="h-7 w-7 grid place-items-center rounded-md border hairline text-zinc-300" title="Choose default image" aria-label={`Choose default image for ${c.name || "Untitled"}`}>
+                  <ImageIcon className="h-3.5 w-3.5" />
+                </button>
                 <Link
                   to={`/character/${c.id}`}
                   data-testid={`btn-open-${i}`}
@@ -250,6 +254,23 @@ export default function Library() {
               </div>
             </div>
           ))}
+        </div>
+      )}
+      {imageCharacter && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4" role="dialog" aria-modal="true" aria-label="Choose character image" onClick={() => setImageCharacter(null)}>
+          <div className="pane max-h-[85vh] w-full max-w-3xl overflow-y-auto p-4" onClick={(event) => event.stopPropagation()}>
+            <div className="mb-4 flex items-center justify-between"><h2 className="font-display text-lg font-bold">Choose image for {imageCharacter.name}</h2>
+              <button type="button" onClick={() => setImageCharacter(null)} aria-label="Close image chooser"><X className="h-5 w-5" /></button></div>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
+              {characterImages.filter((r) => r.output_files?.[0]).map((r) => (
+                <button key={r.id} type="button" disabled={chooseImage.isPending} onClick={() => chooseImage.mutate(r.id)}
+                  className={`aspect-square overflow-hidden rounded-lg border ${imageCharacter.default_image_render_id === r.id ? "border-amber-400" : "hairline"}`} aria-label="Use this image as default">
+                  <img src={characterImageUrl(r.output_files[0])} alt="Character render" className="h-full w-full object-cover" />
+                </button>
+              ))}
+            </div>
+            {!characterImages.some((r) => r.output_files?.[0]) && <p className="text-sm text-zinc-400">Render an image for this character to choose it here.</p>}
+          </div>
         </div>
       )}
     </div>

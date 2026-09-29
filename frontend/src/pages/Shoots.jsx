@@ -2,6 +2,17 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { Camera, Plus } from "lucide-react";
 import { endpoints } from "@/lib/api";
+import { API_BASE } from "@/lib/api";
+
+function coverUrl(url) {
+  if (!url) return "";
+  try {
+    const parsed = new URL(url, window.location.origin);
+    if (parsed.pathname.endsWith("/view") && parsed.searchParams.has("filename"))
+      return `${API_BASE}/comfyui/media?${parsed.searchParams.toString()}`;
+  } catch { /* Use the supplied URL. */ }
+  return url;
+}
 
 const STATUS_COLOR = {
   done: "text-emerald-300",
@@ -43,14 +54,19 @@ export default function Shoots() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {shoots.map((s, i) => {
-            const done = (s.frames || []).filter((f) => f.status === "done").length;
+            const done = s.rendered_count ?? (s.frames || []).filter((f) => f.status === "done").length;
             return (
               <Link
                 to={`/shoot/${s.id}`}
                 key={s.id}
                 data-testid={`shoot-card-${i}`}
-                className="pane p-4 space-y-3 hover:border-zinc-700 transition-colors"
+                className="pane overflow-hidden hover:border-zinc-700 transition-colors"
               >
+                <div className="aspect-video bg-elevated">
+                  {s.cover_image ? <img src={coverUrl(s.cover_image)} alt={`${s.name} cover`} className="h-full w-full object-cover" />
+                    : <div className="flex h-full items-center justify-center text-zinc-500"><Camera className="h-10 w-10" /></div>}
+                </div>
+                <div className="p-4 space-y-3">
                 <div className="flex items-start justify-between">
                   <div>
                     <div className="font-display font-bold text-base truncate">{s.name}</div>
@@ -66,6 +82,7 @@ export default function Shoots() {
                   <div className="h-full bg-amber-400" style={{ width: `${Math.round((s.progress || 0) * 100)}%` }} />
                 </div>
                 <div className="text-[11px] font-mono text-zinc-500">{done}/{s.count} rendered</div>
+                </div>
               </Link>
             );
           })}

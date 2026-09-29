@@ -170,11 +170,11 @@ export const SECTIONS = [
         { name: "Presentation", options: ["soles up", "soles together", "sole showcase", "sole toward camera", "one sole raised", "both soles toward camera", "crossed ankles soles visible", "heel lifted toward camera"] },
         { name: "Detail", options: ["wrinkled soles", "smooth soles", "oiled soles", "dirty soles", "muddy soles", "freshly washed", "arched soles", "detailed toe pads"] },
       ]},
-      { key: "toes", type: "chips_multi", label: "Toe action (pick many)", options: ["toe curl", "toe spread", "toe point", "toe suck", "toe ring", "toe scrunch", "big toe out", "toes in mouth", "wiggling toes", "toes flexed", "toes gripping fabric"] },
+      { key: "toes", type: "chips_multi", label: "Toe details (pick many)", options: ["toe curl", "toe spread", "toe point", "toe suck", "toe ring", "toe scrunch", "big toe out", "toes in mouth", "wiggling toes", "toes flexed", "toes gripping fabric"], exclusiveGroups: [["toe curl", "toe spread", "toe point", "toe scrunch", "big toe out", "wiggling toes", "toes flexed", "toes gripping fabric"], ["toe suck", "toes in mouth"]] },
       { key: "arch", type: "chips", label: "Arch style", options: ["high arch", "medium arch", "flat arch", "defined arch", "banana arch"] },
       { key: "pedicure", type: "chips", label: "Pedicure", options: ["natural nails", "painted red", "painted black", "painted french", "painted pink", "chipped polish", "long nails", "sharp claws", "glitter polish"] },
       { key: "foot_size", type: "chips", label: "Foot size", options: ["petite", "average", "large", "size queen"] },
-      { key: "foot_state", type: "chips_multi", label: "Foot state (pick many)", options: ["bare", "sweaty", "oiled", "dirty", "muddy", "freshly washed", "in nylons", "in socks", "stinky", "cum on feet", "cum on soles"] },
+      { key: "foot_state", type: "chips_multi", label: "Foot state (pick many)", options: ["bare", "sweaty", "oiled", "dirty", "muddy", "freshly washed", "in nylons", "in socks", "stinky", "cum on feet", "cum on soles"], exclusiveGroups: [["bare", "in nylons", "in socks"], ["dirty", "muddy", "freshly washed"]] },
       { key: "hosiery", type: "chips", label: "Hosiery", groups: [
         { name: "Bare / sheer", options: ["bare", "sheer stockings", "toeless stockings", "footed stockings", "pantyhose", "ripped pantyhose"] },
         { name: "Fishnet", options: ["fishnet stockings", "toeless fishnets", "ripped fishnets"] },
@@ -312,7 +312,7 @@ export const SECTIONS = [
       { key: "angle", type: "chips", label: "Camera angle", options: ["front", "3/4", "profile", "back", "over-shoulder", "from above", "from below", "pov"] },
       { key: "distance", type: "chips", label: "Framing", options: ["close-up", "portrait", "waist-up", "thigh-up", "knees-up", "full body", "wide shot", "detail shot"] },
       { key: "focus", type: "chips", label: "Composition priority", options: ["face", "body", "breasts", "butt", "hips", "legs", "feet", "hands", "full frame"] },
-      { key: "hands", type: "chips_multi", label: "Hands (pick many)", options: ["at sides", "on hips", "in hair", "touching body", "on breasts", "between legs", "gripping something", "over head", "behind back", "behind head"] },
+      { key: "hands", type: "chips", label: "Hand position (choose one)", options: ["at sides", "on hips", "in hair", "touching body", "on breasts", "between legs", "gripping something", "over head", "behind back", "behind head"] },
       { key: "body_language", type: "chips", label: "Vibe", options: ["confident", "relaxed", "intimate", "playful", "powerful", "vulnerable", "sultry", "coy", "come-hither", "dominant", "submissive", "teasing"] },
     ],
   },
@@ -325,7 +325,7 @@ export const SECTIONS = [
         "hogtie", "suspension", "chair-tied", "tied to bed", "wrists overhead", "ankle cuffs", "thigh cuffs",
         "chastity cage", "chastity belt", "collar and leash", "arms behind back", "frogtie",
       ]},
-      { key: "gag", type: "chips_multi", label: "Gag (pick many)", options: [
+      { key: "gag", type: "chips_multi", label: "Gag (one type, optional bib)", exclusiveGroups: [["ball gag", "ring gag", "bit gag", "cleave gag", "tape gag", "panty gag", "dildo gag", "muzzle", "spider gag"]], options: [
         "ball gag", "ring gag", "bit gag", "cleave gag", "tape gag", "panty gag", "drool bib", "dildo gag", "muzzle", "spider gag",
       ]},
       { key: "marks", type: "chips_multi", label: "Impact & marks (pick many)", options: [
@@ -486,6 +486,14 @@ export const RANDOMIZE_PROTECTED_FIELDS = {
   wardrobe: new Set(["nudity_level", "hosiery_type", "hosiery_color", "hosiery_pattern", "heel_type", "heel_color", "heel_height", "heel_finish", "garment_color", "dress_style", "skirt_style", "garment_pattern", "nail_color", "nail_shape", "glasses_style", "glasses_color"]),
 };
 
+// A field may allow several details while still having mutually exclusive choices.
+export function normalizeMultiSelection(field, selected = [], previous = []) {
+  const added = selected.find((option) => !previous.includes(option));
+  if (!added) return selected;
+  const conflicting = (field.exclusiveGroups || []).find((group) => group.includes(added));
+  return conflicting ? selected.filter((option) => option === added || !conflicting.includes(option)) : selected;
+}
+
 export function randomizeSection(sectionKey, current = {}, fieldLocks = {}, options = {}) {
   const section = SECTIONS.find((s) => s.key === sectionKey);
   const out = { ...current };
@@ -501,7 +509,7 @@ export function randomizeSection(sectionKey, current = {}, fieldLocks = {}, opti
       const pool = f.groups ? f.groups.flatMap((g) => g.options) : (f.options || []);
       const n = 1 + Math.floor(Math.random() * 3); // 1-3 items
       const shuffled = [...pool].sort(() => Math.random() - 0.5);
-      out[f.key] = shuffled.slice(0, n);
+      out[f.key] = shuffled.slice(0, n).reduce((picked, option) => normalizeMultiSelection(f, [...picked, option], picked), []);
     }
     else if (f.type === "slider") out[f.key] = Math.floor(Math.random() * (f.max - f.min + 1)) + f.min;
     else if (f.type === "text") out[f.key] = out[f.key] || "";
@@ -1221,7 +1229,7 @@ function _veniceSubjectBlock(dna = {}, opts = {}) {
   ]);
   const poseDetails = join([
     Array.isArray(pose.hands)
-      ? pose.hands.filter(Boolean).map((h) => expandPrompt("pose", "hands", h)).join(", ")
+      ? pose.hands.filter(Boolean).slice(-1).map((h) => expandPrompt("pose", "hands", h)).join(", ")
       : (pose.hands && exp("pose", "hands")),
     exp("pose", "body_language"),
   ]);

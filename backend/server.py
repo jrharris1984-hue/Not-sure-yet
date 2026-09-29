@@ -13,6 +13,8 @@ import random
 import asyncio
 import base64
 import mimetypes
+import io
+import zipfile
 from pathlib import Path
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
@@ -67,6 +69,7 @@ class Character(BaseModel):
     prompt_language: str = "editorial"  # editorial | direct | explicit
     prompt_positive: str = ""
     prompt_negative: str = ""
+    default_image_render_id: Optional[str] = None
     created_at: str = Field(default_factory=now_iso)
     updated_at: str = Field(default_factory=now_iso)
 
@@ -85,6 +88,7 @@ class CharacterUpsert(BaseModel):
     prompt_language: Optional[str] = None
     prompt_positive: Optional[str] = None
     prompt_negative: Optional[str] = None
+    default_image_render_id: Optional[str] = None
 
 
 class Render(BaseModel):
@@ -693,8 +697,15 @@ async def list_characters(q: Optional[str] = None,
             {"$group": {"_id": "$character_id", "output_files": {"$first": "$output_files"}, "created_at": {"$first": "$created_at"}}},
         ]
         thumbs = {r["_id"]: r["output_files"][0] for r in await db.renders.aggregate(pipeline).to_list(len(ids)) if r.get("output_files")}
+        chosen_ids = [d.get("default_image_render_id") for d in docs if d.get("default_image_render_id")]
+        chosen = {}
+        if chosen_ids:
+            preferred = await db.renders.find({"id": {"$in": chosen_ids}}, {"_id": 0, "id": 1, "character_id": 1, "output_files": 1}).to_list(len(chosen_ids))
+            chosen = {r["id"]: r for r in preferred}
         for d in docs:
-            d["thumbnail"] = thumbs.get(d["id"])
+            preferred = chosen.get(d.get("default_image_render_id"))
+            files = preferred.get("output_files") if preferred and preferred.get("character_id") == d["id"] else None
+            d["thumbnail"] = files[0] if files else thumbs.get(d["id"])
     return docs
 
 
@@ -746,6 +757,10 @@ async def update_character(cid: str, body: CharacterUpsert):
     if not doc:
         raise HTTPException(404, "Character not found")
     patch = {k: v for k, v in body.model_dump(exclude_unset=True).items() if v is not None}
+    if "default_image_render_id" in patch and patch["default_image_render_id"]:
+        render = await db.renders.find_one({"id": patch["default_image_render_id"], "character_id": cid, "output_files.0": {"$exists": True}})
+        if not render:
+            raise HTTPException(400, "Choose an image rendered for this character")
     patch["updated_at"] = now_iso()
     await db.characters.update_one({"id": cid}, {"$set": patch})
     doc.update(patch)
@@ -2605,6 +2620,12 @@ async def delete_renders_bulk(body: BulkRenderDeleteBody):
     return {"ok": True, "deleted": result.deleted_count}
 
 
+@api.post("/renders/delete-qc-flagged")
+async def delete_qc_flagged_renders():
+    result = await db.renders.delete_many({"anatomy_guard_status": "failed"})
+    return {"ok": True, "deleted": result.deleted_count}
+
+
 async def _cancel_render_doc(rid: str) -> Dict[str, Any]:
     doc = await db.renders.find_one({"id": rid}, {"_id": 0})
     if not doc:
@@ -2726,6 +2747,7 @@ class Shoot(BaseModel):
     workflow_id: Optional[str] = None
     count: int = 4
     frames: List[ShootFrame] = Field(default_factory=list)
+    cover_frame_index: Optional[int] = None
     lora_overrides: Dict[str, Dict[str, Any]] = Field(default_factory=dict)
     pose_mode: str = "random"  # random | pack | manual
     pose_pack: str = ""
@@ -2917,7 +2939,41 @@ async def list_shoots(character_id: Optional[str] = None, limit: int = 100):
     if character_id:
         query["character_id"] = character_id
     docs = await db.shoots.find(query, {"_id": 0}).sort("created_at", -1).to_list(limit)
+    render_ids = [f.get("render_id") for shoot in docs for f in shoot.get("frames", []) if f.get("render_id")]
+    renders = await db.renders.find({"id": {"$in": render_ids}}, {"_id": 0, "id": 1, "output_files": 1, "output_variants": 1}).to_list(len(render_ids)) if render_ids else []
+    by_id = {render["id"]: render for render in renders}
+    for shoot in docs:
+        frames = shoot.get("frames") or []
+        shoot["rendered_count"] = sum(bool((by_id.get(frame.get("render_id")) or {}).get("output_files")) for frame in frames)
+        preferred = shoot.get("cover_frame_index")
+        order = ([preferred] if isinstance(preferred, int) and 0 <= preferred < len(frames) else []) + list(range(len(frames)))
+        for index in order:
+            render = by_id.get(frames[index].get("render_id")) or {}
+            variants = render.get("output_variants") or {}
+            images = (variants.get("enhanced") or []) + (render.get("output_files") or [])
+            if images:
+                shoot["cover_image"] = images[0]
+                break
     return docs
+
+
+class ShootCoverBody(BaseModel):
+    frame_index: int
+
+
+@api.patch("/shoots/{sid}/cover")
+async def set_shoot_cover(sid: str, body: ShootCoverBody):
+    shoot = await db.shoots.find_one({"id": sid}, {"_id": 0})
+    if not shoot:
+        raise HTTPException(404, "Shoot not found")
+    frames = shoot.get("frames") or []
+    if body.frame_index < 0 or body.frame_index >= len(frames):
+        raise HTTPException(400, "Invalid frame")
+    render = await db.renders.find_one({"id": frames[body.frame_index].get("render_id")}, {"_id": 0})
+    if not render or not render.get("output_files"):
+        raise HTTPException(400, "Choose a completed image")
+    await db.shoots.update_one({"id": sid}, {"$set": {"cover_frame_index": body.frame_index}})
+    return {"ok": True, "cover_frame_index": body.frame_index}
 
 
 @api.get("/shoots/{sid}")
@@ -2933,7 +2989,54 @@ async def get_shoot(sid: str):
     by_id = {r["id"]: r for r in renders}
     # Keep one render slot for every frame, including pending frames without a render ID.
     doc["renders"] = [by_id.get(frame.get("render_id")) for frame in doc.get("frames", [])]
+    doc["rendered_count"] = sum(bool((render or {}).get("output_files")) for render in doc["renders"])
     return doc
+
+
+class ShootDownloadBody(BaseModel):
+    frames: List[int]
+
+
+@api.post("/shoots/{sid}/download")
+async def download_shoot_images(sid: str, body: ShootDownloadBody):
+    shoot = await db.shoots.find_one({"id": sid}, {"_id": 0})
+    if not shoot:
+        raise HTTPException(404, "Shoot not found")
+    frames = shoot.get("frames") or []
+    indices = sorted(set(body.frames))
+    if not indices or len(indices) > 100 or any(not isinstance(i, int) or i < 0 or i >= len(frames) for i in indices):
+        raise HTTPException(400, "Select between 1 and 100 valid frames")
+    ids = [frames[i].get("render_id") for i in indices if frames[i].get("render_id")]
+    renders = await db.renders.find({"id": {"$in": ids}}, {"_id": 0}).to_list(len(ids)) if ids else []
+    by_id = {render["id"]: render for render in renders}
+    settings = await get_settings()
+    archive = io.BytesIO()
+    with zipfile.ZipFile(archive, "w", compression=zipfile.ZIP_STORED) as zipped:
+        async with httpx.AsyncClient(timeout=httpx.Timeout(120.0, connect=8.0)) as client:
+            for index in indices:
+                render = by_id.get(frames[index].get("render_id"))
+                variants = (render or {}).get("output_variants") or {}
+                url = next(iter((variants.get("enhanced") or []) + ((render or {}).get("output_files") or [])), None)
+                if not url:
+                    continue
+                query = parse_qs(urlparse(url).query)
+                filename = (query.get("filename") or [""])[0]
+                if not filename:
+                    continue
+                response = await client.get(f"{settings.comfyui_url.rstrip('/')}/view", params={
+                    "filename": filename, "subfolder": (query.get("subfolder") or [""])[0],
+                    "type": (query.get("type") or ["output"])[0],
+                })
+                response.raise_for_status()
+                suffix = Path(filename).suffix.lower()
+                if suffix not in {".png", ".jpg", ".jpeg", ".webp", ".gif"}:
+                    suffix = ".png"
+                zipped.writestr(f"frame-{index + 1:03d}{suffix}", response.content)
+        if not zipped.namelist():
+            raise HTTPException(404, "No completed images found in selected frames")
+    return Response(content=archive.getvalue(), media_type="application/zip", headers={
+        "Content-Disposition": f'attachment; filename="shoot-{sid[:12]}.zip"'
+    })
 
 
 @api.delete("/shoots/{sid}")

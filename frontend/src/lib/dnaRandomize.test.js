@@ -1,4 +1,4 @@
-import { DEFAULT_DNA, buildPrompts, randomizeDna, randomizeSection } from "./dna";
+import { DEFAULT_DNA, SECTIONS, buildPrompts, normalizeMultiSelection, randomizeDna, randomizeSection } from "./dna";
 import { buildPonyPrompts } from "./ponyPrompts";
 
 const protectedIntimate = {
@@ -15,6 +15,13 @@ const protectedFeet = {
   hosiery: "sheer stockings",
   foot_act: ["sole licking"],
 };
+
+test("hands choose one, while compatible foot details can coexist", () => {
+  expect(SECTIONS.find((section) => section.key === "pose").fields.find((field) => field.key === "hands").type).toBe("chips");
+  const footState = SECTIONS.find((section) => section.key === "feet").fields.find((field) => field.key === "foot_state");
+  expect(normalizeMultiSelection(footState, ["bare", "oiled", "in socks"], ["bare", "oiled"])).toEqual(["oiled", "in socks"]);
+  expect(normalizeMultiSelection(footState, ["oiled", "in socks", "freshly washed"], ["oiled", "in socks"])).toEqual(["oiled", "in socks", "freshly washed"]);
+});
 
 describe("protected randomization", () => {
   test("section randomize preserves user-controlled intimate and feet fields", () => {
