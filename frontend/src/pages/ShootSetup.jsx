@@ -8,6 +8,7 @@ import { SECTIONS } from "@/lib/dna";
 import { POSE_PACKS, samplePoses, cycleOutfits } from "@/lib/posePacks";
 import LoraPanel from "@/components/LoraPanel";
 import { likenessOverrides } from "@/components/LikenessLoraPanel";
+import { compileModelPrompts } from "@/lib/modelPromptCompilers";
 
 // Flat pool of all pose actions from the DNA schema
 const POSE_SECTION = SECTIONS.find((s) => s.key === "pose");
@@ -76,6 +77,7 @@ export default function ShootSetup() {
   );
   const pairing = character?.subjects?.[0]?.dna?.scenario?.cast_type || character?.dna?.scenario?.cast_type || "none";
   const shotScript = useMemo(() => PAIRING_SHOTS[pairing] || [], [pairing]);
+  const shootWorkflow = workflows.find((workflow) => workflow.id === workflowId);
 
   useEffect(() => {
     if (!workflowId && workflows.length) {
@@ -87,13 +89,41 @@ export default function ShootSetup() {
   const previewFrames = useMemo(() => {
     const poses = samplePoses({ mode: poseMode, packKey, manualPoses, count, allPoses: ALL_POSES });
     const outs = cycleOutfits(outfits.map((o) => ({ outfit_preset: o })), count);
-    return poses.map((p, i) => ({
-      pose_action: p,
-      scene_direction: shotScript.length ? shotScript[i % shotScript.length] : "",
-      outfit_overrides: outs[i] || {},
-      face_overrides: expressions.length ? { expression: expressions[i % expressions.length] } : {},
-    }));
-  }, [poseMode, packKey, manualPoses, count, outfits, expressions, shotScript]);
+    return poses.map((p, i) => {
+      const scene_direction = shotScript.length ? shotScript[i % shotScript.length] : "";
+      const outfit_overrides = outs[i] || {};
+      const face_overrides = expressions.length ? { expression: expressions[i % expressions.length] } : {};
+      const baseDna = character?.dna || character?.subjects?.[0]?.dna || {};
+      const frameDna = {
+        ...baseDna,
+        pose: { ...baseDna.pose, ...(p ? { action: p } : {}) },
+        wardrobe: { ...baseDna.wardrobe, ...outfit_overrides },
+        face: { ...baseDna.face, ...face_overrides },
+      };
+      const subjects = (character?.subjects || []).map((subject, index) =>
+        index === 0 ? { ...subject, dna: frameDna } : subject);
+      const compiled = shootWorkflow ? compileModelPrompts({
+        promptStyle: shootWorkflow.prompt_style,
+        workflowKind: shootWorkflow.kind,
+        workflowName: shootWorkflow.name,
+        dna: frameDna,
+        subjects,
+        isMulti: subjects.length > 1,
+        raunch: character?.raunch || 0,
+        fieldLocks: character?.field_locks || {},
+        sectionLocks: character?.locks || {},
+      }) : null;
+      return {
+        pose_action: p,
+        scene_direction,
+        outfit_overrides,
+        face_overrides,
+        // Recompile the frame so an old pose/outfit from the saved prompt cannot compete.
+        prompt_positive: compiled ? [scene_direction, compiled.positive].filter(Boolean).join(", ") : "",
+        prompt_negative: compiled?.negative || "",
+      };
+    });
+  }, [poseMode, packKey, manualPoses, count, outfits, expressions, shotScript, character, shootWorkflow]);
 
   const create = useMutation({
     mutationFn: async () => {
@@ -476,6 +506,10 @@ export default function ShootSetup() {
                       <div className="text-amber-300/80 truncate">{f.outfit_overrides.outfit_preset}</div>
                     )}
                     {f.face_overrides?.expression && <div className="text-cyan-300/80 truncate">{f.face_overrides.expression}</div>}
+                    {f.prompt_positive && <details className="mt-1 text-zinc-400">
+                      <summary className="cursor-pointer text-cyan-200">View frame prompt</summary>
+                      <p className="mt-1 max-h-24 overflow-y-auto whitespace-pre-wrap break-words">{f.prompt_positive}</p>
+                    </details>}
                   </div>
                 </div>
               ))}
