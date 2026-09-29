@@ -394,7 +394,7 @@ async def _ollama_vision_json(settings: Settings, system: str, user: str, image_
     payload = {"model": model, "stream": False, "format": "json", "think": False, "keep_alive": "5m", "messages": [
         {"role": "system", "content": system},
         {"role": "user", "content": user, "images": [compact_image(data) for data in (image_bytes, reference_bytes) if data]},
-    ], "options": {"temperature": 0.2, "num_ctx": 8192, "num_predict": 2048}}
+    ], "options": {"temperature": 0.1, "num_ctx": 8192, "num_predict": 4096}}
     try:
         async with ollama_vision_gate:
             async with httpx.AsyncClient(timeout=180.0) as hc:
@@ -416,7 +416,27 @@ async def _ollama_vision_json(settings: Settings, system: str, user: str, image_
             logger.warning("Ollama vision %s returned no content after retry (done_reason=%s, thinking_chars=%s)",
                            model, reason, len(message.get("thinking") or ""))
             raise HTTPException(502, f"Ollama {model} returned no image review after retry (reason: {reason}). Check Ollama's logs or choose a different vision model in Settings.")
-        return extract_json(content)
+        try:
+            return extract_json(content)
+        except (ValueError, HTTPException):
+            # A long visual explanation can exhaust the output budget midway
+            # through a JSON object. Ask for a concise replacement once.
+            logger.warning("Ollama vision %s returned malformed JSON (reason=%s, chars=%s); retrying compact reply",
+                           model, result.get("done_reason"), len(content))
+            compact_payload = {**payload, "messages": [
+                {"role": "system", "content": system + " Reply with compact valid JSON. At most 5 matched, 5 missing, and 3 uncertain items. Each string under 100 characters. No explanation outside JSON."},
+                payload["messages"][1],
+            ]}
+            async with ollama_vision_gate:
+                async with httpx.AsyncClient(timeout=180.0) as hc:
+                    retry = await hc.post(f"{settings.ollama_url.rstrip('/')}/api/chat", json=compact_payload)
+                    retry.raise_for_status()
+            retry_data = retry.json()
+            retry_content = (retry_data.get("message") or {}).get("content") or ""
+            try:
+                return extract_json(retry_content)
+            except (ValueError, HTTPException) as exc:
+                raise HTTPException(502, f"Ollama {model} returned malformed review JSON after retry (reason: {retry_data.get('done_reason') or 'unknown'}).") from exc
     except (httpx.HTTPError, KeyError, ValueError) as exc:
         raise HTTPException(502, f"Ollama vision request failed: {exc}") from exc
 
@@ -2221,16 +2241,16 @@ async def review_render_alignment(rid: str):
                 pass
     system = (
         "Inspect an AI generated image against its saved request. The first image is the render; "
-        "if a second image exists, it is the character reference. Return only JSON with keys summary "
+        "if a second image exists, it is the character reference. Keep the response short. Return only JSON with keys summary "
         "(short string), matched (array of short strings), missing (array of objects with category, "
         "detail, retry_instruction), uncertain (array of short strings). Categories must be one of "
         "identity, wardrobe, pose, framing, anatomy, other. List a missing detail only if it was "
         "explicitly requested and visually assessable; mark occluded or ambiguous details uncertain. "
         "Compare facial identity only when a reference image is provided. Ignore artistic preference, "
         "moral judgments, and body size plausibility. Retry instructions must be concise visual directions "
-        "for a new render, without inventing new content."
+        "for a new render, without inventing new content. Limit matched and missing to five each and uncertain to three; keep each detail under 100 characters."
     )
-    user = f"Saved selection: {json.dumps(fields, ensure_ascii=False)[:6000]}\nOriginal prompt: {str(render.get('prompt_positive') or '')[:3500]}\nEvaluate the first image."
+    user = f"Saved selection: {json.dumps(fields, ensure_ascii=False)[:3500]}\nOriginal prompt: {str(render.get('prompt_positive') or '')[:1600]}\nEvaluate the first image."
     try:
         result = await _ollama_vision_json(settings, system, user, image, reference)
     except Exception:
