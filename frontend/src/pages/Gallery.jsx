@@ -677,6 +677,7 @@ export default function Gallery() {
                   </button>
                 </div>
                 {lightbox.alignment_review_status === "reviewing" && !lightbox.alignment_review && <p className="mt-2 text-cyan-200">Local image review is running. Results will appear here when ready.</p>}
+                {lightbox.alignment_review_status === "unavailable" && !lightbox.alignment_review && <p className="mt-2 text-amber-200">This review did not complete. Your image is saved; tap Review image to try again.</p>}
                 {lightbox.alignment_review && <div className="mt-2 space-y-2 text-zinc-300">
                   <p>{lightbox.alignment_review.summary}</p>
                   {lightbox.alignment_review.matched?.length > 0 && <p className="text-emerald-200">Matched: {lightbox.alignment_review.matched.join(" · ")}</p>}

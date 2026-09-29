@@ -390,7 +390,7 @@ async def _ollama_vision_json(settings: Settings, system: str, user: str, image_
             output = io.BytesIO()
             image.save(output, format="JPEG", quality=84)
         return base64.b64encode(output.getvalue()).decode("ascii")
-    payload = {"model": model, "stream": False, "format": "json", "keep_alive": 0, "messages": [
+    payload = {"model": model, "stream": False, "format": "json", "think": False, "keep_alive": 0, "messages": [
         {"role": "system", "content": system},
         {"role": "user", "content": user, "images": [compact_image(data) for data in (image_bytes, reference_bytes) if data]},
     ], "options": {"temperature": 0.2}}
@@ -399,7 +399,11 @@ async def _ollama_vision_json(settings: Settings, system: str, user: str, image_
             async with httpx.AsyncClient(timeout=180.0) as hc:
                 response = await hc.post(f"{settings.ollama_url.rstrip('/')}/api/chat", json=payload)
                 response.raise_for_status()
-        return extract_json(response.json()["message"]["content"])
+        message = response.json().get("message") or {}
+        content = message.get("content") or ""
+        if not content.strip():
+            raise HTTPException(502, "Ollama returned an empty image review. Try Review image again or choose a different vision model in Settings.")
+        return extract_json(content)
     except (httpx.HTTPError, KeyError, ValueError) as exc:
         raise HTTPException(502, f"Ollama vision request failed: {exc}") from exc
 
@@ -416,7 +420,7 @@ def extract_json(text: str) -> Dict[str, Any]:
         m = re.search(r"\{[\s\S]*\}", text)
         if m:
             return json.loads(m.group(0))
-        raise HTTPException(status_code=502, detail=f"LLM returned non-JSON: {text[:200]}")
+        raise HTTPException(status_code=502, detail="The vision model did not return a usable review. Try Review image again or choose a different vision model in Settings.")
 
 
 # ============================================================
@@ -2214,7 +2218,11 @@ async def review_render_alignment(rid: str):
         "for a new render, without inventing new content."
     )
     user = f"Saved selection: {json.dumps(fields, ensure_ascii=False)[:6000]}\nOriginal prompt: {str(render.get('prompt_positive') or '')[:3500]}\nEvaluate the first image."
-    result = await _ollama_vision_json(settings, system, user, image, reference)
+    try:
+        result = await _ollama_vision_json(settings, system, user, image, reference)
+    except Exception:
+        await db.renders.update_one({"id": rid}, {"$set": {"alignment_review_status": "unavailable"}})
+        raise
     allowed = {"identity", "wardrobe", "pose", "framing", "anatomy", "other"}
     missing = []
     for item in result.get("missing") or []:
