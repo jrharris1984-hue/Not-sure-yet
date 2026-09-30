@@ -7,8 +7,8 @@ export const MOBILE_STUDIO_STEPS = [
     id: "start",
     label: "Start",
     shortLabel: "Start",
-    hint: "Identity & setup",
-    sections: ["identity"],
+    hint: "People, scenario & age",
+    sections: ["identity", "scenario"],
     simpleSections: ["identity"],
   },
   {
@@ -17,7 +17,7 @@ export const MOBILE_STUDIO_STEPS = [
     shortLabel: "Character",
     hint: "Body, face, hair & wardrobe",
     sections: ["physique", "face", "hair", "skin", "intimate", "feet", "wardrobe"],
-    simpleSections: ["physique", "intimate", "face", "hair", "feet", "wardrobe"],
+    simpleSections: ["physique", "wardrobe", "face", "hair", "feet", "intimate"],
   },
   {
     id: "scene",
@@ -32,8 +32,8 @@ export const MOBILE_STUDIO_STEPS = [
     label: "Fine Tune",
     shortLabel: "Fine tune",
     hint: "Specialized controls",
-    sections: ["kink", "scenario", "watersports"],
-    simpleSections: ["scenario"],
+    sections: ["kink", "watersports"],
+    simpleSections: ["watersports"],
   },
   {
     id: "create",
@@ -56,7 +56,7 @@ export const SIMPLE_FIELD_KEYS = {
   pose: ["action", "angle", "distance", "body_language"],
   scene: ["environment", "indoor_outdoor", "era"],
   lighting: ["source", "style", "mood"],
-  scenario: ["cast_size", "roleplay", "extra_acts", "explicit_level", "kink_level"],
+  scenario: ["cast_size", "cast_type", "roleplay", "extra_acts", "explicit_level", "kink_level"],
 };
 
 export function mobileStudioStepForSection(sectionKey) {
