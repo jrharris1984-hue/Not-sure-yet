@@ -59,17 +59,19 @@ export const SIMPLE_FIELD_KEYS = {
   scenario: ["cast_size", "cast_type", "roleplay", "extra_acts", "explicit_level", "kink_level"],
 };
 
-export function mobileStudioStepForSection(sectionKey) {
-  return MOBILE_STUDIO_STEPS.find((step) => step.sections.includes(sectionKey))?.id || "start";
+export function mobileStudioStepForSection(sectionKey, steps = MOBILE_STUDIO_STEPS) {
+  return steps.find((step) => step.sections.includes(sectionKey))?.id || "start";
 }
 
-export function mobileStudioSectionsForStep(stepId, mode = "simple") {
-  const step = MOBILE_STUDIO_STEPS.find((item) => item.id === stepId);
+export function mobileStudioSectionsForStep(stepId, mode = "simple", steps = MOBILE_STUDIO_STEPS) {
+  const step = steps.find((item) => item.id === stepId);
   if (!step) return [];
   return mode === "advanced" ? step.sections : (step.simpleSections || step.sections);
 }
 
 export default function MobileStudioFlow({
+  steps = MOBILE_STUDIO_STEPS,
+  title = "Studio flow",
   currentStep,
   activeSection,
   locks = {},
@@ -82,12 +84,12 @@ export default function MobileStudioFlow({
 }) {
   const [showSectionFinder, setShowSectionFinder] = useState(false);
   const [sectionQuery, setSectionQuery] = useState("");
-  const activeIndex = Math.max(0, MOBILE_STUDIO_STEPS.findIndex((step) => step.id === currentStep));
-  const active = MOBILE_STUDIO_STEPS[activeIndex] || MOBILE_STUDIO_STEPS[0];
+  const activeIndex = Math.max(0, steps.findIndex((step) => step.id === currentStep));
+  const active = steps[activeIndex] || steps[0];
   const sectionMap = Object.fromEntries(sections.map((section) => [section.key, section]));
-  const visibleSections = mobileStudioSectionsForStep(active.id, mode);
+  const visibleSections = mobileStudioSectionsForStep(active.id, mode, steps);
   const jumpToSection = (key) => {
-    if (mode === "simple" && !mobileStudioSectionsForStep(mobileStudioStepForSection(key), "simple").includes(key)) {
+    if (mode === "simple" && !mobileStudioSectionsForStep(mobileStudioStepForSection(key, steps), "simple", steps).includes(key)) {
       onModeChange("advanced");
     }
     setShowSectionFinder(false);
@@ -100,7 +102,7 @@ export default function MobileStudioFlow({
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <div className="text-[9px] font-mono uppercase tracking-[0.18em] text-zinc-500">
-              Studio flow · {activeIndex + 1} of {MOBILE_STUDIO_STEPS.length}
+              {title} · {activeIndex + 1} of {steps.length}
             </div>
             <div className="mt-0.5 flex items-center gap-1.5">
               <span className="font-display text-base font-bold text-zinc-100">{active.label}</span>
@@ -174,7 +176,7 @@ export default function MobileStudioFlow({
         </div>
       )}
       <div className="grid grid-cols-5 border-b hairline bg-black/10">
-        {MOBILE_STUDIO_STEPS.map((step, index) => {
+        {steps.map((step, index) => {
           const selected = step.id === currentStep;
           return (
             <button
