@@ -73,15 +73,13 @@ export default function AppShell({ children }) {
           </div>
           <div className="flex items-center gap-2">
             <ComfyStatus />
-            {!isBuilder && (
-              <Link
-                to="/studios"
-                data-testid="btn-new-character"
-                className="hidden sm:inline-flex items-center gap-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-black text-sm font-semibold px-3 py-2 transition-colors"
-              >
-                <Plus className="h-4 w-4" /> Studios
-              </Link>
-            )}
+            <Link
+              to="/studios"
+              data-testid="btn-new-character"
+              className="hidden sm:inline-flex items-center gap-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-black text-sm font-semibold px-3 py-2 transition-colors"
+            >
+              <Plus className="h-4 w-4" /> Studios
+            </Link>
           </div>
         </div>
       </header>
