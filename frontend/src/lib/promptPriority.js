@@ -58,6 +58,7 @@ const IMPORTANT_FIELDS = new Set([
   "wardrobe.garment_color",
   "wardrobe.heel_type",
   "wardrobe.hosiery_type",
+  "wardrobe.hosiery_denier",
   "scene.environment",
   "lighting.source",
   "lighting.style",
@@ -184,10 +185,10 @@ function expandedTerms(section, field, value, raunch) {
   return terms;
 }
 
-function fieldPriority(section, field, locked) {
+function fieldPriority(section, field, locked, footFocus = false) {
   const key = `${section}.${field}`;
   if (locked || MUST_FIELDS.has(key)) return "must";
-  if (IMPORTANT_FIELDS.has(key) || IMPORTANT_SECTIONS.has(section)) return "important";
+  if (IMPORTANT_FIELDS.has(key) || IMPORTANT_SECTIONS.has(section) || (footFocus && section === "feet")) return "important";
   return "detail";
 }
 
@@ -216,7 +217,7 @@ function collectSubjectItems(dna = {}, {
       const locked = !!sectionLocks?.[section] || !!fieldLocks?.[section]?.[field];
       if (!isMeaningful(value, locked)) return;
 
-      const priority = fieldPriority(section, field, locked);
+      const priority = fieldPriority(section, field, locked, dna.pose?.focus === "feet");
       const literal = literalRequirement(section, field, value, locked);
       if (!literal) return;
       const subjectPrefix = subjectLabel ? `Subject ${subjectLabel} ` : "";
