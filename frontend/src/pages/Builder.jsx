@@ -118,6 +118,7 @@ export default function Builder() {
     }
   });
   const [desktopQuickMode, setDesktopQuickMode] = useState(true);
+  const [focusedBuilder, setFocusedBuilder] = useState("standard");
   const [quickReview, setQuickReview] = useState(false);
   const activeMobileStudioIndex = Math.max(0, MOBILE_STUDIO_STEPS.findIndex((step) => step.id === mobileStudioStep));
 
@@ -854,11 +855,11 @@ export default function Builder() {
     prevPairingRef.current = key;
     const expected = expectedSubjectCount(primaryDna);
     if (expected > subjects.length && subjects.length < MAX_SUBJECTS) {
-      // Auto-add one subject (never more than one at a time — user can add more via UI).
-      const seeded = seedSubjectFromPairing(primaryDna, subjects.length);
-      const newSub = makeSubject({ label: subjectLabel(subjects.length), dna: seeded });
-      setSubjects((cur) => [...cur, newSub]);
-      toast.success(`Subject ${newSub.label} added — scenario expects ${expected} subjects`);
+      setSubjects((cur) => [...cur, ...Array.from({ length: Math.max(0, expected - cur.length) }, (_, offset) => {
+        const index = cur.length + offset;
+        return makeSubject({ label: subjectLabel(index), dna: seedSubjectFromPairing(primaryDna, index) });
+      })]);
+      toast.success(`Scenario set for ${expected} subjects`);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [primaryDna?.scenario?.cast_size, primaryDna?.scenario?.cast_type]);
@@ -2284,6 +2285,36 @@ export default function Builder() {
             </div>
             <span className="rounded-full border border-amber-400/40 bg-amber-500/10 px-3 py-1 text-xs text-amber-200">{activeWorkflow?.name || "Choose a model"}</span>
           </div>
+          <div className="mt-3 flex flex-wrap gap-2" aria-label="Builder focus">
+            {[["standard", "Character"], ["feet", "Foot styling"], ["watersports", "Wet scene"]].map(([mode, label]) => (
+              <button key={mode} type="button" aria-pressed={focusedBuilder === mode}
+                onClick={() => { setFocusedBuilder(mode); setQuickReview(false); goSection(mode === "standard" ? "identity" : mode); }}
+                className={`rounded-lg border px-3 py-2 text-xs font-semibold ${focusedBuilder === mode ? "border-cyan-400 bg-cyan-400/10 text-cyan-100" : "hairline text-zinc-400"}`}>
+                {label}
+              </button>
+            ))}
+          </div>
+          {focusedBuilder !== "standard" && <div className="mt-3 rounded-xl border hairline bg-black/25 p-3">
+            <div className="text-xs font-semibold text-zinc-200">{focusedBuilder === "feet" ? "Foot styling presets" : "Wet scene presets"}</div>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {(focusedBuilder === "feet" ? [
+                ["Pedicure portrait", { feet: { pedicure: "French manicure", framing: "feet focus" }, pose: { distance: "full body" } }],
+                ["Heels & stockings", { wardrobe: { heel_type: "stiletto", hosiery_type: "stockings", heel_color: "black" }, feet: { framing: "feet focus" } }],
+                ["Barefoot detail", { wardrobe: { footwear: "barefoot" }, feet: { framing: "feet focus" }, pose: { distance: "detail shot" } }],
+              ] : [
+                ["Rain portrait", { scene: { environment: "urban street", indoor_outdoor: "outdoor" }, wardrobe: { material: "wet look" } }],
+                ["Poolside", { scene: { environment: "beach", indoor_outdoor: "outdoor" }, wardrobe: { material: "wet look" } }],
+                ["Shower scene", { watersports: { container: "shower", wetness: ["wet hair"] }, scene: { indoor_outdoor: "indoor" } }],
+              ]).map(([label, changes]) => <button key={label} type="button" onClick={() => {
+                setActiveDna(Object.fromEntries(Object.entries(activeDna).map(([key, value]) => [key, changes[key] ? { ...value, ...changes[key] } : value])));
+                goSection(focusedBuilder);
+              }} className="rounded-lg border hairline px-3 py-2 text-xs text-zinc-300 hover:border-cyan-400/60">{label}</button>)}
+            </div>
+            <div className="mt-2 flex gap-2 text-xs">
+              {(focusedBuilder === "feet" ? [["feet", "Feet"], ["wardrobe", "Shoes & stockings"], ["pose", "Pose"]] : [["watersports", "Wetness"], ["wardrobe", "Wardrobe"], ["scene", "Setting"]]).map(([key, label]) =>
+                <button key={key} type="button" onClick={() => goSection(key)} className="text-cyan-300 underline underline-offset-4">{label}</button>)}
+            </div>
+          </div>}
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <label htmlFor="quick-section-jump" className="text-xs font-semibold text-cyan-200">Jump to section</label>
             <select id="quick-section-jump" data-testid="quick-section-jump"
@@ -2305,8 +2336,8 @@ export default function Builder() {
             </select>
           </div>
           <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-7 gap-2">
-            {[["identity", "1 · Person"], ["physique", "2 · Body"], ["intimate", "3 · Intimate"], ["wardrobe", "4 · Outfit"], ["pose", "5 · Pose"], ["scene", "6 · Setting"]].map(([key, label]) => (
-              <button key={key} type="button" onClick={() => { setQuickReview(false); goSection(key); }}
+            {[["identity", "1 · People, scenario & age"], ["physique", "2 · Body"], ["wardrobe", "3 · Wardrobe"], ["pose", "4 · Pose"], ["scene", "5 · Setting"], ["feet", "6 · Feet" ]].map(([key, label]) => (
+              <button key={label} type="button" onClick={() => { setQuickReview(false); goSection(key); }}
                 className={`rounded-xl border px-3 py-3 text-left text-xs font-semibold transition-colors ${activeSection === key && !quickReview ? "border-amber-400/70 bg-amber-500/10 text-amber-100" : "hairline bg-elevated text-zinc-300 hover:border-cyan-400/50"}`}>
                 {label}
               </button>
@@ -2369,7 +2400,7 @@ export default function Builder() {
             <>
             <div className="pane p-3 sm:p-4 space-y-3" data-testid="person-scenario-setup">
               <div className="section-label">People &amp; scenario</div>
-              <p className="text-xs text-zinc-400">Choose a pairing here, then customize each person below. Selecting a pairing adds Subject B automatically.</p>
+              <p className="text-xs text-zinc-400">Choose the cast and scenario, then set each person's age and appearance. The editor adds the required subjects automatically.</p>
               <div className="grid gap-3 sm:grid-cols-2">
                 {SECTIONS.find((section) => section.key === "scenario").fields.filter((field) => ["cast_size", "cast_type"].includes(field.key)).map((field) => (
                   <label key={field.key} className="space-y-1 text-xs text-zinc-300">
@@ -2380,11 +2411,11 @@ export default function Builder() {
                       onChange={(event) => setSubjects((cur) => cur.map((subject, index) => index === 0 ? {
                         ...subject,
                         dna: { ...subject.dna,
-                          ...(field.key === "cast_type" && ["mother and daughter", "stepmom and stepdaughter"].includes(event.target.value) ? { identity: { ...subject.dna.identity, age: Math.max(44, Number(subject.dna.identity?.age) || 44), gender: "female" } } : {}),
+                          ...(field.key === "cast_type" && ["mother and daughter", "stepmom and stepdaughter", "grandmother, mother and daughter"].includes(event.target.value) ? { identity: { ...subject.dna.identity, age: Math.max(event.target.value === "grandmother, mother and daughter" ? 68 : 44, Number(subject.dna.identity?.age) || 44), gender: "female" } } : {}),
                           scenario: {
                           ...subject.dna.scenario,
                           [field.key]: event.target.value,
-                          ...(field.key === "cast_type" && event.target.value !== "none" && (!subject.dna.scenario?.cast_size || subject.dna.scenario.cast_size === "solo") ? { cast_size: "duo" } : {}),
+                          ...(field.key === "cast_type" && event.target.value !== "none" ? { cast_size: ["triplets", "grandmother, mother and daughter"].includes(event.target.value) ? "trio" : "duo" } : {}),
                         } },
                       } : subject))}
                       className="w-full rounded-lg border hairline bg-elevated px-3 py-2 text-sm text-zinc-100"
@@ -2421,6 +2452,17 @@ export default function Builder() {
             /></div>
             </>
           )}
+          {activeSection === "pose" && expectedCount > 1 && <div className="pane p-3" data-testid="cast-aware-poses">
+            <div className="section-label">Poses for {expectedCount} people</div>
+            <p className="mt-1 text-xs text-zinc-400">Choose a shared composition; each person keeps separate character settings.</p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {(expectedCount === 2
+                ? ["side by side", "back to back", "facing each other", "walking together", "seated together", "embracing", "dancing together"]
+                : ["group portrait", "staggered lineup", "semicircle", "walking together", "seated group", "standing at different depths", "hands joined"]
+              ).map((pose) => <button key={pose} type="button" onClick={() => setSection("pose", { ...activeDna.pose, action: pose, distance: "wide shot" })}
+                className={`rounded-lg border px-3 py-2 text-xs capitalize ${activeDna.pose?.action === pose ? "border-amber-400 text-amber-200" : "hairline text-zinc-300"}`}>{pose}</button>)}
+            </div>
+          </div>}
           <DnaSection
             key={`${activeSubjectId}-${activeSection}`}
             section={SECTIONS[activeIdx]}

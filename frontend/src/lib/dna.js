@@ -364,9 +364,9 @@ export const SECTIONS = [
     fields: [
       { key: "cast_size", type: "chips", label: "Cast size", options: ["solo", "duo", "trio", "threesome", "foursome", "group", "gangbang", "orgy"] },
       { key: "cast_type", type: "chips", label: "Cast pairing", options: [
-        "none", "twins", "identical twins", "sisters", "best friends", "roommates",
+        "none", "twins", "identical twins", "triplets", "sisters", "best friends", "roommates",
         "mother and daughter", "stepmom and stepdaughter", "aunt and niece",
-        "grandma and granddaughter", "milf granny", "mature and young",
+        "grandma and granddaughter", "grandmother, mother and daughter", "milf granny", "mature and young",
         "teacher and student", "boss and secretary", "nurse and patient", "coach and athlete",
         "dominant and submissive", "wife and mistress",
       ]},
@@ -797,6 +797,7 @@ export function expectedSubjectCount(dna = {}) {
   const cs = sc.cast_size || "solo";
   const ct = sc.cast_type || "none";
   const isPairing = ct && ct !== "none";
+  if (ct === "triplets" || ct === "grandmother, mother and daughter") return 3;
   if (cs === "orgy" || cs === "gangbang") return Math.min(MAX_SUBJECTS, 4);
   if (cs === "group") return Math.min(MAX_SUBJECTS, 4);
   if (cs === "foursome") return 4;
@@ -822,9 +823,19 @@ export function seedSubjectFromPairing(primaryDna = {}, subjectIndex = 1) {
   const setAge = (age) => { base.identity.age = age; };
   const setArchetype = (a) => { base.identity.archetype = a; };
 
-  if (pairing === "twins" || pairing === "identical twins") {
+  if (pairing === "twins" || pairing === "identical twins" || pairing === "triplets") {
     // Clone A verbatim (twins should look alike)
     return JSON.parse(JSON.stringify(primaryDna || DEFAULT_DNA));
+  }
+  if (pairing === "grandmother, mother and daughter") {
+    const relative = JSON.parse(JSON.stringify(primaryDna || DEFAULT_DNA));
+    relative.identity = {
+      ...relative.identity,
+      age: subjectIndex === 1 ? Math.max(44, Math.min(56, (primaryAge || 74) - 24)) : Math.max(21, Math.min(32, (primaryAge || 74) - 48)),
+      name: "",
+    };
+    relative.face = { ...relative.face, expression: DEFAULT_DNA.face.expression };
+    return relative;
   }
   if (pairing === "sisters") {
     const clone = JSON.parse(JSON.stringify(primaryDna || DEFAULT_DNA));
