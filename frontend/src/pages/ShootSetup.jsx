@@ -9,6 +9,7 @@ import { POSE_PACKS, samplePoses, cycleOutfits } from "@/lib/posePacks";
 import LoraPanel from "@/components/LoraPanel";
 import { likenessOverrides } from "@/components/LikenessLoraPanel";
 import { compileModelPrompts } from "@/lib/modelPromptCompilers";
+import { shootFrameDna } from "@/lib/shootFrames";
 
 // Flat pool of all pose actions from the DNA schema
 const POSE_SECTION = SECTIONS.find((s) => s.key === "pose");
@@ -33,17 +34,13 @@ const CONTINUITY_PRESETS = [
 ];
 
 const PAIRING_SHOTS = {
-  "mother and daughter": [
-    "Adult mother A is visibly older than adult daughter B; shared facial traits and heritage, separate recognizable faces, standing side by side in a family portrait",
-    "Adult mother A and adult daughter B walking together, matching facial structure, different adult ages, candid editorial portrait",
-    "Adult mother A seated beside adult daughter B, shared eyes and smile, warm portrait composition",
-  ],
-  "stepmom and stepdaughter": ["Adult stepmother A older than adult stepdaughter B, standing together for a composed portrait", "Two adult women with distinct identities walking side by side in an editorial scene"],
-  "twins": ["Two adult twin sisters with nearly identical faces and shared features, standing side by side", "Adult twins with matching faces and contrasting poses in one balanced frame"],
-  "identical twins": ["Two adult identical twins with closely matching facial features, posing side by side", "Adult identical twins with mirrored poses and matching appearance"],
-  "sisters": ["Two adult sisters with clear family resemblance but distinct faces, portrait together", "Adult sisters sharing facial traits in different poses, standing together"],
-  "aunt and niece": ["Adult aunt A older than adult niece B, family resemblance, seated portrait", "Adult aunt and niece walking together, distinct adult ages and similar features"],
-  "grandma and granddaughter": ["Adult grandmother A visibly older than adult granddaughter B, shared facial traits in a family portrait", "Adult grandmother and granddaughter standing together, distinct generations and coherent family resemblance"],
+  "mother and daughter": ["Adult mother A is visibly older than adult daughter B; shared facial traits and heritage, with separate recognizable faces"],
+  "stepmom and stepdaughter": ["Adult stepmother A is older than adult stepdaughter B; distinct adult identities"],
+  "twins": ["Two adult twin sisters with closely matching faces and shared features"],
+  "identical twins": ["Two adult identical twins with matching facial features"],
+  "sisters": ["Two adult sisters with clear family resemblance and distinct faces"],
+  "aunt and niece": ["Adult aunt A is older than adult niece B; shared facial traits and distinct adult ages"],
+  "grandma and granddaughter": ["Adult grandmother A is visibly older than adult granddaughter B; coherent family resemblance"],
 };
 
 export default function ShootSetup() {
@@ -93,15 +90,12 @@ export default function ShootSetup() {
       const scene_direction = shotScript.length ? shotScript[i % shotScript.length] : "";
       const outfit_overrides = outs[i] || {};
       const face_overrides = expressions.length ? { expression: expressions[i % expressions.length] } : {};
-      const baseDna = character?.dna || character?.subjects?.[0]?.dna || {};
-      const frameDna = {
-        ...baseDna,
-        pose: { ...baseDna.pose, ...(p ? { action: p } : {}) },
-        wardrobe: { ...baseDna.wardrobe, ...outfit_overrides },
-        face: { ...baseDna.face, ...face_overrides },
-      };
+      const baseDna = character?.subjects?.[0]?.dna || character?.dna || {};
+      const frameDna = shootFrameDna(baseDna, { poseAction: p, outfitPreset: outfit_overrides.outfit_preset, faceOverrides: face_overrides });
       const subjects = (character?.subjects || []).map((subject, index) =>
-        index === 0 ? { ...subject, dna: frameDna } : subject);
+        ({ ...subject, dna: index === 0 ? frameDna : shootFrameDna(subject.dna, {
+          poseAction: p, outfitPreset: outfit_overrides.outfit_preset, faceOverrides: face_overrides,
+        }) }));
       const compiled = shootWorkflow ? compileModelPrompts({
         promptStyle: shootWorkflow.prompt_style,
         workflowKind: shootWorkflow.kind,
@@ -119,7 +113,12 @@ export default function ShootSetup() {
         outfit_overrides,
         face_overrides,
         // Recompile the frame so an old pose/outfit from the saved prompt cannot compete.
-        prompt_positive: compiled ? [scene_direction, compiled.positive].filter(Boolean).join(", ") : "",
+        prompt_positive: compiled ? [
+          p && `Frame pose: ${p}`,
+          outfit_overrides.outfit_preset && `Frame outfit for every subject: ${outfit_overrides.outfit_preset}`,
+          scene_direction,
+          compiled.positive,
+        ].filter(Boolean).join(". ") : "",
         prompt_negative: compiled?.negative || "",
       };
     });
