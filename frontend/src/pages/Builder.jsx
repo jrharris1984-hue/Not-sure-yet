@@ -122,6 +122,7 @@ export default function Builder({ studio = "standard" }) {
     }
   });
   const [desktopQuickMode, setDesktopQuickMode] = useState(true);
+  const [specialtyTab, setSpecialtyTab] = useState(0);
   const [quickReview, setQuickReview] = useState(false);
   const activeMobileStudioIndex = Math.max(0, studioSteps.findIndex((step) => step.id === mobileStudioStep));
 
@@ -160,7 +161,10 @@ export default function Builder({ studio = "standard" }) {
 
   const [name, setName] = useState("Untitled");
   // Multi-subject store: [{id, label, dna, field_locks}]. subjects[0] is Subject A (primary).
-  const [subjects, setSubjects] = useState(() => [makeSubject({ label: "A" })]);
+  const [subjects, setSubjects] = useState(() => [makeSubject({
+    label: "A",
+    dna: studio === "feet" ? { ...DEFAULT_DNA, pose: { ...DEFAULT_DNA.pose, focus: "feet", distance: "full body" } } : DEFAULT_DNA,
+  })]);
   const [activeSubjectId, setActiveSubjectId] = useState(() => "");
   const [locks, setLocks] = useState({}); // section-level locks (shared across subjects — shot-level)
   const [collapsed, setCollapsed] = useState(() => ({
@@ -2460,9 +2464,18 @@ export default function Builder({ studio = "standard" }) {
                 className={`rounded-lg border px-3 py-2 text-xs capitalize ${activeDna.pose?.action === pose ? "border-amber-400 text-amber-200" : "hairline text-zinc-300"}`}>{pose}</button>)}
             </div>
           </div>}
+          {studioProfile && activeSection === studio && <div className="flex gap-2 overflow-x-auto pb-1" role="tablist" aria-label={`${studioProfile.title} controls`} data-testid="specialty-field-groups">
+            {studioProfile.fieldGroups.map((group, index) => <button key={group.label} type="button" role="tab"
+              aria-selected={specialtyTab === index} onClick={() => setSpecialtyTab(index)}
+              className={`shrink-0 rounded-lg border px-3 py-2 text-xs font-semibold ${specialtyTab === index ? "border-amber-400 bg-amber-500/10 text-amber-100" : "hairline text-zinc-400"}`}>
+              {group.label}
+            </button>)}
+          </div>}
           <DnaSection
             key={`${activeSubjectId}-${activeSection}`}
-            section={SECTIONS[activeIdx]}
+            section={studioProfile && activeSection === studio
+              ? { ...SECTIONS[activeIdx], fields: SECTIONS[activeIdx].fields.filter((field) => studioProfile.fieldGroups[specialtyTab]?.keys.includes(field.key)) }
+              : SECTIONS[activeIdx]}
             value={activeDna[activeSection] || {}}
             onChange={(v) => setSection(activeSection, v)}
             locked={!!locks[activeSection]}
