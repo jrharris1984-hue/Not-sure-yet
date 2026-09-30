@@ -2786,51 +2786,7 @@ async def _sync_queue_job(job: Dict[str, Any]) -> Dict[str, Any]:
             await db.renders.update_one({"id": render_id}, {"$set": guard_patch})
             render.update(guard_patch)
 
-            if not report["passed"]:
-                retries = int(job.get("anatomy_retries", 0) or 0)
-                if retries < 2:
-                    payload["seed"] = random.randint(1, 2**63 - 1)
-                    payload["prompt_positive"] = _simplify_anatomy_retry_prompt(
-                        payload.get("prompt_positive", ""),
-                        preserve_extreme=(mode == "extreme"),
-                    )
-                    payload["prompt_negative"] = (
-                        str(payload.get("prompt_negative", "")) +
-                        ", extra person, partial person, duplicated body, duplicated pelvis, duplicated feet, "
-                        "extra limbs, disconnected limbs, impossible perspective"
-                    ).strip(", ")
-                    await db.renders.update_one(
-                        {"id": render_id},
-                        {"$set": {
-                            "status": "rejected",
-                            "hidden_from_gallery": False,
-                            "error": "Rejected by Normal Human Guard; a simplified retry was queued.",
-                            "updated_at": now_iso(),
-                        }},
-                    )
-                    retry_patch = {
-                        "status": "queued",
-                        "render_id": None,
-                        "payload": payload,
-                        "anatomy_retries": retries + 1,
-                        "error": None,
-                        "started_at": None,
-                        "finished_at": None,
-                        "updated_at": now_iso(),
-                    }
-                    await db.render_queue.update_one({"id": job["id"]}, {"$set": retry_patch})
-                    job.update(retry_patch)
-                    return job
-
-                status = "failed"
-                error = "Normal Human Guard rejected the render after two retries: " + (
-                    report["summary"] or "; ".join(report["issues"]) or "implausible anatomy"
-                )
-                await db.renders.update_one(
-                    {"id": render_id},
-                    {"$set": {"status": status, "hidden_from_gallery": False, "error": error, "updated_at": now_iso()}},
-                )
-                render["error"] = error
+            # QC is advisory: retain the completed image, original prompt, and seed.
 
         if status == "done" and is_still_image and not render.get("hidden_from_gallery"):
             settings = await get_settings()
