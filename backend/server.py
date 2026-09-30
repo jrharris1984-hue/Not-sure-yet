@@ -3173,6 +3173,13 @@ def _apply_frame_to_dna(dna: Dict[str, Any], frame: Dict[str, Any], lock_scenari
     outfit = frame.get("outfit_overrides") or {}
     if outfit:
         out.setdefault("wardrobe", {})
+        if outfit.get("outfit_preset"):
+            out["wardrobe"].update({
+                "outfit_set": "", "outfit_set_color": "", "dress_style": "", "skirt_style": "",
+                "top": "none", "bottom": "none", "underwear": "none", "nudity_level": 0,
+                "nudity_outfit": "", "state": "", "material": "", "garment_color": "",
+                "garment_pattern": "", "palette": "", "fit": "",
+            })
         for k, v in outfit.items():
             out["wardrobe"][k] = v
     face = frame.get("face_overrides") or {}
@@ -3202,7 +3209,10 @@ async def _run_shoot_background(shoot_id: str):
     any_failed = False
     for i, frame in enumerate(shoot.frames):
         frame_dict = frame.model_dump()
-        per_dna = _apply_frame_to_dna(char.get("dna") or {}, frame_dict, shoot.lock_scenario)
+        original_subjects = char.get("subjects") or []
+        per_subjects = [{**subject, "dna": _apply_frame_to_dna(subject.get("dna") or {}, frame_dict, shoot.lock_scenario)}
+                        for subject in original_subjects]
+        per_dna = per_subjects[0]["dna"] if per_subjects else _apply_frame_to_dna(char.get("dna") or {}, frame_dict, shoot.lock_scenario)
         # Build prompts on server side? No — the client sent the base prompt in char.prompt_positive.
         # We rebuild by using char's stored prompt_positive as a fallback baseline, but we honor
         # any per-frame prompt overrides sent by the client through outfit changes only.
@@ -3231,6 +3241,7 @@ async def _run_shoot_background(shoot_id: str):
         body = DispatchBody(
             character_id=shoot.character_id,
             dna=per_dna,
+            subjects=per_subjects,
             prompt_positive=pos,
             prompt_negative=neg,
             workflow_id=shoot.workflow_id,
@@ -3465,7 +3476,10 @@ async def retry_shoot_frame(sid: str, frame_index: int, body: ShootRetryBody, ba
         # Delete old render doc if any
         if frame.render_id:
             await db.renders.delete_one({"id": frame.render_id})
-        per_dna = _apply_frame_to_dna(char.get("dna") or {}, frame.model_dump(), shoot.lock_scenario)
+        original_subjects = char.get("subjects") or []
+        per_subjects = [{**subject, "dna": _apply_frame_to_dna(subject.get("dna") or {}, frame.model_dump(), shoot.lock_scenario)}
+                        for subject in original_subjects]
+        per_dna = per_subjects[0]["dna"] if per_subjects else _apply_frame_to_dna(char.get("dna") or {}, frame.model_dump(), shoot.lock_scenario)
         pos = frame.prompt_positive or char.get("prompt_positive", "")
         neg = frame.prompt_negative if frame.prompt_positive else char.get("prompt_negative", "")
         aug_parts = []
@@ -3486,6 +3500,7 @@ async def retry_shoot_frame(sid: str, frame_index: int, body: ShootRetryBody, ba
         body_disp = DispatchBody(
             character_id=shoot.character_id,
             dna=per_dna,
+            subjects=per_subjects,
             prompt_positive=pos,
             prompt_negative=neg,
             workflow_id=shoot.workflow_id,
