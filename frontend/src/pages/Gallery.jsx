@@ -449,11 +449,17 @@ export default function Gallery() {
       </div>
 
       {withOutput.length > 0 && (
-        <div className="flex gap-2 overflow-x-auto pb-1" data-testid="gallery-album-filter">
+        <div className="gallery-shelf" data-testid="gallery-album-filter">
           {[{ key: "all", label: `All ${withOutput.length}` }, { key: "unfiled", label: "Unfiled" }, ...albums.map((album) => ({ key: album, label: album }))].map((item) => (
             <button key={item.key} type="button" onClick={() => { setAlbumFilter(item.key); setPage(1); }}
-              className={`shrink-0 rounded-full border px-3 py-1.5 text-xs ${albumFilter === item.key ? "border-amber-400 bg-amber-400/10 text-amber-200" : "hairline text-zinc-400"}`}>
-              {item.label}
+              aria-pressed={albumFilter === item.key}
+              className={`gallery-album ${albumFilter === item.key ? "gallery-album-active" : ""}`}>
+              {(() => {
+                const cover = withOutput.find((render) => item.key === "all" || (item.key === "unfiled" ? !render.album : render.album === item.key));
+                const coverUrl = cover && primaryOutput(cover);
+                return coverUrl && !isVideoUrl(coverUrl) ? <img src={coverUrl} alt="" loading="lazy" /> : null;
+              })()}
+              <span className="gallery-album-title">{item.label}</span>
             </button>
           ))}
         </div>
@@ -516,7 +522,7 @@ export default function Gallery() {
                 return (
                   <div key={r.id}
                     data-testid={`gallery-thumb-${(currentPage - 1) * pageSize + i}`}
-                    className={`relative aspect-square rounded-lg overflow-hidden border bg-elevated group ${checked ? "border-amber-400 ring-2 ring-amber-400/50" : "hairline"}`}>
+                    className={`gallery-poster relative aspect-square rounded-lg overflow-hidden border bg-elevated group ${checked ? "border-amber-400 ring-2 ring-amber-400/50" : "hairline"}`}>
                     <button type="button"
                       onClick={() => {
                         if (selectionMode) toggleSelected(r.id);
@@ -525,18 +531,18 @@ export default function Gallery() {
                           setShowDetails(false);
                         }
                       }}
-                      className="absolute inset-0 w-full h-full focus:outline-none focus:ring-2 focus:ring-amber-400/60">
+                      className="gallery-poster-open absolute inset-0 w-full h-full focus:outline-none focus:ring-2 focus:ring-amber-400/60" aria-label={`Open ${r.workflow_name || "render"} image`}>
                       {isVideoUrl(output) ? (
                         <video src={output} muted playsInline preload="none"
-                          className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" />
+                          className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105 group-focus-within:scale-105" />
                       ) : (
                         <img src={output}
                           alt={r.prompt_positive?.slice(0, 40) || "render"}
                           loading="lazy"
-                          className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" />
+                          className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105 group-focus-within:scale-105" />
                       )}
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                      <div className="absolute inset-x-0 bottom-0 p-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-transparent to-transparent opacity-40 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity" />
+                      <div className="gallery-poster-caption absolute inset-x-0 bottom-0 p-2 transition-opacity">
                         <div className="text-[10px] font-mono uppercase tracking-widest text-zinc-300 truncate">
                           {r.workflow_name || r.workflow_type}
                         </div>
