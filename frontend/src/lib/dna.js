@@ -189,6 +189,23 @@ export const SECTIONS = [
         { name: "Mess", options: ["cum on feet", "cum on soles", "cum between toes"] },
       ]},
       { key: "framing", type: "chips", label: "Framing", options: ["full body", "waist-down", "knees-down", "feet close-up", "sole close-up", "POV under foot", "low angle sole", "ankle and arch close-up", "pedicure close-up", "both soles in foreground"] },
+      { key: "foot_pose", type: "chips", label: "Foot pose", groups: [
+        { name: "Relaxed", options: ["feet side by side", "ankles crossed", "feet resting on a cushion", "one foot over the other", "toes resting on floor"] },
+        { name: "Active", options: ["heels raised", "one foot lifted", "toes pointed", "toes flexed", "feet dangling", "walking barefoot", "standing on tiptoe"] },
+        { name: "Detail", options: ["soles facing lens", "one sole toward lens", "arches visible in profile", "heels together", "toes toward lens"] },
+      ] },
+      { key: "toe_length", type: "chips", label: "Toe shape", options: ["even toe line", "long second toe", "tapered toe line", "short rounded toes", "long slender toes"] },
+      { key: "sole_texture", type: "chips", label: "Sole texture", options: ["smooth soles", "natural sole creases", "pronounced arch creases", "slightly calloused heels", "soft heel pads", "light dust on soles", "water droplets on soles"] },
+      { key: "pedicure_art", type: "chips", label: "Pedicure finish / art", groups: [
+        { name: "Finish", options: ["glossy polish", "matte polish", "pearl finish", "chrome finish", "glitter finish", "sheer jelly polish"] },
+        { name: "Design", options: ["French tips", "micro-French tips", "ombré nails", "accent toenail", "floral nail art", "geometric nail art", "rhinestone accent"] },
+      ] },
+      { key: "toenail_shape", type: "chips", label: "Toenail shape", options: ["short rounded", "short square", "squoval", "neatly oval", "long square"] },
+      { key: "foot_accessories", type: "chips_multi", label: "Foot accessories (pick many)", options: ["anklet", "double anklet", "toe ring", "multiple toe rings", "foot chain", "beaded anklet", "barefoot sandal jewelry", "henna on feet"] },
+      { key: "ground_surface", type: "chips", label: "Surface under feet", groups: [
+        { name: "Indoor", options: ["polished wood floor", "tile floor", "soft carpet", "silk sheets", "velvet cushion", "marble floor"] },
+        { name: "Outdoor", options: ["warm sand", "wet sand", "grass", "smooth stone", "shallow water", "wooden deck"] },
+      ] },
     ],
   },
   {
@@ -236,16 +253,16 @@ export const SECTIONS = [
         "barefoot", "stiletto heels", "stripper heels", "thigh-high boots", "over-the-knee boots", "ankle boots", "combat boots", "sneakers", "platform heels", "sandals", "kitten heels", "cowgirl boots"
       ]},
       { key: "hosiery_type", type: "chips", label: "Pantyhose & stockings", options: [
-        "sheer pantyhose", "opaque tights", "fishnet tights", "patterned tights", "seamed stockings", "lace-top thigh-high stockings", "stay-up stockings", "garter stockings"
+        "sheer pantyhose", "opaque tights", "fishnet tights", "patterned tights", "seamed stockings", "lace-top thigh-high stockings", "stay-up stockings", "garter stockings", "ultra-sheer tights", "semi-opaque tights", "toeless tights", "footless tights", "hold-up stockings", "back-seam stockings", "knee-high nylons", "ankle socks", "over-the-knee socks"
       ]},
       { key: "hosiery_color", type: "chips", label: "Pantyhose / stocking color", groups: [
         { name: "Neutral", options: ["nude", "tan", "espresso", "black", "white", "gray", "brown"] },
         { name: "Color", options: ["red", "burgundy", "navy", "royal blue", "emerald", "pink", "purple", "silver", "gold"] },
       ] },
       { key: "heel_type", type: "chips", label: "Heel type", groups: [
-        { name: "Pumps", options: ["pointed-toe stilettos", "round-toe pumps", "platform pumps", "slingback heels", "kitten heels", "block heels"] },
-        { name: "Sandals", options: ["strappy sandals", "ankle-strap heels", "open-toe heels", "peep-toe heels", "wedge sandals", "mule heels"] },
-        { name: "Statement", options: ["sculptural heels", "clear platform heels", "lace-up heels", "thigh-high heeled boots", "cone heels"] },
+        { name: "Pumps", options: ["pointed-toe stilettos", "round-toe pumps", "platform pumps", "slingback heels", "kitten heels", "block heels", "d'Orsay pumps", "Mary Jane heels", "T-strap heels", "square-toe pumps"] },
+        { name: "Sandals", options: ["strappy sandals", "ankle-strap heels", "open-toe heels", "peep-toe heels", "wedge sandals", "mule heels", "gladiator heels", "slide heels", "wraparound lace-up sandals"] },
+        { name: "Statement", options: ["sculptural heels", "clear platform heels", "lace-up heels", "thigh-high heeled boots", "cone heels", "cork wedges", "chunky platform boots", "metallic heeled boots"] },
       ] },
       { key: "heel_color", type: "chips", label: "Heel color", groups: [
         { name: "Neutral", options: ["black", "white", "ivory", "nude", "tan", "brown", "clear"] },
@@ -265,6 +282,7 @@ export const SECTIONS = [
         { name: "Pattern", options: ["diamond fishnet", "fine fishnet", "floral lace", "polka dot", "geometric", "chevron", "striped", "argyle"] },
         { name: "Finish", options: ["sheer 10 denier", "semi-sheer 30 denier", "opaque 80 denier", "shimmer", "ripped"] },
       ] },
+      { key: "hosiery_denier", type: "chips", label: "Hosiery sheerness", options: ["ultra-sheer 5 denier", "sheer 10 denier", "sheer 15 denier", "light 20 denier", "semi-sheer 30 denier", "semi-opaque 40 denier", "opaque 60 denier", "opaque 80 denier", "heavy 100 denier"] },
       { key: "garment_color", type: "chips", label: "Outfit color", groups: [
         { name: "Neutral", options: ["black", "white", "ivory", "cream", "beige", "taupe", "gray", "charcoal", "chocolate brown"] },
         { name: "Warm", options: ["red", "burgundy", "coral", "orange", "mustard", "gold", "blush pink", "hot pink"] },
@@ -419,6 +437,17 @@ export const SECTIONS = [
       { key: "aftermath", type: "chips_multi", label: "Aftermath (pick many)", options: [
         "glistening skin", "wet hair", "wet clothes", "matted fur", "standing in puddle", "smeared mascara", "post-piss glow",
       ]},
+      { key: "phase", type: "chips", label: "Moment in scene", options: ["before", "starting", "in progress", "ending", "afterward"] },
+      { key: "stance", type: "chips", label: "Body position", groups: [
+        { name: "Standing", options: ["standing upright", "leaning against wall", "slight forward lean", "one leg raised", "walking away"] },
+        { name: "Other", options: ["seated", "crouching", "kneeling", "reclining"] },
+      ] },
+      { key: "surface", type: "chips", label: "Surface / surroundings", options: ["white tile", "dark tile", "concrete", "wood floor", "grass", "sand", "shower drain", "bathtub edge", "bed sheets"] },
+      { key: "garment_detail", type: "chips", label: "Clothing detail", options: ["dry clothing", "damp fabric", "wet hem", "wet jeans", "wet dress", "wet stockings", "water droplets on fabric"] },
+      { key: "liquid_visibility", type: "chips", label: "Visible effect", options: ["subtle dampness", "visible droplets", "small puddle", "spreading puddle", "reflective wet floor", "running droplets", "splash marks"] },
+      { key: "camera_view", type: "chips", label: "Scene camera view", options: ["full figure", "three-quarter figure", "waist-down", "floor-level detail", "side profile", "rear three-quarter", "wide environmental view"] },
+      { key: "scene_props", type: "chips_multi", label: "Scene props (pick many)", options: ["towel", "bath mat", "mirror", "sink", "shower curtain", "bathtub", "floor drain", "laundry basket", "wet footprints"] },
+      { key: "scene_notes", type: "text", label: "Additional scene details" },
     ],
   },
   {
@@ -1213,7 +1242,7 @@ function _veniceSubjectBlock(dna = {}, opts = {}) {
   if (!wd.dress_style && !wd.skirt_style && wd.bottom && wd.bottom !== "none") outfitPieces.push(exp("wardrobe", "bottom"));
   if (wd.underwear && wd.underwear !== "none") outfitPieces.push(exp("wardrobe", "underwear"));
   if (!wd.heel_type && wd.footwear && wd.footwear !== "barefoot") outfitPieces.push(exp("wardrobe", "footwear"));
-  if (wd.hosiery_type) outfitPieces.push(`${wd.hosiery_color ? `${wd.hosiery_color} ` : ""}${wd.hosiery_pattern && wd.hosiery_pattern !== "plain" ? `${wd.hosiery_pattern} ` : ""}${wd.hosiery_type}`);
+  if (wd.hosiery_type) outfitPieces.push(`${wd.hosiery_color ? `${wd.hosiery_color} ` : ""}${wd.hosiery_denier ? `${wd.hosiery_denier} ` : ""}${wd.hosiery_pattern && wd.hosiery_pattern !== "plain" ? `${wd.hosiery_pattern} ` : ""}${wd.hosiery_type}`);
   if (wd.heel_type) outfitPieces.push(`${wd.heel_color ? `${wd.heel_color} ` : ""}${wd.heel_finish ? `${wd.heel_finish} ` : ""}${wd.heel_type}${wd.heel_height ? `, ${wd.heel_height} heel` : ""}`);
   if (wd.glasses_style) outfitPieces.push(`${wd.glasses_color ? `${wd.glasses_color} ` : ""}${wd.glasses_style}`);
   if (wd.accessories) {
@@ -1285,7 +1314,9 @@ function _veniceSubjectBlock(dna = {}, opts = {}) {
   const ft = dna.feet || {};
   const feetActive = !!(ft.sole_presentation || (Array.isArray(ft.toes) && ft.toes.length) || ft.arch || ft.pedicure ||
     (Array.isArray(ft.foot_state) && ft.foot_state.length) || ft.hosiery ||
-    (Array.isArray(ft.foot_act) && ft.foot_act.length) || ft.framing);
+    (Array.isArray(ft.foot_act) && ft.foot_act.length) || ft.framing || ft.foot_pose ||
+    ft.toe_length || ft.sole_texture || ft.pedicure_art || ft.toenail_shape ||
+    (Array.isArray(ft.foot_accessories) && ft.foot_accessories.length) || ft.ground_surface);
   const feetStr = join([
     exp("feet", "sole_presentation"),
     expArr("feet", "toes"),
@@ -1296,6 +1327,13 @@ function _veniceSubjectBlock(dna = {}, opts = {}) {
     ft.hosiery && ft.hosiery !== "bare" && exp("feet", "hosiery"),
     expArr("feet", "foot_act"),
     ft.framing && exp("feet", "framing"),
+    ft.foot_pose && exp("feet", "foot_pose"),
+    ft.toe_length && exp("feet", "toe_length"),
+    ft.sole_texture && exp("feet", "sole_texture"),
+    ft.pedicure_art && exp("feet", "pedicure_art"),
+    ft.toenail_shape && exp("feet", "toenail_shape"),
+    expArr("feet", "foot_accessories"),
+    ft.ground_surface && exp("feet", "ground_surface"),
     feetActive && "clearly recognisable human feet with heel and arch and sole, exactly five distinct toes per foot with rounded toe pads, human foot anatomy not hand anatomy, ankle visible where foot meets calf, toenails not fingernails, well-defined big toe and pinky toe, toes shorter and thicker than fingers, foot shape wider at ball narrower at heel",
   ]);
 
@@ -1322,6 +1360,14 @@ function _veniceSubjectBlock(dna = {}, opts = {}) {
     expArr("watersports", "wetness"),
     ws.desperation && ws.desperation !== "none" && exp("watersports", "desperation"),
     expArr("watersports", "aftermath"),
+    ws.phase && exp("watersports", "phase"),
+    ws.stance && exp("watersports", "stance"),
+    ws.surface && exp("watersports", "surface"),
+    ws.garment_detail && exp("watersports", "garment_detail"),
+    ws.liquid_visibility && exp("watersports", "liquid_visibility"),
+    ws.camera_view && exp("watersports", "camera_view"),
+    expArr("watersports", "scene_props"),
+    ws.scene_notes && exp("watersports", "scene_notes"),
   ]);
 
   // Selected Feet and Play controls are compositional requirements, not minor
