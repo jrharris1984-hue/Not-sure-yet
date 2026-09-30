@@ -4,6 +4,7 @@ import { Toaster } from "sonner";
 import AppShell from "@/components/AppShell";
 import Library from "@/pages/Library";
 import Builder from "@/pages/Builder";
+import StudioHub from "@/pages/StudioHub";
 import Gallery from "@/pages/Gallery";
 import Queue from "@/pages/Queue";
 import Settings from "@/pages/Settings";
@@ -18,6 +19,15 @@ function App() {
         <AppShell>
           <Routes>
             <Route path="/" element={<Library />} />
+            <Route path="/studios" element={<StudioHub />} />
+            <Route path="/studio/feet" element={<Builder key="feet" studio="feet" />} />
+            <Route path="/studio/feet/s/:section" element={<Builder key="feet" studio="feet" />} />
+            <Route path="/studio/feet/:id" element={<Builder key="feet" studio="feet" />} />
+            <Route path="/studio/feet/:id/s/:section" element={<Builder key="feet" studio="feet" />} />
+            <Route path="/studio/watersports" element={<Builder key="watersports" studio="watersports" />} />
+            <Route path="/studio/watersports/s/:section" element={<Builder key="watersports" studio="watersports" />} />
+            <Route path="/studio/watersports/:id" element={<Builder key="watersports" studio="watersports" />} />
+            <Route path="/studio/watersports/:id/s/:section" element={<Builder key="watersports" studio="watersports" />} />
             <Route path="/character/new" element={<Builder />} />
             <Route path="/character/new/s/:section" element={<Builder />} />
             <Route path="/character/:id" element={<Builder />} />

@@ -43,6 +43,7 @@ import RenderRecipeSelector from "@/components/RenderRecipeSelector";
 import SmartSetupPanel from "@/components/SmartSetupPanel";
 import { getRenderRecipe, recipeFamily } from "@/lib/renderRecipes";
 import { readBuilderDraft, writeBuilderDraft, clearBuilderDraft } from "@/lib/builderDraft";
+import { STUDIO_PROFILES, applyStudioPreset } from "@/lib/studioProfiles";
 import { buildSameCharacterPoseInstruction, DEFAULT_POSE_LOCKS, SAME_CHARACTER_POSES } from "@/lib/sameCharacterPose";
 import { DEFAULT_REFERENCE_STRENGTHS, REFERENCE_RECIPES, preservationStrengthInstruction, referenceStudioSummary } from "@/lib/referenceStudio";
 import { Flame } from "lucide-react";
@@ -92,9 +93,12 @@ async function waitForQueuedRender(queueId, onUpdate) {
   throw new Error("Render timed out while waiting for ComfyUI.");
 }
 
-export default function Builder() {
+export default function Builder({ studio = "standard" }) {
   const { id, section: sectionParam } = useParams();
   const isNew = !id;
+  const studioProfile = STUDIO_PROFILES[studio];
+  const studioSteps = studioProfile?.steps || MOBILE_STUDIO_STEPS;
+  const draftId = isNew && studioProfile ? `studio:${studio}` : (id || null);
   const nav = useNavigate();
   const location = useLocation();
   const qc = useQueryClient();
@@ -105,11 +109,11 @@ export default function Builder() {
 
   const activeIdx = Math.max(0, SECTIONS.findIndex((s) => s.key === sectionParam));
   const activeSection = SECTIONS[activeIdx].key;
-  const basePath = isNew ? "/character/new" : `/character/${id}`;
+  const basePath = studioProfile ? (isNew ? `/studio/${studio}` : `/studio/${studio}/${id}`) : (isNew ? "/character/new" : `/character/${id}`);
   const sectionUrl = (key) => `${basePath}/s/${key}`;
   const goSection = (key) => nav(sectionUrl(key));
 
-  const [mobileStudioStep, setMobileStudioStep] = useState(() => mobileStudioStepForSection(activeSection));
+  const [mobileStudioStep, setMobileStudioStep] = useState(() => mobileStudioStepForSection(activeSection, studioSteps));
   const [mobileStudioMode, setMobileStudioMode] = useState(() => {
     try {
       return window.localStorage.getItem("ultra-studio-mobile-mode") === "advanced" ? "advanced" : "simple";
@@ -118,9 +122,8 @@ export default function Builder() {
     }
   });
   const [desktopQuickMode, setDesktopQuickMode] = useState(true);
-  const [focusedBuilder, setFocusedBuilder] = useState("standard");
   const [quickReview, setQuickReview] = useState(false);
-  const activeMobileStudioIndex = Math.max(0, MOBILE_STUDIO_STEPS.findIndex((step) => step.id === mobileStudioStep));
+  const activeMobileStudioIndex = Math.max(0, studioSteps.findIndex((step) => step.id === mobileStudioStep));
 
   useEffect(() => {
     try {
@@ -131,10 +134,10 @@ export default function Builder() {
   }, [mobileStudioMode]);
 
   const openMobileStudioStep = (stepId) => {
-    const step = MOBILE_STUDIO_STEPS.find((item) => item.id === stepId);
+    const step = studioSteps.find((item) => item.id === stepId);
     if (!step) return;
     setMobileStudioStep(stepId);
-    const visibleSections = mobileStudioSectionsForStep(stepId, mobileStudioMode);
+    const visibleSections = mobileStudioSectionsForStep(stepId, mobileStudioMode, studioSteps);
     if (visibleSections.length && !visibleSections.includes(activeSection)) {
       nav(sectionUrl(visibleSections[0]));
     }
@@ -142,14 +145,14 @@ export default function Builder() {
   };
 
   const moveMobileStudioStep = (direction) => {
-    const nextIndex = Math.max(0, Math.min(MOBILE_STUDIO_STEPS.length - 1, activeMobileStudioIndex + direction));
-    openMobileStudioStep(MOBILE_STUDIO_STEPS[nextIndex].id);
+    const nextIndex = Math.max(0, Math.min(studioSteps.length - 1, activeMobileStudioIndex + direction));
+    openMobileStudioStep(studioSteps[nextIndex].id);
   };
 
   const changeMobileStudioMode = (nextMode) => {
     setMobileStudioMode(nextMode);
     if (nextMode !== "simple") return;
-    const visibleSections = mobileStudioSectionsForStep(mobileStudioStep, "simple");
+    const visibleSections = mobileStudioSectionsForStep(mobileStudioStep, "simple", studioSteps);
     if (visibleSections.length && !visibleSections.includes(activeSection)) {
       nav(sectionUrl(visibleSections[0]));
     }
@@ -227,8 +230,8 @@ export default function Builder() {
   const [videoImageAnalysis, setVideoImageAnalysis] = useState("");
   useEffect(() => {
     if (mobileStudioStep === "create") return;
-    setMobileStudioStep(mobileStudioStepForSection(activeSection));
-  }, [activeSection, mobileStudioStep]);
+    setMobileStudioStep(mobileStudioStepForSection(activeSection, studioSteps));
+  }, [activeSection, mobileStudioStep, studioSteps]);
 
   const [chromaSettings, setChromaSettings] = useState({
     width: 768,
@@ -302,7 +305,7 @@ export default function Builder() {
 
   useEffect(() => {
     if (!isNew || draftHydrated.current) return;
-    restoreDraft(readBuilderDraft(null));
+    restoreDraft(readBuilderDraft(draftId));
     draftHydrated.current = true;
     setEditorHydrated(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -312,15 +315,15 @@ export default function Builder() {
   // same queued/running batch instead of making it disappear from Builder.
   useEffect(() => {
     if (!draftHydrated.current) return;
-    const existing = readBuilderDraft(isNew ? null : id) || {};
-    writeBuilderDraft(isNew ? null : id, {
+    const existing = readBuilderDraft(draftId) || {};
+    writeBuilderDraft(draftId, {
       ...existing,
       activeRender,
       batchRenders,
       selectedBatchRenderId,
       renderCount,
     });
-  }, [activeRender, batchRenders, selectedBatchRenderId, renderCount, id, isNew]);
+  }, [activeRender, batchRenders, selectedBatchRenderId, renderCount, draftId]);
 
   const { data: workflows = [] } = useQuery({ queryKey: ["workflows"], queryFn: endpoints.listWorkflows });
   const { data: poseAssistStatus } = useQuery({
@@ -808,7 +811,7 @@ export default function Builder() {
 
   useEffect(() => {
     if (!draftHydrated.current) return undefined;
-    const timer = window.setTimeout(() => writeBuilderDraft(id, {
+    const timer = window.setTimeout(() => writeBuilderDraft(draftId, {
       name, subjects, activeSubjectId, locks, collapsed, tags, raunch, promptLanguage,
       promptOverride, plainLanguage, negativePromptOverride, workflowId, loraOverrides,
       editInstruction, preserveUnmentioned, repairTargets, repairInstruction,
@@ -821,7 +824,7 @@ export default function Builder() {
     }), 350);
     return () => window.clearTimeout(timer);
   }, [
-    id, name, subjects, activeSubjectId, locks, collapsed, tags, raunch, promptLanguage,
+    draftId, name, subjects, activeSubjectId, locks, collapsed, tags, raunch, promptLanguage,
     promptOverride, plainLanguage, negativePromptOverride, workflowId, loraOverrides,
     editInstruction, preserveUnmentioned, repairTargets, repairInstruction,
     variationPrompt, variationDenoise,
@@ -1040,7 +1043,7 @@ export default function Builder() {
       toast.success("Saved");
       qc.invalidateQueries({ queryKey: ["characters"] });
       qc.invalidateQueries({ queryKey: ["character-tags"] });
-      if (isNew && c?.id) nav(`/character/${c.id}/s/${activeSection}`, { replace: true });
+      if (isNew && c?.id) nav(`${studioProfile ? `/studio/${studio}` : "/character"}/${c.id}/s/${activeSection}`, { replace: true });
     },
     onError: (e) => toast.error(e?.response?.data?.detail || "Save failed"),
   });
@@ -1596,7 +1599,7 @@ export default function Builder() {
       "Reset this character? This clears all current selections, prompts, tags, locks, and the uploaded reference image. Saved characters and Gallery images will not be deleted."
     );
     if (!confirmed) return;
-    clearBuilderDraft(id);
+    clearBuilderDraft(draftId);
     if (referencePreview) URL.revokeObjectURL(referencePreview);
     const fresh = makeSubject({ label: "A", dna: JSON.parse(JSON.stringify(DEFAULT_DNA)) });
     setName("Untitled");
@@ -1670,12 +1673,15 @@ export default function Builder() {
       values.push(activeDna.scenario?.cast_size, activeDna.scenario?.roleplay);
       if ((activeDna.scenario?.explicit_level || 0) > 0) values.push(`explicit ${activeDna.scenario.explicit_level}%`);
       if ((activeDna.scenario?.kink_level || 0) > 0) values.push(`kink ${activeDna.scenario.kink_level}%`);
+    } else if (mobileStudioStep === "focus") {
+      values.push(studio === "feet" ? activeDna.feet?.framing : activeDna.watersports?.container);
+      values.push(studio === "feet" ? activeDna.feet?.pedicure : activeDna.watersports?.stream);
     } else if (mobileStudioStep === "create") {
       values.push(activeWorkflow?.name, qualityTier);
       if (activeRecipeFamily === "image") values.push(`${renderCount} image${renderCount === 1 ? "" : "s"}`);
     }
     return values.filter((value) => value && value !== "none").slice(0, 4).join(" · ");
-  }, [activeDna, activeMobileStudioIndex, activeRecipeFamily, activeWorkflow?.name, mobileStudioStep, qualityTier, renderCount]);
+  }, [activeDna, activeRecipeFamily, activeWorkflow?.name, mobileStudioStep, qualityTier, renderCount, studio]);
 
   const mobileCreateSummaries = useMemo(() => {
     const compact = (...values) => values.filter((value) => value && value !== "none").slice(0, 4).join(" · ");
@@ -2014,6 +2020,8 @@ export default function Builder() {
       </div>
 
       <MobileStudioFlow
+        steps={studioSteps}
+        title={studioProfile?.title || "Studio flow"}
         currentStep={mobileStudioStep}
         activeSection={activeSection}
         locks={locks}
@@ -2023,7 +2031,7 @@ export default function Builder() {
         onModeChange={changeMobileStudioMode}
         onStep={openMobileStudioStep}
         onSection={(key) => {
-          setMobileStudioStep(mobileStudioStepForSection(key));
+          setMobileStudioStep(mobileStudioStepForSection(key, studioSteps));
           goSection(key);
         }}
       />
@@ -2276,45 +2284,32 @@ export default function Builder() {
 
         {/* Center - single active section */}
         <div id="studio-sections" className={`${mobileStudioStep === "create" ? "hidden md:block" : "block"} scroll-mt-24 space-y-4`}>
+      {studioProfile && <section className="pane border-cyan-400/25 p-3 sm:p-4" data-testid={`studio-${studio}-presets`}>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <div className="section-label">{studioProfile.title} · Scene presets</div>
+            <p className="mt-1 text-xs text-zinc-400">Choose a starting composition, then edit every detail in the steps below.</p>
+          </div>
+          <Link to="/studios" className="text-xs text-cyan-300 hover:underline">Other studios</Link>
+        </div>
+        <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+          {studioProfile.presets.map((preset) => <button key={preset.name} type="button"
+            onClick={() => { setActiveDna(applyStudioPreset(activeDna, preset)); setQuickReview(false); goSection(studio === "feet" ? "feet" : "watersports"); }}
+            className="rounded-xl border hairline bg-black/25 px-3 py-3 text-left transition-colors hover:border-cyan-400/60 focus-visible:border-cyan-400">
+            <span className="block text-xs font-semibold text-cyan-100">{preset.name}</span>
+            <span className="mt-1 block text-[11px] text-zinc-400">{preset.description}</span>
+          </button>)}
+        </div>
+      </section>}
       {desktopQuickMode && (
         <section className="hidden md:block pane border-cyan-400/25 p-4" data-testid="desktop-quick-create">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <div className="section-label">Quick Create</div>
-              <p className="mt-1 text-sm text-zinc-400">Set the essentials or jump directly to any character section.</p>
+              <div className="section-label">{studioProfile?.title || "Quick Create"}</div>
+              <p className="mt-1 text-sm text-zinc-400">{studioProfile?.description || "Set the essentials or jump directly to any character section."}</p>
             </div>
             <span className="rounded-full border border-amber-400/40 bg-amber-500/10 px-3 py-1 text-xs text-amber-200">{activeWorkflow?.name || "Choose a model"}</span>
           </div>
-          <div className="mt-3 flex flex-wrap gap-2" aria-label="Builder focus">
-            {[["standard", "Character"], ["feet", "Foot styling"], ["watersports", "Wet scene"]].map(([mode, label]) => (
-              <button key={mode} type="button" aria-pressed={focusedBuilder === mode}
-                onClick={() => { setFocusedBuilder(mode); setQuickReview(false); goSection(mode === "standard" ? "identity" : mode); }}
-                className={`rounded-lg border px-3 py-2 text-xs font-semibold ${focusedBuilder === mode ? "border-cyan-400 bg-cyan-400/10 text-cyan-100" : "hairline text-zinc-400"}`}>
-                {label}
-              </button>
-            ))}
-          </div>
-          {focusedBuilder !== "standard" && <div className="mt-3 rounded-xl border hairline bg-black/25 p-3">
-            <div className="text-xs font-semibold text-zinc-200">{focusedBuilder === "feet" ? "Foot styling presets" : "Wet scene presets"}</div>
-            <div className="mt-2 flex flex-wrap gap-2">
-              {(focusedBuilder === "feet" ? [
-                ["Pedicure portrait", { feet: { pedicure: "French manicure", framing: "feet focus" }, pose: { distance: "full body" } }],
-                ["Heels & stockings", { wardrobe: { heel_type: "stiletto", hosiery_type: "stockings", heel_color: "black" }, feet: { framing: "feet focus" } }],
-                ["Barefoot detail", { wardrobe: { footwear: "barefoot" }, feet: { framing: "feet focus" }, pose: { distance: "detail shot" } }],
-              ] : [
-                ["Rain portrait", { scene: { environment: "urban street", indoor_outdoor: "outdoor" }, wardrobe: { material: "wet look" } }],
-                ["Poolside", { scene: { environment: "beach", indoor_outdoor: "outdoor" }, wardrobe: { material: "wet look" } }],
-                ["Shower scene", { watersports: { container: "shower", wetness: ["wet hair"] }, scene: { indoor_outdoor: "indoor" } }],
-              ]).map(([label, changes]) => <button key={label} type="button" onClick={() => {
-                setActiveDna(Object.fromEntries(Object.entries(activeDna).map(([key, value]) => [key, changes[key] ? { ...value, ...changes[key] } : value])));
-                goSection(focusedBuilder);
-              }} className="rounded-lg border hairline px-3 py-2 text-xs text-zinc-300 hover:border-cyan-400/60">{label}</button>)}
-            </div>
-            <div className="mt-2 flex gap-2 text-xs">
-              {(focusedBuilder === "feet" ? [["feet", "Feet"], ["wardrobe", "Shoes & stockings"], ["pose", "Pose"]] : [["watersports", "Wetness"], ["wardrobe", "Wardrobe"], ["scene", "Setting"]]).map(([key, label]) =>
-                <button key={key} type="button" onClick={() => goSection(key)} className="text-cyan-300 underline underline-offset-4">{label}</button>)}
-            </div>
-          </div>}
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <label htmlFor="quick-section-jump" className="text-xs font-semibold text-cyan-200">Jump to section</label>
             <select id="quick-section-jump" data-testid="quick-section-jump"
@@ -2336,7 +2331,9 @@ export default function Builder() {
             </select>
           </div>
           <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-7 gap-2">
-            {[["identity", "1 · People, scenario & age"], ["physique", "2 · Body"], ["wardrobe", "3 · Wardrobe"], ["pose", "4 · Pose"], ["scene", "5 · Setting"], ["feet", "6 · Feet" ]].map(([key, label]) => (
+            {(studioProfile ? studioSteps.filter((step) => step.sections.length).flatMap((step) =>
+              (step.simpleSections || step.sections).map((key) => [key, `${step.label} · ${SECTIONS.find((section) => section.key === key)?.title || key}`])
+            ) : [["identity", "1 · People, scenario & age"], ["physique", "2 · Body"], ["wardrobe", "3 · Wardrobe"], ["pose", "4 · Pose"], ["scene", "5 · Setting"], ["feet", "6 · Feet"]]).map(([key, label]) => (
               <button key={label} type="button" onClick={() => { setQuickReview(false); goSection(key); }}
                 className={`rounded-xl border px-3 py-3 text-left text-xs font-semibold transition-colors ${activeSection === key && !quickReview ? "border-amber-400/70 bg-amber-500/10 text-amber-100" : "hairline bg-elevated text-zinc-300 hover:border-cyan-400/50"}`}>
                 {label}
