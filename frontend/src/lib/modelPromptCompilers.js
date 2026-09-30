@@ -1,4 +1,4 @@
-import { buildPrompts, buildMultiVenicePrompts, buildChromaPrompts, buildMultiChromaPrompts } from "@/lib/dna";
+import { buildPrompts, buildMultiVenicePrompts, buildChromaPrompts, buildMultiChromaPrompts, selfStreamContinuityCue } from "@/lib/dna";
 import { buildPonyPrompts, buildMultiPonyPrompts } from "@/lib/ponyPrompts";
 import { buildPromptPriorityPlan, emptyPromptPriorityPlan, prioritizePrompt, requirementPresent } from "@/lib/promptPriority";
 import { implantVisualPrompt } from "@/lib/implantVisualScale";
@@ -462,6 +462,12 @@ function kreaAdultDetailSentence(dna = {}, label = "") {
     ws.camera_view,
     ws.scene_props,
     ws.scene_notes,
+    ws.urine_color,
+    ws.self_action,
+    ws.self_aim,
+    ws.flow_appearance,
+    ws.highlight,
+    selfStreamContinuityCue(ws),
   ]);
 }
 
