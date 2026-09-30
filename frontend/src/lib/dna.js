@@ -182,7 +182,7 @@ export const SECTIONS = [
         { name: "Socks", options: ["ankle socks", "gym socks", "knee-high socks", "thigh-high socks", "over-the-knee socks", "dirty socks", "sweaty socks"] },
       ]},
       { key: "foot_act", type: "chips_multi", label: "Foot act (pick many)", groups: [
-        { name: "Solo", options: ["foot showcase", "foot posing", "foot tease", "arched foot", "toe suck self"] },
+        { name: "Solo", options: ["foot showcase", "foot posing", "foot tease", "arched foot", "toe suck self", "self foot massage", "self foot kiss", "self sole lick", "self toe lick", "self foot worship pose"] },
         { name: "Worship", options: ["foot worship", "sole licking", "toe sucking", "foot kissing", "foot massage", "arch kissing", "heel kissing", "toe worship", "barefoot worship"] },
         { name: "Sex", options: ["footjob", "double footjob", "foot on cock", "foot in mouth POV"] },
         { name: "Dominance", options: ["foot on face", "foot smothering", "trampling", "standing on someone", "foot gag"] },
@@ -448,6 +448,11 @@ export const SECTIONS = [
       { key: "camera_view", type: "chips", label: "Scene camera view", options: ["full figure", "three-quarter figure", "waist-down", "floor-level detail", "side profile", "rear three-quarter", "wide environmental view"] },
       { key: "scene_props", type: "chips_multi", label: "Scene props (pick many)", options: ["towel", "bath mat", "mirror", "sink", "shower curtain", "bathtub", "floor drain", "laundry basket", "wet footprints"] },
       { key: "scene_notes", type: "text", label: "Additional scene details" },
+      { key: "urine_color", type: "chips", label: "Fluid color", options: ["nearly colorless transparent", "clear with a faint straw tint", "very pale yellow", "light straw yellow", "warm yellow", "deep amber"] },
+      { key: "self_action", type: "chips", label: "Self-directed action", options: ["self urination", "looking down at stream", "holding clothing clear", "seated on toilet", "squatting outdoors", "checking wet clothing", "washing afterward"] },
+      { key: "self_aim", type: "chips", label: "Where the stream lands", options: ["into toilet bowl", "into shower drain", "onto floor near feet", "onto grass", "onto sand", "onto clothing", "into bathtub"] },
+      { key: "flow_appearance", type: "chips", label: "Fluid behavior", options: ["single continuous gravity-driven stream", "thin gentle stream", "natural irregular stream", "light broken droplets", "subtle splashing at landing point"] },
+      { key: "highlight", type: "chips", label: "Visibility in photograph", options: ["soft side-lit highlights", "small specular highlights", "visible against darker background", "subtle reflection on tile", "backlit transparent stream"] },
     ],
   },
   {
@@ -922,6 +927,11 @@ export function subjectLabel(index) {
   return SUBJECT_LABELS[index] || `S${index + 1}`;
 }
 
+export function selfStreamContinuityCue(watersports = {}) {
+  if (watersports.source !== "self" || watersports.phase !== "in progress") return "";
+  return `one continuous stream from the same adult subject to ${watersports.self_aim || "a visible landing point"}, following gravity, with a subtle highlight at the landing point; no detached or duplicate stream`;
+}
+
 // Build positive/negative prompts from DNA — Venice-style structured formula:
 // [QUALITY] + [SUBJECT] + [OUTFIT] + [POSE] + [SCENE] + [LIGHTING] + [CAMERA] + [STYLE] + [EXPLICIT]
 export function buildPrompts(dna = {}, opts = {}) {
@@ -1368,6 +1378,12 @@ function _veniceSubjectBlock(dna = {}, opts = {}) {
     ws.camera_view && exp("watersports", "camera_view"),
     expArr("watersports", "scene_props"),
     ws.scene_notes && exp("watersports", "scene_notes"),
+    ws.urine_color && exp("watersports", "urine_color"),
+    ws.self_action && exp("watersports", "self_action"),
+    ws.self_aim && exp("watersports", "self_aim"),
+    ws.flow_appearance && exp("watersports", "flow_appearance"),
+    ws.highlight && exp("watersports", "highlight"),
+    selfStreamContinuityCue(ws),
   ]);
 
   // Selected Feet and Play controls are compositional requirements, not minor

@@ -33,15 +33,18 @@ export const STUDIO_PROFILES = {
       { name: "Stocking seam", description: "Back-seam stockings and pumps", changes: { feet: { framing: "knees-down", hosiery: "sheer stockings" }, wardrobe: { hosiery_type: "back-seam stockings", hosiery_color: "black", hosiery_denier: "sheer 15 denier", heel_type: "round-toe pumps" }, pose: { focus: "feet", distance: "full body" } } },
       { name: "Spa pedicure", description: "Freshly washed feet on a towel", changes: { feet: { foot_state: ["freshly washed"], pedicure_art: "glossy polish", ground_surface: "velvet cushion", framing: "feet close-up" }, pose: { focus: "feet", distance: "detail shot" } } },
       { name: "Walking barefoot", description: "Full figure and feet on grass", changes: { feet: { foot_pose: "walking barefoot", ground_surface: "grass", framing: "full body" }, scene: { environment: "forest", indoor_outdoor: "outdoor" }, pose: { focus: "feet", distance: "full body" } } },
+      { name: "Self foot massage", description: "Seated solo pose with both feet visible", changes: { feet: { foot_act: ["self foot massage"], framing: "knees-down", foot_pose: "one foot lifted" }, pose: { focus: "feet", action: "sitting on edge", distance: "full body" } } },
+      { name: "Self foot kiss", description: "Seated pose with one foot raised", changes: { feet: { foot_act: ["self foot kiss"], framing: "feet close-up", foot_pose: "one foot lifted" }, pose: { focus: "feet", action: "sitting legs crossed", distance: "full body" } } },
+      { name: "Self sole lick", description: "Seated forward pose with an accessible raised foot", changes: { feet: { foot_act: ["self sole lick"], framing: "sole close-up", sole_presentation: "one sole raised" }, pose: { focus: "feet", action: "sitting on edge", distance: "full body" } } },
     ],
   },
   watersports: {
     title: "Watersports Studio",
     description: "Build a character and set the source, stream, wetness, wardrobe and location.",
     fieldGroups: [
-      { label: "Setup", keys: ["source", "container", "phase", "stance", "camera_view"] },
-      { label: "Flow", keys: ["direction", "stream", "desperation"] },
-      { label: "Visual detail", keys: ["wetness", "aftermath", "garment_detail", "liquid_visibility", "surface", "scene_props", "scene_notes"] },
+      { label: "Setup", keys: ["source", "self_action", "container", "phase", "stance", "camera_view"] },
+      { label: "Flow", keys: ["direction", "self_aim", "stream", "desperation", "flow_appearance"] },
+      { label: "Visual detail", keys: ["urine_color", "highlight", "wetness", "aftermath", "garment_detail", "liquid_visibility", "surface", "scene_props", "scene_notes"] },
     ],
     steps: [
       step("start", "People", "Cast, scenario & age", ["identity", "scenario"], ["identity"]),
@@ -62,6 +65,9 @@ export const STUDIO_PROFILES = {
       { name: "Bathtub edge", description: "Side profile with bath detail", changes: { watersports: { source: "self", container: "tub", stance: "seated", surface: "bathtub edge", camera_view: "side profile" }, scene: { indoor_outdoor: "indoor", background: "bathtub" }, pose: { angle: "profile", distance: "full body" } } },
       { name: "Outdoor aftermath", description: "Wide outdoor view after the scene", changes: { watersports: { source: "self", container: "outdoors", phase: "afterward", wetness: ["damp"], surface: "grass" }, scene: { environment: "forest", indoor_outdoor: "outdoor" }, pose: { distance: "wide shot" } } },
       { name: "Wet stockings", description: "Clothing and lower-body detail", changes: { watersports: { source: "self", garment_detail: "wet stockings", liquid_visibility: "visible droplets", camera_view: "waist-down" }, wardrobe: { hosiery_type: "sheer pantyhose" }, pose: { distance: "knees-up" } } },
+      { name: "Clear self stream", description: "Single transparent stream with visible landing point", changes: { watersports: { source: "self", self_action: "self urination", phase: "in progress", urine_color: "nearly colorless transparent", flow_appearance: "single continuous gravity-driven stream", self_aim: "onto floor near feet", direction: ["on floor"], highlight: "soft side-lit highlights", surface: "dark tile", camera_view: "three-quarter figure" }, scene: { indoor_outdoor: "indoor", background: "private tiled bathroom" }, pose: { distance: "full body", angle: "3/4" } } },
+      { name: "Clear toilet view", description: "Seated scene with subtle fluid color", changes: { watersports: { source: "self", self_action: "seated on toilet", phase: "in progress", container: "toilet", self_aim: "into toilet bowl", urine_color: "clear with a faint straw tint", flow_appearance: "thin gentle stream", highlight: "small specular highlights" }, scene: { indoor_outdoor: "indoor", background: "private bathroom" }, pose: { action: "sitting on edge", distance: "full body" } } },
+      { name: "Clear shower drain", description: "Standing scene with a visible path to the drain", changes: { watersports: { source: "self", self_action: "looking down at stream", phase: "in progress", container: "shower", self_aim: "into shower drain", urine_color: "nearly colorless transparent", flow_appearance: "single continuous gravity-driven stream", highlight: "backlit transparent stream", surface: "shower drain" }, scene: { indoor_outdoor: "indoor", background: "tiled shower" }, pose: { action: "standing", distance: "full body" } } },
     ],
   },
 };

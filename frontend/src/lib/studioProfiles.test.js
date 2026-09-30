@@ -56,6 +56,25 @@ test("specialty choices reach standard and Krea prompts", () => {
   ]));
 });
 
+test("clear self scene keeps one visible source and landing point in both compilers", () => {
+  const dna = applyStudioPreset(JSON.parse(JSON.stringify(DEFAULT_DNA)),
+    STUDIO_PROFILES.watersports.presets.find((preset) => preset.name === "Clear self stream"));
+  for (const prompt of [buildPrompts(dna).positive, buildKrea2Prompts({ dna }).positive]) {
+    expect(prompt).toContain("nearly colorless transparent");
+    expect(prompt).toContain("one continuous stream from the same adult subject");
+    expect(prompt).toContain("onto floor near feet");
+  }
+});
+
+test("self foot preset preserves one subject and a reachable pose", () => {
+  const dna = applyStudioPreset(JSON.parse(JSON.stringify(DEFAULT_DNA)),
+    STUDIO_PROFILES.feet.presets.find((preset) => preset.name === "Self sole lick"));
+  expect(dna.pose.focus).toBe("feet");
+  expect(dna.pose.action).toBe("sitting on edge");
+  expect(dna.feet.foot_act).toContain("self sole lick");
+  expect(buildPrompts(dna).positive).toContain("self sole lick");
+});
+
 test("a specialty preset keeps the rest of the character intact", () => {
   const dna = { identity: { name: "Alex", age: 46 }, pose: { focus: "face", action: "standing" }, feet: { pedicure: "natural nails" } };
   const result = applyStudioPreset(dna, STUDIO_PROFILES.feet.presets[3]);
