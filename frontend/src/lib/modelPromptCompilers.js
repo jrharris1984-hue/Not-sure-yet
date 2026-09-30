@@ -326,7 +326,7 @@ function kreaWardrobeSentence(dna = {}, label = "") {
   const w = dna.wardrobe || {};
   const prefix = label ? `Subject ${label} wardrobe: ` : "Wardrobe: ";
   const { direction: nudityDirection, suppressClothing } = wardrobeNudity(w);
-  const feetVisible = ["full body", "wide shot"].includes(lower(dna.pose?.distance || "full body"));
+  const feetVisible = ["full body", "wide shot"].includes(lower(dna.pose?.distance || "full body")) || lower(dna.pose?.focus) === "feet";
   // A high nudity setting is an explicit wardrobe choice. Do not repeat a
   // contradictory outfit or garment from the saved character DNA.
   return kreaSentence(prefix, [
@@ -338,7 +338,7 @@ function kreaWardrobeSentence(dna = {}, label = "") {
     !suppressClothing && !w.outfit_set && !w.dress_style && w.top && w.top !== "none" ? w.top : "",
     !suppressClothing && !w.outfit_set && !w.dress_style && !w.skirt_style && w.bottom && w.bottom !== "none" ? w.bottom : "",
     !suppressClothing && !w.outfit_set && w.underwear && w.underwear !== "none" ? w.underwear : "",
-    !w.outfit_set && w.hosiery_type ? `${w.hosiery_color ? `${w.hosiery_color} ` : ""}${w.hosiery_pattern && w.hosiery_pattern !== "plain" ? `${w.hosiery_pattern} ` : ""}${w.hosiery_type}` : "",
+    !w.outfit_set && w.hosiery_type ? `${w.hosiery_color ? `${w.hosiery_color} ` : ""}${w.hosiery_denier ? `${w.hosiery_denier} ` : ""}${w.hosiery_pattern && w.hosiery_pattern !== "plain" ? `${w.hosiery_pattern} ` : ""}${w.hosiery_type}` : "",
     !w.outfit_set && feetVisible ? (w.heel_type ? `${w.heel_color ? `${w.heel_color} ` : ""}${w.heel_finish ? `${w.heel_finish} ` : ""}${w.heel_type}${w.heel_height ? `, ${w.heel_height} heel` : ""}` : w.footwear) : "",
     w.glasses_style ? `${w.glasses_color ? `${w.glasses_color} ` : ""}${w.glasses_style}` : "",
     w.nail_color ? `${w.nail_color} fingernails` : "",
@@ -358,8 +358,7 @@ function kreaPoseSentence(dna = {}, label = "") {
   const feet = dna.feet || {};
   const prefix = label ? `Subject ${label} pose and framing: ` : "Pose and framing: ";
   const framing = lower(p.distance) || "full body";
-  const feetVisible = ["full body", "wide shot"].includes(framing);
-  const feetPriority = feetVisible && (lower(p.focus) === "feet" || kreaValue(feet.framing));
+  const feetPriority = lower(p.focus) === "feet" || kreaValue(feet.framing);
   const bodyCrop = ["full body", "wide shot", "knees-up", "thigh-up", "waist-up"].includes(framing);
   const cropDescription = {
     "waist-up": "waist-up", "thigh-up": "head-to-mid-thigh", "knees-up": "head-to-knees",
@@ -368,7 +367,7 @@ function kreaPoseSentence(dna = {}, label = "") {
     p.action,
     p.body_language && `${p.body_language} body language`,
     p.angle && `${p.angle} view`,
-    p.focus && !(lower(p.focus) === "feet" && !feetVisible) && (bodyCrop && lower(p.focus) === "face"
+    p.focus && (bodyCrop && lower(p.focus) === "face"
       ? `face clearly visible within the ${cropDescription} composition`
       : `${p.focus} composition priority`),
     arrayValue(p.hands).length ? `hands ${arrayValue(p.hands).slice(-1)[0]}` : "",
@@ -377,6 +376,13 @@ function kreaPoseSentence(dna = {}, label = "") {
     feetPriority ? feet.framing : "",
     feetPriority ? feet.sole_presentation : "",
     feetPriority && feet.pedicure ? `${feet.pedicure} pedicure` : "",
+    feetPriority ? feet.foot_pose : "",
+    feetPriority ? feet.toe_length : "",
+    feetPriority ? feet.sole_texture : "",
+    feetPriority ? feet.pedicure_art : "",
+    feetPriority ? feet.toenail_shape : "",
+    feetPriority ? feet.foot_accessories : "",
+    feetPriority ? feet.ground_surface : "",
   ]);
 }
 
@@ -448,6 +454,14 @@ function kreaAdultDetailSentence(dna = {}, label = "") {
     ws.wetness,
     ws.desperation && ws.desperation !== "none" ? ws.desperation : "",
     ws.aftermath,
+    ws.phase,
+    ws.stance,
+    ws.surface,
+    ws.garment_detail,
+    ws.liquid_visibility,
+    ws.camera_view,
+    ws.scene_props,
+    ws.scene_notes,
   ]);
 }
 
