@@ -265,11 +265,16 @@ button:not(:disabled):active, a[role="button"]:active {
   background: #a3e635;
 }
 .studio-stage-past { border-color: rgba(34, 211, 238, .32); }
+.studio-subcategories {
+  border: 1px solid rgba(34, 211, 238, .22);
+  background: linear-gradient(110deg, rgba(34, 211, 238, .08), rgba(255, 255, 255, .025));
+  animation: studio-section-in 220ms cubic-bezier(.2,.8,.2,1) both;
+}
 @keyframes studio-section-in {
   from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: translateY(0); }
 }
-@media (prefers-reduced-motion: reduce) { .studio-section-enter { animation: none; } .studio-stage { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .studio-section-enter, .studio-subcategories { animation: none; } .studio-stage { transition: none; } }
 .gallery-poster:hover, .gallery-poster:focus-within { transform: scale(1.035); z-index: 2; border-color: rgb(34 211 238 / .7); box-shadow: 0 14px 30px rgb(0 0 0 / .5); }
 .gallery-poster-caption { opacity: 1; }
 @media (hover: hover) { .gallery-poster-caption { opacity: 0; } .gallery-poster:hover .gallery-poster-caption, .gallery-poster:focus-within .gallery-poster-caption { opacity: 1; } }
