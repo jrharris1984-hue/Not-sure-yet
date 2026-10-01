@@ -1770,18 +1770,42 @@ export default function Builder({ studio = "standard" }) {
     && batchIsFinished
     && (!poseAssistEnabled || poseAssistStage === "done");
 
+  const quickStages = [
+    { key: "identity", title: "People", detail: "Cast & age" },
+    { key: "physique", title: "Body", detail: "Shape & size" },
+    { key: "wardrobe", title: "Wardrobe", detail: "Outfit & color" },
+    { key: "pose", title: "Pose", detail: "Action & view" },
+    { key: "scene", title: "Setting", detail: "Place & mood" },
+    { key: "feet", title: "Feet", detail: "Finishing details" },
+    { key: "review", title: "Review", detail: "Prompt & render" },
+  ];
+  const quickStageIndex = quickReview ? 6 : Math.max(0, quickStages.findIndex((stage) => stage.key === activeSection));
+  const selectQuickStage = (index) => {
+    if (index < 0 || index >= quickStages.length) return;
+    if (index === 6) {
+      setQuickReview(true);
+    } else {
+      setQuickReview(false);
+      goSection(quickStages[index].key);
+    }
+    window.requestAnimationFrame(() => document.querySelector('[data-testid="desktop-quick-create"]')?.scrollIntoView({
+      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth",
+      block: "start",
+    }));
+  };
+
   const sectionNavigation = (position) => (
     <div className="hidden md:flex items-center justify-between gap-2" aria-label={`${position} section navigation`}>
-      <button type="button" onClick={() => activeIdx > 0 && goSection(SECTIONS[activeIdx - 1].key)}
-        disabled={activeIdx === 0} data-testid={`btn-section-prev${position === "top" ? "-top" : ""}`}
+      <button type="button" onClick={() => desktopQuickMode ? selectQuickStage(quickStageIndex - 1) : activeIdx > 0 && goSection(SECTIONS[activeIdx - 1].key)}
+        disabled={desktopQuickMode ? quickStageIndex === 0 : activeIdx === 0} data-testid={`btn-section-prev${position === "top" ? "-top" : ""}`}
         className="inline-flex items-center gap-1.5 rounded-lg border hairline px-4 py-2.5 text-sm text-zinc-200 hover:bg-white/5 disabled:opacity-30">
-        <ChevronLeft className="h-4 w-4" /> {activeIdx > 0 ? SECTIONS[activeIdx - 1].title : "Prev"}
+        <ChevronLeft className="h-4 w-4" /> {desktopQuickMode ? quickStageIndex > 0 ? quickStages[quickStageIndex - 1].title : "Previous" : activeIdx > 0 ? SECTIONS[activeIdx - 1].title : "Prev"}
       </button>
-      {activeIdx < SECTIONS.length - 1 ? (
-        <button type="button" onClick={() => goSection(SECTIONS[activeIdx + 1].key)}
+      {(desktopQuickMode ? quickStageIndex < 6 : activeIdx < SECTIONS.length - 1) ? (
+        <button type="button" onClick={() => desktopQuickMode ? selectQuickStage(quickStageIndex + 1) : goSection(SECTIONS[activeIdx + 1].key)}
           data-testid={`btn-section-next${position === "top" ? "-top" : ""}`}
           className="inline-flex items-center gap-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-black text-sm font-semibold px-4 py-2.5">
-          {SECTIONS[activeIdx + 1].title} <ChevronRight className="h-4 w-4" />
+          {desktopQuickMode ? quickStages[quickStageIndex + 1].title : SECTIONS[activeIdx + 1].title} <ChevronRight className="h-4 w-4" />
         </button>
       ) : (
         <button type="button" onClick={() => save.mutate()}
@@ -2320,11 +2344,12 @@ export default function Builder({ studio = "standard" }) {
         </div>
       </section>}
       {desktopQuickMode && (
-        <section className="hidden md:block pane border-cyan-400/25 p-4" data-testid="desktop-quick-create">
+        <section className="hidden md:block studio-journey rounded-2xl p-5" data-testid="desktop-quick-create">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <div className="section-label">{studioProfile?.title || "Quick Create"}</div>
-              <p className="mt-1 text-sm text-zinc-400">{studioProfile?.description || "Seven shortcuts to the essentials. Use the section menu for all detailed controls."}</p>
+              <div className="section-label">Create / Main Studio</div>
+              <h2 className="font-display mt-1 text-xl font-bold text-white">Build your image</h2>
+              <p className="mt-1 text-sm text-zinc-400">Seven stages from character to render. Jump to any detailed control below.</p>
             </div>
             <span className="rounded-full border border-amber-400/40 bg-amber-500/10 px-3 py-1 text-xs text-amber-200">{activeWorkflow?.name || "Choose a model"}</span>
           </div>
@@ -2348,19 +2373,16 @@ export default function Builder({ studio = "standard" }) {
               <option value="review">Review & render</option>
             </select>
           </div>
-          <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-7 gap-2">
-            {(studioProfile ? studioSteps.filter((step) => step.sections.length).flatMap((step) =>
-              (step.simpleSections || step.sections).map((key) => [key, `${step.label} · ${SECTIONS.find((section) => section.key === key)?.title || key}`])
-            ) : [["identity", "1 · People, scenario & age"], ["physique", "2 · Body"], ["wardrobe", "3 · Wardrobe"], ["pose", "4 · Pose"], ["scene", "5 · Setting"], ["feet", "6 · Feet"]]).map(([key, label]) => (
-              <button key={label} type="button" onClick={() => { setQuickReview(false); goSection(key); }}
-                className={`rounded-xl border px-3 py-3 text-left text-xs font-semibold transition-colors ${activeSection === key && !quickReview ? "border-amber-400/70 bg-amber-500/10 text-amber-100" : "hairline bg-elevated text-zinc-300 hover:border-cyan-400/50"}`}>
-                {label}
+          <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-4 xl:grid-cols-7" aria-label="Creation stages">
+            {quickStages.map((stage, index) => (
+              <button key={stage.key} type="button" onClick={() => selectQuickStage(index)}
+                aria-current={quickStageIndex === index ? "step" : undefined}
+                className={`studio-stage relative min-h-[90px] rounded-xl px-3 py-3 text-left ${quickStageIndex === index ? "studio-stage-active" : index < quickStageIndex ? "studio-stage-past" : ""}`}>
+                <span className="block font-mono text-[10px] tracking-widest text-cyan-300">{String(index + 1).padStart(2, "0")} / 07</span>
+                <span className="mt-2 block font-display text-sm font-bold text-white">{stage.title}</span>
+                <span className="mt-0.5 block text-[11px] text-zinc-400">{stage.detail}</span>
               </button>
             ))}
-            <button type="button" onClick={() => setQuickReview(true)}
-              className={`rounded-xl border px-3 py-3 text-left text-xs font-semibold ${quickReview ? "border-cyan-400/70 bg-cyan-500/10 text-cyan-100" : "hairline bg-elevated text-zinc-300 hover:border-cyan-400/50"}`}>
-              7 · Review
-            </button>
           </div>
         </section>
       )}
