@@ -1,16 +1,21 @@
 import "@/App.css";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useParams } from "react-router-dom";
 import { Toaster } from "sonner";
 import AppShell from "@/components/AppShell";
 import Library from "@/pages/Library";
 import Builder from "@/pages/Builder";
-import StudioHub from "@/pages/StudioHub";
 import Gallery from "@/pages/Gallery";
 import Queue from "@/pages/Queue";
 import Settings from "@/pages/Settings";
 import Shoots from "@/pages/Shoots";
 import ShootSetup from "@/pages/ShootSetup";
 import ShootDetail from "@/pages/ShootDetail";
+
+function LegacyStudioRedirect() {
+  const { id, section } = useParams();
+  const destination = id ? `/character/${id}${section ? `/s/${section}` : ""}` : `/character/new${section ? `/s/${section}` : ""}`;
+  return <Navigate to={destination} replace />;
+}
 
 function App() {
   return (
@@ -19,15 +24,11 @@ function App() {
         <AppShell>
           <Routes>
             <Route path="/" element={<Library />} />
-            <Route path="/studios" element={<StudioHub />} />
-            <Route path="/studio/feet" element={<Builder key="feet" studio="feet" />} />
-            <Route path="/studio/feet/s/:section" element={<Builder key="feet" studio="feet" />} />
-            <Route path="/studio/feet/:id" element={<Builder key="feet" studio="feet" />} />
-            <Route path="/studio/feet/:id/s/:section" element={<Builder key="feet" studio="feet" />} />
-            <Route path="/studio/watersports" element={<Builder key="watersports" studio="watersports" />} />
-            <Route path="/studio/watersports/s/:section" element={<Builder key="watersports" studio="watersports" />} />
-            <Route path="/studio/watersports/:id" element={<Builder key="watersports" studio="watersports" />} />
-            <Route path="/studio/watersports/:id/s/:section" element={<Builder key="watersports" studio="watersports" />} />
+            <Route path="/studios" element={<Navigate to="/character/new" replace />} />
+            <Route path="/studio/:studio/:id/s/:section" element={<LegacyStudioRedirect />} />
+            <Route path="/studio/:studio/:id" element={<LegacyStudioRedirect />} />
+            <Route path="/studio/:studio/s/:section" element={<LegacyStudioRedirect />} />
+            <Route path="/studio/:studio" element={<LegacyStudioRedirect />} />
             <Route path="/character/new" element={<Builder />} />
             <Route path="/character/new/s/:section" element={<Builder />} />
             <Route path="/character/:id" element={<Builder />} />

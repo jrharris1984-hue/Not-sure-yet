@@ -1,6 +1,7 @@
 import { useMemo, useState, useEffect } from "react";
 import PoseIcon from "@/components/PoseIcon";
 import { X } from "lucide-react";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 
 // Grouped chip picker: category tabs + only the active category's chips.
 // Supports single-select (value=string) or multi-select (value=array of strings).
@@ -12,7 +13,8 @@ export default function GroupedChips({
   variant = "chips",     // "chips" | "poses"
   multi = false,
 }) {
-  const arr = multi ? (Array.isArray(value) ? value : []) : null;
+  const arr = useMemo(() => multi ? (Array.isArray(value) ? value : []) : null, [multi, value]);
+  const reduceMotion = useReducedMotion();
   const has = (opt) => (multi ? arr.includes(opt) : value === opt);
 
   const findGroupOf = (v) => groups.findIndex((g) => g.options.includes(v));
@@ -93,13 +95,16 @@ export default function GroupedChips({
               type="button"
               onClick={() => setTab(i)}
               data-testid={`${testIdPrefix}-tab-${g.name.replace(/[^a-z0-9]+/gi, "-")}`}
-              className={`inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-[11px] font-mono uppercase tracking-wider transition-colors ${
+              className={`relative inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-[11px] font-mono uppercase tracking-wider transition-colors ${
                 isActive
                   ? "bg-amber-500/15 text-amber-200 border border-amber-500/40"
                   : "border hairline text-zinc-400 hover:text-zinc-100 hover:bg-white/5"
               }`}
             >
               {g.name}
+              {isActive && <motion.span layoutId={`${testIdPrefix}-category-indicator`}
+                className="absolute inset-x-1 bottom-0 h-0.5 rounded-full bg-amber-400"
+                transition={reduceMotion ? { duration: 0 } : { type: "spring", stiffness: 450, damping: 36 }} />}
               {cnt > 0 && (
                 <span className="inline-flex items-center justify-center min-w-4 h-4 px-1 rounded-full bg-amber-400 text-black text-[9px] font-bold">
                   {cnt}
@@ -110,6 +115,12 @@ export default function GroupedChips({
         })}
       </div>
 
+      <AnimatePresence mode="wait" initial={false}>
+      <motion.div key={`${testIdPrefix}-${active.name}`}
+        initial={reduceMotion ? false : { opacity: 0, y: 7 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={reduceMotion ? undefined : { opacity: 0, y: -5 }}
+        transition={{ duration: reduceMotion ? 0 : 0.16 }}>
       {variant === "poses" ? (
         <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
           {active.options.map((opt) => {
@@ -150,6 +161,8 @@ export default function GroupedChips({
           })}
         </div>
       )}
+      </motion.div>
+      </AnimatePresence>
     </div>
   );
 }
