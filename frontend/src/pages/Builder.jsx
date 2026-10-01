@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Save, Shuffle, Download, Upload, Loader2, Play, ChevronLeft, ChevronRight, Camera, Sparkles, ChevronDown, ImagePlus, X, RotateCcw, SlidersHorizontal, ShieldCheck, AlertTriangle, Pencil, Film, Trash2, ScanFace } from "lucide-react";
 import { toast } from "sonner";
 import { endpoints } from "@/lib/api";
+import { mediaUrl } from "@/lib/media";
 import {
   SECTIONS, DEFAULT_DNA,
   randomizeDna, randomizeSection, resetSection,
@@ -2323,7 +2324,7 @@ export default function Builder({ studio = "standard" }) {
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <div className="section-label">{studioProfile?.title || "Quick Create"}</div>
-              <p className="mt-1 text-sm text-zinc-400">{studioProfile?.description || "Set the essentials or jump directly to any character section."}</p>
+              <p className="mt-1 text-sm text-zinc-400">{studioProfile?.description || "Seven shortcuts to the essentials. Use the section menu for all detailed controls."}</p>
             </div>
             <span className="rounded-full border border-amber-400/40 bg-amber-500/10 px-3 py-1 text-xs text-amber-200">{activeWorkflow?.name || "Choose a model"}</span>
           </div>
@@ -2384,7 +2385,7 @@ export default function Builder({ studio = "standard" }) {
                   {activeRender.output_files?.[0] ? (
                     <Link to={`/gallery?render=${encodeURIComponent(activeRender.render_id || activeRender.id)}&returnTo=${encodeURIComponent(location.pathname)}`}
                       className="mt-3 inline-block max-w-sm overflow-hidden rounded-xl border border-cyan-400/30">
-                      <img src={activeRender.output_files[0]} alt="Latest image · open in Gallery" className="max-h-80 w-full object-contain" />
+                      <img src={mediaUrl(activeRender.output_files[0])} alt="Latest image · open in Gallery" className="max-h-80 w-full object-contain" />
                       <span className="block p-2 text-center text-xs font-semibold text-cyan-200">Open full size in Gallery</span>
                     </Link>
                   ) : <p className="mt-2 text-xs text-zinc-400">Your image will appear here when it finishes.</p>}
@@ -2392,9 +2393,9 @@ export default function Builder({ studio = "standard" }) {
               )}
             </div>
           ) : null}
-          <div className={desktopQuickMode && quickReview ? "md:hidden" : "block"}>
+          <div key={activeSection} className={`studio-section-enter ${desktopQuickMode && quickReview ? "md:hidden" : "block"}`}>
           <div className="hidden md:flex items-center justify-between text-xs font-mono text-zinc-500">
-            <span>Step {activeIdx + 1} of {SECTIONS.length}{isMulti && ` · Subject ${activeSubject.label}`}</span>
+            <span>Detail {activeIdx + 1} of {SECTIONS.length}{isMulti && ` · Subject ${activeSubject.label}`}</span>
             <span className={`uppercase tracking-widest section-label phase-${phaseOfSection(activeSection)}`}>{SECTIONS[activeIdx].title}</span>
           </div>
           <div className="hidden md:block h-1 rounded-full bg-elevated overflow-hidden">
@@ -3236,7 +3237,7 @@ export default function Builder({ studio = "standard" }) {
                 <div className="space-y-2">
                   <div className="grid grid-cols-2 gap-2">
                     {activeRender.output_files.map((u, i) => (
-                      <img key={i} src={u} alt="render" className="rounded-md border hairline w-full h-auto" />
+                      <img key={i} src={mediaUrl(u)} alt="render" className="rounded-md border hairline w-full h-auto" />
                     ))}
                   </div>
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">

@@ -53,6 +53,19 @@ const primaryOutput = (render) => proxiedMediaUrl(render.output_variants?.enhanc
 const originalOutput = (render) => proxiedMediaUrl(render.output_variants?.original?.[0]);
 const isVideoUrl = (url = "") => /\.(webm|mp4|mov)(?:[?&]|$)/i.test(decodeURIComponent(url));
 
+function GalleryImage({ src, alt }) {
+  const [failed, setFailed] = useState(false);
+  useEffect(() => setFailed(false), [src]);
+  return failed ? (
+    <span className="absolute inset-0 flex items-center justify-center px-4 text-center text-xs text-zinc-400">
+      Image unavailable. Check the ComfyUI output location.
+    </span>
+  ) : (
+    <img src={src} alt={alt} loading="lazy" onError={() => setFailed(true)}
+      className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105 group-focus-within:scale-105" />
+  );
+}
+
 const generationValue = (render, key) =>
   render?.generation_settings?.[key] ?? render?.render_recipe?.[key] ?? null;
 
@@ -536,10 +549,7 @@ export default function Gallery() {
                         <video src={output} muted playsInline preload="none"
                           className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105 group-focus-within:scale-105" />
                       ) : (
-                        <img src={output}
-                          alt={r.prompt_positive?.slice(0, 40) || "render"}
-                          loading="lazy"
-                          className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105 group-focus-within:scale-105" />
+                        <GalleryImage src={output} alt={r.prompt_positive?.slice(0, 40) || "render"} />
                       )}
                       <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-transparent to-transparent opacity-40 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity" />
                       <div className="gallery-poster-caption absolute inset-x-0 bottom-0 p-2 transition-opacity">

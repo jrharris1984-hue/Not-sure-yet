@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { Camera, Plus } from "lucide-react";
@@ -22,11 +23,14 @@ const STATUS_COLOR = {
 };
 
 export default function Shoots() {
+  const [showEmpty, setShowEmpty] = useState(false);
   const { data: shoots = [], isLoading } = useQuery({
     queryKey: ["shoots"],
     queryFn: endpoints.listShoots,
     refetchInterval: 5000,
   });
+  const visibleShoots = showEmpty ? shoots : shoots.filter((shoot) => (shoot.rendered_count ?? 0) > 0 || !["done", "failed"].includes(shoot.status));
+  const emptyCount = shoots.length - shoots.filter((shoot) => (shoot.rendered_count ?? 0) > 0 || !["done", "failed"].includes(shoot.status)).length;
 
   return (
     <div className="mx-auto max-w-[1400px] px-4 sm:px-6 py-6 sm:py-10 space-y-6">
@@ -37,12 +41,18 @@ export default function Shoots() {
           <p className="text-sm text-zinc-400 mt-1">Batch renders — one character, many poses, one shoot.</p>
         </div>
       </div>
+      {emptyCount > 0 && (
+        <button type="button" onClick={() => setShowEmpty((value) => !value)}
+          className="rounded-xl border hairline bg-elevated px-4 py-2 text-xs text-zinc-300 hover:border-cyan-400/50">
+          {showEmpty ? "Hide" : "Show"} {emptyCount} shoot{emptyCount === 1 ? "" : "s"} with no images
+        </button>
+      )}
 
       {isLoading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {Array.from({ length: 4 }).map((_, i) => <div key={i} className="pane h-40 animate-pulse" />)}
         </div>
-      ) : shoots.length === 0 ? (
+      ) : visibleShoots.length === 0 ? (
         <div className="pane p-10 text-center">
           <div className="section-label mb-2">No shoots yet</div>
           <h3 className="font-display text-xl">Pick a character to start a shoot</h3>
@@ -53,7 +63,7 @@ export default function Shoots() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {shoots.map((s, i) => {
+          {visibleShoots.map((s, i) => {
             const done = s.rendered_count ?? (s.frames || []).filter((f) => f.status === "done").length;
             return (
               <Link
