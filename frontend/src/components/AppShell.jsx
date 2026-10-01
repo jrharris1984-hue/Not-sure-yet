@@ -36,7 +36,7 @@ function ComfyStatus() {
 
 export default function AppShell({ children }) {
   const loc = useLocation();
-  const isBuilder = loc.pathname.startsWith("/character") || loc.pathname.startsWith("/studio/");
+  const isBuilder = loc.pathname.startsWith("/character");
   return (
     <div className="min-h-screen flex flex-col">
       <header className="glass sticky top-0 z-40 border-b border-cyan-400/20 shadow-[0_12px_32px_rgba(0,0,0,0.45)]">
@@ -75,11 +75,11 @@ export default function AppShell({ children }) {
             <ComfyStatus />
             {!isBuilder && (
               <Link
-                to="/studios"
+                to="/character/new"
                 data-testid="btn-new-character"
                 className="hidden sm:inline-flex items-center gap-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-black text-sm font-semibold px-3 py-2 transition-colors"
               >
-                <Plus className="h-4 w-4" /> Studios
+                <Plus className="h-4 w-4" /> Create
               </Link>
             )}
           </div>
@@ -111,12 +111,12 @@ export default function AppShell({ children }) {
             </NavLink>
           ))}
           <Link
-            to="/studios"
+            to="/character/new"
             data-testid="btn-new-character-mobile"
             className="flex flex-col items-center justify-center gap-0.5 py-2.5 text-[10px] uppercase tracking-widest text-amber-300"
           >
             <Plus className="h-5 w-5" />
-            Studios
+            Create
           </Link>
         </div>
       </nav>
