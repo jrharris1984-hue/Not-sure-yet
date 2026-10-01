@@ -1,4 +1,4 @@
-import { STUDIO_PROFILES, applyStudioPreset } from "./studioProfiles";
+import { STUDIO_PROFILES, applyStudioPreset, frameWholePerson } from "./studioProfiles";
 import { mobileStudioStepForSection, mobileStudioSectionsForStep } from "../components/MobileStudioFlow";
 import { DEFAULT_DNA, SECTIONS, buildPrompts } from "./dna";
 import { buildKrea2Prompts } from "./modelPromptCompilers";
@@ -83,4 +83,22 @@ test("a specialty preset keeps the rest of the character intact", () => {
   expect(result.pose.focus).toBe("feet");
   expect(result.feet.pedicure).toBe("painted red");
   expect(dna.pose.focus).toBe("face");
+});
+
+
+test("whole-person composition clears competing detail crops without changing the character", () => {
+  const dna = {
+    identity: { name: "Alex", age: 46 },
+    wardrobe: { heel_type: "strappy sandals" },
+    pose: { action: "standing", distance: "detail shot", focus: "feet" },
+    feet: { framing: "sole close-up", pedicure: "painted red" },
+    watersports: { camera_view: "floor-level detail", surface: "white tile" },
+  };
+  const foot = frameWholePerson(dna, "feet");
+  expect(foot.pose).toEqual({ action: "standing", distance: "full body", focus: "body" });
+  expect(foot.feet).toEqual({ framing: "full body", pedicure: "painted red" });
+  expect(foot.wardrobe).toBe(dna.wardrobe);
+  const water = frameWholePerson(dna, "watersports");
+  expect(water.watersports).toEqual({ camera_view: "full figure", surface: "white tile" });
+  expect(water.identity).toBe(dna.identity);
 });
