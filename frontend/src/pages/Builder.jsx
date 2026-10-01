@@ -8,7 +8,7 @@ import { mediaUrl } from "@/lib/media";
 import {
   SECTIONS, DEFAULT_DNA,
   randomizeDna, randomizeSection, resetSection,
-  PHASES, phaseOfSection,
+  phaseOfSection,
   MAX_SUBJECTS, makeSubject, subjectsFromCharacter, subjectLabel,
   expectedSubjectCount, seedSubjectFromPairing,
   HERITAGE_CASTS,
@@ -1771,17 +1771,19 @@ export default function Builder({ studio = "standard" }) {
     && (!poseAssistEnabled || poseAssistStage === "done");
 
   const quickStages = [
-    { key: "identity", title: "People", detail: "Cast & age" },
-    { key: "physique", title: "Body", detail: "Shape & size" },
-    { key: "wardrobe", title: "Wardrobe", detail: "Outfit & color" },
-    { key: "pose", title: "Pose", detail: "Action & view" },
-    { key: "scene", title: "Setting", detail: "Place & mood" },
-    { key: "feet", title: "Feet", detail: "Finishing details" },
-    { key: "review", title: "Review", detail: "Prompt & render" },
+    { key: "identity", title: "People", detail: "Cast & age", sections: ["identity", "scenario"] },
+    { key: "physique", title: "Body", detail: "Shape & features", sections: ["physique", "face", "hair", "skin", "intimate"] },
+    { key: "wardrobe", title: "Wardrobe", detail: "Outfit & color", sections: ["wardrobe"] },
+    { key: "pose", title: "Pose", detail: "Action & camera", sections: ["pose", "camera"] },
+    { key: "scene", title: "Setting", detail: "Place & mood", sections: ["scene", "lighting", "style"] },
+    { key: "feet", title: "Details", detail: "Additional controls", sections: ["feet", "kink", "watersports"] },
+    { key: "review", title: "Review", detail: "Prompt & render", sections: [] },
   ];
-  const quickStageIndex = quickReview ? 6 : Math.max(0, quickStages.findIndex((stage) => stage.key === activeSection));
+  const [quickOpenCategory, setQuickOpenCategory] = useState("identity");
+  const quickStageIndex = quickReview ? 6 : Math.max(0, quickStages.findIndex((stage) => stage.sections.includes(activeSection)));
   const selectQuickStage = (index) => {
     if (index < 0 || index >= quickStages.length) return;
+    setQuickOpenCategory(quickStages[index].key);
     if (index === 6) {
       setQuickReview(true);
     } else {
@@ -2353,30 +2355,12 @@ export default function Builder({ studio = "standard" }) {
             </div>
             <span className="rounded-full border border-amber-400/40 bg-amber-500/10 px-3 py-1 text-xs text-amber-200">{activeWorkflow?.name || "Choose a model"}</span>
           </div>
-          <div className="mt-3 flex flex-wrap items-center gap-2">
-            <label htmlFor="quick-section-jump" className="text-xs font-semibold text-cyan-200">Jump to section</label>
-            <select id="quick-section-jump" data-testid="quick-section-jump"
-              value={quickReview ? "review" : activeSection}
-              onChange={(event) => {
-                if (event.target.value === "review") setQuickReview(true);
-                else { setQuickReview(false); goSection(event.target.value); }
-              }}
-              className="min-w-[220px] max-w-full rounded-lg border hairline bg-elevated px-3 py-2 text-sm text-zinc-100">
-              {PHASES.map((phase) => (
-                <optgroup key={phase.key} label={phase.label}>
-                  {phase.sections.map((key) => {
-                    const section = SECTIONS.find((item) => item.key === key);
-                    return section && <option key={key} value={key}>{section.title}</option>;
-                  })}
-                </optgroup>
-              ))}
-              <option value="review">Review & render</option>
-            </select>
-          </div>
+          <p className="mt-4 text-[11px] font-mono uppercase tracking-widest text-cyan-300">Choose a category, then a control</p>
           <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-4 xl:grid-cols-7" aria-label="Creation stages">
             {quickStages.map((stage, index) => (
               <button key={stage.key} type="button" onClick={() => selectQuickStage(index)}
                 aria-current={quickStageIndex === index ? "step" : undefined}
+                aria-expanded={stage.sections.length ? quickOpenCategory === stage.key : undefined}
                 className={`studio-stage relative min-h-[90px] rounded-xl px-3 py-3 text-left ${quickStageIndex === index ? "studio-stage-active" : index < quickStageIndex ? "studio-stage-past" : ""}`}>
                 <span className="block font-mono text-[10px] tracking-widest text-cyan-300">{String(index + 1).padStart(2, "0")} / 07</span>
                 <span className="mt-2 block font-display text-sm font-bold text-white">{stage.title}</span>
@@ -2384,6 +2368,18 @@ export default function Builder({ studio = "standard" }) {
               </button>
             ))}
           </div>
+          {quickOpenCategory !== "review" && (
+            <div className="studio-subcategories mt-3 flex flex-wrap items-center gap-2 rounded-xl p-3" aria-label={`${quickStages.find((stage) => stage.key === quickOpenCategory)?.title || "Category"} controls`}>
+              <span className="mr-2 text-xs font-semibold text-cyan-200">{quickStages.find((stage) => stage.key === quickOpenCategory)?.title}</span>
+              {quickStages.find((stage) => stage.key === quickOpenCategory)?.sections.map((key) => {
+                const section = SECTIONS.find((item) => item.key === key);
+                return section && <button key={key} type="button" onClick={() => { setQuickReview(false); goSection(key); }}
+                  className={`rounded-lg border px-3 py-2 text-xs font-semibold transition-colors ${activeSection === key && !quickReview ? "border-lime-400 bg-lime-400/15 text-lime-200" : "border-white/15 bg-white/[0.04] text-zinc-300 hover:border-cyan-400/60 hover:text-white"}`}>
+                  {section.title}
+                </button>;
+              })}
+            </div>
+          )}
         </section>
       )}
 
