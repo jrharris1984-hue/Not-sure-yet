@@ -2547,6 +2547,10 @@ export default function Builder({ studio = "standard" }) {
             optimized={!!promptOverride}
             improving={improvingPrompt}
             onImprove={improveCompiledPrompt}
+            onApplyPrompts={(nextPositive, nextNegative) => {
+              setPromptOverride(nextPositive);
+              setNegativePromptOverride(nextNegative);
+            }}
             onOptimize={(cleaned) => {
               setPromptOverride(cleaned);
               toast.success("Safe prompt cleanup applied");

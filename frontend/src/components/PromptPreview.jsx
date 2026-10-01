@@ -1,11 +1,29 @@
-import { Copy, Check, ShieldCheck, Wand2, Undo2, AlertTriangle, Sparkles, Loader2, ChevronDown } from "lucide-react";
-import { useState, useMemo } from "react";
+import { Copy, Check, ShieldCheck, Wand2, Undo2, AlertTriangle, Sparkles, Loader2, ChevronDown, Pencil } from "lucide-react";
+import { useState, useMemo, useEffect } from "react";
 import { toast } from "sonner";
 import { analyzePromptQuality, estimatePromptTokens } from "@/lib/promptQuality";
 
-export default function PromptPreview({ positive, negative, dna, workflow, context, compilerMeta, recipe, selectedLora, secondaryLora, imageCount = 1, optimized, improving, onImprove, onOptimize, onRestore, aiProvider = "AI" }) {
+export default function PromptPreview({ positive, negative, dna, workflow, context, compilerMeta, recipe, selectedLora, secondaryLora, imageCount = 1, optimized, improving, onImprove, onOptimize, onRestore, onApplyPrompts, aiProvider = "AI" }) {
   const [copied, setCopied] = useState(false);
   const [expanded, setExpanded] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [draftPositive, setDraftPositive] = useState(positive || "");
+  const [draftNegative, setDraftNegative] = useState(negative || "");
+  useEffect(() => {
+    if (!editing) {
+      setDraftPositive(positive || "");
+      setDraftNegative(negative || "");
+    }
+  }, [positive, negative, editing]);
+  const applyDraft = () => {
+    if (!draftPositive.trim()) {
+      toast.error("Positive prompt cannot be empty");
+      return;
+    }
+    onApplyPrompts?.(draftPositive.trim(), draftNegative.trim());
+    setEditing(false);
+    toast.success("Prompt edits applied to the next render");
+  };
   const tokens = useMemo(() => estimatePromptTokens(positive), [positive]);
   const quality = useMemo(
     () => analyzePromptQuality({ positive, dna, workflow, context, compilerMeta }),
@@ -79,13 +97,31 @@ export default function PromptPreview({ positive, negative, dna, workflow, conte
             {compilerMeta?.negativeStrategy === "zeroed" && <div className="text-amber-200">This workflow zeroes negative conditioning.</div>}
             <div className="mt-1 text-zinc-500">Installed model names and graph settings are confirmed by the backend when the job runs.</div>
           </div>
-          <pre className="text-xs font-mono leading-relaxed bg-elevated rounded-lg p-3 border hairline whitespace-pre-wrap break-words text-amber-100/90 max-h-72 overflow-y-auto">
-{positive}
-          </pre>
-          <div className="section-label">Negative</div>
-          <pre className="text-[11px] font-mono leading-relaxed bg-elevated rounded-lg p-3 border hairline whitespace-pre-wrap break-words text-zinc-400 max-h-40 overflow-y-auto">
-{negative}
-          </pre>
+          <div className="flex items-center justify-between gap-2">
+            <div className="section-label">Positive prompt</div>
+            {!editing && <button type="button" onClick={() => { setDraftPositive(positive || ""); setDraftNegative(negative || ""); setEditing(true); }}
+              className="inline-flex items-center gap-1 rounded-md border hairline px-2 py-1 text-xs text-zinc-200" data-testid="btn-edit-compiled-prompts">
+              <Pencil className="h-3.5 w-3.5" /> Edit prompts
+            </button>}
+          </div>
+          {editing ? (
+            <div className="space-y-3" data-testid="prompt-edit-form">
+              <textarea aria-label="Edit positive prompt" value={draftPositive} onChange={(event) => setDraftPositive(event.target.value)}
+                rows={9} className="w-full resize-y rounded-lg border hairline bg-elevated p-3 text-xs font-mono text-amber-100" />
+              <label htmlFor="edit-negative-prompt" className="section-label block">Negative prompt</label>
+              <textarea id="edit-negative-prompt" value={draftNegative} onChange={(event) => setDraftNegative(event.target.value)}
+                rows={5} className="w-full resize-y rounded-lg border hairline bg-elevated p-3 text-xs font-mono text-zinc-300" />
+              <div className="flex flex-wrap gap-2">
+                <button type="button" onClick={applyDraft} className="rounded-lg bg-amber-400 px-3 py-2 text-xs font-semibold text-black" data-testid="btn-apply-compiled-prompts">Apply to next render</button>
+                <button type="button" onClick={() => setEditing(false)} className="rounded-lg border hairline px-3 py-2 text-xs text-zinc-300">Cancel</button>
+              </div>
+              <p className="text-[11px] text-zinc-500">Review your edits above after applying. Changing builder selections may regenerate the prompt.</p>
+            </div>
+          ) : <>
+            <pre className="text-xs font-mono leading-relaxed bg-elevated rounded-lg p-3 border hairline whitespace-pre-wrap break-words text-amber-100/90 max-h-72 overflow-y-auto">{positive}</pre>
+            <div className="section-label">Negative prompt</div>
+            <pre className="text-[11px] font-mono leading-relaxed bg-elevated rounded-lg p-3 border hairline whitespace-pre-wrap break-words text-zinc-400 max-h-40 overflow-y-auto">{negative}</pre>
+          </>}
         </div>
       )}
       <div className="rounded-lg border hairline bg-black/20 p-3 space-y-2" data-testid="prompt-quality-preflight">
