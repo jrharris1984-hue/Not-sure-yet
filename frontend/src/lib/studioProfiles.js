@@ -7,7 +7,7 @@ const step = (id, label, hint, sections, simpleSections = sections) => ({
 export const STUDIO_PROFILES = {
   feet: {
     title: "Foot Studio",
-    description: "Build a character, choose foot styling, then compose a foot-focused scene.",
+    description: "Build the entire character, then choose foot styling, wardrobe, pose and scene. Keep the whole person in frame while making footwear and feet visible.",
     fieldGroups: [
       { label: "Framing", keys: ["framing", "foot_pose", "sole_presentation", "ground_surface"] },
       { label: "Shape", keys: ["arch", "toe_length", "foot_size", "sole_texture", "toes"] },
@@ -40,7 +40,7 @@ export const STUDIO_PROFILES = {
   },
   watersports: {
     title: "Watersports Studio",
-    description: "Build a character and set the source, stream, wetness, wardrobe and location.",
+    description: "Build the entire character, then choose wardrobe, pose, camera and scene details. Keep the whole person in frame when you want a character portrait.",
     fieldGroups: [
       { label: "Setup", keys: ["source", "self_action", "container", "phase", "stance", "camera_view"] },
       { label: "Flow", keys: ["direction", "self_aim", "stream", "desperation", "flow_appearance"] },
@@ -71,6 +71,16 @@ export const STUDIO_PROFILES = {
     ],
   },
 };
+
+// Preserve character and styling while replacing competing detail crops.
+export function frameWholePerson(dna, studio) {
+  return {
+    ...dna,
+    pose: { ...dna.pose, distance: "full body", focus: "body" },
+    ...(studio === "feet" ? { feet: { ...dna.feet, framing: "full body" } } : {}),
+    ...(studio === "watersports" ? { watersports: { ...dna.watersports, camera_view: "full figure" } } : {}),
+  };
+}
 
 export function applyStudioPreset(dna, preset) {
   return Object.fromEntries(Object.entries(dna).map(([section, value]) => [
