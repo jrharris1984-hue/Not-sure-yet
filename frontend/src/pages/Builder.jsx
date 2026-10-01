@@ -2040,6 +2040,19 @@ export default function Builder({ studio = "standard" }) {
         }}
       />
 
+      <nav className="hidden md:grid grid-cols-5 gap-2" aria-label="Creation steps" data-testid="desktop-creation-steps">
+        {studioSteps.map((step, index) => {
+          const selected = step.id === mobileStudioStep;
+          return <button key={step.id} type="button" onClick={() => openMobileStudioStep(step.id)}
+            aria-current={selected ? "step" : undefined}
+            className={`studio-stage rounded-xl border px-3 py-3 text-left ${selected ? "studio-stage-active border-amber-400/60 bg-amber-500/10" : "hairline bg-elevated hover:border-cyan-400/50"}`}>
+            <span className={`text-[10px] font-mono ${selected ? "text-amber-300" : "text-zinc-500"}`}>{String(index + 1).padStart(2, "0")}</span>
+            <span className="mt-1 block font-display text-sm font-bold text-zinc-100">{step.label}</span>
+            <span className="mt-0.5 block text-[11px] text-zinc-400">{step.hint}</span>
+          </button>;
+        })}
+      </nav>
+
       <div className={mobileStudioStep === "start" ? "block" : "hidden md:block"}>
         <AiAssistBar dna={activeDna} aiProvider={aiProvider}
           onApplyDna={(draft) => { setActiveDna(draft); setPlainLanguage(""); }}
