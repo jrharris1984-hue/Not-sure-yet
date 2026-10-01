@@ -184,8 +184,9 @@ export default function MobileStudioFlow({
               type="button"
               onClick={() => onStep(step.id)}
               data-testid={`mobile-studio-step-${step.id}`}
-              className={`min-w-0 border-r hairline px-1 py-2.5 text-center last:border-r-0 transition-colors ${
-                selected ? "bg-amber-500/10 text-amber-200" : "text-zinc-500 hover:bg-white/[0.03]"
+              aria-current={selected ? "step" : undefined}
+              className={`studio-stage min-w-0 border-r hairline px-1 py-2.5 text-center last:border-r-0 ${
+                selected ? "studio-stage-active bg-amber-500/10 text-amber-200" : "text-zinc-500 hover:bg-white/[0.03]"
               }`}
             >
               <span className={`mx-auto grid h-5 w-5 place-items-center rounded-full border text-[9px] font-mono ${
@@ -199,6 +200,10 @@ export default function MobileStudioFlow({
             </button>
           );
         })}
+      </div>
+
+      <div className="h-1 bg-zinc-800" role="progressbar" aria-label="Creation progress" aria-valuemin={1} aria-valuemax={steps.length} aria-valuenow={activeIndex + 1}>
+        <div className="studio-progress h-full bg-gradient-to-r from-amber-400 via-cyan-400 to-fuchsia-400" style={{ width: `${((activeIndex + 1) / steps.length) * 100}%` }} />
       </div>
 
       {visibleSections.length > 1 && (
