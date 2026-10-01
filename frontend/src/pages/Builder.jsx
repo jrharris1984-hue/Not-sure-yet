@@ -43,7 +43,7 @@ import RenderRecipeSelector from "@/components/RenderRecipeSelector";
 import SmartSetupPanel from "@/components/SmartSetupPanel";
 import { getRenderRecipe, recipeFamily } from "@/lib/renderRecipes";
 import { readBuilderDraft, writeBuilderDraft, clearBuilderDraft } from "@/lib/builderDraft";
-import { STUDIO_PROFILES, applyStudioPreset } from "@/lib/studioProfiles";
+import { STUDIO_PROFILES, applyStudioPreset, frameWholePerson } from "@/lib/studioProfiles";
 import { buildSameCharacterPoseInstruction, DEFAULT_POSE_LOCKS, SAME_CHARACTER_POSES } from "@/lib/sameCharacterPose";
 import { DEFAULT_REFERENCE_STRENGTHS, REFERENCE_RECIPES, preservationStrengthInstruction, referenceStudioSummary } from "@/lib/referenceStudio";
 import { Flame } from "lucide-react";
@@ -2292,9 +2292,14 @@ export default function Builder({ studio = "standard" }) {
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
             <div className="section-label">{studioProfile.title} · Scene presets</div>
-            <p className="mt-1 text-xs text-zinc-400">Choose a starting composition, then edit every detail in the steps below.</p>
+            <p className="mt-1 text-xs text-zinc-400">Show whole person keeps the character in frame. Detail presets still offer close-ups when you choose them.</p>
           </div>
-          <Link to="/studios" className="text-xs text-cyan-300 hover:underline">Other studios</Link>
+          <div className="flex flex-wrap items-center gap-2">
+            <button type="button" onClick={() => setActiveDna(frameWholePerson(activeDna, studio))}
+              className="rounded-lg border border-cyan-400/50 bg-cyan-500/10 px-3 py-2 text-xs font-semibold text-cyan-100"
+              data-testid="btn-studio-whole-person">Show whole person</button>
+            <Link to="/studios" className="text-xs text-cyan-300 hover:underline">Other studios</Link>
+          </div>
         </div>
         <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
           {studioProfile.presets.map((preset) => <button key={preset.name} type="button"
