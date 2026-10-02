@@ -99,7 +99,7 @@ export default function MediaLibrary() {
           <option value="all">All media</option><option value="image">Images</option><option value="video">Videos</option>
         </select>
         <select value={status} onChange={e=>{setStatus(e.target.value);setOffset(0);}} className="rounded-lg bg-elevated border hairline px-3 py-2 text-sm text-zinc-200">
-          <option value="all">Any status</option><option value="complete">Analyzed</option><option value="pending">Pending</option><option value="error">Error</option><option value="not_required">Not required</option>
+          <option value="all">Any status</option><option value="complete">Analyzed only</option><option value="pending">Pending</option><option value="error">Error</option><option value="not_required">Not required</option>
         </select>
         <button onClick={()=>{health.refetch();stats.refetch();media.refetch();}} className="inline-flex items-center justify-center gap-2 rounded-lg border hairline px-3 py-2 text-sm text-zinc-300 hover:bg-white/5"><RefreshCw className="h-4 w-4"/>Refresh</button>
       </div>
