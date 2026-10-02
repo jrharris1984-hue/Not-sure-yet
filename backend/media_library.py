@@ -48,6 +48,23 @@ async def media_library_list(
     })
 
 
+@router.get("/folders")
+async def media_library_folders(
+    path: str = "",
+    media_type: str = Query("all", pattern="^(all|image|video)$"),
+    status: str = Query("all", pattern="^(all|pending|analyzing|complete|error|not_required)$"),
+    analyzed_only: bool = False,
+    hide_sidecars: bool = True,
+):
+    return await _json_get("/folders", {
+        "path": path,
+        "media_type": media_type,
+        "status": status,
+        "analyzed_only": str(analyzed_only).lower(),
+        "hide_sidecars": str(hide_sidecars).lower(),
+    })
+
+
 @router.get("/media/{media_id}")
 async def media_library_item(media_id: int):
     return await _json_get(f"/media/{media_id}")
