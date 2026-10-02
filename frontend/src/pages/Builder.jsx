@@ -646,8 +646,20 @@ export default function Builder({ studio = "standard" }) {
       // previously hydrated Builder draft can contain Media Library/Qwen notes
       // in plainLanguage; leaving them here silently appends stale Hair, Pose,
       // Wardrobe, Photo style, etc. after the newly compiled prompt.
+      //
+      // Clear both React state and the persisted draft. Clearing state alone is
+      // not durable if Builder remounts or another hydration pass reads the
+      // same local draft while the Gallery recipe is being opened.
       setPlainLanguage("");
       setMediaImportSummary(null);
+      const currentDraft = readBuilderDraft(draftId) || {};
+      writeBuilderDraft(draftId, {
+        ...currentDraft,
+        plainLanguage: "",
+        mediaImportSummary: null,
+        promptOverride: "",
+        negativePromptOverride: "",
+      });
     }
     if (saved.prompt_positive && !rebuildCurrent) setVariationPrompt(saved.prompt_positive);
     if (typeof saved.refine_denoise === "number") setVariationDenoise(saved.refine_denoise);
