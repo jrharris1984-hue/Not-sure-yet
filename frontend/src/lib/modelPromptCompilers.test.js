@@ -319,12 +319,34 @@ describe("model-specific prompt compilers", () => {
     };
     const result = compileModelPrompts({ promptStyle: "chroma", dna });
     expect(result.positive).toContain("PRIMARY BODY PROPORTIONS");
-    expect(result.positive).toContain("extremely oversized fantasy-scale glute volume");
+    expect(result.positive).toContain("fantasy-scale extremely oversized glute volume");
     expect(result.positive).toContain("extreme rear and lateral projection");
     expect(result.positive).toContain("extremely wide fantasy-scale hips");
     expect(result.positive).toContain("extremely thick fantasy-scale thighs");
     expect(result.positive).not.toContain("believable adult proportions");
     expect(result.positive).not.toContain("detailed anatomy with natural proportions");
+  });
+
+
+  it("keeps Chroma detail-slider values distinct and removes imported body-size anchoring", () => {
+    const low = JSON.parse(JSON.stringify(DEFAULT_DNA));
+    low.physique = {
+      ...low.physique,
+      butt: "hyper",
+      butt_scale: 20,
+      proportions: "Large bust and prominent buttocks from imported analyzer metadata",
+    };
+    const high = JSON.parse(JSON.stringify(low));
+    high.physique.butt_scale = 80;
+
+    const lowResult = compileModelPrompts({ promptStyle: "chroma", dna: low });
+    const highResult = compileModelPrompts({ promptStyle: "chroma", dna: high });
+
+    expect(lowResult.positive).toContain("moderate glute volume (size intensity 20/100)");
+    expect(highResult.positive).toContain("extremely oversized with strong rear projection glute volume (size intensity 80/100)");
+    expect(lowResult.positive).not.toContain("Large bust and prominent buttocks from imported analyzer metadata");
+    expect(highResult.positive).not.toContain("Large bust and prominent buttocks from imported analyzer metadata");
+    expect(lowResult.positive).not.toBe(highResult.positive);
   });
 
 });
