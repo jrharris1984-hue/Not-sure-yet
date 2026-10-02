@@ -922,12 +922,13 @@ export function compileModelPrompts({
     };
   }
   if (compiler === "chroma") {
-    const chromaDna = chromaDnaWithAuthoritativeScales(primaryGuard.dna);
+    const sourceDna = primaryGuard.dna;
+    const chromaDna = chromaDnaWithAuthoritativeScales(sourceDna);
     return buildPrioritizedChromaPrompt(
       buildChromaPrompts(chromaDna, { raunch }),
       priorityPlan,
-      { ...primaryGuard, dna: chromaDna },
-      chromaDna
+      primaryGuard,
+      sourceDna
     );
   }
   if (compiler === "krea2") {
