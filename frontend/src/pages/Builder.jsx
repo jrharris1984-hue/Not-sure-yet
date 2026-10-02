@@ -263,6 +263,7 @@ export default function Builder({ studio = "standard" }) {
     setRaunch(restoredLanguage === "explicit");
     setPromptOverride(draft.promptOverride || "");
     setPlainLanguage(draft.plainLanguage || "");
+    setMediaImportSummary(draft.mediaImportSummary || null);
     setNegativePromptOverride(draft.negativePromptOverride || "");
     setWorkflowId(draft.workflowId || "");
     setLoraOverrides(draft.loraOverrides || {});
@@ -406,13 +407,24 @@ export default function Builder({ studio = "standard" }) {
     setName(`Media Study - ${incoming.sourceName || "Untitled"}`);
     setTags(Array.isArray(incoming.generalTags) ? incoming.generalTags : []);
     setPlainLanguage(notes.join("\n"));
-    setMediaImportSummary({ sourceName: incoming.sourceName || "Media Library image", mapped, notes });
+    const importSummary = { sourceName: incoming.sourceName || "Media Library image", mapped, notes };
+    setMediaImportSummary(importSummary);
+    const existingDraft = readBuilderDraft(draftId) || {};
+    writeBuilderDraft(draftId, {
+      ...existingDraft,
+      name: `Media Study - ${incoming.sourceName || "Untitled"}`,
+      subjects: [restored],
+      activeSubjectId: restored.id,
+      tags: Array.isArray(incoming.generalTags) ? incoming.generalTags : [],
+      plainLanguage: notes.join("\n"),
+      mediaImportSummary: importSummary,
+    });
     setPromptOverride("");
     setNegativePromptOverride("");
     setMobileStudioStep("start");
     toast.success("Media Library traits loaded into Studio");
     nav("/character/new/s/identity", { replace: true, state: null });
-  }, [editorHydrated, location.state, nav]);
+  }, [draftId, editorHydrated, location.state, nav]);
 
   // Persist the latest render session so a refresh/reopen can reconnect to the
   // same queued/running batch instead of making it disappear from Builder.
@@ -1712,6 +1724,11 @@ export default function Builder({ studio = "standard" }) {
     setCollapsed({});
     setTags([]);
     setMediaImportSummary(null);
+    const existingDraft = readBuilderDraft(draftId) || {};
+    if (existingDraft.mediaImportSummary) {
+      const { mediaImportSummary: _removedSummary, ...rest } = existingDraft;
+      writeBuilderDraft(draftId, rest);
+    }
     setRaunch(false);
     setPromptLanguage("editorial");
     setLoraOverrides({});
