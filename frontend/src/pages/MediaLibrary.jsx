@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Search, Images, Video, RefreshCw, X, Database } from "lucide-react";
 import { endpoints } from "@/lib/api";
@@ -13,6 +14,7 @@ function Meta({ label, value }) {
 }
 
 export default function MediaLibrary() {
+  const nav = useNavigate();
   const [q, setQ] = useState("");
   const [search, setSearch] = useState("");
   const [type, setType] = useState("image");
@@ -32,6 +34,34 @@ export default function MediaLibrary() {
     queryFn:() => endpoints.mediaLibraryList({ q:search || undefined, media_type:type, status, hide_sidecars:true, limit:PAGE_SIZE, offset }),
     retry:1,
   });
+
+  const useInStudio = (item) => {
+    const reusable = {
+      mediaId: item.id,
+      sourceName: item.file_name,
+      description: item.search_description || item.subject_description || "",
+      bodyBuild: item.body_build || "",
+      bodyProportions: item.body_proportions || "",
+      physicalAppearance: item.physical_appearance || "",
+      hairColor: item.hair_color || "",
+      hairLength: item.hair_length || "",
+      hairStyle: item.hair_style || "",
+      expression: item.facial_expression || "",
+      wardrobe: item.wardrobe_details || "",
+      pose: item.pose || "",
+      orientation: item.body_orientation || "",
+      framing: item.framing || "",
+      cameraAngle: item.camera_angle || "",
+      cameraDistance: item.camera_distance || "",
+      composition: item.composition || "",
+      lighting: item.lighting || "",
+      background: item.background || "",
+      environment: item.environment || "",
+      photographicStyle: item.photographic_style || "",
+      generalTags: item.general_tags || [],
+    };
+    nav("/character/new", { state: { mediaLibraryTraits: reusable } });
+  };
 
   const items = media.data?.items || [];
   const total = media.data?.total || 0;
@@ -108,6 +138,7 @@ export default function MediaLibrary() {
               <Meta label="Environment" value={selected.environment || selected.background}/>
               <Meta label="Style" value={selected.photographic_style}/>
               <Meta label="Tags" value={[...(selected.general_tags||[]), ...(selected.adult_content_tags||[])]}/>
+              {selected.analysis_status === "complete" && <button onClick={()=>useInStudio(selected)} className="w-full rounded-lg bg-amber-500 hover:bg-amber-400 text-black font-semibold px-4 py-3 transition-colors">Use in Studio</button>}
               {selected.analysis_status !== "complete" && <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-200">Qwen analysis is not complete for this item yet. The metadata panel will fill in automatically after analysis.</div>}
             </div>
           </div>
