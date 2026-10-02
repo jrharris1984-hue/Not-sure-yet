@@ -20,6 +20,7 @@ services:
       DB_NAME: ultra_studio
       CORS_ORIGINS: http://localhost:3000
       COMFYUI_OUTPUT_DIR: /comfyui-output
+      MEDIA_LIBRARY_URL: ${MEDIA_LIBRARY_URL:-http://192.168.0.16:8010}
     ports:
       - "8001:8001"
     volumes:
