@@ -105,40 +105,43 @@ function chromaBodyPriority(dna = {}) {
   const ph = dna.physique || {};
   const clauses = [];
 
+  // Chroma is highly sensitive to large semantic jumps. Keep each slider on
+  // one stable visual concept and increase only the degree/emphasis. This
+  // preserves seed composition better than switching concepts such as
+  // "large" -> "extreme fantasy-scale" -> "maximum fantasy-scale".
   if (Number(ph.bust_scale) > 0 && !(Number(ph.implant_volume) > 0)) {
     clauses.push(chromaProgressiveScale(ph.bust_scale, "bust", [
-      "very small compact", "small", "modest", "moderate", "full and clearly prominent",
-      "large with substantial volume", "very large with dominant volume", "dramatically oversized", "extreme fantasy-scale oversized", "maximum fantasy-scale exaggeration, unmistakably larger than the 90-level result",
+      "compact rounded, minimal volume", "compact rounded, light volume", "rounded, modest volume", "rounded, moderate volume", "rounded, noticeable volume",
+      "rounded, moderately strong volume", "rounded, strong volume", "rounded, very strong volume", "rounded, pronounced volume", "rounded, maximum volume emphasis",
     ]));
   }
   if (Number(ph.butt_scale) > 0) {
     clauses.push(chromaProgressiveScale(ph.butt_scale, "glute volume", [
-      "small compact", "moderate", "full rounded and clearly above average", "large rounded with clearly increased volume", "very large rounded with substantial volume",
-      "very large projected with pronounced added volume", "dramatically oversized with major rear projection", "extreme fantasy-scale volume with unmistakable rear projection",
-      "maximum-adjacent fantasy-scale volume with extreme rear and lateral projection", "maximum fantasy-scale exaggeration with unmistakably greater volume and projection than the 90-level result",
+      "rounded, minimal projection", "rounded, light projection", "rounded, modest projection", "rounded, moderate projection", "rounded, noticeable projection",
+      "rounded, moderately strong projection", "rounded, strong projection", "rounded, very strong projection", "rounded, pronounced projection", "rounded, maximum projection emphasis",
     ]));
   }
   if (Number(ph.hip_scale) > 0) {
     clauses.push(chromaProgressiveScale(ph.hip_scale, "hips", [
-      "very narrow compact", "narrow", "moderately narrow", "moderate-width", "clearly wide",
-      "wide with substantial lateral breadth", "very wide and visually dominant", "dramatically wide", "extreme fantasy-scale width", "maximum fantasy-scale width, unmistakably broader than the 90-level result",
+      "balanced, minimal lateral width", "balanced, light lateral width", "balanced, modest lateral width", "balanced, moderate lateral width", "balanced, noticeable lateral width",
+      "balanced, moderately strong lateral width", "balanced, strong lateral width", "balanced, very strong lateral width", "balanced, pronounced lateral width", "balanced, maximum lateral-width emphasis",
     ]));
   }
   if (Number(ph.thigh_scale) > 0) {
     clauses.push(chromaProgressiveScale(ph.thigh_scale, "thighs", [
-      "very slim", "slim", "moderate", "full", "clearly thick",
-      "very thick with substantial volume", "extra thick and visually dominant", "dramatically thick", "extreme fantasy-scale thickness", "maximum fantasy-scale thickness, unmistakably greater than the 90-level result",
+      "shapely, minimal thickness", "shapely, light thickness", "shapely, modest thickness", "shapely, moderate thickness", "shapely, noticeable thickness",
+      "shapely, moderately strong thickness", "shapely, strong thickness", "shapely, very strong thickness", "shapely, pronounced thickness", "shapely, maximum thickness emphasis",
     ]));
   }
   if (Number(ph.waist_scale) > 0) {
     clauses.push(chromaProgressiveScale(ph.waist_scale, "waist", [
-      "extremely narrow", "very narrow", "narrow", "moderately narrow", "average-width",
-      "clearly wide", "wide with substantial breadth", "very wide and visually dominant", "extreme fantasy-scale width", "maximum fantasy-scale width, unmistakably broader than the 90-level result",
+      "defined, minimal width", "defined, light width", "defined, modest width", "defined, moderate width", "defined, noticeable width",
+      "defined, moderately strong width", "defined, strong width", "defined, very strong width", "defined, pronounced width", "defined, maximum width emphasis",
     ]));
   }
 
   if (!clauses.length) return "";
-  return `PRIMARY BODY PROPORTIONS — ${clauses.join(", ")}; these explicit slider-selected sizes override any imported or reference body-size description; keep each selected proportion localized to that body region and preserve one coherent torso, pelvis, joints, and limb count`;
+  return `PRIMARY BODY PROPORTIONS — ${clauses.join(", ")}; selected slider values control only the degree of the named body region while preserving the same person, pose, camera, wardrobe, environment, and overall composition; these selected proportions override conflicting imported body-size descriptions and must remain localized to their named body regions`;
 }
 
 function normalizeChromaProportionLanguage(value, dna = {}) {
