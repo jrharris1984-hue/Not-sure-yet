@@ -1110,7 +1110,7 @@ export default function Builder({ studio = "standard" }) {
   const translatedUserText = hasAuthoritativeChromaBodyScale
     ? String(translatedPlainLanguage.text || "")
         .split(/\n+/)
-        .filter((line) => !/^\s*(appearance|build|proportions)\s*:/i.test(line))
+        .filter((line) => !/^\s*(appearance|build|proportions|framing|composition)\s*:/i.test(line))
         .join("\n")
         .trim()
     : translatedPlainLanguage.text;

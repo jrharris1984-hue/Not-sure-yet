@@ -66,16 +66,39 @@ function hasDetailedBodyScale(dna = {}) {
 
 function chromaDnaWithAuthoritativeScales(dna = {}) {
   if (!hasDetailedBodyScale(dna)) return dna;
-  return {
-    ...dna,
-    physique: {
-      ...(dna.physique || {}),
-      // Imported analyzer prose is useful as a baseline, but once the user
-      // moves a detailed physique slider the slider becomes authoritative.
-      // Keeping this prose would anchor Chroma back to the source proportions.
-      proportions: "",
-    },
+  const ph = dna.physique || {};
+  const physique = {
+    ...ph,
+    // Imported analyzer prose is useful as a baseline, but once the user
+    // moves a detailed physique slider the slider becomes authoritative.
+    proportions: "",
   };
+
+  // Chroma gets detailed slider sizes from PRIMARY BODY PROPORTIONS only.
+  // Remove the generic DNA compiler's duplicate size wording while preserving
+  // independent shape controls such as glute_shape and bust_shape.
+  if (Number(ph.bust_scale) > 0 && !(Number(ph.implant_volume) > 0)) {
+    physique.bust_scale = 0;
+    physique.bust = "";
+  }
+  if (Number(ph.butt_scale) > 0) {
+    physique.butt_scale = 0;
+    physique.butt = "";
+  }
+  if (Number(ph.hip_scale) > 0) {
+    physique.hip_scale = 0;
+    physique.hips = "";
+  }
+  if (Number(ph.thigh_scale) > 0) {
+    physique.thigh_scale = 0;
+    physique.thighs = "";
+  }
+  if (Number(ph.waist_scale) > 0) {
+    physique.waist_scale = 0;
+    physique.waist = "";
+  }
+
+  return { ...dna, physique };
 }
 
 function chromaBodyPriority(dna = {}) {
