@@ -1099,7 +1099,22 @@ export default function Builder({ studio = "standard" }) {
           ? "explicit adult scene, graphic unambiguous vocabulary"
           : "editorial adult photography, tasteful descriptive vocabulary"
     : "";
-  const generatedPositive = [languageLead, acceptsLikenessPrompt && likenessPrompt, positive, translatedPlainLanguage.text].filter(Boolean).join(", ");
+  const hasAuthoritativeChromaBodyScale = activeCompiler === "chroma" && [
+    activeDna?.physique?.bust_scale,
+    activeDna?.physique?.butt_scale,
+    activeDna?.physique?.hip_scale,
+    activeDna?.physique?.thigh_scale,
+    activeDna?.physique?.waist_scale,
+    activeDna?.physique?.implant_volume,
+  ].some((value) => Number(value) > 0);
+  const translatedUserText = hasAuthoritativeChromaBodyScale
+    ? String(translatedPlainLanguage.text || "")
+        .split(/\n+/)
+        .filter((line) => !/^\s*(appearance|build|proportions)\s*:/i.test(line))
+        .join("\n")
+        .trim()
+    : translatedPlainLanguage.text;
+  const generatedPositive = [languageLead, acceptsLikenessPrompt && likenessPrompt, positive, translatedUserText].filter(Boolean).join(", ");
   const positiveBeforeLoraTriggers = isVariationWorkflow ? variationPrompt : (promptOverride || generatedPositive);
   const activeLoraTriggers = [...new Set([
     ...(selectedLora.name ? selectedLora.triggerWords || [] : []),
