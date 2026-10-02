@@ -360,6 +360,11 @@ export default function Builder({ studio = "standard" }) {
       next[section][key] = value;
       mapped.push({ label, value });
     };
+    const hasMapped = (...labels) => labels.some((label) => mapped.some((item) => item.label === label));
+    const addReferenceNote = (label, value, ownedBy = []) => {
+      if (!value || (ownedBy.length && hasMapped(...ownedBy))) return;
+      notes.push(`${label}: ${value}`);
+    };
 
     map("Hair color", "hair", "color", exact(incoming.hairColor, hairColorOptions) ||
       alias(incoming.hairColor, [["dark","dark chocolate"],["brown","chestnut"],["black","jet black"],["blonde","golden blonde"],["red","auburn"],["gray","steel gray"],["grey","steel gray"]], hairColorOptions));
@@ -414,23 +419,25 @@ export default function Builder({ studio = "standard" }) {
       mapped.push({ label: "Curves", value: "75%" });
     }
 
-    // Preserve richer Qwen observations as editable notes instead of guessing
-    // which Studio chip they mean.
-    addNote("Appearance", incoming.physicalAppearance);
-    addNote("Build", incoming.bodyBuild);
-    addNote("Proportions", incoming.bodyProportions);
-    addNote("Hair", [incoming.hairColor, incoming.hairLength, incoming.hairStyle].filter(Boolean).join(", "));
-    addNote("Expression", incoming.expression);
-    addNote("Wardrobe", incoming.wardrobe);
-    addNote("Pose", incoming.pose);
-    addNote("Body orientation", incoming.orientation);
-    addNote("Framing", incoming.framing);
-    addNote("Camera angle", incoming.cameraAngle);
-    addNote("Composition", incoming.composition);
-    addNote("Lighting", incoming.lighting);
-    addNote("Environment", incoming.environment);
-    addNote("Background", incoming.background);
-    addNote("Photo style", incoming.photographicStyle);
+    // Preserve only observations that were not already mapped into authoritative
+    // Studio controls. This prevents imported reference metadata from being
+    // appended later as a second, contradictory instruction block.
+    addReferenceNote("Appearance", incoming.physicalAppearance);
+    addReferenceNote("Build", incoming.bodyBuild, ["Body type"]);
+    addReferenceNote("Proportions", incoming.bodyProportions, ["Bust", "Glutes", "Hips", "Thighs", "Waist"]);
+    addReferenceNote("Hair", [incoming.hairColor, incoming.hairLength, incoming.hairStyle].filter(Boolean).join(", "),
+      ["Hair color", "Hair length", "Hair style"]);
+    addReferenceNote("Expression", incoming.expression, ["Expression"]);
+    addReferenceNote("Wardrobe", incoming.wardrobe, ["Outfit", "Outfit color", "Material", "Fit"]);
+    addReferenceNote("Pose", incoming.pose, ["Pose"]);
+    addReferenceNote("Body orientation", incoming.orientation, ["Camera angle", "Camera"]);
+    addReferenceNote("Framing", incoming.framing, ["Framing"]);
+    addReferenceNote("Camera angle", incoming.cameraAngle, ["Camera angle", "Camera"]);
+    addReferenceNote("Composition", incoming.composition, ["Composition focus"]);
+    addReferenceNote("Lighting", incoming.lighting, ["Lighting source", "Lighting style", "Lighting mood"]);
+    addReferenceNote("Environment", incoming.environment, ["Environment"]);
+    addReferenceNote("Background", incoming.background);
+    addReferenceNote("Photo style", incoming.photographicStyle, ["Photo style"]);
 
     next.physique.proportions = incoming.bodyProportions || "";
     next.scene.background = [incoming.environment, incoming.background].filter(Boolean).join(". ");
