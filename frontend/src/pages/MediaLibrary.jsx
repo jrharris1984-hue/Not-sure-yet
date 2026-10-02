@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { Search, Images, Video, RefreshCw, X, Database } from "lucide-react";
+import { Search, Images, Video, RefreshCw, X, Database, Folder, FolderOpen, LayoutGrid, ChevronRight, Home } from "lucide-react";
 import { endpoints } from "@/lib/api";
 import { Input } from "@/components/ui/input";
 
@@ -21,6 +21,8 @@ export default function MediaLibrary() {
   const [status, setStatus] = useState("all");
   const [offset, setOffset] = useState(0);
   const [selected, setSelected] = useState(null);
+  const [view, setView] = useState("gallery");
+  const [folderPath, setFolderPath] = useState("");
 
   useEffect(() => {
     const t = setTimeout(() => { setSearch(q.trim()); setOffset(0); }, 300);
@@ -29,9 +31,15 @@ export default function MediaLibrary() {
 
   const health = useQuery({ queryKey:["media-library-health"], queryFn:endpoints.mediaLibraryHealth, refetchInterval:15000, retry:1 });
   const stats = useQuery({ queryKey:["media-library-stats"], queryFn:endpoints.mediaLibraryStats, refetchInterval:15000, retry:1 });
+  const folders = useQuery({
+    queryKey:["media-library-folders", folderPath, type, status],
+    queryFn:() => endpoints.mediaLibraryFolders({ path:folderPath, media_type:type, status, analyzed_only:status==="complete", hide_sidecars:true }),
+    enabled:view==="folders", retry:1,
+  });
+
   const media = useQuery({
-    queryKey:["media-library", search, type, status, offset],
-    queryFn:() => endpoints.mediaLibraryList({ q:search || undefined, media_type:type, status, hide_sidecars:true, limit:PAGE_SIZE, offset }),
+    queryKey:["media-library", search, type, status, offset, view, folderPath],
+    queryFn:() => endpoints.mediaLibraryList({ q:search || undefined, media_type:type, status, hide_sidecars:true, folder_path:view==="folders" ? folderPath : undefined, limit:PAGE_SIZE, offset }),
     retry:1,
   });
 
@@ -91,6 +99,10 @@ export default function MediaLibrary() {
       </div>}
 
       <div className="pane p-3 flex flex-col lg:flex-row gap-2">
+        <div className="inline-flex rounded-lg border hairline p-1 bg-elevated">
+          <button onClick={()=>{setView("gallery");setFolderPath("");setOffset(0);}} className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs ${view==="gallery"?"bg-cyan-500/15 text-cyan-200":"text-zinc-400"}`}><LayoutGrid className="h-3.5 w-3.5"/>Gallery</button>
+          <button onClick={()=>{setView("folders");setOffset(0);}} className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs ${view==="folders"?"bg-cyan-500/15 text-cyan-200":"text-zinc-400"}`}><FolderOpen className="h-3.5 w-3.5"/>Folders</button>
+        </div>
         <div className="relative flex-1">
           <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
           <Input value={q} onChange={e=>setQ(e.target.value)} placeholder="Search filename, pose, clothing, lighting, environment, tags..." className="pl-9 bg-elevated border-hairline text-zinc-100" />
@@ -103,6 +115,20 @@ export default function MediaLibrary() {
         </select>
         <button onClick={()=>{health.refetch();stats.refetch();media.refetch();}} className="inline-flex items-center justify-center gap-2 rounded-lg border hairline px-3 py-2 text-sm text-zinc-300 hover:bg-white/5"><RefreshCw className="h-4 w-4"/>Refresh</button>
       </div>
+
+      {view==="folders" && <div className="pane p-3 space-y-3">
+        <div className="flex flex-wrap items-center gap-1 text-xs">
+          <button onClick={()=>{setFolderPath("");setOffset(0);}} className="rounded-md p-1.5 text-zinc-400 hover:bg-white/5 hover:text-white" title="Media root"><Home className="h-4 w-4"/></button>
+          {(folders.data?.breadcrumbs || []).map((crumb,index)=><div key={crumb.path || index} className="flex items-center gap-1"><ChevronRight className="h-3 w-3 text-zinc-600"/><button onClick={()=>{setFolderPath(crumb.path);setOffset(0);}} className="rounded-md px-2 py-1 text-zinc-300 hover:bg-white/5">{crumb.name}</button></div>)}
+        </div>
+        {folders.isLoading ? <div className="text-xs text-zinc-500">Loading folders…</div> :
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2">
+            {(folders.data?.folders || []).map(folder=><button key={folder.path} onClick={()=>{setFolderPath(folder.path);setOffset(0);}} className="rounded-lg border hairline bg-black/20 p-3 text-left hover:border-cyan-400/40">
+              <div className="flex items-center gap-2"><Folder className="h-5 w-5 text-amber-300"/><div className="min-w-0 flex-1"><div className="truncate text-sm font-semibold">{folder.name}</div><div className="mt-0.5 text-[10px] text-zinc-500">{Number(folder.media_count||0).toLocaleString()} media · {Number(folder.analyzed_count||0).toLocaleString()} analyzed</div></div></div>
+            </button>)}
+            {!folders.isLoading && !(folders.data?.folders || []).length && <div className="text-xs text-zinc-500 p-2">No subfolders here.</div>}
+          </div>}
+      </div>}
 
       {media.isError ? <div className="pane p-8 text-center text-zinc-400"><Database className="h-8 w-8 mx-auto mb-2"/><div className="font-semibold text-zinc-200">Media server unavailable</div><div className="text-xs mt-1">{media.error?.response?.data?.detail || media.error?.message}</div></div>
       : media.isLoading ? <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6 gap-3">{Array.from({length:18}).map((_,i)=><div key={i} className="pane aspect-[3/4] animate-pulse"/>)}</div>

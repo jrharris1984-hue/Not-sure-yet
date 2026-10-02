@@ -37,6 +37,7 @@ async def media_library_list(
     status: str = Query("all", pattern="^(all|pending|analyzing|complete|error|not_required)$"),
     analyzed_only: bool = False,
     hide_sidecars: bool = True,
+    folder_path: str = "",
     limit: int = Query(60, ge=1, le=200),
     offset: int = Query(0, ge=0),
 ):
@@ -44,7 +45,25 @@ async def media_library_list(
         "q": q, "media_type": media_type, "status": status,
         "analyzed_only": str(analyzed_only).lower(),
         "hide_sidecars": str(hide_sidecars).lower(),
+        "folder_path": folder_path,
         "limit": limit, "offset": offset,
+    })
+
+
+@router.get("/folders")
+async def media_library_folders(
+    path: str = "",
+    media_type: str = Query("all", pattern="^(all|image|video)$"),
+    status: str = Query("all", pattern="^(all|pending|analyzing|complete|error|not_required)$"),
+    analyzed_only: bool = False,
+    hide_sidecars: bool = True,
+):
+    return await _json_get("/folders", {
+        "path": path,
+        "media_type": media_type,
+        "status": status,
+        "analyzed_only": str(analyzed_only).lower(),
+        "hide_sidecars": str(hide_sidecars).lower(),
     })
 
 
