@@ -857,8 +857,15 @@ export function compileModelPrompts({
   const guardedSubjects = isMulti
     ? (subjects || []).map((subject) => ({ ...subject, dna: resolveZImageComposition(subject?.dna || {}, { forceMulti: true }).dna }))
     : subjects;
+  // Chroma's PRIMARY BODY PROPORTIONS block is the sole source for
+  // detailed physique slider sizes. Build its generic priority plan from the
+  // sanitized DNA so bust/glute/hip/thigh/waist scale wording is not re-added
+  // later by promptPriority. Shape controls remain independent.
+  const priorityDna = compiler === "chroma" && !isMulti
+    ? chromaDnaWithAuthoritativeScales(primaryGuard.dna)
+    : primaryGuard.dna;
   const priorityPlan = buildPromptPriorityPlan({
-    dna: primaryGuard.dna,
+    dna: priorityDna,
     subjects: guardedSubjects,
     isMulti,
     raunch,
