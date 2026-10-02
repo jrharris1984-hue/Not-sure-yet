@@ -107,33 +107,33 @@ function chromaBodyPriority(dna = {}) {
 
   if (Number(ph.bust_scale) > 0 && !(Number(ph.implant_volume) > 0)) {
     clauses.push(chromaProgressiveScale(ph.bust_scale, "bust", [
-      "very small", "small", "modest", "moderate", "full",
-      "large", "very large", "oversized", "extremely oversized", "fantasy-scale extremely oversized",
+      "very small compact", "small", "modest", "moderate", "full and clearly prominent",
+      "large with substantial volume", "very large with dominant volume", "dramatically oversized", "extreme fantasy-scale oversized", "maximum fantasy-scale exaggeration, unmistakably larger than the 90-level result",
     ]));
   }
   if (Number(ph.butt_scale) > 0) {
     clauses.push(chromaProgressiveScale(ph.butt_scale, "glute volume", [
-      "small", "moderate", "full rounded", "large rounded", "very large rounded",
-      "very large projected", "oversized projected", "extremely oversized with strong rear projection",
-      "fantasy-scale oversized with extreme rear projection", "fantasy-scale extremely oversized with extreme rear and lateral projection",
+      "small compact", "moderate", "full rounded and clearly above average", "large rounded with clearly increased volume", "very large rounded with substantial volume",
+      "very large projected with pronounced added volume", "dramatically oversized with major rear projection", "extreme fantasy-scale volume with unmistakable rear projection",
+      "maximum-adjacent fantasy-scale volume with extreme rear and lateral projection", "maximum fantasy-scale exaggeration with unmistakably greater volume and projection than the 90-level result",
     ]));
   }
   if (Number(ph.hip_scale) > 0) {
     clauses.push(chromaProgressiveScale(ph.hip_scale, "hips", [
-      "very narrow", "narrow", "moderately narrow", "moderate-width", "slightly wide",
-      "wide", "very wide", "extremely wide", "fantasy-scale very wide", "fantasy-scale extremely wide",
+      "very narrow compact", "narrow", "moderately narrow", "moderate-width", "clearly wide",
+      "wide with substantial lateral breadth", "very wide and visually dominant", "dramatically wide", "extreme fantasy-scale width", "maximum fantasy-scale width, unmistakably broader than the 90-level result",
     ]));
   }
   if (Number(ph.thigh_scale) > 0) {
     clauses.push(chromaProgressiveScale(ph.thigh_scale, "thighs", [
-      "very slim", "slim", "moderate", "full", "thick",
-      "very thick", "extra thick", "extremely thick", "fantasy-scale thick", "fantasy-scale extremely thick",
+      "very slim", "slim", "moderate", "full", "clearly thick",
+      "very thick with substantial volume", "extra thick and visually dominant", "dramatically thick", "extreme fantasy-scale thickness", "maximum fantasy-scale thickness, unmistakably greater than the 90-level result",
     ]));
   }
   if (Number(ph.waist_scale) > 0) {
     clauses.push(chromaProgressiveScale(ph.waist_scale, "waist", [
-      "very narrow", "narrow", "moderately narrow", "slightly narrow", "average-width",
-      "slightly wide", "wide", "very wide", "extra wide", "maximum wide",
+      "extremely narrow", "very narrow", "narrow", "moderately narrow", "average-width",
+      "clearly wide", "wide with substantial breadth", "very wide and visually dominant", "extreme fantasy-scale width", "maximum fantasy-scale width, unmistakably broader than the 90-level result",
     ]));
   }
 
@@ -152,11 +152,32 @@ function normalizeChromaProportionLanguage(value, dna = {}) {
     .replace(/realistic proportions/gi, "coherent selected proportions");
 }
 
+function removeChromaReferenceDuplicates(value, dna = {}) {
+  let text = String(value || "");
+  const hair = dna.hair || {};
+  const style = dna.style || {};
+
+  // When the recipe already has explicit hair controls, analyzer/reference Hair:
+  // metadata is secondary and can contradict the selected length/style/texture.
+  if ([hair.color, hair.length, hair.style, hair.texture, hair.bangs].some(Boolean)) {
+    text = text.replace(/(?:^|\n)\s*Hair:\s*[^\n]*/gi, "");
+  }
+
+  // Likewise, an explicit recipe style owns the photographic treatment. Drop
+  // a trailing analyzer/reference Photo style: label instead of asking Chroma
+  // to satisfy two competing portrait styles.
+  if ([style.render, style.artistic_tone, style.extra].some(Boolean)) {
+    text = text.replace(/(?:^|\n)\s*Photo style:\s*[^\n]*/gi, "");
+  }
+
+  return text.replace(/\n{3,}/g, "\n\n").trim();
+}
+
 function buildPrioritizedChromaPrompt(prompts, priorityPlan, primaryGuard, dna) {
   const bodyPriority = chromaBodyPriority(dna);
   const normalized = {
     ...prompts,
-    positive: normalizeChromaProportionLanguage(prompts.positive, dna),
+    positive: removeChromaReferenceDuplicates(normalizeChromaProportionLanguage(prompts.positive, dna), dna),
   };
   const prioritized = prioritizePrompt(
     normalized.positive,
@@ -167,7 +188,7 @@ function buildPrioritizedChromaPrompt(prompts, priorityPlan, primaryGuard, dna) 
   return {
     ...normalized,
     ...prioritized,
-    positive: normalizeChromaProportionLanguage(prioritized.positive, dna),
+    positive: removeChromaReferenceDuplicates(normalizeChromaProportionLanguage(prioritized.positive, dna), dna),
     priorityPlan,
     guardAdjustments: primaryGuard.adjustments,
     negativeStrategy: "text",
