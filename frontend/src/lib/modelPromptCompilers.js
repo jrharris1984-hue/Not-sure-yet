@@ -50,6 +50,109 @@ const basePrompts = ({ dna, subjects, isMulti, raunch }) => (
 const lower = (value) => clean(value).toLowerCase();
 const arrayValue = (value) => Array.isArray(value) ? value.filter(Boolean) : (value ? [value] : []);
 
+
+const chromaScaleBand = (value, labels) => {
+  const n = Math.max(0, Math.min(100, Number(value) || 0));
+  if (!n) return "";
+  const index = Math.min(labels.length - 1, Math.floor(n / 20));
+  return labels[index];
+};
+
+function chromaBodyPriority(dna = {}) {
+  const ph = dna.physique || {};
+  const clauses = [];
+
+  if (Number(ph.bust_scale) > 0 && !(Number(ph.implant_volume) > 0)) {
+    clauses.push(chromaScaleBand(ph.bust_scale, [
+      "small bust",
+      "moderate bust",
+      "full bust",
+      "very large bust",
+      "extremely oversized fantasy-scale bust",
+    ]));
+  }
+  if (Number(ph.butt_scale) > 0) {
+    clauses.push(chromaScaleBand(ph.butt_scale, [
+      "small glute volume",
+      "moderate glute volume",
+      "large rounded glute volume",
+      "very large glute volume with strong rear projection",
+      "extremely oversized fantasy-scale glute volume with extreme rear and lateral projection",
+    ]));
+  }
+  if (Number(ph.hip_scale) > 0) {
+    clauses.push(chromaScaleBand(ph.hip_scale, [
+      "narrow hips",
+      "moderate-width hips",
+      "wide hips",
+      "very wide hips",
+      "extremely wide fantasy-scale hips",
+    ]));
+  }
+  if (Number(ph.thigh_scale) > 0) {
+    clauses.push(chromaScaleBand(ph.thigh_scale, [
+      "slim thighs",
+      "moderate thighs",
+      "full thighs",
+      "very thick thighs",
+      "extremely thick fantasy-scale thighs",
+    ]));
+  }
+  if (Number(ph.waist_scale) > 0) {
+    clauses.push(chromaScaleBand(ph.waist_scale, [
+      "very narrow waist",
+      "narrow waist",
+      "average-width waist",
+      "wide waist",
+      "very wide waist",
+    ]));
+  }
+
+  if (!clauses.length) return "";
+  return `PRIMARY BODY PROPORTIONS — ${clauses.join(", ")}; keep each selected proportion localized to that body region and preserve one coherent torso, pelvis, joints, and limb count`;
+}
+
+function normalizeChromaProportionLanguage(value, dna = {}) {
+  const ph = dna.physique || {};
+  const fantasyScale = [
+    ph.bust_scale,
+    ph.butt_scale,
+    ph.hip_scale,
+    ph.thigh_scale,
+  ].some((item) => Number(item) >= 60) || Number(ph.exaggeration) >= 60;
+
+  if (!fantasyScale) return value;
+
+  return String(value || "")
+    .replace(/believable adult proportions/gi, "coherent selected body proportions")
+    .replace(/detailed anatomy with natural proportions/gi, "detailed coherent anatomy with the selected body proportions")
+    .replace(/anatomically correct body, natural weight distribution/gi, "anatomically coherent body, stable weight distribution")
+    .replace(/realistic human anatomy and believable physical detail/gi, "coherent human anatomy and believable physical detail")
+    .replace(/realistic proportions/gi, "coherent selected proportions");
+}
+
+function buildPrioritizedChromaPrompt(prompts, priorityPlan, primaryGuard, dna) {
+  const bodyPriority = chromaBodyPriority(dna);
+  const normalized = {
+    ...prompts,
+    positive: normalizeChromaProportionLanguage(prompts.positive, dna),
+  };
+  const prioritized = prioritizePrompt(
+    normalized.positive,
+    priorityPlan,
+    "chroma",
+    { extraLead: [primaryGuard.composition, bodyPriority].filter(Boolean) }
+  );
+  return {
+    ...normalized,
+    ...prioritized,
+    positive: normalizeChromaProportionLanguage(prioritized.positive, dna),
+    priorityPlan,
+    guardAdjustments: primaryGuard.adjustments,
+    negativeStrategy: "text",
+  };
+}
+
 const ZIMAGE_SIZE_REWRITES = [
   [/extremely voluptuous body, abundant curves, thick and luscious/gi, "voluptuous curvy body"],
   [/huge enormous ass, gigantic buttocks, PAWG rear/gi, "dramatically full rounded buttocks"],
@@ -797,9 +900,11 @@ export function compileModelPrompts({
       negativeStrategy: "text",
     };
   }
-  if (compiler === "chroma") return withPriorityGuard(
+  if (compiler === "chroma") return buildPrioritizedChromaPrompt(
     buildChromaPrompts(primaryGuard.dna, { raunch }),
-    "chroma"
+    priorityPlan,
+    primaryGuard,
+    primaryGuard.dna
   );
   if (compiler === "krea2") {
     const prompts = buildKrea2Prompts({

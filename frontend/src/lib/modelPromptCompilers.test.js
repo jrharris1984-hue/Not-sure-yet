@@ -307,4 +307,24 @@ describe("model-specific prompt compilers", () => {
     });
     expect(wan.positive).toContain("subtle breathing");
   });
+
+  it("gives Chroma fantasy proportion sliders a strong localized priority without natural-proportion conflicts", () => {
+    const dna = JSON.parse(JSON.stringify(DEFAULT_DNA));
+    dna.physique = {
+      ...dna.physique,
+      butt_scale: 100,
+      hip_scale: 85,
+      thigh_scale: 80,
+      glute_shape: "extreme round projection",
+    };
+    const result = compileModelPrompts({ promptStyle: "chroma", dna });
+    expect(result.positive).toContain("PRIMARY BODY PROPORTIONS");
+    expect(result.positive).toContain("extremely oversized fantasy-scale glute volume");
+    expect(result.positive).toContain("extreme rear and lateral projection");
+    expect(result.positive).toContain("extremely wide fantasy-scale hips");
+    expect(result.positive).toContain("extremely thick fantasy-scale thighs");
+    expect(result.positive).not.toContain("believable adult proportions");
+    expect(result.positive).not.toContain("detailed anatomy with natural proportions");
+  });
+
 });
