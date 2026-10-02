@@ -104,6 +104,7 @@ export default function Builder({ studio = "standard" }) {
   const location = useLocation();
   const qc = useQueryClient();
   const galleryImportApplied = useRef(false);
+  const mediaLibraryImportApplied = useRef(false);
   const draftHydrated = useRef(false);
   const skipNextPromptReset = useRef(false);
   const [editorHydrated, setEditorHydrated] = useState(false);
@@ -315,6 +316,73 @@ export default function Builder({ studio = "standard" }) {
     setEditorHydrated(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isNew]);
+
+  useEffect(() => {
+    const incoming = location.state?.mediaLibraryTraits;
+    if (!incoming || mediaLibraryImportApplied.current || !editorHydrated) return;
+    mediaLibraryImportApplied.current = true;
+
+    const next = JSON.parse(JSON.stringify(DEFAULT_DNA));
+    const notes = [];
+    const addNote = (label, value) => { if (value) notes.push(`${label}: ${value}`); };
+    const lower = (value) => String(value || "").toLowerCase();
+
+    // Only map values that match existing Studio choices exactly or safely.
+    const hairColorOptions = SECTIONS.find(s=>s.key==="hair")?.fields.find(f=>f.key==="color")?.groups?.flatMap(g=>g.options) || [];
+    const hairLengthOptions = SECTIONS.find(s=>s.key==="hair")?.fields.find(f=>f.key==="length")?.options || [];
+    const hairStyleOptions = SECTIONS.find(s=>s.key==="hair")?.fields.find(f=>f.key==="style")?.groups?.flatMap(g=>g.options) || [];
+    const bodyOptions = SECTIONS.find(s=>s.key==="physique")?.fields.find(f=>f.key==="body_type")?.options || [];
+    const poseOptions = SECTIONS.find(s=>s.key==="pose")?.fields.find(f=>f.key==="action")?.groups?.flatMap(g=>g.options) || [];
+    const framingOptions = SECTIONS.find(s=>s.key==="pose")?.fields.find(f=>f.key==="distance")?.options || [];
+    const angleOptions = SECTIONS.find(s=>s.key==="pose")?.fields.find(f=>f.key==="angle")?.options || [];
+    const envOptions = SECTIONS.find(s=>s.key==="scene")?.fields.find(f=>f.key==="environment")?.options || [];
+    const styleOptions = SECTIONS.find(s=>s.key==="style")?.fields.find(f=>f.key==="render")?.options || [];
+
+    const exact = (value, options) => options.find(o => lower(o) === lower(value)) || "";
+    next.hair.color = exact(incoming.hairColor, hairColorOptions);
+    next.hair.length = exact(incoming.hairLength, hairLengthOptions);
+    next.hair.style = exact(incoming.hairStyle, hairStyleOptions);
+    next.physique.body_type = exact(incoming.bodyBuild, bodyOptions);
+    next.pose.action = exact(incoming.pose, poseOptions);
+    next.pose.distance = exact(incoming.framing || incoming.cameraDistance, framingOptions);
+    next.pose.angle = exact(incoming.cameraAngle || incoming.orientation, angleOptions);
+    next.scene.environment = exact(incoming.environment, envOptions);
+    next.style.render = exact(incoming.photographicStyle, styleOptions);
+
+    // Preserve richer Qwen observations as editable notes instead of guessing
+    // which Studio chip they mean.
+    addNote("Appearance", incoming.physicalAppearance);
+    addNote("Build", incoming.bodyBuild);
+    addNote("Proportions", incoming.bodyProportions);
+    addNote("Hair", [incoming.hairColor, incoming.hairLength, incoming.hairStyle].filter(Boolean).join(", "));
+    addNote("Expression", incoming.expression);
+    addNote("Wardrobe", incoming.wardrobe);
+    addNote("Pose", incoming.pose);
+    addNote("Body orientation", incoming.orientation);
+    addNote("Framing", incoming.framing);
+    addNote("Camera angle", incoming.cameraAngle);
+    addNote("Composition", incoming.composition);
+    addNote("Lighting", incoming.lighting);
+    addNote("Environment", incoming.environment);
+    addNote("Background", incoming.background);
+    addNote("Photo style", incoming.photographicStyle);
+
+    next.physique.proportions = incoming.bodyProportions || "";
+    next.scene.background = [incoming.environment, incoming.background].filter(Boolean).join(". ");
+    next.style.extra = [incoming.photographicStyle, incoming.composition].filter(Boolean).join(", ");
+
+    const restored = makeSubject({ label: "A", dna: next });
+    setSubjects([restored]);
+    setActiveSubjectId(restored.id);
+    setName(`Media Study - ${incoming.sourceName || "Untitled"}`);
+    setTags(Array.isArray(incoming.generalTags) ? incoming.generalTags : []);
+    setPlainLanguage(notes.join("\n"));
+    setPromptOverride("");
+    setNegativePromptOverride("");
+    setMobileStudioStep("start");
+    toast.success("Media Library traits loaded into Studio");
+    nav("/character/new/s/identity", { replace: true, state: null });
+  }, [editorHydrated, location.state, nav]);
 
   // Persist the latest render session so a refresh/reopen can reconnect to the
   // same queued/running batch instead of making it disappear from Builder.
