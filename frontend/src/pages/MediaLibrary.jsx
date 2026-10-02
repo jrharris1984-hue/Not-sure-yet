@@ -43,21 +43,22 @@ export default function MediaLibrary() {
     retry:1,
   });
 
-  const useInStudio = (item) => {
+  const useInStudio = (item, subject = null) => {
     const reusable = {
       mediaId: item.id,
       sourceName: item.file_name,
       description: item.search_description || item.subject_description || "",
-      bodyBuild: item.body_build || "",
-      bodyProportions: item.body_proportions || "",
-      physicalAppearance: item.physical_appearance || "",
-      hairColor: item.hair_color || "",
-      hairLength: item.hair_length || "",
-      hairStyle: item.hair_style || "",
-      expression: item.facial_expression || "",
-      wardrobe: item.wardrobe_details || "",
-      pose: item.pose || "",
-      orientation: item.body_orientation || "",
+      subjectId: subject?.subject_id || "",
+      bodyBuild: subject?.body_build || item.body_build || "",
+      bodyProportions: subject?.body_proportions || item.body_proportions || "",
+      physicalAppearance: subject?.physical_appearance || item.physical_appearance || "",
+      hairColor: subject?.hair_color || item.hair_color || "",
+      hairLength: subject?.hair_length || item.hair_length || "",
+      hairStyle: subject?.hair_style || item.hair_style || "",
+      expression: subject?.facial_expression || item.facial_expression || "",
+      wardrobe: subject?.wardrobe_details || item.wardrobe_details || "",
+      pose: subject?.pose || item.pose || "",
+      orientation: subject?.body_orientation || item.body_orientation || "",
       framing: item.framing || "",
       cameraAngle: item.camera_angle || "",
       cameraDistance: item.camera_distance || "",
@@ -105,7 +106,7 @@ export default function MediaLibrary() {
         </div>
         <div className="relative flex-1">
           <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
-          <Input value={q} onChange={e=>setQ(e.target.value)} placeholder="Search filename, pose, clothing, lighting, environment, tags..." className="pl-9 bg-elevated border-hairline text-zinc-100" />
+          <Input value={q} onChange={e=>setQ(e.target.value)} placeholder="Search filename, subjects, actions, objects, tags, lighting, environment..." className="pl-9 bg-elevated border-hairline text-zinc-100" />
         </div>
         <select value={type} onChange={e=>{setType(e.target.value);setOffset(0);}} className="rounded-lg bg-elevated border hairline px-3 py-2 text-sm text-zinc-200">
           <option value="all">All media</option><option value="image">Images</option><option value="video">Videos</option>
@@ -154,6 +155,24 @@ export default function MediaLibrary() {
             <div><img src={endpoints.mediaLibraryOriginalUrl(selected.id)} alt="" className="w-full max-h-[72vh] object-contain rounded-lg bg-black"/></div>
             <div className="space-y-4">
               <Meta label="Description" value={selected.search_description || selected.subject_description}/>
+              <Meta label="Analysis schema" value={selected.analysis_schema_version}/>
+              {!!selected.subjects?.length && <div className="space-y-2">
+                <div className="text-[10px] uppercase tracking-widest text-zinc-500 font-mono">Subjects</div>
+                {selected.subjects.map((subject,index)=><div key={subject.subject_id || index} className="rounded-lg border hairline bg-black/20 p-3 space-y-2">
+                  <div className="flex items-center justify-between gap-2"><div className="text-sm font-semibold text-cyan-200">{subject.subject_id || `Subject ${index+1}`}</div><button onClick={()=>useInStudio(selected,subject)} className="rounded-md border border-amber-500/30 px-2 py-1 text-[10px] text-amber-200 hover:bg-amber-500/10">Use subject in Studio</button></div>
+                  <Meta label="Position" value={subject.position}/>
+                  <Meta label="Appearance / build" value={[subject.physical_appearance,subject.body_build,subject.body_proportions].filter(Boolean).join(" · ")}/>
+                  <Meta label="Hair" value={[subject.hair_color,subject.hair_length,subject.hair_style].filter(Boolean).join(" · ")}/>
+                  <Meta label="Expression" value={subject.facial_expression}/>
+                  <Meta label="Wardrobe" value={subject.wardrobe_details}/>
+                  <Meta label="Pose / orientation" value={[subject.pose,subject.body_orientation].filter(Boolean).join(" · ")}/>
+                </div>)}
+              </div>}
+              {!!selected.objects?.length && <div className="space-y-2"><div className="text-[10px] uppercase tracking-widest text-zinc-500 font-mono">Objects</div>{selected.objects.map((obj,index)=><div key={index} className="rounded-lg border hairline bg-black/20 p-2 text-xs text-zinc-300"><span className="font-semibold text-zinc-100">{obj.object_type || "object"}</span>{obj.description ? ` · ${obj.description}` : ""}{obj.confidence ? ` · ${obj.confidence}` : ""}</div>)}</div>}
+              <Meta label="Activities" value={selected.activity_tags}/>
+              <Meta label="Object tags" value={selected.object_tags}/>
+              <Meta label="Fluid tags" value={selected.fluid_tags}/>
+              {selected.group_analysis && <Meta label="Group analysis" value={[selected.group_analysis.subject_count ? `${selected.group_analysis.subject_count} subjects` : "", selected.group_analysis.visual_similarity ? `visual similarity: ${selected.group_analysis.visual_similarity}` : "", selected.group_analysis.interaction, selected.group_analysis.relative_positions].filter(Boolean).join(" · ")}/>} 
               <Meta label="Appearance" value={selected.physical_appearance}/>
               <Meta label="Build / proportions" value={[selected.body_build, selected.body_proportions].filter(Boolean).join(" · ")}/>
               <Meta label="Hair" value={[selected.hair_color, selected.hair_length, selected.hair_style].filter(Boolean).join(" · ")}/>
@@ -163,8 +182,8 @@ export default function MediaLibrary() {
               <Meta label="Lighting" value={selected.lighting}/>
               <Meta label="Environment" value={selected.environment || selected.background}/>
               <Meta label="Style" value={selected.photographic_style}/>
-              <Meta label="Tags" value={[...(selected.general_tags||[]), ...(selected.adult_content_tags||[])]}/>
-              {selected.analysis_status === "complete" && <button onClick={()=>useInStudio(selected)} className="w-full rounded-lg bg-amber-500 hover:bg-amber-400 text-black font-semibold px-4 py-3 transition-colors">Use in Studio</button>}
+              <Meta label="Tags" value={[...(selected.general_tags||[]), ...(selected.adult_content_tags||[]), ...(selected.activity_tags||[]), ...(selected.object_tags||[]), ...(selected.fluid_tags||[])]}/>
+              {selected.analysis_status === "complete" && <button onClick={()=>useInStudio(selected)} className="w-full rounded-lg bg-amber-500 hover:bg-amber-400 text-black font-semibold px-4 py-3 transition-colors">{selected.subjects?.length > 1 ? "Use scene traits in Studio" : "Use in Studio"}</button>}
               {selected.analysis_status !== "complete" && <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-200">Qwen analysis is not complete for this item yet. The metadata panel will fill in automatically after analysis.</div>}
             </div>
           </div>
