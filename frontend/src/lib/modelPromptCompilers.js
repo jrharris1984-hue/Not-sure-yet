@@ -51,77 +51,75 @@ const lower = (value) => clean(value).toLowerCase();
 const arrayValue = (value) => Array.isArray(value) ? value.filter(Boolean) : (value ? [value] : []);
 
 
-const chromaScaleBand = (value, labels) => {
-  const n = Math.max(0, Math.min(100, Number(value) || 0));
+const chromaProgressiveScale = (value, noun, levels) => {
+  const n = Math.max(0, Math.min(100, Math.round(Number(value) || 0)));
   if (!n) return "";
-  const index = Math.min(labels.length - 1, Math.floor(n / 20));
-  return labels[index];
+  const step = Math.min(levels.length - 1, Math.max(0, Math.ceil(n / 10) - 1));
+  return `${levels[step]} ${noun} (size intensity ${n}/100)`;
 };
+
+function hasDetailedBodyScale(dna = {}) {
+  const ph = dna.physique || {};
+  return ["bust_scale", "butt_scale", "hip_scale", "thigh_scale", "waist_scale"]
+    .some((key) => Number(ph[key]) > 0) || Number(ph.implant_volume) > 0;
+}
+
+function chromaDnaWithAuthoritativeScales(dna = {}) {
+  if (!hasDetailedBodyScale(dna)) return dna;
+  return {
+    ...dna,
+    physique: {
+      ...(dna.physique || {}),
+      // Imported analyzer prose is useful as a baseline, but once the user
+      // moves a detailed physique slider the slider becomes authoritative.
+      // Keeping this prose would anchor Chroma back to the source proportions.
+      proportions: "",
+    },
+  };
+}
 
 function chromaBodyPriority(dna = {}) {
   const ph = dna.physique || {};
   const clauses = [];
 
   if (Number(ph.bust_scale) > 0 && !(Number(ph.implant_volume) > 0)) {
-    clauses.push(chromaScaleBand(ph.bust_scale, [
-      "small bust",
-      "moderate bust",
-      "full bust",
-      "very large bust",
-      "extremely oversized fantasy-scale bust",
+    clauses.push(chromaProgressiveScale(ph.bust_scale, "bust", [
+      "very small", "small", "modest", "moderate", "full",
+      "large", "very large", "oversized", "extremely oversized", "fantasy-scale extremely oversized",
     ]));
   }
   if (Number(ph.butt_scale) > 0) {
-    clauses.push(chromaScaleBand(ph.butt_scale, [
-      "small glute volume",
-      "moderate glute volume",
-      "large rounded glute volume",
-      "very large glute volume with strong rear projection",
-      "extremely oversized fantasy-scale glute volume with extreme rear and lateral projection",
+    clauses.push(chromaProgressiveScale(ph.butt_scale, "glute volume", [
+      "small", "moderate", "full rounded", "large rounded", "very large rounded",
+      "very large projected", "oversized projected", "extremely oversized with strong rear projection",
+      "fantasy-scale oversized with extreme rear projection", "fantasy-scale extremely oversized with extreme rear and lateral projection",
     ]));
   }
   if (Number(ph.hip_scale) > 0) {
-    clauses.push(chromaScaleBand(ph.hip_scale, [
-      "narrow hips",
-      "moderate-width hips",
-      "wide hips",
-      "very wide hips",
-      "extremely wide fantasy-scale hips",
+    clauses.push(chromaProgressiveScale(ph.hip_scale, "hips", [
+      "very narrow", "narrow", "moderately narrow", "moderate-width", "slightly wide",
+      "wide", "very wide", "extremely wide", "fantasy-scale very wide", "fantasy-scale extremely wide",
     ]));
   }
   if (Number(ph.thigh_scale) > 0) {
-    clauses.push(chromaScaleBand(ph.thigh_scale, [
-      "slim thighs",
-      "moderate thighs",
-      "full thighs",
-      "very thick thighs",
-      "extremely thick fantasy-scale thighs",
+    clauses.push(chromaProgressiveScale(ph.thigh_scale, "thighs", [
+      "very slim", "slim", "moderate", "full", "thick",
+      "very thick", "extra thick", "extremely thick", "fantasy-scale thick", "fantasy-scale extremely thick",
     ]));
   }
   if (Number(ph.waist_scale) > 0) {
-    clauses.push(chromaScaleBand(ph.waist_scale, [
-      "very narrow waist",
-      "narrow waist",
-      "average-width waist",
-      "wide waist",
-      "very wide waist",
+    clauses.push(chromaProgressiveScale(ph.waist_scale, "waist", [
+      "very narrow", "narrow", "moderately narrow", "slightly narrow", "average-width",
+      "slightly wide", "wide", "very wide", "extra wide", "maximum wide",
     ]));
   }
 
   if (!clauses.length) return "";
-  return `PRIMARY BODY PROPORTIONS — ${clauses.join(", ")}; keep each selected proportion localized to that body region and preserve one coherent torso, pelvis, joints, and limb count`;
+  return `PRIMARY BODY PROPORTIONS — ${clauses.join(", ")}; these explicit slider-selected sizes override any imported or reference body-size description; keep each selected proportion localized to that body region and preserve one coherent torso, pelvis, joints, and limb count`;
 }
 
 function normalizeChromaProportionLanguage(value, dna = {}) {
-  const ph = dna.physique || {};
-  const fantasyScale = [
-    ph.bust_scale,
-    ph.butt_scale,
-    ph.hip_scale,
-    ph.thigh_scale,
-  ].some((item) => Number(item) >= 60) || Number(ph.exaggeration) >= 60;
-
-  if (!fantasyScale) return value;
+  if (!hasDetailedBodyScale(dna)) return value;
 
   return String(value || "")
     .replace(/believable adult proportions/gi, "coherent selected body proportions")
@@ -900,12 +898,15 @@ export function compileModelPrompts({
       negativeStrategy: "text",
     };
   }
-  if (compiler === "chroma") return buildPrioritizedChromaPrompt(
-    buildChromaPrompts(primaryGuard.dna, { raunch }),
-    priorityPlan,
-    primaryGuard,
-    primaryGuard.dna
-  );
+  if (compiler === "chroma") {
+    const chromaDna = chromaDnaWithAuthoritativeScales(primaryGuard.dna);
+    return buildPrioritizedChromaPrompt(
+      buildChromaPrompts(chromaDna, { raunch }),
+      priorityPlan,
+      { ...primaryGuard, dna: chromaDna },
+      chromaDna
+    );
+  }
   if (compiler === "krea2") {
     const prompts = buildKrea2Prompts({
       dna: primaryGuard.dna,
