@@ -663,12 +663,44 @@ async def comfyui_media(
     subfolder: str = Query(""),
     type: str = Query("output"),
 ):
-    """Return ComfyUI output through Ultra Studio so private hostnames never reach browsers.
+    """Return ComfyUI media through Ultra Studio.
 
-    Buffering the upstream response is intentional. Open streaming responses can
-    stall when a Gallery refresh requests many large images through both the
-    React and Tailscale proxies. Completed responses are also safely cacheable.
+    Completed output files are served directly from the mounted ComfyUI output
+    directory. Other media requests fall back to ComfyUI's /view endpoint.
     """
+    headers = {"Cache-Control": "private, max-age=86400, immutable"}
+
+    # Serve completed output files directly from the mounted ComfyUI output
+    # directory. This keeps Gallery images available even if ComfyUI is offline
+    # or its current output-directory configuration has changed.
+    if type == "output":
+        if not filename or Path(filename).name != filename or Path(filename).is_absolute():
+            raise HTTPException(400, "Invalid ComfyUI output filename.")
+
+        root = COMFYUI_OUTPUT_DIR.resolve()
+        local_path = (root / subfolder / filename).resolve()
+
+        if not local_path.is_relative_to(root):
+            raise HTTPException(400, "Invalid ComfyUI output subfolder.")
+
+        if local_path.is_file():
+            media_types = {
+                ".png": "image/png",
+                ".jpg": "image/jpeg",
+                ".jpeg": "image/jpeg",
+                ".webp": "image/webp",
+                ".gif": "image/gif",
+            }
+            return Response(
+                content=local_path.read_bytes(),
+                media_type=media_types.get(
+                    local_path.suffix.lower(),
+                    "application/octet-stream",
+                ),
+                headers=headers,
+            )
+
+    # Fall back to ComfyUI for files not available in the local output mount.
     settings = await get_settings()
     try:
         async with httpx.AsyncClient(timeout=httpx.Timeout(120.0, connect=8.0)) as client:
@@ -678,15 +710,16 @@ async def comfyui_media(
             )
     except Exception as exc:
         raise HTTPException(502, f"Could not open ComfyUI media: {exc}")
+
     if response.status_code >= 400:
         detail = response.content[:200].decode("utf-8", errors="replace")
         raise HTTPException(502, f"ComfyUI media error: {response.status_code} {detail}")
 
-    headers = {"Cache-Control": "private, max-age=86400, immutable"}
     for name in ("content-disposition", "etag", "last-modified"):
         value = response.headers.get(name)
         if value:
             headers[name] = value
+
     return Response(
         content=response.content,
         media_type=response.headers.get("content-type", "application/octet-stream"),
