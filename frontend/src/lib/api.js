@@ -28,6 +28,12 @@ export const api = axios.create({
 });
 
 export const endpoints = {
+  mediaLibraryHealth: () => api.get("/media-library/health").then((r) => r.data),
+  mediaLibraryStats: () => api.get("/media-library/stats").then((r) => r.data),
+  mediaLibraryList: (params = {}) => api.get("/media-library/media", { params }).then((r) => r.data),
+  mediaLibraryItem: (id) => api.get(`/media-library/media/${id}`).then((r) => r.data),
+  mediaLibraryThumbnailUrl: (id) => `${API_BASE}/media-library/media/${id}/thumbnail`,
+  mediaLibraryOriginalUrl: (id) => `${API_BASE}/media-library/media/${id}/original`,
   settings: () => api.get("/settings").then((r) => r.data),
   ollamaModels: () => api.get("/ollama/models").then((r) => r.data),
   updateSettings: (body) => api.put("/settings", body).then((r) => r.data),

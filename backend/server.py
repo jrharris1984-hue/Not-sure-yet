@@ -21,6 +21,7 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 from urllib.parse import urlencode, urlparse, parse_qs
 from pydantic import BaseModel, Field, ConfigDict
+from media_library import router as media_library_router
 
 import httpx
 import websockets as ws_client
@@ -4005,6 +4006,7 @@ async def ai_suggest(body: SuggestBody):
 # App wiring
 # ============================================================
 app.include_router(api)
+app.include_router(media_library_router)
 
 app.add_middleware(
     CORSMiddleware,

@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate, useParams } from "react-router-
 import { Toaster } from "sonner";
 import AppShell from "@/components/AppShell";
 import Library from "@/pages/Library";
+import MediaLibrary from "@/pages/MediaLibrary";
 import Builder from "@/pages/Builder";
 import Gallery from "@/pages/Gallery";
 import Queue from "@/pages/Queue";
@@ -24,6 +25,7 @@ function App() {
         <AppShell>
           <Routes>
             <Route path="/" element={<Library />} />
+            <Route path="/media" element={<MediaLibrary />} />
             <Route path="/studios" element={<Navigate to="/character/new" replace />} />
             <Route path="/studio/:studio/:id/s/:section" element={<LegacyStudioRedirect />} />
             <Route path="/studio/:studio/:id" element={<LegacyStudioRedirect />} />

@@ -1,12 +1,13 @@
 import { Link, NavLink, useLocation } from "react-router-dom";
-import { Library, Sparkles, Image as ImageIcon, Settings2, Plus, Camera, ListOrdered } from "lucide-react";
+import { Library, Sparkles, Image as ImageIcon, Settings2, Plus, Camera, ListOrdered, Database } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { endpoints } from "@/lib/api";
 import NowRenderingStrip from "@/components/NowRenderingStrip";
 import PwaInstallPrompt from "@/components/PwaInstallPrompt";
 
 const nav = [
-  { to: "/", label: "Library", icon: Library, testId: "nav-library" },
+  { to: "/", label: "Characters", icon: Library, testId: "nav-library" },
+  { to: "/media", label: "Media", icon: Database, testId: "nav-media" },
   { to: "/shoots", label: "Shoots", icon: Camera, testId: "nav-shoots" },
   { to: "/gallery", label: "Gallery", icon: ImageIcon, testId: "nav-gallery" },
   { to: "/queue", label: "Queue", icon: ListOrdered, testId: "nav-queue" },
@@ -93,7 +94,7 @@ export default function AppShell({ children }) {
 
       {/* Mobile bottom nav */}
       <nav className="mobile-bottom-nav glass md:hidden fixed bottom-0 inset-x-0 z-40 border-t border-cyan-400/25 shadow-[0_-10px_30px_rgba(0,0,0,0.5)]">
-        <div className="grid grid-cols-6 gap-0">
+        <div className="grid grid-cols-7 gap-0">
           {nav.map((n) => (
             <NavLink
               key={n.to}
