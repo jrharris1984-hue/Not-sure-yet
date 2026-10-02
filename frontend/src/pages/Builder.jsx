@@ -108,6 +108,7 @@ export default function Builder({ studio = "standard" }) {
   const draftHydrated = useRef(false);
   const skipNextPromptReset = useRef(false);
   const [editorHydrated, setEditorHydrated] = useState(false);
+  const [mediaImportSummary, setMediaImportSummary] = useState(null);
 
   const activeIdx = Math.max(0, SECTIONS.findIndex((s) => s.key === sectionParam));
   const activeSection = SECTIONS[activeIdx].key;
@@ -339,15 +340,43 @@ export default function Builder({ studio = "standard" }) {
     const styleOptions = SECTIONS.find(s=>s.key==="style")?.fields.find(f=>f.key==="render")?.options || [];
 
     const exact = (value, options) => options.find(o => lower(o) === lower(value)) || "";
-    next.hair.color = exact(incoming.hairColor, hairColorOptions);
-    next.hair.length = exact(incoming.hairLength, hairLengthOptions);
-    next.hair.style = exact(incoming.hairStyle, hairStyleOptions);
-    next.physique.body_type = exact(incoming.bodyBuild, bodyOptions);
-    next.pose.action = exact(incoming.pose, poseOptions);
-    next.pose.distance = exact(incoming.framing || incoming.cameraDistance, framingOptions);
-    next.pose.angle = exact(incoming.cameraAngle || incoming.orientation, angleOptions);
-    next.scene.environment = exact(incoming.environment, envOptions);
-    next.style.render = exact(incoming.photographicStyle, styleOptions);
+    const containsOption = (value, options) => {
+      const text = lower(value);
+      if (!text) return "";
+      return options
+        .filter(Boolean)
+        .sort((a,b)=>b.length-a.length)
+        .find(o => text.includes(lower(o))) || "";
+    };
+    const alias = (value, pairs, options=[]) => {
+      const text = lower(value);
+      const hit = pairs.find(([needle]) => text.includes(needle));
+      return hit ? hit[1] : containsOption(value, options);
+    };
+    const mapped = [];
+    const map = (label, section, key, value) => {
+      if (!value) return;
+      next[section][key] = value;
+      mapped.push({ label, value });
+    };
+
+    map("Hair color", "hair", "color", exact(incoming.hairColor, hairColorOptions) ||
+      alias(incoming.hairColor, [["dark","dark chocolate"],["brown","chestnut"],["black","jet black"],["blonde","golden blonde"],["red","auburn"],["gray","steel gray"],["grey","steel gray"]], hairColorOptions));
+    map("Hair length", "hair", "length", exact(incoming.hairLength, hairLengthOptions) ||
+      alias(incoming.hairLength, [["very long","waist-length"],["long","long"],["shoulder","shoulder"],["short","short bob"]], hairLengthOptions));
+    map("Hair style", "hair", "style", exact(incoming.hairStyle, hairStyleOptions) || containsOption(incoming.hairStyle, hairStyleOptions));
+    map("Body type", "physique", "body_type", exact(incoming.bodyBuild, bodyOptions) ||
+      alias(incoming.bodyBuild, [["hourglass","hourglass"],["curvy","curvy"],["voluptuous","voluptuous"],["athletic","athletic"],["slim","slim"],["plus","plus size"]], bodyOptions));
+    map("Pose", "pose", "action", exact(incoming.pose, poseOptions) ||
+      alias(incoming.pose, [["kneeling","kneeling upright"],["bending over","bending over"],["lying","lying back"],["sitting","sitting on edge"],["standing","standing"],["walking","walking"]], poseOptions));
+    map("Framing", "pose", "distance", exact(incoming.framing || incoming.cameraDistance, framingOptions) ||
+      alias(incoming.framing || incoming.cameraDistance, [["close","close-up"],["medium","waist-up"],["full","full body"],["wide","wide shot"],["portrait","portrait"]], framingOptions));
+    map("Camera angle", "pose", "angle", exact(incoming.cameraAngle || incoming.orientation, angleOptions) ||
+      alias(incoming.cameraAngle || incoming.orientation, [["back","back"],["rear","back"],["profile","profile"],["side","profile"],["over-shoulder","over-shoulder"],["above","from above"],["below","from below"],["front","front"]], angleOptions));
+    map("Environment", "scene", "environment", exact(incoming.environment, envOptions) ||
+      alias(incoming.environment, [["bedroom","bedroom"],["studio","studio"],["beach","beach"],["forest","forest"],["rooftop","rooftop"],["warehouse","warehouse"],["desert","desert"],["alley","neon alley"],["castle","castle"],["street","urban street"]], envOptions));
+    map("Photo style", "style", "render", exact(incoming.photographicStyle, styleOptions) ||
+      alias(incoming.photographicStyle, [["cinematic","cinematic"],["editorial","editorial"],["documentary","documentary"],["analog","analog film"],["35mm","35mm film"],["photo","photorealistic"],["selfie","photorealistic"]], styleOptions));
 
     // Preserve richer Qwen observations as editable notes instead of guessing
     // which Studio chip they mean.
@@ -377,6 +406,7 @@ export default function Builder({ studio = "standard" }) {
     setName(`Media Study - ${incoming.sourceName || "Untitled"}`);
     setTags(Array.isArray(incoming.generalTags) ? incoming.generalTags : []);
     setPlainLanguage(notes.join("\n"));
+    setMediaImportSummary({ sourceName: incoming.sourceName || "Media Library image", mapped, notes });
     setPromptOverride("");
     setNegativePromptOverride("");
     setMobileStudioStep("start");
@@ -1681,6 +1711,7 @@ export default function Builder({ studio = "standard" }) {
     setLocks({});
     setCollapsed({});
     setTags([]);
+    setMediaImportSummary(null);
     setRaunch(false);
     setPromptLanguage("editorial");
     setLoraOverrides({});
@@ -1898,6 +1929,31 @@ export default function Builder({ studio = "standard" }) {
               <div className="mt-0.5 text-[10px] text-zinc-400">
                 Saved DNA and generation settings were restored, saved prompt overrides were cleared, and the next render will use the current compiler with a new seed.
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {mediaImportSummary && (
+        <div className="pane border border-amber-400/30 bg-amber-500/[0.06] p-3 sm:p-4" data-testid="media-import-summary">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <div className="font-display font-bold text-amber-200">Imported from Media</div>
+              <div className="mt-0.5 text-xs text-zinc-400">{mediaImportSummary.sourceName}</div>
+            </div>
+            <button type="button" onClick={()=>setMediaImportSummary(null)} className="self-start rounded-lg border hairline px-2.5 py-1.5 text-xs text-zinc-300 hover:bg-white/5">Hide summary</button>
+          </div>
+          <div className="mt-3 grid gap-3 lg:grid-cols-2">
+            <div>
+              <div className="mb-1.5 font-mono text-[10px] uppercase tracking-wider text-emerald-300">Mapped to Studio controls</div>
+              <div className="flex flex-wrap gap-1.5">
+                {mediaImportSummary.mapped.length ? mediaImportSummary.mapped.map((item,index)=>(
+                  <span key={`${item.label}-${index}`} className="rounded-full border border-emerald-400/25 bg-emerald-500/10 px-2 py-1 text-[11px] text-emerald-100">{item.label}: {item.value}</span>
+                )) : <span className="text-xs text-zinc-500">No direct control matches yet.</span>}
+              </div>
+            </div>
+            <div>
+              <div className="mb-1.5 font-mono text-[10px] uppercase tracking-wider text-cyan-300">Kept as editable reference notes</div>
+              <div className="max-h-24 overflow-auto whitespace-pre-wrap text-xs leading-5 text-zinc-300">{mediaImportSummary.notes.join("\n")}</div>
             </div>
           </div>
         </div>
