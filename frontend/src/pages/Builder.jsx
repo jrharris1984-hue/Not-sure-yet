@@ -641,6 +641,14 @@ export default function Builder({ studio = "standard" }) {
     setShowSecondLora(Boolean(saved.selected_loras?.[1]?.name));
     setLoraOverrides(saved.lora_overrides || {});
     setPromptOverride(rebuildCurrent ? "" : (saved.prompt_positive || ""));
+    if (rebuildCurrent) {
+      // Current Compiler must rebuild from the saved render recipe only. A
+      // previously hydrated Builder draft can contain Media Library/Qwen notes
+      // in plainLanguage; leaving them here silently appends stale Hair, Pose,
+      // Wardrobe, Photo style, etc. after the newly compiled prompt.
+      setPlainLanguage("");
+      setMediaImportSummary(null);
+    }
     if (saved.prompt_positive && !rebuildCurrent) setVariationPrompt(saved.prompt_positive);
     if (typeof saved.refine_denoise === "number") setVariationDenoise(saved.refine_denoise);
     setNegativePromptOverride(rebuildCurrent ? "" : (saved.prompt_negative || ""));
