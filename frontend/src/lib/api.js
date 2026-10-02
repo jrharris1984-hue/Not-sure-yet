@@ -31,6 +31,7 @@ export const endpoints = {
   mediaLibraryHealth: () => api.get("/media-library/health").then((r) => r.data),
   mediaLibraryStats: () => api.get("/media-library/stats").then((r) => r.data),
   mediaLibraryList: (params = {}) => api.get("/media-library/media", { params }).then((r) => r.data),
+  mediaLibraryFolders: (params = {}) => api.get("/media-library/folders", { params }).then((r) => r.data),
   mediaLibraryItem: (id) => api.get(`/media-library/media/${id}`).then((r) => r.data),
   mediaLibraryThumbnailUrl: (id) => `${API_BASE}/media-library/media/${id}/thumbnail`,
   mediaLibraryOriginalUrl: (id) => `${API_BASE}/media-library/media/${id}/original`,
