@@ -379,6 +379,41 @@ export default function Builder({ studio = "standard" }) {
     map("Photo style", "style", "render", exact(incoming.photographicStyle, styleOptions) ||
       alias(incoming.photographicStyle, [["cinematic","cinematic"],["editorial","editorial"],["documentary","documentary"],["analog","analog film"],["35mm","35mm film"],["photo","photorealistic"],["selfie","photorealistic"]], styleOptions));
 
+    const expressionOptions = SECTIONS.find(s=>s.key==="face")?.fields.find(f=>f.key==="expression")?.options || [];
+    const wardrobeSection = SECTIONS.find(s=>s.key==="wardrobe");
+    const outfitOptions = wardrobeSection?.fields.find(f=>f.key==="outfit_preset")?.groups?.flatMap(g=>g.options) || wardrobeSection?.fields.find(f=>f.key==="outfit_preset")?.options || [];
+    const garmentColors = wardrobeSection?.fields.find(f=>f.key==="garment_color")?.groups?.flatMap(g=>g.options) || [];
+    const materialOptions = wardrobeSection?.fields.find(f=>f.key==="material")?.options || [];
+    const fitOptions = wardrobeSection?.fields.find(f=>f.key==="fit")?.options || [];
+    const lightSourceOptions = SECTIONS.find(s=>s.key==="lighting")?.fields.find(f=>f.key==="source")?.options || [];
+    const lightStyleOptions = SECTIONS.find(s=>s.key==="lighting")?.fields.find(f=>f.key==="style")?.options || [];
+    const lightMoodOptions = SECTIONS.find(s=>s.key==="lighting")?.fields.find(f=>f.key==="mood")?.options || [];
+    const cameraAngleOptions = SECTIONS.find(s=>s.key==="camera")?.fields.find(f=>f.key==="angle")?.options || [];
+    const focusOptions = SECTIONS.find(s=>s.key==="pose")?.fields.find(f=>f.key==="focus")?.options || [];
+
+    map("Expression", "face", "expression", exact(incoming.expression, expressionOptions) || containsOption(incoming.expression, expressionOptions));
+    map("Outfit", "wardrobe", "outfit_preset", containsOption(incoming.wardrobe, outfitOptions));
+    map("Outfit color", "wardrobe", "garment_color", containsOption(incoming.wardrobe, garmentColors));
+    map("Material", "wardrobe", "material", containsOption(incoming.wardrobe, materialOptions));
+    map("Fit", "wardrobe", "fit", containsOption(incoming.wardrobe, fitOptions));
+    map("Lighting source", "lighting", "source", containsOption(incoming.lighting, lightSourceOptions));
+    map("Lighting style", "lighting", "style", containsOption(incoming.lighting, lightStyleOptions));
+    map("Lighting mood", "lighting", "mood", containsOption(incoming.lighting, lightMoodOptions));
+    map("Camera", "camera", "angle", alias(incoming.cameraAngle, [["eye-level","eye-level"],["low angle","low"],["high angle","high"],["dutch","dutch"],["bird","birds-eye"]], cameraAngleOptions));
+    map("Composition focus", "pose", "focus", alias(incoming.composition, [["face","face"],["full body","full frame"],["body","body"],["hip","hips"],["leg","legs"],["feet","feet"],["hand","hands"]], focusOptions));
+
+    const proportionsText = lower([incoming.bodyBuild, incoming.bodyProportions, incoming.physicalAppearance].filter(Boolean).join(" "));
+    const sizeMap = (words) => words.find(([word])=>proportionsText.includes(word))?.[1] || "";
+    map("Bust", "physique", "bust", sizeMap([["very large bust","very large"],["large bust","large"],["medium bust","medium"],["small bust","small"]]));
+    map("Glutes", "physique", "butt", sizeMap([["very large butt","very large"],["large butt","large"],["prominent butt","large"],["large glute","large"],["round butt","round"]]));
+    map("Hips", "physique", "hips", sizeMap([["very wide hip","very wide"],["wide hip","wide"],["narrow hip","narrow"]]));
+    map("Thighs", "physique", "thighs", sizeMap([["very thick thigh","very thick"],["thick thigh","thick"],["athletic thigh","athletic"],["slim thigh","slim"]]));
+    map("Waist", "physique", "waist", sizeMap([["tiny waist","tiny"],["cinched waist","cinched"],["slim waist","slim"],["thick waist","thick"]]));
+    if (proportionsText.includes("curvaceous") || proportionsText.includes("curvy")) {
+      next.physique.curves = Math.max(Number(next.physique.curves) || 50, 75);
+      mapped.push({ label: "Curves", value: "75%" });
+    }
+
     // Preserve richer Qwen observations as editable notes instead of guessing
     // which Studio chip they mean.
     addNote("Appearance", incoming.physicalAppearance);
@@ -1964,7 +1999,7 @@ export default function Builder({ studio = "standard" }) {
               <div className="mb-1.5 font-mono text-[10px] uppercase tracking-wider text-emerald-300">Mapped to Studio controls</div>
               <div className="flex flex-wrap gap-1.5">
                 {mediaImportSummary.mapped.length ? mediaImportSummary.mapped.map((item,index)=>(
-                  <span key={`${item.label}-${index}`} className="rounded-full border border-emerald-400/25 bg-emerald-500/10 px-2 py-1 text-[11px] text-emerald-100">{item.label}: {item.value}</span>
+                  <button type="button" key={`${item.label}-${index}`} onClick={()=>{ const targets={Hair:"hair","Hair color":"hair","Hair length":"hair","Hair style":"hair","Body type":"physique",Bust:"physique",Glutes:"physique",Hips:"physique",Thighs:"physique",Waist:"physique",Curves:"physique",Expression:"face",Outfit:"wardrobe","Outfit color":"wardrobe",Material:"wardrobe",Fit:"wardrobe",Pose:"pose",Framing:"pose","Camera angle":"pose",Camera:"camera","Composition focus":"pose",Environment:"scene","Lighting source":"lighting","Lighting style":"lighting","Lighting mood":"lighting","Photo style":"style"}; const target=targets[item.label]; if(target){ goSection(target); window.requestAnimationFrame(()=>document.getElementById(`section-${target}`)?.scrollIntoView({behavior:"smooth",block:"start"})); } }} className="rounded-full border border-emerald-400/25 bg-emerald-500/10 px-2 py-1 text-[11px] text-emerald-100 hover:border-amber-400/50 hover:bg-amber-500/10">{item.label}: {item.value}</button>
                 )) : <span className="text-xs text-zinc-500">No direct control matches yet.</span>}
               </div>
             </div>
