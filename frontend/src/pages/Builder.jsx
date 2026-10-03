@@ -14,6 +14,7 @@ import {
   HERITAGE_CASTS,
 } from "@/lib/dna";
 import { compileModelPrompts, resolvePromptCompiler } from "@/lib/modelPromptCompilers";
+import { bodyAdjustDenoise, buildBodyAdjustInstruction } from "@/lib/bodyAdjust";
 import { batchSeed } from "@/lib/batchSeeds";
 import { translatePlainLanguage } from "@/lib/plainLanguagePrompt";
 import { analyzePromptQuality } from "@/lib/promptQuality";
@@ -1106,56 +1107,8 @@ export default function Builder({ studio = "standard" }) {
     locks: poseLocks,
     preservationInstruction: preservationStrengthInstruction(referenceStrengths),
   }), [poseTarget, poseNotes, poseReferenceAnalysis, poseLocks, referenceStrengths]);
-  const bodyAdjustInstruction = useMemo(() => {
-    const amount = Math.max(0, Math.min(100, Number(bodyAdjustAmount) || 0));
-    const regionLabels = {
-      glutes: "glute size and projection",
-      bust: "bust size and projection",
-      hips: "hip width",
-      thighs: "thigh thickness",
-      waist: "waist width",
-    };
-    const region = regionLabels[bodyAdjustRegion] || bodyAdjustRegion;
-    const delta = amount - 50;
-    const magnitude = Math.abs(delta);
-    const direction = delta < 0 ? "decrease" : delta > 0 ? "increase" : "preserve";
-
-    if (magnitude < 5) {
-      return `Preserve the subject's ${region} at its current size. Do not change the source image's body proportions. Preserve the same adult subject, face, hair, expression, pose, hands, feet, clothing, camera framing, background, lighting, and photographic style.`;
-    }
-
-    const level = magnitude >= 45
-      ? "MAXIMUM"
-      : magnitude >= 35
-        ? "very strong"
-        : magnitude >= 25
-          ? "strong"
-          : magnitude >= 15
-            ? "clearly visible"
-            : "subtle";
-
-    const scaleLanguage = direction === "increase"
-      ? (magnitude >= 45
-          ? "Make a dramatic, unmistakable localized enlargement with substantially greater size and projection. The selected region must be visibly much larger than in the source image."
-          : magnitude >= 35
-            ? "Make a very large and immediately obvious localized enlargement compared with the source image."
-            : magnitude >= 25
-              ? "Make a strong, clearly visible localized enlargement compared with the source image."
-              : magnitude >= 15
-                ? "Make a clearly visible localized enlargement compared with the source image."
-                : "Make a small but visible localized enlargement compared with the source image.")
-      : (magnitude >= 45
-          ? "Make a dramatic, unmistakable localized reduction. The selected region must be visibly much smaller than in the source image."
-          : magnitude >= 35
-            ? "Make a very large and immediately obvious localized reduction compared with the source image."
-            : magnitude >= 25
-              ? "Make a strong, clearly visible localized reduction compared with the source image."
-              : magnitude >= 15
-                ? "Make a clearly visible localized reduction compared with the source image."
-                : "Make a small but visible localized reduction compared with the source image.");
-
-    return `${level} LOCALIZED BODY EDIT: ${direction} only the subject's ${region}. ${scaleLanguage} This requested change is intentional and must be visibly apparent in the result; do not simply reproduce the source image unchanged. Preserve the same adult subject and identity, face, hair, expression, exact pose, hands, feet, clothing, camera position and framing, background, lighting, photographic style, and every unselected body region. Modify only the selected region and the immediately connected anatomy required for a coherent transition. Keep one coherent human body with realistic skin texture and photographic appearance.`;
-  }, [bodyAdjustAmount, bodyAdjustRegion]);
+  const bodyAdjustInstruction = useMemo(() => buildBodyAdjustInstruction(bodyAdjustRegion, bodyAdjustAmount), [bodyAdjustAmount, bodyAdjustRegion]);
+  const bodyAdjustEditStrength = bodyAdjustDenoise(bodyAdjustAmount);
 
   const effectiveEditInstruction = editMode === "new_pose"
     ? poseInstruction
@@ -1573,9 +1526,11 @@ export default function Builder({ studio = "standard" }) {
         seed: activeRecipeFamily === "image" ? uniqueSeed : undefined,
         reference_image: (isFaceWorkflow || isEditWorkflow || isEnhanceWorkflow || isVideoWorkflow || isVariationWorkflow) ? referenceImage?.name : undefined,
         reference_source_render_id: referenceImage?.source_render_id || undefined,
+        body_adjust_amount: isVariationWorkflow && editMode === "body_adjust" ? bodyAdjustAmount : undefined,
+        body_adjust_region: isVariationWorkflow && editMode === "body_adjust" ? bodyAdjustRegion : undefined,
         refine_denoise: isVariationWorkflow
           ? (editMode === "body_adjust"
-              ? Math.min(0.36, 0.16 + (Math.abs(bodyAdjustAmount - 50) / 50) * 0.20)
+              ? bodyAdjustEditStrength
               : variationDenoise)
           : undefined,
         face_strength: faceStrength,
@@ -2699,6 +2654,7 @@ export default function Builder({ studio = "standard" }) {
                   </div>
                 </label>
                 <div className="rounded-lg border hairline bg-black/20 p-3 text-xs text-zinc-300">
+                  <p className="mb-2 text-zinc-400">Edit strength: {bodyAdjustEditStrength.toFixed(2)} · Stronger changes may affect surrounding details.</p>
                   <span className="font-semibold text-zinc-100">Chroma instruction: </span>{bodyAdjustInstruction}
                 </div>
               </div>
@@ -3345,9 +3301,10 @@ export default function Builder({ studio = "standard" }) {
                     </div>
                   </label>
                   <div className="rounded-md border hairline bg-black/20 p-2 text-[11px] text-zinc-300">
+                    <p className="mb-2 text-zinc-400">Edit strength: {bodyAdjustEditStrength.toFixed(2)} · Stronger changes may affect surrounding details.</p>
                     <span className="font-semibold text-zinc-100">Edit instruction: </span>{bodyAdjustInstruction}
                   </div>
-                  <p className="text-[10px] text-zinc-500">Face, pose, wardrobe, framing, scene, lighting, and unselected body regions are explicitly preserved.</p>
+                  <p className="text-[10px] text-zinc-500">The instruction asks Chroma to preserve other regions. Exact preservation requires a masked edit.</p>
                 </div>
               ) : (
                 <div className="space-y-4" data-testid="same-character-pose-panel">
