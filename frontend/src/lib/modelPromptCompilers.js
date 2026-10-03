@@ -117,7 +117,10 @@ function chromaBodyPriority(dna = {}) {
   }
   if (Number(ph.butt_scale) > 0) {
     clauses.push(gluteSizePrompt(ph.butt_scale, { intensity: true }));
-    if (Number(ph.butt_scale) >= 90) clauses.push("extreme rear and lateral projection, clearly visible lower-body volume connected to one coherent pelvis");
+    if (Number(ph.butt_scale) >= 90 && !ph.glute_shape) clauses.push("extreme rear and lateral projection, clearly visible lower-body volume connected to one coherent pelvis");
+  }
+  if (ph.glute_shape) {
+    clauses.push(`GLUTE SHAPE: ${gluteShapePrompt(ph.glute_shape)}; make this contour visibly distinct at the selected volume, with one connected pelvis`);
   }
   if (Number(ph.hip_scale) > 0) {
     clauses.push(chromaProgressiveScale(ph.hip_scale, "hips", [
@@ -137,8 +140,6 @@ function chromaBodyPriority(dna = {}) {
       "defined, moderately strong width", "defined, strong width", "defined, very strong width", "defined, pronounced width", "defined, maximum width emphasis",
     ]));
   }
-
-  if (ph.glute_shape) clauses.push(`GLUTE SHAPE: ${gluteShapePrompt(ph.glute_shape)}`);
 
   if (!clauses.length) return "";
   return `PRIMARY BODY PROPORTIONS — ${clauses.join(", ")}; selected size and shape override conflicting body descriptions; keep one coherent pelvis and preserve the other selected traits`;

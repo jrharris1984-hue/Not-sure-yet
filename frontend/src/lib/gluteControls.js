@@ -19,16 +19,16 @@ export function gluteSizePrompt(value, { intensity = false } = {}) {
 }
 
 const SHAPES = {
-  "natural rounded": "smooth rounded glute contour with a soft lower curve and natural transition into the thighs",
-  "athletic lifted": "firm lifted glute contour, elevated rounded upper curve and defined lower crease",
-  "soft pear-shaped": "pear-shaped glutes with fuller lower outer curves and a narrower upper contour",
-  "heart-shaped": "heart-shaped glute silhouette, rounded upper outer curves tapering inward toward the lower crease",
-  "BBL-style fuller glutes": "BBL-style glute contour with rounded upper and outer fullness and pronounced rearward projection",
-  "high round projection": "high-set round glute contour with spherical fullness and strong rearward projection",
-  "pronounced upper shelf": "distinct upper glute shelf projecting rearward above the rounded lower curve",
-  "dramatic side projection": "glute contour with prominently projecting outer side curves and broad lateral fullness",
-  "fantasy oversized glutes": "exaggerated spherical glute contour with prominent upper fullness and a deep rounded rear profile",
-  "extreme round projection": "extremely spherical glute contour with a strongly projecting rounded rear profile",
+  "natural rounded": "smooth continuous rounded glute silhouette, evenly distributed fullness, soft lower curve, gradual upper slope",
+  "athletic lifted": "distinctly lifted athletic glute silhouette, high compact fullness, taut elevated lower crease, firm upper contour",
+  "soft pear-shaped": "distinct pear-shaped glute silhouette, narrow upper contour expanding into broad heavy lower outer fullness",
+  "heart-shaped": "distinct inverted-heart glute silhouette, broad rounded upper outer lobes tapering toward a narrower lower curve",
+  "BBL-style fuller glutes": "pronounced BBL-style glute contour, filled upper and outer curves, deep rearward projection, sharply defined waist-to-glute transition",
+  "high round projection": "high-set spherical glute silhouette, fullest point above the midline, strongly projecting rounded profile",
+  "pronounced upper shelf": "distinct horizontal upper glute shelf, abrupt rearward step at the top above a curved lower profile",
+  "dramatic side projection": "dramatic lateral glute silhouette, outer curves extending strongly sideways, widest fullness at the outer midline",
+  "fantasy oversized glutes": "exaggerated bulbous glute silhouette, massive curved upper fullness, deep lower curve, conspicuously sculpted rounded profile",
+  "extreme round projection": "extremely spherical glute silhouette, ball-like contour with extreme rear and lateral projection and a steep rounded outer profile",
 };
 
 export function gluteShapePrompt(value) {
