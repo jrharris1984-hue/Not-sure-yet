@@ -75,9 +75,10 @@ export const endpoints = {
   retryMissingDetails: ({ id, indices }) => api.post(`/renders/${id}/retry-missing`, { indices }).then((r) => r.data),
   previewImprovedRender: ({ id, source_prompt, instruction }) => api.post(`/renders/${id}/improve/preview`, { source_prompt, instruction }).then((r) => r.data),
   queueImprovedRender: ({ id, prompt_positive, prompt_negative }) => api.post(`/renders/${id}/improve`, { prompt_positive, prompt_negative }).then((r) => r.data),
-  uploadReferenceImage: (file) => {
+  uploadReferenceImage: (file, sourceRenderId = "") => {
     const form = new FormData();
     form.append("image", file);
+    if (sourceRenderId) form.append("source_render_id", sourceRenderId);
     return api.post("/reference-images/upload", form, {
       headers: { "Content-Type": "multipart/form-data" },
     }).then((r) => r.data);
