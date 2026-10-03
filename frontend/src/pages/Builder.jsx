@@ -605,8 +605,28 @@ export default function Builder({ studio = "standard" }) {
             ? "Gallery image loaded for body adjustment"
             : "Gallery image loaded for editing";
     toast.success(message);
-    nav(location.pathname, { replace: true, state: null });
-  }, [editorHydrated, location.pathname, location.state, nav, workflows]);
+    if (requestedKind === "edit" && location.state?.referenceMode === "body_adjust") {
+      const existingDraft = readBuilderDraft(draftId) || {};
+      writeBuilderDraft(draftId, {
+        ...existingDraft,
+        workflowId: target.id,
+        editMode: "body_adjust",
+        bodyAdjustRegion: "glutes",
+        bodyAdjustAmount: 50,
+      });
+      nav("/character/new", { replace: true, state: null });
+    } else {
+      nav(location.pathname, { replace: true, state: null });
+    }
+  }, [draftId, editorHydrated, location.pathname, location.state, nav, workflows]);
+
+  useEffect(() => {
+    if (editMode !== "body_adjust" || !referenceImage?.name) return;
+    setMobileStudioStep("create");
+    window.requestAnimationFrame(() => {
+      document.querySelector('[data-testid="qwen-edit-panel"]')?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }, [editMode, referenceImage?.name]);
 
   useEffect(() => {
     const saved = location.state?.renderRecipe?.recipe;
