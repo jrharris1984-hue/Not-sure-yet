@@ -26,7 +26,7 @@ it('keeps shape authoritative even with no numeric size override', () => {
   const dna = JSON.parse(JSON.stringify(DEFAULT_DNA));
   dna.physique.butt_scale = 0;
   dna.physique.glute_shape = 'pronounced upper shelf';
-  expect(compileModelPrompts({ promptStyle: 'chroma', dna }).positive).toContain('distinct upper glute shelf');
+  expect(compileModelPrompts({ promptStyle: 'chroma', dna }).positive).toContain('distinct horizontal upper glute shelf');
 });
 
 it.each(['chroma', 'zimage', 'krea2', 'pony', 'sdxl'])('sends extended glute volume to %s rather than silently capping at 100', (promptStyle) => {
@@ -49,4 +49,23 @@ it('keeps ordinary Chroma breast volume wording while adding glute shape', () =>
   const breastClause = 'rounded, very strong volume bust (size intensity 80/100)';
   expect(before).toContain(breastClause);
   expect(after).toContain(breastClause);
+});
+
+it('gives shape priority over the generic high-size projection cue without changing size or pose', () => {
+  const dna = JSON.parse(JSON.stringify(DEFAULT_DNA));
+  dna.physique.butt_scale = 150;
+  dna.physique.hip_scale = 80;
+  dna.physique.glute_shape = 'soft pear-shaped';
+  dna.pose = { ...dna.pose, distance: 'full body', angle: '3/4', action: 'standing' };
+  const pear = compileModelPrompts({ promptStyle: 'chroma', dna }).positive;
+  dna.physique.glute_shape = 'pronounced upper shelf';
+  const shelf = compileModelPrompts({ promptStyle: 'chroma', dna }).positive;
+  expect(pear).toContain('broad heavy lower outer fullness');
+  expect(shelf).toContain('abrupt rearward step at the top');
+  for (const prompt of [pear, shelf]) {
+    expect(prompt).toContain(gluteSizePrompt(150, { intensity: true }));
+    expect(prompt).toContain('full body, 3/4, standing');
+    expect(prompt).not.toContain('extreme rear and lateral projection, clearly visible lower-body volume');
+    expect(prompt.indexOf('GLUTE SHAPE:')).toBeLessThan(prompt.indexOf('dramatically wide hips'));
+  }
 });
