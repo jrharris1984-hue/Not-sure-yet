@@ -1,3 +1,4 @@
+import { PHOTOGRAPHY_POSE_PROMPTS } from "@/lib/photographyPoses";
 // Prompt expansion map: turns each DNA chip / option into a rich prompt phrase
 // suitable for SDXL / Flux / Chroma / Qwen / IPAdapter workflows.
 // Structure: PROMPT_MAP[sectionKey][fieldKey][optionValue] = "detailed phrase"
@@ -895,6 +896,7 @@ export const PROMPT_MAP = {
 
   pose: {
     action: {
+      ...PHOTOGRAPHY_POSE_PROMPTS,
       "standing": "standing upright, natural stance",
       "standing hip out": "standing with hip cocked out to the side, weight on one leg",
       "standing hands on hips": "standing with hands on hips, confident power pose",
