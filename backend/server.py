@@ -668,7 +668,7 @@ async def comfyui_media(
     Completed output files are served directly from the mounted ComfyUI output
     directory. Other media requests fall back to ComfyUI's /view endpoint.
     """
-    headers = {"Cache-Control": "private, max-age=86400, immutable"}
+    headers = {"Cache-Control": "no-store, max-age=0"}
 
     # Serve completed output files directly from the mounted ComfyUI output
     # directory. This keeps Gallery images available even if ComfyUI is offline
@@ -1837,6 +1837,18 @@ async def _perform_dispatch(body: "DispatchBody") -> Dict[str, Any]:
             return doc
 
         positive_text = instruction
+
+    # ComfyUI's SaveImage counter can reuse names after files are moved or
+    # deleted. Give every render a unique filename prefix so Gallery records
+    # cannot silently point at a later image that reused the same numbered name.
+    for node in workflow.values():
+        if not isinstance(node, dict) or node.get("class_type") != "SaveImage":
+            continue
+        inputs = node.get("inputs", {})
+        prefix = str(inputs.get("filename_prefix") or "UltraStudio")
+        unique_suffix = r.id.replace("-", "")[:12]
+        if unique_suffix not in prefix:
+            inputs["filename_prefix"] = f"{prefix}_{unique_suffix}"
 
     # Apply optional LoRAs in order after model-specific graph patches.
     selected_loras = body.selected_loras if body.selected_loras else ([{
