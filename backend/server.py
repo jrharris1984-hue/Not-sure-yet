@@ -2493,14 +2493,22 @@ async def recreate_render(rid: str, variation: bool = Query(False)):
 
 
 @api.post("/renders/{rid}/prepare-reference")
-async def prepare_render_reference(rid: str):
+async def prepare_render_reference(rid: str, output_url: Optional[str] = Body(None, embed=True)):
     """Copy a Gallery image from ComfyUI output storage into its input storage."""
     render = await db.renders.find_one({"id": rid}, {"_id": 0})
     if not render:
         raise HTTPException(404, "Render not found")
     variants = render.get("output_variants") or {}
-    candidates = (variants.get("enhanced") or []) + (render.get("output_files") or [])
-    url = next((str(item) for item in candidates if item), "")
+    candidates = [str(item) for item in ((variants.get("enhanced") or []) + (render.get("output_files") or [])) if item]
+    # Gallery may identify the exact output the user clicked. Never substitute a
+    # different output from the render record: the preview and ComfyUI reference
+    # must come from the same URL.
+    if output_url:
+        if output_url not in candidates:
+            raise HTTPException(409, "The selected Gallery output does not belong to this render.")
+        url = output_url
+    else:
+        url = next(iter(candidates), "")
     if not url:
         raise HTTPException(400, "This render has no image output to reuse.")
     parsed = urlparse(url)
