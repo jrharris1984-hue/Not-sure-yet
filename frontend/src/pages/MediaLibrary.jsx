@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Search, Images, Video, RefreshCw, X, Database, Folder, FolderOpen, LayoutGrid, ChevronRight, Home } from "lucide-react";
 import { endpoints } from "@/lib/api";
+import { mediaPeopleMetadata, mediaLibraryTraits } from "@/lib/mediaLibraryMetadata";
 import { Input } from "@/components/ui/input";
 
 const PAGE_SIZE = 48;
@@ -21,6 +22,7 @@ export default function MediaLibrary() {
   const [status, setStatus] = useState("all");
   const [offset, setOffset] = useState(0);
   const [selected, setSelected] = useState(null);
+  const [personCount, setPersonCount] = useState("auto");
   const [view, setView] = useState("gallery");
   const [folderPath, setFolderPath] = useState("");
 
@@ -43,31 +45,16 @@ export default function MediaLibrary() {
     retry:1,
   });
 
+  const detail = useQuery({
+    queryKey: ["media-library-item", selected?.id],
+    queryFn: () => endpoints.mediaLibraryItem(selected.id),
+    enabled: !!selected, retry: 1,
+  });
+  const selectedItem = selected ? { ...selected, ...(detail.data?.item || detail.data || {}) } : null;
+  const detectedPeople = selectedItem ? mediaPeopleMetadata(selectedItem) : null;
+
   const loadInStudio = (item) => {
-    const reusable = {
-      mediaId: item.id,
-      sourceName: item.file_name,
-      description: item.search_description || item.subject_description || "",
-      bodyBuild: item.body_build || "",
-      bodyProportions: item.body_proportions || "",
-      physicalAppearance: item.physical_appearance || "",
-      hairColor: item.hair_color || "",
-      hairLength: item.hair_length || "",
-      hairStyle: item.hair_style || "",
-      expression: item.facial_expression || "",
-      wardrobe: item.wardrobe_details || "",
-      pose: item.pose || "",
-      orientation: item.body_orientation || "",
-      framing: item.framing || "",
-      cameraAngle: item.camera_angle || "",
-      cameraDistance: item.camera_distance || "",
-      composition: item.composition || "",
-      lighting: item.lighting || "",
-      background: item.background || "",
-      environment: item.environment || "",
-      photographicStyle: item.photographic_style || "",
-      generalTags: item.general_tags || [],
-    };
+    const reusable = mediaLibraryTraits(item, personCount === "auto" ? undefined : Number(personCount));
     nav("/character/new", { state: { mediaLibraryTraits: reusable } });
   };
 
@@ -133,7 +120,7 @@ export default function MediaLibrary() {
       {media.isError ? <div className="pane p-8 text-center text-zinc-400"><Database className="h-8 w-8 mx-auto mb-2"/><div className="font-semibold text-zinc-200">Media server unavailable</div><div className="mt-2 text-xs">Server: {health.data?.url || "checking address…"}</div><button type="button" onClick={() => nav("/settings")} className="mt-3 rounded-lg border hairline px-3 py-2 text-sm text-cyan-200">Check Media Library connection</button><div className="text-xs mt-1">{media.error?.response?.data?.detail || media.error?.message}</div></div>
       : media.isLoading ? <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6 gap-3">{Array.from({length:18}).map((_,i)=><div key={i} className="pane aspect-[3/4] animate-pulse"/>)}</div>
       : <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6 gap-3">
-          {items.map(item => <button key={item.id} onClick={()=>setSelected(item)} className="pane overflow-hidden text-left hover:border-cyan-400/40 transition-colors group">
+          {items.map(item => <button key={item.id} onClick={()=>{setSelected(item);setPersonCount("auto");}} className="pane overflow-hidden text-left hover:border-cyan-400/40 transition-colors group">
             <div className="relative aspect-[3/4] bg-elevated overflow-hidden">
               {item.thumbnail_url ? <img src={endpoints.mediaLibraryThumbnailUrl(item.id)} alt="" loading="lazy" className="h-full w-full object-cover group-hover:scale-[1.02] transition-transform"/> : <div className="h-full grid place-items-center text-zinc-600">{item.media_type==="video"?<Video/>:<Images/>}</div>}
               <span className={`absolute top-2 left-2 rounded-md px-1.5 py-0.5 text-[9px] font-mono uppercase backdrop-blur bg-black/70 ${item.analysis_status==="complete"?"text-emerald-300":"text-zinc-300"}`}>{item.analysis_status}</span>
@@ -153,19 +140,29 @@ export default function MediaLibrary() {
           <div className="grid md:grid-cols-[minmax(0,1.15fr)_minmax(280px,.85fr)] gap-5 p-4">
             <div><img src={endpoints.mediaLibraryOriginalUrl(selected.id)} alt="" className="w-full max-h-[72vh] object-contain rounded-lg bg-black"/></div>
             <div className="space-y-4">
-              <Meta label="Description" value={selected.search_description || selected.subject_description}/>
-              <Meta label="Appearance" value={selected.physical_appearance}/>
-              <Meta label="Build / proportions" value={[selected.body_build, selected.body_proportions].filter(Boolean).join(" · ")}/>
-              <Meta label="Hair" value={[selected.hair_color, selected.hair_length, selected.hair_style].filter(Boolean).join(" · ")}/>
-              <Meta label="Wardrobe" value={selected.wardrobe_details}/>
-              <Meta label="Pose" value={selected.pose}/>
-              <Meta label="Framing / camera" value={[selected.framing, selected.camera_angle, selected.camera_distance].filter(Boolean).join(" · ")}/>
-              <Meta label="Lighting" value={selected.lighting}/>
-              <Meta label="Environment" value={selected.environment || selected.background}/>
-              <Meta label="Style" value={selected.photographic_style}/>
-              <Meta label="Tags" value={[...(selected.general_tags||[]), ...(selected.adult_content_tags||[])]}/>
-              {selected.analysis_status === "complete" && <button onClick={()=>loadInStudio(selected)} className="w-full rounded-lg bg-amber-500 hover:bg-amber-400 text-black font-semibold px-4 py-3 transition-colors">Use in Studio</button>}
-              {selected.analysis_status !== "complete" && <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-200">Qwen analysis is not complete for this item yet. The metadata panel will fill in automatically after analysis.</div>}
+              <Meta label="Detected people" value={detectedPeople.personCount ?? "Not provided by analyzer"}/>
+              <label className="block text-xs text-zinc-400">People to set up in Studio
+                <select value={personCount} onChange={e=>setPersonCount(e.target.value)} className="mt-1 w-full rounded-lg bg-elevated border hairline px-3 py-2 text-sm text-zinc-200">
+                  <option value="auto">{detectedPeople.personCount === null ? "Unknown — start with 1 person" : `Detected: ${detectedPeople.personCount} people`}</option>
+                  {[1,2,3,4].map(count=><option key={count} value={count}>{count} {count===1?"person":"people"}</option>)}
+                </select>
+              </label>
+              {detectedPeople.personCount > 4 && <p className="text-xs text-amber-200">Studio supports up to 4 people. Review the imported cast before rendering.</p>}
+              {detectedPeople.personCount === 0 && <p className="text-xs text-amber-200">No people detected. Choose a count if you want to create a subject setup.</p>}
+              {detail.isError && <p className="text-xs text-amber-200">Detailed analysis could not be loaded. Showing available gallery metadata.</p>}
+              <Meta label="Description" value={selectedItem.search_description || selectedItem.subject_description}/>
+              <Meta label="Appearance" value={selectedItem.physical_appearance}/>
+              <Meta label="Build / proportions" value={[selectedItem.body_build, selectedItem.body_proportions].filter(Boolean).join(" · ")}/>
+              <Meta label="Hair" value={[selectedItem.hair_color, selectedItem.hair_length, selectedItem.hair_style].filter(Boolean).join(" · ")}/>
+              <Meta label="Wardrobe" value={selectedItem.wardrobe_details}/>
+              <Meta label="Pose" value={selectedItem.pose}/>
+              <Meta label="Framing / camera" value={[selectedItem.framing, selectedItem.camera_angle, selectedItem.camera_distance].filter(Boolean).join(" · ")}/>
+              <Meta label="Lighting" value={selectedItem.lighting}/>
+              <Meta label="Environment" value={selectedItem.environment || selectedItem.background}/>
+              <Meta label="Style" value={selectedItem.photographic_style}/>
+              <Meta label="Tags" value={[...(selectedItem.general_tags||[]), ...(selectedItem.adult_content_tags||[])]}/>
+              {selectedItem.analysis_status === "complete" && <button onClick={()=>loadInStudio(selectedItem)} disabled={detail.isFetching || (personCount === "auto" && detectedPeople.personCount === 0)} className="w-full disabled:opacity-40 rounded-lg bg-amber-500 hover:bg-amber-400 text-black font-semibold px-4 py-3 transition-colors">Use in Studio</button>}
+              {selectedItem.analysis_status !== "complete" && <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-200">Qwen analysis is not complete for this item yet. The metadata panel will fill in automatically after analysis.</div>}
             </div>
           </div>
         </div>
