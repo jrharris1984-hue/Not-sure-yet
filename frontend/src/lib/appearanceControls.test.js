@@ -82,3 +82,25 @@ test.each(["sdxl", "pony", "chroma", "zimage", "krea2"])("%s can keep lingerie w
   expect(positive).toMatch(/partially nude/i);
   expect(positive).toMatch(/lace balconette set/i);
 });
+
+test('Chroma keeps breast, glute shape, garment and color controls together at extended glute size', () => {
+  const dna = configured();
+  dna.physique.butt_scale = 200;
+  const { positive } = compileModelPrompts({ promptStyle: 'chroma', dna });
+  expect(positive).toContain('fantasy-scale augmented bust');
+  expect(positive).toContain('maximum hyper-scale fantasy volume');
+  expect(positive).toContain('BBL-style glute contour');
+  expect(positive).toContain('emerald mermaid gown');
+  expect(positive).toContain('black seamed stockings');
+  expect(positive).toContain('gold pointed-toe stilettos');
+});
+
+test.each(['waist-up', 'thigh-up', 'knees-up', 'portrait'])('Krea omits off-frame feet details in a %s crop', (distance) => {
+  const dna = configured();
+  dna.pose = { ...DEFAULT_DNA.pose, distance, focus: 'feet' };
+  dna.feet = { ...DEFAULT_DNA.feet, framing: 'sole close-up', pedicure: 'long nails' };
+  const { positive } = compileModelPrompts({ promptStyle: 'krea2', dna });
+  expect(positive).not.toContain('feet composition priority');
+  expect(positive).not.toContain('long nails pedicure');
+  expect(positive).not.toContain('pointed-toe stilettos');
+});

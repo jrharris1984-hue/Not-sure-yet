@@ -105,6 +105,7 @@ function chromaDnaWithAuthoritativeScales(dna = {}) {
 function chromaBodyPriority(dna = {}) {
   const ph = dna.physique || {};
   const clauses = [];
+  if (Number(ph.implant_volume) > 0) clauses.push(implantVisualPrompt(ph.implant_volume));
 
   // Describe actual size at each level. Projection emphasis alone can leave
   // the silhouette unchanged, especially at the top of the slider.
@@ -202,12 +203,17 @@ function chromaLeanSingleSubjectPrompt(dna = {}, primaryGuard = {}, sourceDna = 
     hair.texture && `${hair.texture} hair texture`,
   ].filter(Boolean).join(", ");
 
+  const nudity = wardrobeNudity(wardrobe);
   const outfit = [
-    wardrobe.outfit_set_color,
-    wardrobe.outfit_set || wardrobe.outfit_preset || wardrobe.dress_style || wardrobe.skirt_style,
-    !wardrobe.outfit_set && !wardrobe.dress_style ? wardrobe.top : "",
-    !wardrobe.outfit_set && !wardrobe.dress_style && !wardrobe.skirt_style ? wardrobe.bottom : "",
+    nudity.direction,
+    !nudity.suppressClothing && (wardrobe.outfit_set_color || wardrobe.garment_color),
+    !nudity.suppressClothing && (wardrobe.outfit_set || wardrobe.dress_style || wardrobe.skirt_style || wardrobe.outfit_preset),
+    !nudity.suppressClothing && !wardrobe.outfit_set && !wardrobe.dress_style ? wardrobe.top : "",
+    !nudity.suppressClothing && !wardrobe.outfit_set && !wardrobe.dress_style && !wardrobe.skirt_style ? wardrobe.bottom : "",
+    wardrobe.hosiery_color,
     wardrobe.hosiery_type,
+    wardrobe.hosiery_pattern,
+    wardrobe.heel_color,
     wardrobe.heel_type,
   ].filter(Boolean).join(" ");
 
@@ -551,11 +557,17 @@ function kreaSubjectSentence(dna = {}, label = "") {
   return `${prefix}${[head, implantVisualPrompt(ph.implant_volume), ...body, ...faceHair].filter(Boolean).join(", ")}.`;
 }
 
+function kreaFeetVisible(dna = {}) {
+  const distance = lower(dna.pose?.distance || "full body");
+  if (["thigh-up", "knees-up", "waist-up", "portrait"].includes(distance)) return false;
+  return ["full body", "wide shot"].includes(distance) || lower(dna.pose?.focus) === "feet" || Boolean(dna.feet?.framing);
+}
+
 function kreaWardrobeSentence(dna = {}, label = "") {
   const w = dna.wardrobe || {};
   const prefix = label ? `Subject ${label} wardrobe: ` : "Wardrobe: ";
   const { direction: nudityDirection, suppressClothing } = wardrobeNudity(w);
-  const feetVisible = ["full body", "wide shot"].includes(lower(dna.pose?.distance || "full body")) || lower(dna.pose?.focus) === "feet";
+  const feetVisible = kreaFeetVisible(dna);
   // A high nudity setting is an explicit wardrobe choice. Do not repeat a
   // contradictory outfit or garment from the saved character DNA.
   return kreaSentence(prefix, [
@@ -587,7 +599,7 @@ function kreaPoseSentence(dna = {}, label = "") {
   const feet = dna.feet || {};
   const prefix = label ? `Subject ${label} pose and framing: ` : "Pose and framing: ";
   const framing = lower(p.distance) || "full body";
-  const feetPriority = lower(p.focus) === "feet" || kreaValue(feet.framing);
+  const feetPriority = kreaFeetVisible(dna) && (lower(p.focus) === "feet" || kreaValue(feet.framing));
   const bodyCrop = ["full body", "wide shot", "knees-up", "thigh-up", "waist-up"].includes(framing);
   const cropDescription = {
     "waist-up": "waist-up", "thigh-up": "head-to-mid-thigh", "knees-up": "head-to-knees",
@@ -596,7 +608,7 @@ function kreaPoseSentence(dna = {}, label = "") {
     p.action,
     p.body_language && `${p.body_language} body language`,
     p.angle && `${p.angle} view`,
-    p.focus && (bodyCrop && lower(p.focus) === "face"
+    p.focus && !(lower(p.focus) === "feet" && !kreaFeetVisible(dna)) && (bodyCrop && lower(p.focus) === "face"
       ? `face clearly visible within the ${cropDescription} composition`
       : `${p.focus} composition priority`),
     arrayValue(p.hands).length ? `hands ${arrayValue(p.hands).slice(-1)[0]}` : "",
