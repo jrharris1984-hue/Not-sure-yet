@@ -1572,6 +1572,7 @@ export default function Builder({ studio = "standard" }) {
         sampler_name: activeRecipeFamily === "image" ? renderSettings.sampler : undefined,
         seed: activeRecipeFamily === "image" ? uniqueSeed : undefined,
         reference_image: (isFaceWorkflow || isEditWorkflow || isEnhanceWorkflow || isVideoWorkflow || isVariationWorkflow) ? referenceImage?.name : undefined,
+        reference_source_render_id: referenceImage?.source_render_id || undefined,
         refine_denoise: isVariationWorkflow
           ? (editMode === "body_adjust"
               ? Math.min(0.36, 0.16 + (Math.abs(bodyAdjustAmount - 50) / 50) * 0.20)
