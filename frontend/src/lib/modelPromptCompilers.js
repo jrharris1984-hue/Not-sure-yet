@@ -1,3 +1,4 @@
+import { gluteSizePrompt, gluteShapePrompt } from "@/lib/gluteControls";
 import { buildPrompts, buildMultiVenicePrompts, buildChromaPrompts, buildMultiChromaPrompts, selfStreamContinuityCue } from "@/lib/dna";
 import { buildPonyPrompts, buildMultiPonyPrompts } from "@/lib/ponyPrompts";
 import { buildPromptPriorityPlan, emptyPromptPriorityPlan, prioritizePrompt, requirementPresent } from "@/lib/promptPriority";
@@ -114,11 +115,8 @@ function chromaBodyPriority(dna = {}) {
     ]));
   }
   if (Number(ph.butt_scale) > 0) {
-    clauses.push(chromaProgressiveScale(ph.butt_scale, "glute volume", [
-      "small", "moderate", "full rounded", "large rounded with noticeable rear projection", "very large rounded with prominent rear projection",
-      "oversized with substantial rear projection", "very oversized with pronounced rear projection", "extremely oversized with strong rear projection", "fantasy-scale oversized with dramatic rear and lateral projection", "fantasy-scale extremely oversized",
-    ]));
-    if (Number(ph.butt_scale) >= 90) clauses.push("extreme rear and lateral projection; the oversized rounded glutes dominate the lower-body silhouette while remaining connected to one coherent pelvis");
+    clauses.push(gluteSizePrompt(ph.butt_scale, { intensity: true }));
+    if (Number(ph.butt_scale) >= 90) clauses.push("extreme rear and lateral projection, clearly visible lower-body volume connected to one coherent pelvis");
   }
   if (Number(ph.hip_scale) > 0) {
     clauses.push(chromaProgressiveScale(ph.hip_scale, "hips", [
@@ -139,8 +137,10 @@ function chromaBodyPriority(dna = {}) {
     ]));
   }
 
+  if (ph.glute_shape) clauses.push(`GLUTE SHAPE: ${gluteShapePrompt(ph.glute_shape)}`);
+
   if (!clauses.length) return "";
-  return `PRIMARY BODY PROPORTIONS — ${clauses.join(", ")}; selected slider values control only the degree of the named body region while preserving the same person, pose, camera, wardrobe, environment, and overall composition; these selected proportions override conflicting imported body-size descriptions and must remain localized to their named body regions`;
+  return `PRIMARY BODY PROPORTIONS — ${clauses.join(", ")}; selected size and shape override conflicting body descriptions; keep one coherent pelvis and preserve the other selected traits`;
 }
 
 function normalizeChromaProportionLanguage(value, dna = {}) {
@@ -522,7 +522,7 @@ function kreaSubjectSentence(dna = {}, label = "") {
     ph.implant_volume > 0 ? "round augmented breast shape" : ph.bust_shape && `${ph.bust_shape} breast shape`,
     kreaScale(ph.waist_scale, "waist", ["very narrow", "narrow", "average", "wide", "very wide"]) || (ph.waist && `${ph.waist} waist`),
     kreaScale(ph.hip_scale, "hips", ["narrow", "moderate-width", "wide", "very wide", "extremely wide"]) || (ph.hips && `${ph.hips} hips`),
-    kreaScale(ph.butt_scale, "glutes", ["small", "moderate", "full rounded", "very large projected", "extremely oversized projected"]) || (ph.butt && `${ph.butt} buttocks`),
+    (ph.butt_scale > 100 ? gluteSizePrompt(ph.butt_scale) : kreaScale(ph.butt_scale, "glutes", ["small", "moderate", "full rounded", "very large projected", "extremely oversized projected"])) || (ph.butt && `${ph.butt} buttocks`),
     ph.glute_shape,
     kreaScale(ph.thigh_scale, "thighs", ["slim", "moderate", "full", "very thick", "extremely thick"]) || (ph.thighs && `${ph.thighs} thighs`),
     ph.legs && ph.legs !== "average" ? `${ph.legs} legs` : "",
