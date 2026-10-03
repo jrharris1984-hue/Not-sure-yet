@@ -176,7 +176,7 @@ function removeChromaReferenceDuplicates(value, dna = {}) {
   return text.replace(/\n{3,}/g, "\n\n").trim();
 }
 
-function chromaLeanSingleSubjectPrompt(dna = {}, primaryGuard = {}) {
+function chromaLeanSingleSubjectPrompt(dna = {}, primaryGuard = {}, sourceDna = dna) {
   const block = buildChromaPrompts(dna, { raunch: false });
   const ph = dna.physique || {};
   const id = dna.identity || {};
@@ -244,7 +244,7 @@ function chromaLeanSingleSubjectPrompt(dna = {}, primaryGuard = {}) {
     "one adult person only",
     primaryGuard.composition,
     framing && `composition: ${framing}`,
-    chromaBodyPriority(dna),
+    chromaBodyPriority(sourceDna),
     subject && `subject: ${subject}`,
     outfit && `wardrobe: ${outfit}`,
     setting && `setting: ${setting}`,
@@ -1037,7 +1037,7 @@ export function compileModelPrompts({
   if (compiler === "chroma") {
     const sourceDna = primaryGuard.dna;
     const chromaDna = chromaDnaWithAuthoritativeScales(sourceDna);
-    const prompts = chromaLeanSingleSubjectPrompt(chromaDna, primaryGuard);
+    const prompts = chromaLeanSingleSubjectPrompt(chromaDna, primaryGuard, sourceDna);
     return {
       ...prompts,
       priorityPlan,
