@@ -1,3 +1,4 @@
+import { PHOTOGRAPHY_POSE_GROUPS } from "@/lib/photographyPoses";
 // Curated pose sets for the Photo Shoot mode.
 // Each pack pulls values directly from the pose.action option pool in dna.js.
 export const POSE_PACKS = [
@@ -119,6 +120,10 @@ export const POSE_PACKS = [
       "lying stomach",
     ],
   },
+  ...PHOTOGRAPHY_POSE_GROUPS.map((group, index) => ({
+    key: `photography_${index}`, name: group.name,
+    hint: "Relaxed portrait and fashion directions", poses: group.options,
+  })),
 ];
 
 export const getPack = (key) => POSE_PACKS.find((p) => p.key === key);

@@ -1,3 +1,4 @@
+import { PHOTOGRAPHY_POSE_GROUPS } from "@/lib/photographyPoses";
 import { GLUTE_SIZE_MAX, gluteSizePrompt } from "@/lib/gluteControls";
 // DNA schema + prompt builder + randomizer
 import { expandPrompt } from "@/lib/promptMap";
@@ -319,6 +320,7 @@ export const SECTIONS = [
     title: "Pose",
     fields: [
       { key: "action", type: "pose_chips", label: "Pose", groups: [
+        ...PHOTOGRAPHY_POSE_GROUPS,
         { name: "Standing", options: ["standing", "standing hip out", "standing hands on hips", "standing arms up", "standing back arched", "standing legs apart", "standing splits", "walking"] },
         { name: "Leaning", options: ["leaning wall", "leaning forward", "bending over"] },
         { name: "Sitting", options: ["sitting legs crossed", "sitting legs open", "sitting reverse chair", "sitting on edge"] },

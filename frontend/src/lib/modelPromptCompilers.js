@@ -1,3 +1,4 @@
+import { photographyPosePrompt } from "@/lib/photographyPoses";
 import { gluteSizePrompt, gluteShapePrompt } from "@/lib/gluteControls";
 import { buildPrompts, buildMultiVenicePrompts, buildChromaPrompts, buildMultiChromaPrompts, selfStreamContinuityCue } from "@/lib/dna";
 import { buildPonyPrompts, buildMultiPonyPrompts } from "@/lib/ponyPrompts";
@@ -221,7 +222,7 @@ function chromaLeanSingleSubjectPrompt(dna = {}, primaryGuard = {}, sourceDna = 
   const framing = [
     pose.distance,
     pose.angle,
-    pose.action,
+    photographyPosePrompt(pose.action),
     pose.body_language,
   ].filter(Boolean).join(", ");
 
@@ -606,7 +607,7 @@ function kreaPoseSentence(dna = {}, label = "") {
     "waist-up": "waist-up", "thigh-up": "head-to-mid-thigh", "knees-up": "head-to-knees",
   }[framing] || "full-length";
   return kreaSentence(prefix, [
-    p.action,
+    photographyPosePrompt(p.action),
     p.body_language && `${p.body_language} body language`,
     p.angle && `${p.angle} view`,
     p.focus && !(lower(p.focus) === "feet" && !kreaFeetVisible(dna)) && (bodyCrop && lower(p.focus) === "face"
