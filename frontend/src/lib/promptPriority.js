@@ -1,3 +1,4 @@
+import { gluteSizePrompt } from "@/lib/gluteControls";
 import { expandPrompt } from "@/lib/promptMap";
 import { implantVisualPrompt } from "@/lib/implantVisualScale";
 import { wardrobeNudity } from "@/lib/wardrobeNudity";
@@ -142,6 +143,7 @@ function literalRequirement(section, field, value, locked = false) {
   }
   if (key === "physique.body_type") return `${display} body type`;
   if (key === "physique.bust") return `${display} bust size`;
+  if (key === "physique.butt_scale" && numeric > 100) return gluteSizePrompt(numeric);
   if (key === "physique.implant_volume") return implantVisualPrompt(numeric);
   if (section === "physique" && key.endsWith("_scale")) {
     const levels = {

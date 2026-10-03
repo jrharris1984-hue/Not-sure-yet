@@ -1,3 +1,4 @@
+import { gluteSizePrompt } from "@/lib/gluteControls";
 // Pony V6 XL prompt builder — uses Pony's score_9 quality prefix and booru-style tag weighting.
 // Pony expects: score_9, score_8_up, score_7_up, rating_explicit, source_photo (or source_anime), then tag list.
 import { expandPrompt } from "@/lib/promptMap";
@@ -377,7 +378,7 @@ function _ponySubjectBlock(dna = {}, opts = {}) {
     ph.implant_volume > 0 ? "" : w(ph.bust_scale ? `${ph.bust_scale >= 80 ? "fantasy oversized" : ph.bust_scale >= 60 ? "very large" : ph.bust_scale >= 40 ? "full" : "small"} breasts` : exp("physique", "bust") || (ph.bust && `${ph.bust} breasts`), eWeight),
     ph.implant_volume > 0 ? "round augmented breasts" : exp("physique", "bust_shape"),
     implantVisualPrompt(ph.implant_volume),
-    w(ph.butt_scale ? `${ph.butt_scale >= 80 ? "fantasy oversized" : ph.butt_scale >= 60 ? "very large" : ph.butt_scale >= 40 ? "full" : "small"} glutes` : exp("physique", "butt") || (ph.butt && `${ph.butt} ass`), eWeight),
+    w(ph.butt_scale > 100 ? gluteSizePrompt(ph.butt_scale) : ph.butt_scale ? `${ph.butt_scale >= 80 ? "fantasy oversized" : ph.butt_scale >= 60 ? "very large" : ph.butt_scale >= 40 ? "full" : "small"} glutes` : exp("physique", "butt") || (ph.butt && `${ph.butt} ass`), eWeight),
     ph.glute_shape,
     w(ph.thigh_scale ? `${ph.thigh_scale >= 60 ? "very thick" : ph.thigh_scale >= 40 ? "full" : "slim"} thighs` : exp("physique", "thighs") || (ph.thighs && `${ph.thighs} thighs`), eWeight),
     w(ph.hip_scale ? `${ph.hip_scale >= 80 ? "fantasy wide" : ph.hip_scale >= 60 ? "very wide" : ph.hip_scale >= 40 ? "wide" : "narrow"} hips` : exp("physique", "hips") || (ph.hips && `${ph.hips} hips`), eWeight),

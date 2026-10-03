@@ -1,3 +1,4 @@
+import { gluteSizePrompt, gluteShapePrompt } from "@/lib/gluteControls";
 import { buildPrompts, buildMultiVenicePrompts, buildChromaPrompts, buildMultiChromaPrompts, selfStreamContinuityCue } from "@/lib/dna";
 import { buildPonyPrompts, buildMultiPonyPrompts } from "@/lib/ponyPrompts";
 import { buildPromptPriorityPlan, emptyPromptPriorityPlan, prioritizePrompt, requirementPresent } from "@/lib/promptPriority";
@@ -104,6 +105,7 @@ function chromaDnaWithAuthoritativeScales(dna = {}) {
 function chromaBodyPriority(dna = {}) {
   const ph = dna.physique || {};
   const clauses = [];
+  if (Number(ph.implant_volume) > 0) clauses.push(implantVisualPrompt(ph.implant_volume));
 
   // Describe actual size at each level. Projection emphasis alone can leave
   // the silhouette unchanged, especially at the top of the slider.
@@ -114,11 +116,8 @@ function chromaBodyPriority(dna = {}) {
     ]));
   }
   if (Number(ph.butt_scale) > 0) {
-    clauses.push(chromaProgressiveScale(ph.butt_scale, "glute volume", [
-      "small", "moderate", "full rounded", "large rounded with noticeable rear projection", "very large rounded with prominent rear projection",
-      "oversized with substantial rear projection", "very oversized with pronounced rear projection", "extremely oversized with strong rear projection", "fantasy-scale oversized with dramatic rear and lateral projection", "fantasy-scale extremely oversized",
-    ]));
-    if (Number(ph.butt_scale) >= 90) clauses.push("extreme rear and lateral projection; the oversized rounded glutes dominate the lower-body silhouette while remaining connected to one coherent pelvis");
+    clauses.push(gluteSizePrompt(ph.butt_scale, { intensity: true }));
+    if (Number(ph.butt_scale) >= 90) clauses.push("extreme rear and lateral projection, clearly visible lower-body volume connected to one coherent pelvis");
   }
   if (Number(ph.hip_scale) > 0) {
     clauses.push(chromaProgressiveScale(ph.hip_scale, "hips", [
@@ -139,8 +138,10 @@ function chromaBodyPriority(dna = {}) {
     ]));
   }
 
+  if (ph.glute_shape) clauses.push(`GLUTE SHAPE: ${gluteShapePrompt(ph.glute_shape)}`);
+
   if (!clauses.length) return "";
-  return `PRIMARY BODY PROPORTIONS — ${clauses.join(", ")}; selected slider values control only the degree of the named body region while preserving the same person, pose, camera, wardrobe, environment, and overall composition; these selected proportions override conflicting imported body-size descriptions and must remain localized to their named body regions`;
+  return `PRIMARY BODY PROPORTIONS — ${clauses.join(", ")}; selected size and shape override conflicting body descriptions; keep one coherent pelvis and preserve the other selected traits`;
 }
 
 function normalizeChromaProportionLanguage(value, dna = {}) {
@@ -202,12 +203,17 @@ function chromaLeanSingleSubjectPrompt(dna = {}, primaryGuard = {}, sourceDna = 
     hair.texture && `${hair.texture} hair texture`,
   ].filter(Boolean).join(", ");
 
+  const nudity = wardrobeNudity(wardrobe);
   const outfit = [
-    wardrobe.outfit_set_color,
-    wardrobe.outfit_set || wardrobe.outfit_preset || wardrobe.dress_style || wardrobe.skirt_style,
-    !wardrobe.outfit_set && !wardrobe.dress_style ? wardrobe.top : "",
-    !wardrobe.outfit_set && !wardrobe.dress_style && !wardrobe.skirt_style ? wardrobe.bottom : "",
+    nudity.direction,
+    !nudity.suppressClothing && (wardrobe.outfit_set_color || wardrobe.garment_color),
+    !nudity.suppressClothing && (wardrobe.outfit_set || wardrobe.dress_style || wardrobe.skirt_style || wardrobe.outfit_preset),
+    !nudity.suppressClothing && !wardrobe.outfit_set && !wardrobe.dress_style ? wardrobe.top : "",
+    !nudity.suppressClothing && !wardrobe.outfit_set && !wardrobe.dress_style && !wardrobe.skirt_style ? wardrobe.bottom : "",
+    wardrobe.hosiery_color,
     wardrobe.hosiery_type,
+    wardrobe.hosiery_pattern,
+    wardrobe.heel_color,
     wardrobe.heel_type,
   ].filter(Boolean).join(" ");
 
@@ -522,7 +528,7 @@ function kreaSubjectSentence(dna = {}, label = "") {
     ph.implant_volume > 0 ? "round augmented breast shape" : ph.bust_shape && `${ph.bust_shape} breast shape`,
     kreaScale(ph.waist_scale, "waist", ["very narrow", "narrow", "average", "wide", "very wide"]) || (ph.waist && `${ph.waist} waist`),
     kreaScale(ph.hip_scale, "hips", ["narrow", "moderate-width", "wide", "very wide", "extremely wide"]) || (ph.hips && `${ph.hips} hips`),
-    kreaScale(ph.butt_scale, "glutes", ["small", "moderate", "full rounded", "very large projected", "extremely oversized projected"]) || (ph.butt && `${ph.butt} buttocks`),
+    (ph.butt_scale > 100 ? gluteSizePrompt(ph.butt_scale) : kreaScale(ph.butt_scale, "glutes", ["small", "moderate", "full rounded", "very large projected", "extremely oversized projected"])) || (ph.butt && `${ph.butt} buttocks`),
     ph.glute_shape,
     kreaScale(ph.thigh_scale, "thighs", ["slim", "moderate", "full", "very thick", "extremely thick"]) || (ph.thighs && `${ph.thighs} thighs`),
     ph.legs && ph.legs !== "average" ? `${ph.legs} legs` : "",
@@ -551,11 +557,17 @@ function kreaSubjectSentence(dna = {}, label = "") {
   return `${prefix}${[head, implantVisualPrompt(ph.implant_volume), ...body, ...faceHair].filter(Boolean).join(", ")}.`;
 }
 
+function kreaFeetVisible(dna = {}) {
+  const distance = lower(dna.pose?.distance || "full body");
+  if (["thigh-up", "knees-up", "waist-up", "portrait"].includes(distance)) return false;
+  return ["full body", "wide shot"].includes(distance) || lower(dna.pose?.focus) === "feet" || Boolean(dna.feet?.framing);
+}
+
 function kreaWardrobeSentence(dna = {}, label = "") {
   const w = dna.wardrobe || {};
   const prefix = label ? `Subject ${label} wardrobe: ` : "Wardrobe: ";
   const { direction: nudityDirection, suppressClothing } = wardrobeNudity(w);
-  const feetVisible = ["full body", "wide shot"].includes(lower(dna.pose?.distance || "full body")) || lower(dna.pose?.focus) === "feet";
+  const feetVisible = kreaFeetVisible(dna);
   // A high nudity setting is an explicit wardrobe choice. Do not repeat a
   // contradictory outfit or garment from the saved character DNA.
   return kreaSentence(prefix, [
@@ -587,7 +599,7 @@ function kreaPoseSentence(dna = {}, label = "") {
   const feet = dna.feet || {};
   const prefix = label ? `Subject ${label} pose and framing: ` : "Pose and framing: ";
   const framing = lower(p.distance) || "full body";
-  const feetPriority = lower(p.focus) === "feet" || kreaValue(feet.framing);
+  const feetPriority = kreaFeetVisible(dna) && (lower(p.focus) === "feet" || kreaValue(feet.framing));
   const bodyCrop = ["full body", "wide shot", "knees-up", "thigh-up", "waist-up"].includes(framing);
   const cropDescription = {
     "waist-up": "waist-up", "thigh-up": "head-to-mid-thigh", "knees-up": "head-to-knees",
@@ -596,7 +608,7 @@ function kreaPoseSentence(dna = {}, label = "") {
     p.action,
     p.body_language && `${p.body_language} body language`,
     p.angle && `${p.angle} view`,
-    p.focus && (bodyCrop && lower(p.focus) === "face"
+    p.focus && !(lower(p.focus) === "feet" && !kreaFeetVisible(dna)) && (bodyCrop && lower(p.focus) === "face"
       ? `face clearly visible within the ${cropDescription} composition`
       : `${p.focus} composition priority`),
     arrayValue(p.hands).length ? `hands ${arrayValue(p.hands).slice(-1)[0]}` : "",

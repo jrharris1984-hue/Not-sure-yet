@@ -1,3 +1,4 @@
+import { GLUTE_SIZE_MAX, gluteSizePrompt } from "@/lib/gluteControls";
 // DNA schema + prompt builder + randomizer
 import { expandPrompt } from "@/lib/promptMap";
 import { implantVisualPrompt } from "@/lib/implantVisualScale";
@@ -44,7 +45,7 @@ export const SECTIONS = [
       { key: "bust_shape", type: "chips", label: "Bust shape", options: ["natural", "perky", "round", "teardrop", "athletic", "augmented", "gravity-defying"] },
       { key: "implant_volume", type: "slider", label: "Implant visual size (cc reference; 0 = none)", min: 0, max: 5000, step: 50, defaultValue: 0, help: "The number is saved for your slider. Prompts use visual size and projection; high values describe fantasy proportions, not a medical measurement." },
       { key: "butt", type: "chips", label: "Butt", options: ["flat", "small", "toned", "round", "bubble", "large", "very large", "huge", "hyper"] },
-      { key: "butt_scale", type: "slider", label: "Glute size", min: 0, max: 100, step: 1, defaultValue: 0 },
+      { key: "butt_scale", type: "slider", label: "Glute size", min: 0, max: GLUTE_SIZE_MAX, step: 1, defaultValue: 0, help: "0 keeps the Butt preset. 1–100 sets size; 101–200 adds progressively larger fantasy volume. Shape is controlled separately. A rear or three-quarter view makes the silhouette easier to see." },
       { key: "glute_shape", type: "chips", label: "Glute shape / augmentation look", groups: [
         { name: "Natural", options: ["natural rounded", "athletic lifted", "soft pear-shaped", "heart-shaped"] },
         { name: "Enhanced", options: ["BBL-style fuller glutes", "high round projection", "pronounced upper shelf", "dramatic side projection"] },
@@ -1203,7 +1204,7 @@ function _veniceSubjectBlock(dna = {}, opts = {}) {
     ph.implant_volume > 0 ? "" : ph.bust_scale ? visualScale(ph.bust_scale, "bust", ["small", "moderate", "full", "very large", "extremely oversized"]) : exp("physique", "bust") || (ph.bust && `${ph.bust} breasts`),
     ph.implant_volume > 0 ? "round augmented breast shape" : exp("physique", "bust_shape"),
     implantVisualPrompt(ph.implant_volume),
-    ph.butt_scale ? visualScale(ph.butt_scale, "glutes", ["small", "moderate", "full rounded", "very large projected", "extremely oversized projected"]) : exp("physique", "butt") || (ph.butt && `${ph.butt} butt`),
+    ph.butt_scale > 100 ? gluteSizePrompt(ph.butt_scale) : ph.butt_scale ? visualScale(ph.butt_scale, "glutes", ["small", "moderate", "full rounded", "very large projected", "extremely oversized projected"]) : exp("physique", "butt") || (ph.butt && `${ph.butt} butt`),
     ph.glute_shape,
     ph.thigh_scale ? visualScale(ph.thigh_scale, "thighs", ["slim", "moderate", "full", "very thick", "extremely thick"]) : exp("physique", "thighs") || (ph.thighs && `${ph.thighs} thighs`),
     ph.hip_scale ? visualScale(ph.hip_scale, "hips", ["narrow", "moderate width", "wide", "very wide", "extremely wide"]) : exp("physique", "hips") || (ph.hips && `${ph.hips} hips`),
