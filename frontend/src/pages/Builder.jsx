@@ -14,7 +14,6 @@ import {
   HERITAGE_CASTS,
 } from "@/lib/dna";
 import { compileModelPrompts, resolvePromptCompiler } from "@/lib/modelPromptCompilers";
-import { bodyAdjustDenoise, buildBodyAdjustInstruction } from "@/lib/bodyAdjust";
 import { batchSeed } from "@/lib/batchSeeds";
 import { translatePlainLanguage } from "@/lib/plainLanguagePrompt";
 import { analyzePromptQuality } from "@/lib/promptQuality";
@@ -636,9 +635,22 @@ export default function Builder({ studio = "standard" }) {
   useEffect(() => {
     const saved = location.state?.renderRecipe?.recipe;
     if (!saved || !workflows.length || galleryImportApplied.current || !editorHydrated) return;
-    const rebuildCurrent = location.state?.renderRecipeMode === "current";
+    const bodyCreation = location.state?.renderRecipeMode === "body_creation";
+    const rebuildCurrent = bodyCreation || location.state?.renderRecipeMode === "current";
     galleryImportApplied.current = true;
-    setMobileStudioStep("create");
+    setMobileStudioStep(bodyCreation ? mobileStudioStepForSection("physique", studioSteps) : "create");
+    if (bodyCreation) {
+      setPoseAssistEnabled(false);
+      setRenderCount(1);
+      setEditMode("standard");
+      setReferenceImage(null);
+      setReferencePreview("");
+      setSourceRenderId(null);
+      setEditInstruction("");
+      setVideoInstruction("");
+      setQuickReview(false);
+      setCollapsed((current) => ({ ...current, physique: false }));
+    }
     skipNextPromptReset.current = !rebuildCurrent;
     if (Array.isArray(saved.subjects) && saved.subjects.length) {
       const restored = saved.subjects.map((subject, index) => makeSubject({
@@ -664,9 +676,14 @@ export default function Builder({ studio = "standard" }) {
       if (savedWorkflow?.kind === "krea_style") {
         const baseKrea = workflows.find((workflow) => workflow.prompt_style === "krea2" && workflow.kind === "image");
         if (baseKrea) setWorkflowId(baseKrea.id);
-      } else if (savedWorkflow) {
+      } else if (savedWorkflow && (!bodyCreation || savedWorkflow.kind === "image")) {
         setWorkflowId(savedWorkflow.id);
       }
+    }
+    if (bodyCreation && !workflows.some((workflow) => workflow.id === saved.workflow_id && workflow.kind === "image")) {
+      const imageWorkflow = workflows.find((workflow) => workflow.kind === "image" && workflow.prompt_style === "chroma")
+        || workflows.find((workflow) => workflow.kind === "image");
+      if (imageWorkflow) setWorkflowId(imageWorkflow.id);
     }
     setSelectedLora({
       name: saved.selected_loras?.[0]?.name || saved.selected_lora_name || (saved.krea_style === "private_magazine" ? "Private_Magazine_2000s_v1.safetensors" : ""),
@@ -695,9 +712,9 @@ export default function Builder({ studio = "standard" }) {
     if (saved.prompt_positive && !rebuildCurrent) setVariationPrompt(saved.prompt_positive);
     if (typeof saved.refine_denoise === "number") setVariationDenoise(saved.refine_denoise);
     setNegativePromptOverride(rebuildCurrent ? "" : (saved.prompt_negative || ""));
-    if (saved.reference_image) setReferenceImage({ name: saved.reference_image, type: "input", subfolder: "" });
-    if (saved.edit_instruction) setEditInstruction(saved.edit_instruction);
-    if (saved.video_instruction) setVideoInstruction(saved.video_instruction);
+    if (!bodyCreation && saved.reference_image) setReferenceImage({ name: saved.reference_image, type: "input", subfolder: "" });
+    if (!bodyCreation && saved.edit_instruction) setEditInstruction(saved.edit_instruction);
+    if (!bodyCreation && saved.video_instruction) setVideoInstruction(saved.video_instruction);
     setPreserveUnmentioned(saved.preserve_unmentioned !== false);
     if (saved.quality_tier) setQualityTier(saved.quality_tier);
     setVideoFrames(saved.video_frames || 41);
@@ -708,10 +725,12 @@ export default function Builder({ studio = "standard" }) {
       width: saved.width || current.width, height: saved.height || current.height,
       steps: saved.steps || current.steps, cfg: saved.cfg ?? current.cfg,
       batchSize: saved.batch_size || current.batchSize, sampler: saved.sampler_name || current.sampler,
-      seed: rebuildCurrent ? "" : (saved.seed ?? current.seed),
+      seed: rebuildCurrent && !bodyCreation ? "" : (saved.seed ?? current.seed),
     }));
     setGalleryRecipeMode(rebuildCurrent ? "current" : "exact");
-    toast.success(rebuildCurrent
+    toast.success(bodyCreation
+      ? "Original creation setup loaded. Change the body sliders, then generate a new image."
+      : rebuildCurrent
       ? "Saved setup loaded with the current compiler · prompt overrides cleared"
       : "Exact Gallery recipe restored in the editor");
     nav(location.pathname, { replace: true, state: null });
@@ -1107,8 +1126,56 @@ export default function Builder({ studio = "standard" }) {
     locks: poseLocks,
     preservationInstruction: preservationStrengthInstruction(referenceStrengths),
   }), [poseTarget, poseNotes, poseReferenceAnalysis, poseLocks, referenceStrengths]);
-  const bodyAdjustInstruction = useMemo(() => buildBodyAdjustInstruction(bodyAdjustRegion, bodyAdjustAmount), [bodyAdjustAmount, bodyAdjustRegion]);
-  const bodyAdjustEditStrength = bodyAdjustDenoise(bodyAdjustAmount);
+  const bodyAdjustInstruction = useMemo(() => {
+    const amount = Math.max(0, Math.min(100, Number(bodyAdjustAmount) || 0));
+    const regionLabels = {
+      glutes: "glute size and projection",
+      bust: "bust size and projection",
+      hips: "hip width",
+      thighs: "thigh thickness",
+      waist: "waist width",
+    };
+    const region = regionLabels[bodyAdjustRegion] || bodyAdjustRegion;
+    const delta = amount - 50;
+    const magnitude = Math.abs(delta);
+    const direction = delta < 0 ? "decrease" : delta > 0 ? "increase" : "preserve";
+
+    if (magnitude < 5) {
+      return `Preserve the subject's ${region} at its current size. Do not change the source image's body proportions. Preserve the same adult subject, face, hair, expression, pose, hands, feet, clothing, camera framing, background, lighting, and photographic style.`;
+    }
+
+    const level = magnitude >= 45
+      ? "MAXIMUM"
+      : magnitude >= 35
+        ? "very strong"
+        : magnitude >= 25
+          ? "strong"
+          : magnitude >= 15
+            ? "clearly visible"
+            : "subtle";
+
+    const scaleLanguage = direction === "increase"
+      ? (magnitude >= 45
+          ? "Make a dramatic, unmistakable localized enlargement with substantially greater size and projection. The selected region must be visibly much larger than in the source image."
+          : magnitude >= 35
+            ? "Make a very large and immediately obvious localized enlargement compared with the source image."
+            : magnitude >= 25
+              ? "Make a strong, clearly visible localized enlargement compared with the source image."
+              : magnitude >= 15
+                ? "Make a clearly visible localized enlargement compared with the source image."
+                : "Make a small but visible localized enlargement compared with the source image.")
+      : (magnitude >= 45
+          ? "Make a dramatic, unmistakable localized reduction. The selected region must be visibly much smaller than in the source image."
+          : magnitude >= 35
+            ? "Make a very large and immediately obvious localized reduction compared with the source image."
+            : magnitude >= 25
+              ? "Make a strong, clearly visible localized reduction compared with the source image."
+              : magnitude >= 15
+                ? "Make a clearly visible localized reduction compared with the source image."
+                : "Make a small but visible localized reduction compared with the source image.");
+
+    return `${level} LOCALIZED BODY EDIT: ${direction} only the subject's ${region}. ${scaleLanguage} This requested change is intentional and must be visibly apparent in the result; do not simply reproduce the source image unchanged. Preserve the same adult subject and identity, face, hair, expression, exact pose, hands, feet, clothing, camera position and framing, background, lighting, photographic style, and every unselected body region. Modify only the selected region and the immediately connected anatomy required for a coherent transition. Keep one coherent human body with realistic skin texture and photographic appearance.`;
+  }, [bodyAdjustAmount, bodyAdjustRegion]);
 
   const effectiveEditInstruction = editMode === "new_pose"
     ? poseInstruction
@@ -1526,11 +1593,9 @@ export default function Builder({ studio = "standard" }) {
         seed: activeRecipeFamily === "image" ? uniqueSeed : undefined,
         reference_image: (isFaceWorkflow || isEditWorkflow || isEnhanceWorkflow || isVideoWorkflow || isVariationWorkflow) ? referenceImage?.name : undefined,
         reference_source_render_id: referenceImage?.source_render_id || undefined,
-        body_adjust_amount: isVariationWorkflow && editMode === "body_adjust" ? bodyAdjustAmount : undefined,
-        body_adjust_region: isVariationWorkflow && editMode === "body_adjust" ? bodyAdjustRegion : undefined,
         refine_denoise: isVariationWorkflow
           ? (editMode === "body_adjust"
-              ? bodyAdjustEditStrength
+              ? Math.min(0.36, 0.16 + (Math.abs(bodyAdjustAmount - 50) / 50) * 0.20)
               : variationDenoise)
           : undefined,
         face_strength: faceStrength,
@@ -2654,7 +2719,6 @@ export default function Builder({ studio = "standard" }) {
                   </div>
                 </label>
                 <div className="rounded-lg border hairline bg-black/20 p-3 text-xs text-zinc-300">
-                  <p className="mb-2 text-zinc-400">Edit strength: {bodyAdjustEditStrength.toFixed(2)} · Stronger changes may affect surrounding details.</p>
                   <span className="font-semibold text-zinc-100">Chroma instruction: </span>{bodyAdjustInstruction}
                 </div>
               </div>
@@ -3301,10 +3365,9 @@ export default function Builder({ studio = "standard" }) {
                     </div>
                   </label>
                   <div className="rounded-md border hairline bg-black/20 p-2 text-[11px] text-zinc-300">
-                    <p className="mb-2 text-zinc-400">Edit strength: {bodyAdjustEditStrength.toFixed(2)} · Stronger changes may affect surrounding details.</p>
                     <span className="font-semibold text-zinc-100">Edit instruction: </span>{bodyAdjustInstruction}
                   </div>
-                  <p className="text-[10px] text-zinc-500">The instruction asks Chroma to preserve other regions. Exact preservation requires a masked edit.</p>
+                  <p className="text-[10px] text-zinc-500">Face, pose, wardrobe, framing, scene, lighting, and unselected body regions are explicitly preserved.</p>
                 </div>
               ) : (
                 <div className="space-y-4" data-testid="same-character-pose-panel">

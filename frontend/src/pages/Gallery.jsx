@@ -1,3 +1,4 @@
+import { loadBodyCreationRecipe } from "@/lib/bodyCreationRecipe";
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { API_BASE, endpoints } from "@/lib/api";
@@ -102,7 +103,6 @@ export default function Gallery() {
     refetchInterval: 30000,
   });
   const [lightbox, setLightbox] = useState(null); // render object
-  const lightboxImageRef = useRef(null);
   const [retrySelection, setRetrySelection] = useState(null);
   const [retryPreview, setRetryPreview] = useState(null);
   useEffect(() => { setRetrySelection(null); setRetryPreview(null); }, [lightbox?.id, lightbox?.alignment_review?.reviewed_at]);
@@ -243,28 +243,7 @@ export default function Gallery() {
   const reuseAsReference = useMutation({
     mutationFn: async ({ render, targetKind, referenceMode }) => {
       const previewUrl = primaryOutput(render);
-      let reference;
-      if (referenceMode === "body_adjust") {
-        // Capture the exact pixels already displayed in the lightbox instead of
-        // issuing another request for a filename that ComfyUI may have reused.
-        const image = lightboxImageRef.current;
-        if (!image || !image.complete || !image.naturalWidth || !image.naturalHeight) {
-          throw new Error("Wait for the Gallery image to finish loading, then try Body Adjust again.");
-        }
-        const canvas = document.createElement("canvas");
-        canvas.width = image.naturalWidth;
-        canvas.height = image.naturalHeight;
-        const context = canvas.getContext("2d");
-        if (!context) throw new Error("Could not capture the selected Gallery image.");
-        context.drawImage(image, 0, 0, canvas.width, canvas.height);
-        const blob = await new Promise((resolve, reject) => {
-          canvas.toBlob((value) => value ? resolve(value) : reject(new Error("Could not capture the selected Gallery image.")), "image/png");
-        });
-        const file = new File([blob], `gallery-${render.id}.png`, { type: "image/png" });
-        reference = await endpoints.uploadReferenceImage(file, render.id);
-      } else {
-        reference = await endpoints.prepareRenderReference(render.id, previewUrl);
-      }
+      const reference = await endpoints.prepareRenderReference(render.id, previewUrl);
       const saved = referenceMode === "keep_character"
         ? await endpoints.getRenderRecipe(render.id)
         : null;
@@ -301,6 +280,15 @@ export default function Gallery() {
       nav(path, { state: { renderRecipe: result, renderRecipeMode: "current" } });
     },
     onError: (error) => toast.error(error?.response?.data?.detail || "Could not rebuild this setup with the current compiler"),
+  });
+
+  const openBodyCreation = useMutation({
+    mutationFn: async (render) => ({ render, result: await loadBodyCreationRecipe(render, endpoints) }),
+    onSuccess: ({ render, result }) => {
+      const path = render.character_id ? `/character/${render.character_id}` : "/character/new";
+      nav(`${path}/s/physique`, { state: { renderRecipe: result, renderRecipeMode: "body_creation" } });
+    },
+    onError: (error) => toast.error(error?.response?.data?.detail || error.message || "Could not load the original creation setup"),
   });
 
   const moveToAlbum = useMutation({
@@ -707,7 +695,6 @@ export default function Gallery() {
                   className="max-h-[100dvh] md:max-h-[85vh] max-w-full object-contain md:rounded-lg shadow-2xl" />
               ) : (
                 <img
-                  ref={lightboxImageRef}
                   key={lightbox.id}
                   src={primaryOutput(lightbox)}
                   alt={lightbox.prompt_positive?.slice(0, 60) || "render"}
@@ -944,8 +931,8 @@ export default function Gallery() {
                 {!isVideoUrl(primaryOutput(lightbox)) && (
                   <div className="space-y-2">
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                      <button type="button" onClick={() => reuseAsReference.mutate({ render: lightbox, targetKind: "edit", referenceMode: "body_adjust" })} disabled={reuseAsReference.isPending}
-                        data-testid="btn-lightbox-body-adjust" title="Adjust body proportions while preserving the source image"
+                      <button type="button" onClick={() => openBodyCreation.mutate(lightbox)} disabled={openBodyCreation.isPending}
+                        data-testid="btn-lightbox-body-adjust" title="Load the original creation setup and change its body sliders before generating a new image"
                         className="inline-flex min-w-0 flex-col items-center justify-center gap-1 rounded-lg border border-amber-500/30 bg-amber-500/5 text-amber-100 hover:bg-amber-500/10 text-xs font-semibold px-2 py-2.5 disabled:opacity-40">
                         <SlidersHorizontal className="h-4 w-4" /> Body Adjust
                       </button>

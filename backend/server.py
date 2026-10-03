@@ -22,7 +22,6 @@ from typing import Any, Dict, List, Optional
 from urllib.parse import urlencode, urlparse, parse_qs
 from pydantic import BaseModel, Field, ConfigDict
 from media_library import router as media_library_router
-from body_adjust import body_adjust_denoise, patch_img2img_denoise
 
 import httpx
 import websockets as ws_client
@@ -1067,8 +1066,6 @@ class DispatchBody(BaseModel):
     control_start: float = 0.0
     control_end: float = 0.65
     refine_denoise: float = 0.30
-    body_adjust_amount: Optional[float] = Field(default=None, ge=0, le=100, allow_inf_nan=False)
-    body_adjust_region: Optional[str] = None
     hidden_from_gallery: bool = False
     prompt_positive: str = ""
     prompt_negative: str = ""
@@ -1672,10 +1669,7 @@ async def _perform_dispatch(body: "DispatchBody") -> Dict[str, Any]:
             doc.pop("_id", None)
             return doc
         image_patched = False
-        # New clients send the slider amount; keep legacy requests compatible.
-        if body.operation == "body_adjust_chroma" and body.body_adjust_amount is not None:
-            body.refine_denoise = body_adjust_denoise(body.body_adjust_amount)
-        denoise_patched = patch_img2img_denoise(workflow, max(0.05, min(0.65, float(body.refine_denoise))))
+        denoise_patched = False
         for node in workflow.values():
             if not isinstance(node, dict):
                 continue
@@ -1683,18 +1677,15 @@ async def _perform_dispatch(body: "DispatchBody") -> Dict[str, Any]:
             if node.get("class_type") == "LoadImage" and "image" in inputs:
                 inputs["image"] = body.reference_image
                 image_patched = True
+            if node.get("class_type") == "SplitSigmasDenoise" and "denoise" in inputs:
+                inputs["denoise"] = max(0.05, min(0.65, float(body.refine_denoise)))
+                denoise_patched = True
+            if node.get("class_type") == "KSampler" and "denoise" in inputs:
+                inputs["denoise"] = max(0.05, min(0.65, float(body.refine_denoise)))
+                denoise_patched = True
         if not image_patched:
             r.status = "failed"
             r.error = "The selected image workflow is missing its LoadImage node."
-            doc = r.model_dump()
-            doc["workflow_id"] = wf_template.id
-            doc["workflow_name"] = wf_template.name
-            await db.renders.insert_one(doc)
-            doc.pop("_id", None)
-            return doc
-        if not denoise_patched and body.operation == "body_adjust_chroma":
-            r.status = "failed"
-            r.error = "Body Adjust requires a workflow with configurable denoise. Select Chroma Image Variations again."
             doc = r.model_dump()
             doc["workflow_id"] = wf_template.id
             doc["workflow_name"] = wf_template.name
