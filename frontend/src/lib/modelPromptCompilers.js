@@ -1,3 +1,5 @@
+import { preserveGeneralSelections } from "./selectionFidelity";
+import { applyCastAppearance, castAppearancePrompt } from "./castAppearance";
 import { photographyPosePrompt } from "@/lib/photographyPoses";
 import { gluteSizePrompt, gluteShapePrompt } from "@/lib/gluteControls";
 import { buildPrompts, buildMultiVenicePrompts, buildChromaPrompts, buildMultiChromaPrompts, selfStreamContinuityCue } from "@/lib/dna";
@@ -184,6 +186,7 @@ function chromaLeanSingleSubjectPrompt(dna = {}, primaryGuard = {}, sourceDna = 
   const id = dna.identity || {};
   const face = dna.face || {};
   const hair = dna.hair || {};
+  const skin = dna.skin || {};
   const wardrobe = dna.wardrobe || {};
   const pose = dna.pose || {};
   const scene = dna.scene || {};
@@ -198,7 +201,17 @@ function chromaLeanSingleSubjectPrompt(dna = {}, primaryGuard = {}, sourceDna = 
     id.ethnicity,
     ph.body_type && `${ph.body_type} build`,
     ph.height && ph.height !== "average" ? `${ph.height} height` : "",
+    face.eye_shape && `${face.eye_shape} eyes`,
+    face.eye_color && `${face.eye_color} eye color`,
+    face.jawline && `${face.jawline} jawline`,
+    face.nose && `${face.nose} nose`,
+    face.lips && `${face.lips} lips`,
     face.expression && `${face.expression} expression`,
+    skin.tone && `${skin.tone} skin`,
+    skin.texture && `${skin.texture} skin texture`,
+    skin.freckles && skin.freckles !== "none" && `${skin.freckles} freckles`,
+    skin.tattoos && skin.tattoos !== "none" && `${skin.tattoos} tattoos`,
+    hair.bangs && hair.bangs !== "none" && `${hair.bangs} bangs`,
     hair.color && `${hair.color} hair`,
     hair.length && `${hair.length} hair`,
     hair.style && `${hair.style} hairstyle`,
@@ -247,7 +260,7 @@ function chromaLeanSingleSubjectPrompt(dna = {}, primaryGuard = {}, sourceDna = 
   // subject/composition selections more reliably when they are not buried
   // beneath repeated anatomy/quality/override prose.
   const positive = [
-    "Photorealistic editorial photograph",
+    style.render ? `${style.render} image` : "Photorealistic editorial photograph",
     "one adult person only",
     primaryGuard.composition,
     framing && `composition: ${framing}`,
@@ -261,7 +274,7 @@ function chromaLeanSingleSubjectPrompt(dna = {}, primaryGuard = {}, sourceDna = 
 
   return {
     ...block,
-    positive: compactWords(normalizeChromaProportionLanguage(positive, sourceDna), 210),
+    positive: normalizeChromaProportionLanguage(positive, sourceDna),
   };
 }
 
@@ -957,7 +970,7 @@ export function buildWanTextToVideoPrompts({ dna = {}, subjects = [], isMulti = 
   };
 }
 
-export function compileModelPrompts({
+function compileModelPromptsRaw({
   promptStyle = "",
   workflowKind = "",
   workflowName = "",
@@ -1040,7 +1053,7 @@ export function compileModelPrompts({
       ...prompts,
       priorityPlan,
       droppedClauses: [],
-      promptBudget: 345,
+      promptBudget: null,
       promptWords: clean(prompts.positive).split(/\s+/).filter(Boolean).length,
       omittedClauseCount: 0,
       guardAdjustments: primaryGuard.adjustments,
@@ -1055,7 +1068,7 @@ export function compileModelPrompts({
       ...prompts,
       priorityPlan,
       droppedClauses: [],
-      promptBudget: 210,
+      promptBudget: null,
       promptWords: clean(prompts.positive).split(/\s+/).filter(Boolean).length,
       omittedClauseCount: 0,
       guardAdjustments: primaryGuard.adjustments,
@@ -1105,4 +1118,25 @@ export function compileModelPrompts({
     basePrompts({ dna: primaryGuard.dna, subjects: guardedSubjects, isMulti, raunch }),
     "standard"
   );
+}
+
+// Apply the same cast contract after each family-specific compiler. Headcount,
+// selected ages and resemblance cannot be lost to a later word-budget trim.
+export function compileModelPrompts(options = {}) {
+  const compiler = resolvePromptCompiler(options);
+  const direct = ["qwen_edit", "wan_i2v"].includes(compiler);
+  const source = Array.isArray(options.subjects) ? options.subjects : [];
+  const isMulti = !direct && source.length > 1;
+  const scenario = source[0]?.dna?.scenario || options.dna?.scenario || {};
+  const subjects = isMulti ? applyCastAppearance(source, scenario, options.sectionLocks) : source;
+  const result = compileModelPromptsRaw({ ...options, subjects, isMulti: isMulti || (!source.length && !!options.isMulti), dna: isMulti ? subjects[0].dna : options.dna });
+  const contract = isMulti ? castAppearancePrompt(subjects) : "";
+  if (direct) return result;
+  const protectedResult = preserveGeneralSelections(result, isMulti ? subjects : [{ dna: options.dna || source[0]?.dna || {} }]);
+  if (!contract) return protectedResult;
+  const positive = `${contract} ${protectedResult.positive}`;
+  const negative = scenario.cast_resemblance === "matching faces"
+    ? String(protectedResult.negative || "").split(",").filter(clause => !/duplicate face/i.test(clause)).join(",").trim()
+    : protectedResult.negative;
+  return { ...protectedResult, positive, negative, promptWords: clean(positive).split(/\s+/).filter(Boolean).length };
 }
