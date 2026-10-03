@@ -418,11 +418,6 @@ export default function Builder({ studio = "standard" }) {
     map("Hips", "physique", "hips", sizeMap([["very wide hip","very wide"],["wide hip","wide"],["narrow hip","narrow"]]));
     map("Thighs", "physique", "thighs", sizeMap([["very thick thigh","very thick"],["thick thigh","thick"],["athletic thigh","athletic"],["slim thigh","slim"]]));
     map("Waist", "physique", "waist", sizeMap([["tiny waist","tiny"],["cinched waist","cinched"],["slim waist","slim"],["thick waist","thick"]]));
-    if (proportionsText.includes("curvaceous") || proportionsText.includes("curvy")) {
-      next.physique.curves = Math.max(Number(next.physique.curves) || 50, 75);
-      mapped.push({ label: "Curves", value: "75%" });
-    }
-
     // Preserve only observations that were not already mapped into authoritative
     // Studio controls. This prevents imported reference metadata from being
     // appended later as a second, contradictory instruction block.
@@ -2096,7 +2091,7 @@ export default function Builder({ studio = "standard" }) {
               <div className="mb-1.5 font-mono text-[10px] uppercase tracking-wider text-emerald-300">Mapped to Studio controls</div>
               <div className="flex flex-wrap gap-1.5">
                 {mediaImportSummary.mapped.length ? mediaImportSummary.mapped.map((item,index)=>(
-                  <button type="button" key={`${item.label}-${index}`} onClick={()=>{ const targets={Hair:"hair","Hair color":"hair","Hair length":"hair","Hair style":"hair","Body type":"physique",Bust:"physique",Glutes:"physique",Hips:"physique",Thighs:"physique",Waist:"physique",Curves:"physique",Expression:"face",Outfit:"wardrobe","Outfit color":"wardrobe",Material:"wardrobe",Fit:"wardrobe",Pose:"pose",Framing:"pose","Camera angle":"pose",Camera:"camera","Composition focus":"pose",Environment:"scene","Lighting source":"lighting","Lighting style":"lighting","Lighting mood":"lighting","Photo style":"style"}; const target=targets[item.label]; if(target){ goSection(target); window.requestAnimationFrame(()=>document.getElementById(`section-${target}`)?.scrollIntoView({behavior:"smooth",block:"start"})); } }} className="rounded-full border border-emerald-400/25 bg-emerald-500/10 px-2 py-1 text-[11px] text-emerald-100 hover:border-amber-400/50 hover:bg-amber-500/10">{item.label}: {item.value}</button>
+                  <button type="button" key={`${item.label}-${index}`} onClick={()=>{ const targets={Hair:"hair","Hair color":"hair","Hair length":"hair","Hair style":"hair","Body type":"physique",Bust:"physique",Glutes:"physique",Hips:"physique",Thighs:"physique",Waist:"physique",Expression:"face",Outfit:"wardrobe","Outfit color":"wardrobe",Material:"wardrobe",Fit:"wardrobe",Pose:"pose",Framing:"pose","Camera angle":"pose",Camera:"camera","Composition focus":"pose",Environment:"scene","Lighting source":"lighting","Lighting style":"lighting","Lighting mood":"lighting","Photo style":"style"}; const target=targets[item.label]; if(target){ goSection(target); window.requestAnimationFrame(()=>document.getElementById(`section-${target}`)?.scrollIntoView({behavior:"smooth",block:"start"})); } }} className="rounded-full border border-emerald-400/25 bg-emerald-500/10 px-2 py-1 text-[11px] text-emerald-100 hover:border-amber-400/50 hover:bg-amber-500/10">{item.label}: {item.value}</button>
                 )) : <span className="text-xs text-zinc-500">No direct control matches yet.</span>}
               </div>
             </div>
