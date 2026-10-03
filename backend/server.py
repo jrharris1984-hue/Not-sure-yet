@@ -1090,6 +1090,7 @@ class DispatchBody(BaseModel):
     parent_render_id: Optional[str] = None
     operation: str = "render"
     reference_image: Optional[str] = None  # ComfyUI input filename returned by /reference-images/upload
+    reference_source_render_id: Optional[str] = None  # provenance token returned by /renders/{rid}/prepare-reference
     face_strength: float = 1.1
     faceid_v2_strength: float = 1.4
     edit_instruction: str = ""
@@ -1628,6 +1629,35 @@ async def _perform_dispatch(body: "DispatchBody") -> Dict[str, Any]:
     # Chroma image-to-image: the polish pass receives the FLUX foundation, while
     # standalone variations receive the uploaded source photograph.
     if wf_template and wf_template.kind in {"refine", "variation"}:
+        if body.operation == "body_adjust_chroma":
+            if not body.parent_render_id or not body.reference_source_render_id:
+                r.status = "failed"
+                r.error = "Body Adjust source verification is missing. Return to Gallery and select Body Adjust again."
+                doc = r.model_dump()
+                doc["workflow_id"] = wf_template.id
+                doc["workflow_name"] = wf_template.name
+                await db.renders.insert_one(doc)
+                doc.pop("_id", None)
+                return doc
+            if body.parent_render_id != body.reference_source_render_id:
+                r.status = "failed"
+                r.error = "Body Adjust source mismatch blocked before generation. Return to Gallery and select the intended image again."
+                doc = r.model_dump()
+                doc["workflow_id"] = wf_template.id
+                doc["workflow_name"] = wf_template.name
+                await db.renders.insert_one(doc)
+                doc.pop("_id", None)
+                return doc
+            expected_prefix = f"ultra-studio-gallery-{body.parent_render_id}-"
+            if not str(body.reference_image or "").startswith(expected_prefix):
+                r.status = "failed"
+                r.error = "Body Adjust reference filename does not match the selected Gallery render. Generation was blocked."
+                doc = r.model_dump()
+                doc["workflow_id"] = wf_template.id
+                doc["workflow_name"] = wf_template.name
+                await db.renders.insert_one(doc)
+                doc.pop("_id", None)
+                return doc
         if not body.reference_image:
             r.status = "failed"
             r.error = ("Upload a source image for Image Variations." if wf_template.kind == "variation"
@@ -2508,7 +2538,7 @@ async def prepare_render_reference(rid: str):
                 source_mime = source.headers.get("content-type") or mimetypes.guess_type(filename)[0] or "image/png"
 
             suffix = Path(filename).suffix.lower() or ".png"
-            input_name = f"ultra-studio-gallery-{uuid.uuid4().hex}{suffix}"
+            input_name = f"ultra-studio-gallery-{rid}-{uuid.uuid4().hex}{suffix}"
             uploaded = await hc.post(
                 f"{settings.comfyui_url.rstrip('/')}/upload/image",
                 files={"image": (input_name, source_content, source_mime)},
