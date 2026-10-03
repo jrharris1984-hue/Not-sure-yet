@@ -2136,7 +2136,7 @@ export default function Builder({ studio = "standard" }) {
   );
 
   return (
-    <div className={`mx-auto max-w-[1600px] px-2.5 sm:px-6 py-3 sm:py-6 space-y-3 sm:space-y-4 ${desktopQuickMode ? "quick-create-mode" : ""}`}>
+    <div className={`mobile-builder-content mx-auto max-w-[1600px] px-2.5 sm:px-6 py-3 sm:py-6 space-y-3 sm:space-y-4 ${desktopQuickMode ? "quick-create-mode" : ""}`}>
       {galleryRecipeMode === "current" && (
         <div className="pane border border-cyan-500/30 bg-cyan-500/[0.06] px-3 py-2.5 text-xs text-cyan-100" data-testid="current-compiler-rebuild-banner">
           <div className="flex items-start gap-2">

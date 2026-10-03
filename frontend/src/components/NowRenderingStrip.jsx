@@ -16,7 +16,6 @@ export default function NowRenderingStrip() {
 
   // Hide entirely on gallery / shoot detail pages where the render preview is already inline
   const hideOnPath = /^\/shoot\/[^/]+$/.test(location.pathname);
-  const isBuilder = location.pathname.startsWith("/character");
 
   const { data: renders = [] } = useQuery({
     queryKey: ["render-queue"],
@@ -51,9 +50,9 @@ export default function NowRenderingStrip() {
   return (
     <div
       data-testid="now-rendering-strip"
-      className={`fixed z-30 left-2 right-2 sm:left-4 sm:right-4 md:left-auto md:right-4 md:w-[420px] ${isBuilder ? "bottom-[calc(8.25rem+env(safe-area-inset-bottom))]" : "bottom-[calc(4.75rem+env(safe-area-inset-bottom))]"} md:bottom-4 pointer-events-none`}
+      className="relative z-20 mx-3 my-2 md:fixed md:z-30 md:m-0 md:left-auto md:right-4 md:w-[420px] md:bottom-4 pointer-events-none"
     >
-      <div className="pane glass pointer-events-auto shadow-2xl border-amber-500/30 overflow-hidden max-h-[45vh] md:max-h-none">
+      <div className="pane glass pointer-events-auto shadow-2xl border-amber-500/30 overflow-y-auto max-h-[45vh] md:max-h-none">
         <header className="flex items-center gap-2 px-3 py-2 border-b hairline">
           <div className="relative">
             <Zap className="h-3.5 w-3.5 text-amber-300" />

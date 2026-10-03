@@ -147,12 +147,13 @@ export default function Settings() {
   const { data: health } = useQuery({ queryKey: ["comfy-health"], queryFn: endpoints.comfyHealth, refetchInterval: 10000 });
   const { data: ollama, refetch: checkOllama } = useQuery({ queryKey: ["ollama-models", settings?.ollama_url], queryFn: endpoints.ollamaModels, enabled: !!settings });
 
+  const mediaHealth = useQuery({ queryKey: ["media-library-health"], queryFn: endpoints.mediaLibraryHealth });
   const [form, setForm] = useState(null);
   useEffect(() => { if (settings && !form) setForm(settings); }, [settings, form]);
 
   const saveSettings = useMutation({
     mutationFn: (payload) => endpoints.updateSettings(payload || form),
-    onSuccess: () => { toast.success("Settings saved"); qc.invalidateQueries({ queryKey: ["settings"] }); qc.invalidateQueries({ queryKey: ["comfy-health"] }); qc.invalidateQueries({ queryKey: ["ollama-models"] }); },
+    onSuccess: () => { toast.success("Settings saved"); qc.invalidateQueries({ queryKey: ["settings"] }); qc.invalidateQueries({ queryKey: ["comfy-health"] }); qc.invalidateQueries({ queryKey: ["ollama-models"] }); qc.invalidateQueries({ queryKey: ["media-library-health"] }); qc.invalidateQueries({ queryKey: ["media-library"] }); },
     onError: (e) => toast.error(e?.response?.data?.detail || "Save failed"),
   });
 
@@ -230,6 +231,24 @@ export default function Settings() {
             <Save className="h-4 w-4" /> Save server
           </button>
         </div>
+      </section>
+
+      <section className="pane p-5 space-y-4" data-testid="media-library-connection">
+        <div className="section-label">Media Library connection</div>
+        <label className="block space-y-1">
+          <span className="text-xs text-zinc-400 font-mono">Media server URL</span>
+          <Input data-testid="input-media-library-url" value={form.media_library_url || ""}
+            onChange={(event) => set("media_library_url", event.target.value)} className="bg-elevated border-hairline font-mono" />
+        </label>
+        <p className="text-xs text-zinc-400">Use the address of the computer running AI Media Library. Its API must be running and reachable from Ultra Studio.</p>
+        <div className="flex flex-wrap items-center gap-2">
+          <button type="button" onClick={() => saveSettings.mutate({ media_library_url: form.media_library_url })}
+            className="rounded-lg bg-amber-500 px-3 py-2 text-sm font-semibold text-black" data-testid="btn-save-media-library">Save media server</button>
+          <button type="button" onClick={() => mediaHealth.refetch()}
+            className="rounded-lg border hairline px-3 py-2 text-sm" data-testid="btn-test-media-library">Test saved connection</button>
+          <span className="text-xs text-zinc-400">{mediaHealth.isFetching ? "Checking…" : mediaHealth.data?.online ? "Connected" : "Unavailable"}</span>
+        </div>
+        {mediaHealth.data?.error && <p className="text-xs text-amber-200 break-words">{mediaHealth.data.error}</p>}
       </section>
 
       <section className="pane p-5 space-y-4">

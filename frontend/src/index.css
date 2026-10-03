@@ -62,6 +62,16 @@ body {
   height: calc(4rem + env(safe-area-inset-bottom, 0px));
 }
 
+/* Reserve the action bar's full height in addition to AppShell's nav spacer. */
+@media (max-width: 767px) {
+  .mobile-builder-content {
+    padding-bottom: 6rem;
+  }
+  html {
+    scroll-padding-bottom: calc(10rem + env(safe-area-inset-bottom, 0px));
+  }
+}
+
 .mobile-builder-actions {
   bottom: calc(4rem + env(safe-area-inset-bottom, 0px));
 }
