@@ -919,7 +919,12 @@ export default function Gallery() {
 
                 {!isVideoUrl(primaryOutput(lightbox)) && (
                   <div className="space-y-2">
-                    <div className="grid grid-cols-3 gap-2">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                      <button type="button" onClick={() => reuseAsReference.mutate({ render: lightbox, targetKind: "edit", referenceMode: "body_adjust" })} disabled={reuseAsReference.isPending}
+                        data-testid="btn-lightbox-body-adjust" title="Adjust body proportions while preserving the source image"
+                        className="inline-flex min-w-0 flex-col items-center justify-center gap-1 rounded-lg border border-amber-500/30 bg-amber-500/5 text-amber-100 hover:bg-amber-500/10 text-xs font-semibold px-2 py-2.5 disabled:opacity-40">
+                        <SlidersHorizontal className="h-4 w-4" /> Body Adjust
+                      </button>
                       <button type="button" onClick={() => reuseAsReference.mutate({ render: lightbox, targetKind: "edit" })} disabled={reuseAsReference.isPending}
                         data-testid="btn-lightbox-edit-again" className="inline-flex min-w-0 flex-col items-center justify-center gap-1 rounded-lg border border-cyan-500/30 bg-cyan-500/5 text-cyan-100 hover:bg-cyan-500/10 text-xs font-semibold px-2 py-2.5 disabled:opacity-40">
                         <Pencil className="h-4 w-4" /> Edit
