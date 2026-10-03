@@ -2500,12 +2500,31 @@ async def prepare_render_reference(rid: str, output_url: Optional[str] = Body(No
         raise HTTPException(404, "Render not found")
     variants = render.get("output_variants") or {}
     candidates = [str(item) for item in ((variants.get("enhanced") or []) + (render.get("output_files") or [])) if item]
-    # Gallery may identify the exact output the user clicked. Never substitute a
-    # different output from the render record: the preview and ComfyUI reference
-    # must come from the same URL.
+    # Gallery displays a proxied /api/comfyui/media URL while render records
+    # commonly retain the original ComfyUI /view URL. Compare the actual ComfyUI
+    # output identity (filename/subfolder/type), not the host/path string.
+    def output_identity(value: str):
+        parsed_value = urlparse(str(value or ""))
+        query_value = parse_qs(parsed_value.query)
+        filename_value = (query_value.get("filename") or [""])[0]
+        if not filename_value:
+            return None
+        return (
+            filename_value,
+            (query_value.get("subfolder") or [""])[0],
+            (query_value.get("type") or ["output"])[0],
+        )
+
     if output_url:
-        if output_url not in candidates:
+        selected_identity = output_identity(output_url)
+        matched_url = next(
+            (candidate for candidate in candidates if output_identity(candidate) == selected_identity),
+            None,
+        )
+        if not selected_identity or not matched_url:
             raise HTTPException(409, "The selected Gallery output does not belong to this render.")
+        # Use the selected Gallery URL so the copied bytes and displayed preview
+        # refer to the same filename/subfolder/type tuple.
         url = output_url
     else:
         url = next(iter(candidates), "")
