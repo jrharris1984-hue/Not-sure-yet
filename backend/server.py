@@ -1,5 +1,5 @@
 """Ultra Studio Character DNA Builder — FastAPI backend."""
-from fastapi import FastAPI, APIRouter, HTTPException, Body, BackgroundTasks, WebSocket, WebSocketDisconnect, Query, UploadFile, File
+from fastapi import FastAPI, APIRouter, HTTPException, Body, BackgroundTasks, WebSocket, WebSocketDisconnect, Query, UploadFile, File, Form
 from fastapi.responses import FileResponse, JSONResponse, Response
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
@@ -2023,7 +2023,10 @@ async def _perform_dispatch(body: "DispatchBody") -> Dict[str, Any]:
 
 
 @api.post("/reference-images/upload")
-async def upload_reference_image(image: UploadFile = File(...)):
+async def upload_reference_image(
+    image: UploadFile = File(...),
+    source_render_id: Optional[str] = Form(None),
+):
     """Validate and forward a reference photograph to ComfyUI's input storage."""
     allowed = {"image/jpeg", "image/png", "image/webp"}
     content_type = (image.content_type or "").lower()
@@ -2038,7 +2041,13 @@ async def upload_reference_image(image: UploadFile = File(...)):
     suffix = Path(image.filename or "reference.jpg").suffix.lower()
     if suffix not in {".jpg", ".jpeg", ".png", ".webp"}:
         suffix = { "image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp" }[content_type]
-    comfy_name = f"ultra-studio-reference-{uuid.uuid4().hex}{suffix}"
+    if source_render_id:
+        source_render = await db.renders.find_one({"id": source_render_id}, {"_id": 1})
+        if not source_render:
+            raise HTTPException(400, "The Gallery source render no longer exists.")
+        comfy_name = f"ultra-studio-gallery-{source_render_id}-{uuid.uuid4().hex}{suffix}"
+    else:
+        comfy_name = f"ultra-studio-reference-{uuid.uuid4().hex}{suffix}"
     settings = await get_settings()
     try:
         async with httpx.AsyncClient(timeout=30.0) as hc:
@@ -2054,6 +2063,7 @@ async def upload_reference_image(image: UploadFile = File(...)):
             "name": payload.get("name", comfy_name),
             "subfolder": payload.get("subfolder", ""),
             "type": payload.get("type", "input"),
+            "source_render_id": source_render_id,
         }
     except HTTPException:
         raise

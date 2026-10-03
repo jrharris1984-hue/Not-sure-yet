@@ -241,18 +241,34 @@ export default function Gallery() {
 
   const reuseAsReference = useMutation({
     mutationFn: async ({ render, targetKind, referenceMode }) => {
-      const [reference, saved] = await Promise.all([
-        endpoints.prepareRenderReference(render.id, primaryOutput(render)),
-        referenceMode === "keep_character" ? endpoints.getRenderRecipe(render.id) : Promise.resolve(null),
-      ]);
-      return { render, targetKind, referenceMode, reference, saved };
+      const previewUrl = primaryOutput(render);
+      let reference;
+      if (referenceMode === "body_adjust") {
+        // Body Adjust must use the exact pixels currently shown in Gallery.
+        // Gallery media can be browser-cached while a ComfyUI filename is reused
+        // elsewhere, so asking the backend to re-fetch by filename can select a
+        // different image than the one the user actually clicked.
+        const response = await fetch(previewUrl, { cache: "force-cache" });
+        if (!response.ok) throw new Error("Could not read the selected Gallery image.");
+        const blob = await response.blob();
+        const mime = blob.type || "image/png";
+        const extension = mime.includes("jpeg") ? ".jpg" : mime.includes("webp") ? ".webp" : ".png";
+        const file = new File([blob], `gallery-${render.id}${extension}`, { type: mime });
+        reference = await endpoints.uploadReferenceImage(file, render.id);
+      } else {
+        reference = await endpoints.prepareRenderReference(render.id, previewUrl);
+      }
+      const saved = referenceMode === "keep_character"
+        ? await endpoints.getRenderRecipe(render.id)
+        : null;
+      return { render, targetKind, referenceMode, reference, saved, previewUrl };
     },
-    onSuccess: ({ render, targetKind, referenceMode, reference, saved }) => {
+    onSuccess: ({ render, targetKind, referenceMode, reference, saved, previewUrl }) => {
       const path = render.character_id ? `/character/${render.character_id}` : "/character/new";
       nav(path, {
         state: {
           galleryReference: reference,
-          previewUrl: primaryOutput(render),
+          previewUrl,
           targetKind,
           referenceMode,
           characterRecipe: saved?.recipe,
