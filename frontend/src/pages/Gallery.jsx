@@ -242,7 +242,7 @@ export default function Gallery() {
   const reuseAsReference = useMutation({
     mutationFn: async ({ render, targetKind, referenceMode }) => {
       const [reference, saved] = await Promise.all([
-        endpoints.prepareRenderReference(render.id),
+        endpoints.prepareRenderReference(render.id, primaryOutput(render)),
         referenceMode === "keep_character" ? endpoints.getRenderRecipe(render.id) : Promise.resolve(null),
       ]);
       return { render, targetKind, referenceMode, reference, saved };
