@@ -621,11 +621,7 @@ export default function Builder({ studio = "standard" }) {
   }, [draftId, editorHydrated, location.pathname, location.state, nav, workflows]);
 
   useEffect(() => {
-    if (editMode !== "body_adjust" || !referenceImage?.name) return;
-    setMobileStudioStep("create");
-    window.requestAnimationFrame(() => {
-      document.querySelector('[data-testid="qwen-edit-panel"]')?.scrollIntoView({ behavior: "smooth", block: "start" });
-    });
+    if (editMode === "body_adjust" && referenceImage?.name) setMobileStudioStep("create");
   }, [editMode, referenceImage?.name]);
 
   useEffect(() => {
@@ -2651,18 +2647,60 @@ export default function Builder({ studio = "standard" }) {
 
         {/* Center - single active section */}
         {editMode === "body_adjust" && (
-          <section className="pane border-amber-500/30 bg-amber-500/[0.04] p-4 sm:p-5" data-testid="focused-body-adjust-banner">
+          <section className="pane border-amber-500/30 bg-amber-500/[0.04] p-4 sm:p-5 space-y-4" data-testid="focused-body-adjust-banner">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <div className="section-label text-amber-200">Edit existing image</div>
                 <h2 className="font-display mt-1 text-lg font-bold text-white">Body Adjust</h2>
-                <p className="mt-1 max-w-2xl text-xs text-zinc-400">The source image is the baseline. Use the Body Adjust control above: 50 keeps the source size, values below 50 reduce it, and values above 50 enlarge it. Character Physique sliders are hidden during this edit so they cannot be mistaken for the adjustment amount.</p>
+                <p className="mt-1 max-w-2xl text-xs text-zinc-400">The source image is the baseline. Adjust one region while Qwen preserves the rest of the image.</p>
               </div>
               <button type="button" onClick={() => { setEditMode("standard"); setBodyAdjustAmount(50); }}
                 className="rounded-lg border hairline px-3 py-2 text-xs font-semibold text-zinc-300 hover:text-white">
                 Exit Body Adjust
               </button>
             </div>
+
+            <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_220px]">
+              <div className="space-y-4">
+                <div>
+                  <div className="mb-2 text-[11px] font-mono uppercase tracking-widest text-zinc-500">Region</div>
+                  <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
+                    {[["glutes","Glutes"],["bust","Bust"],["hips","Hips"],["thighs","Thighs"],["waist","Waist"]].map(([value,label]) => (
+                      <button key={value} type="button" onClick={() => setBodyAdjustRegion(value)}
+                        className={`rounded-lg border px-3 py-2 text-xs font-semibold ${bodyAdjustRegion === value ? "border-amber-400 bg-amber-500/15 text-amber-100" : "border-hairline text-zinc-400 hover:text-zinc-200"}`}>
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <label className="block space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-mono uppercase tracking-widest text-zinc-500">Adjustment</span>
+                    <span className="font-mono text-sm font-bold text-amber-200">{bodyAdjustAmount}</span>
+                  </div>
+                  <input type="range" min="0" max="100" step="5" value={bodyAdjustAmount}
+                    onChange={(event) => setBodyAdjustAmount(Number(event.target.value))}
+                    className="w-full accent-amber-400" data-testid="range-focused-body-adjust" />
+                  <div className="flex justify-between font-mono text-[10px] uppercase tracking-wider text-zinc-500">
+                    <span>0 · smaller</span><span>50 · original</span><span>100 · larger</span>
+                  </div>
+                </label>
+                <div className="rounded-lg border hairline bg-black/20 p-3 text-xs text-zinc-300">
+                  <span className="font-semibold text-zinc-100">Qwen instruction: </span>{bodyAdjustInstruction}
+                </div>
+              </div>
+              <div>
+                <div className="mb-2 text-[11px] font-mono uppercase tracking-widest text-zinc-500">Source image</div>
+                {referencePreview ? (
+                  <img src={referencePreview} alt="Body Adjust source" className="max-h-56 w-full rounded-lg border hairline bg-black/30 object-contain" />
+                ) : (
+                  <div className="flex min-h-36 items-center justify-center rounded-lg border border-dashed border-amber-500/30 p-3 text-center text-xs text-zinc-500">
+                    Source image is loading. If it does not appear, return to Gallery and select Body Adjust again.
+                  </div>
+                )}
+              </div>
+            </div>
+            <p className="text-[10px] text-zinc-500">Face, pose, wardrobe, framing, scene, lighting, and unselected body regions are preserved.</p>
           </section>
         )}
         <div id="studio-sections" className={`${mobileStudioStep === "create" ? "hidden md:block" : "block"} ${editMode === "body_adjust" ? "hidden" : ""} scroll-mt-24 space-y-4`}>
