@@ -68,7 +68,7 @@ export const endpoints = {
   getRenderVersions: (id) => api.get(`/renders/${id}/versions`).then((r) => r.data),
   dispatchRender: (body) => api.post("/renders/dispatch", body).then((r) => r.data),
   recreateRender: (id, variation = false) => api.post(`/renders/${id}/recreate`, null, { params: { variation } }).then((r) => r.data),
-  prepareRenderReference: (id) => api.post(`/renders/${id}/prepare-reference`).then((r) => r.data),
+  prepareRenderReference: (id, outputUrl) => api.post(`/renders/${id}/prepare-reference`, { output_url: outputUrl }).then((r) => r.data),
   getRenderRecipe: (id) => api.get(`/renders/${id}/recipe`).then((r) => r.data),
   reviewRenderAlignment: (id) => api.post(`/renders/${id}/alignment`).then((r) => r.data),
   previewMissingDetails: (id, indices) => api.post(`/renders/${id}/retry-missing/preview`, { indices }).then((r) => r.data),
