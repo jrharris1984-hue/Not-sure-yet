@@ -2630,7 +2630,22 @@ export default function Builder({ studio = "standard" }) {
         </div>
 
         {/* Center - single active section */}
-        <div id="studio-sections" className={`${mobileStudioStep === "create" ? "hidden md:block" : "block"} scroll-mt-24 space-y-4`}>
+        {editMode === "body_adjust" && (
+          <section className="pane border-amber-500/30 bg-amber-500/[0.04] p-4 sm:p-5" data-testid="focused-body-adjust-banner">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <div className="section-label text-amber-200">Edit existing image</div>
+                <h2 className="font-display mt-1 text-lg font-bold text-white">Body Adjust</h2>
+                <p className="mt-1 max-w-2xl text-xs text-zinc-400">The source image is the baseline. Use the Body Adjust control above: 50 keeps the source size, values below 50 reduce it, and values above 50 enlarge it. Character Physique sliders are hidden during this edit so they cannot be mistaken for the adjustment amount.</p>
+              </div>
+              <button type="button" onClick={() => { setEditMode("standard"); setBodyAdjustAmount(50); }}
+                className="rounded-lg border hairline px-3 py-2 text-xs font-semibold text-zinc-300 hover:text-white">
+                Exit Body Adjust
+              </button>
+            </div>
+          </section>
+        )}
+        <div id="studio-sections" className={`${mobileStudioStep === "create" ? "hidden md:block" : "block"} ${editMode === "body_adjust" ? "hidden" : ""} scroll-mt-24 space-y-4`}>
       {studioProfile && <section className="pane border-cyan-400/25 p-3 sm:p-4" data-testid={`studio-${studio}-presets`}>
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
@@ -2648,7 +2663,7 @@ export default function Builder({ studio = "standard" }) {
           </button>)}
         </div>
       </section>}
-      {desktopQuickMode && (
+      {desktopQuickMode && editMode !== "body_adjust" && (
         <section className="hidden md:block studio-journey rounded-2xl p-5" data-testid="desktop-quick-create">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
@@ -3248,12 +3263,15 @@ export default function Builder({ studio = "standard" }) {
                   </div>
                   <label className="block space-y-2">
                     <div className="flex items-center justify-between text-xs">
-                      <span className="uppercase tracking-widest text-zinc-500 font-mono">Body change · 50 = source</span>
+                      <span className="uppercase tracking-widest text-zinc-500 font-mono">Selected-region change · 50 = original</span>
                       <span className="font-mono text-amber-200">{bodyAdjustAmount}/100</span>
                     </div>
                     <input type="range" min="0" max="100" step="5" value={bodyAdjustAmount}
                       onChange={(event) => setBodyAdjustAmount(Number(event.target.value))}
                       className="w-full accent-amber-400" data-testid="range-body-adjust" />
+                    <div className="flex justify-between font-mono text-[10px] uppercase tracking-wider text-zinc-500">
+                      <span>0 · smaller</span><span>50 · original</span><span>100 · larger</span>
+                    </div>
                   </label>
                   <div className="rounded-md border hairline bg-black/20 p-2 text-[11px] text-zinc-300">
                     <span className="font-semibold text-zinc-100">Edit instruction: </span>{bodyAdjustInstruction}
