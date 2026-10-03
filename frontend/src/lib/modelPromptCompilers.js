@@ -105,10 +105,8 @@ function chromaBodyPriority(dna = {}) {
   const ph = dna.physique || {};
   const clauses = [];
 
-  // Chroma is highly sensitive to large semantic jumps. Keep each slider on
-  // one stable visual concept and increase only the degree/emphasis. This
-  // preserves seed composition better than switching concepts such as
-  // "large" -> "extreme fantasy-scale" -> "maximum fantasy-scale".
+  // Describe actual size at each level. Projection emphasis alone can leave
+  // the silhouette unchanged, especially at the top of the slider.
   if (Number(ph.bust_scale) > 0 && !(Number(ph.implant_volume) > 0)) {
     clauses.push(chromaProgressiveScale(ph.bust_scale, "bust", [
       "compact rounded, minimal volume", "compact rounded, light volume", "rounded, modest volume", "rounded, moderate volume", "rounded, noticeable volume",
@@ -117,20 +115,21 @@ function chromaBodyPriority(dna = {}) {
   }
   if (Number(ph.butt_scale) > 0) {
     clauses.push(chromaProgressiveScale(ph.butt_scale, "glute volume", [
-      "rounded, minimal projection", "rounded, light projection", "rounded, modest projection", "rounded, moderate projection", "rounded, noticeable projection",
-      "rounded, moderately strong projection", "rounded, strong projection", "rounded, very strong projection", "rounded, pronounced projection", "rounded, maximum projection emphasis",
+      "small", "moderate", "full rounded", "large rounded with noticeable rear projection", "very large rounded with prominent rear projection",
+      "oversized with substantial rear projection", "very oversized with pronounced rear projection", "extremely oversized with strong rear projection", "fantasy-scale oversized with dramatic rear and lateral projection", "fantasy-scale extremely oversized",
     ]));
+    if (Number(ph.butt_scale) >= 90) clauses.push("extreme rear and lateral projection; the oversized rounded glutes dominate the lower-body silhouette while remaining connected to one coherent pelvis");
   }
   if (Number(ph.hip_scale) > 0) {
     clauses.push(chromaProgressiveScale(ph.hip_scale, "hips", [
-      "balanced, minimal lateral width", "balanced, light lateral width", "balanced, modest lateral width", "balanced, moderate lateral width", "balanced, noticeable lateral width",
-      "balanced, moderately strong lateral width", "balanced, strong lateral width", "balanced, very strong lateral width", "balanced, pronounced lateral width", "balanced, maximum lateral-width emphasis",
+      "very narrow", "narrow", "moderate width", "slightly wide", "wide",
+      "very wide", "oversized wide", "dramatically wide", "extremely wide fantasy-scale", "maximum fantasy-scale width",
     ]));
   }
   if (Number(ph.thigh_scale) > 0) {
     clauses.push(chromaProgressiveScale(ph.thigh_scale, "thighs", [
-      "shapely, minimal thickness", "shapely, light thickness", "shapely, modest thickness", "shapely, moderate thickness", "shapely, noticeable thickness",
-      "shapely, moderately strong thickness", "shapely, strong thickness", "shapely, very strong thickness", "shapely, pronounced thickness", "shapely, maximum thickness emphasis",
+      "very slim", "slim", "moderate thickness", "full", "thick",
+      "very thick", "oversized thick", "extremely thick fantasy-scale", "dramatically oversized fantasy-scale", "maximum fantasy-scale thickness",
     ]));
   }
   if (Number(ph.waist_scale) > 0) {
@@ -254,7 +253,7 @@ function chromaLeanSingleSubjectPrompt(dna = {}, primaryGuard = {}, sourceDna = 
 
   return {
     ...block,
-    positive: compactWords(positive, 210),
+    positive: compactWords(normalizeChromaProportionLanguage(positive, sourceDna), 210),
   };
 }
 

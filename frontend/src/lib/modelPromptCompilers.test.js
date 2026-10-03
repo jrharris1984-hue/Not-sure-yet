@@ -349,4 +349,23 @@ describe("model-specific prompt compilers", () => {
     expect(lowResult.positive).not.toBe(highResult.positive);
   });
 
+  it("uses actual increasing glute sizes in new Chroma generation without edit instructions", () => {
+    const prompts = [10, 20, 50, 80, 100].map((value) => {
+      const dna = JSON.parse(JSON.stringify(DEFAULT_DNA));
+      dna.physique.butt_scale = value;
+      dna.physique.butt = "flat";
+      return compileModelPrompts({ promptStyle: "chroma", workflowKind: "image", dna }).positive;
+    });
+    expect(prompts[0]).toContain("small glute volume");
+    expect(prompts[1]).toContain("moderate glute volume");
+    expect(prompts[2]).toContain("very large rounded with prominent rear projection glute volume");
+    expect(prompts[3]).toContain("extremely oversized with strong rear projection glute volume");
+    expect(prompts[4]).toContain("fantasy-scale extremely oversized glute volume");
+    prompts.forEach((prompt) => {
+      expect(prompt).not.toContain("flat pancake");
+      expect(prompt).not.toContain("LOCALIZED BODY EDIT");
+      expect(prompt).not.toContain("source image");
+    });
+  });
+
 });
