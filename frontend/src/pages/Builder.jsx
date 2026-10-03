@@ -1054,7 +1054,13 @@ export default function Builder({ studio = "standard" }) {
     locks: poseLocks,
     preservationInstruction: preservationStrengthInstruction(referenceStrengths),
   }), [poseTarget, poseNotes, poseReferenceAnalysis, poseLocks, referenceStrengths]);
-  const effectiveEditInstruction = editMode === "new_pose" ? poseInstruction : editInstruction;
+
+
+  const effectiveEditInstruction = editMode === "new_pose"
+    ? poseInstruction
+    : editMode === "body_adjust"
+      ? bodyAdjustInstruction
+      : editInstruction;
   const referenceSummary = useMemo(() => referenceStudioSummary({
     sourceReady: !!referenceImage?.name,
     poseId: poseTarget,
@@ -1892,6 +1898,1698 @@ export default function Builder({ studio = "standard" }) {
       ),
     };
   }, [activeDna]);
+
+  const mobileCreateIssues = useMemo(() => {
+    const issues = [];
+    if (!activeWorkflow) issues.push("Choose a workflow.");
+    if (poseAssistEnabled && !isVariationWorkflow && !poseAssistAvailable) issues.push("Install Pose Assist workflows.");
+    if (poseAssistEnabled && !isVariationWorkflow && poseAssistStatus && !poseAssistStatus.ready && poseAssistAvailable) {
+      issues.push(`Pose Assist setup needs: ${(poseAssistStatus.missing || []).join(", ") || "local ComfyUI check"}.`);
+    }
+    if (poseAssistEnabled && !isVariationWorkflow && !poseReferenceImage?.name) issues.push("Add a pose reference for Pose Assist.");
+    if (isKrea2 && krea2Status && !krea2Status.ready) {
+      issues.push(`Krea 2 setup needs: ${(krea2Status.missing || []).join(", ") || "local ComfyUI check"}.`);
+    }
+    (!isVariationWorkflow ? promptAnalysis.blockers : []).slice(0, 2).forEach((blocker) => {
+      if (blocker?.message && !issues.includes(blocker.message)) issues.push(blocker.message);
+    });
+    const incompleteLikeness = subjects.find((subject) => subject?.likeness?.enabled && (!subject.likeness.node_id || !subject.likeness.lora_name));
+    if (incompleteLikeness && !isVariationWorkflow) issues.push(`Finish Likeness LoRA setup for Subject ${incompleteLikeness.label || "A"}.`);
+    if (isVariationWorkflow && !referenceImage?.name) issues.push("Add the source image you want to vary.");
+    if ((isFaceWorkflow || isEditWorkflow || isEnhanceWorkflow || isVideoWorkflow) && !referenceImage?.name) {
+      issues.push(
+        isFaceWorkflow ? "Add a face reference image." :
+        isVideoWorkflow ? "Add a starting image for the video." :
+        isEnhanceWorkflow ? "Add the image you want to repair." :
+        "Add the source image you want to edit."
+      );
+    }
+    if (isEnhanceWorkflow && repairTargets.length === 0 && !repairInstruction.trim()) {
+      issues.push("Choose a repair target or write a repair instruction.");
+    }
+    if (isEditWorkflow && !effectiveEditInstruction.trim()) {
+      issues.push(editMode === "new_pose" ? "Choose a new pose or describe the motion." : "Describe the image edit you want.");
+    }
+    if ((isVideoWorkflow || isTextVideoWorkflow) && !videoInstruction.trim()) {
+      issues.push(isTextVideoWorkflow ? "Describe the video you want to create." : "Describe how you want the image to move.");
+    }
+    return [...new Set(issues)];
+  }, [
+    activeWorkflow, editMode, effectiveEditInstruction,
+    isEditWorkflow, isEnhanceWorkflow, isFaceWorkflow, isTextVideoWorkflow, isVideoWorkflow, isVariationWorkflow,
+    poseAssistAvailable, poseAssistEnabled, poseAssistStatus, poseReferenceImage?.name,
+    isKrea2, krea2Status,
+    promptAnalysis, referenceImage?.name, repairInstruction, repairTargets, subjects, videoInstruction,
+  ]);
+
+  const batchIsFinished = batchRenders.length <= 1 || batchRenders.every((render) =>
+    ["done", "failed", "offline", "cancelled"].includes(render.status)
+  );
+  const finishedBatchSelection = batchIsFinished && batchRenders.length > 1
+    ? batchRenders.find((render) => render.id === selectedBatchRenderId && render.status === "done")
+      || batchRenders.find((render) => render.status === "done")
+    : null;
+  const mobileResultRender = finishedBatchSelection || activeRender;
+  const showMobileResult = mobileStudioStep === "create"
+    && mobileStudioMode === "simple"
+    && mobileResultRender?.status === "done"
+    && !!mobileResultRender.output_files?.[0]
+    && batchIsFinished
+    && (!poseAssistEnabled || poseAssistStage === "done");
+
+  const quickStages = [
+    { key: "identity", title: "People", detail: "Cast & age", sections: ["identity", "scenario"] },
+    { key: "physique", title: "Body", detail: "Shape & features", sections: ["physique", "face", "hair", "skin", "intimate"] },
+    { key: "wardrobe", title: "Wardrobe", detail: "Outfit & color", sections: ["wardrobe"] },
+    { key: "pose", title: "Pose", detail: "Action & camera", sections: ["pose", "camera"] },
+    { key: "scene", title: "Setting", detail: "Place & mood", sections: ["scene", "lighting", "style"] },
+    { key: "feet", title: "Details", detail: "Additional controls", sections: ["feet", "kink", "watersports"] },
+    { key: "review", title: "Review", detail: "Prompt & render", sections: [] },
+  ];
+  const [quickOpenCategory, setQuickOpenCategory] = useState("identity");
+  const quickStageIndex = quickReview ? 6 : Math.max(0, quickStages.findIndex((stage) => stage.sections.includes(activeSection)));
+  const selectQuickStage = (index) => {
+    if (index < 0 || index >= quickStages.length) return;
+    setQuickOpenCategory(quickStages[index].key);
+    if (index === 6) {
+      setQuickReview(true);
+    } else {
+      setQuickReview(false);
+      goSection(quickStages[index].key);
+    }
+    window.requestAnimationFrame(() => document.querySelector('[data-testid="desktop-quick-create"]')?.scrollIntoView({
+      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth",
+      block: "start",
+    }));
+  };
+
+  const sectionNavigation = (position) => (
+    <div className="hidden md:flex items-center justify-between gap-2" aria-label={`${position} section navigation`}>
+      <button type="button" onClick={() => desktopQuickMode ? selectQuickStage(quickStageIndex - 1) : activeIdx > 0 && goSection(SECTIONS[activeIdx - 1].key)}
+        disabled={desktopQuickMode ? quickStageIndex === 0 : activeIdx === 0} data-testid={`btn-section-prev${position === "top" ? "-top" : ""}`}
+        className="inline-flex items-center gap-1.5 rounded-lg border hairline px-4 py-2.5 text-sm text-zinc-200 hover:bg-white/5 disabled:opacity-30">
+        <ChevronLeft className="h-4 w-4" /> {desktopQuickMode ? quickStageIndex > 0 ? quickStages[quickStageIndex - 1].title : "Previous" : activeIdx > 0 ? SECTIONS[activeIdx - 1].title : "Prev"}
+      </button>
+      {(desktopQuickMode ? quickStageIndex < 6 : activeIdx < SECTIONS.length - 1) ? (
+        <button type="button" onClick={() => desktopQuickMode ? selectQuickStage(quickStageIndex + 1) : goSection(SECTIONS[activeIdx + 1].key)}
+          data-testid={`btn-section-next${position === "top" ? "-top" : ""}`}
+          className="inline-flex items-center gap-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-black text-sm font-semibold px-4 py-2.5">
+          {desktopQuickMode ? quickStages[quickStageIndex + 1].title : SECTIONS[activeIdx + 1].title} <ChevronRight className="h-4 w-4" />
+        </button>
+      ) : (
+        <button type="button" onClick={() => save.mutate()}
+          data-testid={`btn-section-finish${position === "top" ? "-top" : ""}`}
+          className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black text-sm font-semibold px-4 py-2.5">
+          Finish & Save <Save className="h-4 w-4" />
+        </button>
+      )}
+    </div>
+  );
+
+  return (
+    <div className={`mx-auto max-w-[1600px] px-2.5 sm:px-6 py-3 sm:py-6 space-y-3 sm:space-y-4 ${desktopQuickMode ? "quick-create-mode" : ""}`}>
+      {galleryRecipeMode === "current" && (
+        <div className="pane border border-cyan-500/30 bg-cyan-500/[0.06] px-3 py-2.5 text-xs text-cyan-100" data-testid="current-compiler-rebuild-banner">
+          <div className="flex items-start gap-2">
+            <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-cyan-300" />
+            <div>
+              <div className="font-semibold">Rebuild with Current Compiler</div>
+              <div className="mt-0.5 text-[10px] text-zinc-400">
+                Saved DNA and generation settings were restored, saved prompt overrides were cleared, and the next render will use the current compiler with a new seed.
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {mediaImportSummary && (
+        <div className="pane border border-amber-400/30 bg-amber-500/[0.06] p-3 sm:p-4" data-testid="media-import-summary">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <div className="font-display font-bold text-amber-200">Imported from Media</div>
+              <div className="mt-0.5 text-xs text-zinc-400">{mediaImportSummary.sourceName}</div>
+            </div>
+            <button type="button" onClick={()=>setMediaImportSummary(null)} className="self-start rounded-lg border hairline px-2.5 py-1.5 text-xs text-zinc-300 hover:bg-white/5">Hide summary</button>
+          </div>
+          <div className="mt-3 grid gap-3 lg:grid-cols-2">
+            <div>
+              <div className="mb-1.5 font-mono text-[10px] uppercase tracking-wider text-emerald-300">Mapped to Studio controls</div>
+              <div className="flex flex-wrap gap-1.5">
+                {mediaImportSummary.mapped.length ? mediaImportSummary.mapped.map((item,index)=>(
+                  <button type="button" key={`${item.label}-${index}`} onClick={()=>{ const targets={Hair:"hair","Hair color":"hair","Hair length":"hair","Hair style":"hair","Body type":"physique",Bust:"physique",Glutes:"physique",Hips:"physique",Thighs:"physique",Waist:"physique",Curves:"physique",Expression:"face",Outfit:"wardrobe","Outfit color":"wardrobe",Material:"wardrobe",Fit:"wardrobe",Pose:"pose",Framing:"pose","Camera angle":"pose",Camera:"camera","Composition focus":"pose",Environment:"scene","Lighting source":"lighting","Lighting style":"lighting","Lighting mood":"lighting","Photo style":"style"}; const target=targets[item.label]; if(target){ goSection(target); window.requestAnimationFrame(()=>document.getElementById(`section-${target}`)?.scrollIntoView({behavior:"smooth",block:"start"})); } }} className="rounded-full border border-emerald-400/25 bg-emerald-500/10 px-2 py-1 text-[11px] text-emerald-100 hover:border-amber-400/50 hover:bg-amber-500/10">{item.label}: {item.value}</button>
+                )) : <span className="text-xs text-zinc-500">No direct control matches yet.</span>}
+              </div>
+            </div>
+            <div>
+              <div className="mb-1.5 font-mono text-[10px] uppercase tracking-wider text-cyan-300">Kept as editable reference notes</div>
+              <div className="max-h-24 overflow-auto whitespace-pre-wrap text-xs leading-5 text-zinc-300">{mediaImportSummary.notes.join("\n")}</div>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Header */}
+      <div className="hidden md:flex items-center gap-2 rounded-xl border border-cyan-400/20 bg-black/40 p-2 text-xs" aria-label="Builder shortcuts">
+        <span className="px-2 font-mono uppercase tracking-wider text-cyan-300">Studio</span>
+        {!desktopQuickMode && [["studio-model", "01 · Model"], ["studio-sections", "02 · Character"], ["studio-render", "03 · Render"]].map(([target, label]) => (
+          <button key={target} type="button" onClick={() => document.getElementById(target)?.scrollIntoView({ behavior: "smooth", block: "start" })}
+            className="rounded-lg border hairline px-3 py-2 text-zinc-300 transition-colors hover:border-amber-400/50 hover:bg-amber-500/10 hover:text-amber-200">
+            {label}
+          </button>
+        ))}
+        <span className="ml-auto hidden xl:inline pr-2 text-zinc-500">{desktopQuickMode ? "Start with the essentials. Full Studio keeps every option." : "All controls are available below."}</span>
+        <button type="button" onClick={() => { setDesktopQuickMode((value) => !value); setQuickReview(false); }}
+          data-testid="btn-desktop-studio-mode" className="ml-auto rounded-lg border border-cyan-400/40 px-3 py-2 font-semibold text-cyan-200 hover:bg-cyan-400/10">
+          {desktopQuickMode ? "Full Studio · all options" : "Quick Create"}
+        </button>
+      </div>
+      <div id="studio-model" className="pane scroll-mt-24 p-2.5 sm:p-4 flex flex-col gap-2.5 sm:gap-3">
+        <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
+          <Input
+            data-testid="input-character-name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            className="bg-elevated border-hairline text-base sm:text-lg font-display font-bold"
+          />
+          <div className="flex flex-wrap gap-2">
+          <select
+            data-testid="select-workflow"
+            value={workflowId}
+            onChange={(e) => { setWorkflowId(e.target.value); setLoraOverrides({}); }}
+            className={`${mobileStudioStep === "start" || mobileStudioStep === "create" ? "block" : "hidden md:block"} bg-elevated border border-hairline rounded-lg px-3 py-2 text-sm text-zinc-100 w-full sm:w-auto sm:min-w-[200px]`}
+          >
+            {workflows.length === 0 && <option value="">No workflows — open Settings</option>}
+            {selectableWorkflows.filter((w) => !["sdxl", "sdxl_dmd2"].includes(w.prompt_style) && !w.name.startsWith("Pony · Ultra Realistic")).map((w) => (
+              <option key={w.id} value={w.id}>{w.kind.toUpperCase()} · {w.name}</option>
+            ))}
+            {selectableWorkflows.some((w) => ["sdxl", "sdxl_dmd2"].includes(w.prompt_style) || w.name.startsWith("Pony · Ultra Realistic")) && (
+              <optgroup label="SDXL and Pony checkpoints">
+                {selectableWorkflows.filter((w) => ["sdxl", "sdxl_dmd2"].includes(w.prompt_style) || w.name.startsWith("Pony · Ultra Realistic")).map((w) => (
+                  <option key={w.id} value={w.id}>{w.name}</option>
+                ))}
+              </optgroup>
+            )}
+            {internalWorkflows.length > 0 && (
+              <optgroup label="Used automatically (not standalone)">
+                {internalWorkflows.map((w) => (
+                  <option key={w.id} value={w.id} disabled>{w.name}</option>
+                ))}
+              </optgroup>
+            )}
+          </select>
+          <button
+            onClick={() => save.mutate()}
+            disabled={save.isPending}
+            data-testid="btn-save-character"
+            className="hidden md:inline-flex items-center gap-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-black text-sm font-semibold px-3 py-2 disabled:opacity-40"
+          >
+            {save.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Save
+          </button>
+          {activeRecipeFamily === "image" && (
+            <select
+              data-testid="select-render-count"
+              value={poseAssistEnabled && !isVariationWorkflow ? 1 : renderCount}
+              onChange={(e) => setRenderCount(Number(e.target.value))}
+              disabled={dispatching || (poseAssistEnabled && !isVariationWorkflow)}
+              className="hidden md:block bg-elevated border border-hairline rounded-lg px-3 py-2 text-sm text-zinc-100 flex-1 sm:flex-none"
+              title="Number of images to queue with unique seeds"
+            >
+              {[1, 2, 4, 6, 8, 10].map((count) => (
+                <option key={count} value={count}>{count} image{count > 1 ? "s" : ""}</option>
+              ))}
+            </select>
+          )}
+          {activeRecipeFamily === "image" && renderCount > 1 && <select value={batchSeedMode}
+            onChange={(event) => setBatchSeedMode(event.target.value)} title="Explore uses widely spaced seeds; Nearby uses consecutive seeds. Both keep your selected prompt."
+            className="hidden md:block bg-elevated border border-hairline rounded-lg px-3 py-2 text-sm text-zinc-100">
+            <option value="explore">Explore different seeds</option>
+            <option value="nearby">Nearby seeds</option>
+          </select>}
+          <button
+            onClick={doDispatch}
+            disabled={dispatching || !workflowId || kreaRenderBlocked || (poseAssistEnabled && !isVariationWorkflow && (!poseAssistAvailable || !poseReferenceImage?.name || (poseAssistStatus && !poseAssistStatus.ready)))}
+            data-testid="btn-dispatch-comfyui-render"
+            className="hidden md:inline-flex items-center gap-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black text-sm font-semibold px-3 py-2 disabled:opacity-40"
+          >
+            {dispatching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />} {poseAssistEnabled && !isVariationWorkflow ? "Pose Assist" : "Render"}
+          </button>
+          <MobileOverflow testId="builder-overflow" always label="More">
+            <button
+              type="button"
+              onClick={() => save.mutate()}
+              disabled={save.isPending}
+              data-testid="btn-save-character-mobile-menu"
+              className="md:hidden inline-flex items-center gap-1.5 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm font-semibold text-amber-200 disabled:opacity-40"
+            >
+              {save.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Save character
+            </button>
+            <button
+              type="button"
+              onClick={resetCharacter}
+              data-testid="btn-reset-character"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-red-500/30 px-3 py-2 text-sm font-semibold text-red-300 hover:bg-red-500/10"
+              title="Reset all current character selections"
+            >
+              <RotateCcw className="h-4 w-4" /> Reset
+            </button>
+            <button
+              onClick={randomizeAllSubjects}
+              data-testid="btn-randomize-all"
+              className="inline-flex items-center gap-1.5 rounded-lg border hairline px-3 py-2 text-sm text-zinc-200 hover:bg-white/5"
+              title={isMulti ? `Randomize all ${subjects.length} subjects` : "Randomize DNA"}
+            >
+              <Shuffle className="h-4 w-4" /> {isMulti ? "Randomize all" : "Randomize"}
+            </button>
+            <PresetsMenu
+              currentDna={activeDna}
+              sectionLocks={locks}
+              fieldLocks={activeFieldLocks}
+              onApply={(preset, context = {}) => {
+                const next = { ...preset };
+                Object.keys(locks).forEach((k) => { if (locks[k]) next[k] = activeDna[k]; });
+                if (context.type === "heritage") {
+                  const cast = HERITAGE_CASTS[context.cast] || HERITAGE_CASTS.solo;
+                  const primaryDna = {
+                    ...next,
+                    scenario: {
+                      ...(next.scenario || {}),
+                      cast_size: cast.castSize,
+                      cast_type: cast.castType,
+                    },
+                  };
+                  const primary = {
+                    ...(subjects[0] || activeSubject),
+                    label: "A",
+                    dna: primaryDna,
+                  };
+                  if (context.cast === "solo") {
+                    setSubjects([primary]);
+                    setActiveSubjectId(primary.id);
+                  } else {
+                    const relativeDna = seedSubjectFromPairing(primaryDna, 1);
+                    const relative = makeSubject({ label: "B", dna: relativeDna });
+                    setSubjects([primary, relative]);
+                    setActiveSubjectId(primary.id);
+                  }
+                  toast.success(`${cast.label} heritage cast created`);
+                } else {
+                  setActiveDna(next);
+                  toast.success(`Preset applied to Subject ${activeSubject.label}`);
+                }
+              }}
+            />
+            <div
+              className="inline-flex items-center gap-1 rounded-lg border border-hairline bg-elevated p-1 text-sm text-zinc-300"
+              title="Changes prompt vocabulary only; it never adds activities or changes DNA selections."
+              data-testid="prompt-language-control"
+            >
+              <Flame className="ml-1 h-4 w-4 shrink-0 text-fuchsia-300" />
+              <span className="hidden sm:inline px-1 text-xs">Language</span>
+              {[
+                ["editorial", "Editorial"],
+                ["direct", "Direct"],
+                ["explicit", "Explicit"],
+              ].map(([value, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => {
+                    setPromptLanguage(value);
+                    setRaunch(value === "explicit");
+                  }}
+                  className={
+                    "rounded-md px-2 py-1 text-[10px] font-semibold transition "
+                    + (promptLanguage === value
+                      ? "bg-fuchsia-500/20 text-fuchsia-100 ring-1 ring-fuchsia-500/30"
+                      : "text-zinc-500 hover:bg-white/5 hover:text-zinc-200")
+                  }
+                  aria-pressed={promptLanguage === value}
+                  data-testid={`btn-prompt-language-${value}`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            {!isNew && (
+              <Link
+                to={`/shoot/new/${id}`}
+                data-testid="btn-open-shoot"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/40 bg-emerald-500/10 text-emerald-200 text-sm font-semibold px-3 py-2 hover:bg-emerald-500/20"
+                title="Batch photo shoot"
+              >
+                <Camera className="h-4 w-4" /> Shoot
+              </Link>
+            )}
+            <button
+              onClick={exportJson}
+              data-testid="btn-export-json"
+              className="inline-flex items-center gap-1.5 rounded-lg border hairline px-3 py-2 text-sm text-zinc-300"
+              title="Export DNA JSON"
+            >
+              <Download className="h-4 w-4" /> Export
+            </button>
+            <label
+              data-testid="btn-import-json"
+              className="inline-flex items-center gap-1.5 rounded-lg border hairline px-3 py-2 text-sm text-zinc-300 cursor-pointer"
+              title="Import DNA JSON"
+            >
+              <Upload className="h-4 w-4" /> Import
+              <input type="file" accept="application/json" onChange={importJson} className="hidden" />
+            </label>
+          </MobileOverflow>
+        </div>
+        </div>
+        <div className={mobileStudioStep === "start" ? "block" : "hidden md:block"}>
+          <TagInput value={tags} onChange={setTags} placeholder="tag this character (mood, ethnicity, persona)…" testId="builder-tags" />
+        </div>
+      </div>
+
+      <MobileStudioFlow
+        steps={studioSteps}
+        title={studioProfile?.title || "Studio flow"}
+        currentStep={mobileStudioStep}
+        activeSection={activeSection}
+        locks={locks}
+        sections={SECTIONS}
+        mode={mobileStudioMode}
+        summary={mobileStudioSummary}
+        onModeChange={changeMobileStudioMode}
+        onStep={openMobileStudioStep}
+        onSection={(key) => {
+          setMobileStudioStep(mobileStudioStepForSection(key, studioSteps));
+          goSection(key);
+        }}
+      />
+
+      <nav className="hidden md:grid grid-cols-5 gap-2" aria-label="Creation steps" data-testid="desktop-creation-steps">
+        {studioSteps.map((step, index) => {
+          const selected = step.id === mobileStudioStep;
+          return <button key={step.id} type="button" onClick={() => openMobileStudioStep(step.id)}
+            aria-current={selected ? "step" : undefined}
+            className={`studio-stage rounded-xl border px-3 py-3 text-left ${selected ? "studio-stage-active border-amber-400/60 bg-amber-500/10" : "hairline bg-elevated hover:border-cyan-400/50"}`}>
+            <span className={`text-[10px] font-mono ${selected ? "text-amber-300" : "text-zinc-500"}`}>{String(index + 1).padStart(2, "0")}</span>
+            <span className="mt-1 block font-display text-sm font-bold text-zinc-100">{step.label}</span>
+            <span className="mt-0.5 block text-[11px] text-zinc-400">{step.hint}</span>
+          </button>;
+        })}
+      </nav>
+
+      <div className={mobileStudioStep === "start" ? "block" : "hidden md:block"}>
+        <AiAssistBar dna={activeDna} aiProvider={aiProvider}
+          onApplyDna={(draft) => { setActiveDna(draft); setPlainLanguage(""); }}
+          onApplySubjects={(draftSubjects) => {
+            setSubjects(draftSubjects);
+            setActiveSubjectId(draftSubjects[0].id);
+            setPlainLanguage("");
+            setPromptOverride("");
+            setNegativePromptOverride("");
+          }} />
+      </div>
+
+      {mobileStudioStep === "create" && !showMobileResult && (
+        <>
+          <MobileCreateReview
+            workflow={activeWorkflow}
+            compiler={activeCompiler}
+            family={activeRecipeFamily}
+            qualityTier={qualityTier}
+            onQualityTier={applyQualityTier}
+            renderCount={poseAssistEnabled && !isVariationWorkflow ? 1 : renderCount}
+            onRenderCount={setRenderCount}
+            summaries={mobileCreateSummaries}
+            issues={mobileCreateIssues}
+            mode={mobileStudioMode}
+            onRequestAdvanced={() => setMobileStudioMode("advanced")}
+          />
+          {activeRecipeFamily === "image" && renderCount > 1 && <label className="md:hidden pane p-3 flex items-center justify-between gap-3 text-xs text-zinc-200">
+            Batch variety
+            <select value={batchSeedMode} onChange={(event) => setBatchSeedMode(event.target.value)}
+              className="bg-elevated border border-hairline rounded-lg px-2 py-2 text-xs text-zinc-100">
+              <option value="explore">Explore different seeds</option>
+              <option value="nearby">Nearby seeds</option>
+            </select>
+          </label>}
+          {activeRecipeFamily === "image" && !isKrea2 && !isVariationWorkflow && (
+            <div className="md:hidden">
+              <PoseAssistPanel
+                enabled={poseAssistEnabled}
+                onEnabled={changePoseAssistEnabled}
+                preview={poseReferencePreview}
+                uploading={poseReferenceUploading}
+                onUpload={uploadPoseReference}
+                onClear={clearPoseReference}
+                strength={poseAssistStrength}
+                onStrength={setPoseAssistStrength}
+                polish={poseAssistPolish}
+                onPolish={setPoseAssistPolish}
+                stage={poseAssistStage}
+                available={poseAssistAvailable}
+                installing={installingPoseAssist}
+                onInstall={installPoseAssist}
+                systemStatus={poseAssistStatus}
+              />
+            </div>
+          )}
+          <PromptAlignmentCard
+            analysis={promptAnalysis}
+            priorityPlan={compiledPrompt.priorityPlan}
+            adjustments={compiledPrompt.guardAdjustments || []}
+            mode={mobileStudioMode}
+          />
+        </>
+      )}
+
+      {showMobileResult && (
+        <MobileRenderResult
+          render={mobileResultRender}
+          batch={batchRenders}
+          selectedId={selectedBatchRenderId}
+          onSelect={(render) => {
+            setSelectedBatchRenderId(render.id);
+            setActiveRender(render);
+          }}
+          onKeep={keepFinishedRender}
+          onVariation={queueVariationFromFinishedRender}
+          onEdit={() => reuseFinishedRender("edit")}
+          onAnimate={() => reuseFinishedRender("video")}
+          onBackCharacter={returnToCharacterFromResult}
+          onGallery={() => nav(`/gallery?render=${encodeURIComponent(activeRender.render_id || activeRender.id)}&returnTo=${encodeURIComponent(location.pathname)}`)}
+          onDownload={(url) => downloadRenderImage(
+            url,
+            `render-${activeRender.render_id || activeRender.id}.${/\.(webm|mp4|mov)(?:[?&]|$)/i.test(decodeURIComponent(url)) ? "webm" : "png"}`
+          )}
+          busy={postRenderBusy}
+        />
+      )}
+
+      <div className={(showMobileResult ? "hidden " : "md:hidden ") + "fixed inset-x-0 z-30 mobile-builder-actions border-t hairline bg-[#111017]/95 px-2.5 py-2 backdrop-blur-xl shadow-[0_-12px_30px_rgba(0,0,0,0.28)]"} data-testid="mobile-builder-actions">
+        <div className="grid grid-cols-[0.9fr_1.4fr] gap-2">
+          <button
+            type="button"
+            onClick={() => moveMobileStudioStep(-1)}
+            disabled={activeMobileStudioIndex === 0}
+            className="inline-flex items-center justify-center gap-1.5 rounded-xl border hairline py-3 text-sm font-semibold text-zinc-200 disabled:opacity-30"
+            aria-label="Previous Studio step"
+            data-testid="btn-mobile-studio-back"
+          >
+            <ChevronLeft className="h-4 w-4" /> Back
+          </button>
+          {mobileStudioStep === "create" ? (
+            <button
+              type="button"
+              onClick={doDispatch}
+              disabled={dispatching || !workflowId || mobileCreateIssues.length > 0}
+              className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-emerald-500 py-3 text-sm font-bold text-black disabled:opacity-40"
+              data-testid="btn-mobile-studio-render"
+            >
+              {dispatching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />} {poseAssistEnabled && !isVariationWorkflow ? "Generate" : "Render"}
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => moveMobileStudioStep(1)}
+              className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-amber-500 py-3 text-sm font-bold text-black"
+              data-testid="btn-mobile-studio-continue"
+            >
+              Continue <ChevronRight className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div className={`quick-hide ${mobileStudioStep === "create" ? "block" : "hidden md:block"}`}>
+        {activeWorkflow && (activeCompiler !== "qwen_edit" || isEnhanceWorkflow) && (
+          <div className="hidden md:block">
+            <RenderRecipeSelector
+              compiler={activeCompiler}
+              value={qualityTier}
+              onChange={applyQualityTier}
+            />
+          </div>
+        )}
+
+        {activeRecipeFamily === "image" && !isKrea2 && !isVariationWorkflow && (
+          <div className="hidden md:block mt-3 sm:mt-4">
+            <PoseAssistPanel
+              enabled={poseAssistEnabled}
+              onEnabled={changePoseAssistEnabled}
+              preview={poseReferencePreview}
+              uploading={poseReferenceUploading}
+              onUpload={uploadPoseReference}
+              onClear={clearPoseReference}
+              strength={poseAssistStrength}
+              onStrength={setPoseAssistStrength}
+              polish={poseAssistPolish}
+              onPolish={setPoseAssistPolish}
+              stage={poseAssistStage}
+              available={poseAssistAvailable}
+              installing={installingPoseAssist}
+              onInstall={installPoseAssist}
+              systemStatus={poseAssistStatus}
+            />
+          </div>
+        )}
+
+        {activeWorkflow && !["pose", "refine", "krea_style"].includes(activeWorkflow.kind) && (
+          <div className="mt-3 sm:mt-4">
+            <UniversalLoraPicker
+              workflow={activeWorkflow}
+              value={selectedLora}
+              onChange={setSelectedLora}
+              slotLabel="LoRA 1"
+              excludedNames={showSecondLora && secondaryLora.name ? [secondaryLora.name] : []}
+            />
+            {showSecondLora ? (
+              <div className="mt-3">
+                <button type="button" className="mb-2 text-xs text-zinc-400 underline" onClick={() => {
+                  setSecondaryLora({ name: "", strength: 0.8, triggerWords: [] });
+                  setShowSecondLora(false);
+                }}>Remove second LoRA</button>
+                <UniversalLoraPicker workflow={activeWorkflow} value={secondaryLora}
+                  onChange={setSecondaryLora} slotLabel="LoRA 2"
+                  excludedNames={selectedLora.name ? [selectedLora.name] : []} />
+                <p className="mt-2 text-xs text-zinc-500">Stacking LoRAs can change the result substantially. Adjust each strength if needed.{poseAssistEnabled ? " Pose Assist applies these to the Chroma polish stage." : ""}</p>
+              </div>
+            ) : (
+              <button type="button" className="mt-2 rounded-lg border hairline px-3 py-2 text-xs text-cyan-200 hover:bg-white/5"
+                onClick={() => setShowSecondLora(true)}>+ Add second LoRA</button>
+            )}
+          </div>
+        )}
+
+        {isGoldenChroma && (
+          <div className={(mobileStudioMode === "advanced" ? "block " : "hidden md:block ") + "mt-3 sm:mt-4"}>
+            <ChromaControls value={chromaSettings} onChange={setChromaSettings} />
+          </div>
+        )}
+      </div>
+
+      {/* Subject controls stay available, but stay out of Simple Create review. */}
+      {activeSection !== "identity" && <div className={`quick-hide ${mobileStudioStep === "create" && mobileStudioMode === "simple" ? "hidden md:block" : "block"}`}>
+        <SubjectSwitcher
+          subjects={subjects}
+          activeId={activeSubjectId}
+          expectedCount={expectedCount}
+          primaryLabel={subjects[0]?.label || "A"}
+          onSelect={setActiveSubjectId}
+          onAdd={addSubject}
+          onRemove={removeSubject}
+          onCopyFromPrimary={copyPrimaryToActive}
+          onRandomizeActive={randomizeActive}
+        />
+      </div>}
+
+      <div className={`quick-hide ${mobileStudioStep === "create" && mobileStudioMode === "advanced" ? "space-y-2" : "hidden md:block md:space-y-2"}`}>
+        <div className="pane px-3 py-2 flex items-center gap-2" data-testid="glance-header">
+          <button
+            type="button"
+            onClick={() => setCollapsed((cur) => ({ ...cur, _glance: !cur._glance }))}
+            data-testid="btn-collapse-glance"
+            className="flex items-center gap-2 text-left flex-1 group"
+          >
+            <ChevronDown className={`h-4 w-4 text-zinc-500 group-hover:text-zinc-200 transition-transform ${collapsed._glance ? "-rotate-90" : ""}`} />
+            <span className="section-label">DNA at a glance{isMulti ? ` · ${subjects.length} subjects` : ""}</span>
+          </button>
+        </div>
+        {!collapsed._glance && <DnaAtAGlance dna={activeDna} name={name} subjects={isMulti ? subjects : undefined} />}
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-[260px_1fr_380px] gap-4">
+        {/* Left rail - grouped-by-phase section nav (uses active subject's dna for filled dots) */}
+        <aside className="quick-hide hidden lg:block h-fit sticky top-20">
+          <GroupedSectionRail
+            dna={activeDna}
+            locks={locks}
+            activeSection={activeSection}
+            onSelect={(key) => nav(sectionUrl(key))}
+            testIdPrefix="nav-section"
+          />
+        </aside>
+
+        {/* Mobile section chips — grouped by phase */}
+        <div className="hidden md:flex lg:hidden overflow-x-auto scroll-fade -mx-3 px-3 gap-2 pb-1">
+          {SECTIONS.map((s) => (
+            <Link
+              key={s.key}
+              to={sectionUrl(s.key)}
+              data-testid={`nav-section-${s.key}-mobile`}
+              className={`chip chip-${phaseOfSection(s.key)} whitespace-nowrap ${activeSection === s.key ? "active" : ""}`}
+            >
+              {s.title}{locks[s.key] && " 🔒"}
+            </Link>
+          ))}
+        </div>
+
+        {/* Center - single active section */}
+        <div id="studio-sections" className={`${mobileStudioStep === "create" ? "hidden md:block" : "block"} scroll-mt-24 space-y-4`}>
+      {studioProfile && <section className="pane border-cyan-400/25 p-3 sm:p-4" data-testid={`studio-${studio}-presets`}>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <div className="section-label">{studioProfile.title} · Scene presets</div>
+            <p className="mt-1 text-xs text-zinc-400">Choose a starting composition, then edit every detail in the steps below.</p>
+          </div>
+          <Link to="/studios" className="text-xs text-cyan-300 hover:underline">Other studios</Link>
+        </div>
+        <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+          {studioProfile.presets.map((preset) => <button key={preset.name} type="button"
+            onClick={() => { setActiveDna(applyStudioPreset(activeDna, preset)); setQuickReview(false); goSection(studio === "feet" ? "feet" : "watersports"); }}
+            className="rounded-xl border hairline bg-black/25 px-3 py-3 text-left transition-colors hover:border-cyan-400/60 focus-visible:border-cyan-400">
+            <span className="block text-xs font-semibold text-cyan-100">{preset.name}</span>
+            <span className="mt-1 block text-[11px] text-zinc-400">{preset.description}</span>
+          </button>)}
+        </div>
+      </section>}
+      {desktopQuickMode && (
+        <section className="hidden md:block studio-journey rounded-2xl p-5" data-testid="desktop-quick-create">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <div className="section-label">Create / Main Studio</div>
+              <h2 className="font-display mt-1 text-xl font-bold text-white">Build your image</h2>
+              <p className="mt-1 text-sm text-zinc-400">Seven stages from character to render. Jump to any detailed control below.</p>
+            </div>
+            <span className="rounded-full border border-amber-400/40 bg-amber-500/10 px-3 py-1 text-xs text-amber-200">{activeWorkflow?.name || "Choose a model"}</span>
+          </div>
+          <p className="mt-4 text-[11px] font-mono uppercase tracking-widest text-cyan-300">Choose a category, then a control</p>
+          <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-4 xl:grid-cols-7" aria-label="Creation stages">
+            {quickStages.map((stage, index) => (
+              <button key={stage.key} type="button" onClick={() => selectQuickStage(index)}
+                aria-current={quickStageIndex === index ? "step" : undefined}
+                aria-expanded={stage.sections.length ? quickOpenCategory === stage.key : undefined}
+                className={`studio-stage relative min-h-[90px] rounded-xl px-3 py-3 text-left ${quickStageIndex === index ? "studio-stage-active" : index < quickStageIndex ? "studio-stage-past" : ""}`}>
+                <span className="block font-mono text-[10px] tracking-widest text-cyan-300">{String(index + 1).padStart(2, "0")} / 07</span>
+                <span className="mt-2 block font-display text-sm font-bold text-white">{stage.title}</span>
+                <span className="mt-0.5 block text-[11px] text-zinc-400">{stage.detail}</span>
+              </button>
+            ))}
+          </div>
+          {quickOpenCategory !== "review" && (
+            <div className="studio-subcategories mt-3 flex flex-wrap items-center gap-2 rounded-xl p-3" aria-label={`${quickStages.find((stage) => stage.key === quickOpenCategory)?.title || "Category"} controls`}>
+              <span className="mr-2 text-xs font-semibold text-cyan-200">{quickStages.find((stage) => stage.key === quickOpenCategory)?.title}</span>
+              {quickStages.find((stage) => stage.key === quickOpenCategory)?.sections.map((key) => {
+                const section = SECTIONS.find((item) => item.key === key);
+                return section && <button key={key} type="button" onClick={() => { setQuickReview(false); goSection(key); }}
+                  className={`rounded-lg border px-3 py-2 text-xs font-semibold transition-colors ${activeSection === key && !quickReview ? "border-lime-400 bg-lime-400/15 text-lime-200" : "border-white/15 bg-white/[0.04] text-zinc-300 hover:border-cyan-400/60 hover:text-white"}`}>
+                  {section.title}
+                </button>;
+              })}
+            </div>
+          )}
+        </section>
+      )}
+
+          {desktopQuickMode && quickReview ? (
+            <div className="hidden md:block pane border-cyan-400/30 p-5 space-y-4" data-testid="desktop-quick-review">
+              <div className="section-label">Ready to render</div>
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <div><span className="text-zinc-500">Model</span><div className="font-semibold">{activeWorkflow?.name || "Select a model"}</div></div>
+                <div><span className="text-zinc-500">Output</span><div className="font-semibold">{qualityTier} · {activeRecipeFamily === "image" ? `${renderCount} image${renderCount === 1 ? "" : "s"}` : activeRecipeFamily}</div></div>
+              </div>
+              <div className="rounded-xl border hairline bg-black/40 p-3 text-xs leading-relaxed text-zinc-300 max-h-44 overflow-y-auto">{finalPositive || "Choose the subject and scene to build a prompt."}</div>
+              {mobileCreateIssues.length > 0 && <div className="text-xs text-rose-300">{mobileCreateIssues.join(" ")}</div>}
+              <button type="button" onClick={doDispatch} disabled={dispatching || !workflowId || mobileCreateIssues.length > 0}
+                className="rounded-lg bg-amber-500 px-5 py-3 text-sm font-bold text-black disabled:opacity-40">
+                {dispatching ? "Rendering…" : "Render images"}
+              </button>
+              {activeRender && (
+                <div className="border-t hairline pt-4" data-testid="quick-create-result">
+                  <div className="section-label">Latest render · {activeRender.status}</div>
+                  {activeRender.error && <p className="mt-2 text-xs text-rose-300">{activeRender.error}</p>}
+                  {activeRender.output_files?.[0] ? (
+                    <Link to={`/gallery?render=${encodeURIComponent(activeRender.render_id || activeRender.id)}&returnTo=${encodeURIComponent(location.pathname)}`}
+                      className="mt-3 inline-block max-w-sm overflow-hidden rounded-xl border border-cyan-400/30">
+                      <img src={mediaUrl(activeRender.output_files[0])} alt="Latest image · open in Gallery" className="max-h-80 w-full object-contain" />
+                      <span className="block p-2 text-center text-xs font-semibold text-cyan-200">Open full size in Gallery</span>
+                    </Link>
+                  ) : <p className="mt-2 text-xs text-zinc-400">Your image will appear here when it finishes.</p>}
+                </div>
+              )}
+            </div>
+          ) : null}
+          <div key={activeSection} className={`studio-section-enter ${desktopQuickMode && quickReview ? "md:hidden" : "block"}`}>
+          <div className="hidden md:flex items-center justify-between text-xs font-mono text-zinc-500">
+            <span>Detail {activeIdx + 1} of {SECTIONS.length}{isMulti && ` · Subject ${activeSubject.label}`}</span>
+            <span className={`uppercase tracking-widest section-label phase-${phaseOfSection(activeSection)}`}>{SECTIONS[activeIdx].title}</span>
+          </div>
+          <div className="hidden md:block h-1 rounded-full bg-elevated overflow-hidden">
+            <div
+              className="h-full bg-amber-400 transition-all"
+              style={{ width: `${((activeIdx + 1) / SECTIONS.length) * 100}%` }}
+            />
+          </div>
+          {desktopQuickMode && <div className="hidden md:block">
+            <SubjectSwitcher subjects={subjects} activeId={activeSubjectId} expectedCount={expectedCount}
+              primaryLabel={subjects[0]?.label || "A"} onSelect={setActiveSubjectId}
+              onAdd={addSubject} onRemove={removeSubject} onCopyFromPrimary={copyPrimaryToActive}
+              onRandomizeActive={randomizeActive} showAddForSingle />
+          </div>}
+          {sectionNavigation("top")}
+          {activeSection === "identity" && (
+            <>
+            <div className="pane p-3 sm:p-4 space-y-3" data-testid="person-scenario-setup">
+              <div className="section-label">People &amp; scenario</div>
+              <p className="text-xs text-zinc-400">Choose the cast and scenario, then set each person's age and appearance. The editor adds the required subjects automatically.</p>
+              <div className="grid gap-3 sm:grid-cols-2">
+                {SECTIONS.find((section) => section.key === "scenario").fields.filter((field) => ["cast_size", "cast_type"].includes(field.key)).map((field) => (
+                  <label key={field.key} className="space-y-1 text-xs text-zinc-300">
+                    <span>{field.label}</span>
+                    <select
+                      data-testid={`person-${field.key}`}
+                      value={primaryDna.scenario?.[field.key] || (field.key === "cast_size" ? "solo" : "none")}
+                      onChange={(event) => setSubjects((cur) => cur.map((subject, index) => index === 0 ? {
+                        ...subject,
+                        dna: { ...subject.dna,
+                          ...(field.key === "cast_type" && ["mother and daughter", "stepmom and stepdaughter", "grandmother, mother and daughter"].includes(event.target.value) ? { identity: { ...subject.dna.identity, age: Math.max(event.target.value === "grandmother, mother and daughter" ? 68 : 44, Number(subject.dna.identity?.age) || 44), gender: "female" } } : {}),
+                          scenario: {
+                          ...subject.dna.scenario,
+                          [field.key]: event.target.value,
+                          ...(field.key === "cast_type" && event.target.value !== "none" ? { cast_size: ["triplets", "grandmother, mother and daughter"].includes(event.target.value) ? "trio" : "duo" } : {}),
+                        } },
+                      } : subject))}
+                      className="w-full rounded-lg border hairline bg-elevated px-3 py-2 text-sm text-zinc-100"
+                    >
+                      {field.options.map((option) => <option key={option} value={option}>{option}</option>)}
+                    </select>
+                  </label>
+                ))}
+              </div>
+              <button type="button" onClick={randomizePerson} data-testid="btn-randomize-person"
+                className="inline-flex items-center gap-2 rounded-lg border border-cyan-400/40 bg-cyan-400/10 px-3 py-2 text-xs font-semibold text-cyan-100 hover:bg-cyan-400/20">
+                <Shuffle className="h-4 w-4" /> Randomize person
+              </button>
+              {subjects.length > 1 && <button type="button" onClick={randomizeCast} data-testid="btn-randomize-group"
+                className="ml-2 inline-flex items-center gap-2 rounded-lg border border-fuchsia-400/40 bg-fuchsia-400/10 px-3 py-2 text-xs font-semibold text-fuchsia-100 hover:bg-fuchsia-400/20">
+                <Shuffle className="h-4 w-4" /> Randomize group · female
+              </button>}
+              <button type="button" onClick={randomizeScene} data-testid="btn-randomize-scene"
+                className="ml-2 inline-flex items-center gap-2 rounded-lg border hairline px-3 py-2 text-xs font-semibold text-zinc-200 hover:bg-white/5">
+                <Shuffle className="h-4 w-4" /> Randomize scene
+              </button>
+            </div>
+            <div className="quick-hide"><SubjectSwitcher
+              subjects={subjects}
+              activeId={activeSubjectId}
+              expectedCount={expectedCount}
+              primaryLabel={subjects[0]?.label || "A"}
+              onSelect={setActiveSubjectId}
+              onAdd={addSubject}
+              onRemove={removeSubject}
+              onCopyFromPrimary={copyPrimaryToActive}
+              onRandomizeActive={randomizeActive}
+              showAddForSingle
+            /></div>
+            </>
+          )}
+          {activeSection === "pose" && expectedCount > 1 && <div className="pane p-3" data-testid="cast-aware-poses">
+            <div className="section-label">Poses for {expectedCount} people</div>
+            <p className="mt-1 text-xs text-zinc-400">Choose a shared composition; each person keeps separate character settings.</p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {(expectedCount === 2
+                ? ["side by side", "back to back", "facing each other", "walking together", "seated together", "embracing", "dancing together"]
+                : ["group portrait", "staggered lineup", "semicircle", "walking together", "seated group", "standing at different depths", "hands joined"]
+              ).map((pose) => <button key={pose} type="button" onClick={() => setSection("pose", { ...activeDna.pose, action: pose, distance: "wide shot" })}
+                className={`rounded-lg border px-3 py-2 text-xs capitalize ${activeDna.pose?.action === pose ? "border-amber-400 text-amber-200" : "hairline text-zinc-300"}`}>{pose}</button>)}
+            </div>
+          </div>}
+          {studioProfile && activeSection === studio && <div className="flex gap-2 overflow-x-auto pb-1" role="tablist" aria-label={`${studioProfile.title} controls`} data-testid="specialty-field-groups">
+            {studioProfile.fieldGroups.map((group, index) => <button key={group.label} type="button" role="tab"
+              aria-selected={specialtyTab === index} onClick={() => setSpecialtyTab(index)}
+              className={`shrink-0 rounded-lg border px-3 py-2 text-xs font-semibold ${specialtyTab === index ? "border-amber-400 bg-amber-500/10 text-amber-100" : "hairline text-zinc-400"}`}>
+              {group.label}
+            </button>)}
+          </div>}
+          <DnaSection
+            key={`${activeSubjectId}-${activeSection}`}
+            section={studioProfile && activeSection === studio
+              ? { ...SECTIONS[activeIdx], fields: SECTIONS[activeIdx].fields.filter((field) => studioProfile.fieldGroups[specialtyTab]?.keys.includes(field.key)) }
+              : SECTIONS[activeIdx]}
+            value={activeDna[activeSection] || {}}
+            onChange={(v) => setSection(activeSection, v)}
+            locked={!!locks[activeSection]}
+            onToggleLock={() => setLocks({ ...locks, [activeSection]: !locks[activeSection] })}
+            onRandomize={() => setSection(activeSection, randomizeSection(activeSection, activeDna[activeSection] || {}, activeFieldLocks[activeSection] || {}))}
+            onReset={() => setSection(activeSection, resetSection(activeSection))}
+            onSuggest={() => runSuggest(activeSection)}
+            fieldLocks={activeFieldLocks[activeSection] || {}}
+            onToggleFieldLock={(fieldKey) => setActiveFieldLocks({
+              ...activeFieldLocks,
+              [activeSection]: { ...(activeFieldLocks[activeSection] || {}), [fieldKey]: !(activeFieldLocks[activeSection] || {})[fieldKey] },
+            })}
+            collapsed={!!collapsed[activeSection]}
+            onToggleCollapsed={() => setCollapsed((cur) => ({ ...cur, [activeSection]: !cur[activeSection] }))}
+            simpleMode={mobileStudioMode === "simple"}
+            simpleFieldKeys={SIMPLE_FIELD_KEYS[activeSection] || []}
+            onRequestAdvanced={() => setMobileStudioMode("advanced")}
+          />
+          {sectionNavigation("bottom")}
+          </div>
+        </div>
+
+        {/* Right - preview + AI + render */}
+        <aside id="studio-render" className={`quick-hide ${mobileStudioStep === "create" ? "block" : "hidden md:block"} scroll-mt-24 space-y-4 lg:sticky lg:top-20 lg:h-fit`}>
+          <div className={mobileStudioMode === "advanced" ? "block" : "hidden md:block"}>
+            <SmartSetupPanel workflows={selectableWorkflows} activeWorkflow={activeWorkflow} dna={activeDna}
+              subjectCount={subjects.length} hasReference={!!referenceImage?.name} onApply={applySmartSetup} />
+          </div>
+          <div className={mobileStudioMode === "advanced" || mobileStudioStep === "create" ? "block" : "hidden md:block"}>
+          {activeCompiler === "krea2" && (
+            <div className="pane p-4 mb-4 space-y-2" data-testid="krea-framing-control">
+              <div className="section-label">Krea 2 · magazine framing</div>
+              <p className="text-xs text-zinc-400">Choose the crop for every subject. Face priority keeps the face clear within this shot.</p>
+              <div className="flex gap-2">
+                {[["full body", "Full body"], ["knees-up", "Knees-up"], ["thigh-up", "Thigh-up"], ["waist-up", "Waist-up"]].map(([value, label]) => (
+                  <button key={value} type="button" onClick={() => setKreaFraming(value)}
+                    className={`rounded-lg border px-3 py-2 text-xs font-semibold ${subjects.every((subject) => subject.dna?.pose?.distance === value) ? "border-cyan-400 bg-cyan-500/15 text-cyan-100" : "hairline text-zinc-300"}`}>
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <p className="text-[11px] text-zinc-500">Selected scene details: {(activeDna.scenario?.acts || []).length + String(activeDna.scenario?.extra_acts || "").split(/[,;]+/).filter((part) => part.trim()).length}. Keep this to one main action and up to two supporting details. The preview below shows the exact prompt sent to ComfyUI.</p>
+            </div>
+          )}
+          <div className="pane p-4 mb-4 space-y-2" data-testid="plain-language-prompt">
+            <label htmlFor="plain-language-input" className="section-label">Describe it in your own words</label>
+            <Textarea id="plain-language-input" rows={2} value={plainLanguage}
+              onChange={(event) => setPlainLanguage(event.target.value)}
+              placeholder="Example: adult subject, 3000 cc breast implants, BBL, fitted dress" />
+            {translatedPlainLanguage.attributes.map((attribute) => (
+              <p key={attribute.key} className="text-xs text-zinc-400">
+                <span className="text-zinc-200">{attribute.source}</span> → {attribute.meaning}
+              </p>
+            ))}
+            {plainLanguage.trim() && <p className="text-xs text-zinc-400">Workflow translation: {translatedPlainLanguage.text || "Describe motion for image-to-video; the source image supplies appearance."}</p>}
+          </div>
+          <PromptPreview
+            aiProvider={aiProvider}
+            positive={finalPositive}
+            negative={finalNegative}
+            dna={activeDna}
+            workflow={activeWorkflow}
+            context={preflightContext}
+            compilerMeta={compiledPrompt}
+            recipe={activeRecipeFamily === "image" ? renderSettings : null}
+            selectedLora={selectedLora}
+            secondaryLora={showSecondLora ? secondaryLora : null}
+            imageCount={activeRecipeFamily === "image" && (!poseAssistEnabled || isVariationWorkflow) ? renderCount : 1}
+            optimized={!!promptOverride}
+            improving={improvingPrompt}
+            onImprove={improveCompiledPrompt}
+            onApplyPrompts={(nextPositive, nextNegative) => {
+              setPromptOverride(nextPositive);
+              setNegativePromptOverride(nextNegative);
+            }}
+            onOptimize={(cleaned) => {
+              setPromptOverride(cleaned);
+              toast.success("Safe prompt cleanup applied");
+            }}
+            onRestore={() => {
+              setPromptOverride("");
+              setNegativePromptOverride("");
+              toast.success("Generated prompt restored");
+            }}
+          />
+          </div>
+          {activeWorkflow && promptStyle === "pony" && (
+            <div className={`${mobileStudioMode === "advanced" ? "flex" : "hidden md:flex"} pane p-3 items-center gap-2`} data-testid="pony-style-badge">
+              <span className="text-[10px] font-mono uppercase tracking-widest text-rose-300 bg-rose-500/10 border border-rose-500/40 rounded px-1.5 py-0.5">pony style</span>
+              <span className="text-[11px] text-zinc-400">score_9 prefix + booru tag weighting enabled</span>
+            </div>
+          )}
+          {isVideoWorkflow && (
+            <div className="pane p-4 space-y-4" data-testid="wan-video-panel">
+              <div className="flex items-center gap-2">
+                <Camera className="h-4 w-4 text-emerald-300" />
+                <div className="section-label">WAN Image → Video</div>
+              </div>
+              <p className="text-xs text-zinc-400">
+                Upload the starting frame, then describe movement rather than redesigning the image.
+              </p>
+              {referencePreview ? (
+                <div className="relative rounded-lg overflow-hidden border hairline bg-elevated">
+                  <img src={referencePreview} alt="WAN starting frame" className="w-full max-h-72 object-contain" />
+                  <button type="button" onClick={clearReference}
+                    className="absolute right-2 top-2 rounded-full bg-black/70 p-2 text-zinc-100 hover:bg-red-500"
+                    aria-label="Remove WAN starting image" data-testid="btn-remove-wan-source">
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              ) : (
+                <label className="flex min-h-28 cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-emerald-500/40 bg-emerald-500/5 px-4 py-5 text-center hover:bg-emerald-500/10">
+                  {referenceUploading ? <Loader2 className="h-6 w-6 animate-spin text-emerald-300" /> : <Upload className="h-6 w-6 text-emerald-300" />}
+                  <span className="text-sm font-semibold text-emerald-100">
+                    {referenceUploading ? "Uploading…" : "Choose starting image"}
+                  </span>
+                  <span className="text-[11px] text-zinc-500">JPG, PNG, or WEBP · maximum 20 MB</span>
+                  <input type="file" accept="image/jpeg,image/png,image/webp"
+                    disabled={referenceUploading}
+                    onChange={(event) => uploadReference(event.target.files?.[0])}
+                    className="hidden" data-testid="input-wan-source" />
+                </label>
+              )}
+              <label className="block space-y-1">
+                <span className="text-xs uppercase tracking-widest text-zinc-500 font-mono">Movement instruction</span>
+                <Textarea rows={5} value={videoInstruction}
+                  onChange={(event) => setVideoInstruction(event.target.value)}
+                  placeholder="Example: She slowly turns toward the camera and smiles. Natural blinking and breathing, gentle hair movement, steady camera."
+                  className="bg-elevated border-hairline text-sm"
+                  data-testid="textarea-wan-motion" />
+              </label>
+              <button type="button" onClick={analyzeVideoImage}
+                disabled={analyzingVideoImage || !referenceImage?.name}
+                className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-cyan-500/40 bg-cyan-500/10 px-3 py-2 text-sm font-semibold text-cyan-200 hover:bg-cyan-500/20 disabled:opacity-40"
+                data-testid="btn-venice-analyze-video-image">
+                {analyzingVideoImage ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                Analyze image + draft motion with {aiProvider}
+              </button>
+              {videoImageAnalysis && (
+                <div className="rounded-lg border border-cyan-500/20 bg-cyan-500/5 p-3 text-xs text-zinc-300">
+                  <div className="mb-1 font-mono uppercase tracking-widest text-cyan-300">{aiProvider} image analysis</div>
+                  {videoImageAnalysis}
+                </div>
+              )}
+              <button type="button" onClick={enhanceVideoInstruction}
+                disabled={enhancingVideo || !videoInstruction.trim()}
+                className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm font-semibold text-amber-200 hover:bg-amber-500/20 disabled:opacity-40"
+                data-testid="btn-venice-enhance-video">
+                {enhancingVideo ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                Enhance movement with {aiProvider}
+              </button>
+              <div className="grid grid-cols-2 gap-3">
+                <label className="space-y-1">
+                  <span className="text-xs text-zinc-400">Duration</span>
+                  <select value={videoFrames} onChange={(e) => setVideoFrames(Number(e.target.value))}
+                    className="w-full rounded-lg border border-hairline bg-elevated px-3 py-2 text-sm"
+                    data-testid="select-wan-duration">
+                    <option value={41}>1.7 sec · 41 frames</option>
+                    <option value={81}>3.4 sec · 81 frames</option>
+                    <option value={121}>5 sec · 121 frames</option>
+                    <option value={161}>6.7 sec · 161 frames</option>
+                    <option value={201}>8.4 sec · 201 frames</option>
+                    <option value={241}>10 sec · 241 frames</option>
+                  </select>
+                </label>
+                <label className="space-y-1">
+                  <span className="text-xs text-zinc-400">Playback FPS</span>
+                  <select value={videoFps} onChange={(e) => setVideoFps(Number(e.target.value))}
+                    className="w-full rounded-lg border border-hairline bg-elevated px-3 py-2 text-sm"
+                    data-testid="select-wan-fps">
+                    <option value={16}>16 FPS</option>
+                    <option value={20}>20 FPS</option>
+                    <option value={24}>24 FPS</option>
+                    <option value={30}>30 FPS</option>
+                  </select>
+                </label>
+              </div>
+              <p className="text-[11px] text-zinc-500">
+                Longer clips require substantially more VRAM and generation time. Start with 41 frames for testing.
+              </p>
+            </div>
+          )}
+          {isTextVideoWorkflow && (
+            <div className="pane p-4 space-y-4" data-testid="wan-text-video-panel">
+              <div className="flex items-center gap-2">
+                <Camera className="h-4 w-4 text-violet-300" />
+                <div className="section-label">WAN Text → Video</div>
+              </div>
+              <p className="text-xs text-zinc-400">
+                Describe the complete shot: adult subject, action, environment, lighting, framing, and camera motion. No starting image is required.
+              </p>
+              <label className="block space-y-1">
+                <span className="text-xs uppercase tracking-widest text-zinc-500 font-mono">Video description</span>
+                <Textarea rows={7} value={videoInstruction}
+                  onChange={(event) => setVideoInstruction(event.target.value)}
+                  placeholder="Example: A cinematic full-body shot of an adult woman walking through a softly lit hotel suite, natural body movement, gentle handheld camera, stable identity, one continuous shot."
+                  className="bg-elevated border-hairline text-sm"
+                  data-testid="textarea-wan-text-video" />
+              </label>
+              <button type="button" onClick={enhanceVideoInstruction}
+                disabled={enhancingVideo || !videoInstruction.trim()}
+                className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm font-semibold text-amber-200 hover:bg-amber-500/20 disabled:opacity-40"
+                data-testid="btn-venice-enhance-text-video">
+                {enhancingVideo ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                Expand scene with {aiProvider}
+              </button>
+              <div className="grid grid-cols-2 gap-3">
+                <label className="space-y-1">
+                  <span className="text-xs text-zinc-400">Duration</span>
+                  <select value={videoFrames} onChange={(e) => setVideoFrames(Number(e.target.value))}
+                    className="w-full rounded-lg border border-hairline bg-elevated px-3 py-2 text-sm"
+                    data-testid="select-wan-t2v-duration">
+                    <option value={41}>2.6 sec · 41 frames</option>
+                    <option value={81}>5.1 sec · 81 frames</option>
+                    <option value={121}>7.6 sec · 121 frames</option>
+                    <option value={161}>10 sec · 161 frames</option>
+                  </select>
+                </label>
+                <label className="space-y-1">
+                  <span className="text-xs text-zinc-400">Playback FPS</span>
+                  <select value={videoFps} onChange={(e) => setVideoFps(Number(e.target.value))}
+                    className="w-full rounded-lg border border-hairline bg-elevated px-3 py-2 text-sm"
+                    data-testid="select-wan-t2v-fps">
+                    <option value={16}>16 FPS</option>
+                    <option value={20}>20 FPS</option>
+                    <option value={24}>24 FPS</option>
+                  </select>
+                </label>
+              </div>
+              <p className="text-[11px] text-zinc-500">
+                This 14B workflow is much heavier than the 5B Image → Video workflow. Test with 41 frames first.
+              </p>
+            </div>
+          )}
+          {isVariationWorkflow && (
+            <div className="pane p-4 space-y-4" data-testid="image-variation-panel">
+              <div className="section-label">Image Variations · Chroma</div>
+              <p className="text-xs text-zinc-400">Upload the original image upright. The source sets the composition and aspect ratio. Choose multiple images above to try different seeds.</p>
+              {referencePreview ? (
+                <div className="relative max-w-sm rounded-lg overflow-hidden border border-hairline bg-elevated">
+                  <img src={referencePreview} alt="Source for variations" className="w-full max-h-80 object-contain" />
+                  <button type="button" onClick={clearReference} className="absolute right-2 top-2 rounded-full bg-black/70 p-2 text-white" aria-label="Remove source image"><X className="h-4 w-4" /></button>
+                </div>
+              ) : referenceImage?.name ? (
+                <div className="text-xs text-zinc-300">Source: {referenceImage.name} <button type="button" onClick={clearReference} className="ml-2 underline">Remove</button></div>
+              ) : (
+                <label className="flex min-h-28 cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-cyan-500/40 bg-cyan-500/5 p-4 text-center">
+                  {referenceUploading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Upload className="h-5 w-5" />}
+                  <span className="text-sm">{referenceUploading ? "Uploading…" : "Choose source image"}</span>
+                  <input type="file" accept="image/jpeg,image/png,image/webp" disabled={referenceUploading} onChange={(event) => uploadReference(event.target.files?.[0])} className="hidden" data-testid="input-variation-source" />
+                </label>
+              )}
+              <label className="block space-y-1"><span className="text-xs text-zinc-400">What should vary?</span>
+                <Textarea rows={4} value={variationPrompt} onChange={(event) => setVariationPrompt(event.target.value)} className="bg-elevated border-hairline text-sm" data-testid="textarea-variation-prompt" />
+              </label>
+              <label className="block space-y-2"><span className="text-xs text-zinc-400">Change strength: {variationDenoise.toFixed(2)}</span>
+                <input type="range" min="0.10" max="0.45" step="0.01" value={variationDenoise} onChange={(event) => setVariationDenoise(Number(event.target.value))} className="w-full" data-testid="slider-variation-denoise" />
+                <span className="block text-[11px] text-zinc-500">Start at 0.22. Lower values stay closer to the original; higher values change more details.</span>
+              </label>
+            </div>
+          )}
+          {isEnhanceWorkflow && (
+            <div className="pane p-4 space-y-4" data-testid="image-repair-panel">
+              <div className="flex items-center gap-2">
+                <Sparkles className="h-4 w-4 text-cyan-300" />
+                <div className="section-label">Image Repair & Enhance</div>
+              </div>
+              <p className="text-xs text-zinc-400">
+                Upload an image, select only the areas that need correction, and optionally let {aiProvider} inspect it before Qwen performs the repair.
+              </p>
+              {referencePreview ? (
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div>
+                    <div className="mb-1 text-[10px] font-mono uppercase tracking-widest text-zinc-500">Original</div>
+                    <div className="relative rounded-lg overflow-hidden border hairline bg-elevated">
+                      <img src={referencePreview} alt="Original for repair" className="w-full max-h-80 object-contain" />
+                      <button type="button" onClick={clearReference}
+                        className="absolute right-2 top-2 rounded-full bg-black/70 p-2 text-zinc-100 hover:bg-red-500"
+                        aria-label="Remove repair image" data-testid="btn-remove-repair-source">
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                  {activeRender?.status === "done" && activeRender.output_files?.[0] && (
+                    <div>
+                      <div className="mb-1 text-[10px] font-mono uppercase tracking-widest text-emerald-300">Repaired result</div>
+                      <img src={activeRender.output_files[0]} alt="Repaired result"
+                        className="w-full max-h-80 rounded-lg border hairline bg-elevated object-contain" />
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <label className="flex min-h-32 cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-cyan-500/40 bg-cyan-500/5 px-4 py-6 text-center hover:bg-cyan-500/10">
+                  {referenceUploading ? <Loader2 className="h-6 w-6 animate-spin text-cyan-300" /> : <Upload className="h-6 w-6 text-cyan-300" />}
+                  <span className="text-sm font-semibold text-cyan-100">
+                    {referenceUploading ? "Uploading…" : "Choose image to repair"}
+                  </span>
+                  <span className="text-[11px] text-zinc-500">JPG, PNG, or WEBP · maximum 20 MB</span>
+                  <input type="file" accept="image/jpeg,image/png,image/webp"
+                    disabled={referenceUploading}
+                    onChange={(event) => uploadReference(event.target.files?.[0])}
+                    className="hidden" data-testid="input-repair-source" />
+                </label>
+              )}
+              <div>
+                <div className="mb-2 text-xs uppercase tracking-widest text-zinc-500 font-mono">Repair targets</div>
+                <div className="flex flex-wrap gap-2">
+                  {REPAIR_TARGETS.map(([value, label]) => (
+                    <button type="button" key={value} onClick={() => toggleRepairTarget(value)}
+                      className={`rounded-full border px-3 py-1.5 text-xs transition ${
+                        repairTargets.includes(value)
+                          ? "border-cyan-400 bg-cyan-500/20 text-cyan-100"
+                          : "border-hairline bg-elevated text-zinc-400 hover:text-zinc-200"
+                      }`}
+                      data-testid={`repair-target-${value}`}>
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <label className="block space-y-1">
+                <div className="flex justify-between text-xs text-zinc-400">
+                  <span>Repair strength</span>
+                  <span className="font-mono text-cyan-300">{Math.round(repairStrength * 100)}%</span>
+                </div>
+                <input type="range" min="0.2" max="0.85" step="0.05" value={repairStrength}
+                  onChange={(event) => setRepairStrength(Number(event.target.value))}
+                  className="w-full accent-cyan-400" data-testid="slider-repair-strength" />
+                <div className="flex justify-between text-[10px] text-zinc-600">
+                  <span>Subtle preservation</span><span>Stronger reconstruction</span>
+                </div>
+              </label>
+              <label className="block space-y-1">
+                <span className="text-xs uppercase tracking-widest text-zinc-500 font-mono">Repair instruction</span>
+                <Textarea rows={6} value={repairInstruction}
+                  onChange={(event) => setRepairInstruction(event.target.value)}
+                  placeholder={`Optional: describe a specific defect or leave this blank and ask ${aiProvider} to inspect the selected areas.`}
+                  className="bg-elevated border-hairline text-sm"
+                  data-testid="textarea-repair-instruction" />
+              </label>
+              <button type="button" onClick={analyzeRepairImage}
+                disabled={analyzingRepair || !referenceImage?.name}
+                className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-cyan-500/40 bg-cyan-500/10 px-3 py-2 text-sm font-semibold text-cyan-200 hover:bg-cyan-500/20 disabled:opacity-40"
+                data-testid="btn-venice-analyze-repair">
+                {analyzingRepair ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                Inspect image and draft repair with {aiProvider}
+              </button>
+              {repairAnalysis && (
+                <div className="rounded-lg border border-cyan-500/20 bg-cyan-500/5 p-3 text-xs text-zinc-300">
+                  <div className="mb-1 font-mono uppercase tracking-widest text-cyan-300">{aiProvider} inspection</div>
+                  {repairAnalysis}
+                </div>
+              )}
+              <p className="text-[11px] text-zinc-500">
+                The repair prompt always preserves identity, age, body shape, pose, clothing, environment, and camera framing unless you explicitly request a change.
+              </p>
+            </div>
+          )}
+          {isEditWorkflow && (
+            <div className="pane p-4 space-y-4" data-testid="qwen-edit-panel">
+              <div className="flex items-center gap-2">
+                <ImagePlus className="h-4 w-4 text-cyan-300" />
+                <div className="section-label">Qwen Image Edit</div>
+              </div>
+              <p className="text-xs text-zinc-400">
+                Upload the image you want to change, then describe only the changes you want made.
+              </p>
+              <div className="grid grid-cols-3 gap-1 rounded-lg border hairline bg-elevated p-1" role="tablist" aria-label="Qwen edit mode">
+                <button type="button" onClick={() => setEditMode("standard")}
+                  className={`rounded-md px-3 py-2 text-xs font-semibold ${editMode === "standard" ? "bg-cyan-500/20 text-cyan-100" : "text-zinc-400 hover:text-zinc-200"}`}
+                  data-testid="btn-edit-mode-standard">
+                  Standard edit
+                </button>
+                <button type="button" onClick={() => { setEditMode("new_pose"); setPreserveUnmentioned(true); }}
+                  className={`rounded-md px-3 py-2 text-xs font-semibold ${editMode === "new_pose" ? "bg-cyan-500/20 text-cyan-100" : "text-zinc-400 hover:text-zinc-200"}`}
+                  data-testid="btn-edit-mode-new-pose">
+                  Same character · New pose
+                </button>
+                <button type="button" onClick={() => { setEditMode("body_adjust"); setPreserveUnmentioned(true); }}
+                  className={`rounded-md px-3 py-2 text-xs font-semibold ${editMode === "body_adjust" ? "bg-amber-500/20 text-amber-100" : "text-zinc-400 hover:text-zinc-200"}`}
+                  data-testid="btn-edit-mode-body-adjust">
+                  Body Adjust
+                </button>
+              </div>
+              {referencePreview ? (
+                <div className="relative rounded-lg overflow-hidden border hairline bg-elevated">
+                  <img src={referencePreview} alt="Source for editing" className="w-full max-h-72 object-contain" />
+                  <button type="button" onClick={clearReference}
+                    className="absolute right-2 top-2 rounded-full bg-black/70 p-2 text-zinc-100 hover:bg-red-500"
+                    aria-label="Remove source image" data-testid="btn-remove-edit-source">
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              ) : (
+                <label className="flex min-h-28 cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-cyan-500/40 bg-cyan-500/5 px-4 py-5 text-center hover:bg-cyan-500/10">
+                  {referenceUploading ? <Loader2 className="h-6 w-6 animate-spin text-cyan-300" /> : <Upload className="h-6 w-6 text-cyan-300" />}
+                  <span className="text-sm font-semibold text-cyan-100">
+                    {referenceUploading ? "Uploading…" : "Choose source image"}
+                  </span>
+                  <span className="text-[11px] text-zinc-500">JPG, PNG, or WEBP · maximum 20 MB</span>
+                  <input type="file" accept="image/jpeg,image/png,image/webp"
+                    disabled={referenceUploading}
+                    onChange={(event) => uploadReference(event.target.files?.[0])}
+                    className="hidden" data-testid="input-qwen-edit-source" />
+                </label>
+              )}
+              {editMode === "standard" ? (
+                <label className="block space-y-1">
+                  <span className="text-xs uppercase tracking-widest text-zinc-500 font-mono">Edit instruction</span>
+                  <Textarea rows={5} value={editInstruction}
+                    onChange={(event) => setEditInstruction(event.target.value)}
+                    placeholder="Example: Change the black dress to a red satin evening gown. Keep her face, pose, body, lighting, and background unchanged."
+                    className="bg-elevated border-hairline text-sm"
+                    data-testid="textarea-qwen-edit-instruction" />
+                </label>
+              ) : editMode === "body_adjust" ? (
+                <div className="space-y-4 rounded-lg border border-amber-500/25 bg-amber-500/5 p-3" data-testid="body-adjust-panel">
+                  <div>
+                    <div className="text-xs font-bold text-amber-100">Controlled Body Adjustment</div>
+                    <div className="mt-1 text-[11px] text-zinc-400">Edits the source image instead of regenerating it from the original seed.</div>
+                  </div>
+                  <div className="grid grid-cols-5 gap-1">
+                    {[
+                      ["glutes", "Glutes"], ["bust", "Bust"], ["hips", "Hips"], ["thighs", "Thighs"], ["waist", "Waist"],
+                    ].map(([value, label]) => (
+                      <button key={value} type="button" onClick={() => setBodyAdjustRegion(value)}
+                        className={`rounded-md border px-2 py-2 text-[11px] font-semibold ${bodyAdjustRegion === value ? "border-amber-400 bg-amber-500/15 text-amber-100" : "border-hairline text-zinc-400"}`}
+                        data-testid={`btn-body-adjust-${value}`}>{label}</button>
+                    ))}
+                  </div>
+                  <label className="block space-y-2">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="uppercase tracking-widest text-zinc-500 font-mono">Adjustment</span>
+                      <span className="font-mono text-amber-200">{bodyAdjustAmount}/100</span>
+                    </div>
+                    <input type="range" min="0" max="100" step="5" value={bodyAdjustAmount}
+                      onChange={(event) => setBodyAdjustAmount(Number(event.target.value))}
+                      className="w-full accent-amber-400" data-testid="range-body-adjust" />
+                  </label>
+                  <div className="rounded-md border hairline bg-black/20 p-2 text-[11px] text-zinc-300">
+                    <span className="font-semibold text-zinc-100">Edit instruction: </span>{bodyAdjustInstruction}
+                  </div>
+                  <p className="text-[10px] text-zinc-500">Face, pose, wardrobe, framing, scene, lighting, and unselected body regions are explicitly preserved.</p>
+                </div>
+              ) : (
+                <div className="space-y-4" data-testid="same-character-pose-panel">
+                  <div className="flex items-center justify-between gap-3 rounded-lg border border-cyan-500/25 bg-cyan-500/5 p-2">
+                    <div>
+                      <div className="text-xs font-bold text-cyan-100">Reference Studio</div>
+                      <div className="text-[10px] text-zinc-500">Same person, controlled motion</div>
+                    </div>
+                    <div className="flex rounded-md border hairline bg-black/20 p-0.5">
+                      {[["simple", "Simple"], ["advanced", "Advanced"]].map(([value, label]) => (
+                        <button key={value} type="button" onClick={() => setReferenceStudioView(value)}
+                          className={`rounded px-2.5 py-1.5 text-[11px] font-semibold ${referenceStudioView === value ? "bg-cyan-500/20 text-cyan-100" : "text-zinc-500"}`}
+                          data-testid={`btn-reference-view-${value}`}>
+                          {value === "advanced" && <SlidersHorizontal className="mr-1 inline h-3 w-3" />}{label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="mb-2 text-xs uppercase tracking-widest text-zinc-500 font-mono">Preservation recipe</div>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                      {REFERENCE_RECIPES.map((recipe) => (
+                        <button key={recipe.id} type="button" onClick={() => {
+                          setReferenceRecipe(recipe.id);
+                          setReferenceStrengths(recipe.strengths);
+                        }}
+                          className={`rounded-lg border p-3 text-left ${referenceRecipe === recipe.id ? "border-cyan-400 bg-cyan-500/10" : "border-hairline hover:bg-white/5"}`}
+                          data-testid={`btn-reference-recipe-${recipe.id}`}>
+                          <div className="text-xs font-bold text-zinc-100">{recipe.label}</div>
+                          <div className="mt-1 text-[10px] leading-snug text-zinc-500">{recipe.description}</div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="mb-2 text-xs uppercase tracking-widest text-zinc-500 font-mono">Choose a new pose</div>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                      {SAME_CHARACTER_POSES.map((pose) => (
+                        <button key={pose.id} type="button" onClick={() => setPoseTarget(pose.id)}
+                          className={`rounded-lg border px-3 py-2 text-left text-xs ${poseTarget === pose.id ? "border-cyan-400 bg-cyan-500/15 text-cyan-100" : "border-hairline text-zinc-300 hover:bg-white/5"}`}
+                          data-testid={`btn-pose-${pose.id}`}>
+                          {pose.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="rounded-lg border border-dashed border-violet-500/35 bg-violet-500/5 p-3 space-y-3">
+                    <div>
+                      <div className="text-xs font-bold text-violet-100">Optional pose-reference image</div>
+                      <div className="mt-0.5 text-[10px] text-zinc-500">Use a second image for body positioning only. Its identity, body type, outfit, and setting are ignored.</div>
+                    </div>
+                    {poseReferencePreview ? (
+                      <div className="grid grid-cols-[96px_1fr] gap-3 items-center">
+                        <div className="relative overflow-hidden rounded-md border hairline">
+                          <img src={poseReferencePreview} alt="Pose reference" className="h-24 w-24 object-cover" />
+                          <button type="button" onClick={clearPoseReference}
+                            className="absolute right-1 top-1 rounded-full bg-black/75 p-1 text-white" aria-label="Remove pose reference">
+                            <X className="h-3 w-3" />
+                          </button>
+                        </div>
+                        <button type="button" onClick={analyzePoseReference}
+                          disabled={analyzingPoseReference}
+                          className="inline-flex items-center justify-center gap-2 rounded-lg border border-violet-500/40 bg-violet-500/10 px-3 py-2 text-xs font-semibold text-violet-100 disabled:opacity-40"
+                          data-testid="btn-analyze-pose-reference">
+                          {analyzingPoseReference ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                          {poseReferenceAnalysis ? "Analyze pose again" : `Extract pose with ${aiProvider}`}
+                        </button>
+                      </div>
+                    ) : (
+                      <label className="flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-dashed border-violet-500/30 px-3 py-4 text-xs font-semibold text-violet-100 hover:bg-violet-500/10">
+                        {poseReferenceUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                        {poseReferenceUploading ? "Uploading…" : "Choose pose image"}
+                        <input type="file" accept="image/jpeg,image/png,image/webp" disabled={poseReferenceUploading}
+                          onChange={(event) => uploadPoseReference(event.target.files?.[0])}
+                          className="hidden" data-testid="input-pose-reference" />
+                      </label>
+                    )}
+                    {poseReferenceAnalysis && (
+                      <div className="rounded-md border border-violet-500/20 bg-black/15 p-2 text-[11px] leading-relaxed text-zinc-300" data-testid="pose-reference-analysis">
+                        <span className="font-semibold text-violet-200">Extracted pose: </span>{poseReferenceAnalysis}
+                      </div>
+                    )}
+                  </div>
+                  <label className="block space-y-1">
+                    <span className="text-xs uppercase tracking-widest text-zinc-500 font-mono">Pose details (optional)</span>
+                    <Textarea rows={3} value={poseNotes}
+                      onChange={(event) => setPoseNotes(event.target.value)}
+                      placeholder="Example: left hand resting on the chair, right foot slightly forward, looking toward camera"
+                      className="bg-elevated border-hairline text-sm"
+                      data-testid="textarea-pose-notes" />
+                  </label>
+                  {referenceStudioView === "advanced" && <div>
+                    <div className="mb-2 text-xs uppercase tracking-widest text-zinc-500 font-mono">Preservation strengths</div>
+                    <div className="space-y-2 rounded-lg border hairline p-3">
+                      {Object.entries({ face: "Face & identity", body: "Body shape", clothing: "Outfit", background: "Scene", lighting: "Lighting" }).map(([key, label]) => (
+                        <label key={key} className="grid grid-cols-[90px_1fr_38px] items-center gap-2 text-[11px] text-zinc-300">
+                          <span>{label}</span>
+                          <input type="range" min="0" max="100" step="5" value={referenceStrengths[key]}
+                            onChange={(event) => {
+                              setReferenceRecipe("custom");
+                              setReferenceStrengths((current) => ({ ...current, [key]: Number(event.target.value) }));
+                            }} className="accent-cyan-400" data-testid={`range-reference-${key}`} />
+                          <span className="text-right font-mono text-cyan-200">{referenceStrengths[key]}%</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>}
+                  {referenceStudioView === "advanced" && <div>
+                    <div className="mb-2 text-xs uppercase tracking-widest text-zinc-500 font-mono">Keep unchanged</div>
+                    <div className="grid grid-cols-2 gap-2">
+                      {Object.entries({
+                        face: "Face & identity", hair: "Hair", skin: "Skin & markings", body: "Body shape",
+                        clothing: "Clothing", expression: "Expression", background: "Background", lighting: "Lighting & style",
+                      }).map(([key, label]) => (
+                        <label key={key} className="flex items-center gap-2 rounded-lg border hairline px-3 py-2 text-xs text-zinc-300">
+                          <input type="checkbox" checked={poseLocks[key] !== false}
+                            onChange={(event) => setPoseLocks((current) => ({ ...current, [key]: event.target.checked }))}
+                            className="accent-cyan-400" data-testid={`checkbox-pose-lock-${key}`} />
+                          {label}
+                        </label>
+                      ))}
+                    </div>
+                  </div>}
+                  {referenceStudioView === "advanced" && poseInstruction && (
+                    <details className="rounded-lg border hairline bg-black/10 p-3">
+                      <summary className="cursor-pointer text-xs font-semibold text-cyan-200">Review protected edit instruction</summary>
+                      <p className="mt-2 whitespace-pre-wrap text-[11px] leading-relaxed text-zinc-400">{poseInstruction}</p>
+                    </details>
+                  )}
+                  <p className="text-[11px] text-zinc-500">
+                    The character image owns identity and appearance. A pose-reference image contributes only body positioning.
+                  </p>
+                </div>
+              )}
+              {editMode === "standard" && <label className="flex items-start gap-2 text-xs text-zinc-300">
+                <input type="checkbox" checked={preserveUnmentioned}
+                  onChange={(event) => setPreserveUnmentioned(event.target.checked)}
+                  className="mt-0.5 accent-cyan-400"
+                  data-testid="checkbox-preserve-unmentioned" />
+                <span>Preserve identity, composition, and every detail I did not ask to change</span>
+              </label>}
+              {editMode === "new_pose" && (
+                <div className={`rounded-lg border p-3 ${referenceSummary.ready ? "border-emerald-500/30 bg-emerald-500/5" : "border-amber-500/30 bg-amber-500/5"}`} data-testid="reference-studio-summary">
+                  <div className="flex items-center gap-2 text-xs font-bold">
+                    {referenceSummary.ready ? <ShieldCheck className="h-4 w-4 text-emerald-300" /> : <AlertTriangle className="h-4 w-4 text-amber-300" />}
+                    <span className={referenceSummary.ready ? "text-emerald-100" : "text-amber-100"}>{referenceSummary.headline}</span>
+                  </div>
+                  <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-1 text-[10px] text-zinc-400">
+                    {referenceSummary.details.map((detail) => <div key={detail}>• {detail}</div>)}
+                  </div>
+                  {referenceSummary.warnings.map((warning) => <div key={warning} className="mt-2 text-[10px] text-amber-200">⚠ {warning}</div>)}
+                </div>
+              )}
+              {editMode === "standard" && <button type="button" onClick={enhanceEditInstruction}
+                disabled={enhancingEdit || editMode === "new_pose" || !editInstruction.trim()}
+                className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm font-semibold text-amber-200 hover:bg-amber-500/20 disabled:opacity-40"
+                data-testid="btn-venice-enhance-edit">
+                {enhancingEdit ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                {editMode === "new_pose" ? "Protected pose instruction active" : `Enhance instruction with ${aiProvider}`}
+              </button>}
+              {editMode === "standard" && <p className="text-[11px] text-zinc-500">
+                {aiProvider} only rewrites the instruction. Review and edit it before rendering.
+              </p>}
+            </div>
+          )}
+          {isFaceWorkflow && (
+            <div className="pane p-4 space-y-4" data-testid="face-reference-panel">
+              <div className="flex items-center gap-2">
+                <ImagePlus className="h-4 w-4 text-amber-400" />
+                <div className="section-label">Keep this character · Face Preserve</div>
+              </div>
+              <p className="text-xs text-zinc-400">
+                Upload a clear photograph of one adult face. The photo is sent directly to your local ComfyUI input folder.
+              </p>
+              <p className="text-xs text-amber-200/80">Adjust the character’s pose, expression, or wardrobe in the editor. Face Preserve uses this image to guide facial identity; results may still vary with the model and reference quality.</p>
+              {referencePreview ? (
+                <div className="relative rounded-lg overflow-hidden border hairline bg-elevated">
+                  <img src={referencePreview} alt="Face reference" className="w-full max-h-72 object-contain" />
+                  <button
+                    type="button"
+                    onClick={clearReference}
+                    className="absolute right-2 top-2 rounded-full bg-black/70 p-2 text-zinc-100 hover:bg-red-500"
+                    aria-label="Remove reference photograph"
+                    data-testid="btn-remove-face-reference"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              ) : (
+                <label className="flex min-h-28 cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-amber-500/40 bg-amber-500/5 px-4 py-5 text-center hover:bg-amber-500/10">
+                  {referenceUploading ? <Loader2 className="h-6 w-6 animate-spin text-amber-300" /> : <Upload className="h-6 w-6 text-amber-300" />}
+                  <span className="text-sm font-semibold text-amber-100">
+                    {referenceUploading ? "Uploading…" : "Choose reference photograph"}
+                  </span>
+                  <span className="text-[11px] text-zinc-500">JPG, PNG, or WEBP · maximum 20 MB</span>
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    disabled={referenceUploading}
+                    onChange={(event) => uploadReference(event.target.files?.[0])}
+                    className="hidden"
+                    data-testid="input-face-reference"
+                  />
+                </label>
+              )}
+              <label className="block space-y-1">
+                <div className="flex justify-between text-xs text-zinc-400">
+                  <span>Identity strength</span><span className="font-mono text-amber-300">{faceStrength.toFixed(2)}</span>
+                </div>
+                <input type="range" min="0.5" max="1.8" step="0.05" value={faceStrength}
+                  onChange={(e) => setFaceStrength(Number(e.target.value))} className="w-full accent-amber-400"
+                  data-testid="slider-face-strength" />
+              </label>
+              <label className="block space-y-1">
+                <div className="flex justify-between text-xs text-zinc-400">
+                  <span>FaceID v2 strength</span><span className="font-mono text-amber-300">{faceIdV2Strength.toFixed(2)}</span>
+                </div>
+                <input type="range" min="0.5" max="1.8" step="0.05" value={faceIdV2Strength}
+                  onChange={(e) => setFaceIdV2Strength(Number(e.target.value))} className="w-full accent-amber-400"
+                  data-testid="slider-faceid-v2-strength" />
+              </label>
+            </div>
+          )}
+          <div className={`${mobileStudioMode === "advanced" ? "contents" : "hidden md:contents"}`}>
+            <LikenessLoraPanel
+              workflowId={workflowId}
+              subject={activeSubject}
+              onChange={(likeness) => updateActiveSubject(() => ({ likeness }))}
+            />
+          </div>
+          {batchRenders.length > 1 && (
+            <div className="pane p-4 space-y-3" data-testid="batch-render-progress">
+              {(() => {
+                const completed = batchRenders.filter((r) => r.status === "done").length;
+                const failed = batchRenders.filter((r) => ["failed", "offline", "cancelled"].includes(r.status)).length;
+                return (
+                  <>
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <div className="section-label">Latest batch</div>
+                        <div className="text-sm text-zinc-300">
+                          {completed} of {batchRenders.length} completed{failed ? ` · ${failed} failed` : ""}
+                        </div>
+                      </div>
+                      <div className="text-xs text-zinc-500">{Math.round(((completed + failed) / batchRenders.length) * 100)}% processed</div>
+                    </div>
+                    <div className="h-1.5 rounded-full bg-white/10 overflow-hidden">
+                      <div
+                        className="h-full bg-emerald-400 transition-all duration-300"
+                        style={{ width: `${((completed + failed) / batchRenders.length) * 100}%` }}
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-2">
+                      {batchRenders.map((render, index) => {
+                        const imageUrl = render.output_files?.[0];
+                        const selected = render.id === selectedBatchRenderId;
+                        return (
+                          <button
+                            type="button"
+                            key={render.id}
+                            onClick={() => {
+                              setSelectedBatchRenderId(render.id);
+                              setActiveRender(render);
+                            }}
+                            className={`relative aspect-[2/3] rounded-lg overflow-hidden border transition ${selected ? "border-emerald-400 ring-1 ring-emerald-400" : "border-white/10 hover:border-white/30"}`}
+                            title={`Image ${index + 1} · ${render.status}`}
+                          >
+                            {imageUrl ? (
+                              <img src={imageUrl} alt={`Batch result ${index + 1}`} className="w-full h-full object-cover" />
+                            ) : (
+                              <div className="w-full h-full flex flex-col items-center justify-center gap-2 bg-black/20 text-zinc-500 text-xs">
+                                {["failed", "offline", "cancelled"].includes(render.status)
+                                  ? <AlertTriangle className="h-5 w-5" />
+                                  : <Loader2 className="h-5 w-5 animate-spin" />}
+                                <span>{render.status}</span>
+                              </div>
+                            )}
+                            <span className="absolute left-1.5 top-1.5 rounded bg-black/70 px-1.5 py-0.5 text-[10px] text-white">
+                              {index + 1}
+                            </span>
+                            <span className="absolute bottom-1 left-1 rounded bg-black/75 px-1.5 py-0.5 text-[9px] text-white">{render.status}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </>
+                );
+              })()}
+            </div>
+          )}
+
+          {activeRender && (!poseAssistEnabled || poseAssistStage === "done") && (
+            <div className={`${showMobileResult ? "hidden md:block" : "block"} pane p-4 space-y-3`} data-testid="render-status-panel">
+              <div className="flex items-center justify-between">
+                <div className="section-label">Render</div>
+                <span
+                  data-testid="render-status"
+                  className={`text-xs font-mono ${
+                    activeRender.status === "done" ? "text-emerald-300" :
+                    activeRender.status === "failed" ? "text-red-400" :
+                    activeRender.status === "cancelled" ? "text-zinc-400" :
+                    activeRender.status === "offline" ? "text-zinc-400" : "text-amber-300"
+                  }`}
+                >
+                  {activeRender.status}
+                </span>
+              </div>
+              {activeRender.error && (
+                <div className="text-xs text-red-300 font-mono bg-red-500/10 border border-red-500/30 rounded-md p-2">
+                  {activeRender.error}
+                </div>
+              )}
+              {activeRender.status !== "done" && activeRender.status !== "failed" && activeRender.status !== "offline" && activeRender.status !== "cancelled" && (
+                <div
+                  data-testid="render-live-preview-container"
+                  className="relative w-full aspect-square rounded-md border hairline bg-elevated overflow-hidden"
+                >
+                  <LivePreview
+                    clientId={activeRender.id}
+                    enabled
+                    variant="card"
+                    testId="render-live-preview"
+                    onCancel={async () => {
+                      try {
+                        const updated = await endpoints.cancelRender(activeRender.id);
+                        setActiveRender(updated);
+                        toast.success("Render cancelled");
+                      } catch (e) {
+                        toast.error(e?.response?.data?.detail || "Cancel failed");
+                      }
+                    }}
+                  />
+                </div>
+              )}
+              {activeRender.output_files?.length > 0 && (
+                <div className="space-y-2">
+                  <div className="grid grid-cols-2 gap-2">
+                    {activeRender.output_files.map((u, i) => (
+                      <img key={i} src={mediaUrl(u)} alt="render" className="rounded-md border hairline w-full h-auto" />
+                    ))}
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                    <button type="button"
+                      onClick={() => downloadRenderImage(activeRender.output_files[0], `render-${activeRender.id}.png`)}
+                      className="rounded-lg border hairline px-3 py-2 text-sm font-semibold text-zinc-200 hover:bg-white/5 flex items-center justify-center gap-2"
+                      data-testid="btn-download-finished-render">
+                      <Download className="h-4 w-4" /> Download
+                    </button>
+                    <button type="button"
+                      onClick={async () => {
+                        try {
+                          const reference = await endpoints.prepareRenderReference(activeRender.render_id || activeRender.id);
+                          setReferenceImage(reference);
+                          setSourceRenderId(activeRender.render_id || activeRender.id);
+                          setReferencePreview(activeRender.output_files[0]);
+                          setEditMode("standard");
+                          toast.success("Image loaded for editing");
+                        } catch (e) {
+                          toast.error(e?.response?.data?.detail || "Could not load image for editing");
+                        }
+                      }}
+                      className="rounded-lg border hairline px-3 py-2 text-sm font-semibold text-zinc-200 hover:bg-white/5 flex items-center justify-center gap-2">
+                      <Pencil className="h-4 w-4" /> Edit
+                    </button>
+                    <button type="button"
+                      onClick={async () => {
+                        try {
+                          const reference = await endpoints.prepareRenderReference(activeRender.render_id || activeRender.id);
+                          setReferenceImage(reference);
+                          setSourceRenderId(activeRender.render_id || activeRender.id);
+                          setReferencePreview(activeRender.output_files[0]);
+                          toast.success("Image loaded for animation");
+                        } catch (e) {
+                          toast.error(e?.response?.data?.detail || "Could not load image for animation");
+                        }
+                      }}
+                      className="rounded-lg border hairline px-3 py-2 text-sm font-semibold text-zinc-200 hover:bg-white/5 flex items-center justify-center gap-2">
+                      <Film className="h-4 w-4" /> Animate
+                    </button>
+                    <button type="button"
+                      onClick={async () => {
+                        try {
+                          const reference = await endpoints.prepareRenderReference(activeRender.render_id || activeRender.id);
+                          setReferenceImage(reference);
+                          setSourceRenderId(activeRender.render_id || activeRender.id);
+                          setReferencePreview(activeRender.output_files[0]);
+                          toast.success("Using selected image as reference");
+                        } catch (e) {
+                          toast.error(e?.response?.data?.detail || "Could not use image as reference");
+                        }
+                      }}
+                      className="rounded-lg border hairline px-3 py-2 text-sm font-semibold text-zinc-200 hover:bg-white/5 flex items-center justify-center gap-2">
+                      <ScanFace className="h-4 w-4" /> Reference
+                    </button>
+                    <button type="button"
+                      onClick={async () => {
+                        if (!window.confirm("Remove this render from the Gallery? The original ComfyUI output remains on disk.")) return;
+                        try {
+                          const renderId = activeRender.render_id || activeRender.id;
+                          await endpoints.deleteRender(renderId);
+                          setBatchRenders((current) => current.filter((render) => (render.render_id || render.id) !== renderId));
+                          setActiveRender(null);
+                          setSelectedBatchRenderId(null);
+                          toast.success("Removed from Gallery");
+                        } catch (e) {
+                          toast.error(e?.response?.data?.detail || "Could not remove render");
+                        }
+                      }}
+                      className="rounded-lg border border-red-500/30 px-3 py-2 text-sm font-semibold text-red-300 hover:bg-red-500/10 flex items-center justify-center gap-2">
+                      <Trash2 className="h-4 w-4" /> Delete
+                    </button>
+                    <button type="button"
+                      onClick={() => nav(`/gallery?render=${encodeURIComponent(activeRender.render_id || activeRender.id)}&returnTo=${encodeURIComponent(location.pathname)}`)}
+                      className="rounded-lg bg-emerald-500 px-3 py-2 text-sm font-semibold text-zinc-950 hover:bg-emerald-400"
+                      data-testid="btn-view-finished-render">
+                      View in Gallery
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </aside>
+      </div>
+    </div>
+  );
+}
 
   const mobileCreateIssues = useMemo(() => {
     const issues = [];
