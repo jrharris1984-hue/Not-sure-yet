@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { endpoints } from "@/lib/api";
 import { mediaUrl } from "@/lib/media";
 import { buildMediaSubjects } from "@/lib/mediaLibraryImport";
+import { applyCastAppearance, editCastSubjectDna, CAST_AGE_OPTIONS, CAST_RESEMBLANCE_OPTIONS } from "@/lib/castAppearance";
 import {
   SECTIONS, DEFAULT_DNA,
   randomizeDna, randomizeSection, resetSection,
@@ -19,6 +20,7 @@ import { batchSeed } from "@/lib/batchSeeds";
 import { translatePlainLanguage } from "@/lib/plainLanguagePrompt";
 import { analyzePromptQuality } from "@/lib/promptQuality";
 import DnaSection from "@/components/DnaSection";
+import ImageSourceFlow from "@/components/ImageSourceFlow";
 import PromptPreview from "@/components/PromptPreview";
 import AiAssistBar from "@/components/AiAssistBar";
 import PresetsMenu from "@/components/PresetsMenu";
@@ -633,6 +635,10 @@ export default function Builder({ studio = "standard" }) {
   const isEditWorkflow = activeWorkflow?.kind === "edit";
   const isEnhanceWorkflow = activeWorkflow?.kind === "enhance";
   const isVariationWorkflow = activeWorkflow?.kind === "variation";
+  const isImageFirst = isVariationWorkflow || isEditWorkflow;
+  useEffect(() => {
+    if (isImageFirst) setPoseAssistEnabled(false);
+  }, [isImageFirst, workflowId]);
   const isVideoWorkflow = activeWorkflow?.kind === "video";
   const isTextVideoWorkflow = activeWorkflow?.kind === "text_video";
   const activeCompiler = resolvePromptCompiler({
@@ -983,10 +989,10 @@ export default function Builder({ studio = "standard" }) {
     prevPairingRef.current = key;
     const expected = expectedSubjectCount(primaryDna);
     if (expected > subjects.length && subjects.length < MAX_SUBJECTS) {
-      setSubjects((cur) => [...cur, ...Array.from({ length: Math.max(0, expected - cur.length) }, (_, offset) => {
+      setSubjects((cur) => applyCastAppearance([...cur, ...Array.from({ length: Math.max(0, expected - cur.length) }, (_, offset) => {
         const index = cur.length + offset;
         return makeSubject({ label: subjectLabel(index), dna: seedSubjectFromPairing(primaryDna, index) });
-      })]);
+      })], primaryDna.scenario, locks));
       toast.success(`Scenario set for ${expected} subjects`);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -995,10 +1001,17 @@ export default function Builder({ studio = "standard" }) {
   const updateActiveSubject = (updater) => {
     setSubjects((cur) => cur.map((s) => (s.id === activeSubjectId ? { ...s, ...updater(s) } : s)));
   };
-  const setActiveDna = (newDna) => updateActiveSubject(() => ({ dna: newDna }));
+  const setActiveDna = (newDna) => setSubjects(current => editCastSubjectDna(current, activeSubjectId, newDna));
   const setActiveFieldLocks = (newLocks) => updateActiveSubject(() => ({ field_locks: newLocks }));
 
+  const updateCastScenario = (scenario) => setSubjects(current => {
+    const next = current.map((subject, index) => index === 0
+      ? { ...subject, dna: { ...subject.dna, scenario } } : subject);
+    return applyCastAppearance(next, scenario, locks);
+  });
+
   const setSection = (key, val) => {
+    if (key === "scenario") { updateCastScenario(val); return; }
     if (key === "identity" && ["mother and daughter", "stepmom and stepdaughter"].includes(primaryDna.scenario?.cast_type)) {
       const age = Number(val.age) || 21;
       val = { ...val, age: activeSubjectIdx === 0 ? Math.max(44, age) : Math.min(Math.max(21, age), Math.max(21, Number(primaryDna.identity?.age || 44) - 18)) };
@@ -1253,7 +1266,7 @@ export default function Builder({ studio = "standard" }) {
       return;
     }
     const incompleteLikeness = subjects.find((subject) => subject?.likeness?.enabled && (!subject.likeness.node_id || !subject.likeness.lora_name));
-    if (!isVariationWorkflow && incompleteLikeness) {
+    if (!isImageFirst && incompleteLikeness) {
       toast.error(`Finish the Likeness LoRA setup for Subject ${incompleteLikeness.label || "A"}`);
       return;
     }
@@ -1699,7 +1712,7 @@ export default function Builder({ studio = "standard" }) {
     const seeded = seedSubjectFromPairing(primaryDna, subjects.length);
     const label = subjectLabel(subjects.length);
     const newSub = makeSubject({ label, dna: seeded });
-    setSubjects((cur) => [...cur, newSub]);
+    setSubjects((cur) => applyCastAppearance([...cur, newSub], primaryDna.scenario, locks));
     setActiveSubjectId(newSub.id);
     toast.success(`Subject ${label} added`);
   };
@@ -1715,13 +1728,13 @@ export default function Builder({ studio = "standard" }) {
         if (!locks[section]) primaryVariation[section] = randomizeSection(section, primary.dna[section], primary.field_locks?.[section]);
       });
       const nextPrimary = { ...primary, dna: primaryVariation };
-      return [nextPrimary, ...current.slice(1).map((subject, index) => ({
+      return applyCastAppearance([nextPrimary, ...current.slice(1).map((subject, index) => ({
         ...subject,
         dna: { ...subject.dna, ...Object.fromEntries(["identity", "physique", "face", "hair", "skin"].map((section) => [section,
           locks[section] ? subject.dna[section] : seedSubjectFromPairing(primaryVariation, index + 1)[section]])),
           identity: { ...(locks.identity ? subject.dna.identity : seedSubjectFromPairing(primaryVariation, index + 1).identity), name: subject.dna.identity?.name || "", gender: "female" },
         },
-      }))];
+      }))], primaryVariation.scenario, locks);
     });
     toast.success("People randomized · scene and outfits kept");
   };
@@ -1742,7 +1755,7 @@ export default function Builder({ studio = "standard" }) {
         dna.identity = { ...primaryDna.identity, name: subject.dna.identity?.name || "" };
         dna.face = { ...primaryDna.face };
       }
-      return current.map((item) => {
+      return applyCastAppearance(current.map((item) => {
         if (item.id === activeSubjectId) return { ...item, dna };
         if (activeSubjectIdx === 0 && isMotherPair && item.id !== activeSubjectId) {
           return { ...item, dna: { ...item.dna, identity: { ...item.dna.identity,
@@ -1750,7 +1763,7 @@ export default function Builder({ studio = "standard" }) {
           } } };
         }
         return item;
-      });
+      }), current[0]?.dna.scenario, locks);
     });
     toast.success(`Subject ${activeSubject.label} randomized · outfit and scene kept`);
   };
@@ -2023,1040 +2036,11 @@ export default function Builder({ studio = "standard" }) {
     </div>
   );
 
-  return (
-    <div className={`mobile-builder-content mx-auto max-w-[1600px] px-2.5 sm:px-6 py-3 sm:py-6 space-y-3 sm:space-y-4 ${desktopQuickMode ? "quick-create-mode" : ""}`}>
-      {galleryRecipeMode === "current" && (
-        <div className="pane border border-cyan-500/30 bg-cyan-500/[0.06] px-3 py-2.5 text-xs text-cyan-100" data-testid="current-compiler-rebuild-banner">
-          <div className="flex items-start gap-2">
-            <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-cyan-300" />
-            <div>
-              <div className="font-semibold">Rebuild with Current Compiler</div>
-              <div className="mt-0.5 text-[10px] text-zinc-400">
-                Saved DNA and generation settings were restored, saved prompt overrides were cleared, and the next render will use the current compiler with a new seed.
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-      {mediaImportSummary && (
-        <div className="pane border border-amber-400/30 bg-amber-500/[0.06] p-3 sm:p-4" data-testid="media-import-summary">
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-            <div>
-              <div className="font-display font-bold text-amber-200">Imported from Media</div>
-              <div className="mt-0.5 text-xs text-zinc-400">{mediaImportSummary.sourceName}</div>
-            </div>
-            <button type="button" onClick={()=>setMediaImportSummary(null)} className="self-start rounded-lg border hairline px-2.5 py-1.5 text-xs text-zinc-300 hover:bg-white/5">Hide summary</button>
-          </div>
-          <div className="mt-3 grid gap-3 lg:grid-cols-2">
-            <div>
-              <div className="mb-1.5 font-mono text-[10px] uppercase tracking-wider text-emerald-300">Mapped to Studio controls</div>
-              <div className="flex flex-wrap gap-1.5">
-                {mediaImportSummary.mapped.length ? mediaImportSummary.mapped.map((item,index)=>(
-                  <button type="button" key={`${item.label}-${index}`} onClick={()=>{ const targets={Hair:"hair","Hair color":"hair","Hair length":"hair","Hair style":"hair","Body type":"physique",Bust:"physique",Glutes:"physique",Hips:"physique",Thighs:"physique",Waist:"physique",Expression:"face",Outfit:"wardrobe","Outfit color":"wardrobe",Material:"wardrobe",Fit:"wardrobe",Pose:"pose",Framing:"pose","Camera angle":"pose",Camera:"camera","Composition focus":"pose",Environment:"scene","Lighting source":"lighting","Lighting style":"lighting","Lighting mood":"lighting","Photo style":"style"}; const target=targets[item.label]; if(target){ goSection(target); window.requestAnimationFrame(()=>document.getElementById(`section-${target}`)?.scrollIntoView({behavior:"smooth",block:"start"})); } }} className="rounded-full border border-emerald-400/25 bg-emerald-500/10 px-2 py-1 text-[11px] text-emerald-100 hover:border-amber-400/50 hover:bg-amber-500/10">{item.label}: {item.value}</button>
-                )) : <span className="text-xs text-zinc-500">No direct control matches yet.</span>}
-              </div>
-            </div>
-            <div>
-              <div className="mb-1.5 font-mono text-[10px] uppercase tracking-wider text-cyan-300">Kept as editable reference notes</div>
-              <div className="max-h-24 overflow-auto whitespace-pre-wrap text-xs leading-5 text-zinc-300">{mediaImportSummary.notes.join("\n")}</div>
-            </div>
-          </div>
-        </div>
-      )}
-      {/* Header */}
-      <div className="hidden md:flex items-center gap-2 rounded-xl border border-cyan-400/20 bg-black/40 p-2 text-xs" aria-label="Builder shortcuts">
-        <span className="px-2 font-mono uppercase tracking-wider text-cyan-300">Studio</span>
-        {!desktopQuickMode && [["studio-model", "01 · Model"], ["studio-sections", "02 · Character"], ["studio-render", "03 · Render"]].map(([target, label]) => (
-          <button key={target} type="button" onClick={() => document.getElementById(target)?.scrollIntoView({ behavior: "smooth", block: "start" })}
-            className="rounded-lg border hairline px-3 py-2 text-zinc-300 transition-colors hover:border-amber-400/50 hover:bg-amber-500/10 hover:text-amber-200">
-            {label}
-          </button>
-        ))}
-        <span className="ml-auto hidden xl:inline pr-2 text-zinc-500">{desktopQuickMode ? "Start with the essentials. Full Studio keeps every option." : "All controls are available below."}</span>
-        <button type="button" onClick={() => { setDesktopQuickMode((value) => !value); setQuickReview(false); }}
-          data-testid="btn-desktop-studio-mode" className="ml-auto rounded-lg border border-cyan-400/40 px-3 py-2 font-semibold text-cyan-200 hover:bg-cyan-400/10">
-          {desktopQuickMode ? "Full Studio · all options" : "Quick Create"}
-        </button>
-      </div>
-      <div id="studio-model" className="pane scroll-mt-24 p-2.5 sm:p-4 flex flex-col gap-2.5 sm:gap-3">
-        <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
-          <Input
-            data-testid="input-character-name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            className="bg-elevated border-hairline text-base sm:text-lg font-display font-bold"
-          />
-          <div className="flex flex-wrap gap-2">
-          <select
-            data-testid="select-workflow"
-            value={workflowId}
-            onChange={(e) => {
-              const nextWorkflowId = e.target.value;
-              if (nextWorkflowId !== workflowId) {
-                clearReference();
-                setEditMode("standard");
-                setBodyAdjustRegion("glutes");
-                setBodyAdjustAmount(50);
-                setEditInstruction("");
-              }
-              setWorkflowId(nextWorkflowId);
-              setLoraOverrides({});
-            }}
-            className={`${mobileStudioStep === "start" || mobileStudioStep === "create" ? "block" : "hidden md:block"} bg-elevated border border-hairline rounded-lg px-3 py-2 text-sm text-zinc-100 w-full sm:w-auto sm:min-w-[200px]`}
-          >
-            {workflows.length === 0 && <option value="">No workflows — open Settings</option>}
-            {selectableWorkflows.filter((w) => !["sdxl", "sdxl_dmd2"].includes(w.prompt_style) && !w.name.startsWith("Pony · Ultra Realistic")).map((w) => (
-              <option key={w.id} value={w.id}>{w.kind.toUpperCase()} · {w.name}</option>
-            ))}
-            {selectableWorkflows.some((w) => ["sdxl", "sdxl_dmd2"].includes(w.prompt_style) || w.name.startsWith("Pony · Ultra Realistic")) && (
-              <optgroup label="SDXL and Pony checkpoints">
-                {selectableWorkflows.filter((w) => ["sdxl", "sdxl_dmd2"].includes(w.prompt_style) || w.name.startsWith("Pony · Ultra Realistic")).map((w) => (
-                  <option key={w.id} value={w.id}>{w.name}</option>
-                ))}
-              </optgroup>
-            )}
-            {internalWorkflows.length > 0 && (
-              <optgroup label="Used automatically (not standalone)">
-                {internalWorkflows.map((w) => (
-                  <option key={w.id} value={w.id} disabled>{w.name}</option>
-                ))}
-              </optgroup>
-            )}
-          </select>
-          <button
-            onClick={() => save.mutate()}
-            disabled={save.isPending}
-            data-testid="btn-save-character"
-            className="hidden md:inline-flex items-center gap-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-black text-sm font-semibold px-3 py-2 disabled:opacity-40"
-          >
-            {save.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Save
-          </button>
-          {activeRecipeFamily === "image" && (
-            <select
-              data-testid="select-render-count"
-              value={poseAssistEnabled && !isVariationWorkflow ? 1 : renderCount}
-              onChange={(e) => setRenderCount(Number(e.target.value))}
-              disabled={dispatching || (poseAssistEnabled && !isVariationWorkflow)}
-              className="hidden md:block bg-elevated border border-hairline rounded-lg px-3 py-2 text-sm text-zinc-100 flex-1 sm:flex-none"
-              title="Number of images to queue with unique seeds"
-            >
-              {[1, 2, 4, 6, 8, 10].map((count) => (
-                <option key={count} value={count}>{count} image{count > 1 ? "s" : ""}</option>
-              ))}
-            </select>
-          )}
-          {activeRecipeFamily === "image" && renderCount > 1 && <select value={batchSeedMode}
-            onChange={(event) => setBatchSeedMode(event.target.value)} title="Explore uses widely spaced seeds; Nearby uses consecutive seeds. Both keep your selected prompt."
-            className="hidden md:block bg-elevated border border-hairline rounded-lg px-3 py-2 text-sm text-zinc-100">
-            <option value="explore">Explore different seeds</option>
-            <option value="nearby">Nearby seeds</option>
-          </select>}
-          <button
-            onClick={doDispatch}
-            disabled={dispatching || !workflowId || kreaRenderBlocked || (activeRecipeFamily === "edit" && !referenceImage?.name) || (poseAssistEnabled && !isVariationWorkflow && (!poseAssistAvailable || !poseReferenceImage?.name || (poseAssistStatus && !poseAssistStatus.ready)))}
-            data-testid="btn-dispatch-comfyui-render"
-            className="hidden md:inline-flex items-center gap-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black text-sm font-semibold px-3 py-2 disabled:opacity-40"
-          >
-            {dispatching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />} {poseAssistEnabled && !isVariationWorkflow ? "Pose Assist" : "Render"}
-          </button>
-          <MobileOverflow testId="builder-overflow" always label="More">
-            <button
-              type="button"
-              onClick={() => save.mutate()}
-              disabled={save.isPending}
-              data-testid="btn-save-character-mobile-menu"
-              className="md:hidden inline-flex items-center gap-1.5 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm font-semibold text-amber-200 disabled:opacity-40"
-            >
-              {save.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Save character
-            </button>
-            <button
-              type="button"
-              onClick={resetCharacter}
-              data-testid="btn-reset-character"
-              className="inline-flex items-center gap-1.5 rounded-lg border border-red-500/30 px-3 py-2 text-sm font-semibold text-red-300 hover:bg-red-500/10"
-              title="Reset all current character selections"
-            >
-              <RotateCcw className="h-4 w-4" /> Reset
-            </button>
-            <button
-              onClick={randomizeAllSubjects}
-              data-testid="btn-randomize-all"
-              className="inline-flex items-center gap-1.5 rounded-lg border hairline px-3 py-2 text-sm text-zinc-200 hover:bg-white/5"
-              title={isMulti ? `Randomize all ${subjects.length} subjects` : "Randomize DNA"}
-            >
-              <Shuffle className="h-4 w-4" /> {isMulti ? "Randomize all" : "Randomize"}
-            </button>
-            <PresetsMenu
-              currentDna={activeDna}
-              sectionLocks={locks}
-              fieldLocks={activeFieldLocks}
-              onApply={(preset, context = {}) => {
-                const next = { ...preset };
-                Object.keys(locks).forEach((k) => { if (locks[k]) next[k] = activeDna[k]; });
-                if (context.type === "heritage") {
-                  const cast = HERITAGE_CASTS[context.cast] || HERITAGE_CASTS.solo;
-                  const primaryDna = {
-                    ...next,
-                    scenario: {
-                      ...(next.scenario || {}),
-                      cast_size: cast.castSize,
-                      cast_type: cast.castType,
-                    },
-                  };
-                  const primary = {
-                    ...(subjects[0] || activeSubject),
-                    label: "A",
-                    dna: primaryDna,
-                  };
-                  if (context.cast === "solo") {
-                    setSubjects([primary]);
-                    setActiveSubjectId(primary.id);
-                  } else {
-                    const relativeDna = seedSubjectFromPairing(primaryDna, 1);
-                    const relative = makeSubject({ label: "B", dna: relativeDna });
-                    setSubjects([primary, relative]);
-                    setActiveSubjectId(primary.id);
-                  }
-                  toast.success(`${cast.label} heritage cast created`);
-                } else {
-                  setActiveDna(next);
-                  toast.success(`Preset applied to Subject ${activeSubject.label}`);
-                }
-              }}
-            />
-            <div
-              className="inline-flex items-center gap-1 rounded-lg border border-hairline bg-elevated p-1 text-sm text-zinc-300"
-              title="Changes prompt vocabulary only; it never adds activities or changes DNA selections."
-              data-testid="prompt-language-control"
-            >
-              <Flame className="ml-1 h-4 w-4 shrink-0 text-fuchsia-300" />
-              <span className="hidden sm:inline px-1 text-xs">Language</span>
-              {[
-                ["editorial", "Editorial"],
-                ["direct", "Direct"],
-                ["explicit", "Explicit"],
-              ].map(([value, label]) => (
-                <button
-                  key={value}
-                  type="button"
-                  onClick={() => {
-                    setPromptLanguage(value);
-                    setRaunch(value === "explicit");
-                  }}
-                  className={
-                    "rounded-md px-2 py-1 text-[10px] font-semibold transition "
-                    + (promptLanguage === value
-                      ? "bg-fuchsia-500/20 text-fuchsia-100 ring-1 ring-fuchsia-500/30"
-                      : "text-zinc-500 hover:bg-white/5 hover:text-zinc-200")
-                  }
-                  aria-pressed={promptLanguage === value}
-                  data-testid={`btn-prompt-language-${value}`}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-            {!isNew && (
-              <Link
-                to={`/shoot/new/${id}`}
-                data-testid="btn-open-shoot"
-                className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/40 bg-emerald-500/10 text-emerald-200 text-sm font-semibold px-3 py-2 hover:bg-emerald-500/20"
-                title="Batch photo shoot"
-              >
-                <Camera className="h-4 w-4" /> Shoot
-              </Link>
-            )}
-            <button
-              onClick={exportJson}
-              data-testid="btn-export-json"
-              className="inline-flex items-center gap-1.5 rounded-lg border hairline px-3 py-2 text-sm text-zinc-300"
-              title="Export DNA JSON"
-            >
-              <Download className="h-4 w-4" /> Export
-            </button>
-            <label
-              data-testid="btn-import-json"
-              className="inline-flex items-center gap-1.5 rounded-lg border hairline px-3 py-2 text-sm text-zinc-300 cursor-pointer"
-              title="Import DNA JSON"
-            >
-              <Upload className="h-4 w-4" /> Import
-              <input type="file" accept="application/json" onChange={importJson} className="hidden" />
-            </label>
-          </MobileOverflow>
-        </div>
-        </div>
-        <div className={mobileStudioStep === "start" ? "block" : "hidden md:block"}>
-          <TagInput value={tags} onChange={setTags} placeholder="tag this character (mood, ethnicity, persona)…" testId="builder-tags" />
-        </div>
-      </div>
-
-      <MobileStudioFlow
-        steps={studioSteps}
-        title={studioProfile?.title || "Studio flow"}
-        currentStep={mobileStudioStep}
-        activeSection={activeSection}
-        locks={locks}
-        sections={SECTIONS}
-        mode={mobileStudioMode}
-        summary={mobileStudioSummary}
-        onModeChange={changeMobileStudioMode}
-        onStep={openMobileStudioStep}
-        onSection={(key) => {
-          setMobileStudioStep(mobileStudioStepForSection(key, studioSteps));
-          goSection(key);
-        }}
-      />
-
-      <nav className="hidden md:grid grid-cols-5 gap-2" aria-label="Creation steps" data-testid="desktop-creation-steps">
-        {studioSteps.map((step, index) => {
-          const selected = step.id === mobileStudioStep;
-          return <button key={step.id} type="button" onClick={() => openMobileStudioStep(step.id)}
-            aria-current={selected ? "step" : undefined}
-            className={`studio-stage rounded-xl border px-3 py-3 text-left ${selected ? "studio-stage-active border-amber-400/60 bg-amber-500/10" : "hairline bg-elevated hover:border-cyan-400/50"}`}>
-            <span className={`text-[10px] font-mono ${selected ? "text-amber-300" : "text-zinc-500"}`}>{String(index + 1).padStart(2, "0")}</span>
-            <span className="mt-1 block font-display text-sm font-bold text-zinc-100">{step.label}</span>
-            <span className="mt-0.5 block text-[11px] text-zinc-400">{step.hint}</span>
-          </button>;
-        })}
-      </nav>
-
-      <div className={mobileStudioStep === "start" ? "block" : "hidden md:block"}>
-        <AiAssistBar dna={activeDna} aiProvider={aiProvider}
-          onApplyDna={(draft) => { setActiveDna(draft); setPlainLanguage(""); }}
-          onApplySubjects={(draftSubjects) => {
-            setSubjects(draftSubjects);
-            setActiveSubjectId(draftSubjects[0].id);
-            setPlainLanguage("");
-            setPromptOverride("");
-            setNegativePromptOverride("");
-          }} />
-      </div>
-
-      {mobileStudioStep === "create" && !showMobileResult && (
-        <>
-          <MobileCreateReview
-            workflow={activeWorkflow}
-            compiler={activeCompiler}
-            family={activeRecipeFamily}
-            qualityTier={qualityTier}
-            onQualityTier={applyQualityTier}
-            renderCount={poseAssistEnabled && !isVariationWorkflow ? 1 : renderCount}
-            onRenderCount={setRenderCount}
-            summaries={mobileCreateSummaries}
-            issues={mobileCreateIssues}
-            mode={mobileStudioMode}
-            onRequestAdvanced={() => setMobileStudioMode("advanced")}
-          />
-          {activeRecipeFamily === "image" && renderCount > 1 && <label className="md:hidden pane p-3 flex items-center justify-between gap-3 text-xs text-zinc-200">
-            Batch variety
-            <select value={batchSeedMode} onChange={(event) => setBatchSeedMode(event.target.value)}
-              className="bg-elevated border border-hairline rounded-lg px-2 py-2 text-xs text-zinc-100">
-              <option value="explore">Explore different seeds</option>
-              <option value="nearby">Nearby seeds</option>
-            </select>
-          </label>}
-          {activeRecipeFamily === "image" && !isKrea2 && !isVariationWorkflow && (
-            <div className="md:hidden">
-              <PoseAssistPanel
-                enabled={poseAssistEnabled}
-                onEnabled={changePoseAssistEnabled}
-                preview={poseReferencePreview}
-                uploading={poseReferenceUploading}
-                onUpload={uploadPoseReference}
-                onClear={clearPoseReference}
-                strength={poseAssistStrength}
-                onStrength={setPoseAssistStrength}
-                polish={poseAssistPolish}
-                onPolish={setPoseAssistPolish}
-                stage={poseAssistStage}
-                available={poseAssistAvailable}
-                installing={installingPoseAssist}
-                onInstall={installPoseAssist}
-                systemStatus={poseAssistStatus}
-              />
-            </div>
-          )}
-          <PromptAlignmentCard
-            analysis={promptAnalysis}
-            priorityPlan={compiledPrompt.priorityPlan}
-            adjustments={compiledPrompt.guardAdjustments || []}
-            mode={mobileStudioMode}
-          />
-        </>
-      )}
-
-      {showMobileResult && (
-        <MobileRenderResult
-          render={mobileResultRender}
-          batch={batchRenders}
-          selectedId={selectedBatchRenderId}
-          onSelect={(render) => {
-            setSelectedBatchRenderId(render.id);
-            setActiveRender(render);
-          }}
-          onKeep={keepFinishedRender}
-          onVariation={queueVariationFromFinishedRender}
-          onEdit={() => reuseFinishedRender("edit")}
-          onAnimate={() => reuseFinishedRender("video")}
-          onBackCharacter={returnToCharacterFromResult}
-          onGallery={() => nav(`/gallery?render=${encodeURIComponent(activeRender.render_id || activeRender.id)}&returnTo=${encodeURIComponent(location.pathname)}`)}
-          onDownload={(url) => downloadRenderImage(
-            url,
-            `render-${activeRender.render_id || activeRender.id}.${/\.(webm|mp4|mov)(?:[?&]|$)/i.test(decodeURIComponent(url)) ? "webm" : "png"}`
-          )}
-          busy={postRenderBusy}
-        />
-      )}
-
-      <div className={(showMobileResult ? "hidden " : "md:hidden ") + "fixed inset-x-0 z-30 mobile-builder-actions border-t hairline bg-[#111017]/95 px-2.5 py-2 backdrop-blur-xl shadow-[0_-12px_30px_rgba(0,0,0,0.28)]"} data-testid="mobile-builder-actions">
-        <div className="grid grid-cols-[0.9fr_1.4fr] gap-2">
-          <button
-            type="button"
-            onClick={() => moveMobileStudioStep(-1)}
-            disabled={activeMobileStudioIndex === 0}
-            className="inline-flex items-center justify-center gap-1.5 rounded-xl border hairline py-3 text-sm font-semibold text-zinc-200 disabled:opacity-30"
-            aria-label="Previous Studio step"
-            data-testid="btn-mobile-studio-back"
-          >
-            <ChevronLeft className="h-4 w-4" /> Back
-          </button>
-          {mobileStudioStep === "create" ? (
-            <button
-              type="button"
-              onClick={doDispatch}
-              disabled={dispatching || !workflowId || mobileCreateIssues.length > 0}
-              className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-emerald-500 py-3 text-sm font-bold text-black disabled:opacity-40"
-              data-testid="btn-mobile-studio-render"
-            >
-              {dispatching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />} {poseAssistEnabled && !isVariationWorkflow ? "Generate" : "Render"}
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={() => moveMobileStudioStep(1)}
-              className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-amber-500 py-3 text-sm font-bold text-black"
-              data-testid="btn-mobile-studio-continue"
-            >
-              Continue <ChevronRight className="h-4 w-4" />
-            </button>
-          )}
-        </div>
-      </div>
-
-      <div className={`quick-hide ${mobileStudioStep === "create" ? "block" : "hidden md:block"}`}>
-        {activeWorkflow && (activeCompiler !== "qwen_edit" || isEnhanceWorkflow) && (
-          <div className="hidden md:block">
-            <RenderRecipeSelector
-              compiler={activeCompiler}
-              value={qualityTier}
-              onChange={applyQualityTier}
-            />
-          </div>
-        )}
-
-        {activeRecipeFamily === "image" && !isKrea2 && !isVariationWorkflow && (
-          <div className="hidden md:block mt-3 sm:mt-4">
-            <PoseAssistPanel
-              enabled={poseAssistEnabled}
-              onEnabled={changePoseAssistEnabled}
-              preview={poseReferencePreview}
-              uploading={poseReferenceUploading}
-              onUpload={uploadPoseReference}
-              onClear={clearPoseReference}
-              strength={poseAssistStrength}
-              onStrength={setPoseAssistStrength}
-              polish={poseAssistPolish}
-              onPolish={setPoseAssistPolish}
-              stage={poseAssistStage}
-              available={poseAssistAvailable}
-              installing={installingPoseAssist}
-              onInstall={installPoseAssist}
-              systemStatus={poseAssistStatus}
-            />
-          </div>
-        )}
-
-        {activeWorkflow && !["pose", "refine", "krea_style"].includes(activeWorkflow.kind) && (
-          <div className="mt-3 sm:mt-4">
-            <UniversalLoraPicker
-              workflow={activeWorkflow}
-              value={selectedLora}
-              onChange={setSelectedLora}
-              slotLabel="LoRA 1"
-              excludedNames={showSecondLora && secondaryLora.name ? [secondaryLora.name] : []}
-            />
-            {showSecondLora ? (
-              <div className="mt-3">
-                <button type="button" className="mb-2 text-xs text-zinc-400 underline" onClick={() => {
-                  setSecondaryLora({ name: "", strength: 0.8, triggerWords: [] });
-                  setShowSecondLora(false);
-                }}>Remove second LoRA</button>
-                <UniversalLoraPicker workflow={activeWorkflow} value={secondaryLora}
-                  onChange={setSecondaryLora} slotLabel="LoRA 2"
-                  excludedNames={selectedLora.name ? [selectedLora.name] : []} />
-                <p className="mt-2 text-xs text-zinc-500">Stacking LoRAs can change the result substantially. Adjust each strength if needed.{poseAssistEnabled ? " Pose Assist applies these to the Chroma polish stage." : ""}</p>
-              </div>
-            ) : (
-              <button type="button" className="mt-2 rounded-lg border hairline px-3 py-2 text-xs text-cyan-200 hover:bg-white/5"
-                onClick={() => setShowSecondLora(true)}>+ Add second LoRA</button>
-            )}
-          </div>
-        )}
-
-        {isGoldenChroma && (
-          <div className={(mobileStudioMode === "advanced" ? "block " : "hidden md:block ") + "mt-3 sm:mt-4"}>
-            <ChromaControls value={chromaSettings} onChange={setChromaSettings} />
-          </div>
-        )}
-      </div>
-
-      {/* Subject controls stay available, but stay out of Simple Create review. */}
-      {activeSection !== "identity" && <div className={`quick-hide ${mobileStudioStep === "create" && mobileStudioMode === "simple" ? "hidden md:block" : "block"}`}>
-        <SubjectSwitcher
-          subjects={subjects}
-          activeId={activeSubjectId}
-          expectedCount={expectedCount}
-          primaryLabel={subjects[0]?.label || "A"}
-          onSelect={setActiveSubjectId}
-          onAdd={addSubject}
-          onRemove={removeSubject}
-          onCopyFromPrimary={copyPrimaryToActive}
-          onRandomizeActive={randomizeActive}
-        />
-      </div>}
-
-      <div className={`quick-hide ${mobileStudioStep === "create" && mobileStudioMode === "advanced" ? "space-y-2" : "hidden md:block md:space-y-2"}`}>
-        <div className="pane px-3 py-2 flex items-center gap-2" data-testid="glance-header">
-          <button
-            type="button"
-            onClick={() => setCollapsed((cur) => ({ ...cur, _glance: !cur._glance }))}
-            data-testid="btn-collapse-glance"
-            className="flex items-center gap-2 text-left flex-1 group"
-          >
-            <ChevronDown className={`h-4 w-4 text-zinc-500 group-hover:text-zinc-200 transition-transform ${collapsed._glance ? "-rotate-90" : ""}`} />
-            <span className="section-label">DNA at a glance{isMulti ? ` · ${subjects.length} subjects` : ""}</span>
-          </button>
-        </div>
-        {!collapsed._glance && <DnaAtAGlance dna={activeDna} name={name} subjects={isMulti ? subjects : undefined} />}
-      </div>
-
-      <div className={editMode === "body_adjust" ? "grid grid-cols-1 gap-4" : "grid grid-cols-1 lg:grid-cols-[260px_1fr_380px] gap-4"}>
-        {/* Left rail - grouped-by-phase section nav (uses active subject's dna for filled dots) */}
-        <aside className={`quick-hide hidden lg:block h-fit sticky top-20 ${editMode === "body_adjust" ? "!hidden" : ""}`}>
-          <GroupedSectionRail
-            dna={activeDna}
-            locks={locks}
-            activeSection={activeSection}
-            onSelect={(key) => nav(sectionUrl(key))}
-            testIdPrefix="nav-section"
-          />
-        </aside>
-
-        {/* Mobile section chips — grouped by phase */}
-        <div className={`hidden md:flex lg:hidden overflow-x-auto scroll-fade -mx-3 px-3 gap-2 pb-1 ${editMode === "body_adjust" ? "!hidden" : ""}`}>
-          {SECTIONS.map((s) => (
-            <Link
-              key={s.key}
-              to={sectionUrl(s.key)}
-              data-testid={`nav-section-${s.key}-mobile`}
-              className={`chip chip-${phaseOfSection(s.key)} whitespace-nowrap ${activeSection === s.key ? "active" : ""}`}
-            >
-              {s.title}{locks[s.key] && " 🔒"}
-            </Link>
-          ))}
-        </div>
-
-        {/* Center - single active section */}
-        {editMode === "body_adjust" && (
-          <section className="pane border-amber-500/30 bg-amber-500/[0.04] p-4 sm:p-5 space-y-4" data-testid="focused-body-adjust-banner">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <div className="section-label text-amber-200">Edit existing image</div>
-                <h2 className="font-display mt-1 text-lg font-bold text-white">Body Adjust</h2>
-                <p className="mt-1 max-w-2xl text-xs text-zinc-400">The source image is the baseline. Body Adjust uses Chroma1-HD img2img; 50 is the original, lower values reduce the selected region, and higher values enlarge it.</p>
-              </div>
-              <button type="button" onClick={() => { setEditMode("standard"); setBodyAdjustAmount(50); }}
-                className="rounded-lg border hairline px-3 py-2 text-xs font-semibold text-zinc-300 hover:text-white">
-                Exit Body Adjust
-              </button>
-            </div>
-
-            <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_220px]">
-              <div className="space-y-4">
-                <div>
-                  <div className="mb-2 text-[11px] font-mono uppercase tracking-widest text-zinc-500">Region</div>
-                  <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
-                    {[["glutes","Glutes"],["bust","Bust"],["hips","Hips"],["thighs","Thighs"],["waist","Waist"]].map(([value,label]) => (
-                      <button key={value} type="button" onClick={() => setBodyAdjustRegion(value)}
-                        className={`rounded-lg border px-3 py-2 text-xs font-semibold ${bodyAdjustRegion === value ? "border-amber-400 bg-amber-500/15 text-amber-100" : "border-hairline text-zinc-400 hover:text-zinc-200"}`}>
-                        {label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                <label className="block space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-mono uppercase tracking-widest text-zinc-500">Adjustment</span>
-                    <span className="font-mono text-sm font-bold text-amber-200">{bodyAdjustAmount}</span>
-                  </div>
-                  <input type="range" min="0" max="100" step="5" value={bodyAdjustAmount}
-                    onChange={(event) => setBodyAdjustAmount(Number(event.target.value))}
-                    className="w-full accent-amber-400" data-testid="range-focused-body-adjust" />
-                  <div className="flex justify-between font-mono text-[10px] uppercase tracking-wider text-zinc-500">
-                    <span>0 · smaller</span><span>50 · original</span><span>100 · larger</span>
-                  </div>
-                </label>
-                <div className="rounded-lg border hairline bg-black/20 p-3 text-xs text-zinc-300">
-                  <span className="font-semibold text-zinc-100">Chroma instruction: </span>{bodyAdjustInstruction}
-                </div>
-              </div>
-              <div>
-                <div className="mb-2 text-[11px] font-mono uppercase tracking-widest text-zinc-500">Source image</div>
-                {referencePreview ? (
-                  <img src={referencePreview} alt="Body Adjust source" className="max-h-56 w-full rounded-lg border hairline bg-black/30 object-contain" />
-                ) : (
-                  <div className="flex min-h-36 items-center justify-center rounded-lg border border-dashed border-amber-500/30 p-3 text-center text-xs text-zinc-500">
-                    Source image is loading. If it does not appear, return to Gallery and select Body Adjust again.
-                  </div>
-                )}
-              </div>
-            </div>
-            <p className="text-[10px] text-zinc-500">Face, pose, wardrobe, framing, scene, lighting, and unselected body regions are preserved.</p>
-          </section>
-        )}
-        <div id="studio-sections" className={`${mobileStudioStep === "create" ? "hidden md:block" : "block"} ${editMode === "body_adjust" ? "hidden" : ""} scroll-mt-24 space-y-4`}>
-      {studioProfile && <section className="pane border-cyan-400/25 p-3 sm:p-4" data-testid={`studio-${studio}-presets`}>
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div>
-            <div className="section-label">{studioProfile.title} · Scene presets</div>
-            <p className="mt-1 text-xs text-zinc-400">Choose a starting composition, then edit every detail in the steps below.</p>
-          </div>
-          <Link to="/studios" className="text-xs text-cyan-300 hover:underline">Other studios</Link>
-        </div>
-        <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
-          {studioProfile.presets.map((preset) => <button key={preset.name} type="button"
-            onClick={() => { setActiveDna(applyStudioPreset(activeDna, preset)); setQuickReview(false); goSection(studio === "feet" ? "feet" : "watersports"); }}
-            className="rounded-xl border hairline bg-black/25 px-3 py-3 text-left transition-colors hover:border-cyan-400/60 focus-visible:border-cyan-400">
-            <span className="block text-xs font-semibold text-cyan-100">{preset.name}</span>
-            <span className="mt-1 block text-[11px] text-zinc-400">{preset.description}</span>
-          </button>)}
-        </div>
-      </section>}
-      {desktopQuickMode && editMode !== "body_adjust" && (
-        <section className="hidden md:block studio-journey rounded-2xl p-5" data-testid="desktop-quick-create">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <div className="section-label">Create / Main Studio</div>
-              <h2 className="font-display mt-1 text-xl font-bold text-white">Build your image</h2>
-              <p className="mt-1 text-sm text-zinc-400">Seven stages from character to render. Jump to any detailed control below.</p>
-            </div>
-            <span className="rounded-full border border-amber-400/40 bg-amber-500/10 px-3 py-1 text-xs text-amber-200">{activeWorkflow?.name || "Choose a model"}</span>
-          </div>
-          <p className="mt-4 text-[11px] font-mono uppercase tracking-widest text-cyan-300">Choose a category, then a control</p>
-          <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-4 xl:grid-cols-7" aria-label="Creation stages">
-            {quickStages.map((stage, index) => (
-              <button key={stage.key} type="button" onClick={() => selectQuickStage(index)}
-                aria-current={quickStageIndex === index ? "step" : undefined}
-                aria-expanded={stage.sections.length ? quickOpenCategory === stage.key : undefined}
-                className={`studio-stage relative min-h-[90px] rounded-xl px-3 py-3 text-left ${quickStageIndex === index ? "studio-stage-active" : index < quickStageIndex ? "studio-stage-past" : ""}`}>
-                <span className="block font-mono text-[10px] tracking-widest text-cyan-300">{String(index + 1).padStart(2, "0")} / 07</span>
-                <span className="mt-2 block font-display text-sm font-bold text-white">{stage.title}</span>
-                <span className="mt-0.5 block text-[11px] text-zinc-400">{stage.detail}</span>
-              </button>
-            ))}
-          </div>
-          {quickOpenCategory !== "review" && (
-            <div className="studio-subcategories mt-3 flex flex-wrap items-center gap-2 rounded-xl p-3" aria-label={`${quickStages.find((stage) => stage.key === quickOpenCategory)?.title || "Category"} controls`}>
-              <span className="mr-2 text-xs font-semibold text-cyan-200">{quickStages.find((stage) => stage.key === quickOpenCategory)?.title}</span>
-              {quickStages.find((stage) => stage.key === quickOpenCategory)?.sections.map((key) => {
-                const section = SECTIONS.find((item) => item.key === key);
-                return section && <button key={key} type="button" onClick={() => { setQuickReview(false); goSection(key); }}
-                  className={`rounded-lg border px-3 py-2 text-xs font-semibold transition-colors ${activeSection === key && !quickReview ? "border-lime-400 bg-lime-400/15 text-lime-200" : "border-white/15 bg-white/[0.04] text-zinc-300 hover:border-cyan-400/60 hover:text-white"}`}>
-                  {section.title}
-                </button>;
-              })}
-            </div>
-          )}
-        </section>
-      )}
-
-          {desktopQuickMode && quickReview ? (
-            <div className="hidden md:block pane border-cyan-400/30 p-5 space-y-4" data-testid="desktop-quick-review">
-              <div className="section-label">Ready to render</div>
-              <div className="grid grid-cols-2 gap-3 text-sm">
-                <div><span className="text-zinc-500">Model</span><div className="font-semibold">{activeWorkflow?.name || "Select a model"}</div></div>
-                <div><span className="text-zinc-500">Output</span><div className="font-semibold">{qualityTier} · {activeRecipeFamily === "image" ? `${renderCount} image${renderCount === 1 ? "" : "s"}` : activeRecipeFamily}</div></div>
-              </div>
-              <div className="rounded-xl border hairline bg-black/40 p-3 text-xs leading-relaxed text-zinc-300 max-h-44 overflow-y-auto">{finalPositive || "Choose the subject and scene to build a prompt."}</div>
-              {mobileCreateIssues.length > 0 && <div className="text-xs text-rose-300">{mobileCreateIssues.join(" ")}</div>}
-              <button type="button" onClick={doDispatch} disabled={dispatching || !workflowId || mobileCreateIssues.length > 0}
-                className="rounded-lg bg-amber-500 px-5 py-3 text-sm font-bold text-black disabled:opacity-40">
-                {dispatching ? "Rendering…" : "Render images"}
-              </button>
-              {activeRender && (
-                <div className="border-t hairline pt-4" data-testid="quick-create-result">
-                  <div className="section-label">Latest render · {activeRender.status}</div>
-                  {activeRender.error && <p className="mt-2 text-xs text-rose-300">{activeRender.error}</p>}
-                  {activeRender.output_files?.[0] ? (
-                    <Link to={`/gallery?render=${encodeURIComponent(activeRender.render_id || activeRender.id)}&returnTo=${encodeURIComponent(location.pathname)}`}
-                      className="mt-3 inline-block max-w-sm overflow-hidden rounded-xl border border-cyan-400/30">
-                      <img src={mediaUrl(activeRender.output_files[0])} alt="Latest image · open in Gallery" className="max-h-80 w-full object-contain" />
-                      <span className="block p-2 text-center text-xs font-semibold text-cyan-200">Open full size in Gallery</span>
-                    </Link>
-                  ) : <p className="mt-2 text-xs text-zinc-400">Your image will appear here when it finishes.</p>}
-                </div>
-              )}
-            </div>
-          ) : null}
-          <div key={activeSection} className={`studio-section-enter ${desktopQuickMode && quickReview ? "md:hidden" : "block"}`}>
-          <div className="hidden md:flex items-center justify-between text-xs font-mono text-zinc-500">
-            <span>Detail {activeIdx + 1} of {SECTIONS.length}{isMulti && ` · Subject ${activeSubject.label}`}</span>
-            <span className={`uppercase tracking-widest section-label phase-${phaseOfSection(activeSection)}`}>{SECTIONS[activeIdx].title}</span>
-          </div>
-          <div className="hidden md:block h-1 rounded-full bg-elevated overflow-hidden">
-            <div
-              className="h-full bg-amber-400 transition-all"
-              style={{ width: `${((activeIdx + 1) / SECTIONS.length) * 100}%` }}
-            />
-          </div>
-          {desktopQuickMode && <div className="hidden md:block">
-            <SubjectSwitcher subjects={subjects} activeId={activeSubjectId} expectedCount={expectedCount}
-              primaryLabel={subjects[0]?.label || "A"} onSelect={setActiveSubjectId}
-              onAdd={addSubject} onRemove={removeSubject} onCopyFromPrimary={copyPrimaryToActive}
-              onRandomizeActive={randomizeActive} showAddForSingle />
-          </div>}
-          {sectionNavigation("top")}
-          {activeSection === "identity" && (
-            <>
-            <div className="pane p-3 sm:p-4 space-y-3" data-testid="person-scenario-setup">
-              <div className="section-label">People &amp; scenario</div>
-              <p className="text-xs text-zinc-400">Choose the cast and scenario, then set each person's age and appearance. The editor adds the required subjects automatically.</p>
-              <div className="grid gap-3 sm:grid-cols-2">
-                {SECTIONS.find((section) => section.key === "scenario").fields.filter((field) => ["cast_size", "cast_type"].includes(field.key)).map((field) => (
-                  <label key={field.key} className="space-y-1 text-xs text-zinc-300">
-                    <span>{field.label}</span>
-                    <select
-                      data-testid={`person-${field.key}`}
-                      value={primaryDna.scenario?.[field.key] || (field.key === "cast_size" ? "solo" : "none")}
-                      onChange={(event) => setSubjects((cur) => cur.map((subject, index) => index === 0 ? {
-                        ...subject,
-                        dna: { ...subject.dna,
-                          ...(field.key === "cast_type" && ["mother and daughter", "stepmom and stepdaughter", "grandmother, mother and daughter"].includes(event.target.value) ? { identity: { ...subject.dna.identity, age: Math.max(event.target.value === "grandmother, mother and daughter" ? 68 : 44, Number(subject.dna.identity?.age) || 44), gender: "female" } } : {}),
-                          scenario: {
-                          ...subject.dna.scenario,
-                          [field.key]: event.target.value,
-                          ...(field.key === "cast_type" && event.target.value !== "none" ? { cast_size: ["triplets", "grandmother, mother and daughter"].includes(event.target.value) ? "trio" : "duo" } : {}),
-                        } },
-                      } : subject))}
-                      className="w-full rounded-lg border hairline bg-elevated px-3 py-2 text-sm text-zinc-100"
-                    >
-                      {field.options.map((option) => <option key={option} value={option}>{option}</option>)}
-                    </select>
-                  </label>
-                ))}
-              </div>
-              <button type="button" onClick={randomizePerson} data-testid="btn-randomize-person"
-                className="inline-flex items-center gap-2 rounded-lg border border-cyan-400/40 bg-cyan-400/10 px-3 py-2 text-xs font-semibold text-cyan-100 hover:bg-cyan-400/20">
-                <Shuffle className="h-4 w-4" /> Randomize person
-              </button>
-              {subjects.length > 1 && <button type="button" onClick={randomizeCast} data-testid="btn-randomize-group"
-                className="ml-2 inline-flex items-center gap-2 rounded-lg border border-fuchsia-400/40 bg-fuchsia-400/10 px-3 py-2 text-xs font-semibold text-fuchsia-100 hover:bg-fuchsia-400/20">
-                <Shuffle className="h-4 w-4" /> Randomize group · female
-              </button>}
-              <button type="button" onClick={randomizeScene} data-testid="btn-randomize-scene"
-                className="ml-2 inline-flex items-center gap-2 rounded-lg border hairline px-3 py-2 text-xs font-semibold text-zinc-200 hover:bg-white/5">
-                <Shuffle className="h-4 w-4" /> Randomize scene
-              </button>
-            </div>
-            <div className="quick-hide"><SubjectSwitcher
-              subjects={subjects}
-              activeId={activeSubjectId}
-              expectedCount={expectedCount}
-              primaryLabel={subjects[0]?.label || "A"}
-              onSelect={setActiveSubjectId}
-              onAdd={addSubject}
-              onRemove={removeSubject}
-              onCopyFromPrimary={copyPrimaryToActive}
-              onRandomizeActive={randomizeActive}
-              showAddForSingle
-            /></div>
-            </>
-          )}
-          {activeSection === "pose" && expectedCount > 1 && <div className="pane p-3" data-testid="cast-aware-poses">
-            <div className="section-label">Poses for {expectedCount} people</div>
-            <p className="mt-1 text-xs text-zinc-400">Choose a shared composition; each person keeps separate character settings.</p>
-            <div className="mt-2 flex flex-wrap gap-2">
-              {(expectedCount === 2
-                ? ["side by side", "back to back", "facing each other", "walking together", "seated together", "embracing", "dancing together"]
-                : ["group portrait", "staggered lineup", "semicircle", "walking together", "seated group", "standing at different depths", "hands joined"]
-              ).map((pose) => <button key={pose} type="button" onClick={() => setSection("pose", { ...activeDna.pose, action: pose, distance: "wide shot" })}
-                className={`rounded-lg border px-3 py-2 text-xs capitalize ${activeDna.pose?.action === pose ? "border-amber-400 text-amber-200" : "hairline text-zinc-300"}`}>{pose}</button>)}
-            </div>
-          </div>}
-          {studioProfile && activeSection === studio && <div className="flex gap-2 overflow-x-auto pb-1" role="tablist" aria-label={`${studioProfile.title} controls`} data-testid="specialty-field-groups">
-            {studioProfile.fieldGroups.map((group, index) => <button key={group.label} type="button" role="tab"
-              aria-selected={specialtyTab === index} onClick={() => setSpecialtyTab(index)}
-              className={`shrink-0 rounded-lg border px-3 py-2 text-xs font-semibold ${specialtyTab === index ? "border-amber-400 bg-amber-500/10 text-amber-100" : "hairline text-zinc-400"}`}>
-              {group.label}
-            </button>)}
-          </div>}
-          <DnaSection
-            key={`${activeSubjectId}-${activeSection}`}
-            section={studioProfile && activeSection === studio
-              ? { ...SECTIONS[activeIdx], fields: SECTIONS[activeIdx].fields.filter((field) => studioProfile.fieldGroups[specialtyTab]?.keys.includes(field.key)) }
-              : SECTIONS[activeIdx]}
-            value={activeDna[activeSection] || {}}
-            onChange={(v) => setSection(activeSection, v)}
-            locked={!!locks[activeSection]}
-            onToggleLock={() => setLocks({ ...locks, [activeSection]: !locks[activeSection] })}
-            onRandomize={() => setSection(activeSection, randomizeSection(activeSection, activeDna[activeSection] || {}, activeFieldLocks[activeSection] || {}))}
-            onReset={() => setSection(activeSection, resetSection(activeSection))}
-            onSuggest={() => runSuggest(activeSection)}
-            fieldLocks={activeFieldLocks[activeSection] || {}}
-            onToggleFieldLock={(fieldKey) => setActiveFieldLocks({
-              ...activeFieldLocks,
-              [activeSection]: { ...(activeFieldLocks[activeSection] || {}), [fieldKey]: !(activeFieldLocks[activeSection] || {})[fieldKey] },
-            })}
-            collapsed={!!collapsed[activeSection]}
-            onToggleCollapsed={() => setCollapsed((cur) => ({ ...cur, [activeSection]: !cur[activeSection] }))}
-            simpleMode={mobileStudioMode === "simple"}
-            simpleFieldKeys={SIMPLE_FIELD_KEYS[activeSection] || []}
-            onRequestAdvanced={() => setMobileStudioMode("advanced")}
-          />
-          {sectionNavigation("bottom")}
-          </div>
-        </div>
-
-        {/* Right - preview + AI + render */}
-        <aside id="studio-render" className={`quick-hide ${mobileStudioStep === "create" ? "block" : "hidden md:block"} scroll-mt-24 space-y-4 lg:sticky lg:top-20 lg:h-fit`}>
-          <div className={mobileStudioMode === "advanced" ? "block" : "hidden md:block"}>
-            <SmartSetupPanel workflows={selectableWorkflows} activeWorkflow={activeWorkflow} dna={activeDna}
-              subjectCount={subjects.length} hasReference={!!referenceImage?.name} onApply={applySmartSetup} />
-          </div>
-          <div className={mobileStudioMode === "advanced" || mobileStudioStep === "create" ? "block" : "hidden md:block"}>
-          {activeCompiler === "krea2" && (
-            <div className="pane p-4 mb-4 space-y-2" data-testid="krea-framing-control">
-              <div className="section-label">Krea 2 · magazine framing</div>
-              <p className="text-xs text-zinc-400">Choose the crop for every subject. Face priority keeps the face clear within this shot.</p>
-              <div className="flex gap-2">
-                {[["full body", "Full body"], ["knees-up", "Knees-up"], ["thigh-up", "Thigh-up"], ["waist-up", "Waist-up"]].map(([value, label]) => (
-                  <button key={value} type="button" onClick={() => setKreaFraming(value)}
-                    className={`rounded-lg border px-3 py-2 text-xs font-semibold ${subjects.every((subject) => subject.dna?.pose?.distance === value) ? "border-cyan-400 bg-cyan-500/15 text-cyan-100" : "hairline text-zinc-300"}`}>
-                    {label}
-                  </button>
-                ))}
-              </div>
-              <p className="text-[11px] text-zinc-500">Selected scene details: {(activeDna.scenario?.acts || []).length + String(activeDna.scenario?.extra_acts || "").split(/[,;]+/).filter((part) => part.trim()).length}. Keep this to one main action and up to two supporting details. The preview below shows the exact prompt sent to ComfyUI.</p>
-            </div>
-          )}
-          <div className="pane p-4 mb-4 space-y-2" data-testid="plain-language-prompt">
-            <label htmlFor="plain-language-input" className="section-label">Describe it in your own words</label>
-            <Textarea id="plain-language-input" rows={2} value={plainLanguage}
-              onChange={(event) => setPlainLanguage(event.target.value)}
-              placeholder="Example: adult subject, 3000 cc breast implants, BBL, fitted dress" />
-            {translatedPlainLanguage.attributes.map((attribute) => (
-              <p key={attribute.key} className="text-xs text-zinc-400">
-                <span className="text-zinc-200">{attribute.source}</span> → {attribute.meaning}
-              </p>
-            ))}
-            {plainLanguage.trim() && <p className="text-xs text-zinc-400">Workflow translation: {translatedPlainLanguage.text || "Describe motion for image-to-video; the source image supplies appearance."}</p>}
-          </div>
-          <PromptPreview
-            aiProvider={aiProvider}
-            positive={finalPositive}
-            negative={finalNegative}
-            dna={activeDna}
-            workflow={activeWorkflow}
-            context={preflightContext}
-            compilerMeta={compiledPrompt}
-            recipe={activeRecipeFamily === "image" ? renderSettings : null}
-            selectedLora={selectedLora}
-            secondaryLora={showSecondLora ? secondaryLora : null}
-            imageCount={activeRecipeFamily === "image" && (!poseAssistEnabled || isVariationWorkflow) ? renderCount : 1}
-            optimized={!!promptOverride}
-            improving={improvingPrompt}
-            onImprove={improveCompiledPrompt}
-            onApplyPrompts={(nextPositive, nextNegative) => {
-              setPromptOverride(nextPositive);
-              setNegativePromptOverride(nextNegative);
-            }}
-            onOptimize={(cleaned) => {
-              setPromptOverride(cleaned);
-              toast.success("Safe prompt cleanup applied");
-            }}
-            onRestore={() => {
-              setPromptOverride("");
-              setNegativePromptOverride("");
-              toast.success("Generated prompt restored");
-            }}
-          />
-          </div>
-          {activeWorkflow && promptStyle === "pony" && (
-            <div className={`${mobileStudioMode === "advanced" ? "flex" : "hidden md:flex"} pane p-3 items-center gap-2`} data-testid="pony-style-badge">
-              <span className="text-[10px] font-mono uppercase tracking-widest text-rose-300 bg-rose-500/10 border border-rose-500/40 rounded px-1.5 py-0.5">pony style</span>
-              <span className="text-[11px] text-zinc-400">score_9 prefix + booru tag weighting enabled</span>
-            </div>
-          )}
-          {isVideoWorkflow && (
-            <div className="pane p-4 space-y-4" data-testid="wan-video-panel">
-              <div className="flex items-center gap-2">
-                <Camera className="h-4 w-4 text-emerald-300" />
-                <div className="section-label">WAN Image → Video</div>
-              </div>
-              <p className="text-xs text-zinc-400">
-                Upload the starting frame, then describe movement rather than redesigning the image.
-              </p>
-              {referencePreview ? (
-                <div className="relative rounded-lg overflow-hidden border hairline bg-elevated">
-                  <img src={referencePreview} alt="WAN starting frame" className="w-full max-h-72 object-contain" />
-                  <button type="button" onClick={clearReference}
-                    className="absolute right-2 top-2 rounded-full bg-black/70 p-2 text-zinc-100 hover:bg-red-500"
-                    aria-label="Remove WAN starting image" data-testid="btn-remove-wan-source">
-                    <X className="h-4 w-4" />
-                  </button>
-                </div>
-              ) : (
-                <label className="flex min-h-28 cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-emerald-500/40 bg-emerald-500/5 px-4 py-5 text-center hover:bg-emerald-500/10">
-                  {referenceUploading ? <Loader2 className="h-6 w-6 animate-spin text-emerald-300" /> : <Upload className="h-6 w-6 text-emerald-300" />}
-                  <span className="text-sm font-semibold text-emerald-100">
-                    {referenceUploading ? "Uploading…" : "Choose starting image"}
-                  </span>
-                  <span className="text-[11px] text-zinc-500">JPG, PNG, or WEBP · maximum 20 MB</span>
-                  <input type="file" accept="image/jpeg,image/png,image/webp"
-                    disabled={referenceUploading}
-                    onChange={(event) => uploadReference(event.target.files?.[0])}
-                    className="hidden" data-testid="input-wan-source" />
-                </label>
-              )}
-              <label className="block space-y-1">
-                <span className="text-xs uppercase tracking-widest text-zinc-500 font-mono">Movement instruction</span>
-                <Textarea rows={5} value={videoInstruction}
-                  onChange={(event) => setVideoInstruction(event.target.value)}
-                  placeholder="Example: She slowly turns toward the camera and smiles. Natural blinking and breathing, gentle hair movement, steady camera."
-                  className="bg-elevated border-hairline text-sm"
-                  data-testid="textarea-wan-motion" />
-              </label>
-              <button type="button" onClick={analyzeVideoImage}
-                disabled={analyzingVideoImage || !referenceImage?.name}
-                className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-cyan-500/40 bg-cyan-500/10 px-3 py-2 text-sm font-semibold text-cyan-200 hover:bg-cyan-500/20 disabled:opacity-40"
-                data-testid="btn-venice-analyze-video-image">
-                {analyzingVideoImage ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-                Analyze image + draft motion with {aiProvider}
-              </button>
-              {videoImageAnalysis && (
-                <div className="rounded-lg border border-cyan-500/20 bg-cyan-500/5 p-3 text-xs text-zinc-300">
-                  <div className="mb-1 font-mono uppercase tracking-widest text-cyan-300">{aiProvider} image analysis</div>
-                  {videoImageAnalysis}
-                </div>
-              )}
-              <button type="button" onClick={enhanceVideoInstruction}
-                disabled={enhancingVideo || !videoInstruction.trim()}
-                className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm font-semibold text-amber-200 hover:bg-amber-500/20 disabled:opacity-40"
-                data-testid="btn-venice-enhance-video">
-                {enhancingVideo ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-                Enhance movement with {aiProvider}
-              </button>
-              <div className="grid grid-cols-2 gap-3">
-                <label className="space-y-1">
-                  <span className="text-xs text-zinc-400">Duration</span>
-                  <select value={videoFrames} onChange={(e) => setVideoFrames(Number(e.target.value))}
-                    className="w-full rounded-lg border border-hairline bg-elevated px-3 py-2 text-sm"
-                    data-testid="select-wan-duration">
-                    <option value={41}>1.7 sec · 41 frames</option>
-                    <option value={81}>3.4 sec · 81 frames</option>
-                    <option value={121}>5 sec · 121 frames</option>
-                    <option value={161}>6.7 sec · 161 frames</option>
-                    <option value={201}>8.4 sec · 201 frames</option>
-                    <option value={241}>10 sec · 241 frames</option>
-                  </select>
-                </label>
-                <label className="space-y-1">
-                  <span className="text-xs text-zinc-400">Playback FPS</span>
-                  <select value={videoFps} onChange={(e) => setVideoFps(Number(e.target.value))}
-                    className="w-full rounded-lg border border-hairline bg-elevated px-3 py-2 text-sm"
-                    data-testid="select-wan-fps">
-                    <option value={16}>16 FPS</option>
-                    <option value={20}>20 FPS</option>
-                    <option value={24}>24 FPS</option>
-                    <option value={30}>30 FPS</option>
-                  </select>
-                </label>
-              </div>
-              <p className="text-[11px] text-zinc-500">
-                Longer clips require substantially more VRAM and generation time. Start with 41 frames for testing.
-              </p>
-            </div>
-          )}
-          {isTextVideoWorkflow && (
-            <div className="pane p-4 space-y-4" data-testid="wan-text-video-panel">
-              <div className="flex items-center gap-2">
-                <Camera className="h-4 w-4 text-violet-300" />
-                <div className="section-label">WAN Text → Video</div>
-              </div>
-              <p className="text-xs text-zinc-400">
-                Describe the complete shot: adult subject, action, environment, lighting, framing, and camera motion. No starting image is required.
-              </p>
-              <label className="block space-y-1">
-                <span className="text-xs uppercase tracking-widest text-zinc-500 font-mono">Video description</span>
-                <Textarea rows={7} value={videoInstruction}
-                  onChange={(event) => setVideoInstruction(event.target.value)}
-                  placeholder="Example: A cinematic full-body shot of an adult woman walking through a softly lit hotel suite, natural body movement, gentle handheld camera, stable identity, one continuous shot."
-                  className="bg-elevated border-hairline text-sm"
-                  data-testid="textarea-wan-text-video" />
-              </label>
-              <button type="button" onClick={enhanceVideoInstruction}
-                disabled={enhancingVideo || !videoInstruction.trim()}
-                className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm font-semibold text-amber-200 hover:bg-amber-500/20 disabled:opacity-40"
-                data-testid="btn-venice-enhance-text-video">
-                {enhancingVideo ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-                Expand scene with {aiProvider}
-              </button>
-              <div className="grid grid-cols-2 gap-3">
-                <label className="space-y-1">
-                  <span className="text-xs text-zinc-400">Duration</span>
-                  <select value={videoFrames} onChange={(e) => setVideoFrames(Number(e.target.value))}
-                    className="w-full rounded-lg border border-hairline bg-elevated px-3 py-2 text-sm"
-                    data-testid="select-wan-t2v-duration">
-                    <option value={41}>2.6 sec · 41 frames</option>
-                    <option value={81}>5.1 sec · 81 frames</option>
-                    <option value={121}>7.6 sec · 121 frames</option>
-                    <option value={161}>10 sec · 161 frames</option>
-                  </select>
-                </label>
-                <label className="space-y-1">
-                  <span className="text-xs text-zinc-400">Playback FPS</span>
-                  <select value={videoFps} onChange={(e) => setVideoFps(Number(e.target.value))}
-                    className="w-full rounded-lg border border-hairline bg-elevated px-3 py-2 text-sm"
-                    data-testid="select-wan-t2v-fps">
-                    <option value={16}>16 FPS</option>
-                    <option value={20}>20 FPS</option>
-                    <option value={24}>24 FPS</option>
-                  </select>
-                </label>
-              </div>
-              <p className="text-[11px] text-zinc-500">
-                This 14B workflow is much heavier than the 5B Image → Video workflow. Test with 41 frames first.
-              </p>
-            </div>
-          )}
+  const imageSourceControls = (<>
           {isVariationWorkflow && (
             <div className="pane p-4 space-y-4" data-testid="image-variation-panel">
               <div className="section-label">Image Variations · Chroma</div>
-              <p className="text-xs text-zinc-400">Upload the original image upright. The source sets the composition and aspect ratio. Choose multiple images above to try different seeds.</p>
-              {referencePreview ? (
-                <div className="relative max-w-sm rounded-lg overflow-hidden border border-hairline bg-elevated">
-                  <img src={referencePreview} alt="Source for variations" className="w-full max-h-80 object-contain" />
-                  <button type="button" onClick={clearReference} className="absolute right-2 top-2 rounded-full bg-black/70 p-2 text-white" aria-label="Remove source image"><X className="h-4 w-4" /></button>
-                </div>
-              ) : referenceImage?.name ? (
-                <div className="text-xs text-zinc-300">Source: {referenceImage.name} <button type="button" onClick={clearReference} className="ml-2 underline">Remove</button></div>
-              ) : (
-                <label className="flex min-h-28 cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-cyan-500/40 bg-cyan-500/5 p-4 text-center">
-                  {referenceUploading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Upload className="h-5 w-5" />}
-                  <span className="text-sm">{referenceUploading ? "Uploading…" : "Choose source image"}</span>
-                  <input type="file" accept="image/jpeg,image/png,image/webp" disabled={referenceUploading} onChange={(event) => uploadReference(event.target.files?.[0])} className="hidden" data-testid="input-variation-source" />
-                </label>
-              )}
+              <p className="text-xs text-zinc-400">Describe the variation and set its strength. Lower strength stays closer to the source image.</p>
               <label className="block space-y-1"><span className="text-xs text-zinc-400">What should vary?</span>
                 <Textarea rows={4} value={variationPrompt} onChange={(event) => setVariationPrompt(event.target.value)} className="bg-elevated border-hairline text-sm" data-testid="textarea-variation-prompt" />
               </label>
@@ -3066,103 +2050,6 @@ export default function Builder({ studio = "standard" }) {
               </label>
             </div>
           )}
-          {isEnhanceWorkflow && (
-            <div className="pane p-4 space-y-4" data-testid="image-repair-panel">
-              <div className="flex items-center gap-2">
-                <Sparkles className="h-4 w-4 text-cyan-300" />
-                <div className="section-label">Image Repair & Enhance</div>
-              </div>
-              <p className="text-xs text-zinc-400">
-                Upload an image, select only the areas that need correction, and optionally let {aiProvider} inspect it before Qwen performs the repair.
-              </p>
-              {referencePreview ? (
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <div>
-                    <div className="mb-1 text-[10px] font-mono uppercase tracking-widest text-zinc-500">Original</div>
-                    <div className="relative rounded-lg overflow-hidden border hairline bg-elevated">
-                      <img src={referencePreview} alt="Original for repair" className="w-full max-h-80 object-contain" />
-                      <button type="button" onClick={clearReference}
-                        className="absolute right-2 top-2 rounded-full bg-black/70 p-2 text-zinc-100 hover:bg-red-500"
-                        aria-label="Remove repair image" data-testid="btn-remove-repair-source">
-                        <X className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </div>
-                  {activeRender?.status === "done" && activeRender.output_files?.[0] && (
-                    <div>
-                      <div className="mb-1 text-[10px] font-mono uppercase tracking-widest text-emerald-300">Repaired result</div>
-                      <img src={activeRender.output_files[0]} alt="Repaired result"
-                        className="w-full max-h-80 rounded-lg border hairline bg-elevated object-contain" />
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <label className="flex min-h-32 cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-cyan-500/40 bg-cyan-500/5 px-4 py-6 text-center hover:bg-cyan-500/10">
-                  {referenceUploading ? <Loader2 className="h-6 w-6 animate-spin text-cyan-300" /> : <Upload className="h-6 w-6 text-cyan-300" />}
-                  <span className="text-sm font-semibold text-cyan-100">
-                    {referenceUploading ? "Uploading…" : "Choose image to repair"}
-                  </span>
-                  <span className="text-[11px] text-zinc-500">JPG, PNG, or WEBP · maximum 20 MB</span>
-                  <input type="file" accept="image/jpeg,image/png,image/webp"
-                    disabled={referenceUploading}
-                    onChange={(event) => uploadReference(event.target.files?.[0])}
-                    className="hidden" data-testid="input-repair-source" />
-                </label>
-              )}
-              <div>
-                <div className="mb-2 text-xs uppercase tracking-widest text-zinc-500 font-mono">Repair targets</div>
-                <div className="flex flex-wrap gap-2">
-                  {REPAIR_TARGETS.map(([value, label]) => (
-                    <button type="button" key={value} onClick={() => toggleRepairTarget(value)}
-                      className={`rounded-full border px-3 py-1.5 text-xs transition ${
-                        repairTargets.includes(value)
-                          ? "border-cyan-400 bg-cyan-500/20 text-cyan-100"
-                          : "border-hairline bg-elevated text-zinc-400 hover:text-zinc-200"
-                      }`}
-                      data-testid={`repair-target-${value}`}>
-                      {label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <label className="block space-y-1">
-                <div className="flex justify-between text-xs text-zinc-400">
-                  <span>Repair strength</span>
-                  <span className="font-mono text-cyan-300">{Math.round(repairStrength * 100)}%</span>
-                </div>
-                <input type="range" min="0.2" max="0.85" step="0.05" value={repairStrength}
-                  onChange={(event) => setRepairStrength(Number(event.target.value))}
-                  className="w-full accent-cyan-400" data-testid="slider-repair-strength" />
-                <div className="flex justify-between text-[10px] text-zinc-600">
-                  <span>Subtle preservation</span><span>Stronger reconstruction</span>
-                </div>
-              </label>
-              <label className="block space-y-1">
-                <span className="text-xs uppercase tracking-widest text-zinc-500 font-mono">Repair instruction</span>
-                <Textarea rows={6} value={repairInstruction}
-                  onChange={(event) => setRepairInstruction(event.target.value)}
-                  placeholder={`Optional: describe a specific defect or leave this blank and ask ${aiProvider} to inspect the selected areas.`}
-                  className="bg-elevated border-hairline text-sm"
-                  data-testid="textarea-repair-instruction" />
-              </label>
-              <button type="button" onClick={analyzeRepairImage}
-                disabled={analyzingRepair || !referenceImage?.name}
-                className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-cyan-500/40 bg-cyan-500/10 px-3 py-2 text-sm font-semibold text-cyan-200 hover:bg-cyan-500/20 disabled:opacity-40"
-                data-testid="btn-venice-analyze-repair">
-                {analyzingRepair ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-                Inspect image and draft repair with {aiProvider}
-              </button>
-              {repairAnalysis && (
-                <div className="rounded-lg border border-cyan-500/20 bg-cyan-500/5 p-3 text-xs text-zinc-300">
-                  <div className="mb-1 font-mono uppercase tracking-widest text-cyan-300">{aiProvider} inspection</div>
-                  {repairAnalysis}
-                </div>
-              )}
-              <p className="text-[11px] text-zinc-500">
-                The repair prompt always preserves identity, age, body shape, pose, clothing, environment, and camera framing unless you explicitly request a change.
-              </p>
-            </div>
-          )}
           {isEditWorkflow && (
             <div className="pane p-4 space-y-4" data-testid="qwen-edit-panel">
               <div className="flex items-center gap-2">
@@ -3170,7 +2057,7 @@ export default function Builder({ studio = "standard" }) {
                 <div className="section-label">Qwen Image Edit</div>
               </div>
               <p className="text-xs text-zinc-400">
-                Upload the image you want to change, then describe only the changes you want made.
+                Choose an editing mode and describe only the changes you want made.
               </p>
               <div className="grid grid-cols-3 gap-1 rounded-lg border hairline bg-elevated p-1" role="tablist" aria-label="Qwen edit mode">
                 <button type="button" onClick={() => setEditMode("standard")}
@@ -3189,28 +2076,6 @@ export default function Builder({ studio = "standard" }) {
                   Body Adjust
                 </button>
               </div>
-              {referencePreview ? (
-                <div className="relative rounded-lg overflow-hidden border hairline bg-elevated">
-                  <img src={referencePreview} alt="Source for editing" className="w-full max-h-72 object-contain" />
-                  <button type="button" onClick={clearReference}
-                    className="absolute right-2 top-2 rounded-full bg-black/70 p-2 text-zinc-100 hover:bg-red-500"
-                    aria-label="Remove source image" data-testid="btn-remove-edit-source">
-                    <X className="h-4 w-4" />
-                  </button>
-                </div>
-              ) : (
-                <label className="flex min-h-28 cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-cyan-500/40 bg-cyan-500/5 px-4 py-5 text-center hover:bg-cyan-500/10">
-                  {referenceUploading ? <Loader2 className="h-6 w-6 animate-spin text-cyan-300" /> : <Upload className="h-6 w-6 text-cyan-300" />}
-                  <span className="text-sm font-semibold text-cyan-100">
-                    {referenceUploading ? "Uploading…" : "Choose source image"}
-                  </span>
-                  <span className="text-[11px] text-zinc-500">JPG, PNG, or WEBP · maximum 20 MB</span>
-                  <input type="file" accept="image/jpeg,image/png,image/webp"
-                    disabled={referenceUploading}
-                    onChange={(event) => uploadReference(event.target.files?.[0])}
-                    className="hidden" data-testid="input-qwen-edit-source" />
-                </label>
-              )}
               {editMode === "standard" ? (
                 <label className="block space-y-1">
                   <span className="text-xs uppercase tracking-widest text-zinc-500 font-mono">Edit instruction</span>
@@ -3419,6 +2284,1154 @@ export default function Builder({ studio = "standard" }) {
               {editMode === "standard" && <p className="text-[11px] text-zinc-500">
                 {aiProvider} only rewrites the instruction. Review and edit it before rendering.
               </p>}
+            </div>
+          )}
+  </>);
+
+  return (
+    <div className={`mobile-builder-content mx-auto max-w-[1600px] px-2.5 sm:px-6 py-3 sm:py-6 space-y-3 sm:space-y-4 ${desktopQuickMode && !isImageFirst ? "quick-create-mode" : ""}`}>
+      {galleryRecipeMode === "current" && (
+        <div className="pane border border-cyan-500/30 bg-cyan-500/[0.06] px-3 py-2.5 text-xs text-cyan-100" data-testid="current-compiler-rebuild-banner">
+          <div className="flex items-start gap-2">
+            <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-cyan-300" />
+            <div>
+              <div className="font-semibold">Rebuild with Current Compiler</div>
+              <div className="mt-0.5 text-[10px] text-zinc-400">
+                Saved DNA and generation settings were restored, saved prompt overrides were cleared, and the next render will use the current compiler with a new seed.
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {mediaImportSummary && (
+        <div className="pane border border-amber-400/30 bg-amber-500/[0.06] p-3 sm:p-4" data-testid="media-import-summary">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <div className="font-display font-bold text-amber-200">Imported from Media</div>
+              <div className="mt-0.5 text-xs text-zinc-400">{mediaImportSummary.sourceName}</div>
+            </div>
+            <button type="button" onClick={()=>setMediaImportSummary(null)} className="self-start rounded-lg border hairline px-2.5 py-1.5 text-xs text-zinc-300 hover:bg-white/5">Hide summary</button>
+          </div>
+          <div className="mt-3 grid gap-3 lg:grid-cols-2">
+            <div>
+              <div className="mb-1.5 font-mono text-[10px] uppercase tracking-wider text-emerald-300">Mapped to Studio controls</div>
+              <div className="flex flex-wrap gap-1.5">
+                {mediaImportSummary.mapped.length ? mediaImportSummary.mapped.map((item,index)=>(
+                  <button type="button" key={`${item.label}-${index}`} onClick={()=>{ const targets={Hair:"hair","Hair color":"hair","Hair length":"hair","Hair style":"hair","Body type":"physique",Bust:"physique",Glutes:"physique",Hips:"physique",Thighs:"physique",Waist:"physique",Expression:"face",Outfit:"wardrobe","Outfit color":"wardrobe",Material:"wardrobe",Fit:"wardrobe",Pose:"pose",Framing:"pose","Camera angle":"pose",Camera:"camera","Composition focus":"pose",Environment:"scene","Lighting source":"lighting","Lighting style":"lighting","Lighting mood":"lighting","Photo style":"style"}; const target=targets[item.label]; if(target){ goSection(target); window.requestAnimationFrame(()=>document.getElementById(`section-${target}`)?.scrollIntoView({behavior:"smooth",block:"start"})); } }} className="rounded-full border border-emerald-400/25 bg-emerald-500/10 px-2 py-1 text-[11px] text-emerald-100 hover:border-amber-400/50 hover:bg-amber-500/10">{item.label}: {item.value}</button>
+                )) : <span className="text-xs text-zinc-500">No direct control matches yet.</span>}
+              </div>
+            </div>
+            <div>
+              <div className="mb-1.5 font-mono text-[10px] uppercase tracking-wider text-cyan-300">Kept as editable reference notes</div>
+              <div className="max-h-24 overflow-auto whitespace-pre-wrap text-xs leading-5 text-zinc-300">{mediaImportSummary.notes.join("\n")}</div>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Header */}
+      <div className={`${isImageFirst ? "!hidden" : ""} hidden md:flex items-center gap-2 rounded-xl border border-cyan-400/20 bg-black/40 p-2 text-xs`} aria-label="Builder shortcuts">
+        <span className="px-2 font-mono uppercase tracking-wider text-cyan-300">Studio</span>
+        {!desktopQuickMode && [["studio-model", "01 · Model"], ["studio-sections", "02 · Character"], ["studio-render", "03 · Render"]].map(([target, label]) => (
+          <button key={target} type="button" onClick={() => document.getElementById(target)?.scrollIntoView({ behavior: "smooth", block: "start" })}
+            className="rounded-lg border hairline px-3 py-2 text-zinc-300 transition-colors hover:border-amber-400/50 hover:bg-amber-500/10 hover:text-amber-200">
+            {label}
+          </button>
+        ))}
+        <span className="ml-auto hidden xl:inline pr-2 text-zinc-500">{desktopQuickMode ? "Start with the essentials. Full Studio keeps every option." : "All controls are available below."}</span>
+        <button type="button" onClick={() => { setDesktopQuickMode((value) => !value); setQuickReview(false); }}
+          data-testid="btn-desktop-studio-mode" className="ml-auto rounded-lg border border-cyan-400/40 px-3 py-2 font-semibold text-cyan-200 hover:bg-cyan-400/10">
+          {desktopQuickMode ? "Full Studio · all options" : "Quick Create"}
+        </button>
+      </div>
+      <div id="studio-model" className="pane scroll-mt-24 p-2.5 sm:p-4 flex flex-col gap-2.5 sm:gap-3">
+        <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
+          <Input
+            data-testid="input-character-name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            className="bg-elevated border-hairline text-base sm:text-lg font-display font-bold"
+          />
+          <div className="flex flex-wrap gap-2">
+          <select
+            data-testid="select-workflow"
+            value={workflowId}
+            onChange={(e) => {
+              const nextWorkflowId = e.target.value;
+              if (nextWorkflowId !== workflowId) {
+                clearReference();
+                setEditMode("standard");
+                setBodyAdjustRegion("glutes");
+                setBodyAdjustAmount(50);
+                setEditInstruction("");
+              }
+              setWorkflowId(nextWorkflowId);
+              setLoraOverrides({});
+            }}
+            className={`${isImageFirst || mobileStudioStep === "start" || mobileStudioStep === "create" ? "block" : "hidden md:block"} bg-elevated border border-hairline rounded-lg px-3 py-2 text-sm text-zinc-100 w-full sm:w-auto sm:min-w-[200px]`}
+          >
+            {workflows.length === 0 && <option value="">No workflows — open Settings</option>}
+            {selectableWorkflows.filter((w) => !["sdxl", "sdxl_dmd2"].includes(w.prompt_style) && !w.name.startsWith("Pony · Ultra Realistic")).map((w) => (
+              <option key={w.id} value={w.id}>{w.kind.toUpperCase()} · {w.name}</option>
+            ))}
+            {selectableWorkflows.some((w) => ["sdxl", "sdxl_dmd2"].includes(w.prompt_style) || w.name.startsWith("Pony · Ultra Realistic")) && (
+              <optgroup label="SDXL and Pony checkpoints">
+                {selectableWorkflows.filter((w) => ["sdxl", "sdxl_dmd2"].includes(w.prompt_style) || w.name.startsWith("Pony · Ultra Realistic")).map((w) => (
+                  <option key={w.id} value={w.id}>{w.name}</option>
+                ))}
+              </optgroup>
+            )}
+            {internalWorkflows.length > 0 && (
+              <optgroup label="Used automatically (not standalone)">
+                {internalWorkflows.map((w) => (
+                  <option key={w.id} value={w.id} disabled>{w.name}</option>
+                ))}
+              </optgroup>
+            )}
+          </select>
+          <button
+            onClick={() => save.mutate()}
+            disabled={save.isPending}
+            data-testid="btn-save-character"
+            className="hidden md:inline-flex items-center gap-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-black text-sm font-semibold px-3 py-2 disabled:opacity-40"
+          >
+            {save.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Save
+          </button>
+          {activeRecipeFamily === "image" && (
+            <select
+              data-testid="select-render-count"
+              value={poseAssistEnabled && !isVariationWorkflow ? 1 : renderCount}
+              onChange={(e) => setRenderCount(Number(e.target.value))}
+              disabled={dispatching || (poseAssistEnabled && !isVariationWorkflow)}
+              className="hidden md:block bg-elevated border border-hairline rounded-lg px-3 py-2 text-sm text-zinc-100 flex-1 sm:flex-none"
+              title="Number of images to queue with unique seeds"
+            >
+              {[1, 2, 4, 6, 8, 10].map((count) => (
+                <option key={count} value={count}>{count} image{count > 1 ? "s" : ""}</option>
+              ))}
+            </select>
+          )}
+          {activeRecipeFamily === "image" && renderCount > 1 && <select value={batchSeedMode}
+            onChange={(event) => setBatchSeedMode(event.target.value)} title="Explore uses widely spaced seeds; Nearby uses consecutive seeds. Both keep your selected prompt."
+            className="hidden md:block bg-elevated border border-hairline rounded-lg px-3 py-2 text-sm text-zinc-100">
+            <option value="explore">Explore different seeds</option>
+            <option value="nearby">Nearby seeds</option>
+          </select>}
+          <button
+            onClick={doDispatch}
+            disabled={dispatching || !workflowId || kreaRenderBlocked || ((isImageFirst || activeRecipeFamily === "edit") && !referenceImage?.name) || (poseAssistEnabled && !isVariationWorkflow && (!poseAssistAvailable || !poseReferenceImage?.name || (poseAssistStatus && !poseAssistStatus.ready)))}
+            data-testid="btn-dispatch-comfyui-render"
+            className="hidden md:inline-flex items-center gap-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black text-sm font-semibold px-3 py-2 disabled:opacity-40"
+          >
+            {dispatching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />} {poseAssistEnabled && !isVariationWorkflow ? "Pose Assist" : "Render"}
+          </button>
+          <MobileOverflow testId="builder-overflow" always label="More">
+            <button
+              type="button"
+              onClick={() => save.mutate()}
+              disabled={save.isPending}
+              data-testid="btn-save-character-mobile-menu"
+              className="md:hidden inline-flex items-center gap-1.5 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm font-semibold text-amber-200 disabled:opacity-40"
+            >
+              {save.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Save character
+            </button>
+            <button
+              type="button"
+              onClick={resetCharacter}
+              data-testid="btn-reset-character"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-red-500/30 px-3 py-2 text-sm font-semibold text-red-300 hover:bg-red-500/10"
+              title="Reset all current character selections"
+            >
+              <RotateCcw className="h-4 w-4" /> Reset
+            </button>
+            <button
+              onClick={randomizeAllSubjects}
+              data-testid="btn-randomize-all"
+              className="inline-flex items-center gap-1.5 rounded-lg border hairline px-3 py-2 text-sm text-zinc-200 hover:bg-white/5"
+              title={isMulti ? `Randomize all ${subjects.length} subjects` : "Randomize DNA"}
+            >
+              <Shuffle className="h-4 w-4" /> {isMulti ? "Randomize all" : "Randomize"}
+            </button>
+            <PresetsMenu
+              currentDna={activeDna}
+              sectionLocks={locks}
+              fieldLocks={activeFieldLocks}
+              onApply={(preset, context = {}) => {
+                const next = { ...preset };
+                Object.keys(locks).forEach((k) => { if (locks[k]) next[k] = activeDna[k]; });
+                if (context.type === "heritage") {
+                  const cast = HERITAGE_CASTS[context.cast] || HERITAGE_CASTS.solo;
+                  const primaryDna = {
+                    ...next,
+                    scenario: {
+                      ...(next.scenario || {}),
+                      cast_size: cast.castSize,
+                      cast_type: cast.castType,
+                    },
+                  };
+                  const primary = {
+                    ...(subjects[0] || activeSubject),
+                    label: "A",
+                    dna: primaryDna,
+                  };
+                  if (context.cast === "solo") {
+                    setSubjects([primary]);
+                    setActiveSubjectId(primary.id);
+                  } else {
+                    const relativeDna = seedSubjectFromPairing(primaryDna, 1);
+                    const relative = makeSubject({ label: "B", dna: relativeDna });
+                    setSubjects([primary, relative]);
+                    setActiveSubjectId(primary.id);
+                  }
+                  toast.success(`${cast.label} heritage cast created`);
+                } else {
+                  setActiveDna(next);
+                  toast.success(`Preset applied to Subject ${activeSubject.label}`);
+                }
+              }}
+            />
+            <div
+              className="inline-flex items-center gap-1 rounded-lg border border-hairline bg-elevated p-1 text-sm text-zinc-300"
+              title="Changes prompt vocabulary only; it never adds activities or changes DNA selections."
+              data-testid="prompt-language-control"
+            >
+              <Flame className="ml-1 h-4 w-4 shrink-0 text-fuchsia-300" />
+              <span className="hidden sm:inline px-1 text-xs">Language</span>
+              {[
+                ["editorial", "Editorial"],
+                ["direct", "Direct"],
+                ["explicit", "Explicit"],
+              ].map(([value, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => {
+                    setPromptLanguage(value);
+                    setRaunch(value === "explicit");
+                  }}
+                  className={
+                    "rounded-md px-2 py-1 text-[10px] font-semibold transition "
+                    + (promptLanguage === value
+                      ? "bg-fuchsia-500/20 text-fuchsia-100 ring-1 ring-fuchsia-500/30"
+                      : "text-zinc-500 hover:bg-white/5 hover:text-zinc-200")
+                  }
+                  aria-pressed={promptLanguage === value}
+                  data-testid={`btn-prompt-language-${value}`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            {!isNew && (
+              <Link
+                to={`/shoot/new/${id}`}
+                data-testid="btn-open-shoot"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/40 bg-emerald-500/10 text-emerald-200 text-sm font-semibold px-3 py-2 hover:bg-emerald-500/20"
+                title="Batch photo shoot"
+              >
+                <Camera className="h-4 w-4" /> Shoot
+              </Link>
+            )}
+            <button
+              onClick={exportJson}
+              data-testid="btn-export-json"
+              className="inline-flex items-center gap-1.5 rounded-lg border hairline px-3 py-2 text-sm text-zinc-300"
+              title="Export DNA JSON"
+            >
+              <Download className="h-4 w-4" /> Export
+            </button>
+            <label
+              data-testid="btn-import-json"
+              className="inline-flex items-center gap-1.5 rounded-lg border hairline px-3 py-2 text-sm text-zinc-300 cursor-pointer"
+              title="Import DNA JSON"
+            >
+              <Upload className="h-4 w-4" /> Import
+              <input type="file" accept="application/json" onChange={importJson} className="hidden" />
+            </label>
+          </MobileOverflow>
+        </div>
+        </div>
+        <div className={mobileStudioStep === "start" ? "block" : "hidden md:block"}>
+          <TagInput value={tags} onChange={setTags} placeholder="tag this character (mood, ethnicity, persona)…" testId="builder-tags" />
+        </div>
+      </div>
+
+      {isImageFirst && <ImageSourceFlow variation={isVariationWorkflow} source={referenceImage} preview={referencePreview}
+        uploading={referenceUploading} busy={dispatching} onUpload={uploadReference} onRemove={clearReference} onRender={doDispatch}
+        renderCount={renderCount} onRenderCount={setRenderCount}>{imageSourceControls}</ImageSourceFlow>}
+
+      {!isImageFirst && <MobileStudioFlow
+        steps={studioSteps}
+        title={studioProfile?.title || "Studio flow"}
+        currentStep={mobileStudioStep}
+        activeSection={activeSection}
+        locks={locks}
+        sections={SECTIONS}
+        mode={mobileStudioMode}
+        summary={mobileStudioSummary}
+        onModeChange={changeMobileStudioMode}
+        onStep={openMobileStudioStep}
+        onSection={(key) => {
+          setMobileStudioStep(mobileStudioStepForSection(key, studioSteps));
+          goSection(key);
+        }}
+      />}
+
+      {!isImageFirst && <nav className="hidden md:grid grid-cols-5 gap-2" aria-label="Creation steps" data-testid="desktop-creation-steps">
+        {studioSteps.map((step, index) => {
+          const selected = step.id === mobileStudioStep;
+          return <button key={step.id} type="button" onClick={() => openMobileStudioStep(step.id)}
+            aria-current={selected ? "step" : undefined}
+            className={`studio-stage rounded-xl border px-3 py-3 text-left ${selected ? "studio-stage-active border-amber-400/60 bg-amber-500/10" : "hairline bg-elevated hover:border-cyan-400/50"}`}>
+            <span className={`text-[10px] font-mono ${selected ? "text-amber-300" : "text-zinc-500"}`}>{String(index + 1).padStart(2, "0")}</span>
+            <span className="mt-1 block font-display text-sm font-bold text-zinc-100">{step.label}</span>
+            <span className="mt-0.5 block text-[11px] text-zinc-400">{step.hint}</span>
+          </button>;
+        })}
+      </nav>}
+
+      <div className={isImageFirst ? "hidden" : mobileStudioStep === "start" ? "block" : "hidden md:block"}>
+        <AiAssistBar dna={activeDna} aiProvider={aiProvider}
+          onApplyDna={(draft) => { setActiveDna(draft); setPlainLanguage(""); }}
+          onApplySubjects={(draftSubjects) => {
+            setSubjects(draftSubjects);
+            setActiveSubjectId(draftSubjects[0].id);
+            setPlainLanguage("");
+            setPromptOverride("");
+            setNegativePromptOverride("");
+          }} />
+      </div>
+
+      {!isImageFirst && mobileStudioStep === "create" && !showMobileResult && (
+        <>
+          <MobileCreateReview
+            workflow={activeWorkflow}
+            compiler={activeCompiler}
+            family={activeRecipeFamily}
+            qualityTier={qualityTier}
+            onQualityTier={applyQualityTier}
+            renderCount={poseAssistEnabled && !isVariationWorkflow ? 1 : renderCount}
+            onRenderCount={setRenderCount}
+            summaries={mobileCreateSummaries}
+            issues={mobileCreateIssues}
+            mode={mobileStudioMode}
+            onRequestAdvanced={() => setMobileStudioMode("advanced")}
+          />
+          {activeRecipeFamily === "image" && renderCount > 1 && <label className="md:hidden pane p-3 flex items-center justify-between gap-3 text-xs text-zinc-200">
+            Batch variety
+            <select value={batchSeedMode} onChange={(event) => setBatchSeedMode(event.target.value)}
+              className="bg-elevated border border-hairline rounded-lg px-2 py-2 text-xs text-zinc-100">
+              <option value="explore">Explore different seeds</option>
+              <option value="nearby">Nearby seeds</option>
+            </select>
+          </label>}
+          {activeRecipeFamily === "image" && !isKrea2 && !isVariationWorkflow && (
+            <div className="md:hidden">
+              <PoseAssistPanel
+                enabled={poseAssistEnabled}
+                onEnabled={changePoseAssistEnabled}
+                preview={poseReferencePreview}
+                uploading={poseReferenceUploading}
+                onUpload={uploadPoseReference}
+                onClear={clearPoseReference}
+                strength={poseAssistStrength}
+                onStrength={setPoseAssistStrength}
+                polish={poseAssistPolish}
+                onPolish={setPoseAssistPolish}
+                stage={poseAssistStage}
+                available={poseAssistAvailable}
+                installing={installingPoseAssist}
+                onInstall={installPoseAssist}
+                systemStatus={poseAssistStatus}
+              />
+            </div>
+          )}
+          <PromptAlignmentCard
+            analysis={promptAnalysis}
+            priorityPlan={compiledPrompt.priorityPlan}
+            adjustments={compiledPrompt.guardAdjustments || []}
+            mode={mobileStudioMode}
+          />
+        </>
+      )}
+
+      {showMobileResult && (
+        <MobileRenderResult
+          render={mobileResultRender}
+          batch={batchRenders}
+          selectedId={selectedBatchRenderId}
+          onSelect={(render) => {
+            setSelectedBatchRenderId(render.id);
+            setActiveRender(render);
+          }}
+          onKeep={keepFinishedRender}
+          onVariation={queueVariationFromFinishedRender}
+          onEdit={() => reuseFinishedRender("edit")}
+          onAnimate={() => reuseFinishedRender("video")}
+          onBackCharacter={returnToCharacterFromResult}
+          onGallery={() => nav(`/gallery?render=${encodeURIComponent(activeRender.render_id || activeRender.id)}&returnTo=${encodeURIComponent(location.pathname)}`)}
+          onDownload={(url) => downloadRenderImage(
+            url,
+            `render-${activeRender.render_id || activeRender.id}.${/\.(webm|mp4|mov)(?:[?&]|$)/i.test(decodeURIComponent(url)) ? "webm" : "png"}`
+          )}
+          busy={postRenderBusy}
+        />
+      )}
+
+      <div className={(showMobileResult || isImageFirst ? "hidden " : "md:hidden ") + "fixed inset-x-0 z-30 mobile-builder-actions border-t hairline bg-[#111017]/95 px-2.5 py-2 backdrop-blur-xl shadow-[0_-12px_30px_rgba(0,0,0,0.28)]"} data-testid="mobile-builder-actions">
+        <div className="grid grid-cols-[0.9fr_1.4fr] gap-2">
+          <button
+            type="button"
+            onClick={() => moveMobileStudioStep(-1)}
+            disabled={activeMobileStudioIndex === 0}
+            className="inline-flex items-center justify-center gap-1.5 rounded-xl border hairline py-3 text-sm font-semibold text-zinc-200 disabled:opacity-30"
+            aria-label="Previous Studio step"
+            data-testid="btn-mobile-studio-back"
+          >
+            <ChevronLeft className="h-4 w-4" /> Back
+          </button>
+          {mobileStudioStep === "create" ? (
+            <button
+              type="button"
+              onClick={doDispatch}
+              disabled={dispatching || !workflowId || mobileCreateIssues.length > 0}
+              className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-emerald-500 py-3 text-sm font-bold text-black disabled:opacity-40"
+              data-testid="btn-mobile-studio-render"
+            >
+              {dispatching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />} {poseAssistEnabled && !isVariationWorkflow ? "Generate" : "Render"}
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => moveMobileStudioStep(1)}
+              className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-amber-500 py-3 text-sm font-bold text-black"
+              data-testid="btn-mobile-studio-continue"
+            >
+              Continue <ChevronRight className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div className={`quick-hide ${isImageFirst ? "!hidden" : ""} ${mobileStudioStep === "create" ? "block" : "hidden md:block"}`}>
+        {activeWorkflow && (activeCompiler !== "qwen_edit" || isEnhanceWorkflow) && (
+          <div className="hidden md:block">
+            <RenderRecipeSelector
+              compiler={activeCompiler}
+              value={qualityTier}
+              onChange={applyQualityTier}
+            />
+          </div>
+        )}
+
+        {activeRecipeFamily === "image" && !isKrea2 && !isVariationWorkflow && (
+          <div className="hidden md:block mt-3 sm:mt-4">
+            <PoseAssistPanel
+              enabled={poseAssistEnabled}
+              onEnabled={changePoseAssistEnabled}
+              preview={poseReferencePreview}
+              uploading={poseReferenceUploading}
+              onUpload={uploadPoseReference}
+              onClear={clearPoseReference}
+              strength={poseAssistStrength}
+              onStrength={setPoseAssistStrength}
+              polish={poseAssistPolish}
+              onPolish={setPoseAssistPolish}
+              stage={poseAssistStage}
+              available={poseAssistAvailable}
+              installing={installingPoseAssist}
+              onInstall={installPoseAssist}
+              systemStatus={poseAssistStatus}
+            />
+          </div>
+        )}
+
+        {activeWorkflow && !["pose", "refine", "krea_style"].includes(activeWorkflow.kind) && (
+          <div className="mt-3 sm:mt-4">
+            <UniversalLoraPicker
+              workflow={activeWorkflow}
+              value={selectedLora}
+              onChange={setSelectedLora}
+              slotLabel="LoRA 1"
+              excludedNames={showSecondLora && secondaryLora.name ? [secondaryLora.name] : []}
+            />
+            {showSecondLora ? (
+              <div className="mt-3">
+                <button type="button" className="mb-2 text-xs text-zinc-400 underline" onClick={() => {
+                  setSecondaryLora({ name: "", strength: 0.8, triggerWords: [] });
+                  setShowSecondLora(false);
+                }}>Remove second LoRA</button>
+                <UniversalLoraPicker workflow={activeWorkflow} value={secondaryLora}
+                  onChange={setSecondaryLora} slotLabel="LoRA 2"
+                  excludedNames={selectedLora.name ? [selectedLora.name] : []} />
+                <p className="mt-2 text-xs text-zinc-500">Stacking LoRAs can change the result substantially. Adjust each strength if needed.{poseAssistEnabled ? " Pose Assist applies these to the Chroma polish stage." : ""}</p>
+              </div>
+            ) : (
+              <button type="button" className="mt-2 rounded-lg border hairline px-3 py-2 text-xs text-cyan-200 hover:bg-white/5"
+                onClick={() => setShowSecondLora(true)}>+ Add second LoRA</button>
+            )}
+          </div>
+        )}
+
+        {isGoldenChroma && (
+          <div className={(mobileStudioMode === "advanced" ? "block " : "hidden md:block ") + "mt-3 sm:mt-4"}>
+            <ChromaControls value={chromaSettings} onChange={setChromaSettings} />
+          </div>
+        )}
+      </div>
+
+      {/* Subject controls stay available, but stay out of Simple Create review. */}
+      {!isImageFirst && activeSection !== "identity" && <div className={`quick-hide ${mobileStudioStep === "create" && mobileStudioMode === "simple" ? "hidden md:block" : "block"}`}>
+        <SubjectSwitcher
+          subjects={subjects}
+          activeId={activeSubjectId}
+          expectedCount={expectedCount}
+          primaryLabel={subjects[0]?.label || "A"}
+          onSelect={setActiveSubjectId}
+          onAdd={addSubject}
+          onRemove={removeSubject}
+          onCopyFromPrimary={copyPrimaryToActive}
+          onRandomizeActive={randomizeActive}
+        />
+      </div>}
+
+      <div className={`quick-hide ${isImageFirst ? "!hidden" : ""} ${mobileStudioStep === "create" && mobileStudioMode === "advanced" ? "space-y-2" : "hidden md:block md:space-y-2"}`}>
+        <div className="pane px-3 py-2 flex items-center gap-2" data-testid="glance-header">
+          <button
+            type="button"
+            onClick={() => setCollapsed((cur) => ({ ...cur, _glance: !cur._glance }))}
+            data-testid="btn-collapse-glance"
+            className="flex items-center gap-2 text-left flex-1 group"
+          >
+            <ChevronDown className={`h-4 w-4 text-zinc-500 group-hover:text-zinc-200 transition-transform ${collapsed._glance ? "-rotate-90" : ""}`} />
+            <span className="section-label">DNA at a glance{isMulti ? ` · ${subjects.length} subjects` : ""}</span>
+          </button>
+        </div>
+        {!collapsed._glance && <DnaAtAGlance dna={activeDna} name={name} subjects={isMulti ? subjects : undefined} />}
+      </div>
+
+      <div className={isImageFirst || editMode === "body_adjust" ? "grid grid-cols-1 gap-4" : "grid grid-cols-1 lg:grid-cols-[260px_1fr_380px] gap-4"}>
+        {/* Left rail - grouped-by-phase section nav (uses active subject's dna for filled dots) */}
+        <aside className={`quick-hide hidden lg:block h-fit sticky top-20 ${isImageFirst || editMode === "body_adjust" ? "!hidden" : ""}`}>
+          <GroupedSectionRail
+            dna={activeDna}
+            locks={locks}
+            activeSection={activeSection}
+            onSelect={(key) => nav(sectionUrl(key))}
+            testIdPrefix="nav-section"
+          />
+        </aside>
+
+        {/* Mobile section chips — grouped by phase */}
+        <div className={`hidden md:flex lg:hidden overflow-x-auto scroll-fade -mx-3 px-3 gap-2 pb-1 ${isImageFirst || editMode === "body_adjust" ? "!hidden" : ""}`}>
+          {SECTIONS.map((s) => (
+            <Link
+              key={s.key}
+              to={sectionUrl(s.key)}
+              data-testid={`nav-section-${s.key}-mobile`}
+              className={`chip chip-${phaseOfSection(s.key)} whitespace-nowrap ${activeSection === s.key ? "active" : ""}`}
+            >
+              {s.title}{locks[s.key] && " 🔒"}
+            </Link>
+          ))}
+        </div>
+
+        {/* Center - single active section */}
+        {!isImageFirst && editMode === "body_adjust" && (
+          <section className="pane border-amber-500/30 bg-amber-500/[0.04] p-4 sm:p-5 space-y-4" data-testid="focused-body-adjust-banner">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <div className="section-label text-amber-200">Edit existing image</div>
+                <h2 className="font-display mt-1 text-lg font-bold text-white">Body Adjust</h2>
+                <p className="mt-1 max-w-2xl text-xs text-zinc-400">The source image is the baseline. Body Adjust uses Chroma1-HD img2img; 50 is the original, lower values reduce the selected region, and higher values enlarge it.</p>
+              </div>
+              <button type="button" onClick={() => { setEditMode("standard"); setBodyAdjustAmount(50); }}
+                className="rounded-lg border hairline px-3 py-2 text-xs font-semibold text-zinc-300 hover:text-white">
+                Exit Body Adjust
+              </button>
+            </div>
+
+            <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_220px]">
+              <div className="space-y-4">
+                <div>
+                  <div className="mb-2 text-[11px] font-mono uppercase tracking-widest text-zinc-500">Region</div>
+                  <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
+                    {[["glutes","Glutes"],["bust","Bust"],["hips","Hips"],["thighs","Thighs"],["waist","Waist"]].map(([value,label]) => (
+                      <button key={value} type="button" onClick={() => setBodyAdjustRegion(value)}
+                        className={`rounded-lg border px-3 py-2 text-xs font-semibold ${bodyAdjustRegion === value ? "border-amber-400 bg-amber-500/15 text-amber-100" : "border-hairline text-zinc-400 hover:text-zinc-200"}`}>
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <label className="block space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-mono uppercase tracking-widest text-zinc-500">Adjustment</span>
+                    <span className="font-mono text-sm font-bold text-amber-200">{bodyAdjustAmount}</span>
+                  </div>
+                  <input type="range" min="0" max="100" step="5" value={bodyAdjustAmount}
+                    onChange={(event) => setBodyAdjustAmount(Number(event.target.value))}
+                    className="w-full accent-amber-400" data-testid="range-focused-body-adjust" />
+                  <div className="flex justify-between font-mono text-[10px] uppercase tracking-wider text-zinc-500">
+                    <span>0 · smaller</span><span>50 · original</span><span>100 · larger</span>
+                  </div>
+                </label>
+                <div className="rounded-lg border hairline bg-black/20 p-3 text-xs text-zinc-300">
+                  <span className="font-semibold text-zinc-100">Chroma instruction: </span>{bodyAdjustInstruction}
+                </div>
+              </div>
+              <div>
+                <div className="mb-2 text-[11px] font-mono uppercase tracking-widest text-zinc-500">Source image</div>
+                {referencePreview ? (
+                  <img src={referencePreview} alt="Body Adjust source" className="max-h-56 w-full rounded-lg border hairline bg-black/30 object-contain" />
+                ) : (
+                  <div className="flex min-h-36 items-center justify-center rounded-lg border border-dashed border-amber-500/30 p-3 text-center text-xs text-zinc-500">
+                    Source image is loading. If it does not appear, return to Gallery and select Body Adjust again.
+                  </div>
+                )}
+              </div>
+            </div>
+            <p className="text-[10px] text-zinc-500">Face, pose, wardrobe, framing, scene, lighting, and unselected body regions are preserved.</p>
+          </section>
+        )}
+        <div id="studio-sections" className={`${isImageFirst ? "!hidden" : ""} ${mobileStudioStep === "create" ? "hidden md:block" : "block"} ${editMode === "body_adjust" ? "hidden" : ""} scroll-mt-24 space-y-4`}>
+      {studioProfile && <section className="pane border-cyan-400/25 p-3 sm:p-4" data-testid={`studio-${studio}-presets`}>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <div className="section-label">{studioProfile.title} · Scene presets</div>
+            <p className="mt-1 text-xs text-zinc-400">Choose a starting composition, then edit every detail in the steps below.</p>
+          </div>
+          <Link to="/studios" className="text-xs text-cyan-300 hover:underline">Other studios</Link>
+        </div>
+        <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+          {studioProfile.presets.map((preset) => <button key={preset.name} type="button"
+            onClick={() => { setActiveDna(applyStudioPreset(activeDna, preset)); setQuickReview(false); goSection(studio === "feet" ? "feet" : "watersports"); }}
+            className="rounded-xl border hairline bg-black/25 px-3 py-3 text-left transition-colors hover:border-cyan-400/60 focus-visible:border-cyan-400">
+            <span className="block text-xs font-semibold text-cyan-100">{preset.name}</span>
+            <span className="mt-1 block text-[11px] text-zinc-400">{preset.description}</span>
+          </button>)}
+        </div>
+      </section>}
+      {desktopQuickMode && editMode !== "body_adjust" && (
+        <section className="hidden md:block studio-journey rounded-2xl p-5" data-testid="desktop-quick-create">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <div className="section-label">Create / Main Studio</div>
+              <h2 className="font-display mt-1 text-xl font-bold text-white">Build your image</h2>
+              <p className="mt-1 text-sm text-zinc-400">Seven stages from character to render. Jump to any detailed control below.</p>
+            </div>
+            <span className="rounded-full border border-amber-400/40 bg-amber-500/10 px-3 py-1 text-xs text-amber-200">{activeWorkflow?.name || "Choose a model"}</span>
+          </div>
+          <p className="mt-4 text-[11px] font-mono uppercase tracking-widest text-cyan-300">Choose a category, then a control</p>
+          <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-4 xl:grid-cols-7" aria-label="Creation stages">
+            {quickStages.map((stage, index) => (
+              <button key={stage.key} type="button" onClick={() => selectQuickStage(index)}
+                aria-current={quickStageIndex === index ? "step" : undefined}
+                aria-expanded={stage.sections.length ? quickOpenCategory === stage.key : undefined}
+                className={`studio-stage relative min-h-[90px] rounded-xl px-3 py-3 text-left ${quickStageIndex === index ? "studio-stage-active" : index < quickStageIndex ? "studio-stage-past" : ""}`}>
+                <span className="block font-mono text-[10px] tracking-widest text-cyan-300">{String(index + 1).padStart(2, "0")} / 07</span>
+                <span className="mt-2 block font-display text-sm font-bold text-white">{stage.title}</span>
+                <span className="mt-0.5 block text-[11px] text-zinc-400">{stage.detail}</span>
+              </button>
+            ))}
+          </div>
+          {quickOpenCategory !== "review" && (
+            <div className="studio-subcategories mt-3 flex flex-wrap items-center gap-2 rounded-xl p-3" aria-label={`${quickStages.find((stage) => stage.key === quickOpenCategory)?.title || "Category"} controls`}>
+              <span className="mr-2 text-xs font-semibold text-cyan-200">{quickStages.find((stage) => stage.key === quickOpenCategory)?.title}</span>
+              {quickStages.find((stage) => stage.key === quickOpenCategory)?.sections.map((key) => {
+                const section = SECTIONS.find((item) => item.key === key);
+                return section && <button key={key} type="button" onClick={() => { setQuickReview(false); goSection(key); }}
+                  className={`rounded-lg border px-3 py-2 text-xs font-semibold transition-colors ${activeSection === key && !quickReview ? "border-lime-400 bg-lime-400/15 text-lime-200" : "border-white/15 bg-white/[0.04] text-zinc-300 hover:border-cyan-400/60 hover:text-white"}`}>
+                  {section.title}
+                </button>;
+              })}
+            </div>
+          )}
+        </section>
+      )}
+
+          {desktopQuickMode && quickReview ? (
+            <div className="hidden md:block pane border-cyan-400/30 p-5 space-y-4" data-testid="desktop-quick-review">
+              <div className="section-label">Ready to render</div>
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <div><span className="text-zinc-500">Model</span><div className="font-semibold">{activeWorkflow?.name || "Select a model"}</div></div>
+                <div><span className="text-zinc-500">Output</span><div className="font-semibold">{qualityTier} · {activeRecipeFamily === "image" ? `${renderCount} image${renderCount === 1 ? "" : "s"}` : activeRecipeFamily}</div></div>
+              </div>
+              <div className="rounded-xl border hairline bg-black/40 p-3 text-xs leading-relaxed text-zinc-300 max-h-44 overflow-y-auto">{finalPositive || "Choose the subject and scene to build a prompt."}</div>
+              {mobileCreateIssues.length > 0 && <div className="text-xs text-rose-300">{mobileCreateIssues.join(" ")}</div>}
+              <button type="button" onClick={doDispatch} disabled={dispatching || !workflowId || mobileCreateIssues.length > 0}
+                className="rounded-lg bg-amber-500 px-5 py-3 text-sm font-bold text-black disabled:opacity-40">
+                {dispatching ? "Rendering…" : "Render images"}
+              </button>
+              {activeRender && (
+                <div className="border-t hairline pt-4" data-testid="quick-create-result">
+                  <div className="section-label">Latest render · {activeRender.status}</div>
+                  {activeRender.error && <p className="mt-2 text-xs text-rose-300">{activeRender.error}</p>}
+                  {activeRender.output_files?.[0] ? (
+                    <Link to={`/gallery?render=${encodeURIComponent(activeRender.render_id || activeRender.id)}&returnTo=${encodeURIComponent(location.pathname)}`}
+                      className="mt-3 inline-block max-w-sm overflow-hidden rounded-xl border border-cyan-400/30">
+                      <img src={mediaUrl(activeRender.output_files[0])} alt="Latest image · open in Gallery" className="max-h-80 w-full object-contain" />
+                      <span className="block p-2 text-center text-xs font-semibold text-cyan-200">Open full size in Gallery</span>
+                    </Link>
+                  ) : <p className="mt-2 text-xs text-zinc-400">Your image will appear here when it finishes.</p>}
+                </div>
+              )}
+            </div>
+          ) : null}
+          <div key={activeSection} className={`studio-section-enter ${desktopQuickMode && quickReview ? "md:hidden" : "block"}`}>
+          <div className="hidden md:flex items-center justify-between text-xs font-mono text-zinc-500">
+            <span>Detail {activeIdx + 1} of {SECTIONS.length}{isMulti && ` · Subject ${activeSubject.label}`}</span>
+            <span className={`uppercase tracking-widest section-label phase-${phaseOfSection(activeSection)}`}>{SECTIONS[activeIdx].title}</span>
+          </div>
+          <div className="hidden md:block h-1 rounded-full bg-elevated overflow-hidden">
+            <div
+              className="h-full bg-amber-400 transition-all"
+              style={{ width: `${((activeIdx + 1) / SECTIONS.length) * 100}%` }}
+            />
+          </div>
+          {desktopQuickMode && <div className="hidden md:block">
+            <SubjectSwitcher subjects={subjects} activeId={activeSubjectId} expectedCount={expectedCount}
+              primaryLabel={subjects[0]?.label || "A"} onSelect={setActiveSubjectId}
+              onAdd={addSubject} onRemove={removeSubject} onCopyFromPrimary={copyPrimaryToActive}
+              onRandomizeActive={randomizeActive} showAddForSingle />
+          </div>}
+          {sectionNavigation("top")}
+          {activeSection === "identity" && (
+            <>
+            <div className="pane p-3 sm:p-4 space-y-3" data-testid="person-scenario-setup">
+              <div className="section-label">People &amp; scenario</div>
+              <p className="text-xs text-zinc-400">Choose the cast and scenario, then set each person's age and appearance. The editor adds the required subjects automatically.</p>
+              <div className="grid gap-3 sm:grid-cols-2">
+                {SECTIONS.find((section) => section.key === "scenario").fields.filter((field) => ["cast_size", "cast_type"].includes(field.key)).map((field) => (
+                  <label key={field.key} className="space-y-1 text-xs text-zinc-300">
+                    <span>{field.label}</span>
+                    <select
+                      data-testid={`person-${field.key}`}
+                      value={primaryDna.scenario?.[field.key] || (field.key === "cast_size" ? "solo" : "none")}
+                      onChange={(event) => setSubjects((cur) => cur.map((subject, index) => index === 0 ? {
+                        ...subject,
+                        dna: { ...subject.dna,
+                          ...(field.key === "cast_type" && ["mother and daughter", "stepmom and stepdaughter", "grandmother, mother and daughter"].includes(event.target.value) ? { identity: { ...subject.dna.identity, age: Math.max(event.target.value === "grandmother, mother and daughter" ? 68 : 44, Number(subject.dna.identity?.age) || 44), gender: "female" } } : {}),
+                          scenario: {
+                          ...subject.dna.scenario,
+                          [field.key]: event.target.value,
+                          ...(field.key === "cast_type" && event.target.value !== "none" ? { cast_size: ["triplets", "grandmother, mother and daughter"].includes(event.target.value) ? "trio" : "duo" } : {}),
+                        } },
+                      } : subject))}
+                      className="w-full rounded-lg border hairline bg-elevated px-3 py-2 text-sm text-zinc-100"
+                    >
+                      {field.options.map((option) => <option key={option} value={option}>{option}</option>)}
+                    </select>
+                  </label>
+                ))}
+              </div>
+              {subjects.length > 1 && <div className="space-y-3 border-t hairline pt-3" data-testid="cast-appearance-controls">
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <label className="space-y-1 text-xs text-zinc-300"><span>Cast ages</span>
+                    <select value={primaryDna.scenario?.cast_age_mode || "individual ages"} onChange={event=>updateCastScenario({ ...primaryDna.scenario, cast_age_mode:event.target.value })} className="w-full rounded-lg border hairline bg-elevated px-3 py-2 text-sm text-zinc-100">
+                      {CAST_AGE_OPTIONS.map(option=><option key={option} value={option}>{option}</option>)}
+                    </select>
+                  </label>
+                  <label className="space-y-1 text-xs text-zinc-300"><span>Facial resemblance</span>
+                    <select value={primaryDna.scenario?.cast_resemblance || "from cast pairing"} onChange={event=>updateCastScenario({ ...primaryDna.scenario, cast_resemblance:event.target.value })} className="w-full rounded-lg border hairline bg-elevated px-3 py-2 text-sm text-zinc-100">
+                      {CAST_RESEMBLANCE_OPTIONS.map(option=><option key={option} value={option}>{option}</option>)}
+                    </select>
+                  </label>
+                </div>
+                {primaryDna.scenario?.cast_age_mode === "age contrast" && <label className="block text-xs text-zinc-300">Age gap from Subject A
+                  <Input type="number" min="1" max="50" value={primaryDna.scenario?.cast_age_gap || 20} onChange={event=>updateCastScenario({ ...primaryDna.scenario, cast_age_gap:Math.min(50, Math.max(1, Number(event.target.value) || 20)) })} className="mt-1 bg-elevated"/>
+                </label>}
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                  {subjects.map((subject,index)=><label key={subject.id} className="text-xs text-zinc-300">Subject {subject.label || subjectLabel(index)} age
+                    <Input type="number" min="18" max="80" value={subject.dna.identity?.age || 30} disabled={!!locks.identity || !!subject.field_locks?.identity?.age}
+                      onChange={event=>setSubjects(current=>editCastSubjectDna(current,subject.id,{ ...subject.dna,
+                        identity:{ ...subject.dna.identity, age:Math.min(80,Math.max(18,Number(event.target.value)||30)) },
+                      }))} className="mt-1 bg-elevated"/>
+                  </label>)}
+                </div>
+                <p className="text-xs text-zinc-400">Age presets update the current cast. Set a person's age directly to use individual ages. Resemblance affects facial structure; expressions and outfits stay separate. Locked traits are preserved.</p>
+              </div>}
+              <button type="button" onClick={randomizePerson} data-testid="btn-randomize-person"
+                className="inline-flex items-center gap-2 rounded-lg border border-cyan-400/40 bg-cyan-400/10 px-3 py-2 text-xs font-semibold text-cyan-100 hover:bg-cyan-400/20">
+                <Shuffle className="h-4 w-4" /> Randomize person
+              </button>
+              {subjects.length > 1 && <button type="button" onClick={randomizeCast} data-testid="btn-randomize-group"
+                className="ml-2 inline-flex items-center gap-2 rounded-lg border border-fuchsia-400/40 bg-fuchsia-400/10 px-3 py-2 text-xs font-semibold text-fuchsia-100 hover:bg-fuchsia-400/20">
+                <Shuffle className="h-4 w-4" /> Randomize group · female
+              </button>}
+              <button type="button" onClick={randomizeScene} data-testid="btn-randomize-scene"
+                className="ml-2 inline-flex items-center gap-2 rounded-lg border hairline px-3 py-2 text-xs font-semibold text-zinc-200 hover:bg-white/5">
+                <Shuffle className="h-4 w-4" /> Randomize scene
+              </button>
+            </div>
+            <div className="quick-hide"><SubjectSwitcher
+              subjects={subjects}
+              activeId={activeSubjectId}
+              expectedCount={expectedCount}
+              primaryLabel={subjects[0]?.label || "A"}
+              onSelect={setActiveSubjectId}
+              onAdd={addSubject}
+              onRemove={removeSubject}
+              onCopyFromPrimary={copyPrimaryToActive}
+              onRandomizeActive={randomizeActive}
+              showAddForSingle
+            /></div>
+            </>
+          )}
+          {activeSection === "pose" && expectedCount > 1 && <div className="pane p-3" data-testid="cast-aware-poses">
+            <div className="section-label">Poses for {expectedCount} people</div>
+            <p className="mt-1 text-xs text-zinc-400">Choose a shared composition; each person keeps separate character settings.</p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {(expectedCount === 2
+                ? ["side by side", "back to back", "facing each other", "walking together", "seated together", "embracing", "dancing together"]
+                : ["group portrait", "staggered lineup", "semicircle", "walking together", "seated group", "standing at different depths", "hands joined"]
+              ).map((pose) => <button key={pose} type="button" onClick={() => setSection("pose", { ...activeDna.pose, action: pose, distance: "wide shot" })}
+                className={`rounded-lg border px-3 py-2 text-xs capitalize ${activeDna.pose?.action === pose ? "border-amber-400 text-amber-200" : "hairline text-zinc-300"}`}>{pose}</button>)}
+            </div>
+          </div>}
+          {studioProfile && activeSection === studio && <div className="flex gap-2 overflow-x-auto pb-1" role="tablist" aria-label={`${studioProfile.title} controls`} data-testid="specialty-field-groups">
+            {studioProfile.fieldGroups.map((group, index) => <button key={group.label} type="button" role="tab"
+              aria-selected={specialtyTab === index} onClick={() => setSpecialtyTab(index)}
+              className={`shrink-0 rounded-lg border px-3 py-2 text-xs font-semibold ${specialtyTab === index ? "border-amber-400 bg-amber-500/10 text-amber-100" : "hairline text-zinc-400"}`}>
+              {group.label}
+            </button>)}
+          </div>}
+          <DnaSection
+            key={`${activeSubjectId}-${activeSection}`}
+            section={studioProfile && activeSection === studio
+              ? { ...SECTIONS[activeIdx], fields: SECTIONS[activeIdx].fields.filter((field) => studioProfile.fieldGroups[specialtyTab]?.keys.includes(field.key)) }
+              : activeSection === "scenario" ? { ...SECTIONS[activeIdx], fields: SECTIONS[activeIdx].fields.filter(field => {
+                if (!["cast_age_mode", "cast_age_gap", "cast_resemblance"].includes(field.key)) return true;
+                return subjects.length > 1 && (field.key !== "cast_age_gap" || primaryDna.scenario?.cast_age_mode === "age contrast");
+              }) } : SECTIONS[activeIdx]}
+            value={(activeSection === "scenario" ? primaryDna : activeDna)[activeSection] || {}}
+            onChange={(v) => setSection(activeSection, v)}
+            locked={!!locks[activeSection]}
+            onToggleLock={() => setLocks({ ...locks, [activeSection]: !locks[activeSection] })}
+            onRandomize={() => setSection(activeSection, randomizeSection(activeSection, activeDna[activeSection] || {}, activeFieldLocks[activeSection] || {}))}
+            onReset={() => setSection(activeSection, resetSection(activeSection))}
+            onSuggest={() => runSuggest(activeSection)}
+            fieldLocks={activeFieldLocks[activeSection] || {}}
+            onToggleFieldLock={(fieldKey) => setActiveFieldLocks({
+              ...activeFieldLocks,
+              [activeSection]: { ...(activeFieldLocks[activeSection] || {}), [fieldKey]: !(activeFieldLocks[activeSection] || {})[fieldKey] },
+            })}
+            collapsed={!!collapsed[activeSection]}
+            onToggleCollapsed={() => setCollapsed((cur) => ({ ...cur, [activeSection]: !cur[activeSection] }))}
+            simpleMode={mobileStudioMode === "simple"}
+            simpleFieldKeys={SIMPLE_FIELD_KEYS[activeSection] || []}
+            onRequestAdvanced={() => setMobileStudioMode("advanced")}
+          />
+          {sectionNavigation("bottom")}
+          </div>
+        </div>
+
+        {/* Right - preview + AI + render */}
+        <aside id="studio-render" className={`quick-hide ${isImageFirst || mobileStudioStep === "create" ? "block" : "hidden md:block"} scroll-mt-24 space-y-4 lg:sticky lg:top-20 lg:h-fit`}>
+          <div className={isImageFirst ? "hidden" : mobileStudioMode === "advanced" ? "block" : "hidden md:block"}>
+            <SmartSetupPanel workflows={selectableWorkflows} activeWorkflow={activeWorkflow} dna={activeDna}
+              subjectCount={subjects.length} hasReference={!!referenceImage?.name} onApply={applySmartSetup} />
+          </div>
+          <div className={mobileStudioMode === "advanced" || mobileStudioStep === "create" ? "block" : "hidden md:block"}>
+          {activeCompiler === "krea2" && (
+            <div className="pane p-4 mb-4 space-y-2" data-testid="krea-framing-control">
+              <div className="section-label">Krea 2 · magazine framing</div>
+              <p className="text-xs text-zinc-400">Choose the crop for every subject. Face priority keeps the face clear within this shot.</p>
+              <div className="flex gap-2">
+                {[["full body", "Full body"], ["knees-up", "Knees-up"], ["thigh-up", "Thigh-up"], ["waist-up", "Waist-up"]].map(([value, label]) => (
+                  <button key={value} type="button" onClick={() => setKreaFraming(value)}
+                    className={`rounded-lg border px-3 py-2 text-xs font-semibold ${subjects.every((subject) => subject.dna?.pose?.distance === value) ? "border-cyan-400 bg-cyan-500/15 text-cyan-100" : "hairline text-zinc-300"}`}>
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <p className="text-[11px] text-zinc-500">Selected scene details: {(activeDna.scenario?.acts || []).length + String(activeDna.scenario?.extra_acts || "").split(/[,;]+/).filter((part) => part.trim()).length}. Keep this to one main action and up to two supporting details. The preview below shows the exact prompt sent to ComfyUI.</p>
+            </div>
+          )}
+          <div className={`${isImageFirst ? "!hidden" : ""} pane p-4 mb-4 space-y-2`} data-testid="plain-language-prompt">
+            <label htmlFor="plain-language-input" className="section-label">Describe it in your own words</label>
+            <Textarea id="plain-language-input" rows={2} value={plainLanguage}
+              onChange={(event) => setPlainLanguage(event.target.value)}
+              placeholder="Example: adult subject, 3000 cc breast implants, BBL, fitted dress" />
+            {translatedPlainLanguage.attributes.map((attribute) => (
+              <p key={attribute.key} className="text-xs text-zinc-400">
+                <span className="text-zinc-200">{attribute.source}</span> → {attribute.meaning}
+              </p>
+            ))}
+            {plainLanguage.trim() && <p className="text-xs text-zinc-400">Workflow translation: {translatedPlainLanguage.text || "Describe motion for image-to-video; the source image supplies appearance."}</p>}
+          </div>
+          <PromptPreview
+            aiProvider={aiProvider}
+            positive={finalPositive}
+            negative={finalNegative}
+            dna={activeDna}
+            workflow={activeWorkflow}
+            context={preflightContext}
+            compilerMeta={compiledPrompt}
+            recipe={activeRecipeFamily === "image" ? renderSettings : null}
+            selectedLora={selectedLora}
+            secondaryLora={showSecondLora ? secondaryLora : null}
+            imageCount={activeRecipeFamily === "image" && (!poseAssistEnabled || isVariationWorkflow) ? renderCount : 1}
+            optimized={!!promptOverride}
+            improving={improvingPrompt}
+            onImprove={improveCompiledPrompt}
+            onApplyPrompts={(nextPositive, nextNegative) => {
+              setPromptOverride(nextPositive);
+              setNegativePromptOverride(nextNegative);
+            }}
+            onOptimize={(cleaned) => {
+              setPromptOverride(cleaned);
+              toast.success("Safe prompt cleanup applied");
+            }}
+            onRestore={() => {
+              setPromptOverride("");
+              setNegativePromptOverride("");
+              toast.success("Generated prompt restored");
+            }}
+          />
+          </div>
+          {activeWorkflow && promptStyle === "pony" && (
+            <div className={`${mobileStudioMode === "advanced" ? "flex" : "hidden md:flex"} pane p-3 items-center gap-2`} data-testid="pony-style-badge">
+              <span className="text-[10px] font-mono uppercase tracking-widest text-rose-300 bg-rose-500/10 border border-rose-500/40 rounded px-1.5 py-0.5">pony style</span>
+              <span className="text-[11px] text-zinc-400">score_9 prefix + booru tag weighting enabled</span>
+            </div>
+          )}
+          {isVideoWorkflow && (
+            <div className="pane p-4 space-y-4" data-testid="wan-video-panel">
+              <div className="flex items-center gap-2">
+                <Camera className="h-4 w-4 text-emerald-300" />
+                <div className="section-label">WAN Image → Video</div>
+              </div>
+              <p className="text-xs text-zinc-400">
+                Upload the starting frame, then describe movement rather than redesigning the image.
+              </p>
+              {referencePreview ? (
+                <div className="relative rounded-lg overflow-hidden border hairline bg-elevated">
+                  <img src={referencePreview} alt="WAN starting frame" className="w-full max-h-72 object-contain" />
+                  <button type="button" onClick={clearReference}
+                    className="absolute right-2 top-2 rounded-full bg-black/70 p-2 text-zinc-100 hover:bg-red-500"
+                    aria-label="Remove WAN starting image" data-testid="btn-remove-wan-source">
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              ) : (
+                <label className="flex min-h-28 cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-emerald-500/40 bg-emerald-500/5 px-4 py-5 text-center hover:bg-emerald-500/10">
+                  {referenceUploading ? <Loader2 className="h-6 w-6 animate-spin text-emerald-300" /> : <Upload className="h-6 w-6 text-emerald-300" />}
+                  <span className="text-sm font-semibold text-emerald-100">
+                    {referenceUploading ? "Uploading…" : "Choose starting image"}
+                  </span>
+                  <span className="text-[11px] text-zinc-500">JPG, PNG, or WEBP · maximum 20 MB</span>
+                  <input type="file" accept="image/jpeg,image/png,image/webp"
+                    disabled={referenceUploading}
+                    onChange={(event) => uploadReference(event.target.files?.[0])}
+                    className="hidden" data-testid="input-wan-source" />
+                </label>
+              )}
+              <label className="block space-y-1">
+                <span className="text-xs uppercase tracking-widest text-zinc-500 font-mono">Movement instruction</span>
+                <Textarea rows={5} value={videoInstruction}
+                  onChange={(event) => setVideoInstruction(event.target.value)}
+                  placeholder="Example: She slowly turns toward the camera and smiles. Natural blinking and breathing, gentle hair movement, steady camera."
+                  className="bg-elevated border-hairline text-sm"
+                  data-testid="textarea-wan-motion" />
+              </label>
+              <button type="button" onClick={analyzeVideoImage}
+                disabled={analyzingVideoImage || !referenceImage?.name}
+                className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-cyan-500/40 bg-cyan-500/10 px-3 py-2 text-sm font-semibold text-cyan-200 hover:bg-cyan-500/20 disabled:opacity-40"
+                data-testid="btn-venice-analyze-video-image">
+                {analyzingVideoImage ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                Analyze image + draft motion with {aiProvider}
+              </button>
+              {videoImageAnalysis && (
+                <div className="rounded-lg border border-cyan-500/20 bg-cyan-500/5 p-3 text-xs text-zinc-300">
+                  <div className="mb-1 font-mono uppercase tracking-widest text-cyan-300">{aiProvider} image analysis</div>
+                  {videoImageAnalysis}
+                </div>
+              )}
+              <button type="button" onClick={enhanceVideoInstruction}
+                disabled={enhancingVideo || !videoInstruction.trim()}
+                className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm font-semibold text-amber-200 hover:bg-amber-500/20 disabled:opacity-40"
+                data-testid="btn-venice-enhance-video">
+                {enhancingVideo ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                Enhance movement with {aiProvider}
+              </button>
+              <div className="grid grid-cols-2 gap-3">
+                <label className="space-y-1">
+                  <span className="text-xs text-zinc-400">Duration</span>
+                  <select value={videoFrames} onChange={(e) => setVideoFrames(Number(e.target.value))}
+                    className="w-full rounded-lg border border-hairline bg-elevated px-3 py-2 text-sm"
+                    data-testid="select-wan-duration">
+                    <option value={41}>1.7 sec · 41 frames</option>
+                    <option value={81}>3.4 sec · 81 frames</option>
+                    <option value={121}>5 sec · 121 frames</option>
+                    <option value={161}>6.7 sec · 161 frames</option>
+                    <option value={201}>8.4 sec · 201 frames</option>
+                    <option value={241}>10 sec · 241 frames</option>
+                  </select>
+                </label>
+                <label className="space-y-1">
+                  <span className="text-xs text-zinc-400">Playback FPS</span>
+                  <select value={videoFps} onChange={(e) => setVideoFps(Number(e.target.value))}
+                    className="w-full rounded-lg border border-hairline bg-elevated px-3 py-2 text-sm"
+                    data-testid="select-wan-fps">
+                    <option value={16}>16 FPS</option>
+                    <option value={20}>20 FPS</option>
+                    <option value={24}>24 FPS</option>
+                    <option value={30}>30 FPS</option>
+                  </select>
+                </label>
+              </div>
+              <p className="text-[11px] text-zinc-500">
+                Longer clips require substantially more VRAM and generation time. Start with 41 frames for testing.
+              </p>
+            </div>
+          )}
+          {isTextVideoWorkflow && (
+            <div className="pane p-4 space-y-4" data-testid="wan-text-video-panel">
+              <div className="flex items-center gap-2">
+                <Camera className="h-4 w-4 text-violet-300" />
+                <div className="section-label">WAN Text → Video</div>
+              </div>
+              <p className="text-xs text-zinc-400">
+                Describe the complete shot: adult subject, action, environment, lighting, framing, and camera motion. No starting image is required.
+              </p>
+              <label className="block space-y-1">
+                <span className="text-xs uppercase tracking-widest text-zinc-500 font-mono">Video description</span>
+                <Textarea rows={7} value={videoInstruction}
+                  onChange={(event) => setVideoInstruction(event.target.value)}
+                  placeholder="Example: A cinematic full-body shot of an adult woman walking through a softly lit hotel suite, natural body movement, gentle handheld camera, stable identity, one continuous shot."
+                  className="bg-elevated border-hairline text-sm"
+                  data-testid="textarea-wan-text-video" />
+              </label>
+              <button type="button" onClick={enhanceVideoInstruction}
+                disabled={enhancingVideo || !videoInstruction.trim()}
+                className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm font-semibold text-amber-200 hover:bg-amber-500/20 disabled:opacity-40"
+                data-testid="btn-venice-enhance-text-video">
+                {enhancingVideo ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                Expand scene with {aiProvider}
+              </button>
+              <div className="grid grid-cols-2 gap-3">
+                <label className="space-y-1">
+                  <span className="text-xs text-zinc-400">Duration</span>
+                  <select value={videoFrames} onChange={(e) => setVideoFrames(Number(e.target.value))}
+                    className="w-full rounded-lg border border-hairline bg-elevated px-3 py-2 text-sm"
+                    data-testid="select-wan-t2v-duration">
+                    <option value={41}>2.6 sec · 41 frames</option>
+                    <option value={81}>5.1 sec · 81 frames</option>
+                    <option value={121}>7.6 sec · 121 frames</option>
+                    <option value={161}>10 sec · 161 frames</option>
+                  </select>
+                </label>
+                <label className="space-y-1">
+                  <span className="text-xs text-zinc-400">Playback FPS</span>
+                  <select value={videoFps} onChange={(e) => setVideoFps(Number(e.target.value))}
+                    className="w-full rounded-lg border border-hairline bg-elevated px-3 py-2 text-sm"
+                    data-testid="select-wan-t2v-fps">
+                    <option value={16}>16 FPS</option>
+                    <option value={20}>20 FPS</option>
+                    <option value={24}>24 FPS</option>
+                  </select>
+                </label>
+              </div>
+              <p className="text-[11px] text-zinc-500">
+                This 14B workflow is much heavier than the 5B Image → Video workflow. Test with 41 frames first.
+              </p>
+            </div>
+          )}
+          {isEnhanceWorkflow && (
+            <div className="pane p-4 space-y-4" data-testid="image-repair-panel">
+              <div className="flex items-center gap-2">
+                <Sparkles className="h-4 w-4 text-cyan-300" />
+                <div className="section-label">Image Repair & Enhance</div>
+              </div>
+              <p className="text-xs text-zinc-400">
+                Upload an image, select only the areas that need correction, and optionally let {aiProvider} inspect it before Qwen performs the repair.
+              </p>
+              {referencePreview ? (
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div>
+                    <div className="mb-1 text-[10px] font-mono uppercase tracking-widest text-zinc-500">Original</div>
+                    <div className="relative rounded-lg overflow-hidden border hairline bg-elevated">
+                      <img src={referencePreview} alt="Original for repair" className="w-full max-h-80 object-contain" />
+                      <button type="button" onClick={clearReference}
+                        className="absolute right-2 top-2 rounded-full bg-black/70 p-2 text-zinc-100 hover:bg-red-500"
+                        aria-label="Remove repair image" data-testid="btn-remove-repair-source">
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                  {activeRender?.status === "done" && activeRender.output_files?.[0] && (
+                    <div>
+                      <div className="mb-1 text-[10px] font-mono uppercase tracking-widest text-emerald-300">Repaired result</div>
+                      <img src={activeRender.output_files[0]} alt="Repaired result"
+                        className="w-full max-h-80 rounded-lg border hairline bg-elevated object-contain" />
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <label className="flex min-h-32 cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-cyan-500/40 bg-cyan-500/5 px-4 py-6 text-center hover:bg-cyan-500/10">
+                  {referenceUploading ? <Loader2 className="h-6 w-6 animate-spin text-cyan-300" /> : <Upload className="h-6 w-6 text-cyan-300" />}
+                  <span className="text-sm font-semibold text-cyan-100">
+                    {referenceUploading ? "Uploading…" : "Choose image to repair"}
+                  </span>
+                  <span className="text-[11px] text-zinc-500">JPG, PNG, or WEBP · maximum 20 MB</span>
+                  <input type="file" accept="image/jpeg,image/png,image/webp"
+                    disabled={referenceUploading}
+                    onChange={(event) => uploadReference(event.target.files?.[0])}
+                    className="hidden" data-testid="input-repair-source" />
+                </label>
+              )}
+              <div>
+                <div className="mb-2 text-xs uppercase tracking-widest text-zinc-500 font-mono">Repair targets</div>
+                <div className="flex flex-wrap gap-2">
+                  {REPAIR_TARGETS.map(([value, label]) => (
+                    <button type="button" key={value} onClick={() => toggleRepairTarget(value)}
+                      className={`rounded-full border px-3 py-1.5 text-xs transition ${
+                        repairTargets.includes(value)
+                          ? "border-cyan-400 bg-cyan-500/20 text-cyan-100"
+                          : "border-hairline bg-elevated text-zinc-400 hover:text-zinc-200"
+                      }`}
+                      data-testid={`repair-target-${value}`}>
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <label className="block space-y-1">
+                <div className="flex justify-between text-xs text-zinc-400">
+                  <span>Repair strength</span>
+                  <span className="font-mono text-cyan-300">{Math.round(repairStrength * 100)}%</span>
+                </div>
+                <input type="range" min="0.2" max="0.85" step="0.05" value={repairStrength}
+                  onChange={(event) => setRepairStrength(Number(event.target.value))}
+                  className="w-full accent-cyan-400" data-testid="slider-repair-strength" />
+                <div className="flex justify-between text-[10px] text-zinc-600">
+                  <span>Subtle preservation</span><span>Stronger reconstruction</span>
+                </div>
+              </label>
+              <label className="block space-y-1">
+                <span className="text-xs uppercase tracking-widest text-zinc-500 font-mono">Repair instruction</span>
+                <Textarea rows={6} value={repairInstruction}
+                  onChange={(event) => setRepairInstruction(event.target.value)}
+                  placeholder={`Optional: describe a specific defect or leave this blank and ask ${aiProvider} to inspect the selected areas.`}
+                  className="bg-elevated border-hairline text-sm"
+                  data-testid="textarea-repair-instruction" />
+              </label>
+              <button type="button" onClick={analyzeRepairImage}
+                disabled={analyzingRepair || !referenceImage?.name}
+                className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-cyan-500/40 bg-cyan-500/10 px-3 py-2 text-sm font-semibold text-cyan-200 hover:bg-cyan-500/20 disabled:opacity-40"
+                data-testid="btn-venice-analyze-repair">
+                {analyzingRepair ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                Inspect image and draft repair with {aiProvider}
+              </button>
+              {repairAnalysis && (
+                <div className="rounded-lg border border-cyan-500/20 bg-cyan-500/5 p-3 text-xs text-zinc-300">
+                  <div className="mb-1 font-mono uppercase tracking-widest text-cyan-300">{aiProvider} inspection</div>
+                  {repairAnalysis}
+                </div>
+              )}
+              <p className="text-[11px] text-zinc-500">
+                The repair prompt always preserves identity, age, body shape, pose, clothing, environment, and camera framing unless you explicitly request a change.
+              </p>
             </div>
           )}
           {isFaceWorkflow && (

@@ -382,6 +382,9 @@ export const SECTIONS = [
     title: "Scenario",
     fields: [
       { key: "cast_size", type: "chips", label: "Cast size", options: ["solo", "duo", "trio", "threesome", "foursome", "group", "gangbang", "orgy"] },
+      { key: "cast_age_mode", type: "chips", label: "Cast ages", options: ["individual ages", "same age", "age contrast"] },
+      { key: "cast_age_gap", type: "slider", label: "Age gap from Subject A", min: 1, max: 50, step: 1, defaultValue: 20 },
+      { key: "cast_resemblance", type: "chips", label: "Facial resemblance", options: ["from cast pairing", "individual faces", "similar facial features", "matching faces"] },
       { key: "cast_type", type: "chips", label: "Cast pairing", options: [
         "none", "twins", "identical twins", "triplets", "sisters", "best friends", "roommates",
         "mother and daughter", "stepmom and stepdaughter", "aunt and niece",
@@ -1051,12 +1054,11 @@ function _veniceSharedBlock(dna = {}, opts = {}, subjectCount = 1) {
   // Cast headcount — force multi-subject language when scenario says duo/threesome/pair
   // OR when we have >1 explicit subject fed in.
   const castHeadcount = (() => {
-    const effectiveCount = Math.max(subjectCount, 1);
-    if (effectiveCount >= 6 || cs === "gangbang" || cs === "orgy") return "multiple people in the frame, group scene, every subject clearly visible in the composition";
-    if (effectiveCount >= 5 || cs === "group") return "five women in the frame, ensemble scene, every subject clearly visible";
-    if (effectiveCount >= 4 || cs === "foursome") return "four women in the frame, all fully visible, full bodies of all four subjects shown";
-    if (effectiveCount >= 3 || cs === "threesome") return "three women in the frame, all fully visible, full bodies of all three subjects shown";
-    if (effectiveCount >= 2 || cs === "duo" || (isPairing && cs === "solo")) return "two women in the frame, both fully visible, full bodies of both subjects shown";
+    // Explicit subject records are authoritative. A generic "group" must not
+    // introduce a fifth person or turn a mixed cast into women only.
+    if (subjectCount > 1) return `exactly ${subjectCount} adult people in the frame, every selected subject visible`;
+    const inferred = cs === "duo" ? 2 : ["trio", "threesome"].includes(cs) ? 3 : ["foursome", "group"].includes(cs) ? 4 : isPairing ? 2 : 1;
+    if (inferred > 1) return `exactly ${inferred} adult people in the frame, every selected subject visible`;
     return "";
   })();
   const multiSubjectExpected = !!castHeadcount;
