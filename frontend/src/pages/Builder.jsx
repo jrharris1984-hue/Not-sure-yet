@@ -2631,9 +2631,9 @@ export default function Builder({ studio = "standard" }) {
         {!collapsed._glance && <DnaAtAGlance dna={activeDna} name={name} subjects={isMulti ? subjects : undefined} />}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[260px_1fr_380px] gap-4">
+      <div className={editMode === "body_adjust" ? "grid grid-cols-1 gap-4" : "grid grid-cols-1 lg:grid-cols-[260px_1fr_380px] gap-4"}>
         {/* Left rail - grouped-by-phase section nav (uses active subject's dna for filled dots) */}
-        <aside className="quick-hide hidden lg:block h-fit sticky top-20">
+        <aside className={`quick-hide hidden lg:block h-fit sticky top-20 ${editMode === "body_adjust" ? "!hidden" : ""}`}>
           <GroupedSectionRail
             dna={activeDna}
             locks={locks}
@@ -2644,7 +2644,7 @@ export default function Builder({ studio = "standard" }) {
         </aside>
 
         {/* Mobile section chips — grouped by phase */}
-        <div className="hidden md:flex lg:hidden overflow-x-auto scroll-fade -mx-3 px-3 gap-2 pb-1">
+        <div className={`hidden md:flex lg:hidden overflow-x-auto scroll-fade -mx-3 px-3 gap-2 pb-1 ${editMode === "body_adjust" ? "!hidden" : ""}`}>
           {SECTIONS.map((s) => (
             <Link
               key={s.key}
