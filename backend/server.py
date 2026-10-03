@@ -2487,15 +2487,31 @@ async def prepare_render_reference(rid: str):
     }
     settings = await get_settings()
     try:
+        # Prefer the same mounted output storage used by /api/comfyui/media.
+        # Older Gallery records can point at ComfyUI /view URLs that no longer
+        # resolve after the output directory was moved, while the actual file
+        # is still available through COMFYUI_OUTPUT_DIR.
+        source_content = None
+        source_mime = None
+        if params["type"] == "output" and filename and Path(filename).name == filename and not Path(filename).is_absolute():
+            root = COMFYUI_OUTPUT_DIR.resolve()
+            local_path = (root / params["subfolder"] / filename).resolve()
+            if local_path.is_relative_to(root) and local_path.is_file():
+                source_content = local_path.read_bytes()
+                source_mime = mimetypes.guess_type(filename)[0] or "image/png"
+
         async with httpx.AsyncClient(timeout=45.0) as hc:
-            source = await hc.get(f"{settings.comfyui_url.rstrip('/')}/view", params=params)
-            source.raise_for_status()
-            mime = source.headers.get("content-type") or mimetypes.guess_type(filename)[0] or "image/png"
+            if source_content is None:
+                source = await hc.get(f"{settings.comfyui_url.rstrip('/')}/view", params=params)
+                source.raise_for_status()
+                source_content = source.content
+                source_mime = source.headers.get("content-type") or mimetypes.guess_type(filename)[0] or "image/png"
+
             suffix = Path(filename).suffix.lower() or ".png"
             input_name = f"ultra-studio-gallery-{uuid.uuid4().hex}{suffix}"
             uploaded = await hc.post(
                 f"{settings.comfyui_url.rstrip('/')}/upload/image",
-                files={"image": (input_name, source.content, mime)},
+                files={"image": (input_name, source_content, source_mime)},
                 data={"type": "input", "overwrite": "true"},
             )
             uploaded.raise_for_status()
