@@ -522,7 +522,12 @@ export default function Builder({ studio = "standard" }) {
     if (!incoming || !workflows.length || galleryImportApplied.current || !editorHydrated) return;
 
     const requestedKind = location.state?.targetKind;
-    const target = workflows.find((workflow) => workflow.kind === requestedKind);
+    const requestedMode = location.state?.referenceMode;
+    // Body Adjust is a Chroma img2img operation. Keep Qwen reserved for normal
+    // image edits and route Gallery Body Adjust through the proven variation graph.
+    const target = requestedMode === "body_adjust"
+      ? workflows.find((workflow) => workflow.kind === "variation" && workflow.prompt_style === "chroma")
+      : workflows.find((workflow) => workflow.kind === requestedKind);
     if (!target) {
       const label = requestedKind === "video" ? "image-to-video" : requestedKind === "face" ? "face-preserve" : "image-edit";
       toast.error(`No ${label} workflow is configured. Add one in Settings first.`);
@@ -567,16 +572,18 @@ export default function Builder({ studio = "standard" }) {
       setLoraOverrides({});
     }
 
-    if (requestedKind === "edit") {
+    if (requestedMode === "body_adjust") {
+      setEditMode("body_adjust");
+      setBodyAdjustRegion("glutes");
+      setBodyAdjustAmount(50);
+      setVariationDenoise(0.22);
+      setPreserveUnmentioned(true);
+      setEditInstruction("");
+      setVideoInstruction("");
+    } else if (requestedKind === "edit") {
       setVideoInstruction("");
       if (location.state?.referenceMode === "new_pose") {
         setEditMode("new_pose");
-        setPreserveUnmentioned(true);
-        setEditInstruction("");
-      } else if (location.state?.referenceMode === "body_adjust") {
-        setEditMode("body_adjust");
-        setBodyAdjustRegion("glutes");
-        setBodyAdjustAmount(50);
         setPreserveUnmentioned(true);
         setEditInstruction("");
       } else {
@@ -605,12 +612,13 @@ export default function Builder({ studio = "standard" }) {
             ? "Gallery image loaded for body adjustment"
             : "Gallery image loaded for editing";
     toast.success(message);
-    if (requestedKind === "edit" && location.state?.referenceMode === "body_adjust") {
+    if (requestedMode === "body_adjust") {
       const existingDraft = readBuilderDraft(draftId) || {};
       writeBuilderDraft(draftId, {
         ...existingDraft,
         workflowId: target.id,
         editMode: "body_adjust",
+        variationDenoise: 0.22,
         bodyAdjustRegion: "glutes",
         bodyAdjustAmount: 50,
       });
@@ -1540,7 +1548,7 @@ export default function Builder({ studio = "standard" }) {
         locks,
         prompt_language: promptLanguage,
         quality_tier: qualityTier,
-        prompt_positive: finalPositive,
+        prompt_positive: editMode === "body_adjust" && isVariationWorkflow ? bodyAdjustInstruction : finalPositive,
         prompt_negative: finalNegative,
         workflow_id: workflowId,
         lora_overrides: effectiveLoraOverrides,
@@ -1553,7 +1561,7 @@ export default function Builder({ studio = "standard" }) {
           .filter((lora) => lora.name)
           .map((lora) => ({ name: lora.name, strength: lora.strength, triggers: lora.triggerWords || [] })),
         parent_render_id: sourceRenderId || undefined,
-        operation: isVariationWorkflow ? "variation" : sourceRenderId
+        operation: isVariationWorkflow ? (editMode === "body_adjust" ? "body_adjust_chroma" : "variation") : sourceRenderId
           ? (isVideoWorkflow ? "animate" : isFaceWorkflow ? "face_reference" : editMode === "new_pose" ? "new_pose" : "edit")
           : "render",
         width: activeRecipeFamily === "image" ? renderSettings.width : undefined,
@@ -1564,7 +1572,11 @@ export default function Builder({ studio = "standard" }) {
         sampler_name: activeRecipeFamily === "image" ? renderSettings.sampler : undefined,
         seed: activeRecipeFamily === "image" ? uniqueSeed : undefined,
         reference_image: (isFaceWorkflow || isEditWorkflow || isEnhanceWorkflow || isVideoWorkflow || isVariationWorkflow) ? referenceImage?.name : undefined,
-        refine_denoise: isVariationWorkflow ? variationDenoise : undefined,
+        refine_denoise: isVariationWorkflow
+          ? (editMode === "body_adjust"
+              ? Math.min(0.36, 0.16 + (Math.abs(bodyAdjustAmount - 50) / 50) * 0.20)
+              : variationDenoise)
+          : undefined,
         face_strength: faceStrength,
         faceid_v2_strength: faceIdV2Strength,
         edit_instruction: isEnhanceWorkflow
@@ -2652,7 +2664,7 @@ export default function Builder({ studio = "standard" }) {
               <div>
                 <div className="section-label text-amber-200">Edit existing image</div>
                 <h2 className="font-display mt-1 text-lg font-bold text-white">Body Adjust</h2>
-                <p className="mt-1 max-w-2xl text-xs text-zinc-400">The source image is the baseline. Adjust one region while Qwen preserves the rest of the image.</p>
+                <p className="mt-1 max-w-2xl text-xs text-zinc-400">The source image is the baseline. Body Adjust uses Chroma1-HD img2img; 50 is the original, lower values reduce the selected region, and higher values enlarge it.</p>
               </div>
               <button type="button" onClick={() => { setEditMode("standard"); setBodyAdjustAmount(50); }}
                 className="rounded-lg border hairline px-3 py-2 text-xs font-semibold text-zinc-300 hover:text-white">
@@ -2686,7 +2698,7 @@ export default function Builder({ studio = "standard" }) {
                   </div>
                 </label>
                 <div className="rounded-lg border hairline bg-black/20 p-3 text-xs text-zinc-300">
-                  <span className="font-semibold text-zinc-100">Qwen instruction: </span>{bodyAdjustInstruction}
+                  <span className="font-semibold text-zinc-100">Chroma instruction: </span>{bodyAdjustInstruction}
                 </div>
               </div>
               <div>
