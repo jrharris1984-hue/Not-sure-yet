@@ -176,6 +176,88 @@ function removeChromaReferenceDuplicates(value, dna = {}) {
   return text.replace(/\n{3,}/g, "\n\n").trim();
 }
 
+function chromaLeanSingleSubjectPrompt(dna = {}, primaryGuard = {}) {
+  const block = buildChromaPrompts(dna, { raunch: false });
+  const ph = dna.physique || {};
+  const id = dna.identity || {};
+  const face = dna.face || {};
+  const hair = dna.hair || {};
+  const wardrobe = dna.wardrobe || {};
+  const pose = dna.pose || {};
+  const scene = dna.scene || {};
+  const lighting = dna.lighting || {};
+  const camera = dna.camera || {};
+  const style = dna.style || {};
+
+  const age = Number(id.age || 0);
+  const gender = id.gender === "male" ? "man" : "woman";
+  const subject = [
+    age ? `${age}-year-old adult ${gender}` : `adult ${gender}`,
+    id.ethnicity,
+    ph.body_type && `${ph.body_type} build`,
+    ph.height && ph.height !== "average" ? `${ph.height} height` : "",
+    face.expression && `${face.expression} expression`,
+    hair.color && `${hair.color} hair`,
+    hair.length && `${hair.length} hair`,
+    hair.style && `${hair.style} hairstyle`,
+    hair.texture && `${hair.texture} hair texture`,
+  ].filter(Boolean).join(", ");
+
+  const outfit = [
+    wardrobe.outfit_set_color,
+    wardrobe.outfit_set || wardrobe.outfit_preset || wardrobe.dress_style || wardrobe.skirt_style,
+    !wardrobe.outfit_set && !wardrobe.dress_style ? wardrobe.top : "",
+    !wardrobe.outfit_set && !wardrobe.dress_style && !wardrobe.skirt_style ? wardrobe.bottom : "",
+    wardrobe.hosiery_type,
+    wardrobe.heel_type,
+  ].filter(Boolean).join(" ");
+
+  const framing = [
+    pose.distance,
+    pose.angle,
+    pose.action,
+    pose.body_language,
+  ].filter(Boolean).join(", ");
+
+  const setting = [
+    scene.environment,
+    scene.background,
+    scene.props,
+  ].filter(Boolean).join(", ");
+
+  const look = [
+    lighting.style,
+    lighting.mood,
+    lighting.source,
+    camera.angle && `${camera.angle} camera angle`,
+    camera.lens,
+    style.render,
+    style.artistic_tone,
+  ].filter(Boolean).join(", ");
+
+  // Keep Chroma T2I intentionally short. The exhaustive DNA compiler remains
+  // available to other model families, but GoldenChroma follows the actual
+  // subject/composition selections more reliably when they are not buried
+  // beneath repeated anatomy/quality/override prose.
+  const positive = [
+    "Photorealistic editorial photograph",
+    "one adult person only",
+    primaryGuard.composition,
+    framing && `composition: ${framing}`,
+    chromaBodyPriority(dna),
+    subject && `subject: ${subject}`,
+    outfit && `wardrobe: ${outfit}`,
+    setting && `setting: ${setting}`,
+    look && `visual treatment: ${look}`,
+    "coherent anatomy, realistic skin texture, natural perspective",
+  ].filter(Boolean).join("; ");
+
+  return {
+    ...block,
+    positive: compactWords(positive, 210),
+  };
+}
+
 function buildPrioritizedChromaPrompt(prompts, priorityPlan, primaryGuard, dna) {
   const bodyPriority = chromaBodyPriority(dna);
   const normalized = {
@@ -955,12 +1037,17 @@ export function compileModelPrompts({
   if (compiler === "chroma") {
     const sourceDna = primaryGuard.dna;
     const chromaDna = chromaDnaWithAuthoritativeScales(sourceDna);
-    return buildPrioritizedChromaPrompt(
-      buildChromaPrompts(chromaDna, { raunch }),
+    const prompts = chromaLeanSingleSubjectPrompt(chromaDna, primaryGuard);
+    return {
+      ...prompts,
       priorityPlan,
-      primaryGuard,
-      sourceDna
-    );
+      droppedClauses: [],
+      promptBudget: 210,
+      promptWords: clean(prompts.positive).split(/\s+/).filter(Boolean).length,
+      omittedClauseCount: 0,
+      guardAdjustments: primaryGuard.adjustments,
+      negativeStrategy: "text",
+    };
   }
   if (compiler === "krea2") {
     const prompts = buildKrea2Prompts({
