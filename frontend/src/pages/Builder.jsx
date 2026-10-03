@@ -1075,9 +1075,46 @@ export default function Builder({ studio = "standard" }) {
       thighs: "thigh thickness",
       waist: "waist width",
     };
-    const direction = amount < 35 ? "reduce" : amount > 65 ? "increase" : "make a moderate adjustment to";
-    const strength = amount < 20 || amount > 80 ? "strongly" : amount < 35 || amount > 65 ? "clearly" : "slightly";
-    return `${strength} ${direction} only the subject's ${regionLabels[bodyAdjustRegion] || bodyAdjustRegion}. Preserve the same adult subject, face, hair, expression, pose, hands, feet, clothing, camera framing, background, lighting, photographic style, and all other body proportions. Keep the edit anatomically coherent and photorealistic.`;
+    const region = regionLabels[bodyAdjustRegion] || bodyAdjustRegion;
+    const delta = amount - 50;
+    const magnitude = Math.abs(delta);
+    const direction = delta < 0 ? "decrease" : delta > 0 ? "increase" : "preserve";
+
+    if (magnitude < 5) {
+      return `Preserve the subject's ${region} at its current size. Do not change the source image's body proportions. Preserve the same adult subject, face, hair, expression, pose, hands, feet, clothing, camera framing, background, lighting, and photographic style.`;
+    }
+
+    const level = magnitude >= 45
+      ? "MAXIMUM"
+      : magnitude >= 35
+        ? "very strong"
+        : magnitude >= 25
+          ? "strong"
+          : magnitude >= 15
+            ? "clearly visible"
+            : "subtle";
+
+    const scaleLanguage = direction === "increase"
+      ? (magnitude >= 45
+          ? "Make a dramatic, unmistakable localized enlargement with substantially greater size and projection. The selected region must be visibly much larger than in the source image."
+          : magnitude >= 35
+            ? "Make a very large and immediately obvious localized enlargement compared with the source image."
+            : magnitude >= 25
+              ? "Make a strong, clearly visible localized enlargement compared with the source image."
+              : magnitude >= 15
+                ? "Make a clearly visible localized enlargement compared with the source image."
+                : "Make a small but visible localized enlargement compared with the source image.")
+      : (magnitude >= 45
+          ? "Make a dramatic, unmistakable localized reduction. The selected region must be visibly much smaller than in the source image."
+          : magnitude >= 35
+            ? "Make a very large and immediately obvious localized reduction compared with the source image."
+            : magnitude >= 25
+              ? "Make a strong, clearly visible localized reduction compared with the source image."
+              : magnitude >= 15
+                ? "Make a clearly visible localized reduction compared with the source image."
+                : "Make a small but visible localized reduction compared with the source image.");
+
+    return `${level} LOCALIZED BODY EDIT: ${direction} only the subject's ${region}. ${scaleLanguage} This requested change is intentional and must be visibly apparent in the result; do not simply reproduce the source image unchanged. Preserve the same adult subject and identity, face, hair, expression, exact pose, hands, feet, clothing, camera position and framing, background, lighting, photographic style, and every unselected body region. Modify only the selected region and the immediately connected anatomy required for a coherent transition. Keep one coherent human body with realistic skin texture and photographic appearance.`;
   }, [bodyAdjustAmount, bodyAdjustRegion]);
 
   const effectiveEditInstruction = editMode === "new_pose"
@@ -3176,7 +3213,7 @@ export default function Builder({ studio = "standard" }) {
                   </div>
                   <label className="block space-y-2">
                     <div className="flex items-center justify-between text-xs">
-                      <span className="uppercase tracking-widest text-zinc-500 font-mono">Adjustment</span>
+                      <span className="uppercase tracking-widest text-zinc-500 font-mono">Body change · 50 = source</span>
                       <span className="font-mono text-amber-200">{bodyAdjustAmount}/100</span>
                     </div>
                     <input type="range" min="0" max="100" step="5" value={bodyAdjustAmount}
