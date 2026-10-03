@@ -102,6 +102,7 @@ export default function Gallery() {
     refetchInterval: 30000,
   });
   const [lightbox, setLightbox] = useState(null); // render object
+  const lightboxImageRef = useRef(null);
   const [retrySelection, setRetrySelection] = useState(null);
   const [retryPreview, setRetryPreview] = useState(null);
   useEffect(() => { setRetrySelection(null); setRetryPreview(null); }, [lightbox?.id, lightbox?.alignment_review?.reviewed_at]);
@@ -244,16 +245,22 @@ export default function Gallery() {
       const previewUrl = primaryOutput(render);
       let reference;
       if (referenceMode === "body_adjust") {
-        // Body Adjust must use the exact pixels currently shown in Gallery.
-        // Gallery media can be browser-cached while a ComfyUI filename is reused
-        // elsewhere, so asking the backend to re-fetch by filename can select a
-        // different image than the one the user actually clicked.
-        const response = await fetch(previewUrl, { cache: "force-cache" });
-        if (!response.ok) throw new Error("Could not read the selected Gallery image.");
-        const blob = await response.blob();
-        const mime = blob.type || "image/png";
-        const extension = mime.includes("jpeg") ? ".jpg" : mime.includes("webp") ? ".webp" : ".png";
-        const file = new File([blob], `gallery-${render.id}${extension}`, { type: mime });
+        // Capture the exact pixels already displayed in the lightbox instead of
+        // issuing another request for a filename that ComfyUI may have reused.
+        const image = lightboxImageRef.current;
+        if (!image || !image.complete || !image.naturalWidth || !image.naturalHeight) {
+          throw new Error("Wait for the Gallery image to finish loading, then try Body Adjust again.");
+        }
+        const canvas = document.createElement("canvas");
+        canvas.width = image.naturalWidth;
+        canvas.height = image.naturalHeight;
+        const context = canvas.getContext("2d");
+        if (!context) throw new Error("Could not capture the selected Gallery image.");
+        context.drawImage(image, 0, 0, canvas.width, canvas.height);
+        const blob = await new Promise((resolve, reject) => {
+          canvas.toBlob((value) => value ? resolve(value) : reject(new Error("Could not capture the selected Gallery image.")), "image/png");
+        });
+        const file = new File([blob], `gallery-${render.id}.png`, { type: "image/png" });
         reference = await endpoints.uploadReferenceImage(file, render.id);
       } else {
         reference = await endpoints.prepareRenderReference(render.id, previewUrl);
@@ -700,6 +707,7 @@ export default function Gallery() {
                   className="max-h-[100dvh] md:max-h-[85vh] max-w-full object-contain md:rounded-lg shadow-2xl" />
               ) : (
                 <img
+                  ref={lightboxImageRef}
                   key={lightbox.id}
                   src={primaryOutput(lightbox)}
                   alt={lightbox.prompt_positive?.slice(0, 60) || "render"}
