@@ -318,6 +318,11 @@ export default function Builder({ studio = "standard" }) {
   useEffect(() => {
     if (!isNew || draftHydrated.current) return;
     restoreDraft(readBuilderDraft(draftId));
+    // References are transient edit-session state. A fresh Builder route must
+    // never resurrect a Gallery/source image just because Qwen was used before.
+    setReferenceImage(null);
+    setReferencePreview("");
+    setSourceRenderId(null);
     draftHydrated.current = true;
     setEditorHydrated(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -528,6 +533,12 @@ export default function Builder({ studio = "standard" }) {
 
     galleryImportApplied.current = true;
     setMobileStudioStep("create");
+    // Gallery navigation owns the edit source. Replace any stale manual/previous
+    // reference rather than allowing draft or responsive UI state to leak in.
+    if (referencePreview?.startsWith?.("blob:")) URL.revokeObjectURL(referencePreview);
+    setReferenceImage(null);
+    setReferencePreview("");
+    setSourceRenderId(null);
     setWorkflowId(target.id);
     setReferenceImage(incoming);
     setSourceRenderId(incoming.source_render_id || null);
@@ -939,9 +950,19 @@ export default function Builder({ studio = "standard" }) {
   };
 
   const clearReference = () => {
-    if (referencePreview) URL.revokeObjectURL(referencePreview);
+    if (referencePreview?.startsWith?.("blob:")) URL.revokeObjectURL(referencePreview);
     setReferencePreview("");
     setReferenceImage(null);
+    setSourceRenderId(null);
+  };
+
+  const resetEditSession = () => {
+    clearReference();
+    setEditMode("standard");
+    setBodyAdjustRegion("glutes");
+    setBodyAdjustAmount(50);
+    setEditInstruction("");
+    setPreserveUnmentioned(true);
   };
 
   useEffect(() => () => {
@@ -988,7 +1009,7 @@ export default function Builder({ studio = "standard" }) {
       promptOverride, plainLanguage, negativePromptOverride, workflowId, loraOverrides,
       editInstruction, preserveUnmentioned, repairTargets, repairInstruction,
       variationPrompt, variationDenoise,
-      editMode, poseTarget, poseNotes, poseLocks,
+      editMode, bodyAdjustRegion, bodyAdjustAmount, poseTarget, poseNotes, poseLocks,
       referenceStudioView, referenceRecipe, referenceStrengths, poseReferenceAnalysis,
       videoInstruction, videoFrames, videoFps, videoWidth, videoHeight,
       qualityTier, poseAssistEnabled, poseAssistStrength, poseAssistPolish,
@@ -1000,7 +1021,7 @@ export default function Builder({ studio = "standard" }) {
     promptOverride, plainLanguage, negativePromptOverride, workflowId, loraOverrides,
     editInstruction, preserveUnmentioned, repairTargets, repairInstruction,
     variationPrompt, variationDenoise,
-    editMode, poseTarget, poseNotes, poseLocks,
+    editMode, bodyAdjustRegion, bodyAdjustAmount, poseTarget, poseNotes, poseLocks,
     referenceStudioView, referenceRecipe, referenceStrengths, poseReferenceAnalysis,
     videoInstruction, videoFrames, videoFps, videoWidth, videoHeight,
     qualityTier, poseAssistEnabled, poseAssistStrength, poseAssistPolish,
@@ -1861,12 +1882,15 @@ export default function Builder({ studio = "standard" }) {
     setLoraOverrides({});
     setReferenceImage(null);
     setReferencePreview("");
+    setSourceRenderId(null);
     setActiveRender(null);
     setBatchRenders([]);
     setSelectedBatchRenderId(null);
     setRenderCount(1);
     setEditInstruction("");
     setEditMode("standard");
+    setBodyAdjustRegion("glutes");
+    setBodyAdjustAmount(50);
     setPoseTarget("");
     setPoseNotes("");
     setPoseLocks(DEFAULT_POSE_LOCKS);
@@ -2129,7 +2153,18 @@ export default function Builder({ studio = "standard" }) {
           <select
             data-testid="select-workflow"
             value={workflowId}
-            onChange={(e) => { setWorkflowId(e.target.value); setLoraOverrides({}); }}
+            onChange={(e) => {
+              const nextWorkflowId = e.target.value;
+              if (nextWorkflowId !== workflowId) {
+                clearReference();
+                setEditMode("standard");
+                setBodyAdjustRegion("glutes");
+                setBodyAdjustAmount(50);
+                setEditInstruction("");
+              }
+              setWorkflowId(nextWorkflowId);
+              setLoraOverrides({});
+            }}
             className={`${mobileStudioStep === "start" || mobileStudioStep === "create" ? "block" : "hidden md:block"} bg-elevated border border-hairline rounded-lg px-3 py-2 text-sm text-zinc-100 w-full sm:w-auto sm:min-w-[200px]`}
           >
             {workflows.length === 0 && <option value="">No workflows — open Settings</option>}
@@ -2181,7 +2216,7 @@ export default function Builder({ studio = "standard" }) {
           </select>}
           <button
             onClick={doDispatch}
-            disabled={dispatching || !workflowId || kreaRenderBlocked || (poseAssistEnabled && !isVariationWorkflow && (!poseAssistAvailable || !poseReferenceImage?.name || (poseAssistStatus && !poseAssistStatus.ready)))}
+            disabled={dispatching || !workflowId || kreaRenderBlocked || (activeRecipeFamily === "edit" && !referenceImage?.name) || (poseAssistEnabled && !isVariationWorkflow && (!poseAssistAvailable || !poseReferenceImage?.name || (poseAssistStatus && !poseAssistStatus.ready)))}
             data-testid="btn-dispatch-comfyui-render"
             className="hidden md:inline-flex items-center gap-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black text-sm font-semibold px-3 py-2 disabled:opacity-40"
           >
@@ -3193,6 +3228,11 @@ export default function Builder({ studio = "standard" }) {
                 </label>
               ) : editMode === "body_adjust" ? (
                 <div className="space-y-4 rounded-lg border border-amber-500/25 bg-amber-500/5 p-3" data-testid="body-adjust-panel">
+                  {!referenceImage?.name && (
+                    <div className="rounded-md border border-amber-400/30 bg-amber-500/10 p-2 text-[11px] text-amber-100">
+                      Body Adjust needs a source image. Choose one from Gallery or upload a reference before rendering.
+                    </div>
+                  )}
                   <div>
                     <div className="text-xs font-bold text-amber-100">Controlled Body Adjustment</div>
                     <div className="mt-1 text-[11px] text-zinc-400">Edits the source image instead of regenerating it from the original seed.</div>
