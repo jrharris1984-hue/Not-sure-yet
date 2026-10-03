@@ -6,23 +6,48 @@ import httpx
 from fastapi import APIRouter, HTTPException, Query, Response
 
 router = APIRouter(prefix="/api/media-library", tags=["media-library"])
+_url_provider = None
 MEDIA_LIBRARY_URL = os.environ.get("MEDIA_LIBRARY_URL", "http://192.168.0.16:8010").rstrip("/")
 
 
+def configure_media_library_url(provider):
+    global _url_provider
+    _url_provider = provider
+
+
+async def media_library_url():
+    if _url_provider:
+        return (await _url_provider()).rstrip("/")
+    return os.environ.get("MEDIA_LIBRARY_URL", MEDIA_LIBRARY_URL).rstrip("/")
+
+
+def unavailable(url, exc):
+    return HTTPException(status_code=503, detail=f"Cannot connect to Media Library at {url}. Check that its API is running and reachable on port 8010. {exc}")
+
+
 async def _json_get(path: str, params: Optional[dict] = None):
+    url = await media_library_url()
     try:
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            response = await client.get(f"{MEDIA_LIBRARY_URL}{path}", params=params)
+        async with httpx.AsyncClient(timeout=httpx.Timeout(30.0, connect=5.0)) as client:
+            response = await client.get(f"{url}{path}", params=params)
     except Exception as exc:
-        raise HTTPException(status_code=503, detail=f"Media Library unavailable: {exc}")
+        raise unavailable(url, exc) from exc
     if response.status_code >= 400:
         raise HTTPException(status_code=response.status_code, detail=response.text[:500])
-    return response.json()
+    try:
+        return response.json()
+    except ValueError as exc:
+        raise HTTPException(502, f"Media Library at {url} returned an invalid API response.") from exc
 
 
 @router.get("/health")
 async def media_library_health():
-    return await _json_get("/health")
+    url = await media_library_url()
+    try:
+        payload = await _json_get("/health")
+        return {**(payload if isinstance(payload, dict) else {}), "online": True, "url": url}
+    except HTTPException as exc:
+        return {"online": False, "url": url, "error": exc.detail}
 
 
 @router.get("/stats")
@@ -73,11 +98,12 @@ async def media_library_item(media_id: int):
 
 
 async def _binary_get(path: str):
+    url = await media_library_url()
     try:
         async with httpx.AsyncClient(timeout=90.0) as client:
-            response = await client.get(f"{MEDIA_LIBRARY_URL}{path}")
+            response = await client.get(f"{url}{path}")
     except Exception as exc:
-        raise HTTPException(status_code=503, detail=f"Media Library unavailable: {exc}")
+        raise unavailable(url, exc) from exc
     if response.status_code >= 400:
         raise HTTPException(status_code=response.status_code, detail=response.text[:500])
     return Response(

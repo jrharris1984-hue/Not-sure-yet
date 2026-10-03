@@ -43,7 +43,7 @@ export default function MediaLibrary() {
     retry:1,
   });
 
-  const useInStudio = (item) => {
+  const loadInStudio = (item) => {
     const reusable = {
       mediaId: item.id,
       sourceName: item.file_name,
@@ -130,7 +130,7 @@ export default function MediaLibrary() {
           </div>}
       </div>}
 
-      {media.isError ? <div className="pane p-8 text-center text-zinc-400"><Database className="h-8 w-8 mx-auto mb-2"/><div className="font-semibold text-zinc-200">Media server unavailable</div><div className="text-xs mt-1">{media.error?.response?.data?.detail || media.error?.message}</div></div>
+      {media.isError ? <div className="pane p-8 text-center text-zinc-400"><Database className="h-8 w-8 mx-auto mb-2"/><div className="font-semibold text-zinc-200">Media server unavailable</div><div className="mt-2 text-xs">Server: {health.data?.url || "checking address…"}</div><button type="button" onClick={() => nav("/settings")} className="mt-3 rounded-lg border hairline px-3 py-2 text-sm text-cyan-200">Check Media Library connection</button><div className="text-xs mt-1">{media.error?.response?.data?.detail || media.error?.message}</div></div>
       : media.isLoading ? <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6 gap-3">{Array.from({length:18}).map((_,i)=><div key={i} className="pane aspect-[3/4] animate-pulse"/>)}</div>
       : <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6 gap-3">
           {items.map(item => <button key={item.id} onClick={()=>setSelected(item)} className="pane overflow-hidden text-left hover:border-cyan-400/40 transition-colors group">
@@ -164,7 +164,7 @@ export default function MediaLibrary() {
               <Meta label="Environment" value={selected.environment || selected.background}/>
               <Meta label="Style" value={selected.photographic_style}/>
               <Meta label="Tags" value={[...(selected.general_tags||[]), ...(selected.adult_content_tags||[])]}/>
-              {selected.analysis_status === "complete" && <button onClick={()=>useInStudio(selected)} className="w-full rounded-lg bg-amber-500 hover:bg-amber-400 text-black font-semibold px-4 py-3 transition-colors">Use in Studio</button>}
+              {selected.analysis_status === "complete" && <button onClick={()=>loadInStudio(selected)} className="w-full rounded-lg bg-amber-500 hover:bg-amber-400 text-black font-semibold px-4 py-3 transition-colors">Use in Studio</button>}
               {selected.analysis_status !== "complete" && <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-200">Qwen analysis is not complete for this item yet. The metadata panel will fill in automatically after analysis.</div>}
             </div>
           </div>

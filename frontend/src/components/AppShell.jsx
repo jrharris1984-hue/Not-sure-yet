@@ -87,9 +87,8 @@ export default function AppShell({ children }) {
         </div>
       </header>
 
-      <main className="flex-1">{children}</main>
-
       <NowRenderingStrip />
+      <main className="flex-1">{children}</main>
       <PwaInstallPrompt />
 
       {/* Mobile bottom nav */}

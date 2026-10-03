@@ -21,7 +21,7 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 from urllib.parse import urlencode, urlparse, parse_qs
 from pydantic import BaseModel, Field, ConfigDict
-from media_library import router as media_library_router
+from media_library import router as media_library_router, configure_media_library_url
 
 import httpx
 import websockets as ws_client
@@ -131,6 +131,7 @@ class Settings(BaseModel):
     model_config = ConfigDict(extra="ignore")
     id: str = "singleton"
     comfyui_url: str = "http://localhost:8188"
+    media_library_url: str = Field(default_factory=lambda: os.environ.get("MEDIA_LIBRARY_URL", "http://192.168.0.16:8010").rstrip("/"))
     openrouter_api_key: str = ""
     openrouter_model: str = "cognitivecomputations/dolphin-mixtral-8x7b"
     ai_provider: str = "venice"  # venice | ollama
@@ -300,6 +301,13 @@ async def get_settings() -> Settings:
         await db.settings.insert_one(s.model_dump())
         return s
     return Settings(**doc)
+
+
+async def _configured_media_library_url():
+    return (await get_settings()).media_library_url
+
+
+configure_media_library_url(_configured_media_library_url)
 
 
 async def openrouter_chat(system: str, user: str, response_format_json: bool = False) -> str:
@@ -487,13 +495,19 @@ async def read_settings():
 @api.put("/settings", response_model=Settings)
 async def update_settings(body: Dict[str, Any] = Body(...)):
     current = (await get_settings()).model_dump()
-    allowed = {"comfyui_url", "openrouter_api_key", "openrouter_model", "ai_provider", "ollama_url", "ollama_text_model", "ollama_vision_model",
+    allowed = {"media_library_url", "comfyui_url", "openrouter_api_key", "openrouter_model", "ai_provider", "ollama_url", "ollama_text_model", "ollama_vision_model",
                "image_workflow_json", "video_workflow_json",
                "positive_prompt_node_id", "negative_prompt_node_id",
                "default_workflow_id"}
     for k, v in body.items():
         if k in allowed:
             current[k] = v
+    if "media_library_url" in body:
+        target = str(current["media_library_url"]).strip().rstrip("/")
+        parsed = urlparse(target)
+        if parsed.scheme not in {"http", "https"} or not parsed.hostname:
+            raise HTTPException(400, "Media Library URL must be an http:// or https:// server address.")
+        current["media_library_url"] = target
     current["updated_at"] = now_iso()
     await db.settings.update_one({"id": "singleton"}, {"$set": current}, upsert=True)
     return Settings(**current)
