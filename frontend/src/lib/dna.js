@@ -1,6 +1,5 @@
 import { PHOTOGRAPHY_POSE_GROUPS } from "@/lib/photographyPoses";
 import { GLUTE_SIZE_MAX, gluteSizePrompt } from "@/lib/gluteControls";
-import { normalizeCharacterDesign } from "@/lib/characterDesign";
 // DNA schema + prompt builder + randomizer
 import { expandPrompt } from "@/lib/promptMap";
 import { implantVisualPrompt } from "@/lib/implantVisualScale";
@@ -802,13 +801,12 @@ function _sid() {
   return Math.random().toString(36).slice(2, 10);
 }
 
-export function makeSubject({ label, dna: initialDna, fieldLocks, likeness, designProfile } = {}) {
+export function makeSubject({ label, dna: initialDna, fieldLocks, likeness } = {}) {
   return {
     id: _sid(),
     label: label || "A",
     dna: initialDna || JSON.parse(JSON.stringify(DEFAULT_DNA)),
     field_locks: fieldLocks || {},
-    design_profile: normalizeCharacterDesign(designProfile),
     likeness: likeness || { enabled: false, node_id: "", lora_name: "", strength_model: 0.8, strength_clip: 0.8, trigger: "" },
   };
 }
@@ -821,7 +819,6 @@ export function subjectsFromCharacter(character) {
       label: s.label || SUBJECT_LABELS[i] || `S${i + 1}`,
       dna: { ...DEFAULT_DNA, ...(s.dna || {}) },
       field_locks: s.field_locks || {},
-      design_profile: normalizeCharacterDesign(s.design_profile),
       likeness: s.likeness || { enabled: false, node_id: "", lora_name: "", strength_model: 0.8, strength_clip: 0.8, trigger: "" },
     }));
   }

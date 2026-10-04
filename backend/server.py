@@ -22,7 +22,6 @@ from typing import Any, Dict, List, Optional
 from urllib.parse import urlencode, urlparse, parse_qs
 from pydantic import BaseModel, Field, ConfigDict
 from media_library import router as media_library_router, configure_media_library_url
-from character_design import CharacterDesignRequest, design_prompts, design_workflow, WORKFLOW_ID as DESIGN_WORKFLOW_ID, WORKFLOW_NAME as DESIGN_WORKFLOW_NAME
 
 import httpx
 import websockets as ws_client
@@ -1071,7 +1070,6 @@ async def get_render(rid: str):
 
 
 class DispatchBody(BaseModel):
-    character_design: Optional[CharacterDesignRequest] = None
     character_id: Optional[str] = None
     dna: Dict[str, Any] = Field(default_factory=dict)
     subjects: List[Dict[str, Any]] = Field(default_factory=list)
@@ -1476,34 +1474,12 @@ def _patch_seed(workflow: Dict[str, Any], seed: int) -> int:
     return count
 
 
-def _design_dispatch_body(request: CharacterDesignRequest, seed: Optional[int] = None) -> DispatchBody:
-    chosen_seed = seed if seed is not None else request.seed
-    request = request.model_copy(update={"seed": chosen_seed if chosen_seed is not None else random.randint(0, 2**32 - 1)})
-    prompts = design_prompts(request)
-    return DispatchBody(
-        character_design=request,
-        character_id=request.character_id,
-        dna={"identity": {"age": request.age, "gender": request.gender},
-             "design_profile": {"size": request.size, "shape": request.shape, "texture": request.texture}},
-        workflow_id=DESIGN_WORKFLOW_ID,
-        operation="character_design",
-        prompt_positive=prompts["positive"], prompt_negative=prompts["negative"],
-        seed=request.seed,
-    )
-
-
 async def _perform_dispatch(body: "DispatchBody") -> Dict[str, Any]:
     """Shared dispatch pipeline. Builds a Render, patches the workflow, calls ComfyUI,
     persists the render, and returns the doc (without _id)."""
     s = await get_settings()
     wf_template: Optional[WorkflowTemplate] = None
-    if body.character_design is not None:
-        body = _design_dispatch_body(body.character_design, body.seed)
-        wf_template = WorkflowTemplate(
-            id=DESIGN_WORKFLOW_ID, name=DESIGN_WORKFLOW_NAME, kind="image", prompt_style="sdxl",
-            json_str=json.dumps(design_workflow(SEED_DIR)), positive_node_id="2", negative_node_id="3",
-        )
-    elif body.workflow_id:
+    if body.workflow_id:
         wf_template = next((w for w in s.workflows if w.id == body.workflow_id), None)
     if not wf_template and s.default_workflow_id:
         wf_template = next((w for w in s.workflows if w.id == s.default_workflow_id), None)
@@ -2153,10 +2129,6 @@ async def _queue_view(job: Dict[str, Any]) -> Dict[str, Any]:
 
 
 async def _enqueue_render(body: DispatchBody) -> Dict[str, Any]:
-    if body.character_design is not None:
-        body = _design_dispatch_body(body.character_design, body.seed)
-    #elif body.workflow_id == DESIGN_WORKFLOW_ID or body.operation == "character_design":
-     #   raise HTTPException(400, "Character design requires structured design selections")
     settings = await get_settings()
     selected = next((w for w in settings.workflows if w.id == body.workflow_id), None)
     created = now_iso()
@@ -2165,7 +2137,7 @@ async def _enqueue_render(body: DispatchBody) -> Dict[str, Any]:
         "payload": body.model_dump(),
         "status": "queued",
         "workflow_id": body.workflow_id,
-        "workflow_name": DESIGN_WORKFLOW_NAME if body.character_design is not None else selected.name if selected else "Render",
+        "workflow_name": selected.name if selected else "Render",
         "workflow_type": selected.kind if selected else body.workflow_type,
         "character_id": body.character_id,
         "render_id": None,
@@ -2183,18 +2155,6 @@ async def _enqueue_render(body: DispatchBody) -> Dict[str, Any]:
 @api.post("/renders/dispatch")
 async def dispatch_render(body: DispatchBody):
     return await _enqueue_render(body)
-
-
-@api.post("/character-design/preview")
-async def preview_character_design(body: CharacterDesignRequest):
-    graph = design_workflow(SEED_DIR)
-    return {**design_prompts(body), "workflow_name": DESIGN_WORKFLOW_NAME,
-            "checkpoint": graph["1"]["inputs"]["ckpt_name"]}
-
-
-@api.post("/character-design/render")
-async def render_character_design(body: CharacterDesignRequest):
-    return await _enqueue_render(_design_dispatch_body(body))
 
 
 @api.get("/pose-assist/status")

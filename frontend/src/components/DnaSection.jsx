@@ -68,7 +68,6 @@ export default function DnaSection({
   simpleMode = false,
   simpleFieldKeys = [],
   onRequestAdvanced,
-  fieldExtras = {},
 }) {
   const set = (k, v) => {
     if (fieldLocks?.[k]) return; // ignore edits to a locked field
@@ -234,7 +233,6 @@ export default function DnaSection({
                 className="bg-elevated border-hairline text-zinc-100 font-mono text-sm"
               />
             )}
-            {fieldExtras[f.key]}
           </div>
           );
         })}

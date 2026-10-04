@@ -21,9 +21,6 @@ import { translatePlainLanguage } from "@/lib/plainLanguagePrompt";
 import { analyzePromptQuality } from "@/lib/promptQuality";
 import DnaSection from "@/components/DnaSection";
 import ImageSourceFlow from "@/components/ImageSourceFlow";
-import CharacterDesignControls from "@/components/CharacterDesignControls";
-import ClothedDesignRender from "@/components/ClothedDesignRender";
-import { characterSubjectRecord } from "@/lib/characterDesign";
 import PromptPreview from "@/components/PromptPreview";
 import AiAssistBar from "@/components/AiAssistBar";
 import PresetsMenu from "@/components/PresetsMenu";
@@ -1234,7 +1231,7 @@ export default function Builder({ studio = "standard" }) {
         name,
         dna: subjects[0]?.dna || {},
         field_locks: subjects[0]?.field_locks || {},
-        subjects: subjects.map(characterSubjectRecord),
+        subjects: subjects.map((s) => ({ id: s.id, label: s.label, dna: s.dna, field_locks: s.field_locks, likeness: s.likeness })),
         active_subject_id: activeSubjectId,
         locks,
         collapsed,
@@ -3123,22 +3120,6 @@ export default function Builder({ studio = "standard" }) {
             simpleMode={mobileStudioMode === "simple"}
             simpleFieldKeys={SIMPLE_FIELD_KEYS[activeSection] || []}
             onRequestAdvanced={() => setMobileStudioMode("advanced")}
-            fieldExtras={activeSection === "physique" ? {
-              glute_shape: <CharacterDesignControls
-                value={activeSubject.design_profile}
-                subjectLabel={activeSubject.label}
-                onChange={design_profile => updateActiveSubject(() => ({ design_profile }))}
-              >
-                <ClothedDesignRender subject={activeSubject} characterId={id} disabled={dispatching}
-                  onQueued={queued => {
-                    setBatchRenders([queued]);
-                    setSelectedBatchRenderId(queued.id);
-                    setActiveRender(queued);
-                    setMobileStudioStep("create");
-                    toast.success("Clothed character design added to the render queue");
-                  }} />
-              </CharacterDesignControls>,
-            } : {}}
           />
           {sectionNavigation("bottom")}
           </div>
