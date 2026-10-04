@@ -12,7 +12,7 @@
   "2": {
     "class_type": "CLIPLoader",
     "inputs": {
-      "clip_name": "qwen_3_4b_fp4_flux2.safetensors",
+      "clip_name": "uncensoredQwen34BLLMForZ_nvfp4.safetensors",
       "type": "flux2",
       "device": "default"
     },

@@ -14,7 +14,7 @@
   },
   "57:30": {
     "inputs": {
-      "clip_name": "qwen_3_4b.safetensors",
+      "clip_name": "uncensoredQwen34BLLMForZ_nvfp4.safetensors",
       "type": "lumina2",
       "device": "default"
     },
