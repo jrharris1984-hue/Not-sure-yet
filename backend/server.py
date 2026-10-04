@@ -22,6 +22,7 @@ from typing import Any, Dict, List, Optional
 from urllib.parse import urlencode, urlparse, parse_qs
 from pydantic import BaseModel, Field, ConfigDict
 from media_library import router as media_library_router, configure_media_library_url
+from generation_settings import normalize_generation_settings, apply_generation_settings
 
 import httpx
 import websockets as ws_client
@@ -1122,6 +1123,7 @@ class DispatchBody(BaseModel):
     steps: Optional[int] = None
     cfg: Optional[float] = None
     sampler_name: Optional[str] = None
+    scheduler: Optional[str] = None
     krea_style: str = "none"
     krea_lora_strength: float = 0.8
     selected_lora_name: str = ""
@@ -1961,13 +1963,13 @@ async def _perform_dispatch(body: "DispatchBody") -> Dict[str, Any]:
         if key:
             inputs[key] = negative_text
             mapped["negative"] = True
-    if wf_template and wf_template.prompt_style == "krea2" and not mapped["positive"]:
+    if not mapped["positive"] or (pos_id == neg_id and mapped["negative"]):
         r.status = "failed"
-        r.error = "Krea 2 prompt could not be connected to its text encoder. Re-seed the Krea workflow in Settings."
+        r.error = "The creation prompt could not be connected to this workflow. Check its positive prompt node in Settings."
         doc = r.model_dump()
         doc["mapping"] = mapped
-        doc["workflow_id"] = wf_template.id
-        doc["workflow_name"] = wf_template.name
+        doc["workflow_id"] = wf_template.id if wf_template else None
+        doc["workflow_name"] = wf_template.name if wf_template else None
         await db.renders.insert_one(doc)
         doc.pop("_id", None)
         return doc
@@ -1984,45 +1986,22 @@ async def _perform_dispatch(body: "DispatchBody") -> Dict[str, Any]:
             if "strength_clip" in inp and "strength_clip" in weights:
                 inp["strength_clip"] = max(-3.0, min(3.0, float(weights["strength_clip"])))
 
-    # Apply model-specific generation overrides. These keys are patched only
-    # where they already exist, so the same dispatch body remains safe for
-    # GoldenChroma, Z-Image, and other workflows.
-    generation_overrides = {
+    # Scope creation overrides to sampler/scheduler/latent nodes. Face repair
+    # and unrelated resize nodes retain their independent template settings.
+    generation_overrides = normalize_generation_settings({
         "width": body.width,
         "height": body.height,
         "batch_size": body.batch_size,
         "steps": body.steps,
         "cfg": body.cfg,
         "sampler_name": body.sampler_name,
-    }
-    if wf_template and wf_template.prompt_style == "flux2_klein":
-        # The distilled 4B template uses four steps and zeroed negative conditioning.
-        generation_overrides.update(steps=4, cfg=1.0, sampler_name="euler")
-        body.steps, body.cfg, body.sampler_name = 4, 1.0, "euler"
-    if wf_template and wf_template.prompt_style == "krea2":
-        # Turbo's distilled sampling recipe must not inherit Chroma settings
-        # from an older saved builder draft or an exact Gallery recreation.
-        generation_overrides.update(steps=8, cfg=1.0, sampler_name="euler")
-        body.steps, body.cfg, body.sampler_name = 8, 1.0, "euler"
-    for node in workflow.values():
-        if not isinstance(node, dict):
-            continue
-        inputs = node.get("inputs")
-        if not isinstance(inputs, dict):
-            continue
-        for key, value in generation_overrides.items():
-            if value is None or key not in inputs:
-                continue
-            if key in {"width", "height"}:
-                inputs[key] = max(256, min(2048, int(value)))
-            elif key == "batch_size":
-                inputs[key] = max(1, min(8, int(value)))
-            elif key == "steps":
-                inputs[key] = max(1, min(100, int(value)))
-            elif key == "cfg":
-                inputs[key] = max(0.0, min(30.0, float(value)))
-            elif key == "sampler_name":
-                inputs[key] = str(value)
+        "scheduler": body.scheduler,
+    }, wf_template.prompt_style if wf_template else "")
+    effective_node_settings = apply_generation_settings(workflow, generation_overrides)
+    body.scheduler = generation_overrides.get("scheduler")
+    # Recreate must use the normalized values, not the stale requested ones.
+    for key, value in generation_overrides.items():
+        setattr(body, key, value)
 
     # Apply seed override
     seed_used = None
@@ -2054,7 +2033,9 @@ async def _perform_dispatch(body: "DispatchBody") -> Dict[str, Any]:
         else:
             data = resp.json()
             r.comfy_prompt_id = data.get("prompt_id")
-            r.status = "running"
+            r.status = "running" if r.comfy_prompt_id else "failed"
+            if not r.comfy_prompt_id:
+                r.error = "ComfyUI accepted the request without returning a prompt ID. Check the ComfyUI server log."
     except Exception as e:
         r.status = "offline"
         r.error = f"ComfyUI unreachable: {e}"
@@ -2064,7 +2045,8 @@ async def _perform_dispatch(body: "DispatchBody") -> Dict[str, Any]:
     doc["workflow_id"] = wf_template.id if wf_template else None
     doc["workflow_name"] = wf_template.name if wf_template else None
     doc["seed_used"] = seed_used
-    doc["generation_settings"] = {k: v for k, v in generation_overrides.items() if v is not None}
+    doc["generation_settings"] = generation_overrides
+    doc["effective_node_settings"] = effective_node_settings
     # Complete reusable recipe for exact recreation and seed-only variations.
     doc["render_recipe"] = body.model_dump()
     doc["shoot_id"] = body.shoot_id
@@ -2158,6 +2140,10 @@ async def _queue_view(job: Dict[str, Any]) -> Dict[str, Any]:
 
 
 async def _enqueue_render(body: DispatchBody) -> Dict[str, Any]:
+    # Choose once at enqueue so retries survive a restart with the same seed.
+    # Explicit Gallery recreation seeds remain unchanged.
+    if body.seed is None:
+        body.seed = random.randint(0, 2**31 - 1)
     settings = await get_settings()
     selected = next((w for w in settings.workflows if w.id == body.workflow_id), None)
     created = now_iso()

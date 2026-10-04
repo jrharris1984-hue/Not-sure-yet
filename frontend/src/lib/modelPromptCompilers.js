@@ -495,7 +495,9 @@ export function resolveZImageComposition(dna = {}, options = {}) {
   } else if (["butt", "hips"].includes(focus)) {
     composition = "PRIMARY COMPOSITION — rear three-quarter view, lower body is the single visual priority, moderate perspective and connected limbs";
   } else if (focus === "face") {
-    composition = "PRIMARY COMPOSITION — face is the single visual priority, coherent body perspective and no body part enlarged toward the lens";
+    composition = fullBody
+      ? "PRIMARY COMPOSITION — full character visible head to feet with space around the complete body; face clearly visible within this full-body frame, coherent perspective"
+      : "PRIMARY COMPOSITION — face is the single visual priority, coherent body perspective and no body part enlarged toward the lens";
   } else if (fullBody) {
     composition = "PRIMARY COMPOSITION — full character visible head to feet, space around the complete body, coherent perspective";
   } else {
@@ -846,7 +848,7 @@ export function buildKrea2Prompts({
   const [imageLead, ...shotDetails] = sharedShot;
   let positive = [
     kreaFramingSentence(primary),
-    extremeBust && "The complete body and exaggerated upper-body silhouette must remain visible in this composition; use a wide camera view rather than a portrait crop.",
+    extremeBust && ["full body", "wide shot"].includes(lower(primary.pose?.distance || "full body")) && "The complete body and exaggerated upper-body silhouette must remain visible in this composition; use a wide camera view rather than a portrait crop.",
     ...subjectBlocks,
     compositionLead,
     ...shotDetails,

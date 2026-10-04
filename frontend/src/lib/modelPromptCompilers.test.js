@@ -369,3 +369,22 @@ describe("model-specific prompt compilers", () => {
   });
 
 });
+
+
+test("Krea preserves a selected portrait crop with exaggerated proportions", () => {
+  const dna = JSON.parse(JSON.stringify(DEFAULT_DNA));
+  dna.physique.implant_volume = 3000;
+  dna.pose.distance = "portrait";
+  const result = compileModelPrompts({ promptStyle: "krea2", dna });
+  expect(result.positive).toContain("Head-and-shoulders portrait");
+  expect(result.positive).not.toContain("The complete body and exaggerated upper-body silhouette");
+});
+
+test("Chroma keeps full-body framing when the face is emphasized", () => {
+  const dna = JSON.parse(JSON.stringify(DEFAULT_DNA));
+  dna.pose.distance = "full body";
+  dna.pose.focus = "face";
+  const result = compileModelPrompts({ promptStyle: "chroma", dna });
+  expect(result.positive).toContain("full character visible head to feet");
+  expect(result.positive).not.toContain("face is the single visual priority");
+});
