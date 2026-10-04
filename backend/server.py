@@ -224,6 +224,7 @@ SEED_WORKFLOWS = [
     {"file": "sdxl_realporn.json", "name": "SDXL · RealPornSDXXXL v1", "kind": "image", "prompt_style": "sdxl"},
     {"file": "sdxl_xxxray_dmd2.json", "name": "SDXL · xxxRay DMD2", "kind": "image", "prompt_style": "sdxl_dmd2"},
     {"file": "pony_ultra_realistic.json", "name": "Pony · Ultra Realistic by Stable Yogi v2", "kind": "pony", "prompt_style": "pony"},
+    {"file": "pony_pornworks_v04.json", "name": "Pony · PornWorks Real Porn Photo v0.4", "kind": "pony", "prompt_style": "pony"},
     {"file": "chroma.json", "name": "Chroma1-HD · Golden T2I", "kind": "image", "prompt_style": "chroma"},
     {"file": "zimage.json", "name": "Z-image Turbo · NSFW", "kind": "image", "prompt_style": "zimage"},
     {"file": "qwen.json", "name": "Qwen Image Edit 2511", "kind": "edit", "prompt_style": "qwen_edit"},
