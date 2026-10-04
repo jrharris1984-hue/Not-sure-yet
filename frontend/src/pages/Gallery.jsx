@@ -1,3 +1,4 @@
+import ImageRecoveryPanel from "@/components/ImageRecoveryPanel";
 import { loadBodyCreationRecipe } from "@/lib/bodyCreationRecipe";
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -77,7 +78,9 @@ const renderDimensions = (render) => {
 };
 
 const renderOperationLabel = (render) => {
-  if (render?.operation === "variation") return "Variation";
+  if (render?.operation === "variation") return "New seed";
+  if (render?.operation === "small_variation") return "Small variation";
+  if (render?.operation === "anatomy_repair") return "Anatomy repair";
   if (render?.operation === "recreate") return "Recreate";
   if (render?.parent_render_id) return "Derived";
   return "Original";
@@ -141,6 +144,7 @@ export default function Gallery() {
     queryKey: ["render-versions", lightbox?.id],
     queryFn: () => endpoints.getRenderVersions(lightbox.id),
     enabled: !!lightbox?.id,
+    refetchInterval: lightbox?.id ? 5000 : false,
   });
 
   const removeOne = useMutation({
@@ -195,11 +199,23 @@ export default function Gallery() {
     onSuccess: (result, variables) => {
       qc.invalidateQueries({ queryKey: ["renders"] });
       qc.invalidateQueries({ queryKey: ["queue"] });
-      toast.success(variables.variation ? "Variation added to the render queue" : "Exact recreation added to the render queue", {
+      toast.success(variables.variation ? "New seed added to the render queue" : "Exact recreation added to the render queue", {
         description: result.queue_position ? `Queue position #${result.queue_position}` : undefined,
       });
     },
     onError: (error) => toast.error(error?.response?.data?.detail || "Could not recreate this render"),
+  });
+  const recoverImage = useMutation({
+    mutationFn: ({ id, body }) => endpoints.recoverRenderImage(id, body),
+    onSuccess: (result) => {
+      qc.invalidateQueries({ queryKey: ["renders"] });
+      qc.invalidateQueries({ queryKey: ["queue"] });
+      qc.invalidateQueries({ queryKey: ["render-versions"] });
+      toast.success("New image version added to the queue", {
+        description: result.queue_position ? `Queue position #${result.queue_position}` : undefined,
+      });
+    },
+    onError: (error) => toast.error(error?.response?.data?.detail || "Could not prepare this image for recovery"),
   });
   const reviewAlignment = useMutation({
     mutationFn: endpoints.reviewRenderAlignment,
@@ -891,7 +907,7 @@ export default function Gallery() {
                     <div>
                       <div className="text-xs font-bold text-amber-100">Reuse this render</div>
                       <div className="mt-0.5 text-[10px] text-zinc-500">
-                        Exact uses the saved prompt + seed. Variation changes only the seed. Current Compiler rebuilds the prompt from today's app logic.
+                        Exact uses the saved prompt + seed. New seed regenerates from text. Current Compiler rebuilds the prompt from today's app logic.
                       </div>
                     </div>
                     {(recreate.isPending || rebuildCurrentCompiler.isPending) && <Loader2 className="h-4 w-4 animate-spin text-amber-300" />}
@@ -913,7 +929,7 @@ export default function Gallery() {
                       data-testid="btn-lightbox-variation-primary"
                       className="inline-flex items-center justify-center gap-2 rounded-lg border border-violet-500/40 bg-violet-500/10 px-3 py-2 text-xs font-semibold text-violet-100 hover:bg-violet-500/15 disabled:opacity-40"
                     >
-                      <Shuffle className="h-4 w-4" /> Variation
+                      <Shuffle className="h-4 w-4" /> New seed
                     </button>
                     <button
                       type="button"
@@ -930,6 +946,14 @@ export default function Gallery() {
 
                 {!isVideoUrl(primaryOutput(lightbox)) && (
                   <div className="space-y-2">
+                    {lightbox.parent_render_id && renders.some((r) => r.id === lightbox.parent_render_id && primaryOutput(r)) &&
+                      renders.some((r) => r.id === lightbox.id) && <button type="button"
+                        onClick={() => { setSelected([lightbox.parent_render_id, lightbox.id]); setCompareOpen(true); }}
+                        className="w-full rounded-lg border hairline px-3 py-2 text-xs font-semibold text-cyan-100"
+                        data-testid="btn-compare-with-source">Compare with source</button>}
+                    <ImageRecoveryPanel key={lightbox.id} busy={recoverImage.isPending}
+                      onRecover={(body) => recoverImage.mutate({ id: lightbox.id,
+                        body: { ...body, output_url: primaryOutput(lightbox) } })} />
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                       <button type="button" onClick={() => openBodyCreation.mutate(lightbox)} disabled={openBodyCreation.isPending}
                         data-testid="btn-lightbox-body-adjust" title="Load the original creation setup and change its body sliders before generating a new image"
