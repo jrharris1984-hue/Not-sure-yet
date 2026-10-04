@@ -1,5 +1,6 @@
 export const EXPOSURE_CHOICES = [
   "use selected outfit", "slightly revealing", "revealing outfit",
+  "lingerie showing", "lingerie only",
   "open or shifted outfit", "partially nude", "nude",
 ];
 
@@ -18,14 +19,16 @@ export function wardrobeNudity(wardrobe = {}) {
     "use selected outfit": "",
     "slightly revealing": "selected outfit with modestly revealing coverage",
     "revealing outfit": "revealing clothing with some skin visible",
+    "lingerie showing": "selected outfit open enough to reveal lingerie underneath",
+    "lingerie only": "lingerie only, no outer clothing",
     "open or shifted outfit": "partially nude, selected outfit worn open or shifted to expose skin",
     "partially nude": "partially nude with exposed skin",
     nude: "fully nude, no clothing except selected accessories and hosiery",
   };
   return {
-    mode, direction: directions[mode],
+    mode, direction: directions[mode] + (["lingerie showing", "lingerie only"].includes(mode) && wardrobe.underwear && wardrobe.underwear !== "none" ? `, ${wardrobe.underwear}` : ""),
     level: { "use selected outfit": 0, "slightly revealing": 15, "revealing outfit": 40,
-      "open or shifted outfit": 60, "partially nude": 60, nude: 100 }[mode],
+      "lingerie showing": 35, "lingerie only": 50, "open or shifted outfit": 60, "partially nude": 60, nude: 100 }[mode],
     suppressClothing: ["partially nude", "nude"].includes(mode),
     keepLingerie: mode === "open or shifted outfit",
   };

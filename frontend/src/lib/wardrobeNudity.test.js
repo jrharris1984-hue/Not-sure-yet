@@ -63,3 +63,24 @@ test('each subject keeps its own clothing coverage', () => {
   expect(positive).toContain('Subject B wardrobe: tailored pantsuit');
   expect(positive).not.toContain('streetwear');
 });
+
+test.each(families)('%s transitions from an outer outfit with visible lingerie to lingerie only', promptStyle => {
+  const wardrobe = { outfit_preset: 'tailored pantsuit', underwear: 'lace panties', top: 'blouse', bottom: 'jeans', state: 'fully clothed' };
+  const showing = compileModelPrompts({ promptStyle, dna: base({ ...wardrobe, exposure_mode: 'lingerie showing' }) }).positive;
+  expect(showing).toContain('lingerie underneath');
+  expect(showing).toMatch(/blouse/i);
+  expect(showing).not.toContain('fully clothed');
+  const only = compileModelPrompts({ promptStyle, dna: base({ ...wardrobe, exposure_mode: 'lingerie only' }) }).positive;
+  expect(only).toContain('lingerie only');
+  expect(only).toMatch(/lace panties/i);
+  expect(only).not.toMatch(/blouse|jeans|tailored pantsuit|fully clothed/i);
+  expect(wardrobe.top).toBe('blouse');
+});
+
+test('lingerie stage preserves an existing lingerie set or supplies an explicit default', () => {
+  const selected = resolveBuilderControls(base({ exposure_mode: 'lingerie only', outfit_set: 'lace lingerie set', top: 'blouse' }));
+  expect(selected.dna.wardrobe.outfit_preset).toBe('lace lingerie set');
+  const fallback = resolveBuilderControls(base({ exposure_mode: 'lingerie only', outfit_preset: 'tailored pantsuit' }));
+  expect(fallback.dna.wardrobe.outfit_preset).toBe('lace lingerie set');
+  expect(fallback.notes.some(note => note.text.includes('until you select'))).toBe(true);
+});

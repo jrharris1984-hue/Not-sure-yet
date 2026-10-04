@@ -64,6 +64,22 @@ export function resolveBuilderControls(source = {}) {
   if (exposure.mode !== 'use selected outfit' && ['nude', 'topless', 'bottomless'].includes(w.outfit_preset)) {
     omit('wardrobe', 'outfit_preset', 'Clothing coverage overrides the conflicting Bare preset. Choose Use selected outfit to follow that preset.');
   }
+  if (exposure.mode === 'lingerie only') {
+    const saved = source.wardrobe || {};
+    const lingerie = [saved.outfit_set, saved.outfit_preset].find(value => /lingerie|negligee|chemise|babydoll|corset and garters|sheer bodysuit/i.test(value || ''));
+    for (const field of ['outfit_set', 'outfit_set_color', 'outfit_preset', 'dress_style', 'skirt_style', 'top', 'bottom', 'state', 'material', 'garment_pattern', 'fit']) {
+      omit('wardrobe', field, 'Lingerie only replaces outer clothing. Your outfit stays saved for other coverage choices.');
+    }
+    if (lingerie) w.outfit_preset = lingerie;
+    else if (!w.underwear || w.underwear === 'none') {
+      w.outfit_preset = 'lace lingerie set';
+      notes.push({ section: 'wardrobe', field: 'underwear', text: 'Lingerie only uses a lace lingerie set until you select a lingerie detail or preset.' });
+    }
+  }
+  if (exposure.mode === 'lingerie showing') {
+    if (!w.underwear || w.underwear === 'none') w.underwear = 'lace lingerie set';
+    omit('wardrobe', 'state', 'Lingerie showing opens the outer outfit instead of the separate clothing-state choice.');
+  }
   if (exposure.suppressClothing) {
     for (const field of ['outfit_set', 'outfit_set_color', 'outfit_preset', 'dress_style', 'skirt_style', 'top', 'bottom', 'underwear', 'material', 'garment_color', 'garment_pattern', 'palette', 'fit', 'state']) {
       omit('wardrobe', field, 'Clothing coverage overrides this garment detail. Your selection stays saved; choose Use selected outfit or Open or shifted outfit to include it.');
