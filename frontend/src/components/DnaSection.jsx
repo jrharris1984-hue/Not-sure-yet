@@ -4,6 +4,7 @@ import { Shuffle, RotateCcw, Lock, LockOpen, Wand2, ChevronDown } from "lucide-r
 import PoseIcon from "@/components/PoseIcon";
 import GroupedChips from "@/components/GroupedChips";
 import { normalizeMultiSelection } from "@/lib/dna";
+import { physiqueControlStatus } from "@/lib/physiqueControlPriority";
 
 export function ChipRow({ options, value, onChange, testIdPrefix }) {
   return (
@@ -137,6 +138,7 @@ export default function DnaSection({
       {!collapsed && (
       <div className="grid gap-5">
         {section.fields.map((f) => {
+          const priority = section.key === "physique" ? physiqueControlStatus(f.key, value) : null;
           const fLocked = !!fieldLocks?.[f.key];
           const canLock = f.type === "slider" || f.type === "chips" || f.type === "pose_chips";
           return (
@@ -144,6 +146,7 @@ export default function DnaSection({
             <div className="flex items-center justify-between text-xs text-zinc-400 font-mono uppercase tracking-widest">
               <span className="flex items-center gap-1.5">
                 {f.label}
+                {priority?.inactive && <span className="text-[10px] text-amber-300 normal-case tracking-normal">Overridden</span>}
                 {fLocked && <Lock className="h-3 w-3 text-amber-300" />}
               </span>
               <div className="flex items-center gap-2">
@@ -167,6 +170,7 @@ export default function DnaSection({
                 )}
               </div>
             </div>
+            {priority && <p data-testid={`control-priority-${f.key}`} className={`text-xs leading-relaxed ${priority.inactive ? "text-amber-200/80" : "text-zinc-500"}`}>{priority.text}</p>}
             {f.type === "chips_multi" && (
               <GroupedChips
                 groups={f.groups || [{ name: "All", options: f.options || [] }]}

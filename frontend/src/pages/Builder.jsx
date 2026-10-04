@@ -49,6 +49,7 @@ import RenderRecipeSelector from "@/components/RenderRecipeSelector";
 import SmartSetupPanel from "@/components/SmartSetupPanel";
 import { getRenderRecipe, recipeFamily } from "@/lib/renderRecipes";
 import { useCompiledPromptReset } from "@/lib/useCompiledPromptReset";
+import { selectableCatalogWorkflows } from "@/lib/workflowCatalog";
 import { readBuilderDraft, writeBuilderDraft, clearBuilderDraft } from "@/lib/builderDraft";
 import { STUDIO_PROFILES, applyStudioPreset } from "@/lib/studioProfiles";
 import { buildSameCharacterPoseInstruction, DEFAULT_POSE_LOCKS, SAME_CHARACTER_POSES } from "@/lib/sameCharacterPose";
@@ -394,21 +395,18 @@ export default function Builder({ studio = "standard" }) {
     enabled: kreaStatusEnabled,
     refetchInterval: kreaStatusEnabled ? 15000 : false,
   });
-  const selectableWorkflows = useMemo(
-    () => workflows.filter((workflow) => !["pose", "refine", "krea_style"].includes(workflow.kind)),
-    [workflows]
-  );
-  const internalWorkflows = useMemo(
-    () => workflows.filter((workflow) => ["pose", "refine", "krea_style"].includes(workflow.kind)),
-    [workflows]
-  );
   const { data: settings } = useQuery({ queryKey: ["settings"], queryFn: endpoints.settings });
+  const selectableWorkflows = useMemo(
+    () => selectableCatalogWorkflows(workflows, settings?.default_workflow_id, workflowId),
+    [workflows, settings?.default_workflow_id, workflowId]
+  );
   const aiProvider = settings?.ai_provider === "ollama" ? "Ollama" : "Venice";
   useEffect(() => {
     if (!workflowId && workflows.length) {
-      setWorkflowId(settings?.default_workflow_id || workflows[0].id);
+      const preferred = selectableWorkflows.find((workflow) => workflow.id === settings?.default_workflow_id);
+      setWorkflowId(preferred?.id || selectableWorkflows[0]?.id || "");
     }
-  }, [workflows, settings, workflowId]);
+  }, [workflows, settings, workflowId, selectableWorkflows]);
 
   useEffect(() => {
     const incoming = location.state?.galleryReference;
@@ -481,7 +479,8 @@ export default function Builder({ studio = "standard" }) {
         setEditInstruction("");
       } else {
         setEditMode("standard");
-        setEditInstruction("Describe the changes you want to make to this Gallery image.");
+        setPreserveUnmentioned(true);
+        setEditInstruction(location.state?.editInstruction || "");
       }
     } else if (requestedKind === "video") {
       setEditMode("standard");
@@ -2380,13 +2379,6 @@ export default function Builder({ studio = "standard" }) {
               <optgroup label="SDXL and Pony checkpoints">
                 {selectableWorkflows.filter((w) => ["sdxl", "sdxl_dmd2"].includes(w.prompt_style) || w.name.startsWith("Pony · Ultra Realistic")).map((w) => (
                   <option key={w.id} value={w.id}>{w.name}</option>
-                ))}
-              </optgroup>
-            )}
-            {internalWorkflows.length > 0 && (
-              <optgroup label="Used automatically (not standalone)">
-                {internalWorkflows.map((w) => (
-                  <option key={w.id} value={w.id} disabled>{w.name}</option>
                 ))}
               </optgroup>
             )}

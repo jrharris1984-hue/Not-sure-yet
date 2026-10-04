@@ -261,19 +261,20 @@ export default function Gallery() {
   });
 
   const reuseAsReference = useMutation({
-    mutationFn: async ({ render, targetKind, referenceMode }) => {
+    mutationFn: async ({ render, targetKind, referenceMode, instruction }) => {
       const previewUrl = primaryOutput(render);
       const reference = await endpoints.prepareRenderReference(render.id, previewUrl);
       const saved = referenceMode === "keep_character"
         ? await endpoints.getRenderRecipe(render.id)
         : null;
-      return { render, targetKind, referenceMode, reference, saved, previewUrl };
+      return { render, targetKind, referenceMode, instruction, reference, saved, previewUrl };
     },
-    onSuccess: ({ render, targetKind, referenceMode, reference, saved, previewUrl }) => {
+    onSuccess: ({ render, targetKind, referenceMode, instruction, reference, saved, previewUrl }) => {
       const path = render.character_id ? `/character/${render.character_id}` : "/character/new";
       nav(path, {
         state: {
           galleryReference: reference,
+          editInstruction: instruction,
           previewUrl,
           targetKind,
           referenceMode,
@@ -784,6 +785,27 @@ export default function Gallery() {
                 </div>
               )}
 
+              {!isVideoUrl(primaryOutput(lightbox)) && <div className="space-y-3">
+                    <ImageRecoveryPanel key={lightbox.id} busy={recoverImage.isPending}
+                      onImprove={(instruction, mode, targets) => endpoints.aiEditPrompt(
+                        mode === "anatomy_repair" ? `Repair only ${targets.join(", ")}: ${instruction}` : instruction,
+                        true, mode === "small_variation" ? "variation" : "edit")}
+                      onEdit={(instruction) => reuseAsReference.mutate({ render: lightbox, targetKind: "edit", instruction })}
+                      onRecover={(body) => recoverImage.mutate({ id: lightbox.id,
+                        body: { ...body, output_url: primaryOutput(lightbox) } })} />
+                    <button onClick={() => downloadImage(primaryOutput(lightbox), `${lightbox.workflow_name || "render"}-${lightbox.id.slice(0, 8)}-enhanced.png`)}
+                      data-testid="btn-lightbox-download" className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-amber-500 text-black text-sm font-semibold px-3 py-2">
+                      <Download className="h-4 w-4" /> Download
+                    </button>
+              </div>}
+                {isVideoUrl(primaryOutput(lightbox)) && (
+                  <button onClick={() => downloadImage(primaryOutput(lightbox), `${lightbox.workflow_name || "video"}-${lightbox.id.slice(0, 8)}.webm`)} className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-amber-500 text-black text-sm font-semibold px-3 py-2">
+                    <Download className="h-4 w-4" /> Download video
+                  </button>
+                )}
+              <details key={lightbox.id} className="rounded-lg border hairline bg-black/10 p-3" data-testid="gallery-other-tools">
+                <summary className="cursor-pointer text-xs font-semibold text-zinc-300">Review image, prompt & recipe tools</summary>
+                <div className="space-y-3 pt-3">
               {!isVideoUrl(primaryOutput(lightbox)) && <section className="rounded-lg border border-cyan-500/30 bg-cyan-500/5 p-3 text-xs" data-testid="gallery-alignment-review">
                 <div className="flex items-center justify-between gap-2">
                   <span className="font-bold text-cyan-100">Image vs. selections</span>
@@ -835,8 +857,8 @@ export default function Gallery() {
               {!isVideoUrl(primaryOutput(lightbox)) && <section className="rounded-lg border border-purple-500/30 bg-purple-500/5 p-3 text-xs space-y-2" data-testid="gallery-improve-render">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div>
-                    <div className="font-semibold text-purple-100">Improve this render</div>
-                    <p className="text-zinc-400">Edit the saved prompt or tell AI what to change. Review the result before rendering.</p>
+                    <div className="font-semibold text-purple-100">Rewrite prompt for a new render</div>
+                    <p className="text-zinc-400">Rewrite the saved text for a new generation. To edit this image, use the image tools above.</p>
                   </div>
                 </div>
                 <label htmlFor="improve-source-prompt" className="block font-semibold text-zinc-200">Original positive prompt · edit a copy</label>
@@ -974,9 +996,6 @@ export default function Gallery() {
                         onClick={() => { setSelected([lightbox.parent_render_id, lightbox.id]); setCompareOpen(true); }}
                         className="w-full rounded-lg border hairline px-3 py-2 text-xs font-semibold text-cyan-100"
                         data-testid="btn-compare-with-source">Compare with source</button>}
-                    <ImageRecoveryPanel key={lightbox.id} busy={recoverImage.isPending}
-                      onRecover={(body) => recoverImage.mutate({ id: lightbox.id,
-                        body: { ...body, output_url: primaryOutput(lightbox) } })} />
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                       <button type="button" onClick={() => openBodyCreation.mutate(lightbox)} disabled={openBodyCreation.isPending}
                         data-testid="btn-lightbox-body-adjust" title="Load the original creation setup and change its body sliders before generating a new image"
@@ -997,17 +1016,10 @@ export default function Gallery() {
                         <ScanFace className="h-4 w-4" /> Keep character
                       </button>
                     </div>
-                    <button onClick={() => downloadImage(primaryOutput(lightbox), `${lightbox.workflow_name || "render"}-${lightbox.id.slice(0, 8)}-enhanced.png`)}
-                      data-testid="btn-lightbox-download" className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-amber-500 text-black text-sm font-semibold px-3 py-2">
-                      <Download className="h-4 w-4" /> Download
-                    </button>
+
                   </div>
                 )}
-                {isVideoUrl(primaryOutput(lightbox)) && (
-                  <button onClick={() => downloadImage(primaryOutput(lightbox), `${lightbox.workflow_name || "video"}-${lightbox.id.slice(0, 8)}.webm`)} className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-amber-500 text-black text-sm font-semibold px-3 py-2">
-                    <Download className="h-4 w-4" /> Download video
-                  </button>
-                )}
+
 
                 <details className="rounded-lg border hairline bg-black/15 p-3" data-testid="gallery-render-details">
                   <summary className="cursor-pointer text-xs font-semibold text-zinc-300">Prompt & advanced actions</summary>
@@ -1034,6 +1046,8 @@ export default function Gallery() {
                   </div>
                 </details>
               </div>
+                </div>
+              </details>
             </aside>
           </div>
         </div>

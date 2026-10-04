@@ -33,6 +33,17 @@ class ImageRecoveryTests(unittest.TestCase):
         self.assertIn("Slight smile", result["prompt_positive"])
         self.assertIsNone(result["seed"])
 
+    def test_requested_changes_take_priority_over_preservation(self):
+        for instruction in ("Change the dress to blue", "Turn to a side view"):
+            with self.subTest(instruction=instruction):
+                prompt = self.recipe(instruction=instruction)["prompt_positive"]
+                self.assertTrue(prompt.startswith(f"Requested change: {instruction}"))
+                self.assertIn("unless that detail is explicitly requested to change", prompt)
+                self.assertNotIn("Make only a subtle variation in expression", prompt)
+
+    def test_empty_description_keeps_a_subtle_default(self):
+        self.assertIn("Make only a subtle variation", self.recipe()["prompt_positive"])
+
     def test_repair_uses_chosen_regions_and_preserves_unrequested_details(self):
         result = self.recipe("anatomy_repair", 0.35, ["hands", "hands", "feet"], "Fused fingers")
         self.assertEqual(result["repair_targets"], ["hands", "feet"])

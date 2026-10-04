@@ -101,10 +101,11 @@ export const endpoints = {
   aiCharacterPreset: (description, catalog) =>
     api.post("/ai/character-preset", { description, catalog }).then((r) => r.data),
   aiRefine: (dna, instruction) => api.post("/ai/refine", { dna, instruction }).then((r) => r.data),
-  aiEditPrompt: (instruction, preserveUnmentioned = true) =>
+  aiEditPrompt: (instruction, preserveUnmentioned = true, workflowKind = "edit") =>
     api.post("/ai/edit-prompt", {
       instruction,
       preserve_unmentioned: preserveUnmentioned,
+      workflow_kind: workflowKind,
     }).then((r) => r.data),
   aiImproveGeneratedPrompt: (positive, negative, promptStyle, workflowName) =>
     api.post("/ai/improve-generated-prompt", {

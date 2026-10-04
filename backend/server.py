@@ -237,7 +237,6 @@ SEED_WORKFLOWS = [
     {"file": "chroma_variation.json", "name": "Chroma1-HD · Image Variations", "kind": "variation", "prompt_style": "chroma"},
     {"file": "krea2_turbo.json", "name": "Krea 2 Turbo", "kind": "image", "prompt_style": "krea2"},
     {"file": "flux2_klein_4b.json", "name": "FLUX.2 Klein 4B FP8", "kind": "image", "prompt_style": "flux2_klein"},
-    {"file": "krea2_private_magazine.json", "name": "Krea 2 Turbo · Private Magazine", "kind": "krea_style", "prompt_style": "krea2"},
 ]
 
 
@@ -1810,9 +1809,9 @@ async def _perform_dispatch(body: "DispatchBody", queue_id: Optional[str] = None
             positive_text = instruction
             if body.preserve_unmentioned:
                 positive_text += (
-                    "\nPreserve the original subject identity, face, age, body proportions, "
-                    "composition, camera perspective, lighting, background, and all details "
-                    "not explicitly requested to change."
+                    "\nPreserve every unrequested detail of the source image. Identity, face, age, "
+                    "body proportions, composition, camera perspective, lighting, and background "
+                    "must remain unchanged unless explicitly requested to change."
                 )
 
     # WAN image-to-video and text-to-video use separate workflows so the
@@ -3713,6 +3712,7 @@ class SuggestBody(BaseModel):
 class EditPromptBody(BaseModel):
     instruction: str
     preserve_unmentioned: bool = True
+    workflow_kind: Literal["edit", "variation"] = "edit"
 
 
 class ImproveGeneratedPromptBody(BaseModel):
@@ -3894,13 +3894,21 @@ async def ai_refine(body: RefineBody):
 
 @api.post("/ai/edit-prompt")
 async def ai_edit_prompt(body: EditPromptBody):
-    """Use Venice to turn a rough request into a precise Qwen image-edit instruction."""
+    """Turn a rough request into a precise instruction for the chosen image tool."""
     system = (
         "You write concise, literal instructions for Qwen Image Edit. Expand the user's request "
         "into one clear image-edit prompt. State exactly what should change. Do not invent changes "
         "to identity, age, body, clothing, pose, camera, lighting, or background unless requested. "
         "Return only the finished instruction with no heading, quotation marks, or explanation."
     )
+    if body.workflow_kind == "variation":
+        system = (
+            "Write a concise, literal change instruction for Chroma source-image variations. "
+            "State the requested visual change first and make it clearly visible. Keep it suitable "
+            "for a subtle image-to-image variation. Do not invent changes or replace the request "
+            "with generic expression changes. Do not instruct preservation of a detail that the user "
+            "asked to change. Return only the finished instruction, with no heading or explanation."
+        )
     if body.preserve_unmentioned:
         system += " Explicitly instruct the editor to preserve every unmentioned visual detail."
     prompt = await openrouter_chat(system, body.instruction, response_format_json=False)
