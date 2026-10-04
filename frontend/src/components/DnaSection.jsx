@@ -4,7 +4,7 @@ import { Shuffle, RotateCcw, Lock, LockOpen, Wand2, ChevronDown } from "lucide-r
 import PoseIcon from "@/components/PoseIcon";
 import GroupedChips from "@/components/GroupedChips";
 import { normalizeMultiSelection } from "@/lib/dna";
-import { physiqueControlStatus } from "@/lib/physiqueControlPriority";
+import { physiqueControlStatus, SIZE_CONTROL_PAIRS, sizeControlMode, selectSizeControl } from "@/lib/physiqueControlPriority";
 
 export function ChipRow({ options, value, onChange, testIdPrefix }) {
   return (
@@ -69,6 +69,7 @@ export default function DnaSection({
   simpleMode = false,
   simpleFieldKeys = [],
   onRequestAdvanced,
+  controlNotes = [],
 }) {
   const set = (k, v) => {
     if (fieldLocks?.[k]) return; // ignore edits to a locked field
@@ -135,14 +136,35 @@ export default function DnaSection({
         </div>
       </header>
 
+      {!collapsed && controlNotes.length > 0 && <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-3 text-xs text-amber-100 space-y-1" data-testid="builder-control-notes">
+        {[...new Set(controlNotes)].map(note => <p key={note}>{note}</p>)}
+      </div>}
       {!collapsed && (
       <div className="grid gap-5">
         {section.fields.map((f) => {
+          const preset = section.key === 'physique' ? Object.keys(SIZE_CONTROL_PAIRS).find(key => key === f.key || SIZE_CONTROL_PAIRS[key][0] === f.key || (key === 'bust' && f.key === 'implant_volume')) : null;
+          const mode = preset ? sizeControlMode(preset, value) : null;
+          const isModeHeader = preset === f.key;
+          const hiddenControl = preset && (f.key === SIZE_CONTROL_PAIRS[preset][0] ? mode !== 'slider' : f.key === 'implant_volume' ? mode !== 'implant' : false);
+          if (hiddenControl || (section.key === 'physique' && f.key === 'bust_shape' && sizeControlMode('bust', value) === 'implant')) return null;
           const priority = section.key === "physique" ? physiqueControlStatus(f.key, value) : null;
           const fLocked = !!fieldLocks?.[f.key];
           const canLock = f.type === "slider" || f.type === "chips" || f.type === "pose_chips";
           return (
-          <div key={f.key} className={`${simpleMode && simpleFieldKeys.length && !simpleFieldKeys.includes(f.key) ? "hidden md:block" : "block"} space-y-2 ${fLocked ? "opacity-70" : ""}`}>
+          <div key={f.key} className={`${simpleMode && simpleFieldKeys.length && !simpleFieldKeys.includes(f.key) && !(isModeHeader && (simpleFieldKeys.includes(SIZE_CONTROL_PAIRS[preset][0]) || (preset === "bust" && simpleFieldKeys.includes("implant_volume")))) ? "hidden md:block" : "block"} space-y-2 ${fLocked ? "opacity-70" : ""}`}>
+            {isModeHeader && <div className="space-y-2" data-testid={`size-mode-${preset}`}>
+              <div className="text-xs font-semibold text-zinc-300">{SIZE_CONTROL_PAIRS[preset][1]} · choose one control</div>
+              <div className="flex gap-2" role="group" aria-label={`${SIZE_CONTROL_PAIRS[preset][1]} control`}>
+                {(preset === 'bust' ? ['preset', 'slider', 'implant'] : ['preset', 'slider']).map(choice => <button type="button" key={choice}
+                  data-testid={`size-mode-${preset}-${choice}`} aria-pressed={mode === choice}
+                  disabled={!!fieldLocks[preset] || !!fieldLocks[SIZE_CONTROL_PAIRS[preset][0]] || (preset === 'bust' && !!fieldLocks.implant_volume)}
+                  onClick={() => onChange(selectSizeControl(preset, choice, value))}
+                  className={`rounded-lg border px-3 py-2 text-xs disabled:opacity-40 ${mode === choice ? 'border-cyan-400 text-cyan-100 bg-cyan-500/10' : 'hairline text-zinc-400'}`}>
+                  {choice === 'preset' ? 'Preset' : choice === 'slider' ? 'Size slider' : 'Implant size'}
+                </button>)}
+              </div>
+            </div>}
+            {(!isModeHeader || mode === 'preset') && <>
             <div className="flex items-center justify-between text-xs text-zinc-400 font-mono uppercase tracking-widest">
               <span className="flex items-center gap-1.5">
                 {f.label}
@@ -171,6 +193,7 @@ export default function DnaSection({
               </div>
             </div>
             {priority && <p data-testid={`control-priority-${f.key}`} className={`text-xs leading-relaxed ${priority.inactive ? "text-amber-200/80" : "text-zinc-500"}`}>{priority.text}</p>}
+            {f.help && f.type !== "slider" && <p className="text-xs text-zinc-500 leading-relaxed">{f.help}</p>}
             {f.type === "chips_multi" && (
               <GroupedChips
                 groups={f.groups || [{ name: "All", options: f.options || [] }]}
@@ -218,7 +241,7 @@ export default function DnaSection({
             {f.type === "slider" && (
               <><Slider
                 data-testid={`slider-${section.key}-${f.key}`}
-                min={f.min}
+                min={preset ? Math.max(f.step || 1, f.min) : f.min}
                 max={f.max}
                 step={f.step || 1}
                 value={[Number(value[f.key] ?? f.min)]}
@@ -237,6 +260,7 @@ export default function DnaSection({
                 className="bg-elevated border-hairline text-zinc-100 font-mono text-sm"
               />
             )}
+            </>}
           </div>
           );
         })}

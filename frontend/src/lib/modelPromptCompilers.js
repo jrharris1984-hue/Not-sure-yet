@@ -1,3 +1,4 @@
+import { resolveBuilderControls, sliderPromptSignature } from "./builderControlResolution";
 import { resolvePhysiqueControls, bustShapePrompt, photographicPrompt } from "./physiqueControls";
 import { preserveGeneralSelections } from "./selectionFidelity";
 import { applyCastAppearance, castAppearancePrompt } from "./castAppearance";
@@ -237,6 +238,7 @@ function chromaLeanSingleSubjectPrompt(dna = {}, primaryGuard = {}, sourceDna = 
     wardrobe.hosiery_pattern,
     wardrobe.heel_color,
     wardrobe.heel_type,
+    !wardrobe.heel_type && kreaFeetVisible(dna) ? wardrobe.footwear : "",
   ].filter(Boolean).join(" ");
 
   const framing = [
@@ -343,7 +345,8 @@ export function resolveChromaComposition(dna = {}, options = {}) {
 }
 
 export function resolveZImageComposition(dna = {}, options = {}) {
-  const physiqueGuard = resolvePhysiqueControls(dna || {});
+  const builderGuard = resolveBuilderControls(dna || {});
+  const physiqueGuard = resolvePhysiqueControls(builderGuard.dna);
   const resolved = physiqueGuard.dna;
   resolved.pose = { ...(resolved.pose || {}) };
   resolved.feet = { ...(resolved.feet || {}) };
@@ -354,7 +357,7 @@ export function resolveZImageComposition(dna = {}, options = {}) {
   const mode = ["natural", "enhanced", "extreme"].includes(lower(resolved.style.anatomy_mode))
     ? lower(resolved.style.anatomy_mode)
     : "natural";
-  const adjustments = [...physiqueGuard.adjustments];
+  const adjustments = [...builderGuard.notes.map(note => note.text), ...physiqueGuard.adjustments];
   const hands = arrayValue(resolved.pose.hands).filter((item) => lower(item) !== "none");
   if (hands.length > 1) {
     const kept = hands[hands.length - 1];
@@ -414,13 +417,6 @@ export function resolveZImageComposition(dna = {}, options = {}) {
 
   const feetFraming = lower(resolved.feet.framing);
   const feetCloseup = ["feet close-up", "sole close-up", "pov under foot", "low angle sole"].includes(feetFraming);
-  const feetRequested = !!(
-    resolved.feet.sole_presentation || feetFraming || resolved.feet.arch ||
-    resolved.feet.pedicure || resolved.feet.foot_size ||
-    arrayValue(resolved.feet.toes).length || arrayValue(resolved.feet.foot_act).length
-  );
-  const selectedPedicure = lower(resolved.feet.pedicure);
-  let supportingFeet = "";
 
   if (mode !== "extreme" && fullBody && lower(resolved.pose.angle) === "pov") {
     resolved.pose.angle = "3/4";
@@ -440,17 +436,7 @@ export function resolveZImageComposition(dna = {}, options = {}) {
     if (lower(resolved.physique.thighs) === "massive") resolved.physique.thighs = "thick";
     if (lower(resolved.physique.hips) === "extreme") resolved.physique.hips = "wide";
 
-    if (focus !== "feet" && feetRequested) {
-      supportingFeet = options.forceMulti
-        ? ""
-        : selectedPedicure && selectedPedicure !== "natural nails"
-          ? `both naturally proportioned feet visible with ${selectedPedicure.replace(/^painted\s+(.+)$/i, "$1-painted")} toenails`
-          : "both naturally proportioned feet visible";
-      resolved.feet = {};
-      adjustments.push(options.forceMulti
-        ? "Removed secondary feet requirements from the multi-subject composition so limb count and body separation stay higher priority."
-        : "Removed the competing PRIMARY FEET block because feet are not the composition priority.");
-    } else if (focus === "feet" && lower(resolved.feet.foot_size) === "size queen") {
+    if (lower(resolved.feet.foot_size) === "size queen") {
       resolved.feet.foot_size = "large";
       adjustments.push("Reduced extreme foot enlargement to a realistic large size in Natural mode.");
     }
@@ -489,8 +475,8 @@ export function resolveZImageComposition(dna = {}, options = {}) {
   if (focus === "feet") {
     composition = fullBody
       ? "PRIMARY COMPOSITION — full character visible head to feet, both complete feet visible at realistic perspective, feet prominent without filling the frame"
-      : "PRIMARY COMPOSITION — feet are the single visual priority, both complete feet and ankles visible with coherent scale and perspective";
-  } else if (["butt", "hips"].includes(focus) && feetRequested && fullBody) {
+      : `PRIMARY COMPOSITION — ${resolved.feet.framing || "feet and ankles"} is the visual priority, coherent foot anatomy and perspective`;
+  } else if (["butt", "hips"].includes(focus) && fullBody) {
     composition = "PRIMARY COMPOSITION — rear three-quarter full-body view, face and complete body visible, lower body prominent without filling the frame";
   } else if (["butt", "hips"].includes(focus)) {
     composition = "PRIMARY COMPOSITION — rear three-quarter view, lower body is the single visual priority, moderate perspective and connected limbs";
@@ -521,7 +507,6 @@ export function resolveZImageComposition(dna = {}, options = {}) {
     solo && "exactly one adult person in the image, no background people or partial extra bodies",
     multiBodyGuard,
     composition,
-    supportingFeet,
   ].filter(Boolean).join(", ");
 
   return { dna: resolved, composition: lead, adjustments, anatomyMode: mode };
@@ -608,7 +593,7 @@ function kreaSubjectSentence(dna = {}, label = "") {
 
 function kreaFeetVisible(dna = {}) {
   const distance = lower(dna.pose?.distance || "full body");
-  if (["thigh-up", "knees-up", "waist-up", "portrait"].includes(distance)) return false;
+  if (["thigh-up", "knees-up", "waist-up", "portrait", "close-up"].includes(distance)) return false;
   return ["full body", "wide shot"].includes(distance) || lower(dna.pose?.focus) === "feet" || Boolean(dna.feet?.framing);
 }
 
@@ -1186,6 +1171,22 @@ export function compileModelPrompts(options = {}) {
     if (protectedResult.negativeStrategy === 'text' && protectedResult.negative) {
       protectedResult.negative = dedupeClauses(`${protectedResult.negative}, cartoon, anime, illustration, CGI, 3d render, doll-like skin, plastic skin`);
     }
+  }
+  const controls = resolvedSubjects.map((subject, index) => {
+    const d = subject.dna;
+    const values = sliderPromptSignature(d);
+    const footDetails = Object.entries(d.feet || {}).filter(([key, value]) =>
+      key !== 'composition_mode' && !['framing', 'sole_presentation', 'foot_pose', 'foot_act'].includes(key)
+      && (Array.isArray(value) ? value.length : value)
+      && !String(protectedResult.positive).toLowerCase().includes(Array.isArray(value) ? value.join(' and ').toLowerCase() : String(value).toLowerCase())).map(([key, value]) => `${key.replace(/_/g, ' ')}: ${Array.isArray(value) ? value.join(' and ') : value}`);
+    const prefix = isMulti ? `Subject ${subject.label || String.fromCharCode(65 + index)} ` : '';
+    return [values && `${prefix}Selected slider values: ${values}`, footDetails.length && `${prefix}Foot details: ${footDetails.join(', ')}`].filter(Boolean).join('; ');
+  }).filter(Boolean).join('; ');
+  if (controls) {
+    // Keep requested slider values inside the early encoder context rather than
+    // appending them beyond a long prompt's token limit. Preserve Pony score lead.
+    const score = protectedResult.positive.match(/^((?:score_[^,; ]+,?\s*)+)/)?.[0] || '';
+    protectedResult.positive = `${score}${controls}; ${protectedResult.positive.slice(score.length)}`;
   }
   protectedResult.promptWords = clean(protectedResult.positive).split(/\s+/).filter(Boolean).length;
   if (!contract) return protectedResult;

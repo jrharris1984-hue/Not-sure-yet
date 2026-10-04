@@ -46,6 +46,7 @@ describe("protected randomization", () => {
 
 describe("Feet and Play prompt priority", () => {
   const dna = {
+    pose: { focus: "feet" },
     identity: { age: 35, gender: "female" },
     feet: {
       sole_presentation: "soles up",

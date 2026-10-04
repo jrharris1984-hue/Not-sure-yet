@@ -1,7 +1,7 @@
 export const CREATE_STAGES = [
   { key: "identity", title: "Design", detail: "Choose your subject", categories: [
     { key: "identity", title: "People", sections: ["identity", "scenario"] },
-    { key: "physique", title: "Body", sections: ["physique", "intimate"] },
+    { key: "physique", title: "Body", sections: ["physique", "feet", "intimate"] },
     { key: "face", title: "Appearance", sections: ["face", "hair", "skin"] },
     { key: "wardrobe", title: "Wardrobe", sections: ["wardrobe"] },
   ] },
@@ -9,7 +9,7 @@ export const CREATE_STAGES = [
     { key: "pose", title: "Pose & framing", sections: ["pose", "camera"] },
     { key: "scene", title: "Scene", sections: ["scene"] },
     { key: "lighting", title: "Lighting & style", sections: ["lighting", "style"] },
-    { key: "feet", title: "Details", sections: ["feet", "kink", "watersports"] },
+    { key: "kink", title: "Scene details", sections: ["kink", "watersports"] },
   ] },
   { key: "review", title: "Generate", detail: "Review and create", categories: [] },
 ].map((stage) => ({ ...stage, sections: stage.categories.flatMap((category) => category.sections) }));
