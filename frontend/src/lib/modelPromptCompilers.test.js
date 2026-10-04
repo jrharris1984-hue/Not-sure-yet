@@ -186,6 +186,8 @@ describe("model-specific prompt compilers", () => {
     expect(result.positive).toContain("Preserve the subject's identity");
     expect(result.positive).toContain("Keep one connected human body");
     expect(result.negative).toContain("unrequested changes");
+    expect(result.positive).toContain("only where they are not explicitly requested to change");
+    expect(result.negative).toContain("unrequested wardrobe change");
   });
 
   it("keeps WAN image-to-video motion-only and gives text-to-video full scene context", () => {

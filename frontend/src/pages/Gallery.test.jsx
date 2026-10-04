@@ -5,7 +5,7 @@ import { endpoints } from "@/lib/api";
 import Gallery from "./Gallery";
 
 jest.mock("@/lib/api", () => ({ API_BASE: "/api", endpoints: {
-  listRenders: jest.fn(), getRender: jest.fn(), getRenderVersions: jest.fn(), getRenderRecipe: jest.fn(),
+  aiEditPrompt: jest.fn(), prepareRenderReference: jest.fn(), recoverRenderImage: jest.fn(), listRenders: jest.fn(), getRender: jest.fn(), getRenderVersions: jest.fn(), getRenderRecipe: jest.fn(),
 } }));
 jest.mock("sonner", () => ({ toast: { error: jest.fn(), success: jest.fn() } }));
 
@@ -27,6 +27,7 @@ beforeEach(() => {
   global.IS_REACT_ACT_ENVIRONMENT = true;
   jest.clearAllMocks();
   endpoints.listRenders.mockResolvedValue(records);
+  endpoints.getRender.mockImplementation(async (id) => records.find((record) => record.id === id));
   endpoints.getRenderVersions.mockResolvedValue([]);
   endpoints.getRenderRecipe.mockResolvedValue({ recipe: {} });
   container = document.createElement("div"); document.body.appendChild(container);
@@ -105,4 +106,33 @@ test("a failed refresh keeps previously loaded images available", async () => {
   await act(async () => { await new Promise((resolve) => setTimeout(resolve, 20)); });
   expect(container.textContent).toContain("Your last loaded images remain available");
   expect(container.querySelectorAll('[data-testid^="gallery-thumb-"]').length).toBe(2);
+});
+
+test("lightbox puts image changes first and collapses secondary tools", async () => {
+  await render("/gallery?render=a");
+  const tools = container.querySelector('[data-testid="gallery-other-tools"]');
+  expect(tools.open).toBe(false);
+  expect(tools.querySelector('[data-testid="gallery-improve-render"]')).not.toBeNull();
+  expect(container.querySelector('[data-testid="image-recovery-panel"]').closest("details")).toBeNull();
+  expect(container.querySelector('[data-testid="btn-lightbox-download"]').closest("details")).toBeNull();
+  act(() => tools.querySelector("summary").click());
+  expect(tools.open).toBe(true);
+});
+test("Gallery clarifies the change and carries reviewed wording into Qwen Edit", async () => {
+  endpoints.aiEditPrompt.mockResolvedValue({ prompt: "Change the dress to blue; preserve unmentioned details." });
+  endpoints.prepareRenderReference.mockResolvedValue({ name: "a.png" });
+  await render("/gallery?render=a");
+  act(() => container.querySelector('[data-testid="recovery-small_variation"]').click());
+  act(() => {
+    const textarea = container.querySelector('[data-testid="recovery-instruction"]');
+    Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value").set.call(textarea, "blue dress");
+    textarea.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await act(async () => container.querySelector('[data-testid="recovery-improve-instruction"]').click());
+  expect(endpoints.aiEditPrompt).toHaveBeenCalledWith("blue dress", true, "variation");
+  expect(endpoints.recoverRenderImage).not.toHaveBeenCalled();
+  await act(async () => container.querySelector('[data-testid="recovery-open-edit"]').click());
+  expect(mockNavigate).toHaveBeenCalledWith("/character/new", { state: expect.objectContaining({
+    targetKind: "edit", editInstruction: "Change the dress to blue; preserve unmentioned details.",
+  }) });
 });

@@ -3,8 +3,10 @@ import copy
 
 REPAIR_TARGETS = {"face", "hands", "feet", "limbs"}
 PRESERVE = (
-    "Preserve the source subject identity, age, body proportions, pose, clothing, "
-    "background, lighting, camera perspective, and framing. Leave unrequested details unchanged."
+    "Apply the requested change to the source photograph. Preserve every unrequested "
+    "detail, including identity, age, body proportions, pose, clothing, background, "
+    "lighting, camera perspective, and framing unless that detail is explicitly requested to change. "
+    "Leave unrequested details unchanged."
 )
 
 
@@ -32,12 +34,14 @@ def recovery_recipe(source, reference, workflow_id, mode, strength, targets, ins
     if not name:
         raise ValueError("The source image was not prepared")
     subfolder = reference.get("subfolder", "").strip("/")
-    prompt = (
-        "Make only a subtle variation in expression and small photographic details. "
-        if mode == "small_variation" else
-        f"Correct technical anatomy defects only in these areas: {', '.join(dict.fromkeys(targets))}. "
-        "Restore coherent joints and connected anatomy without changing the intended appearance. "
-    ) + instruction.strip() + " " + PRESERVE
+    requested = instruction.strip()
+    if mode == "small_variation":
+        prompt = (f"Requested change: {requested}. Make this change visible while staying close to the source photograph. "
+                  if requested else "Make only a subtle variation in expression and small photographic details. ") + PRESERVE
+    else:
+        prompt = (f"Correct technical anatomy defects only in these areas: {', '.join(dict.fromkeys(targets))}. "
+                  "Restore coherent joints and connected anatomy without changing the intended appearance. "
+                  + requested + " " + PRESERVE)
     result = {key: copy.deepcopy(source[key]) for key in
               ("character_id", "dna", "subjects", "locks", "prompt_language") if key in source}
     result.update(
