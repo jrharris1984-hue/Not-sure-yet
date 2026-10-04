@@ -1,6 +1,8 @@
+import GalleryBrowseControls from "@/components/GalleryBrowseControls";
+import { browseGallery, galleryIsVideo, galleryModel, galleryRefreshInterval } from "@/lib/galleryBrowse";
 import ImageRecoveryPanel from "@/components/ImageRecoveryPanel";
 import { loadBodyCreationRecipe } from "@/lib/bodyCreationRecipe";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { API_BASE, endpoints } from "@/lib/api";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
@@ -53,7 +55,7 @@ const proxiedMediaUrl = (url = "") => {
 };
 const primaryOutput = (render) => proxiedMediaUrl(render.output_variants?.enhanced?.[0] || render.output_files?.[0]);
 const originalOutput = (render) => proxiedMediaUrl(render.output_variants?.original?.[0]);
-const isVideoUrl = (url = "") => /\.(webm|mp4|mov)(?:[?&]|$)/i.test(decodeURIComponent(url));
+const isVideoUrl = galleryIsVideo;
 
 function GalleryImage({ src, alt }) {
   const [failed, setFailed] = useState(false);
@@ -100,10 +102,11 @@ export default function Gallery() {
   const [searchParams] = useSearchParams();
   const requestedRenderId = searchParams.get("render");
   const returnTo = searchParams.get("returnTo") || location.state?.returnTo || "";
-  const { data: renders = [], isLoading } = useQuery({
+  const { data: renders = [], isLoading, isError, error, isFetching, refetch } = useQuery({
     queryKey: ["renders"],
     queryFn: endpoints.listRenders,
-    refetchInterval: 30000,
+    refetchInterval: (query) => galleryRefreshInterval(query.state.data),
+    refetchOnMount: "always",
   });
   const [lightbox, setLightbox] = useState(null); // render object
   const [retrySelection, setRetrySelection] = useState(null);
@@ -124,14 +127,14 @@ export default function Gallery() {
   useEffect(() => {
     if (!lightbox?.id) return;
     const updated = renders.find((render) => render.id === lightbox.id);
-    if (updated && (updated.alignment_review_status !== lightbox.alignment_review_status
-      || updated.alignment_review?.reviewed_at !== lightbox.alignment_review?.reviewed_at)) setLightbox(updated);
+    if (updated && updated !== lightbox) setLightbox(updated);
   }, [renders, lightbox]);
   const [showDetails, setShowDetails] = useState(false);
   const [selectionMode, setSelectionMode] = useState(false);
   const [selected, setSelected] = useState([]);
   const [deleteFiles, setDeleteFiles] = useState(false);
   const [albumFilter, setAlbumFilter] = useState("all");
+  const [browse, setBrowse] = useState({ search: "", model: "all", media: "all", sort: "newest" });
   const [showQcFlagged, setShowQcFlagged] = useState(true);
   const [thumbSize, setThumbSize] = useState("medium");
   const [pageSize, setPageSize] = useState(12);
@@ -348,9 +351,9 @@ export default function Gallery() {
   const qcFlagged = renders.filter((r) => r.anatomy_guard_status === "failed" && primaryOutput(r));
   const withOutput = renders.filter((r) => primaryOutput(r) && (showQcFlagged || r.anatomy_guard_status !== "failed"));
   const albums = [...new Set(withOutput.map((render) => render.album).filter(Boolean))].sort();
-  const displayedOutput = albumFilter === "all"
-    ? withOutput
-    : withOutput.filter((render) => (albumFilter === "unfiled" ? !render.album : render.album === albumFilter));
+  const models = useMemo(() => [...new Set(renders.filter((render) => primaryOutput(render)).map(galleryModel))].sort(), [renders]);
+  const displayedOutput = useMemo(() => browseGallery(renders, { ...browse, album: albumFilter, showQc: showQcFlagged }),
+    [renders, browse, albumFilter, showQcFlagged]);
   const pageCount = Math.max(1, Math.ceil(displayedOutput.length / pageSize));
   const currentPage = Math.min(page, pageCount);
   const pageOutput = displayedOutput.slice((currentPage - 1) * pageSize, currentPage * pageSize);
@@ -372,18 +375,26 @@ export default function Gallery() {
     setShowDetails(false);
   };
 
+  const { data: requestedRender, isError: requestedError } = useQuery({
+    queryKey: ["gallery-requested-render", requestedRenderId],
+    queryFn: () => endpoints.getRender(requestedRenderId),
+    enabled: !!requestedRenderId && !renders.some((render) => render.id === requestedRenderId),
+    refetchInterval: (query) => query.state.data && !primaryOutput(query.state.data)
+      && ["queued", "dispatching", "running"].includes(query.state.data.status) ? 2000 : false,
+  });
   useEffect(() => {
-    if (!requestedRenderId || directOpenApplied.current || !withOutput.length) return;
-    const requested = withOutput.find((render) => render.id === requestedRenderId);
-    if (requested) {
-      directOpenApplied.current = true;
+    if (!requestedRenderId || directOpenApplied.current === requestedRenderId) return;
+    const requested = renders.find((render) => render.id === requestedRenderId) || requestedRender;
+    if (requested && primaryOutput(requested)) {
+      directOpenApplied.current = requestedRenderId;
       setLightbox(requested);
     }
-  }, [requestedRenderId, withOutput]);
+  }, [requestedRenderId, renders, requestedRender]);
 
   useEffect(() => {
     if (!lightbox) return undefined;
     const onKeyDown = (event) => {
+      if (event.target?.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(event.target?.tagName)) return;
       if (event.key === "ArrowLeft") showAdjacent(-1);
       if (event.key === "ArrowRight") showAdjacent(1);
       if (event.key === "Escape") { setLightbox(null); setShowDetails(false); }
@@ -488,6 +499,13 @@ export default function Gallery() {
         )}
       </div>
 
+      <GalleryBrowseControls value={browse} models={models} onChange={(next) => { setBrowse(next); setPage(1); }}
+        matches={displayedOutput.length} total={withOutput.length} onRefresh={() => refetch()} refreshing={isFetching} />
+      {isError && <div role="alert" className="pane border-rose-500/40 p-4 text-sm text-rose-200">
+        Could not refresh Gallery. {error?.response?.data?.detail || "Check the backend connection and try Refresh."}
+        {!!renders.length && <span className="block mt-1 text-xs text-zinc-400">Your last loaded images remain available.</span>}
+      </div>}
+      {requestedError && <p role="alert" className="text-sm text-rose-300">The requested render could not be opened. It may have been removed.</p>}
       {withOutput.length > 0 && (
         <div className="gallery-shelf" data-testid="gallery-album-filter">
           {[{ key: "all", label: `All ${withOutput.length}` }, { key: "unfiled", label: "Unfiled" }, ...albums.map((album) => ({ key: album, label: album }))].map((item) => (
@@ -528,7 +546,7 @@ export default function Gallery() {
             <div key={i} className="pane aspect-square animate-pulse" />
           ))}
         </div>
-      ) : withOutput.length === 0 && inFlight.length === 0 ? (
+      ) : !isError && withOutput.length === 0 && inFlight.length === 0 ? (
         <div className="pane p-10 text-center text-zinc-400">
           <div className="section-label mb-2">Empty gallery</div>
           <p>No renders yet. Head to a character and dispatch one.</p>
@@ -553,6 +571,9 @@ export default function Gallery() {
               </div>
             </div>
           )}
+          {displayedOutput.length === 0 && withOutput.length > 0 && <div className="pane p-8 text-center text-zinc-400">
+            No images match these filters. Clear the search or choose another album.
+          </div>}
           {/* Thumbnail grid — dense, clean, contact-sheet style */}
           {displayedOutput.length > 0 && (
             <div className={`grid gap-2 ${thumbSize === "small" ? "grid-cols-3 sm:grid-cols-4 md:grid-cols-6" : thumbSize === "large" ? "grid-cols-2 sm:grid-cols-3" : "grid-cols-2 sm:grid-cols-3 md:grid-cols-4"}`} data-testid="gallery-grid">
@@ -601,7 +622,12 @@ export default function Gallery() {
                     <span className="absolute top-1 right-1 z-10 text-[9px] font-mono px-1.5 py-0.5 rounded backdrop-blur-sm bg-black/60 text-emerald-300 pointer-events-none">
                       {r.anatomy_guard_status === "failed" ? "QC flagged" : isVideoUrl(output) ? "video" : r.output_variants?.enhanced?.length ? "enhanced" : "done"}
                     </span>
-                    {r.album && <span className="absolute bottom-1 left-1 z-10 max-w-[75%] truncate rounded bg-black/65 px-1.5 py-0.5 text-[9px] text-zinc-200 pointer-events-none">{r.album}</span>}
+                    {!selectionMode && <button type="button" onClick={() => openRecipe.mutate(r)} disabled={openRecipe.isPending}
+                      className="absolute bottom-2 right-2 z-10 rounded-lg border border-cyan-300/30 bg-black/80 px-2 py-1.5 text-[10px] font-semibold text-cyan-100 disabled:opacity-40"
+                      aria-label={`Use recipe for ${r.workflow_name || "render"}`} data-testid={`gallery-use-recipe-${r.id}`}>
+                      Use recipe
+                    </button>}
+                    {r.album && <span className="absolute bottom-10 left-1 z-10 max-w-[90%] truncate rounded bg-black/65 px-1.5 py-0.5 text-[9px] text-zinc-200 pointer-events-none">{r.album}</span>}
                   </div>
                 );
               })}
@@ -678,7 +704,7 @@ export default function Gallery() {
               <Info className="h-4 w-4" /> {showDetails ? "Hide details" : "Details"}
             </button>
 
-            {displayedOutput.length > 1 && (
+            {displayedOutput.length > 1 && lightboxIndex >= 0 && (
               <>
                 <button type="button" onClick={() => showAdjacent(-1)}
                   className="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 z-30 h-11 w-11 grid place-items-center rounded-full border border-white/20 bg-black/65 text-white backdrop-blur-md"
