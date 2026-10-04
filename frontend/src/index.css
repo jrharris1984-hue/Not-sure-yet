@@ -289,3 +289,9 @@ button:not(:disabled):active, a[role="button"]:active {
 .gallery-poster-caption { opacity: 1; }
 @media (hover: hover) { .gallery-poster-caption { opacity: 0; } .gallery-poster:hover .gallery-poster-caption, .gallery-poster:focus-within .gallery-poster-caption { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .gallery-album, .gallery-poster, .gallery-poster img, .gallery-poster video { transition: none !important; transform: none !important; } }
+
+/* Main creation flow: restrained surfaces and one consistent accent. */
+.create-journey { background: linear-gradient(145deg, #1b2029, #11141b); border: 1px solid rgba(255,255,255,.1); box-shadow: 0 12px 32px rgba(0,0,0,.15); }
+.create-stage { transition: border-color 160ms ease, background 160ms ease; }
+.create-journey button:focus-visible { outline: 2px solid #22d3ee; outline-offset: 3px; }
+@media (prefers-reduced-motion: reduce) { .create-stage { transition: none; } }
