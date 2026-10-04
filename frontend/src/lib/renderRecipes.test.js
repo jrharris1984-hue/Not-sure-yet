@@ -10,6 +10,15 @@ describe("model-aware render recipes", () => {
     expect(quality.width * quality.height).toBeGreaterThan(balanced.width * balanced.height);
   });
 
+  test("carries the matching scheduler only for recipes that use a named scheduler", () => {
+    expect(getRenderRecipe("sdxl").scheduler).toBe("karras");
+    expect(getRenderRecipe("sdxl_dmd2").scheduler).toBe("normal");
+    expect(getRenderRecipe("zimage").scheduler).toBe("simple");
+    expect(getRenderRecipe("krea2").scheduler).toBe("simple");
+    // Chroma's BetaSamplingScheduler has no scheduler dropdown input.
+    expect(getRenderRecipe("chroma").scheduler).toBeUndefined();
+  });
+
   test("uses a separate low-step DMD2 sampler recipe", () => {
     const recipe = getRenderRecipe("sdxl_dmd2", "balanced");
     expect([recipe.steps, recipe.cfg, recipe.sampler]).toEqual([4, 1.2, "lcm"]);
