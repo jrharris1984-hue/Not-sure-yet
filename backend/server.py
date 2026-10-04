@@ -18,11 +18,12 @@ import zipfile
 from PIL import Image
 from pathlib import Path
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Literal
 from urllib.parse import urlencode, urlparse, parse_qs
 from pydantic import BaseModel, Field, ConfigDict
 from media_library import router as media_library_router, configure_media_library_url
 from generation_settings import normalize_generation_settings, apply_generation_settings
+from image_recovery import recovery_recipe, apply_recovery_strength
 
 import httpx
 import websockets as ws_client
@@ -1714,7 +1715,6 @@ async def _perform_dispatch(body: "DispatchBody") -> Dict[str, Any]:
             doc.pop("_id", None)
             return doc
         image_patched = False
-        denoise_patched = False
         for node in workflow.values():
             if not isinstance(node, dict):
                 continue
@@ -1722,12 +1722,7 @@ async def _perform_dispatch(body: "DispatchBody") -> Dict[str, Any]:
             if node.get("class_type") == "LoadImage" and "image" in inputs:
                 inputs["image"] = body.reference_image
                 image_patched = True
-            if node.get("class_type") == "SplitSigmasDenoise" and "denoise" in inputs:
-                inputs["denoise"] = max(0.05, min(0.65, float(body.refine_denoise)))
-                denoise_patched = True
-            if node.get("class_type") == "KSampler" and "denoise" in inputs:
-                inputs["denoise"] = max(0.05, min(0.65, float(body.refine_denoise)))
-                denoise_patched = True
+        denoise_patched = apply_recovery_strength(workflow, max(0.05, min(0.65, float(body.refine_denoise))))
         if not image_patched:
             r.status = "failed"
             r.error = "The selected image workflow is missing its LoadImage node."
@@ -1738,7 +1733,12 @@ async def _perform_dispatch(body: "DispatchBody") -> Dict[str, Any]:
             doc.pop("_id", None)
             return doc
         if not denoise_patched:
-            logger.warning("Chroma image-to-image workflow has no configurable denoise node.")
+            r.status = "failed"
+            r.error = "This image variation workflow has no configurable denoise node. Re-add Image Variations in Settings."
+            doc = r.model_dump()
+            await db.renders.insert_one(doc)
+            doc.pop("_id", None)
+            return doc
 
     # Qwen Image Edit also consumes an uploaded source image, but its positive
     # prompt is a direct edit instruction rather than the character DNA prompt.
@@ -1798,11 +1798,13 @@ async def _perform_dispatch(body: "DispatchBody") -> Dict[str, Any]:
             )
             # Lower denoise keeps subtle repairs close to the source; higher values permit stronger reconstruction.
             denoise = max(0.2, min(0.85, float(body.repair_strength)))
-            for node in workflow.values():
-                if isinstance(node, dict) and node.get("class_type") == "KSampler":
-                    inputs = node.get("inputs", {})
-                    if "denoise" in inputs:
-                        inputs["denoise"] = denoise
+            if not apply_recovery_strength(workflow, denoise):
+                r.status = "failed"
+                r.error = "This repair workflow has no adjustable denoise control. Re-add Qwen Image Repair & Enhance in Settings."
+                doc = r.model_dump()
+                await db.renders.insert_one(doc)
+                doc.pop("_id", None)
+                return doc
         else:
             positive_text = instruction
             if body.preserve_unmentioned:
@@ -2634,6 +2636,36 @@ async def prepare_render_reference(rid: str, output_url: Optional[str] = Body(No
         raise
     except Exception as exc:
         raise HTTPException(502, f"Could not prepare Gallery image: {exc}")
+
+
+class ImageRecoveryBody(BaseModel):
+    mode: Literal["small_variation", "anatomy_repair"]
+    strength: float = Field(default=0.22, ge=0.05, le=0.85, allow_inf_nan=False)
+    targets: List[Literal["face", "hands", "feet", "limbs"]] = Field(default_factory=list)
+    instruction: str = Field(default="", max_length=2000)
+    output_url: Optional[str] = None
+    seed: Optional[int] = Field(default=None, ge=0, le=2**64 - 1)
+
+
+@api.post("/renders/{rid}/recover")
+async def recover_render_image(rid: str, body: ImageRecoveryBody):
+    """Queue a new version from verified source-image bytes, not a seed-only reroll."""
+    _render, source = await _render_recipe(rid)
+    settings = await get_settings()
+    kind = "variation" if body.mode == "small_variation" else "enhance"
+    style = "chroma" if kind == "variation" else "qwen_edit"
+    workflow = next((w for w in settings.workflows if w.kind == kind and w.prompt_style == style), None)
+    if not workflow:
+        label = "Chroma Image Variations" if kind == "variation" else "Qwen Image Repair & Enhance"
+        raise HTTPException(409, f"Add {label} in Settings → Workflow library before using this tool.")
+    if body.mode == "small_variation" and body.strength > 0.35:
+        raise HTTPException(422, "Small variation strength must be between 0.05 and 0.35.")
+    if body.mode == "anatomy_repair" and (not body.targets or body.strength < 0.2):
+        raise HTTPException(422, "Choose at least one repair area and strength between 0.20 and 0.85.")
+    reference = await prepare_render_reference(rid, body.output_url)
+    recipe = recovery_recipe(source, reference, workflow.id, body.mode, body.strength,
+                             body.targets, body.instruction, body.seed)
+    return await _enqueue_render(DispatchBody(**recipe))
 
 
 @api.get("/queue")
