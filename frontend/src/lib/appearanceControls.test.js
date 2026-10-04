@@ -85,10 +85,11 @@ test.each(["sdxl", "pony", "chroma", "zimage", "krea2"])("%s can keep lingerie w
 
 test('Chroma keeps breast, glute shape, garment and color controls together at extended glute size', () => {
   const dna = configured();
-  dna.physique.butt_scale = 200;
+  dna.physique.butt_scale = 300;
   const { positive } = compileModelPrompts({ promptStyle: 'chroma', dna });
   expect(positive).toContain('fantasy-scale augmented bust');
-  expect(positive).toContain('maximum hyper-scale fantasy volume');
+  expect(positive).toContain('fantasy-scale maximum oversized');
+  expect(positive).toContain('size intensity 300/300');
   expect(positive).toContain('BBL-style glute contour');
   expect(positive).toContain('emerald mermaid gown');
   expect(positive).toContain('black seamed stockings');

@@ -511,7 +511,7 @@ function _ponySubjectBlock(dna = {}, opts = {}) {
     tagArr("watersports", "aftermath", ws.aftermath),
   ]) : "";
 
-  const feetPriority = feetStr ? w(feetStr, 1.45) : "";
+  const feetPriority = feetStr ? (dna.pose?.focus === "feet" ? w(feetStr, 1.45) : feetStr) : "";
   const playCore = join([kinkStr, wsStr]);
   const playPriority = playCore ? w(playCore, 1.4) : "";
 

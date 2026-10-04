@@ -45,7 +45,7 @@ export const SECTIONS = [
       { key: "bust", type: "chips", label: "Bust size", options: ["flat", "small", "medium", "large", "very large", "huge", "enormous", "hyper"] },
       { key: "bust_scale", type: "slider", label: "Bust size", min: 0, max: 100, step: 1, defaultValue: 0 },
       { key: "bust_shape", type: "chips", label: "Bust shape", options: ["natural", "perky", "round", "teardrop", "athletic", "augmented", "gravity-defying"] },
-      { key: "implant_volume", type: "slider", label: "Implant visual size (cc reference; 0 = none)", min: 0, max: 5000, step: 50, defaultValue: 0, help: "The number is saved for your slider. Prompts use visual size and projection; high values describe fantasy proportions, not a medical measurement." },
+      { key: "implant_volume", type: "slider", label: "Implant visual size (cc reference; 0 = none)", min: 0, max: 5000, step: 50, defaultValue: 0, help: "Prompts include the selected visual-size value and projection description. This is a visual reference, not a medical measurement." },
       { key: "butt", type: "chips", label: "Butt", options: ["flat", "small", "toned", "round", "bubble", "large", "very large", "huge", "hyper"] },
       { key: "butt_scale", type: "slider", label: "Glute size", min: 0, max: GLUTE_SIZE_MAX, step: 1, defaultValue: 0, help: "0 keeps the Butt preset. 1–100 sets size; 101–300 adds progressively larger fantasy volume. Shape is controlled separately. A rear or three-quarter view makes the silhouette easier to see." },
       { key: "glute_shape", type: "chips", label: "Glute shape / augmentation look", groups: [
@@ -166,8 +166,9 @@ export const SECTIONS = [
   },
   {
     key: "feet",
-    title: "Feet",
+    title: "Feet & styling",
     fields: [
+      { key: "composition_mode", type: "chips", label: "Role in the photograph", options: ["supporting detail", "feet focus"], help: "Supporting detail keeps the crop and pose selected in Pose. Feet focus lets this section control foot framing. Unset follows Pose focus." },
       { key: "sole_presentation", type: "pose_chips", label: "Sole presentation", groups: [
         { name: "Presentation", options: ["soles up", "soles together", "sole showcase", "sole toward camera", "one sole raised", "both soles toward camera", "crossed ankles soles visible", "heel lifted toward camera"] },
         { name: "Detail", options: ["wrinkled soles", "smooth soles", "oiled soles", "dirty soles", "muddy soles", "freshly washed", "arched soles", "detailed toe pads"] },
@@ -711,8 +712,8 @@ export function resetSection(sectionKey) {
 
 // Phase groupings for the wizard rail — clusters 16 sections into 4 collapsible bands.
 export const PHASES = [
-  { key: "body",     label: "Body",     hint: "Who she is", sections: ["identity", "physique", "face", "hair", "skin"] },
-  { key: "intimate", label: "Intimate", hint: "Anatomy & fluids", sections: ["intimate", "feet"] },
+  { key: "body",     label: "Body",     hint: "Who she is", sections: ["identity", "physique", "face", "hair", "skin", "feet"] },
+  { key: "intimate", label: "Intimate", hint: "Anatomy & fluids", sections: ["intimate"] },
   { key: "style",    label: "Style",    hint: "How she's shot", sections: ["wardrobe", "pose", "scene", "lighting", "camera", "style"] },
   { key: "play",     label: "Play",     hint: "Kink & scenario", sections: ["kink", "scenario", "watersports"] },
 ];
@@ -1237,7 +1238,7 @@ function _veniceSubjectBlock(dna = {}, opts = {}) {
     exp("skin", "texture"),
     skin.freckles && skin.freckles !== "none" && exp("skin", "freckles"),
     skin.tattoos,
-    skin.glow > 85 ? "oiled glistening sweaty body, wet shine on skin"
+    skin.glow > 85 ? "high-gloss skin finish with strong reflected highlights"
       : skin.glow > 60 ? "dewy glowing luminous skin, healthy sheen" : "",
   ]);
   const nameTag = id.name ? `portrait of ${id.name}` : "";
@@ -1326,7 +1327,7 @@ function _veniceSubjectBlock(dna = {}, opts = {}) {
 
   // -------- Feet --------
   const ft = dna.feet || {};
-  const feetActive = !!(ft.sole_presentation || (Array.isArray(ft.toes) && ft.toes.length) || ft.arch || ft.pedicure ||
+  const feetActive = !!(ft.foot_size || ft.sole_presentation || (Array.isArray(ft.toes) && ft.toes.length) || ft.arch || ft.pedicure ||
     (Array.isArray(ft.foot_state) && ft.foot_state.length) || ft.hosiery ||
     (Array.isArray(ft.foot_act) && ft.foot_act.length) || ft.framing || ft.foot_pose ||
     ft.toe_length || ft.sole_texture || ft.pedicure_art || ft.toenail_shape ||
@@ -1348,7 +1349,7 @@ function _veniceSubjectBlock(dna = {}, opts = {}) {
     ft.toenail_shape && exp("feet", "toenail_shape"),
     expArr("feet", "foot_accessories"),
     ft.ground_surface && exp("feet", "ground_surface"),
-    feetActive && "clearly recognisable human feet with heel and arch and sole, exactly five distinct toes per foot with rounded toe pads, human foot anatomy not hand anatomy, ankle visible where foot meets calf, toenails not fingernails, well-defined big toe and pinky toe, toes shorter and thicker than fingers, foot shape wider at ball narrower at heel",
+    feetActive && "human feet with coherent ankles, heel and arch, exactly five distinct toes per foot",
   ]);
 
   // -------- Kink --------
@@ -1393,7 +1394,7 @@ function _veniceSubjectBlock(dna = {}, opts = {}) {
   // Selected Feet and Play controls are compositional requirements, not minor
   // styling hints. Promote them ahead of appearance details so long prompts do
   // not cause the text encoder/model to ignore the requested action or framing.
-  const feetPriority = feetStr ? `PRIMARY FEET COMPOSITION — visibly and unambiguously show ${feetStr}` : "";
+  const feetPriority = feetStr ? `${dna.pose?.focus === "feet" ? "PRIMARY FEET COMPOSITION" : "Supporting foot details"} — ${feetStr}` : "";
   const playCore = join([kinkStr, wsStr]);
   const playPriority = playCore ? `PRIMARY PLAY DETAILS — visibly depict ${playCore}` : "";
 

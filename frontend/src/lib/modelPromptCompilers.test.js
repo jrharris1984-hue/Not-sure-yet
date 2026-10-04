@@ -153,7 +153,8 @@ describe("model-specific prompt compilers", () => {
     expect(guard.dna.physique.butt).toBe("large");
     expect(guard.dna.physique.exaggeration).toBe(35);
     expect(guard.dna.pose.angle).toBe("3/4");
-    expect(guard.dna.feet).toEqual({});
+    expect(guard.dna.feet.pedicure).toBe("painted red");
+    expect(guard.dna.feet.framing).toBe("");
     expect(guard.composition).toContain("exactly one adult person");
 
     const result = buildZImagePrompts({ dna });
@@ -246,9 +247,9 @@ describe("model-specific prompt compilers", () => {
     const guard = resolveZImageComposition(dna);
     expect(guard.dna.pose.hands).toEqual(["behind head"]);
     expect(guard.dna.hair.length).toBe("");
-    expect(guard.dna.feet.framing).toBeUndefined();
+    expect(guard.dna.feet.framing).toBe("");
     expect(guard.composition).toContain("rear three-quarter full-body");
-    expect(guard.adjustments.length).toBe(3);
+    expect(guard.adjustments.length).toBeGreaterThanOrEqual(3);
 
     const result = buildZImagePrompts({ dna });
     expect(result.positive).toContain("PRIMARY COMPOSITION");

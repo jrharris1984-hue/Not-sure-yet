@@ -9,7 +9,7 @@ export const STUDIO_PROFILES = {
     title: "Foot Studio",
     description: "Build a character, choose foot styling, then compose a foot-focused scene.",
     fieldGroups: [
-      { label: "Framing", keys: ["framing", "foot_pose", "sole_presentation", "ground_surface"] },
+      { label: "Framing", keys: ["composition_mode", "framing", "foot_pose", "sole_presentation", "ground_surface"] },
       { label: "Shape", keys: ["arch", "toe_length", "foot_size", "sole_texture", "toes"] },
       { label: "Styling", keys: ["pedicure", "pedicure_art", "toenail_shape", "hosiery", "foot_accessories", "foot_state"] },
       { label: "Interaction", keys: ["foot_act"] },
