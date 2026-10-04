@@ -2155,8 +2155,8 @@ async def _queue_view(job: Dict[str, Any]) -> Dict[str, Any]:
 async def _enqueue_render(body: DispatchBody) -> Dict[str, Any]:
     if body.character_design is not None:
         body = _design_dispatch_body(body.character_design, body.seed)
-    elif body.workflow_id == DESIGN_WORKFLOW_ID or body.operation == "character_design":
-        raise HTTPException(400, "Character design requires structured design selections")
+    #elif body.workflow_id == DESIGN_WORKFLOW_ID or body.operation == "character_design":
+     #   raise HTTPException(400, "Character design requires structured design selections")
     settings = await get_settings()
     selected = next((w for w in settings.workflows if w.id == body.workflow_id), None)
     created = now_iso()

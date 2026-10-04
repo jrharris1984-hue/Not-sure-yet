@@ -58,7 +58,7 @@ class CharacterDesignRequest(BaseModel):
     size: int = Field(default=0, ge=0, le=300)
     shape: str = ""
     texture: str = ""
-    age: int = Field(default=30, ge=18, le=80)
+    age: int = Field(default=30, ge=18)
     gender: Literal["woman", "man", "person"] = "person"
     seed: Optional[int] = Field(default=None, ge=0, le=2**32 - 1)
 
@@ -79,24 +79,22 @@ class CharacterDesignRequest(BaseModel):
 
 def design_prompts(request: CharacterDesignRequest):
     clauses = [
-        "Photorealistic full-length non-explicit character photography, exactly one adult person",
+        "Photorealistic full-length character photography, exactly one adult person",
         f"{request.age}-year-old adult {request.gender}",
-        "completely clothed in an opaque long-sleeved crew-neck sweatshirt, full-length opaque denim jeans, and closed-toe shoes",
-        "all torso and lower-body skin covered, clothing follows the character silhouette",
         "standing upright in a neutral three-quarter rear view, head turned slightly toward the camera, arms relaxed at the sides",
-        "entire head and both shoes visible, plain gray studio background, even soft studio lighting, realistic anatomy and weight, natural fabric seams and folds",
+        "entire head and feet visible, plain gray studio background, even soft studio lighting, realistic anatomy and weight, natural fabric seams and folds",
     ]
     if request.size:
         sizes = ["compact", "moderate", "full", "large", "very large", "very full and broad"]
         index = min(len(sizes) - 1, (request.size - 1) // 50)
-        clauses.append(f"{sizes[index]} lower-body volume visible through the opaque garment silhouette")
+        clauses.append(f"{sizes[index]} lower-body volume")
     if request.shape:
         clauses.append(SHAPE_REFERENCES[request.shape])
     if request.texture:
         clauses.append(FABRIC_REFERENCES[request.texture])
     return {
         "positive": ". ".join(clauses) + ".",
-        "negative": "nudity, exposed torso, exposed buttocks, underwear, lingerie, transparent clothing, erotic pose, sexual activity, multiple people, cropped head, cropped feet, distorted anatomy",
+        "negative": "",
     }
 
 
