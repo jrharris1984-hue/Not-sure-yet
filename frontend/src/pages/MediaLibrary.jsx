@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { Search, Images, Video, RefreshCw, X, Database, Folder, FolderOpen, LayoutGrid, ChevronRight, Home } from "lucide-react";
+import { Search, Images, RefreshCw, X, Database, Folder, FolderOpen, LayoutGrid, ChevronRight, Home } from "lucide-react";
 import { endpoints } from "@/lib/api";
 import { mediaPeopleMetadata, mediaLibraryTraits } from "@/lib/mediaLibraryMetadata";
+import MediaLibraryPreview from "@/components/MediaLibraryPreview";
 import { Input } from "@/components/ui/input";
 
 const PAGE_SIZE = 48;
@@ -122,7 +123,7 @@ export default function MediaLibrary() {
       : <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6 gap-3">
           {items.map(item => <button key={item.id} onClick={()=>{setSelected(item);setPersonCount("auto");}} className="pane overflow-hidden text-left hover:border-cyan-400/40 transition-colors group">
             <div className="relative aspect-[3/4] bg-elevated overflow-hidden">
-              {item.thumbnail_url ? <img src={endpoints.mediaLibraryThumbnailUrl(item.id)} alt="" loading="lazy" className="h-full w-full object-cover group-hover:scale-[1.02] transition-transform"/> : <div className="h-full grid place-items-center text-zinc-600">{item.media_type==="video"?<Video/>:<Images/>}</div>}
+              <MediaLibraryPreview key={`${item.id}:${item.thumbnail_url || "original"}`} item={item} className="h-full w-full object-cover group-hover:scale-[1.02] transition-transform" />
               <span className={`absolute top-2 left-2 rounded-md px-1.5 py-0.5 text-[9px] font-mono uppercase backdrop-blur bg-black/70 ${item.analysis_status==="complete"?"text-emerald-300":"text-zinc-300"}`}>{item.analysis_status}</span>
             </div>
             <div className="p-2.5"><div className="text-xs font-semibold truncate">{item.file_name}</div><div className="text-[10px] text-zinc-500 mt-1 truncate">{item.width && item.height ? `${item.width}×${item.height}` : item.media_type}</div></div>
@@ -138,7 +139,7 @@ export default function MediaLibrary() {
         <div className="pane w-full max-w-5xl max-h-[92vh] overflow-y-auto" onClick={e=>e.stopPropagation()}>
           <div className="sticky top-0 z-10 glass border-b hairline p-3 flex items-center gap-3"><div className="min-w-0 flex-1"><div className="font-display font-bold truncate">{selected.file_name}</div><div className="text-[10px] text-zinc-500 font-mono">{selected.analysis_status}</div></div><button onClick={()=>setSelected(null)} className="h-9 w-9 grid place-items-center rounded-lg border hairline"><X className="h-4 w-4"/></button></div>
           <div className="grid md:grid-cols-[minmax(0,1.15fr)_minmax(280px,.85fr)] gap-5 p-4">
-            <div><img src={endpoints.mediaLibraryOriginalUrl(selected.id)} alt="" className="w-full max-h-[72vh] object-contain rounded-lg bg-black"/></div>
+            <div><MediaLibraryPreview key={selected.id} item={selectedItem} original className="w-full max-h-[72vh] object-contain rounded-lg bg-black" /></div>
             <div className="space-y-4">
               <Meta label="Detected people" value={detectedPeople.personCount ?? "Not provided by analyzer"}/>
               <label className="block text-xs text-zinc-400">People to set up in Studio
