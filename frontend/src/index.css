@@ -180,7 +180,8 @@ code, pre, .font-mono {
 .pane {
   background: linear-gradient(180deg, #101217 0%, #0a0c10 100%);
   border: 1px solid #292d34;
-  border-radius: 14px;
+  border-radius: 16px;
+  box-shadow: 0 1px 0 rgb(255 255 255 / .025) inset, 0 6px 22px rgb(0 0 0 / .12);
 }
 
 .glass {
@@ -295,3 +296,37 @@ button:not(:disabled):active, a[role="button"]:active {
 .create-stage { transition: border-color 160ms ease, background 160ms ease; }
 .create-journey button:focus-visible { outline: 2px solid #22d3ee; outline-offset: 3px; }
 @media (prefers-reduced-motion: reduce) { .create-stage { transition: none; } }
+
+/* Shared studio surfaces, navigation and motion. */
+.studio-shell { --studio-focus: #22d3ee; }
+.studio-app-header { box-shadow: 0 8px 28px rgb(0 0 0 / .24); }
+.studio-main { outline: none; }
+.studio-shell :where(button, a, input, select, textarea, summary):focus-visible {
+  outline: 2px solid var(--studio-focus); outline-offset: 3px;
+}
+.studio-shell :where(input, select, textarea) { accent-color: #22d3ee; }
+.studio-shell :where(button, a) { -webkit-tap-highlight-color: transparent; }
+.studio-shell button:disabled { cursor: default; }
+.studio-nav-link { transition: color 160ms ease, background 160ms ease, box-shadow 160ms ease; }
+.studio-nav-link:hover { color: #cffafe; background: rgb(255 255 255 / .045); }
+.studio-nav-link-active { color: #cffafe; background: rgb(34 211 238 / .08); box-shadow: inset 0 0 0 1px rgb(34 211 238 / .22); }
+.studio-mobile-link { position: relative; transition: color 160ms ease, background 160ms ease; }
+.studio-mobile-link-active { background: linear-gradient(180deg, rgb(34 211 238 / .1), transparent); }
+.studio-mobile-link-active::before { content: ""; position: absolute; top: 0; left: 28%; right: 28%; height: 2px; border-radius: 2px; background: #22d3ee; }
+.studio-more-sheet { padding-bottom: calc(2rem + env(safe-area-inset-bottom, 0px)); }
+.studio-skip-link { position: fixed; top: .75rem; left: .75rem; z-index: 100; transform: translateY(-200%); padding: .75rem 1rem; border-radius: .75rem; background: #22d3ee; color: #071014; font-weight: 700; }
+.studio-skip-link:focus { transform: translateY(0); }
+.studio-skeleton { background: linear-gradient(110deg, #10141a 25%, #1b222b 45%, #10141a 65%); background-size: 220% 100%; animation: studio-skeleton-shimmer 1.6s ease-in-out infinite; }
+.studio-loading-dot { animation: studio-loading-pulse 1.4s ease-in-out infinite; }
+@keyframes studio-skeleton-shimmer { to { background-position: -220% 0; } }
+@keyframes studio-loading-pulse { 50% { opacity: .35; } }
+@media (max-width: 767px) {
+  .studio-shell .chip { min-height: 42px; }
+  .studio-shell :where(input[type="text"], input[type="search"], input[type="number"], textarea, select) { font-size: 16px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .studio-skeleton, .studio-loading-dot { animation: none; }
+  .studio-nav-link, .studio-mobile-link { transition: none; }
+  [role="dialog"][data-state], .studio-dialog-overlay[data-state] { animation: none !important; transition: none !important; }
+  .studio-shell .animate-spin, .studio-shell .animate-pulse { animation: none; }
+}
