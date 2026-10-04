@@ -965,11 +965,11 @@ export function buildQwenEditPrompts({ instruction = "", preserveUnmentioned = t
   return {
     positive: [
       `Change only the following: ${request}.`,
-      preserveUnmentioned ? "Preserve the subject's identity, age, pose, clothing, composition, lighting, background, and every detail not explicitly requested. Preserve all unrequested body regions and proportions." : "",
+      preserveUnmentioned ? "Preserve the subject's identity, age, pose, clothing, composition, lighting, background, body regions, and proportions only where they are not explicitly requested to change." : "",
       "Keep one connected human body. Do not add, remove, duplicate, enlarge, or relocate limbs, hands, feet, fingers, toes, torso, pelvis, or facial features unless the request explicitly requires it.",
       "Make the edit seamless, photorealistic, and consistent with the source image.",
     ].filter(Boolean).join(" "),
-    negative: "unrequested changes, identity drift, face replacement, body redesign, wardrobe change, background change, duplicated anatomy, edit seams, artifacts",
+    negative: "unrequested changes, identity drift, face replacement, unrequested body redesign, unrequested wardrobe change, unrequested background change, duplicated anatomy, edit seams, artifacts",
   };
 }
 

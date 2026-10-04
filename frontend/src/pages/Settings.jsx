@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Save, KeyRound, Server, CheckCircle2, XCircle, Plus, Trash2, Download, ChevronDown, ChevronRight, Wand2, ArrowUp, ArrowDown } from "lucide-react";
 import { toast } from "sonner";
 import { endpoints } from "@/lib/api";
+import { workflowCatalog } from "@/lib/workflowCatalog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 
@@ -144,6 +145,10 @@ export default function Settings() {
   const qc = useQueryClient();
   const { data: settings } = useQuery({ queryKey: ["settings"], queryFn: endpoints.settings });
   const { data: workflows = [] } = useQuery({ queryKey: ["workflows"], queryFn: endpoints.listWorkflows });
+  const catalog = useMemo(() => workflowCatalog(workflows, settings?.default_workflow_id), [workflows, settings?.default_workflow_id]);
+  const [showSupportingWorkflows, setShowSupportingWorkflows] = useState(false);
+  const visibleWorkflows = showSupportingWorkflows
+    ? [...catalog.primary, ...catalog.internal, ...catalog.redundant] : catalog.primary;
   const { data: health } = useQuery({ queryKey: ["comfy-health"], queryFn: endpoints.comfyHealth, refetchInterval: 10000 });
   const { data: ollama, refetch: checkOllama } = useQuery({ queryKey: ["ollama-models", settings?.ollama_url], queryFn: endpoints.ollamaModels, enabled: !!settings });
 
@@ -184,8 +189,10 @@ export default function Settings() {
   const move = (id, dir) => {
     const idx = workflows.findIndex((w) => w.id === id);
     if (idx < 0) return;
-    const target = idx + dir;
-    if (target < 0 || target >= workflows.length) return;
+    const visibleIndex = visibleWorkflows.findIndex((w) => w.id === id);
+    const neighbor = visibleWorkflows[visibleIndex + dir];
+    if (!neighbor) return;
+    const target = workflows.findIndex((w) => w.id === neighbor.id);
     const next = [...workflows];
     [next[idx], next[target]] = [next[target], next[idx]];
     qc.setQueryData(["workflows"], next);
@@ -254,7 +261,7 @@ export default function Settings() {
       <section className="pane p-5 space-y-4">
         <div className="flex items-center gap-2 flex-wrap">
           <div className="section-label">Workflow library</div>
-          <span className="text-xs text-zinc-500 font-mono">{workflows.length} workflow{workflows.length === 1 ? "" : "s"}</span>
+          <span className="text-xs text-zinc-500 font-mono">{catalog.primary.length} standalone workflow{catalog.primary.length === 1 ? "" : "s"}</span>
           <div className="flex-1" />
           <button
             onClick={() => seedWf.mutate()}
@@ -271,15 +278,23 @@ export default function Settings() {
             <Plus className="h-3.5 w-3.5" /> Add workflow
           </button>
         </div>
+        {(catalog.internal.length > 0 || catalog.redundant.length > 0) && <div className="space-y-2 text-xs text-zinc-400">
+          <p>{catalog.internal.length} internal stages and {catalog.redundant.length} duplicate or legacy presets are kept outside the main catalog. Saved recipes remain available.</p>
+          <button type="button" data-testid="btn-show-supporting-workflows" onClick={() => setShowSupportingWorkflows((shown) => !shown)} className="rounded-lg border hairline px-3 py-2 text-zinc-200">
+            {showSupportingWorkflows ? "Hide internal and legacy workflows" : "Show internal and legacy workflows"}
+          </button>
+        </div>}
         <div className="space-y-2">
-          {workflows.map((w, i) => (
+          {visibleWorkflows.map((w, index) => (
+            <div key={w.id}>
+            {w.catalogReason && <p className="mb-1 px-2 text-xs text-zinc-500">{w.catalogReason}</p>}
             <WorkflowRow
               key={w.id}
               w={w}
               isDefault={form.default_workflow_id === w.id}
-              isFallback={i === 0 && !form.default_workflow_id}
-              isFirst={i === 0}
-              isLast={i === workflows.length - 1}
+              isFallback={workflows[0]?.id === w.id && !form.default_workflow_id}
+              isFirst={index === 0}
+              isLast={index === visibleWorkflows.length - 1}
               onMoveUp={(id) => move(id, -1)}
               onMoveDown={(id) => move(id, 1)}
               onSetDefault={(id) => {
@@ -289,6 +304,7 @@ export default function Settings() {
               onDelete={(id) => deleteWf.mutate(id)}
               onSave={(payload) => upsertWf.mutate(payload)}
             />
+            </div>
           ))}
           <p className="text-[11px] text-zinc-500 pt-1">
             Top of the list is the fallback used when no default is set. Use the up/down arrows to reorder.
