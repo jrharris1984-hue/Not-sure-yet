@@ -25,6 +25,7 @@ from media_library import router as media_library_router, configure_media_librar
 from generation_settings import normalize_generation_settings, apply_generation_settings
 from image_recovery import recovery_recipe, apply_recovery_strength
 from queue_reliability import submit_render, interrupted_submission_patch
+from ollama_prompt_models import configure_prompt_request
 
 import httpx
 import websockets as ws_client
@@ -327,8 +328,9 @@ async def openrouter_chat(system: str, user: str, response_format_json: bool = F
             payload["format"] = "json"
             payload["think"] = False
             payload["options"] = {"temperature": 0.2, "num_ctx": 8192, "num_predict": 1400}
+        request_timeout = configure_prompt_request(model, payload)
         try:
-            async with httpx.AsyncClient(timeout=180.0) as hc:
+            async with httpx.AsyncClient(timeout=request_timeout) as hc:
                 response = await hc.post(f"{s.ollama_url.rstrip('/')}/api/chat", json=payload)
                 response.raise_for_status()
             return response.json()["message"]["content"]
