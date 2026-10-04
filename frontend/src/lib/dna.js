@@ -1,3 +1,4 @@
+import { bustShapePrompt } from "./physiqueControls";
 import { PHOTOGRAPHY_POSE_GROUPS } from "@/lib/photographyPoses";
 import { GLUTE_SIZE_MAX, gluteSizePrompt } from "@/lib/gluteControls";
 // DNA schema + prompt builder + randomizer
@@ -46,7 +47,7 @@ export const SECTIONS = [
       { key: "bust_shape", type: "chips", label: "Bust shape", options: ["natural", "perky", "round", "teardrop", "athletic", "augmented", "gravity-defying"] },
       { key: "implant_volume", type: "slider", label: "Implant visual size (cc reference; 0 = none)", min: 0, max: 5000, step: 50, defaultValue: 0, help: "The number is saved for your slider. Prompts use visual size and projection; high values describe fantasy proportions, not a medical measurement." },
       { key: "butt", type: "chips", label: "Butt", options: ["flat", "small", "toned", "round", "bubble", "large", "very large", "huge", "hyper"] },
-      { key: "butt_scale", type: "slider", label: "Glute size", min: 0, max: GLUTE_SIZE_MAX, step: 1, defaultValue: 0, help: "0 keeps the Butt preset. 1–100 sets size; 101–200 adds progressively larger fantasy volume. Shape is controlled separately. A rear or three-quarter view makes the silhouette easier to see." },
+      { key: "butt_scale", type: "slider", label: "Glute size", min: 0, max: GLUTE_SIZE_MAX, step: 1, defaultValue: 0, help: "0 keeps the Butt preset. 1–100 sets size; 101–300 adds progressively larger fantasy volume. Shape is controlled separately. A rear or three-quarter view makes the silhouette easier to see." },
       { key: "glute_shape", type: "chips", label: "Glute shape / augmentation look", groups: [
         { name: "Natural", options: ["natural rounded", "athletic lifted", "soft pear-shaped", "heart-shaped"] },
         { name: "Enhanced", options: ["BBL-style fuller glutes", "high round projection", "pronounced upper shelf", "dramatic side projection"] },
@@ -496,7 +497,7 @@ export const SECTIONS = [
     title: "Style",
     fields: [
       { key: "anatomy_mode", type: "chips", label: "Human anatomy guard", options: ["natural", "enhanced", "extreme"], defaultValue: "natural" },
-      { key: "render", type: "chips", label: "Render", options: ["photorealistic", "cinematic", "analog film", "octane", "editorial", "documentary", "35mm film"] },
+      { key: "render", type: "chips", label: "Render", defaultValue: "photorealistic", options: ["photorealistic", "cinematic", "analog film", "studio photography", "editorial", "documentary", "35mm film"] },
       { key: "film_grain", type: "chips", label: "Film grain", options: ["none", "subtle", "medium", "heavy"] },
       { key: "artistic_tone", type: "chips", label: "Tone", options: ["natural", "moody", "vibrant", "desaturated", "high-contrast", "faded"] },
       { key: "extra", type: "text", label: "Extra style tokens" },
@@ -1206,7 +1207,7 @@ function _veniceSubjectBlock(dna = {}, opts = {}) {
     height,
     musc,
     ph.implant_volume > 0 ? "" : ph.bust_scale ? visualScale(ph.bust_scale, "bust", ["small", "moderate", "full", "very large", "extremely oversized"]) : exp("physique", "bust") || (ph.bust && `${ph.bust} breasts`),
-    ph.implant_volume > 0 ? "round augmented breast shape" : exp("physique", "bust_shape"),
+    ph.implant_volume > 0 ? "round augmented breast shape" : bustShapePrompt(ph.bust_shape),
     implantVisualPrompt(ph.implant_volume),
     ph.butt_scale > 100 ? gluteSizePrompt(ph.butt_scale) : ph.butt_scale ? visualScale(ph.butt_scale, "glutes", ["small", "moderate", "full rounded", "very large projected", "extremely oversized projected"]) : exp("physique", "butt") || (ph.butt && `${ph.butt} butt`),
     ph.glute_shape,
