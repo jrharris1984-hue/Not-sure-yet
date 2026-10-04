@@ -7,12 +7,18 @@ from fastapi import APIRouter, HTTPException, Query, Response
 
 router = APIRouter(prefix="/api/media-library", tags=["media-library"])
 _url_provider = None
+_overlay_provider = None
 MEDIA_LIBRARY_URL = os.environ.get("MEDIA_LIBRARY_URL", "http://192.168.0.16:8010").rstrip("/")
 
 
 def configure_media_library_url(provider):
     global _url_provider
     _url_provider = provider
+
+
+def configure_media_overlays(provider):
+    global _overlay_provider
+    _overlay_provider = provider
 
 
 async def media_library_url():
@@ -66,7 +72,7 @@ async def media_library_list(
     limit: int = Query(60, ge=1, le=200),
     offset: int = Query(0, ge=0),
 ):
-    return await _json_get("/media", {
+    payload = await _json_get("/media", {
         "q": q, "media_type": media_type, "status": status,
         "analyzed_only": str(analyzed_only).lower(),
         "hide_sidecars": str(hide_sidecars).lower(),
@@ -74,6 +80,9 @@ async def media_library_list(
         "limit": limit, "offset": offset,
     })
 
+    if _overlay_provider and isinstance(payload, dict):
+        payload["items"] = await _overlay_provider(payload.get("items") or [])
+    return payload
 
 @router.get("/folders")
 async def media_library_folders(
@@ -94,7 +103,13 @@ async def media_library_folders(
 
 @router.get("/media/{media_id}")
 async def media_library_item(media_id: int):
-    return await _json_get(f"/media/{media_id}")
+    payload = await _json_get(f"/media/{media_id}")
+    if _overlay_provider and isinstance(payload, dict):
+        if isinstance(payload.get("item"), dict):
+            payload["item"] = (await _overlay_provider([payload["item"]]))[0]
+        else:
+            payload = (await _overlay_provider([payload]))[0]
+    return payload
 
 
 async def _binary_get(path: str):

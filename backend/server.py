@@ -21,11 +21,12 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Literal
 from urllib.parse import urlencode, urlparse, parse_qs
 from pydantic import BaseModel, Field, ConfigDict
-from media_library import router as media_library_router, configure_media_library_url
+from media_library import router as media_library_router, configure_media_library_url, configure_media_overlays, media_library_url, _json_get as media_json_get, _binary_get as media_binary_get
 from generation_settings import normalize_generation_settings, apply_generation_settings
 from image_recovery import recovery_recipe, apply_recovery_strength
 from queue_reliability import submit_render, interrupted_submission_patch
 from ollama_prompt_models import configure_prompt_request
+from media_corrections import normalize_values, clean_tags, overlay_item
 from shoot_planner import validate_shot_plan, apply_shot_controls
 
 import httpx
@@ -313,6 +314,17 @@ async def _configured_media_library_url():
 
 
 configure_media_library_url(_configured_media_library_url)
+
+
+async def _media_overlays(items):
+    source = await media_library_url()
+    docs = await db.media_corrections.find({"source": source, "media_id": {"$in": [item.get("id") for item in items]}}, {"_id": 0}).to_list(len(items)) if items else []
+    by_id = {doc["media_id"]: doc for doc in docs}
+    return [overlay_item(item, by_id.get(item.get("id"))) for item in items]
+
+
+configure_media_overlays(_media_overlays)
+
 
 
 async def openrouter_chat(system: str, user: str, response_format_json: bool = False) -> str:
@@ -3778,6 +3790,93 @@ async def ai_shoot_plan(body: ShootPlanBody):
     return plan
 
 
+class MediaCorrectionBody(BaseModel):
+    values: Dict[str, Any] = Field(default_factory=dict)
+    confirmed_fields: List[str] = Field(default_factory=list)
+    descriptive_tags: List[str] = Field(default_factory=list)
+    organization_tags: List[str] = Field(default_factory=list)
+
+
+@api.get("/media-library/tags")
+async def media_correction_tags():
+    query = {"source": await media_library_url()}
+    detail, organization = await asyncio.gather(db.media_corrections.distinct("descriptive_tags", query),
+                                                db.media_corrections.distinct("organization_tags", query))
+    return {"tags": sorted(set(detail + organization))}
+
+
+@api.put("/media-library/media/{media_id}/corrections")
+async def save_media_corrections(media_id: int, body: MediaCorrectionBody):
+    source = await media_library_url()
+    # Verify the ID against the current source before storing an overlay.
+    await media_json_get(f"/media/{media_id}")
+    try:
+        values = normalize_values(body.values)
+        patch = {"values": values, "confirmed_fields": [key for key in body.confirmed_fields if key in values],
+                 "descriptive_tags": clean_tags(body.descriptive_tags), "organization_tags": clean_tags(body.organization_tags),
+                 "updated_at": now_iso()}
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+    if await media_library_url() != source:
+        raise HTTPException(409, "Media Library connection changed. Reload before saving corrections.")
+    await db.media_corrections.update_one({"source": source, "media_id": media_id},
+                                         {"$set": patch}, upsert=True)
+    return {"ok": True}
+
+
+@api.post("/media-library/media/{media_id}/reanalyze")
+async def reanalyze_media_unconfirmed(media_id: int):
+    source = await media_library_url()
+    raw = await media_json_get(f"/media/{media_id}")
+    item = raw.get("item", raw)
+    if item.get("media_type") == "video":
+        raise HTTPException(400, "Image reanalysis is available for still images")
+    image = await media_binary_get(f"/media/{media_id}/original")
+    settings = await get_settings()
+    snapshot = await db.media_corrections.find_one({"source": source, "media_id": media_id}, {"_id": 0}) or {}
+    confirmed = {key: value for key, value in snapshot.get("values", {}).items() if key in snapshot.get("confirmed_fields", [])}
+    system = (
+        "Analyze only visible image details. Return compact JSON with person_count (integer or null), "
+        "mirror_reflection (yes/no/uncertain), search_description, interaction, pose, framing, lighting, environment, "
+        "wardrobe_details, physical_appearance, hair_color, hair_length, hair_style and people (one record per REAL person). "
+        "Each person record may have description, physical_appearance, wardrobe_details, pose, hair_color, hair_length, hair_style. "
+        "Check mirrors and reflections BEFORE counting people: a reflection is not another person. "
+        "For multiple people, leave global appearance, hair and wardrobe empty and record those traits per person. "
+        "Do not combine traits from different people. Do not infer ownership of obscured hands or limbs. "
+        "Use empty strings for unclear details and null for unknown count. Confirmed user facts take priority. "
+        "Do not invent unseen people, ages, identities or relationships."
+    )
+    first = await _ollama_vision_json(settings, system,
+                                    "Analyze this whole image. Confirmed user facts: " + json.dumps(confirmed), image.body)
+    verified = await _ollama_vision_json(settings, system,
+        "Verify this draft against the image. Correct reflection/person-count mistakes, mixed person traits and unsupported actions. "
+        "Keep confirmed user facts. Return the complete corrected JSON. Draft: " + json.dumps(first) +
+        " Confirmed facts: " + json.dumps(confirmed), image.body)
+    try:
+        proposed = normalize_values(verified)
+        if "person_count" not in proposed or "mirror_reflection" not in proposed:
+            raise ValueError("Missing count/reflection fields")
+    except (ValueError, AttributeError) as exc:
+        raise HTTPException(502, "Image analyzer returned invalid fields. Your saved corrections were kept.") from exc
+    if await media_library_url() != source:
+        raise HTTPException(409, "Media Library connection changed during analysis. Saved corrections were preserved.")
+    # Write only fields not confirmed in the snapshot, and guard against any concurrent user save.
+    patch = {f"values.{key}": value for key, value in proposed.items() if key not in confirmed}
+    patch["updated_at"] = now_iso()
+    query = {"source": source, "media_id": media_id, "updated_at": snapshot.get("updated_at")}
+    if snapshot:
+        updated = await db.media_corrections.update_one(query, {"$set": patch})
+        if not updated.matched_count:
+            raise HTTPException(409, "Corrections changed during analysis. Reload and try again; your changes were preserved.")
+    else:
+        # No user overlay yet: initialize one atomically without overwriting a concurrent save.
+        doc = {"source": source, "media_id": media_id, "values": proposed, "confirmed_fields": [],
+               "descriptive_tags": clean_tags((item.get("general_tags") or []) + (item.get("adult_content_tags") or [])),
+               "organization_tags": [], "updated_at": now_iso()}
+        await db.media_corrections.update_one({"source": source, "media_id": media_id}, {"$setOnInsert": doc}, upsert=True)
+    return {"ok": True}
+
+
 class FreeformBody(BaseModel):
     text: str
 
@@ -4317,6 +4416,7 @@ app.add_middleware(
 @app.on_event("startup")
 async def _startup():
     global _queue_worker_task, _queue_stop
+    await db.media_corrections.create_index([("source", 1), ("media_id", 1)], unique=True)
     # Recover any render intent persisted before the old process stopped.
     interrupted_jobs = await db.render_queue.find({"status": "dispatching"}).to_list(None)
     for job in interrupted_jobs:

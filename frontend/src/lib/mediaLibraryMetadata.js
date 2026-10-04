@@ -15,6 +15,7 @@ const fields = {
   expression: ["facial_expression"], wardrobe: ["wardrobe_details"],
   pose: ["pose"], orientation: ["body_orientation"], framing: ["framing"],
   cameraAngle: ["camera_angle"], cameraDistance: ["camera_distance"],
+  interaction: ["interaction"], mirrorReflection: ["mirror_reflection"],
   composition: ["composition"], lighting: ["lighting"], background: ["background"],
   environment: ["environment"], photographicStyle: ["photographic_style"],
 };
@@ -46,7 +47,8 @@ export function mediaLibraryTraits(item = {}, selectedCount) {
   const requested = Number(selectedCount ?? metadata.personCount ?? 1);
   const personCount = Number.isInteger(requested) ? Math.min(4, Math.max(1, requested)) : 1;
   return {
-    ...metadata, personCount, mediaId: item.id, sourceName: item.file_name,
+    ...metadata, confirmedDescription: item.correction_review?.confirmed_fields?.includes("search_description") ? metadata.description || "" : "",
+    personCount, mediaId: item.id, sourceName: item.file_name,
     generalTags: Array.isArray(item.general_tags) ? item.general_tags : [],
   };
 }

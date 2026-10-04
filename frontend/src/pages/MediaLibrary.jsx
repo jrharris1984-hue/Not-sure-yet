@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Search, Images, RefreshCw, X, Database, Folder, FolderOpen, LayoutGrid, ChevronRight, Home } from "lucide-react";
 import { endpoints } from "@/lib/api";
 import { mediaPeopleMetadata, mediaLibraryTraits } from "@/lib/mediaLibraryMetadata";
+import MediaCorrections from "@/components/MediaCorrections";
 import MediaLibraryPreview from "@/components/MediaLibraryPreview";
 import { Input } from "@/components/ui/input";
 
@@ -23,6 +24,8 @@ export default function MediaLibrary() {
   const [status, setStatus] = useState("all");
   const [offset, setOffset] = useState(0);
   const [selected, setSelected] = useState(null);
+  const [correctionDirty, setCorrectionDirty] = useState(false);
+  const [includeDetailTags, setIncludeDetailTags] = useState(false);
   const [personCount, setPersonCount] = useState("auto");
   const [view, setView] = useState("gallery");
   const [folderPath, setFolderPath] = useState("");
@@ -56,7 +59,7 @@ export default function MediaLibrary() {
 
   const loadInStudio = (item) => {
     const reusable = mediaLibraryTraits(item, personCount === "auto" ? undefined : Number(personCount));
-    nav("/character/new", { state: { mediaLibraryTraits: reusable } });
+    nav("/character/new", { state: { mediaLibraryTraits: { ...reusable, detailTags: includeDetailTags ? reusable.generalTags : [] } } });
   };
 
   const items = media.data?.items || [];
@@ -121,7 +124,7 @@ export default function MediaLibrary() {
       {media.isError ? <div className="pane p-8 text-center text-zinc-400"><Database className="h-8 w-8 mx-auto mb-2"/><div className="font-semibold text-zinc-200">Media server unavailable</div><div className="mt-2 text-xs">Server: {health.data?.url || "checking address…"}</div><button type="button" onClick={() => nav("/settings")} className="mt-3 rounded-lg border hairline px-3 py-2 text-sm text-cyan-200">Check Media Library connection</button><div className="text-xs mt-1">{media.error?.response?.data?.detail || media.error?.message}</div></div>
       : media.isLoading ? <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6 gap-3">{Array.from({length:18}).map((_,i)=><div key={i} className="pane aspect-[3/4] animate-pulse"/>)}</div>
       : <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6 gap-3">
-          {items.map(item => <button key={item.id} onClick={()=>{setSelected(item);setPersonCount("auto");}} className="pane overflow-hidden text-left hover:border-cyan-400/40 transition-colors group">
+          {items.map(item => <button key={item.id} onClick={()=>{setSelected(item);setPersonCount("auto");setIncludeDetailTags(false);}} className="pane overflow-hidden text-left hover:border-cyan-400/40 transition-colors group">
             <div className="relative aspect-[3/4] bg-elevated overflow-hidden">
               <MediaLibraryPreview key={`${item.id}:${item.thumbnail_url || "original"}`} item={item} className="h-full w-full object-cover group-hover:scale-[1.02] transition-transform" />
               <span className={`absolute top-2 left-2 rounded-md px-1.5 py-0.5 text-[9px] font-mono uppercase backdrop-blur bg-black/70 ${item.analysis_status==="complete"?"text-emerald-300":"text-zinc-300"}`}>{item.analysis_status}</span>
@@ -141,7 +144,10 @@ export default function MediaLibrary() {
           <div className="grid md:grid-cols-[minmax(0,1.15fr)_minmax(280px,.85fr)] gap-5 p-4">
             <div><MediaLibraryPreview key={selected.id} item={selectedItem} original className="w-full max-h-[72vh] object-contain rounded-lg bg-black" /></div>
             <div className="space-y-4">
-              <Meta label="Detected people" value={detectedPeople.personCount ?? "Not provided by analyzer"}/>
+              <MediaCorrections key={selected.id} item={selectedItem} onDirtyChange={setCorrectionDirty} onSaved={async () => { await detail.refetch(); await media.refetch(); setPersonCount("auto"); }} />
+              <Meta label="Mirror reflection" value={selectedItem.mirror_reflection}/>
+              <Meta label="Action / interaction" value={selectedItem.interaction}/>
+              <Meta label="People count" value={detectedPeople.personCount ?? "Not provided by analyzer"}/>
               <label className="block text-xs text-zinc-400">People to set up in Studio
                 <select value={personCount} onChange={e=>setPersonCount(e.target.value)} className="mt-1 w-full rounded-lg bg-elevated border hairline px-3 py-2 text-sm text-zinc-200">
                   <option value="auto">{detectedPeople.personCount === null ? "Unknown — start with 1 person" : `Detected: ${detectedPeople.personCount} people`}</option>
@@ -161,8 +167,9 @@ export default function MediaLibrary() {
               <Meta label="Lighting" value={selectedItem.lighting}/>
               <Meta label="Environment" value={selectedItem.environment || selectedItem.background}/>
               <Meta label="Style" value={selectedItem.photographic_style}/>
+              <label className="flex items-center gap-2 text-xs text-zinc-300"><input type="checkbox" checked={includeDetailTags} onChange={e => setIncludeDetailTags(e.target.checked)} />Include image detail tags in Studio prompts</label>
               <Meta label="Tags" value={[...(selectedItem.general_tags||[]), ...(selectedItem.adult_content_tags||[])]}/>
-              {selectedItem.analysis_status === "complete" && <button onClick={()=>loadInStudio(selectedItem)} disabled={detail.isFetching || (personCount === "auto" && detectedPeople.personCount === 0)} className="w-full disabled:opacity-40 rounded-lg bg-amber-500 hover:bg-amber-400 text-black font-semibold px-4 py-3 transition-colors">Use in Studio</button>}
+              {(selectedItem.analysis_status === "complete" || selectedItem.correction_review) && <button onClick={()=>loadInStudio(selectedItem)} disabled={correctionDirty || detail.isFetching || (personCount === "auto" && detectedPeople.personCount === 0)} className="w-full disabled:opacity-40 rounded-lg bg-amber-500 hover:bg-amber-400 text-black font-semibold px-4 py-3 transition-colors">Use in Studio</button>}
               {selectedItem.analysis_status !== "complete" && <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-200">Qwen analysis is not complete for this item yet. The metadata panel will fill in automatically after analysis.</div>}
             </div>
           </div>

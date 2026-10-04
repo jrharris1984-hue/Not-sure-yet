@@ -110,11 +110,13 @@ export function mapMediaTraits(incoming = {}) {
     addReferenceNote("Lighting", incoming.lighting, ["Lighting source", "Lighting style", "Lighting mood"]);
     addReferenceNote("Environment", incoming.environment, ["Environment"]);
     addReferenceNote("Background", incoming.background);
+    addReferenceNote("Interaction", incoming.interaction);
+    addReferenceNote("Mirror reflection", incoming.mirrorReflection);
     addReferenceNote("Photo style", incoming.photographicStyle, ["Photo style"]);
 
     next.physique.proportions = incoming.bodyProportions || "";
     next.scene.background = [incoming.environment, incoming.background].filter(Boolean).join(". ");
-    next.style.extra = [incoming.photographicStyle, incoming.composition].filter(Boolean).join(", ");
+    next.style.extra = [incoming.photographicStyle, incoming.composition, incoming.confirmedDescription, incoming.interaction, Array.isArray(incoming.detailTags) ? incoming.detailTags.join(", ") : "", incoming.mirrorReflection === "yes" ? "mirror reflections of existing subjects; reflections do not add people" : ""].filter(Boolean).join(", ");
 
     return { dna: next, mapped, notes };
 }

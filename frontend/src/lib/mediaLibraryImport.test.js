@@ -54,3 +54,23 @@ test("three and four person casts survive the Builder cast-size synchronizer", (
     expect(expectedSubjectCount(imported.subjects[0].dna)).toBe(personCount);
   }
 });
+
+test('corrected reflection and interaction import into a solo setup; organization tags stay out', () => {
+  const incoming = { personCount: 1, mirrorReflection: 'yes', interaction: 'seated in front of a mirror',
+    detailTags: ['warm lighting'], organizationTags: ['favorites'] };
+  const result = buildMediaSubjects(incoming);
+  expect(result.subjects).toHaveLength(1);
+  expect(result.subjects[0].dna.style.extra).toContain('mirror reflections of existing subjects');
+  expect(result.subjects[0].dna.style.extra).toContain('seated in front of a mirror');
+  expect(result.subjects[0].dna.style.extra).toContain('warm lighting');
+  expect(result.subjects[0].dna.style.extra).not.toContain('favorites');
+});
+
+
+test('only confirmed corrected descriptions enter the imported prompt details', () => {
+  const item = { id: 8, search_description: 'One person seated beside a mirror', person_count: 1,
+    correction_review: { confirmed_fields: ['search_description', 'person_count'] } };
+  const confirmed = mediaLibraryTraits(item);
+  expect(buildMediaSubjects(confirmed).subjects[0].dna.style.extra).toContain('One person seated beside a mirror');
+  expect(mediaLibraryTraits({ ...item, correction_review: null }).confirmedDescription).toBe('');
+});
