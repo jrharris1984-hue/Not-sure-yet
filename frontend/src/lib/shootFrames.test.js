@@ -33,3 +33,19 @@ test("a multi-person frame applies the selected outfit to both subjects", () => 
   expect(positive.toLowerCase()).toContain("evening gown");
   expect(positive.toLowerCase()).not.toContain("maid outfit");
 });
+
+test('reviewed AI controls reach compiled prompts and preserve identity and locked location', () => {
+  const base = { identity: { age: 35, gender: 'female' }, pose: { distance: 'portrait', angle: 'front' },
+    scene: { environment: 'studio' }, lighting: { color_temp: 'cool' } };
+  const frame = shootFrameDna(base, { poseOverrides: { distance: 'full body', angle: 'profile' },
+    wardrobeOverrides: { garment_color: 'gold' }, lightingOverrides: { color_temp: 'warm' }, sceneOverrides: { environment: 'beach' }, lockScenario: true });
+  const { positive } = compileModelPrompts({ promptStyle: 'chroma', workflowKind: 'image', dna: frame });
+  expect(positive).toContain('full body');
+  expect(positive).toContain('profile');
+  expect(positive).toContain('warm');
+  expect(positive).toContain('gold');
+  expect(frame.scene.environment).toBe('studio');
+  expect(frame.identity).toEqual(base.identity);
+  expect(base.pose.distance).toBe('portrait');
+  expect(shootFrameDna(base, { sceneOverrides: { environment: 'beach' }, lockScenario: false }).scene.environment).toBe('beach');
+});

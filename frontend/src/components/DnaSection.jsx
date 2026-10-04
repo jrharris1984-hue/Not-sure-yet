@@ -3,6 +3,7 @@ import { Input } from "@/components/ui/input";
 import { Shuffle, RotateCcw, Lock, LockOpen, Wand2, ChevronDown } from "lucide-react";
 import PoseIcon from "@/components/PoseIcon";
 import GroupedChips from "@/components/GroupedChips";
+import { wardrobeExposure } from "@/lib/wardrobeNudity";
 import { normalizeMultiSelection } from "@/lib/dna";
 import { physiqueControlStatus, SIZE_CONTROL_PAIRS, sizeControlMode, selectSizeControl } from "@/lib/physiqueControlPriority";
 
@@ -15,6 +16,7 @@ export function ChipRow({ options, value, onChange, testIdPrefix }) {
           <button
             key={opt}
             type="button"
+            aria-pressed={active}
             data-testid={`${testIdPrefix}-${opt.replace(/\s+/g, "-")}`}
             className={`chip ${active ? "active" : ""}`}
             onClick={() => onChange(active ? "" : opt)}
@@ -73,7 +75,9 @@ export default function DnaSection({
 }) {
   const set = (k, v) => {
     if (fieldLocks?.[k]) return; // ignore edits to a locked field
-    onChange({ ...value, [k]: v });
+    onChange(k === "exposure_mode"
+      ? { ...value, exposure_mode: v || "use selected outfit", nudity_level: 0, nudity_outfit: "" }
+      : { ...value, [k]: v });
   };
 
   return (
@@ -207,7 +211,7 @@ export default function DnaSection({
             {f.type === "chips" && f.groups && (
               <GroupedChips
                 groups={f.groups}
-                value={Array.isArray(value[f.key]) ? value[f.key].at(-1) || "" : value[f.key] || ""}
+                value={f.key === "exposure_mode" ? wardrobeExposure(value) : Array.isArray(value[f.key]) ? value[f.key].at(-1) || "" : value[f.key] || ""}
                 onChange={(v) => set(f.key, v)}
                 testIdPrefix={`chip-${section.key}-${f.key}`}
                 variant="chips"
@@ -216,7 +220,7 @@ export default function DnaSection({
             {f.type === "chips" && !f.groups && (
               <ChipRow
                 options={f.options}
-                value={Array.isArray(value[f.key]) ? value[f.key].at(-1) || "" : value[f.key] || ""}
+                value={f.key === "exposure_mode" ? wardrobeExposure(value) : Array.isArray(value[f.key]) ? value[f.key].at(-1) || "" : value[f.key] || ""}
                 onChange={(v) => set(f.key, v)}
                 testIdPrefix={`chip-${section.key}-${f.key}`}
               />
