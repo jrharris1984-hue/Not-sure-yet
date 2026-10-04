@@ -1,3 +1,4 @@
+import { bustShapePrompt } from "./physiqueControls";
 import { gluteSizePrompt } from "@/lib/gluteControls";
 import { expandPrompt } from "@/lib/promptMap";
 import { implantVisualPrompt } from "@/lib/implantVisualScale";
@@ -142,6 +143,7 @@ function literalRequirement(section, field, value, locked = false) {
     return countMap[normalize(display)] || `cast size: ${display}`;
   }
   if (key === "physique.body_type") return `${display} body type`;
+  if (key === "physique.bust_shape") return bustShapePrompt(value);
   if (key === "physique.bust") return `${display} bust size`;
   if (key === "physique.butt_scale" && numeric > 100) return gluteSizePrompt(numeric);
   if (key === "physique.implant_volume") return implantVisualPrompt(numeric);

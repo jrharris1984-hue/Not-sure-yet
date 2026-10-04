@@ -75,6 +75,21 @@ const SHAPES = {
   "extreme pear BBL": "combination pear shape with BBL enhancement, narrow waist, massive lower outer fullness, surgical upper fill, dramatic contrast",
 };
 
+// UI shape choices describe contour, independently of the volume slider.
+const CONTOURS = {
+  "natural rounded": "smooth continuous rounded glute silhouette, soft organic lower curve, gradual upper slope",
+  "naturally round": "smooth continuous rounded glute silhouette, soft organic lower curve, gradual upper slope",
+  "athletic lifted": "lifted athletic glute contour, elevated lower crease, firm upper contour, muscular definition",
+  "soft pear-shaped": "pear-shaped glute contour, narrow upper contour expanding into broad heavy lower outer fullness",
+  "heart-shaped": "inverted-heart glute contour, rounded upper outer curves tapering toward the lower curve",
+  "BBL-style fuller glutes": "BBL-style glute contour, filled upper and outer curves, defined waist-to-glute transition",
+  "high round projection": "high-set rounded glute contour, fullest point above the midline, elevated upper curve",
+  "pronounced upper shelf": "distinct horizontal upper glute shelf, abrupt rearward step at the top above a curved lower profile, stepped contour",
+  "dramatic side projection": "lateral glute contour, outer curves extending sideways, fullest point at the outer midline",
+  "fantasy oversized glutes": "sculpted bulbous glute contour, curved upper fullness, deep lower curve",
+  "extreme round projection": "spherical glute contour, steep rounded outer profile",
+};
+
 // Skin texture modifiers
 const TEXTURE_MODIFIERS = {
   "smooth": "smooth skin, taut surface, no visible texture",
@@ -111,7 +126,7 @@ export function gluteSizePrompt(value, { intensity = false, texture = null } = {
 }
 
 export function gluteShapePrompt(value, { texture = null } = {}) {
-  const baseShape = SHAPES[value] || String(value || "");
+  const baseShape = CONTOURS[value] || SHAPES[value] || String(value || "");
   
   // Add texture if provided
   const textureMod = texture && TEXTURE_MODIFIERS[texture] ? `, ${TEXTURE_MODIFIERS[texture]}` : "";

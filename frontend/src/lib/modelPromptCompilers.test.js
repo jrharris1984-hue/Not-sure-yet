@@ -278,7 +278,7 @@ describe("model-specific prompt compilers", () => {
     };
 
     const guard = resolveZImageComposition(dna);
-    expect(guard.dna.physique.bust_shape).toBe("natural");
+    expect(guard.dna.physique.bust_shape).toBe("athletic");
     expect(guard.dna.physique.hips).toBe("average");
     expect(guard.dna.hair.style).toBe("");
     expect(guard.dna.pose).toMatchObject({ angle: "3/4", distance: "full body", hands: ["at sides"] });
@@ -320,7 +320,7 @@ describe("model-specific prompt compilers", () => {
     const result = compileModelPrompts({ promptStyle: "chroma", dna });
     expect(result.positive).toContain("PRIMARY BODY PROPORTIONS");
     expect(result.positive).toContain("fantasy-scale extremely oversized glute volume");
-    expect(result.positive).toContain("extreme rear and lateral projection");
+    expect(result.positive).toContain("spherical glute contour, steep rounded outer profile");
     expect(result.positive).toContain("extremely wide fantasy-scale hips");
     expect(result.positive).toContain("extremely thick fantasy-scale thighs");
     expect(result.positive).not.toContain("believable adult proportions");

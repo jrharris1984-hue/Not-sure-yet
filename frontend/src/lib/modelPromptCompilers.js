@@ -1,3 +1,4 @@
+import { resolvePhysiqueControls, bustShapePrompt, photographicPrompt } from "./physiqueControls";
 import { preserveGeneralSelections } from "./selectionFidelity";
 import { applyCastAppearance, castAppearancePrompt } from "./castAppearance";
 import { photographyPosePrompt } from "@/lib/photographyPoses";
@@ -108,6 +109,10 @@ function chromaDnaWithAuthoritativeScales(dna = {}) {
 function chromaBodyPriority(dna = {}) {
   const ph = dna.physique || {};
   const clauses = [];
+  if (ph.bust_shape && !(Number(ph.implant_volume) > 0)) clauses.push(bustShapePrompt(ph.bust_shape));
+  for (const [preset, slider, noun] of [['bust', 'bust_scale', 'bust'], ['butt', 'butt_scale', 'glute volume'], ['hips', 'hip_scale', 'hips'], ['waist', 'waist_scale', 'waist'], ['thighs', 'thigh_scale', 'thighs']]) {
+    if (ph[preset] && !(Number(ph[slider]) > 0) && !(preset === 'bust' && Number(ph.implant_volume) > 0)) clauses.push(`${ph[preset]} ${noun}`);
+  }
   if (Number(ph.implant_volume) > 0) clauses.push(implantVisualPrompt(ph.implant_volume));
 
   // Describe actual size at each level. Projection emphasis alone can leave
@@ -148,7 +153,7 @@ function chromaBodyPriority(dna = {}) {
   return `PRIMARY BODY PROPORTIONS — ${clauses.join(", ")}; selected size and shape override conflicting body descriptions; keep one coherent pelvis and preserve the other selected traits`;
 }
 
-function normalizeChromaProportionLanguage(value, dna = {}) {
+function normalizeSelectedProportionLanguage(value, dna = {}) {
   if (!hasDetailedBodyScale(dna)) return value;
 
   return String(value || "")
@@ -156,7 +161,9 @@ function normalizeChromaProportionLanguage(value, dna = {}) {
     .replace(/detailed anatomy with natural proportions/gi, "detailed coherent anatomy with the selected body proportions")
     .replace(/anatomically correct body, natural weight distribution/gi, "anatomically coherent body, stable weight distribution")
     .replace(/realistic human anatomy and believable physical detail/gi, "coherent human anatomy and believable physical detail")
-    .replace(/realistic proportions/gi, "coherent selected proportions");
+    .replace(/realistic proportions/gi, "coherent selected proportions")
+    .replace(/natural body proportions/gi, "selected body proportions")
+    .replace(/natural breast shape with realistic gravity/gi, "selected breast contour with coherent attachment");
 }
 
 function removeChromaReferenceDuplicates(value, dna = {}) {
@@ -274,7 +281,7 @@ function chromaLeanSingleSubjectPrompt(dna = {}, primaryGuard = {}, sourceDna = 
 
   return {
     ...block,
-    positive: normalizeChromaProportionLanguage(positive, sourceDna),
+    positive: normalizeSelectedProportionLanguage(positive, sourceDna),
   };
 }
 
@@ -282,7 +289,7 @@ function buildPrioritizedChromaPrompt(prompts, priorityPlan, primaryGuard, dna) 
   const bodyPriority = chromaBodyPriority(dna);
   const normalized = {
     ...prompts,
-    positive: removeChromaReferenceDuplicates(normalizeChromaProportionLanguage(prompts.positive, dna), dna),
+    positive: removeChromaReferenceDuplicates(normalizeSelectedProportionLanguage(prompts.positive, dna), dna),
   };
   const prioritized = prioritizePrompt(
     normalized.positive,
@@ -293,7 +300,7 @@ function buildPrioritizedChromaPrompt(prompts, priorityPlan, primaryGuard, dna) 
   return {
     ...normalized,
     ...prioritized,
-    positive: removeChromaReferenceDuplicates(normalizeChromaProportionLanguage(prioritized.positive, dna), dna),
+    positive: removeChromaReferenceDuplicates(normalizeSelectedProportionLanguage(prioritized.positive, dna), dna),
     priorityPlan,
     guardAdjustments: primaryGuard.adjustments,
     negativeStrategy: "text",
@@ -336,7 +343,8 @@ export function resolveChromaComposition(dna = {}, options = {}) {
 }
 
 export function resolveZImageComposition(dna = {}, options = {}) {
-  const resolved = JSON.parse(JSON.stringify(dna || {}));
+  const physiqueGuard = resolvePhysiqueControls(dna || {});
+  const resolved = physiqueGuard.dna;
   resolved.pose = { ...(resolved.pose || {}) };
   resolved.feet = { ...(resolved.feet || {}) };
   resolved.hair = { ...(resolved.hair || {}) };
@@ -346,7 +354,7 @@ export function resolveZImageComposition(dna = {}, options = {}) {
   const mode = ["natural", "enhanced", "extreme"].includes(lower(resolved.style.anatomy_mode))
     ? lower(resolved.style.anatomy_mode)
     : "natural";
-  const adjustments = [];
+  const adjustments = [...physiqueGuard.adjustments];
   const hands = arrayValue(resolved.pose.hands).filter((item) => lower(item) !== "none");
   if (hands.length > 1) {
     const kept = hands[hands.length - 1];
@@ -363,11 +371,6 @@ export function resolveZImageComposition(dna = {}, options = {}) {
   // Resolve mutually exclusive descriptors before they reach the prompt. These
   // conflicts are especially destructive in Z-Image because each phrase is
   // individually rendered even when the combined body is impossible.
-  const bustSize = lower(resolved.physique.bust);
-  if (lower(resolved.physique.bust_shape) === "athletic" && !["", "flat", "small", "medium"].includes(bustSize)) {
-    resolved.physique.bust_shape = "natural";
-    adjustments.push("Replaced the small athletic bust-shape wording that conflicted with the selected large bust size.");
-  }
   if (lower(resolved.hair.length) === "pixie" && ["wavy", "curly"].includes(hairStyle)) {
     resolved.hair.style = "";
     adjustments.push("Kept the pixie cut and removed the competing long wave/curl hairstyle wording.");
@@ -468,6 +471,8 @@ export function resolveZImageComposition(dna = {}, options = {}) {
 
   const castSize = lower(resolved.scenario?.cast_size) || "solo";
   const solo = !options.forceMulti && !["duo", "threesome", "foursome", "group", "gangbang", "orgy"].includes(castSize);
+  const selectedProportions = hasDetailedBodyScale(resolved);
+  const naturalProportions = selectedProportions ? "selected body proportions" : "believable adult proportions";
   const humanLead = options.forceMulti
     ? (mode === "natural"
       ? "NORMAL HUMAN ANATOMY REQUIRED — each adult has one coherent torso and pelvis, exactly two arms and two legs, naturally sized hands and feet"
@@ -475,7 +480,7 @@ export function resolveZImageComposition(dna = {}, options = {}) {
         ? "COHERENT HUMAN ANATOMY REQUIRED — each adult keeps one coherent torso and pelvis, exactly two arms and two legs"
         : "COHERENT ANATOMY REQUIRED — each adult remains one connected body with no duplicated body parts")
     : (mode === "natural"
-      ? "NORMAL HUMAN ANATOMY REQUIRED — believable adult proportions, one coherent torso and pelvis, exactly two arms and two legs, naturally sized hands and feet"
+      ? `NORMAL HUMAN ANATOMY REQUIRED — ${naturalProportions}, one coherent torso and pelvis, exactly two arms and two legs, naturally sized hands and feet`
       : mode === "enhanced"
         ? "COHERENT HUMAN ANATOMY REQUIRED — enhanced proportions with one coherent torso and pelvis, exactly two arms and two legs"
         : "COHERENT ANATOMY REQUIRED — one connected adult body with no duplicated body parts");
@@ -567,7 +572,7 @@ function kreaSubjectSentence(dna = {}, label = "") {
     Number(ph.muscularity || 0) > 60 ? (Number(ph.muscularity) > 85 ? "highly muscular build" : "athletic toned build") : "",
     Number(ph.curves || 0) > 60 ? (Number(ph.curves) > 85 ? "pronounced natural curves" : "curved silhouette") : "",
     ph.implant_volume > 0 ? "" : kreaScale(ph.bust_scale, "bust", ["small", "moderate", "full", "very large", "extremely oversized"]) || (ph.bust && `${ph.bust} bust`),
-    ph.implant_volume > 0 ? "round augmented breast shape" : ph.bust_shape && `${ph.bust_shape} breast shape`,
+    ph.implant_volume > 0 ? "round augmented breast shape" : bustShapePrompt(ph.bust_shape),
     kreaScale(ph.waist_scale, "waist", ["very narrow", "narrow", "average", "wide", "very wide"]) || (ph.waist && `${ph.waist} waist`),
     kreaScale(ph.hip_scale, "hips", ["narrow", "moderate-width", "wide", "very wide", "extremely wide"]) || (ph.hips && `${ph.hips} hips`),
     (ph.butt_scale > 100 ? gluteSizePrompt(ph.butt_scale) : kreaScale(ph.butt_scale, "glutes", ["small", "moderate", "full rounded", "very large projected", "extremely oversized projected"])) || (ph.butt && `${ph.butt} buttocks`),
@@ -827,7 +832,9 @@ export function buildKrea2Prompts({
     subject?.dna || {}, subjectCount > 1 ? (subject?.label || String.fromCharCode(65 + index)) : ""
   )).filter(Boolean);
 
-  const realismTail = extremeBust
+  const realismTail = hasDetailedBodyScale(primary) && !extremeBust
+    ? "Preserve the selected body proportions with one connected body per person, readable joints, natural skin texture and consistent photographic perspective."
+    : extremeBust
     ? "Keep the deliberately exaggerated bust silhouette clearly visible while preserving one connected body, readable joints, natural skin detail and consistent perspective."
     : anatomyMode === "extreme"
     ? "Keep the requested stylization while preserving one connected body per person, readable joints, coherent hands and feet, realistic skin detail and consistent perspective."
@@ -1153,6 +1160,9 @@ function compileModelPromptsRaw({
 export function compileModelPrompts(options = {}) {
   const compiler = resolvePromptCompiler(options);
   const direct = ["qwen_edit", "wan_i2v"].includes(compiler);
+  const photographic = !direct && compiler !== "wan_t2v";
+  const photoDna = dna => ({ ...dna, style: { ...dna?.style, render: !dna?.style?.render || dna.style.render === 'octane' ? 'photorealistic' : dna.style.render } });
+  if (photographic) options = { ...options, dna: photoDna(options.dna || {}), subjects: (options.subjects || []).map(subject => ({ ...subject, dna: photoDna(subject.dna || {}) })) };
   const source = Array.isArray(options.subjects) ? options.subjects : [];
   const isMulti = !direct && source.length > 1;
   const scenario = source[0]?.dna?.scenario || options.dna?.scenario || {};
@@ -1162,9 +1172,20 @@ export function compileModelPrompts(options = {}) {
   if (direct) return result;
   const fidelitySubjects = isMulti ? subjects : [{ dna: options.dna || source[0]?.dna || {} }];
   // Preserve resolved selections so the fidelity pass cannot re-add conflicts.
-  const protectedResult = preserveGeneralSelections(result, compiler === "chroma"
-    ? fidelitySubjects.map(subject => ({ ...subject, dna: resolveChromaComposition(subject.dna, { forceMulti: isMulti }).dna }))
-    : fidelitySubjects);
+  const resolvedSubjects = fidelitySubjects.map(subject => ({ ...subject, dna: (compiler === 'chroma' ? resolveChromaComposition : resolveZImageComposition)(subject.dna, { forceMulti: isMulti }).dna }));
+  let protectedResult = preserveGeneralSelections(result, resolvedSubjects);
+  const detailed = resolvedSubjects.some(subject => hasDetailedBodyScale(subject.dna));
+  protectedResult = {
+    ...protectedResult,
+    positive: photographic ? photographicPrompt(detailed ? normalizeSelectedProportionLanguage(protectedResult.positive, resolvedSubjects.find(subject => hasDetailedBodyScale(subject.dna)).dna) : protectedResult.positive) : protectedResult.positive,
+  };
+  if (photographic) {
+    protectedResult.positive += '; photographic skin texture with fine pores, lifelike light and shadow, realistic lens perspective';
+    if (protectedResult.negativeStrategy === 'text' && protectedResult.negative) {
+      protectedResult.negative = dedupeClauses(`${protectedResult.negative}, cartoon, anime, illustration, CGI, 3d render, doll-like skin, plastic skin`);
+    }
+  }
+  protectedResult.promptWords = clean(protectedResult.positive).split(/\s+/).filter(Boolean).length;
   if (!contract) return protectedResult;
   const positive = `${contract} ${protectedResult.positive}`;
   const negative = scenario.cast_resemblance === "matching faces"
