@@ -48,6 +48,7 @@ import UniversalLoraPicker from "@/components/UniversalLoraPicker";
 import RenderRecipeSelector from "@/components/RenderRecipeSelector";
 import SmartSetupPanel from "@/components/SmartSetupPanel";
 import { getRenderRecipe, recipeFamily } from "@/lib/renderRecipes";
+import { useCompiledPromptReset } from "@/lib/useCompiledPromptReset";
 import { readBuilderDraft, writeBuilderDraft, clearBuilderDraft } from "@/lib/builderDraft";
 import { STUDIO_PROFILES, applyStudioPreset } from "@/lib/studioProfiles";
 import { buildSameCharacterPoseInstruction, DEFAULT_POSE_LOCKS, SAME_CHARACTER_POSES } from "@/lib/sameCharacterPose";
@@ -111,7 +112,6 @@ export default function Builder({ studio = "standard" }) {
   const galleryImportApplied = useRef(false);
   const mediaLibraryImportApplied = useRef(false);
   const draftHydrated = useRef(false);
-  const skipNextPromptReset = useRef(false);
   const [editorHydrated, setEditorHydrated] = useState(false);
   const [mediaImportSummary, setMediaImportSummary] = useState(null);
 
@@ -525,110 +525,7 @@ export default function Builder({ studio = "standard" }) {
     if (editMode === "body_adjust" && referenceImage?.name) setMobileStudioStep("create");
   }, [editMode, referenceImage?.name]);
 
-  useEffect(() => {
-    const saved = location.state?.renderRecipe?.recipe;
-    if (!saved || !workflows.length || galleryImportApplied.current || !editorHydrated) return;
-    const bodyCreation = location.state?.renderRecipeMode === "body_creation";
-    const rebuildCurrent = bodyCreation || location.state?.renderRecipeMode === "current";
-    galleryImportApplied.current = true;
-    setMobileStudioStep(bodyCreation ? mobileStudioStepForSection("physique", studioSteps) : "create");
-    setQuickReview(!bodyCreation);
-    if (bodyCreation) {
-      setPoseAssistEnabled(false);
-      setRenderCount(1);
-      setEditMode("standard");
-      setReferenceImage(null);
-      setReferencePreview("");
-      setSourceRenderId(null);
-      setEditInstruction("");
-      setVideoInstruction("");
-      setQuickReview(false);
-      setCollapsed((current) => ({ ...current, physique: false }));
-    }
-    skipNextPromptReset.current = !rebuildCurrent;
-    if (Array.isArray(saved.subjects) && saved.subjects.length) {
-      const restored = saved.subjects.map((subject, index) => makeSubject({
-        label: subject.label || subjectLabel(index),
-        dna: subject.dna || DEFAULT_DNA,
-        fieldLocks: subject.field_locks || {},
-        likeness: subject.likeness,
-      }));
-      setSubjects(restored);
-      setActiveSubjectId(restored[0].id);
-    } else if (saved.dna) {
-      const restored = makeSubject({ label: "A", dna: saved.dna });
-      setSubjects([restored]);
-      setActiveSubjectId(restored.id);
-    }
-    if (saved.locks) setLocks(saved.locks);
-    if (saved.prompt_language) {
-      setPromptLanguage(saved.prompt_language);
-      setRaunch(saved.prompt_language === "explicit");
-    }
-    if (saved.workflow_id) {
-      const savedWorkflow = workflows.find((workflow) => workflow.id === saved.workflow_id);
-      if (savedWorkflow?.kind === "krea_style") {
-        const baseKrea = workflows.find((workflow) => workflow.prompt_style === "krea2" && workflow.kind === "image");
-        if (baseKrea) setWorkflowId(baseKrea.id);
-      } else if (savedWorkflow && (!bodyCreation || savedWorkflow.kind === "image")) {
-        setWorkflowId(savedWorkflow.id);
-      }
-    }
-    if (bodyCreation && !workflows.some((workflow) => workflow.id === saved.workflow_id && workflow.kind === "image")) {
-      const imageWorkflow = workflows.find((workflow) => workflow.kind === "image" && workflow.prompt_style === "chroma")
-        || workflows.find((workflow) => workflow.kind === "image");
-      if (imageWorkflow) setWorkflowId(imageWorkflow.id);
-    }
-    setSelectedLora({
-      name: saved.selected_loras?.[0]?.name || saved.selected_lora_name || (saved.krea_style === "private_magazine" ? "Private_Magazine_2000s_v1.safetensors" : ""),
-      strength: typeof (saved.selected_loras?.[0]?.strength ?? saved.selected_lora_strength) === "number"
-        ? (saved.selected_loras?.[0]?.strength ?? saved.selected_lora_strength)
-        : (typeof saved.krea_lora_strength === "number" ? saved.krea_lora_strength : 0.8),
-      triggerWords: Array.isArray(saved.selected_loras?.[0]?.triggers || saved.selected_lora_triggers)
-        ? (saved.selected_loras?.[0]?.triggers || saved.selected_lora_triggers)
-        : (saved.krea_style === "private_magazine" ? ["privatemag"] : []),
-    });
-    setSecondaryLora(saved.selected_loras?.[1] ? {
-      name: saved.selected_loras[1].name, strength: saved.selected_loras[1].strength,
-      triggerWords: saved.selected_loras[1].triggers || [],
-    } : { name: "", strength: 0.8, triggerWords: [] });
-    setShowSecondLora(Boolean(saved.selected_loras?.[1]?.name));
-    setLoraOverrides(saved.lora_overrides || {});
-    setPromptOverride(rebuildCurrent ? "" : (saved.prompt_positive || ""));
-    if (rebuildCurrent) {
-      // Current Compiler must rebuild from the saved render recipe only. A
-      // previously hydrated Builder draft can contain Media Library/Qwen notes
-      // in plainLanguage; leaving them here silently appends stale Hair, Pose,
-      // Wardrobe, Photo style, etc. after the newly compiled prompt.
-      setPlainLanguage("");
-      setMediaImportSummary(null);
-    }
-    if (saved.prompt_positive && !rebuildCurrent) setVariationPrompt(saved.prompt_positive);
-    if (typeof saved.refine_denoise === "number") setVariationDenoise(saved.refine_denoise);
-    setNegativePromptOverride(rebuildCurrent ? "" : (saved.prompt_negative || ""));
-    if (!bodyCreation && saved.reference_image) setReferenceImage({ name: saved.reference_image, type: "input", subfolder: "" });
-    if (!bodyCreation && saved.edit_instruction) setEditInstruction(saved.edit_instruction);
-    if (!bodyCreation && saved.video_instruction) setVideoInstruction(saved.video_instruction);
-    setPreserveUnmentioned(saved.preserve_unmentioned !== false);
-    if (saved.quality_tier) setQualityTier(saved.quality_tier);
-    setVideoFrames(saved.video_frames || 41);
-    setVideoFps(saved.video_fps || 24);
-    setVideoWidth(saved.video_width || 640);
-    setVideoHeight(saved.video_height || 640);
-    setChromaSettings((current) => ({ ...current,
-      width: saved.width || current.width, height: saved.height || current.height,
-      steps: saved.steps || current.steps, cfg: saved.cfg ?? current.cfg,
-      batchSize: saved.batch_size || current.batchSize, sampler: saved.sampler_name || current.sampler, scheduler: saved.scheduler || current.scheduler,
-      seed: rebuildCurrent && !bodyCreation ? "" : (saved.seed ?? current.seed),
-    }));
-    setGalleryRecipeMode(rebuildCurrent ? "current" : "exact");
-    toast.success(bodyCreation
-      ? "Original creation setup loaded. Change the body sliders, then generate a new image."
-      : rebuildCurrent
-      ? "Saved setup loaded with the current compiler · prompt overrides cleared"
-      : "Exact Gallery recipe restored in the editor");
-    nav(location.pathname, { replace: true, state: null });
-  }, [editorHydrated, location.pathname, location.state, nav, workflows]);
+
 
   const activeWorkflow = workflows.find((w) => w.id === workflowId);
   const poseAssistFoundationWorkflow = workflows.find((w) => w.kind === "pose");
@@ -1195,14 +1092,118 @@ export default function Builder({ studio = "standard" }) {
     context: preflightContext,
     compilerMeta: compiledPrompt,
   }), [activeDna, activeWorkflow, compiledPrompt, finalPositive, preflightContext]);
+  const preserveRestoredPrompt = useCompiledPromptReset({
+    positive: generatedPositive,
+    negative,
+    workflowId,
+    setPositive: setPromptOverride,
+    setNegative: setNegativePromptOverride,
+  });
+
   useEffect(() => {
-    if (skipNextPromptReset.current) {
-      skipNextPromptReset.current = false;
-      return;
+    const saved = location.state?.renderRecipe?.recipe;
+    if (!saved || !workflows.length || galleryImportApplied.current || !editorHydrated) return;
+    const bodyCreation = location.state?.renderRecipeMode === "body_creation";
+    const rebuildCurrent = bodyCreation || location.state?.renderRecipeMode === "current";
+    galleryImportApplied.current = true;
+    setMobileStudioStep(bodyCreation ? mobileStudioStepForSection("physique", studioSteps) : "create");
+    setQuickReview(!bodyCreation);
+    if (bodyCreation) {
+      setPoseAssistEnabled(false);
+      setRenderCount(1);
+      setEditMode("standard");
+      setReferenceImage(null);
+      setReferencePreview("");
+      setSourceRenderId(null);
+      setEditInstruction("");
+      setVideoInstruction("");
+      setQuickReview(false);
+      setCollapsed((current) => ({ ...current, physique: false }));
     }
-    setPromptOverride("");
-    setNegativePromptOverride("");
-  }, [generatedPositive, negative, workflowId]);
+    if (!rebuildCurrent) preserveRestoredPrompt();
+    if (Array.isArray(saved.subjects) && saved.subjects.length) {
+      const restored = saved.subjects.map((subject, index) => makeSubject({
+        label: subject.label || subjectLabel(index),
+        dna: subject.dna || DEFAULT_DNA,
+        fieldLocks: subject.field_locks || {},
+        likeness: subject.likeness,
+      }));
+      setSubjects(restored);
+      setActiveSubjectId(restored[0].id);
+    } else if (saved.dna) {
+      const restored = makeSubject({ label: "A", dna: saved.dna });
+      setSubjects([restored]);
+      setActiveSubjectId(restored.id);
+    }
+    if (saved.locks) setLocks(saved.locks);
+    if (saved.prompt_language) {
+      setPromptLanguage(saved.prompt_language);
+      setRaunch(saved.prompt_language === "explicit");
+    }
+    if (saved.workflow_id) {
+      const savedWorkflow = workflows.find((workflow) => workflow.id === saved.workflow_id);
+      if (savedWorkflow?.kind === "krea_style") {
+        const baseKrea = workflows.find((workflow) => workflow.prompt_style === "krea2" && workflow.kind === "image");
+        if (baseKrea) setWorkflowId(baseKrea.id);
+      } else if (savedWorkflow && (!bodyCreation || savedWorkflow.kind === "image")) {
+        setWorkflowId(savedWorkflow.id);
+      }
+    }
+    if (bodyCreation && !workflows.some((workflow) => workflow.id === saved.workflow_id && workflow.kind === "image")) {
+      const imageWorkflow = workflows.find((workflow) => workflow.kind === "image" && workflow.prompt_style === "chroma")
+        || workflows.find((workflow) => workflow.kind === "image");
+      if (imageWorkflow) setWorkflowId(imageWorkflow.id);
+    }
+    setSelectedLora({
+      name: saved.selected_loras?.[0]?.name || saved.selected_lora_name || (saved.krea_style === "private_magazine" ? "Private_Magazine_2000s_v1.safetensors" : ""),
+      strength: typeof (saved.selected_loras?.[0]?.strength ?? saved.selected_lora_strength) === "number"
+        ? (saved.selected_loras?.[0]?.strength ?? saved.selected_lora_strength)
+        : (typeof saved.krea_lora_strength === "number" ? saved.krea_lora_strength : 0.8),
+      triggerWords: Array.isArray(saved.selected_loras?.[0]?.triggers || saved.selected_lora_triggers)
+        ? (saved.selected_loras?.[0]?.triggers || saved.selected_lora_triggers)
+        : (saved.krea_style === "private_magazine" ? ["privatemag"] : []),
+    });
+    setSecondaryLora(saved.selected_loras?.[1] ? {
+      name: saved.selected_loras[1].name, strength: saved.selected_loras[1].strength,
+      triggerWords: saved.selected_loras[1].triggers || [],
+    } : { name: "", strength: 0.8, triggerWords: [] });
+    setShowSecondLora(Boolean(saved.selected_loras?.[1]?.name));
+    setLoraOverrides(saved.lora_overrides || {});
+    setPromptOverride(rebuildCurrent ? "" : (saved.prompt_positive || ""));
+    if (rebuildCurrent) {
+      // Current Compiler must rebuild from the saved render recipe only. A
+      // previously hydrated Builder draft can contain Media Library/Qwen notes
+      // in plainLanguage; leaving them here silently appends stale Hair, Pose,
+      // Wardrobe, Photo style, etc. after the newly compiled prompt.
+      setPlainLanguage("");
+      setMediaImportSummary(null);
+    }
+    if (saved.prompt_positive && !rebuildCurrent) setVariationPrompt(saved.prompt_positive);
+    if (typeof saved.refine_denoise === "number") setVariationDenoise(saved.refine_denoise);
+    setNegativePromptOverride(rebuildCurrent ? "" : (saved.prompt_negative || ""));
+    if (!bodyCreation && saved.reference_image) setReferenceImage({ name: saved.reference_image, type: "input", subfolder: "" });
+    if (!bodyCreation && saved.edit_instruction) setEditInstruction(saved.edit_instruction);
+    if (!bodyCreation && saved.video_instruction) setVideoInstruction(saved.video_instruction);
+    setPreserveUnmentioned(saved.preserve_unmentioned !== false);
+    if (saved.quality_tier) setQualityTier(saved.quality_tier);
+    setVideoFrames(saved.video_frames || 41);
+    setVideoFps(saved.video_fps || 24);
+    setVideoWidth(saved.video_width || 640);
+    setVideoHeight(saved.video_height || 640);
+    setChromaSettings((current) => ({ ...current,
+      width: saved.width || current.width, height: saved.height || current.height,
+      steps: saved.steps || current.steps, cfg: saved.cfg ?? current.cfg,
+      batchSize: saved.batch_size || current.batchSize, sampler: saved.sampler_name || current.sampler, scheduler: saved.scheduler || current.scheduler,
+      seed: rebuildCurrent && !bodyCreation ? "" : (saved.seed ?? current.seed),
+    }));
+    setGalleryRecipeMode(rebuildCurrent ? "current" : "exact");
+    toast.success(bodyCreation
+      ? "Original creation setup loaded. Change the body sliders, then generate a new image."
+      : rebuildCurrent
+      ? "Saved setup loaded with the current compiler · prompt overrides cleared"
+      : "Exact Gallery recipe restored in the editor");
+    nav(location.pathname, { replace: true, state: null });
+  }, [editorHydrated, location.pathname, location.state, nav, workflows, preserveRestoredPrompt]);
 
   const improveCompiledPrompt = async () => {
     if (!finalPositive.trim()) {
