@@ -318,6 +318,23 @@ function normalizeZImageLanguage(value) {
   return ZIMAGE_SIZE_REWRITES.reduce((text, [pattern, replacement]) => text.replace(pattern, replacement), value);
 }
 
+export function resolveChromaComposition(dna = {}, options = {}) {
+  const resolved = JSON.parse(JSON.stringify(dna || {}));
+  resolved.hair = { ...(resolved.hair || {}) };
+  const adjustments = [];
+  const shortCut = ["pixie", "pixie cut", "buzz cut"];
+  const longStyles = ["braids", "box braids", "French braid", "Dutch braids", "fishtail braid", "ponytail", "updo", "locs", "twists"].map(lower);
+  if (shortCut.includes(lower(resolved.hair.length)) && longStyles.includes(lower(resolved.hair.style))) {
+    resolved.hair.length = "";
+    adjustments.push("Kept the selected hairstyle and removed the competing short haircut length.");
+  } else if (shortCut.includes(lower(resolved.hair.style)) && resolved.hair.length) {
+    resolved.hair.length = "";
+    adjustments.push("Kept the selected short haircut and removed the competing hair length.");
+  }
+  const guard = resolveZImageComposition(resolved, options);
+  return { ...guard, adjustments: [...adjustments, ...guard.adjustments] };
+}
+
 export function resolveZImageComposition(dna = {}, options = {}) {
   const resolved = JSON.parse(JSON.stringify(dna || {}));
   resolved.pose = { ...(resolved.pose || {}) };
@@ -474,8 +491,18 @@ export function resolveZImageComposition(dna = {}, options = {}) {
     composition = "PRIMARY COMPOSITION — rear three-quarter view, lower body is the single visual priority, moderate perspective and connected limbs";
   } else if (focus === "face") {
     composition = "PRIMARY COMPOSITION — face is the single visual priority, coherent body perspective and no body part enlarged toward the lens";
+  } else if (fullBody) {
+    composition = "PRIMARY COMPOSITION — full character visible head to feet, space around the complete body, coherent perspective";
   } else {
-    composition = "PRIMARY COMPOSITION — balanced full-character framing, coherent perspective, no competing body-part close-up";
+    const crop = {
+      "detail shot": "tight detail framing of the selected subject detail",
+      "close-up": "close-up framing",
+      "portrait": "portrait framing",
+      "waist-up": "waist-up framing",
+      "thigh-up": "thigh-up framing",
+      "knees-up": "knees-up framing",
+    }[distance] || "balanced framing";
+    composition = `PRIMARY COMPOSITION — ${crop}, coherent perspective`;
   }
 
   const multiBodyGuard = options.forceMulti
@@ -985,9 +1012,10 @@ function compileModelPromptsRaw({
   sectionLocks = {},
 } = {}) {
   const compiler = resolvePromptCompiler({ promptStyle, workflowKind, workflowName });
-  const primaryGuard = resolveZImageComposition(dna, { forceMulti: isMulti });
+  const resolveComposition = compiler === "chroma" ? resolveChromaComposition : resolveZImageComposition;
+  const primaryGuard = resolveComposition(dna, { forceMulti: isMulti });
   const guardedSubjects = isMulti
-    ? (subjects || []).map((subject) => ({ ...subject, dna: resolveZImageComposition(subject?.dna || {}, { forceMulti: true }).dna }))
+    ? (subjects || []).map((subject) => ({ ...subject, dna: resolveComposition(subject?.dna || {}, { forceMulti: true }).dna }))
     : subjects;
   // Chroma's PRIMARY BODY PROPORTIONS block is the sole source for
   // detailed physique slider sizes. Build its generic priority plan from the
@@ -1132,7 +1160,11 @@ export function compileModelPrompts(options = {}) {
   const result = compileModelPromptsRaw({ ...options, subjects, isMulti: isMulti || (!source.length && !!options.isMulti), dna: isMulti ? subjects[0].dna : options.dna });
   const contract = isMulti ? castAppearancePrompt(subjects) : "";
   if (direct) return result;
-  const protectedResult = preserveGeneralSelections(result, isMulti ? subjects : [{ dna: options.dna || source[0]?.dna || {} }]);
+  const fidelitySubjects = isMulti ? subjects : [{ dna: options.dna || source[0]?.dna || {} }];
+  // Preserve resolved selections so the fidelity pass cannot re-add conflicts.
+  const protectedResult = preserveGeneralSelections(result, compiler === "chroma"
+    ? fidelitySubjects.map(subject => ({ ...subject, dna: resolveChromaComposition(subject.dna, { forceMulti: isMulti }).dna }))
+    : fidelitySubjects);
   if (!contract) return protectedResult;
   const positive = `${contract} ${protectedResult.positive}`;
   const negative = scenario.cast_resemblance === "matching faces"

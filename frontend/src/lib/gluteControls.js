@@ -1,5 +1,5 @@
 // Visual prompt controls, not anatomical measurements. Zero keeps the preset.
-export const GLUTE_SIZE_MAX = 300; // Increased for more range
+export const GLUTE_SIZE_MAX = 300;
 
 const SIZE_LEVELS = [
   "small", // 1-10
@@ -14,14 +14,15 @@ const SIZE_LEVELS = [
   "fantasy-scale extremely oversized", // 91-100
 ];
 
-// Size descriptors with weights for extreme ranges
+// Extended values change the silhouette gradually without weighted syntax.
+// A single volume clause owns size; shape and texture remain independent.
 const EXTREME_SIZE_DESCRIPTORS = {
-  125: "(hyper-voluminous fantasy-scale glutes:1.3), exaggerated outward silhouette, pronounced BBL projection, substantial mass",
-  150: "(massively enlarged fantasy-scale glutes:1.4), deep rearward projection, broad lateral volume, exaggerated BBL proportions, eye-catching mass",
-  175: "(monumentally oversized fantasy-scale glutes:1.5), dominant rearward silhouette, extreme projection, hyper-BBL aesthetic, impossible proportions",
-  200: "(maximum hyper-scale fantasy glutes:1.6), exceptionally deep rearward projection, immense lateral volume, extreme BBL, dramatically oversized, gravity-defying mass",
-  250: "(ultra-maximum fantasy glutes:1.7), hyper-extreme projection, colossal lateral spread, surreal BBL proportions, otherworldly mass and volume",
-  300: "(absolute maximum fantasy glutes:1.8), impossible hyper-projection, extreme lateral dominance, maximum BBL aesthetic, surreal exaggerated proportions",
+  125: "fantasy-scale oversized with increased rear projection",
+  150: "fantasy-scale very oversized with substantial rear projection",
+  175: "fantasy-scale greatly oversized with pronounced rear projection",
+  200: "fantasy-scale extremely oversized with broad rounded volume",
+  250: "fantasy-scale exceptionally oversized with broad rounded volume and deep rear projection",
+  300: "fantasy-scale maximum oversized with the broadest rounded volume and deepest rear projection",
 };
 
 // Comprehensive shape catalog covering all aesthetic types
@@ -95,7 +96,7 @@ export function gluteSizePrompt(value, { intensity = false, texture = null } = {
     // Standard levels
     descriptor = SIZE_LEVELS[Math.max(0, Math.ceil(n / 10) - 1)];
   } else {
-    // Extended range with weighted descriptors
+    // Extended range with plain descriptive levels
     const threshold = Object.keys(EXTREME_SIZE_DESCRIPTORS)
       .map(Number)
       .sort((a, b) => a - b)
@@ -106,33 +107,24 @@ export function gluteSizePrompt(value, { intensity = false, texture = null } = {
   // Add texture if specified
   const textureMod = texture && TEXTURE_MODIFIERS[texture] ? `, ${TEXTURE_MODIFIERS[texture]}` : "";
   
-  return `${descriptor} glute volume${textureMod}${intensity ? ` (size intensity ${Math.min(n, 100)}/100${n > 100 ? `; extended to ${n}` : ""})` : ""}`;
+  return `${descriptor} glute volume${textureMod}${intensity ? ` (size intensity ${n}/${GLUTE_SIZE_MAX})` : ""}`;
 }
 
-export function gluteShapePrompt(value, { size = 50, texture = null } = {}) {
+export function gluteShapePrompt(value, { texture = null } = {}) {
   const baseShape = SHAPES[value] || String(value || "");
-  
-  // Add size context if provided
-  const sizeContext = size > 100 ? `, ${EXTREME_SIZE_DESCRIPTORS[Math.min(300, Math.ceil(size / 25) * 25)] || ""}` : "";
   
   // Add texture if provided
   const textureMod = texture && TEXTURE_MODIFIERS[texture] ? `, ${TEXTURE_MODIFIERS[texture]}` : "";
   
-  return `${baseShape}${sizeContext}${textureMod}`;
+  return `${baseShape}${textureMod}`;
 }
 
-// New: Combined builder for maximum control
+// Emit each independent control exactly once, including ordinary sizes.
 export function buildGlutePrompt({ size = 0, shape = "naturally round", texture = null, intensity = false } = {}) {
-  const sizePart = gluteSizePrompt(size, { intensity, texture });
-  const shapePart = gluteShapePrompt(shape, { size, texture });
-  
-  // Combine with priority to shape description, size as modifier
-  if (size <= 100) {
-    return shapePart; // Shape carries size implication for normal range
-  } else {
-    // For extreme sizes, combine explicit size weight with shape
-    return `${sizePart}, ${shapePart}`;
-  }
+  return [
+    gluteSizePrompt(size, { intensity }),
+    gluteShapePrompt(shape, { texture }),
+  ].filter(Boolean).join(", ");
 }
 
 // Export for DNA integration
