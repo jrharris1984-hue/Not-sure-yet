@@ -162,7 +162,7 @@ export function analyzePromptQuality({
   const generatedImageProfile = ["default", "sdxl", "zimage", "chroma", "krea2", "pony", "flux", "flux2_klein", "wan_t2v"].includes(profile);
   if (generatedImageProfile) {
     const explicitLevel = Number(dna?.scenario?.explicit_level || 0);
-    const nudityLevel = Number(dna?.wardrobe?.nudity_level || 0);
+    const nudityLevel = wardrobeNudity(dna?.wardrobe).level;
     const outfitPreset = String(dna?.wardrobe?.outfit_preset || "").toLowerCase();
     const hasSceneAction = Boolean(dna?.scenario?.extra_acts?.trim())
       || (Array.isArray(dna?.scenario?.acts) && dna.scenario.acts.length > 0);
@@ -171,7 +171,7 @@ export function analyzePromptQuality({
       issues.push(issue("warning", "explicit-intent-missing", "Explicit level sets intensity but does not describe what appears in the image. Choose a Bare outfit or add specific adult scene details in Fine Tune."));
     }
     if (wardrobeNudity(dna?.wardrobe).suppressClothing && outfitPreset && !hasNudityChoice) {
-      issues.push(issue("info", "nudity-overrides-outfit", "The nudity slider takes priority over the selected outfit at this level."));
+      issues.push(issue("info", "nudity-overrides-outfit", "Clothing coverage takes priority over the selected outfit. Choose Use selected outfit to follow the outfit preset."));
     }
     const wardrobe = dna?.wardrobe || {};
     for (const [color, type, label] of [

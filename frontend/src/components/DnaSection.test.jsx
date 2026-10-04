@@ -50,3 +50,20 @@ test.each([['bust', 'bust_scale'], ['butt', 'butt_scale'], ['hips', 'hip_scale']
     expect(container.querySelector(`[data-testid^="chip-physique-${preset}-"]`)).toBeNull();
   } finally { act(() => root.unmount()); container.remove(); }
 });
+
+test('named exposure displays legacy state, removes the slider and clears old overrides on selection', () => {
+  global.IS_REACT_ACT_ENVIRONMENT = true;
+  const container = document.createElement('div');
+  const root = createRoot(container);
+  const section = SECTIONS.find(s => s.key === 'wardrobe');
+  const value = { nudity_level: 100, nudity_outfit: 'keep lingerie', outfit_preset: 'playboy bunny' };
+  const onChange = jest.fn();
+  try {
+    act(() => root.render(<DnaSection section={{ ...section, fields: section.fields.filter(f => f.key === 'exposure_mode') }} value={value} onChange={onChange} />));
+    expect(container.querySelector('[data-testid="slider-wardrobe-nudity_level"]')).toBeNull();
+    expect(container.querySelector('[data-testid="chip-wardrobe-exposure_mode-open-or-shifted-outfit"]').getAttribute('aria-pressed')).toBe('true');
+    act(() => container.querySelector('[data-testid="chip-wardrobe-exposure_mode-use-selected-outfit"]').click());
+    expect(onChange).toHaveBeenCalledWith({ ...value, exposure_mode: 'use selected outfit', nudity_level: 0, nudity_outfit: '' });
+    expect(value.nudity_level).toBe(100);
+  } finally { act(() => root.unmount()); }
+});

@@ -4,7 +4,7 @@ import { GLUTE_SIZE_MAX, gluteSizePrompt } from "@/lib/gluteControls";
 // DNA schema + prompt builder + randomizer
 import { expandPrompt } from "@/lib/promptMap";
 import { implantVisualPrompt } from "@/lib/implantVisualScale";
-import { wardrobeNudity } from "@/lib/wardrobeNudity";
+import { wardrobeNudity, EXPOSURE_CHOICES } from "@/lib/wardrobeNudity";
 
 export const SECTIONS = [
   {
@@ -214,8 +214,8 @@ export const SECTIONS = [
     key: "wardrobe",
     title: "Wardrobe",
     fields: [
-      { key: "nudity_level", type: "slider", label: "Nudity (all workflows: 0 use outfit → 100 nude)", min: 0, max: 100, step: 5, defaultValue: 0 },
-      { key: "nudity_outfit", type: "chips", label: "Nudity with outfit", options: ["remove outfit", "keep lingerie"] },
+      { key: "exposure_mode", type: "chips", label: "Clothing coverage", options: EXPOSURE_CHOICES,
+        help: "Use selected outfit follows your preset or garments. Open or shifted outfit keeps their style. Partially nude and nude override clothing; accessories and hosiery remain available." },
       { key: "outfit_preset", type: "chips", label: "Outfit preset", groups: [
         { name: "Bare", options: ["nude", "topless", "bottomless", "just panties", "just a shirt", "boyfriend's shirt"] },
         { name: "Lingerie", options: ["boudoir lingerie", "sheer negligee", "silk robe open", "lace lingerie set", "satin slip", "corset and garters", "sheer bodysuit"] },
@@ -525,7 +525,7 @@ export const RANDOMIZE_PROTECTED_FIELDS = {
   intimate: new Set(["cum_state", "saliva", "squirt", "sweat", "lube", "tears"]),
   feet: new Set(["foot_state", "hosiery", "foot_act"]),
   scenario: new Set(["explicit_level", "kink_level"]),
-  wardrobe: new Set(["nudity_level", "hosiery_type", "hosiery_color", "hosiery_pattern", "heel_type", "heel_color", "heel_height", "heel_finish", "garment_color", "dress_style", "skirt_style", "garment_pattern", "nail_color", "nail_shape", "glasses_style", "glasses_color"]),
+  wardrobe: new Set(["exposure_mode", "nudity_level", "hosiery_type", "hosiery_color", "hosiery_pattern", "heel_type", "heel_color", "heel_height", "heel_finish", "garment_color", "dress_style", "skirt_style", "garment_pattern", "nail_color", "nail_shape", "glasses_style", "glasses_color"]),
 };
 
 // A field may allow several details while still having mutually exclusive choices.

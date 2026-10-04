@@ -1,3 +1,4 @@
+import { wardrobeNudity } from "./wardrobeNudity";
 // Resolve shared visual controls on a copy. Saved selections remain editable.
 const list = value => Array.isArray(value) ? value : value ? [value] : [];
 const lower = value => String(value || '').toLowerCase();
@@ -59,6 +60,20 @@ export function resolveBuilderControls(source = {}) {
     omit('wardrobe', 'bottom', 'The selected dress replaces the separate bottom.');
     omit('wardrobe', 'skirt_style', 'The selected dress replaces the separate skirt.');
   } else if (w.skirt_style) omit('wardrobe', 'bottom', 'The selected skirt replaces the separate bottom.');
+  const exposure = wardrobeNudity(w);
+  if (exposure.mode !== 'use selected outfit' && ['nude', 'topless', 'bottomless'].includes(w.outfit_preset)) {
+    omit('wardrobe', 'outfit_preset', 'Clothing coverage overrides the conflicting Bare preset. Choose Use selected outfit to follow that preset.');
+  }
+  if (exposure.suppressClothing) {
+    for (const field of ['outfit_set', 'outfit_set_color', 'outfit_preset', 'dress_style', 'skirt_style', 'top', 'bottom', 'underwear', 'material', 'garment_color', 'garment_pattern', 'palette', 'fit', 'state']) {
+      omit('wardrobe', field, 'Clothing coverage overrides this garment detail. Your selection stays saved; choose Use selected outfit or Open or shifted outfit to include it.');
+    }
+  } else if (exposure.mode === 'open or shifted outfit') {
+    if (![w.outfit_set, w.outfit_preset, w.dress_style, w.skirt_style, w.top, w.bottom, w.underwear].some(item => item && item !== 'none')) {
+      notes.push({ section: 'wardrobe', field: 'exposure_mode', text: 'Choose an outfit preset, complete set, or individual garment for Open or shifted outfit.' });
+    }
+    omit('wardrobe', 'state', 'Open or shifted outfit controls garment position instead of the separate clothing-state choice.');
+  }
   if (w.outfit_set && (w.heel_type || w.hosiery_type || w.footwear)) notes.push({ section: 'wardrobe', field: 'outfit_set', text: 'This complete set may include shoes or hosiery. Use individual garments when you need separate footwear choices.' });
   if (w.heel_type) omit('wardrobe', 'footwear', 'The selected heel type overrides the general footwear choice.');
   if (w.hosiery_type) omit('feet', 'hosiery', 'Wardrobe hosiery controls coverage; the Feet hosiery fallback is inactive.');
@@ -111,7 +126,7 @@ const sliders = [
   ['physique', 'bust_scale', 'bust size', 100], ['physique', 'implant_volume', 'implant visual size', 5000],
   ['physique', 'butt_scale', 'glute size', 300], ['physique', 'thigh_scale', 'thigh size', 100],
   ['physique', 'hip_scale', 'hip width', 100], ['physique', 'waist_scale', 'waist width', 100],
-  ['skin', 'glow', 'skin glow', 100], ['wardrobe', 'nudity_level', 'wardrobe exposure', 100],
+  ['skin', 'glow', 'skin glow', 100],
   ['scenario', 'explicit_level', 'scenario intensity', 100], ['scenario', 'kink_level', 'scenario styling intensity', 100],
 ];
 export function sliderPromptSignature(dna = {}) {

@@ -6,9 +6,12 @@ import { Camera, Shuffle, Play, Loader2, X, ChevronLeft } from "lucide-react";
 import { endpoints } from "@/lib/api";
 import { SECTIONS } from "@/lib/dna";
 import { POSE_PACKS, samplePoses, cycleOutfits } from "@/lib/posePacks";
+import ShootPlanner from "@/components/ShootPlanner";
+import { plannedFrameControls } from "@/lib/shootPlanner";
 import LoraPanel from "@/components/LoraPanel";
 import { likenessOverrides } from "@/components/LikenessLoraPanel";
 import { compileModelPrompts } from "@/lib/modelPromptCompilers";
+import { resolveBuilderControls } from "@/lib/builderControlResolution";
 import { shootFrameDna } from "@/lib/shootFrames";
 
 // Flat pool of all pose actions from the DNA schema
@@ -55,6 +58,7 @@ export default function ShootSetup() {
   const { data: workflows = [] } = useQuery({ queryKey: ["workflows"], queryFn: endpoints.listWorkflows });
   const { data: settings } = useQuery({ queryKey: ["settings"], queryFn: endpoints.settings });
 
+  const [aiFrames, setAiFrames] = useState(null);
   const [count, setCount] = useState(8);
   const [workflowId, setWorkflowId] = useState("");
   const [poseMode, setPoseMode] = useState("pack"); // random | pack | manual
@@ -82,19 +86,24 @@ export default function ShootSetup() {
     }
   }, [workflows, settings, workflowId]);
 
+  useEffect(() => { setAiFrames(null); }, [workflowId, count, lockScenario]);
+
   // Preview: compute what each frame will be
   const previewFrames = useMemo(() => {
     const poses = samplePoses({ mode: poseMode, packKey, manualPoses, count, allPoses: ALL_POSES });
     const outs = cycleOutfits(outfits.map((o) => ({ outfit_preset: o })), count);
-    return poses.map((p, i) => {
+    return poses.map((sampledPose, i) => {
+      const planned = aiFrames ? plannedFrameControls(aiFrames[i], lockScenario) : null;
+      const p = planned ? planned.pose_action : sampledPose;
       const scene_direction = shotScript.length ? shotScript[i % shotScript.length] : "";
-      const outfit_overrides = outs[i] || {};
-      const face_overrides = expressions.length ? { expression: expressions[i % expressions.length] } : {};
+      const outfit_overrides = planned ? planned.outfit_overrides : outs[i] || {};
+      const face_overrides = planned ? planned.face_overrides : expressions.length ? { expression: expressions[i % expressions.length] } : {};
       const baseDna = character?.subjects?.[0]?.dna || character?.dna || {};
-      const frameDna = shootFrameDna(baseDna, { poseAction: p, outfitPreset: outfit_overrides.outfit_preset, faceOverrides: face_overrides });
+      const planControls = { wardrobeOverrides: planned?.outfit_overrides, poseOverrides: planned?.pose_overrides, lightingOverrides: planned?.lighting_overrides, sceneOverrides: planned?.scene_overrides, lockScenario };
+      const frameDna = shootFrameDna(baseDna, { poseAction: p, outfitPreset: outfit_overrides.outfit_preset, faceOverrides: face_overrides, ...planControls });
       const subjects = (character?.subjects || []).map((subject, index) =>
         ({ ...subject, dna: index === 0 ? frameDna : shootFrameDna(subject.dna, {
-          poseAction: p, outfitPreset: outfit_overrides.outfit_preset, faceOverrides: face_overrides,
+          poseAction: p, outfitPreset: outfit_overrides.outfit_preset, faceOverrides: face_overrides, ...planControls,
         }) }));
       const compiled = shootWorkflow ? compileModelPrompts({
         promptStyle: shootWorkflow.prompt_style,
@@ -108,6 +117,10 @@ export default function ShootSetup() {
         sectionLocks: character?.locks || {},
       }) : null;
       return {
+        control_notes: resolveBuilderControls(frameDna).notes.map(note => note.text),
+        pose_overrides: planned?.pose_overrides || {},
+        lighting_overrides: planned?.lighting_overrides || {},
+        scene_overrides: planned?.scene_overrides || {},
         pose_action: p,
         scene_direction,
         outfit_overrides,
@@ -122,7 +135,7 @@ export default function ShootSetup() {
         prompt_negative: compiled?.negative || "",
       };
     });
-  }, [poseMode, packKey, manualPoses, count, outfits, expressions, shotScript, character, shootWorkflow]);
+  }, [poseMode, packKey, manualPoses, count, outfits, expressions, shotScript, character, shootWorkflow, aiFrames, lockScenario]);
 
   const create = useMutation({
     mutationFn: async () => {
@@ -233,8 +246,12 @@ export default function ShootSetup() {
             </div>
           </section>
 
+          <ShootPlanner characterId={characterId} workflow={shootWorkflow} count={count} lockScenario={lockScenario}
+            appliedFrames={aiFrames} onApply={setAiFrames} />
+          {aiFrames && <div className="pane p-4 text-sm text-cyan-200">AI shot plan applied. Pose, outfit and expression rotations below are replaced by the shot cards.
+            <button type="button" className="chip ml-2" onClick={() => setAiFrames(null)}>Return to manual rotation</button></div>}
           {/* Pose source */}
-          <section className="pane p-4 sm:p-6 space-y-4" data-testid="shoot-pose-panel">
+          <fieldset disabled={!!aiFrames} className="pane p-4 sm:p-6 space-y-4 disabled:opacity-40" data-testid="shoot-pose-panel">
             {shotScript.length > 0 && <div className="rounded-lg border border-cyan-400/30 bg-cyan-400/5 p-3 text-xs text-cyan-100" data-testid="shoot-scenario-script">
               <strong>Scenario shot script · {pairing}</strong>
               <p className="mt-1 text-zinc-300">Each frame follows a portrait direction for the selected relationship. Character appearance and the shared location stay consistent.</p>
@@ -331,10 +348,10 @@ export default function ShootSetup() {
                 {count} random poses will be sampled from the full pose library ({ALL_POSES.length} options).
               </div>
             )}
-          </section>
+          </fieldset>
 
           {/* Outfits */}
-          <section className="pane p-4 sm:p-6 space-y-4" data-testid="shoot-outfit-panel">
+          <fieldset disabled={!!aiFrames} className="pane p-4 sm:p-6 space-y-4" data-testid="shoot-outfit-panel">
             <div className="flex items-center justify-between">
               <div>
                 <div className="section-label">Outfit rotation</div>
@@ -388,7 +405,7 @@ export default function ShootSetup() {
                 </div>
               </div>
             ))}
-          </section>
+          </fieldset>
 
           {/* Advanced: scenario + seed */}
           <section className="pane p-4 sm:p-6 space-y-4" data-testid="shoot-advanced-panel">
@@ -465,7 +482,7 @@ export default function ShootSetup() {
             </div>
           </section>
 
-          <section className="pane p-4 sm:p-6 space-y-4" data-testid="shoot-expression-panel">
+          <fieldset disabled={!!aiFrames} className="pane p-4 sm:p-6 space-y-4" data-testid="shoot-expression-panel">
             <div className="flex items-center justify-between gap-3">
               <div>
                 <div className="section-label">Expression rotation</div>
@@ -484,7 +501,7 @@ export default function ShootSetup() {
                 </div>
               </div>
             ))}
-          </section>
+          </fieldset>
         </div>
 
         {/* Right column - preview + LoRA + dispatch */}
@@ -505,6 +522,8 @@ export default function ShootSetup() {
                       <div className="text-amber-300/80 truncate">{f.outfit_overrides.outfit_preset}</div>
                     )}
                     {f.face_overrides?.expression && <div className="text-cyan-300/80 truncate">{f.face_overrides.expression}</div>}
+                    {[...Object.values(f.pose_overrides || {}), ...Object.values(f.lighting_overrides || {}), ...Object.values(f.scene_overrides || {})].filter(Boolean).map((value, index) => <div key={index} className="text-zinc-400 break-words">{value}</div>)}
+                    {f.control_notes?.map(note => <p key={note} className="text-amber-200 mt-1">{note}</p>)}
                     {f.prompt_positive && <details className="mt-1 text-zinc-400">
                       <summary className="cursor-pointer text-cyan-200">View frame prompt</summary>
                       <p className="mt-1 max-h-24 overflow-y-auto whitespace-pre-wrap break-words">{f.prompt_positive}</p>
@@ -515,7 +534,7 @@ export default function ShootSetup() {
             </div>
           </section>
 
-          <LoraPanel workflowId={workflowId} values={loraOverrides} onChange={setLoraOverrides} />
+          <LoraPanel workflowId={workflowId} workflow={shootWorkflow} dna={character?.subjects?.[0]?.dna || character?.dna || {}} values={loraOverrides} onChange={setLoraOverrides} />
 
           <button
             type="button"

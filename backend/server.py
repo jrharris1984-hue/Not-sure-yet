@@ -26,6 +26,7 @@ from generation_settings import normalize_generation_settings, apply_generation_
 from image_recovery import recovery_recipe, apply_recovery_strength
 from queue_reliability import submit_render, interrupted_submission_patch
 from ollama_prompt_models import configure_prompt_request
+from shoot_planner import validate_shot_plan, apply_shot_controls
 
 import httpx
 import websockets as ws_client
@@ -3289,6 +3290,9 @@ class ShootFrame(BaseModel):
     scene_direction: str = ""
     outfit_overrides: Dict[str, Any] = Field(default_factory=dict)  # partial wardrobe overrides
     face_overrides: Dict[str, Any] = Field(default_factory=dict)
+    pose_overrides: Dict[str, Any] = Field(default_factory=dict)
+    lighting_overrides: Dict[str, Any] = Field(default_factory=dict)
+    scene_overrides: Dict[str, Any] = Field(default_factory=dict)
     prompt_positive: str = ""
     prompt_negative: str = ""
     seed: Optional[int] = None
@@ -3334,7 +3338,7 @@ class ShootCreateBody(BaseModel):
 
 def _apply_frame_to_dna(dna: Dict[str, Any], frame: Dict[str, Any], lock_scenario: bool) -> Dict[str, Any]:
     """Build a per-frame DNA snapshot with pose + outfit overrides applied."""
-    out = json.loads(json.dumps(dna or {}))  # deep copy
+    out = apply_shot_controls(dna, frame, lock_scenario)
     pose_action = frame.get("pose_action")
     if pose_action:
         out.setdefault("pose", {})
@@ -3346,11 +3350,13 @@ def _apply_frame_to_dna(dna: Dict[str, Any], frame: Dict[str, Any], lock_scenari
             out["wardrobe"].update({
                 "outfit_set": "", "outfit_set_color": "", "dress_style": "", "skirt_style": "",
                 "top": "none", "bottom": "none", "underwear": "none", "nudity_level": 0,
-                "nudity_outfit": "", "state": "", "material": "", "garment_color": "",
+                "nudity_outfit": "", "exposure_mode": "use selected outfit", "state": "", "material": "", "garment_color": "",
                 "garment_pattern": "", "palette": "", "fit": "",
             })
         for k, v in outfit.items():
             out["wardrobe"][k] = v
+    if outfit.get("garment_color") and out.get("wardrobe", {}).get("outfit_set"):
+        out["wardrobe"]["outfit_set_color"] = outfit["garment_color"]
     face = frame.get("face_overrides") or {}
     if face:
         out.setdefault("face", {})
@@ -3478,6 +3484,9 @@ async def create_shoot(body: ShootCreateBody, background_tasks: BackgroundTasks)
             scene_direction=str(f.get("scene_direction") or ""),
             outfit_overrides=f.get("outfit_overrides") or {},
             face_overrides=f.get("face_overrides") or {},
+            pose_overrides=f.get("pose_overrides") or {},
+            lighting_overrides=f.get("lighting_overrides") or {},
+            scene_overrides=f.get("scene_overrides") or {},
             prompt_positive=str(f.get("prompt_positive") or "")[:10000],
             prompt_negative=str(f.get("prompt_negative") or "")[:10000],
             seed=int(seed),
@@ -3698,6 +3707,77 @@ async def retry_shoot_frame(sid: str, frame_index: int, body: ShootRetryBody, ba
 # ============================================================
 # AI Assist (OpenRouter)
 # ============================================================
+class ShootPlanBody(BaseModel):
+    character_id: str
+    workflow_id: str
+    instruction: str = Field(min_length=1, max_length=3000)
+    count: int = Field(ge=1, le=20)
+    lock_scenario: bool = True
+    catalog: Dict[str, List[str]] = Field(default_factory=dict)
+    current_frames: List[Dict[str, str]] = Field(default_factory=list)
+    shot_numbers: List[int] = Field(default_factory=list)
+
+
+@api.post("/ai/shoot-plan")
+async def ai_shoot_plan(body: ShootPlanBody):
+    if not body.instruction.strip():
+        raise HTTPException(400, "Describe the shoot first")
+    if body.shot_numbers and (len(body.shot_numbers) != body.count or len(set(body.shot_numbers)) != body.count or any(n < 1 or n > 20 for n in body.shot_numbers)):
+        raise HTTPException(400, "Shot numbers must identify each requested card")
+    character = await db.characters.find_one({"id": body.character_id}, {"_id": 0})
+    workflow = await db.workflows.find_one({"id": body.workflow_id}, {"_id": 0})
+    if not character or not workflow:
+        raise HTTPException(404, "Character or workflow not found")
+    if workflow.get("kind") not in ("image", "txt2img", "text_to_image"):
+        raise HTTPException(400, "Choose a text-to-image workflow for the shoot planner")
+    system = (
+        "Plan editable photographic shot cards for the supplied saved character(s). "
+        "Preserve all identities, ages, body traits, subject count and unrequested clothing. "
+        "Use only the supplied control names and exact catalog values; empty string keeps the saved setting. "
+        "Do not add people or change the workflow, model, LoRAs, seed, or clothing coverage. "
+        "When lock_scenario is true return empty environment and background. "
+        "Prefer varied poses, expressions and framing when planning a new shoot. "
+        "When revising current_frames, preserve every unmentioned setting. "
+        "Return ONLY compact JSON {\"frames\":[{...}]} in the supplied shot_numbers order, with no commentary. "
+        "Fields: pose_action, framing, view, expression, outfit_preset, outfit_color, lighting_source, "
+        "lighting_temperature, environment, background. Background is a short description; "
+        "all other fields must match the catalog. Omit unchanged fields to keep the reply short."
+    )
+    frames, warnings = [], []
+    # Small batches fit the configured local assistant's JSON output budget.
+    for start in range(0, body.count, 4):
+        batch_count = min(4, body.count - start)
+        context = {
+            "instruction": body.instruction, "shot_count": batch_count,
+            "shot_numbers": (body.shot_numbers or list(range(1, body.count + 1)))[start:start + batch_count],
+            "total_requested_shots": body.count,
+            "lock_scenario": body.lock_scenario, "catalog": body.catalog,
+            "workflow": {k: workflow.get(k) for k in ("name", "kind", "prompt_style")},
+            "subjects": character.get("subjects") or [{"dna": character.get("dna", {})}],
+            "current_frames": body.current_frames[start:start + batch_count],
+            "previous_shots": frames,
+        }
+        response = await openrouter_chat(system, json.dumps(context), response_format_json=True)
+        try:
+            result = extract_json(response)
+        except (ValueError, TypeError) as exc:
+            raise HTTPException(502, "AI returned an incomplete plan. Try a shorter brief.") from exc
+        if isinstance(result, dict) and isinstance(result.get("frames"), list):
+            previous = body.current_frames[start:start + batch_count]
+            if len(previous) == batch_count and len(result["frames"]) == batch_count:
+                result["frames"] = [{**old, **new} if isinstance(new, dict) else new
+                                    for old, new in zip(previous, result["frames"])]
+        try:
+            plan = validate_shot_plan(result, batch_count, body.catalog, body.lock_scenario)
+        except ValueError as exc:
+            raise HTTPException(502, str(exc)) from exc
+        frames.extend(plan["frames"])
+        warnings.extend(plan["warnings"])
+    plan = validate_shot_plan({"frames": frames}, body.count, body.catalog, body.lock_scenario)
+    plan["warnings"] = list(dict.fromkeys(warnings + plan["warnings"]))
+    return plan
+
+
 class FreeformBody(BaseModel):
     text: str
 
