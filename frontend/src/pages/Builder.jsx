@@ -518,7 +518,7 @@ export default function Builder({ studio = "standard" }) {
     } else {
       nav(location.pathname, { replace: true, state: null });
     }
-  }, [draftId, editorHydrated, location.pathname, location.state, nav, workflows]);
+  }, [draftId, editorHydrated, location.pathname, location.state, nav, referencePreview, workflows]);
 
   useEffect(() => {
     if (editMode === "body_adjust" && referenceImage?.name) setMobileStudioStep("create");
@@ -880,7 +880,7 @@ export default function Builder({ studio = "standard" }) {
   const activeSubjectIdx = Math.max(0, subjects.findIndex((s) => s.id === activeSubjectId));
   const activeSubject = subjects[activeSubjectIdx] || subjects[0];
   const activeDna = activeSubject?.dna || DEFAULT_DNA;
-  const activeFieldLocks = activeSubject?.field_locks || {};
+  const activeFieldLocks = useMemo(() => activeSubject?.field_locks || {}, [activeSubject?.field_locks]);
   const primaryDna = subjects[0]?.dna || DEFAULT_DNA;
 
   // Whenever the user changes cast_size / cast_type in scenario, we may want to auto-add
@@ -1202,7 +1202,7 @@ export default function Builder({ studio = "standard" }) {
       ? "Saved setup loaded with the current compiler · prompt overrides cleared"
       : "Exact Gallery recipe restored in the editor");
     nav(location.pathname, { replace: true, state: null });
-  }, [editorHydrated, location.pathname, location.state, nav, workflows, preserveRestoredPrompt]);
+  }, [editorHydrated, location.pathname, location.state, nav, workflows, preserveRestoredPrompt, studioSteps]);
 
   const improveCompiledPrompt = async () => {
     if (!finalPositive.trim()) {
