@@ -1,3 +1,4 @@
+import QueueConnectionStatus from "@/components/QueueConnectionStatus";
 import { useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Ban, CheckCircle2, Clock3, Loader2, RefreshCw, RotateCcw, Trash2, XCircle } from "lucide-react";
@@ -36,11 +37,14 @@ function when(value) {
 
 export default function Queue() {
   const qc = useQueryClient();
-  const { data: jobs = [], isLoading, isFetching, refetch } = useQuery({
+  const { data: jobs = [], isLoading, isFetching, isError, refetch } = useQuery({
     queryKey: ["render-queue"],
     queryFn: endpoints.listQueue,
     refetchInterval: 2000,
   });
+
+  const connection = useQuery({ queryKey: ["comfy-health"], queryFn: endpoints.comfyHealth,
+    refetchInterval: 5000, retry: false });
 
   const active = useMemo(() => jobs.filter((job) => !terminal.has(job.status)), [jobs]);
   const history = useMemo(() => jobs.filter((job) => terminal.has(job.status)), [jobs]);
@@ -76,23 +80,25 @@ export default function Queue() {
             Added {when(job.created_at)}
             {job.attempts > 0 ? ` · retry ${job.attempts}` : ""}
           </div>
+          {job.connection_error && <p className="mt-2 text-sm text-amber-200">{job.connection_error}</p>}
+          {job.recovery_attempts > 0 && <p className="mt-1 text-xs text-zinc-400">Recovered after ComfyUI lost its prompt · original seed retained.</p>}
           {job.error && <p className="mt-2 text-sm text-red-300">{job.error}</p>}
         </div>
         <div className="flex flex-wrap gap-2">
           {!terminal.has(job.status) && (
-            <button type="button" onClick={() => cancel.mutate(job.id)}
+            <button type="button" disabled={cancel.isPending} onClick={() => cancel.mutate(job.id)}
               className="inline-flex items-center gap-2 rounded-lg border border-red-500/30 px-3 py-2 text-xs font-semibold text-red-300 hover:bg-red-500/10">
               <Ban className="h-4 w-4" /> Cancel
             </button>
           )}
           {["failed", "offline", "cancelled"].includes(job.status) && (
-            <button type="button" onClick={() => retry.mutate(job.id)}
+            <button type="button" disabled={retry.isPending} onClick={() => retry.mutate(job.id)}
               className="inline-flex items-center gap-2 rounded-lg bg-amber-500 px-3 py-2 text-xs font-semibold text-black hover:bg-amber-400">
               <RotateCcw className="h-4 w-4" /> Retry
             </button>
           )}
           {job.status === "done" && (
-            <a href="/gallery" className="inline-flex items-center gap-2 rounded-lg border hairline px-3 py-2 text-xs font-semibold text-zinc-200 hover:bg-white/5">
+            <a href={`/gallery?render=${encodeURIComponent(job.render_id || job.id)}`} className="inline-flex items-center gap-2 rounded-lg border hairline px-3 py-2 text-xs font-semibold text-zinc-200 hover:bg-white/5">
               View in Gallery
             </a>
           )}
@@ -120,9 +126,12 @@ export default function Queue() {
         </div>
       </div>
 
+      <QueueConnectionStatus health={connection.data} backendError={isError}
+        checking={connection.isFetching || isFetching} onReconnect={() => { connection.refetch(); refetch(); }} />
+      {isError && <p role="alert" className="mb-4 text-sm text-rose-200">Could not refresh the queue. Previously loaded jobs remain visible.</p>}
       {isLoading ? (
         <div className="pane grid place-items-center py-20"><Loader2 className="h-6 w-6 animate-spin text-amber-300" /></div>
-      ) : jobs.length === 0 ? (
+      ) : !isError && jobs.length === 0 ? (
         <div className="pane py-20 text-center">
           <Clock3 className="mx-auto h-8 w-8 text-zinc-600" />
           <h2 className="mt-3 font-display text-xl font-bold">The queue is empty</h2>
