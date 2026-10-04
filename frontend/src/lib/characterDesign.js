@@ -19,3 +19,13 @@ export function characterSubjectRecord(subject) {
     design_profile: normalizeCharacterDesign(subject.design_profile),
   };
 }
+
+export function characterDesignRequest(subject, characterId) {
+  const identity = subject?.dna?.identity || {};
+  return {
+    ...normalizeCharacterDesign(subject?.design_profile),
+    character_id: characterId || null,
+    age: Math.max(18, Math.min(80, Math.round(Number(identity.age) || 30))),
+    gender: identity.gender === "female" ? "woman" : identity.gender === "male" ? "man" : "person",
+  };
+}

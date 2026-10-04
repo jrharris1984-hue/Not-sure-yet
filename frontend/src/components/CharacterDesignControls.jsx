@@ -2,7 +2,7 @@ import { useId } from "react";
 import { GLUTE_SIZE_MAX, GLUTE_SHAPES, GLUTE_TEXTURES } from "@/lib/gluteControls";
 import { normalizeCharacterDesign } from "@/lib/characterDesign";
 
-export default function CharacterDesignControls({ value, onChange, subjectLabel = "A" }) {
+export default function CharacterDesignControls({ value, onChange, subjectLabel = "A", children }) {
   const id = useId();
   const profile = normalizeCharacterDesign(value);
   const update = (key, next) => onChange(normalizeCharacterDesign({ ...profile, [key]: next }));
@@ -10,7 +10,7 @@ export default function CharacterDesignControls({ value, onChange, subjectLabel 
     <section className="pane p-3 sm:p-6 space-y-4" data-testid="character-design-controls">
       <header>
         <h2 className="font-display font-bold text-lg">Character design notes · Subject {subjectLabel}</h2>
-        <p className="text-xs text-zinc-400 mt-1">Proportion and surface references for non-explicit character design. Saved with this subject as design notes; these notes do not change render prompts.</p>
+        <p className="text-xs text-zinc-400 mt-1">Proportion and surface references saved with this subject for non-explicit character design. Use the clothed character study below to render these selections.</p>
       </header>
       <div className="space-y-2">
         <label htmlFor={`${id}-size`} className="block text-sm">Glute proportion reference <span className="text-amber-300">{profile.size} / {GLUTE_SIZE_MAX}</span></label>
@@ -32,6 +32,7 @@ export default function CharacterDesignControls({ value, onChange, subjectLabel 
       </div>
       <button type="button" className="chip" onClick={() => onChange(normalizeCharacterDesign())}>Clear design notes</button>
       <p className="text-xs text-zinc-500">Use Save character to keep these notes. Each subject has separate selections.</p>
+      {children}
     </section>
   );
 }
