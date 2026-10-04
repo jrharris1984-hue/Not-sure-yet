@@ -1,3 +1,6 @@
+import CreationOutputControls from "@/components/CreationOutputControls";
+import CreateJourney from "@/components/CreateJourney";
+import { CREATE_STAGES, CREATE_MOBILE_STEPS } from "@/lib/createJourney";
 import { useEffect, useMemo, useState, useRef } from "react";
 import { useParams, useNavigate, useLocation, Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -31,7 +34,6 @@ import GroupedSectionRail from "@/components/GroupedSectionRail";
 import DnaAtAGlance from "@/components/DnaAtAGlance";
 import MobileOverflow from "@/components/MobileOverflow";
 import MobileStudioFlow, {
-  MOBILE_STUDIO_STEPS,
   SIMPLE_FIELD_KEYS,
   mobileStudioStepForSection,
   mobileStudioSectionsForStep,
@@ -101,7 +103,7 @@ export default function Builder({ studio = "standard" }) {
   const { id, section: sectionParam } = useParams();
   const isNew = !id;
   const studioProfile = STUDIO_PROFILES[studio];
-  const studioSteps = studioProfile?.steps || MOBILE_STUDIO_STEPS;
+  const studioSteps = studioProfile?.steps || CREATE_MOBILE_STEPS;
   const draftId = isNew && studioProfile ? `studio:${studio}` : (id || null);
   const nav = useNavigate();
   const location = useLocation();
@@ -130,6 +132,7 @@ export default function Builder({ studio = "standard" }) {
   const [desktopQuickMode, setDesktopQuickMode] = useState(true);
   const [specialtyTab, setSpecialtyTab] = useState(0);
   const [quickReview, setQuickReview] = useState(false);
+  useEffect(() => { setQuickReview(false); }, [activeSection]);
   const activeMobileStudioIndex = Math.max(0, studioSteps.findIndex((step) => step.id === mobileStudioStep));
 
   useEffect(() => {
@@ -529,6 +532,7 @@ export default function Builder({ studio = "standard" }) {
     const rebuildCurrent = bodyCreation || location.state?.renderRecipeMode === "current";
     galleryImportApplied.current = true;
     setMobileStudioStep(bodyCreation ? mobileStudioStepForSection("physique", studioSteps) : "create");
+    setQuickReview(!bodyCreation);
     if (bodyCreation) {
       setPoseAssistEnabled(false);
       setRenderCount(1);
@@ -651,7 +655,9 @@ export default function Builder({ studio = "standard" }) {
   const activeRecipeFamily = recipeFamily(activeCompiler);
   const renderSettings = isKrea2
     ? { ...chromaSettings, steps: 8, cfg: 1, sampler: "euler", scheduler: "simple" }
-    : chromaSettings;
+    : activeCompiler === "flux2_klein"
+      ? { ...chromaSettings, steps: 4, cfg: 1, sampler: "euler" }
+      : chromaSettings;
   const kreaBaseBlocked = isKrea2 && krea2Status && !krea2Status.ready;
   const kreaRenderBlocked = !!kreaBaseBlocked;
 
@@ -1609,7 +1615,7 @@ export default function Builder({ studio = "standard" }) {
 
   const returnToCharacterFromResult = () => {
     clearFinishedRenderSession();
-    openMobileStudioStep("character");
+    openMobileStudioStep(studioSteps.some((step) => step.id === "character") ? "character" : "start");
   };
 
   // Poll every render from the latest multi-image request so progress and
@@ -1990,44 +1996,37 @@ export default function Builder({ studio = "standard" }) {
     && batchIsFinished
     && (!poseAssistEnabled || poseAssistStage === "done");
 
-  const quickStages = [
-    { key: "identity", title: "People", detail: "Cast & age", sections: ["identity", "scenario"] },
-    { key: "physique", title: "Body", detail: "Shape & features", sections: ["physique", "face", "hair", "skin", "intimate"] },
-    { key: "wardrobe", title: "Wardrobe", detail: "Outfit & color", sections: ["wardrobe"] },
-    { key: "pose", title: "Pose", detail: "Action & camera", sections: ["pose", "camera"] },
-    { key: "scene", title: "Setting", detail: "Place & mood", sections: ["scene", "lighting", "style"] },
-    { key: "feet", title: "Details", detail: "Additional controls", sections: ["feet", "kink", "watersports"] },
-    { key: "review", title: "Review", detail: "Prompt & render", sections: [] },
-  ];
-  const [quickOpenCategory, setQuickOpenCategory] = useState("identity");
-  const quickStageIndex = quickReview ? 6 : Math.max(0, quickStages.findIndex((stage) => stage.sections.includes(activeSection)));
+  const quickStages = CREATE_STAGES;
+  const quickStageIndex = quickReview ? quickStages.length - 1 : Math.max(0, quickStages.findIndex((stage) => stage.sections.includes(activeSection)));
+  const openCreateSection = (key) => {
+    setQuickReview(false);
+    setMobileStudioStep(mobileStudioStepForSection(key, studioSteps));
+    goSection(key);
+  };
   const selectQuickStage = (index) => {
     if (index < 0 || index >= quickStages.length) return;
-    setQuickOpenCategory(quickStages[index].key);
-    if (index === 6) {
-      setQuickReview(true);
-    } else {
-      setQuickReview(false);
-      goSection(quickStages[index].key);
-    }
+    const review = index === quickStages.length - 1;
+    setQuickReview(review);
+    if (review) setMobileStudioStep("create");
+    else openCreateSection(quickStages[index].sections[0]);
     window.requestAnimationFrame(() => document.querySelector('[data-testid="desktop-quick-create"]')?.scrollIntoView({
       behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth",
       block: "start",
     }));
   };
 
-  const sectionNavigation = (position) => (
+  const sectionNavigation = (position) => desktopQuickMode ? null : (
     <div className="hidden md:flex items-center justify-between gap-2" aria-label={`${position} section navigation`}>
-      <button type="button" onClick={() => desktopQuickMode ? selectQuickStage(quickStageIndex - 1) : activeIdx > 0 && goSection(SECTIONS[activeIdx - 1].key)}
-        disabled={desktopQuickMode ? quickStageIndex === 0 : activeIdx === 0} data-testid={`btn-section-prev${position === "top" ? "-top" : ""}`}
+      <button type="button" onClick={() => activeIdx > 0 && goSection(SECTIONS[activeIdx - 1].key)}
+        disabled={activeIdx === 0} data-testid={`btn-section-prev${position === "top" ? "-top" : ""}`}
         className="inline-flex items-center gap-1.5 rounded-lg border hairline px-4 py-2.5 text-sm text-zinc-200 hover:bg-white/5 disabled:opacity-30">
-        <ChevronLeft className="h-4 w-4" /> {desktopQuickMode ? quickStageIndex > 0 ? quickStages[quickStageIndex - 1].title : "Previous" : activeIdx > 0 ? SECTIONS[activeIdx - 1].title : "Prev"}
+        <ChevronLeft className="h-4 w-4" /> {activeIdx > 0 ? SECTIONS[activeIdx - 1].title : "Prev"}
       </button>
-      {(desktopQuickMode ? quickStageIndex < 6 : activeIdx < SECTIONS.length - 1) ? (
-        <button type="button" onClick={() => desktopQuickMode ? selectQuickStage(quickStageIndex + 1) : goSection(SECTIONS[activeIdx + 1].key)}
+      {(activeIdx < SECTIONS.length - 1) ? (
+        <button type="button" onClick={() => goSection(SECTIONS[activeIdx + 1].key)}
           data-testid={`btn-section-next${position === "top" ? "-top" : ""}`}
           className="inline-flex items-center gap-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-black text-sm font-semibold px-4 py-2.5">
-          {desktopQuickMode ? quickStages[quickStageIndex + 1].title : SECTIONS[activeIdx + 1].title} <ChevronRight className="h-4 w-4" />
+          {SECTIONS[activeIdx + 1].title} <ChevronRight className="h-4 w-4" />
         </button>
       ) : (
         <button type="button" onClick={() => save.mutate()}
@@ -2340,7 +2339,7 @@ export default function Builder({ studio = "standard" }) {
             {label}
           </button>
         ))}
-        <span className="ml-auto hidden xl:inline pr-2 text-zinc-500">{desktopQuickMode ? "Start with the essentials. Full Studio keeps every option." : "All controls are available below."}</span>
+        <span className="ml-auto hidden xl:inline pr-2 text-zinc-500">{desktopQuickMode ? "Design your subject, compose the scene, then generate." : "All controls are available below."}</span>
         <button type="button" onClick={() => { setDesktopQuickMode((value) => !value); setQuickReview(false); }}
           data-testid="btn-desktop-studio-mode" className="ml-auto rounded-lg border border-cyan-400/40 px-3 py-2 font-semibold text-cyan-200 hover:bg-cyan-400/10">
           {desktopQuickMode ? "Full Studio · all options" : "Quick Create"}
@@ -2579,7 +2578,7 @@ export default function Builder({ studio = "standard" }) {
         }}
       />}
 
-      {!isImageFirst && <nav className="hidden md:grid grid-cols-5 gap-2" aria-label="Creation steps" data-testid="desktop-creation-steps">
+      {!isImageFirst && !desktopQuickMode && <nav className={`hidden md:grid ${studioProfile ? "grid-cols-5" : "grid-cols-3"} gap-2`} aria-label="Creation steps" data-testid="desktop-creation-steps">
         {studioSteps.map((step, index) => {
           const selected = step.id === mobileStudioStep;
           return <button key={step.id} type="button" onClick={() => openMobileStudioStep(step.id)}
@@ -2918,55 +2917,43 @@ export default function Builder({ studio = "standard" }) {
         </div>
       </section>}
       {desktopQuickMode && editMode !== "body_adjust" && (
-        <section className="hidden md:block studio-journey rounded-2xl p-5" data-testid="desktop-quick-create">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <div className="section-label">Create / Main Studio</div>
-              <h2 className="font-display mt-1 text-xl font-bold text-white">Build your image</h2>
-              <p className="mt-1 text-sm text-zinc-400">Seven stages from character to render. Jump to any detailed control below.</p>
-            </div>
-            <span className="rounded-full border border-amber-400/40 bg-amber-500/10 px-3 py-1 text-xs text-amber-200">{activeWorkflow?.name || "Choose a model"}</span>
-          </div>
-          <p className="mt-4 text-[11px] font-mono uppercase tracking-widest text-cyan-300">Choose a category, then a control</p>
-          <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-4 xl:grid-cols-7" aria-label="Creation stages">
-            {quickStages.map((stage, index) => (
-              <button key={stage.key} type="button" onClick={() => selectQuickStage(index)}
-                aria-current={quickStageIndex === index ? "step" : undefined}
-                aria-expanded={stage.sections.length ? quickOpenCategory === stage.key : undefined}
-                className={`studio-stage relative min-h-[90px] rounded-xl px-3 py-3 text-left ${quickStageIndex === index ? "studio-stage-active" : index < quickStageIndex ? "studio-stage-past" : ""}`}>
-                <span className="block font-mono text-[10px] tracking-widest text-cyan-300">{String(index + 1).padStart(2, "0")} / 07</span>
-                <span className="mt-2 block font-display text-sm font-bold text-white">{stage.title}</span>
-                <span className="mt-0.5 block text-[11px] text-zinc-400">{stage.detail}</span>
-              </button>
-            ))}
-          </div>
-          {quickOpenCategory !== "review" && (
-            <div className="studio-subcategories mt-3 flex flex-wrap items-center gap-2 rounded-xl p-3" aria-label={`${quickStages.find((stage) => stage.key === quickOpenCategory)?.title || "Category"} controls`}>
-              <span className="mr-2 text-xs font-semibold text-cyan-200">{quickStages.find((stage) => stage.key === quickOpenCategory)?.title}</span>
-              {quickStages.find((stage) => stage.key === quickOpenCategory)?.sections.map((key) => {
-                const section = SECTIONS.find((item) => item.key === key);
-                return section && <button key={key} type="button" onClick={() => { setQuickReview(false); goSection(key); }}
-                  className={`rounded-lg border px-3 py-2 text-xs font-semibold transition-colors ${activeSection === key && !quickReview ? "border-lime-400 bg-lime-400/15 text-lime-200" : "border-white/15 bg-white/[0.04] text-zinc-300 hover:border-cyan-400/60 hover:text-white"}`}>
-                  {section.title}
-                </button>;
-              })}
-            </div>
-          )}
-        </section>
+        <div className="hidden md:block">
+          <CreateJourney stages={quickStages} index={quickStageIndex} activeSection={activeSection}
+            sections={SECTIONS} onStage={selectQuickStage} onSection={openCreateSection} modelName={activeWorkflow?.name} />
+        </div>
       )}
 
           {desktopQuickMode && quickReview ? (
             <div className="hidden md:block pane border-cyan-400/30 p-5 space-y-4" data-testid="desktop-quick-review">
-              <div className="section-label">Ready to render</div>
+              <div className="section-label">Generate · ready when you are</div>
+              <CreationOutputControls workflows={selectableWorkflows} workflowId={workflowId} onWorkflow={setWorkflowId}
+                tier={qualityTier} onTier={applyQualityTier} count={poseAssistEnabled && !isVariationWorkflow ? 1 : renderCount} onCount={setRenderCount}
+                countLocked={poseAssistEnabled && !isVariationWorkflow}
+                settings={renderSettings} onSettings={setChromaSettings} family={activeRecipeFamily}
+                fixedSampling={isKrea2 || activeCompiler === "flux2_klein"} busy={dispatching} />
+              <details className="rounded-xl border hairline p-3">
+                <summary className="cursor-pointer text-xs font-semibold text-zinc-300">Optional LoRAs</summary>
+                <div className="mt-3"><UniversalLoraPicker workflow={activeWorkflow} value={selectedLora}
+                  onChange={setSelectedLora} slotLabel="LoRA 1" excludedNames={showSecondLora && secondaryLora.name ? [secondaryLora.name] : []} /></div>
+                {showSecondLora && <div className="mt-3"><UniversalLoraPicker workflow={activeWorkflow} value={secondaryLora}
+                  onChange={setSecondaryLora} slotLabel="LoRA 2" excludedNames={selectedLora.name ? [selectedLora.name] : []} /></div>}
+                <button type="button" className="mt-2 text-xs text-cyan-300" onClick={() => {
+                  if (showSecondLora) setSecondaryLora({ name: "", strength: 0.8, triggerWords: [] });
+                  setShowSecondLora(!showSecondLora);
+                }}>{showSecondLora ? "Remove second LoRA" : "Add second LoRA"}</button>
+              </details>
               <div className="grid grid-cols-2 gap-3 text-sm">
                 <div><span className="text-zinc-500">Model</span><div className="font-semibold">{activeWorkflow?.name || "Select a model"}</div></div>
                 <div><span className="text-zinc-500">Output</span><div className="font-semibold">{qualityTier} · {activeRecipeFamily === "image" ? `${renderCount} image${renderCount === 1 ? "" : "s"}` : activeRecipeFamily}</div></div>
               </div>
-              <div className="rounded-xl border hairline bg-black/40 p-3 text-xs leading-relaxed text-zinc-300 max-h-44 overflow-y-auto">{finalPositive || "Choose the subject and scene to build a prompt."}</div>
+              <details className="rounded-xl border hairline bg-black/20 p-3">
+                <summary className="cursor-pointer text-xs font-semibold text-zinc-300">Prompt preview</summary>
+                <div className="mt-2 max-h-44 overflow-y-auto text-xs leading-relaxed text-zinc-400">{finalPositive || "Choose the subject and scene to build a prompt."}</div>
+              </details>
               {mobileCreateIssues.length > 0 && <div className="text-xs text-rose-300">{mobileCreateIssues.join(" ")}</div>}
               <button type="button" onClick={doDispatch} disabled={dispatching || !workflowId || mobileCreateIssues.length > 0}
                 className="rounded-lg bg-amber-500 px-5 py-3 text-sm font-bold text-black disabled:opacity-40">
-                {dispatching ? "Rendering…" : "Render images"}
+                {dispatching ? "Rendering…" : "Generate images"}
               </button>
               {activeRender && (
                 <div className="border-t hairline pt-4" data-testid="quick-create-result">
@@ -2984,11 +2971,11 @@ export default function Builder({ studio = "standard" }) {
             </div>
           ) : null}
           <div key={activeSection} className={`studio-section-enter ${desktopQuickMode && quickReview ? "md:hidden" : "block"}`}>
-          <div className="hidden md:flex items-center justify-between text-xs font-mono text-zinc-500">
+          <div className={`${desktopQuickMode ? "hidden" : "hidden md:flex"} items-center justify-between text-xs font-mono text-zinc-500`}>
             <span>Detail {activeIdx + 1} of {SECTIONS.length}{isMulti && ` · Subject ${activeSubject.label}`}</span>
             <span className={`uppercase tracking-widest section-label phase-${phaseOfSection(activeSection)}`}>{SECTIONS[activeIdx].title}</span>
           </div>
-          <div className="hidden md:block h-1 rounded-full bg-elevated overflow-hidden">
+          <div className={`${desktopQuickMode ? "hidden" : "hidden md:block"} h-1 rounded-full bg-elevated overflow-hidden`}>
             <div
               className="h-full bg-amber-400 transition-all"
               style={{ width: `${((activeIdx + 1) / SECTIONS.length) * 100}%` }}
