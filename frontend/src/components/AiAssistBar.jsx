@@ -1,17 +1,71 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Textarea } from "@/components/ui/textarea";
-import { Sparkles, Wand2, Loader2, ChevronDown } from "lucide-react";
+import { Sparkles, Wand2, Loader2, ChevronDown, Save, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { endpoints } from "@/lib/api";
 import { DEFAULT_DNA } from "@/lib/dna";
 import { normalizeAiSceneSubjects } from "@/lib/aiSceneDraft";
 
+const DESCRIPTION_DRAFT_KEY = "ultra-studio:ai-description-draft:v1";
+const readDescriptionDraft = () => {
+  try { return window.localStorage.getItem(DESCRIPTION_DRAFT_KEY) || ""; }
+  catch { return ""; }
+};
+
 export default function AiAssistBar({ dna, onApplyDna, onApplySubjects, aiProvider = "AI" }) {
-  const [text, setText] = useState("");
+  const [text, setText] = useState(readDescriptionDraft);
   const [refineText, setRefineText] = useState("");
   const [busy, setBusy] = useState("");
   const [expanded, setExpanded] = useState(false);
   const [draft, setDraft] = useState(null);
+  const [savedDescriptions, setSavedDescriptions] = useState([]);
+  const [descriptionName, setDescriptionName] = useState("");
+  const [selectedDescription, setSelectedDescription] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [savedError, setSavedError] = useState("");
+
+  useEffect(() => {
+    try { window.localStorage.setItem(DESCRIPTION_DRAFT_KEY, text); }
+    catch { /* Named saves remain available when browser storage is unavailable. */ }
+  }, [text]);
+
+  useEffect(() => {
+    if (!expanded) return;
+    let active = true;
+    endpoints.listSavedDescriptions().then(descriptions => {
+      if (active) { setSavedDescriptions(descriptions); setSavedError(""); }
+    }).catch(() => {
+      if (active) setSavedError("Could not load saved descriptions. Close and reopen this panel to retry.");
+    });
+    return () => { active = false; };
+  }, [expanded]);
+
+  const saveDescription = async () => {
+    if (!text.trim() || !descriptionName.trim()) return;
+    setSaving(true);
+    try {
+      const saved = await endpoints.createSavedDescription({ name: descriptionName.trim(), text: text.trim() });
+      setSavedDescriptions(current => [saved, ...current]);
+      setSelectedDescription(saved.id);
+      toast.success("Description saved");
+    } catch (e) {
+      const detail = e?.response?.data?.detail;
+      toast.error(typeof detail === "string" ? detail : "Could not save description");
+    } finally { setSaving(false); }
+  };
+
+  const deleteDescription = async () => {
+    if (!selectedDescription) return;
+    setSaving(true);
+    try {
+      await endpoints.deleteSavedDescription(selectedDescription);
+      setSavedDescriptions(current => current.filter(item => item.id !== selectedDescription));
+      setSelectedDescription("");
+      toast.success("Saved description deleted");
+    } catch { toast.error("Could not delete description"); }
+    finally { setSaving(false); }
+  };
+
 
   const previewDraft = (suggestion, source) => {
     const changes = Object.entries(suggestion || {}).flatMap(([section, values]) =>
@@ -57,7 +111,6 @@ export default function AiAssistBar({ dna, onApplyDna, onApplySubjects, aiProvid
       onApplySubjects(draft.subjects);
       toast.success(`${draft.subjects.length} adult subject${draft.subjects.length === 1 ? "" : "s"} added. Review their settings before rendering.`);
       setDraft(null);
-      setText("");
       return;
     }
     // A new description starts a fresh character. Refinements preserve other choices.
@@ -68,8 +121,7 @@ export default function AiAssistBar({ dna, onApplyDna, onApplySubjects, aiProvid
     onApplyDna(next);
     toast.success(`${draft.changes.length} setting${draft.changes.length === 1 ? "" : "s"} applied. Review the prompt before rendering.`);
     setDraft(null);
-    if (draft.source === "description") setText("");
-    else setRefineText("");
+    if (draft.source !== "description") setRefineText("");
   };
 
   return (
@@ -87,10 +139,11 @@ export default function AiAssistBar({ dna, onApplyDna, onApplySubjects, aiProvid
         <div className="text-[11px] uppercase tracking-widest text-zinc-500 font-mono">Freeform → DNA</div>
         <Textarea
           value={text}
-          onChange={(e) => setText(e.target.value)}
+          onChange={(e) => { setText(e.target.value); setDraft(null); }}
           rows={2}
           placeholder='e.g. "two adult friends in a garden, one with silver hair and one with dark curls"'
           className="bg-elevated border-hairline text-zinc-100 text-sm"
+          maxLength={20000}
           data-testid="input-ai-freeform"
         />
         <button
@@ -102,6 +155,36 @@ export default function AiAssistBar({ dna, onApplyDna, onApplySubjects, aiProvid
           {busy === "freeform" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />}
           Draft scene
         </button>
+      </div>
+
+      <div className="space-y-2">
+        <p className="text-[11px] text-zinc-400">Your draft stays here after applying. Save a named description to reuse it on any device.</p>
+        <div className="flex flex-wrap gap-2">
+          <input aria-label="Description name" placeholder="Description name" maxLength={100}
+            value={descriptionName} onChange={e => setDescriptionName(e.target.value)}
+            className="min-w-0 flex-1 rounded-lg border hairline bg-elevated px-3 py-2 text-sm text-zinc-100" />
+          <button type="button" onClick={saveDescription} disabled={saving || !text.trim() || !descriptionName.trim()}
+            className="inline-flex items-center gap-2 rounded-lg border hairline px-3 py-2 text-sm text-zinc-200 disabled:opacity-40">
+            <Save className="h-4 w-4" /> Save description
+          </button>
+        </div>
+        {savedError && <p role="status" className="text-xs text-amber-200">{savedError}</p>}
+        {savedDescriptions.length > 0 && <div className="flex flex-wrap gap-2">
+          <select aria-label="Saved descriptions" value={selectedDescription} disabled={saving}
+            onChange={e => {
+              const selected = savedDescriptions.find(item => item.id === e.target.value);
+              setSelectedDescription(e.target.value);
+              if (selected) { setText(selected.text); setDescriptionName(selected.name); setDraft(null); }
+            }} className="min-w-0 flex-1 rounded-lg border hairline bg-elevated px-3 py-2 text-sm text-zinc-100">
+            <option value="">Load a saved description…</option>
+            {savedDescriptions.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}
+          </select>
+          <button type="button" aria-label="Delete saved description" onClick={deleteDescription}
+            disabled={saving || !selectedDescription}
+            className="rounded-lg border hairline px-3 py-2 text-zinc-400 hover:text-red-300 disabled:opacity-40">
+            <Trash2 className="h-4 w-4" />
+          </button>
+        </div>}
       </div>
 
       <div className="h-px bg-hairline" />

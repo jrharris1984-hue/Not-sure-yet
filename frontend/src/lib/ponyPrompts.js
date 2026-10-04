@@ -1,3 +1,4 @@
+import { bustShapePrompt } from "./physiqueControls";
 import { gluteSizePrompt } from "@/lib/gluteControls";
 // Pony V6 XL prompt builder — uses Pony's score_9 quality prefix and booru-style tag weighting.
 // Pony expects: score_9, score_8_up, score_7_up, rating_explicit, source_photo (or source_anime), then tag list.
@@ -376,7 +377,7 @@ function _ponySubjectBlock(dna = {}, opts = {}) {
     bodyProfile,
     ph.muscularity > 85 ? "muscular female, defined muscles" : ph.muscularity > 60 ? "athletic body, fit" : "",
     ph.implant_volume > 0 ? "" : w(ph.bust_scale ? `${ph.bust_scale >= 80 ? "fantasy oversized" : ph.bust_scale >= 60 ? "very large" : ph.bust_scale >= 40 ? "full" : "small"} breasts` : exp("physique", "bust") || (ph.bust && `${ph.bust} breasts`), eWeight),
-    ph.implant_volume > 0 ? "round augmented breasts" : exp("physique", "bust_shape"),
+    ph.implant_volume > 0 ? "round augmented breasts" : bustShapePrompt(ph.bust_shape),
     implantVisualPrompt(ph.implant_volume),
     w(ph.butt_scale > 100 ? gluteSizePrompt(ph.butt_scale) : ph.butt_scale ? `${ph.butt_scale >= 80 ? "fantasy oversized" : ph.butt_scale >= 60 ? "very large" : ph.butt_scale >= 40 ? "full" : "small"} glutes` : exp("physique", "butt") || (ph.butt && `${ph.butt} ass`), eWeight),
     ph.glute_shape,

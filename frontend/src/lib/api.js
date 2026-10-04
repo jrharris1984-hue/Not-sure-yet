@@ -140,6 +140,10 @@ export const endpoints = {
   listKinkPresets: () => api.get("/kink_presets").then((r) => r.data),
   createKinkPreset: (body) => api.post("/kink_presets", body).then((r) => r.data),
   deleteKinkPreset: (id) => api.delete(`/kink_presets/${id}`).then((r) => r.data),
+  // Original descriptions shared between devices.
+  listSavedDescriptions: () => api.get("/saved_descriptions").then((r) => r.data),
+  createSavedDescription: (body) => api.post("/saved_descriptions", body).then((r) => r.data),
+  deleteSavedDescription: (id) => api.delete(`/saved_descriptions/${id}`).then((r) => r.data),
   // Reusable full-character presets
   listCharacterPresets: () => api.get("/character_presets").then((r) => r.data),
   createCharacterPreset: (body) => api.post("/character_presets", body).then((r) => r.data),

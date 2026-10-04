@@ -1029,6 +1029,35 @@ async def delete_character_preset(pid: str):
     return {"ok": True}
 
 
+# Original free-form descriptions are saved separately from generated DNA.
+class SavedDescriptionBody(BaseModel):
+    name: str = Field(min_length=1, max_length=100)
+    text: str = Field(min_length=1, max_length=20000)
+
+
+@api.get("/saved_descriptions")
+async def list_saved_descriptions():
+    return await db.saved_descriptions.find({}, {"_id": 0}).sort("created_at", -1).to_list(None)
+
+
+@api.post("/saved_descriptions")
+async def create_saved_description(body: SavedDescriptionBody):
+    name, text = body.name.strip(), body.text.strip()
+    if not name or not text:
+        raise HTTPException(400, "A name and description are required")
+    description = {"id": new_id(), "name": name, "text": text, "created_at": now_iso()}
+    await db.saved_descriptions.insert_one(dict(description))
+    return description
+
+
+@api.delete("/saved_descriptions/{description_id}")
+async def delete_saved_description(description_id: str):
+    result = await db.saved_descriptions.delete_one({"id": description_id})
+    if result.deleted_count == 0:
+        raise HTTPException(404, "Saved description not found")
+    return {"ok": True}
+
+
 @api.get("/characters/{cid}/renders")
 async def character_renders(cid: str):
     docs = await db.renders.find(
