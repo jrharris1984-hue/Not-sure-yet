@@ -2,8 +2,8 @@ export default function GalleryBrowseControls({ value, onChange, models, onRefre
   const set = (key, next) => onChange({ ...value, [key]: next });
   const active = value.search || value.model !== "all" || value.media !== "all" || value.sort !== "newest";
   return <section className="pane p-3 sm:p-4 space-y-3" aria-label="Browse Gallery">
-    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[2fr_1fr_1fr_1fr]">
-      <label className="text-xs text-zinc-400">Search
+    <div className="grid grid-cols-2 gap-3 lg:grid-cols-[2fr_1fr_1fr_1fr]">
+      <label className="col-span-2 lg:col-span-1 text-xs text-zinc-400">Search
         <input type="search" aria-label="Search Gallery" value={value.search} onChange={(event) => set("search", event.target.value)}
           placeholder="Prompt, model, album, seed, or render ID"
           className="mt-1 block w-full rounded-lg border hairline bg-elevated p-2.5 text-sm text-zinc-100" />

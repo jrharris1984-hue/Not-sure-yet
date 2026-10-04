@@ -1,3 +1,4 @@
+import StudioLoading from "@/components/StudioLoading";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
@@ -49,9 +50,7 @@ export default function Shoots() {
       )}
 
       {isLoading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {Array.from({ length: 4 }).map((_, i) => <div key={i} className="pane h-40 animate-pulse" />)}
-        </div>
+        <StudioLoading label="Loading photo shoots…" />
       ) : visibleShoots.length === 0 ? (
         <div className="pane p-10 text-center">
           <div className="section-label mb-2">No shoots yet</div>
