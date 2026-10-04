@@ -3122,12 +3122,14 @@ export default function Builder({ studio = "standard" }) {
             simpleMode={mobileStudioMode === "simple"}
             simpleFieldKeys={SIMPLE_FIELD_KEYS[activeSection] || []}
             onRequestAdvanced={() => setMobileStudioMode("advanced")}
+            fieldExtras={activeSection === "physique" ? {
+              glute_shape: <CharacterDesignControls
+                value={activeSubject.design_profile}
+                subjectLabel={activeSubject.label}
+                onChange={design_profile => updateActiveSubject(() => ({ design_profile }))}
+              />,
+            } : {}}
           />
-          {activeSection === "physique" && <CharacterDesignControls
-            value={activeSubject.design_profile}
-            subjectLabel={activeSubject.label}
-            onChange={design_profile => updateActiveSubject(() => ({ design_profile }))}
-          />}
           {sectionNavigation("bottom")}
           </div>
         </div>
