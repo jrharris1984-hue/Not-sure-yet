@@ -24,6 +24,7 @@ from pydantic import BaseModel, Field, ConfigDict
 from media_library import router as media_library_router, configure_media_library_url
 from generation_settings import normalize_generation_settings, apply_generation_settings
 from image_recovery import recovery_recipe, apply_recovery_strength
+from queue_reliability import submit_render, interrupted_submission_patch
 
 import httpx
 import websockets as ws_client
@@ -1506,7 +1507,7 @@ def _patch_seed(workflow: Dict[str, Any], seed: int) -> int:
     return count
 
 
-async def _perform_dispatch(body: "DispatchBody") -> Dict[str, Any]:
+async def _perform_dispatch(body: "DispatchBody", queue_id: Optional[str] = None) -> Dict[str, Any]:
     """Shared dispatch pipeline. Builds a Render, patches the workflow, calls ComfyUI,
     persists the render, and returns the doc (without _id)."""
     s = await get_settings()
@@ -2022,26 +2023,6 @@ async def _perform_dispatch(body: "DispatchBody") -> Dict[str, Any]:
     if seed_used is not None:
         body.seed = seed_used
 
-    # Try to dispatch to ComfyUI
-    try:
-        async with httpx.AsyncClient(timeout=8.0) as hc:
-            resp = await hc.post(
-                f"{s.comfyui_url.rstrip('/')}/prompt",
-                json={"prompt": workflow, "client_id": r.id},
-            )
-        if resp.status_code >= 400:
-            r.status = "failed"
-            r.error = f"ComfyUI /prompt error: {resp.status_code} {resp.text[:200]}"
-        else:
-            data = resp.json()
-            r.comfy_prompt_id = data.get("prompt_id")
-            r.status = "running" if r.comfy_prompt_id else "failed"
-            if not r.comfy_prompt_id:
-                r.error = "ComfyUI accepted the request without returning a prompt ID. Check the ComfyUI server log."
-    except Exception as e:
-        r.status = "offline"
-        r.error = f"ComfyUI unreachable: {e}"
-
     doc = r.model_dump()
     doc["mapping"] = mapped
     doc["workflow_id"] = wf_template.id if wf_template else None
@@ -2056,9 +2037,12 @@ async def _perform_dispatch(body: "DispatchBody") -> Dict[str, Any]:
     doc["parent_render_id"] = body.parent_render_id
     doc["operation"] = body.operation
     doc["hidden_from_gallery"] = bool(body.hidden_from_gallery)
-    await db.renders.insert_one(doc)
-    doc.pop("_id", None)
-    return doc
+    async def post_prompt():
+        async with httpx.AsyncClient(timeout=8.0) as hc:
+            return await hc.post(f"{s.comfyui_url.rstrip('/')}/prompt",
+                                 json={"prompt": workflow, "client_id": r.id})
+    return await submit_render(doc, queue_id, db.renders, db.render_queue, post_prompt, now_iso)
+
 
 
 @api.post("/reference-images/upload")
@@ -2138,6 +2122,9 @@ async def _queue_view(job: Dict[str, Any]) -> Dict[str, Any]:
             clean["id"] = job["id"]
             clean["render_id"] = render_id
             clean["status"] = job.get("status", render.get("status"))
+            if job.get("connection_wait"):
+                clean["connection_wait"] = True
+                clean["connection_error"] = job.get("connection_error")
     return clean
 
 
@@ -2688,6 +2675,7 @@ async def retry_queue_job(qid: str):
         "started_at": None,
         "finished_at": None,
         "updated_at": now_iso(),
+        "connection_wait": False, "connection_error": None,
         "attempts": int(job.get("attempts", 0)) + 1,
     }
     await db.render_queue.update_one({"id": qid}, {"$set": patch})
@@ -2875,14 +2863,20 @@ def _comfy_queue_contains(queue: Dict[str, Any], prompt_id: str) -> bool:
 
 async def _poll_render_doc(rid: str) -> Optional[Dict[str, Any]]:
     doc = await db.renders.find_one({"id": rid}, {"_id": 0})
-    if not doc or not doc.get("comfy_prompt_id"):
+    if not doc or doc.get("status") == "cancelled":
         return doc
     if doc.get("status") in {"rejected", "failed"} and doc.get("anatomy_guard_status") == "failed":
+        return doc
+    if not doc.get("comfy_prompt_id"):
         return doc
     s = await get_settings()
     try:
         async with httpx.AsyncClient(timeout=6.0) as hc:
             resp = await hc.get(f"{s.comfyui_url.rstrip('/')}/history/{doc['comfy_prompt_id']}")
+        resp.raise_for_status()
+        if doc.get("connection_error"):
+            await db.renders.update_one({"id": rid}, {"$set": {"connection_error": None}})
+            doc["connection_error"] = None
         if resp.status_code == 200:
             hist = resp.json()
             entry = hist.get(doc["comfy_prompt_id"])
@@ -2933,10 +2927,15 @@ async def _poll_render_doc(rid: str) -> Optional[Dict[str, Any]]:
                         doc.update(update)
     except Exception as e:
         logger.warning(f"poll_render failed: {e}")
+        message = "ComfyUI connection interrupted. The render is saved; polling will resume when it reconnects."
+        await db.renders.update_one({"id": rid}, {"$set": {"connection_error": message}})
+        doc["connection_error"] = message
     return doc
 
 
 async def _sync_queue_job(job: Dict[str, Any]) -> Dict[str, Any]:
+    if job.get("status") == "cancelled":
+        return job
     render_id = job.get("render_id")
     if not render_id:
         return job
@@ -2955,6 +2954,13 @@ async def _sync_queue_job(job: Dict[str, Any]) -> Dict[str, Any]:
             await db.render_queue.update_one({"id": job["id"]}, {"$set": patch})
             job.update(patch)
             logger.warning("ComfyUI lost prompt for queue job %s; requeued once", job["id"])
+            return job
+        if status == "offline" and render.get("submission_state") == "not_sent":
+            patch = {"status": "queued", "render_id": None, "connection_wait": True,
+                     "connection_error": render.get("error"), "error": None, "started_at": None,
+                     "finished_at": None, "updated_at": now_iso()}
+            await db.render_queue.update_one({"id": job["id"]}, {"$set": patch})
+            job.update(patch)
             return job
         mode = _guard_mode(render, payload)
         is_still_image = str(render.get("workflow_type") or "image") not in {"video", "text_video"}
@@ -3212,6 +3218,10 @@ async def _render_queue_worker():
             if active:
                 if active.get("render_id"):
                     active = await _sync_queue_job(active)
+                elif active.get("status") == "running":
+                    await db.render_queue.update_one({"id": active["id"]}, {"$set": {
+                        "status": "failed", "error": "The running job has no render link. Check ComfyUI history before retrying.",
+                        "finished_at": now_iso(), "updated_at": now_iso()}})
                 elif active.get("status") == "dispatching":
                     await db.render_queue.update_one(
                         {"id": active["id"]},
@@ -3224,14 +3234,20 @@ async def _render_queue_worker():
             if not queued:
                 await asyncio.sleep(1.0)
                 continue
+            connection = await comfyui_health()
+            if not connection.get("online"):
+                await db.render_queue.update_one({"id": queued["id"], "status": "queued"},
+                    {"$set": {"connection_wait": True, "connection_error": "Waiting for ComfyUI to reconnect. Your job and seed are saved.", "updated_at": now_iso()}})
+                await asyncio.sleep(5.0)
+                continue
             claimed = await db.render_queue.update_one(
                 {"id": queued["id"], "status": "queued"},
-                {"$set": {"status": "dispatching", "started_at": now_iso(), "updated_at": now_iso()}},
+                {"$set": {"status": "dispatching", "connection_wait": False, "connection_error": None, "started_at": now_iso(), "updated_at": now_iso()}},
             )
             if not claimed.modified_count:
                 continue
             try:
-                render = await _perform_dispatch(DispatchBody(**queued.get("payload", {})))
+                render = await _perform_dispatch(DispatchBody(**queued.get("payload", {})), queue_id=queued["id"])
                 status = render.get("status", "running")
                 patch = {
                     "render_id": render.get("id"),
@@ -3239,13 +3255,18 @@ async def _render_queue_worker():
                     "error": render.get("error"),
                     "updated_at": now_iso(),
                 }
-                if status in QUEUE_TERMINAL:
+                if status == "offline" and render.get("submission_state") == "not_sent":
+                    patch.update(status="queued", render_id=None, connection_wait=True,
+                                 connection_error=render.get("error"), error=None, started_at=None)
+                elif status in QUEUE_TERMINAL:
                     patch["finished_at"] = now_iso()
-                await db.render_queue.update_one({"id": queued["id"]}, {"$set": patch})
+                await db.render_queue.update_one({"id": queued["id"], "status": "dispatching"}, {"$set": patch})
+                if status == "offline":
+                    await asyncio.sleep(5.0)
             except Exception as exc:
                 logger.exception("Queue dispatch failed")
                 await db.render_queue.update_one(
-                    {"id": queued["id"]},
+                    {"id": queued["id"], "status": "dispatching"},
                     {"$set": {"status": "failed", "error": str(exc), "finished_at": now_iso(), "updated_at": now_iso()}},
                 )
         except asyncio.CancelledError:
@@ -4205,6 +4226,16 @@ app.add_middleware(
 @app.on_event("startup")
 async def _startup():
     global _queue_worker_task, _queue_stop
+    # Recover any render intent persisted before the old process stopped.
+    interrupted_jobs = await db.render_queue.find({"status": "dispatching"}).to_list(None)
+    for job in interrupted_jobs:
+        render = (await db.renders.find_one({"id": job["render_id"]}, {"_id": 0}) if job.get("render_id")
+                  else await db.renders.find_one({"queue_id": job["id"]}, {"_id": 0}, sort=[("created_at", -1)]))
+        if render:
+            patch = interrupted_submission_patch(render, now_iso())
+            if patch:
+                await db.renders.update_one({"id": render["id"]}, {"$set": patch})
+            await db.render_queue.update_one({"id": job["id"]}, {"$set": {"render_id": render["id"], "updated_at": now_iso()}})
     # A process can stop after claiming a job but before dispatching it. Requeue
     # only that transient state; running jobs retain their render link and resume polling.
     await db.render_queue.update_many(
