@@ -2,6 +2,8 @@ import { act } from "react";
 import { createRoot } from "react-dom/client";
 import Settings from "./Settings";
 
+const mockMutate = jest.fn();
+let mockOllamaModels = [];
 const mockWorkflows = [
   { id: "base", name: "Krea 2 Turbo", kind: "image", prompt_style: "krea2", json_str: "{}" },
   { id: "style", name: "Krea 2 Turbo · Private Magazine", kind: "krea_style", prompt_style: "krea2", json_str: "{}" },
@@ -11,10 +13,10 @@ jest.mock("@tanstack/react-query", () => ({
   useQuery: ({ queryKey }) => ({
     data: queryKey[0] === "workflows" ? mockWorkflows
       : queryKey[0] === "settings" ? { default_workflow_id: "base", comfyui_url: "http://localhost:8188", ai_provider: "ollama" }
-        : {},
+        : { online: true, models: mockOllamaModels },
     refetch: jest.fn(),
   }),
-  useMutation: () => ({ mutate: jest.fn() }),
+  useMutation: () => ({ mutate: mockMutate }),
   useQueryClient: () => ({ invalidateQueries: jest.fn(), setQueryData: jest.fn() }),
 }));
 
@@ -31,4 +33,25 @@ test("Settings keeps the main catalog clean and can reveal retained legacy prese
   expect(container.textContent).toContain("Krea 2 Turbo · Private Magazine");
   expect(container.textContent).toContain("select the Private Magazine LoRA");
   act(() => root.unmount());
+});
+
+ test("All assistant selections save the real model name and leaves image review independent", () => {
+  global.IS_REACT_ACT_ENVIRONMENT = true;
+  mockMutate.mockClear();
+  mockOllamaModels = ["ultra-big-tiger-gemma:27b", "ultra-gemma3-abliterated:27b", "ultra-neuraldaredevil:8b", "ultra-dark-champion:18.4b", "qwen3-vl:8b"];
+  const container = document.createElement("div");
+  const root = createRoot(container);
+  act(() => root.render(<Settings />));
+  const prompt = container.querySelector('select[aria-label="Prompt assistant model"]');
+  const vision = container.querySelector('select[aria-label="Image review model"]');
+  act(() => { vision.value = "qwen3-vl:8b"; vision.dispatchEvent(new Event("change", { bubbles: true })); });
+  for (const model of mockOllamaModels.slice(0, 4)) {
+    act(() => { prompt.value = model; prompt.dispatchEvent(new Event("change", { bubbles: true })); });
+    act(() => container.querySelector('[data-testid="btn-save-settings"]').click());
+    expect(mockMutate).toHaveBeenLastCalledWith(expect.objectContaining({
+      ai_provider: "ollama", ollama_text_model: model, ollama_vision_model: "qwen3-vl:8b",
+    }));
+  }
+  act(() => root.unmount());
+  mockOllamaModels = [];
 });
