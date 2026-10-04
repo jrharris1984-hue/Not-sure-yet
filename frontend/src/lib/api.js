@@ -67,8 +67,6 @@ export const endpoints = {
   setRenderAlbumBulk: (ids, album) => api.post("/renders/albums/bulk", { ids, album }).then((r) => r.data),
   getRenderVersions: (id) => api.get(`/renders/${id}/versions`).then((r) => r.data),
   dispatchRender: (body) => api.post("/renders/dispatch", body).then((r) => r.data),
-  previewCharacterDesign: (body) => api.post("/character-design/preview", body).then((r) => r.data),
-  renderCharacterDesign: (body) => api.post("/character-design/render", body).then((r) => r.data),
   recreateRender: (id, variation = false) => api.post(`/renders/${id}/recreate`, null, { params: { variation } }).then((r) => r.data),
   prepareRenderReference: (id, outputUrl) => api.post(`/renders/${id}/prepare-reference`, { output_url: outputUrl }).then((r) => r.data),
   getRender: (id) => api.get(`/renders/${id}`).then((r) => r.data),
