@@ -28,6 +28,7 @@ export const api = axios.create({
 });
 
 export const endpoints = {
+  recoverRenderImage: (id, body) => api.post(`/renders/${id}/recover`, body).then((r) => r.data),
   mediaLibraryHealth: () => api.get("/media-library/health").then((r) => r.data),
   mediaLibraryStats: () => api.get("/media-library/stats").then((r) => r.data),
   mediaLibraryList: (params = {}) => api.get("/media-library/media", { params }).then((r) => r.data),
