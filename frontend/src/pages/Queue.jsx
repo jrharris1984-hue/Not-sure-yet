@@ -1,3 +1,4 @@
+import StudioLoading from "@/components/StudioLoading";
 import QueueConnectionStatus from "@/components/QueueConnectionStatus";
 import { useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -130,7 +131,7 @@ export default function Queue() {
         checking={connection.isFetching || isFetching} onReconnect={() => { connection.refetch(); refetch(); }} />
       {isError && <p role="alert" className="mb-4 text-sm text-rose-200">Could not refresh the queue. Previously loaded jobs remain visible.</p>}
       {isLoading ? (
-        <div className="pane grid place-items-center py-20"><Loader2 className="h-6 w-6 animate-spin text-amber-300" /></div>
+        <StudioLoading label="Loading saved jobs…" cards={3} />
       ) : !isError && jobs.length === 0 ? (
         <div className="pane py-20 text-center">
           <Clock3 className="mx-auto h-8 w-8 text-zinc-600" />

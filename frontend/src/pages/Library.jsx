@@ -1,3 +1,4 @@
+import StudioLoading from "@/components/StudioLoading";
 import { Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Copy, Trash2, Star, StarOff, Plus, Search, Camera, Image as ImageIcon, X } from "lucide-react";
@@ -168,11 +169,7 @@ export default function Library() {
       })()}
 
       {isLoading ? (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          {Array.from({ length: 8 }).map((_, i) => (
-            <div key={i} className="pane h-48 animate-pulse" />
-          ))}
-        </div>
+        <StudioLoading label="Loading characters…" />
       ) : chars.length === 0 ? (
         <div className="pane p-10 text-center">
           <div className="section-label mb-2">Empty stage</div>

@@ -1,3 +1,4 @@
+import StudioLoading from "@/components/StudioLoading";
 import GalleryBrowseControls from "@/components/GalleryBrowseControls";
 import { browseGallery, galleryIsVideo, galleryModel, galleryRefreshInterval } from "@/lib/galleryBrowse";
 import ImageRecoveryPanel from "@/components/ImageRecoveryPanel";
@@ -541,11 +542,7 @@ export default function Gallery() {
       )}
 
       {isLoading ? (
-        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2">
-          {Array.from({ length: 12 }).map((_, i) => (
-            <div key={i} className="pane aspect-square animate-pulse" />
-          ))}
-        </div>
+        <StudioLoading label="Loading Gallery…" />
       ) : !isError && withOutput.length === 0 && inFlight.length === 0 ? (
         <div className="pane p-10 text-center text-zinc-400">
           <div className="section-label mb-2">Empty gallery</div>
