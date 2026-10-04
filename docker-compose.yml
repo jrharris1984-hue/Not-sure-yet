@@ -21,6 +21,7 @@ services:
       CORS_ORIGINS: http://localhost:3000
       COMFYUI_OUTPUT_DIR: /comfyui-output
       MEDIA_LIBRARY_URL: ${MEDIA_LIBRARY_URL:-http://192.168.0.16:8010}
+      CHARACTER_DESIGN_CHECKPOINT: ${CHARACTER_DESIGN_CHECKPOINT:-Juggernaut-XL_v9_RunDiffusionPhoto_v2.safetensors}
     ports:
       - "8001:8001"
     volumes:
