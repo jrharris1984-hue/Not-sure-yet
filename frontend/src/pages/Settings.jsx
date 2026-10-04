@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Save, KeyRound, Server, CheckCircle2, XCircle, Plus, Trash2, Download, ChevronDown, ChevronRight, Wand2, ArrowUp, ArrowDown } from "lucide-react";
 import { toast } from "sonner";
 import { endpoints } from "@/lib/api";
+import { promptAssistantChoices } from "@/lib/promptAssistantModels";
 import { workflowCatalog } from "@/lib/workflowCatalog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -332,11 +333,14 @@ export default function Settings() {
             <button type="button" onClick={() => checkOllama()} className="ml-2 text-amber-300 underline">Check again</button></div>
           {[ ["ollama_text_model", "Prompt assistant model"], ["ollama_vision_model", "Image review model"] ].map(([key, label]) =>
             <label key={key} className="block space-y-1"><span className="text-xs text-zinc-400">{label}</span>
-              <select value={form[key] || ""} onChange={(e) => set(key, e.target.value)} className="w-full rounded-lg border hairline bg-elevated p-2 text-zinc-100">
+              <select aria-label={label} value={form[key] || ""} onChange={(e) => set(key, e.target.value)} className="w-full rounded-lg border hairline bg-elevated p-2 text-zinc-100">
                 <option value="">Auto detect installed model</option>
-                {(ollama?.models || []).map((model) => <option key={model} value={model}>{model}</option>)}
-                {form[key] && !ollama?.models?.includes(form[key]) && <option value={form[key]}>{form[key]} (saved)</option>}
+                {(key === "ollama_text_model" ? promptAssistantChoices(ollama?.models)
+                  : (ollama?.models || []).map((name) => ({ name, label: name })))
+                  .map((model) => <option key={model.name} value={model.name} disabled={model.disabled}>{model.label}</option>)}
+                {form[key] && !ollama?.models?.includes(form[key]) && !(key === "ollama_text_model" && promptAssistantChoices(ollama?.models).some((model) => model.name === form[key])) && <option value={form[key]}>{form[key]} (saved)</option>}
               </select></label>)}
+          <p className="text-xs text-zinc-500">For NeuralDaredevil or Dark Champion, run <code>scripts/install-llama-prompt-assistants.bat</code>, then Check again. NeuralDaredevil is 8B; Dark Champion is an 18.4B MoE model. Gemma choices remain available via <code>scripts/install-gemma-prompt-assistants.bat</code>. These assistants unload after each response to free memory for ComfyUI; the next request reloads the model.</p>
           <p className="text-xs text-zinc-500">Choose a vision capable model for image review. On Docker Desktop, host.docker.internal reaches Ollama running on Windows.</p>
         </div>}
         {form.ai_provider !== "ollama" && <>
