@@ -24,6 +24,15 @@ test("adult age range and categorized appearance options are available", () => {
   expect(wardrobe.fields.find((f) => f.key === "dress_style").groups.length).toBeGreaterThan(1);
 });
 
+test("extended bust catalog exposes the full visual breast shape set", () => {
+  const bustShape = SECTIONS.find((s) => s.key === "physique").fields.find((f) => f.key === "bust_shape");
+  const options = bustShape.groups.flatMap((group) => group.options);
+  expect(bustShape.groups.map((group) => group.name)).toContain("Natural / Genetic");
+  expect(options).toContain("high profile implants");
+  expect(options).toContain("balloon breasts");
+  expect(options).toContain("hyper-fantasy");
+});
+
 test.each(["chroma", "zimage", "krea2", "pony"])("%s respects fine appearance selections", (promptStyle) => {
   const { positive } = compileModelPrompts({ promptStyle, dna: configured() });
   expect(positive).toMatch(/80-year-old/);
@@ -88,7 +97,7 @@ test('Chroma keeps breast, glute shape, garment and color controls together at e
   dna.physique.butt_scale = 200;
   const { positive } = compileModelPrompts({ promptStyle: 'chroma', dna });
   expect(positive).toContain('fantasy-scale augmented bust');
-  expect(positive).toContain('maximum hyper-scale fantasy volume');
+  expect(positive).toContain('maximum hyper-scale fantasy glutes:1.6');
   expect(positive).toContain('BBL-style glute contour');
   expect(positive).toContain('emerald mermaid gown');
   expect(positive).toContain('black seamed stockings');
