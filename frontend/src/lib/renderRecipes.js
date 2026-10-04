@@ -41,6 +41,11 @@ const IMAGE_RECIPES = {
   },
 };
 
+const IMAGE_SCHEDULERS = {
+  sdxl: "karras", sdxl_dmd2: "normal", pony: "normal",
+  zimage: "simple", krea2: "simple",
+};
+
 const VIDEO_RECIPES = {
   wan_i2v: {
     draft: { videoFrames: 41, videoFps: 24, videoWidth: 512, videoHeight: 512, note: "About 1.7 seconds · fastest test" },
@@ -76,7 +81,7 @@ export function recipeFamily(compiler = "standard") {
 
 export function getRenderRecipe(compiler = "standard", tier = "balanced") {
   const collection = VIDEO_RECIPES[compiler] || EDIT_RECIPES[compiler] || IMAGE_RECIPES[compiler] || IMAGE_RECIPES.standard;
-  return { tier, compiler, family: recipeFamily(compiler), ...(collection[tier] || collection.balanced) };
+  return { tier, compiler, family: recipeFamily(compiler), ...(IMAGE_SCHEDULERS[compiler] ? { scheduler: IMAGE_SCHEDULERS[compiler] } : {}), ...(collection[tier] || collection.balanced) };
 }
 
 export function recipeSummary(recipe = {}) {

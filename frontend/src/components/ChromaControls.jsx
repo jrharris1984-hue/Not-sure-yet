@@ -60,7 +60,7 @@ export default function ChromaControls({ value, onChange }) {
           <span className="mb-2 block text-[10px] font-mono uppercase tracking-widest text-zinc-500">Images</span>
           <select value={value.batchSize} onChange={(e) => set({ batchSize: Number(e.target.value) })}
             className="w-full rounded-lg border hairline bg-elevated px-3 py-2 text-sm text-zinc-100">
-            {[1, 2, 3, 4].map((n) => <option key={n} value={n}>{n} image{n > 1 ? "s" : ""}</option>)}
+            {[1, 2, 4, 6, 8, 10].map((n) => <option key={n} value={n}>{n} image{n > 1 ? "s" : ""}</option>)}
           </select>
         </label>
 

@@ -614,7 +614,7 @@ export default function Builder({ studio = "standard" }) {
     setChromaSettings((current) => ({ ...current,
       width: saved.width || current.width, height: saved.height || current.height,
       steps: saved.steps || current.steps, cfg: saved.cfg ?? current.cfg,
-      batchSize: saved.batch_size || current.batchSize, sampler: saved.sampler_name || current.sampler,
+      batchSize: saved.batch_size || current.batchSize, sampler: saved.sampler_name || current.sampler, scheduler: saved.scheduler || current.scheduler,
       seed: rebuildCurrent && !bodyCreation ? "" : (saved.seed ?? current.seed),
     }));
     setGalleryRecipeMode(rebuildCurrent ? "current" : "exact");
@@ -650,7 +650,7 @@ export default function Builder({ studio = "standard" }) {
   const isKrea2 = activeCompiler === "krea2";
   const activeRecipeFamily = recipeFamily(activeCompiler);
   const renderSettings = isKrea2
-    ? { ...chromaSettings, steps: 8, cfg: 1, sampler: "euler" }
+    ? { ...chromaSettings, steps: 8, cfg: 1, sampler: "euler", scheduler: "simple" }
     : chromaSettings;
   const kreaBaseBlocked = isKrea2 && krea2Status && !krea2Status.ready;
   const kreaRenderBlocked = !!kreaBaseBlocked;
@@ -667,6 +667,7 @@ export default function Builder({ studio = "standard" }) {
         cfg: recipe.cfg,
         batchSize: recipe.batchSize,
         sampler: recipe.sampler,
+        scheduler: recipe.scheduler,
       }));
     } else if (recipe.family === "video") {
       setVideoFrames(recipe.videoFrames);
@@ -724,7 +725,7 @@ export default function Builder({ studio = "standard" }) {
     setLoraOverrides({});
     setQualityTier(recommendation.qualityTier);
     if (recipe.family === "image") {
-      setChromaSettings((current) => ({ ...current, width: recipe.width, height: recipe.height, steps: recipe.steps, cfg: recipe.cfg, batchSize: recipe.batchSize, sampler: recipe.sampler }));
+      setChromaSettings((current) => ({ ...current, width: recipe.width, height: recipe.height, steps: recipe.steps, cfg: recipe.cfg, batchSize: recipe.batchSize, sampler: recipe.sampler, scheduler: recipe.scheduler }));
     } else if (recipe.family === "video") {
       setVideoFrames(recipe.videoFrames); setVideoFps(recipe.videoFps); setVideoWidth(recipe.videoWidth); setVideoHeight(recipe.videoHeight);
     } else if (recipe.family === "edit") setRepairStrength(recipe.repairStrength);
@@ -1412,6 +1413,7 @@ export default function Builder({ studio = "standard" }) {
           steps: chromaSettings.steps,
           cfg: chromaSettings.cfg,
           sampler_name: chromaSettings.sampler,
+          scheduler: chromaSettings.scheduler,
           selected_lora_name: selectedLora.name || "",
           selected_lora_strength: selectedLora.strength,
           selected_lora_triggers: selectedLora.triggerWords || [],
@@ -1491,6 +1493,7 @@ export default function Builder({ studio = "standard" }) {
         steps: activeRecipeFamily === "image" ? renderSettings.steps : undefined,
         cfg: activeRecipeFamily === "image" ? renderSettings.cfg : undefined,
         sampler_name: activeRecipeFamily === "image" ? renderSettings.sampler : undefined,
+        scheduler: activeRecipeFamily === "image" ? renderSettings.scheduler : undefined,
         seed: activeRecipeFamily === "image" ? uniqueSeed : undefined,
         reference_image: (isFaceWorkflow || isEditWorkflow || isEnhanceWorkflow || isVideoWorkflow || isVariationWorkflow) ? referenceImage?.name : undefined,
         reference_source_render_id: referenceImage?.source_render_id || undefined,
@@ -2774,7 +2777,10 @@ export default function Builder({ studio = "standard" }) {
 
         {isGoldenChroma && (
           <div className={(mobileStudioMode === "advanced" ? "block " : "hidden md:block ") + "mt-3 sm:mt-4"}>
-            <ChromaControls value={chromaSettings} onChange={setChromaSettings} />
+            <ChromaControls value={{ ...chromaSettings, batchSize: renderCount }} onChange={(next) => {
+              setChromaSettings(next);
+              setRenderCount(next.batchSize);
+            }} />
           </div>
         )}
       </div>
