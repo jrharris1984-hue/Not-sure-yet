@@ -21,6 +21,8 @@ import { translatePlainLanguage } from "@/lib/plainLanguagePrompt";
 import { analyzePromptQuality } from "@/lib/promptQuality";
 import DnaSection from "@/components/DnaSection";
 import ImageSourceFlow from "@/components/ImageSourceFlow";
+import CharacterDesignControls from "@/components/CharacterDesignControls";
+import { characterSubjectRecord } from "@/lib/characterDesign";
 import PromptPreview from "@/components/PromptPreview";
 import AiAssistBar from "@/components/AiAssistBar";
 import PresetsMenu from "@/components/PresetsMenu";
@@ -1231,7 +1233,7 @@ export default function Builder({ studio = "standard" }) {
         name,
         dna: subjects[0]?.dna || {},
         field_locks: subjects[0]?.field_locks || {},
-        subjects: subjects.map((s) => ({ id: s.id, label: s.label, dna: s.dna, field_locks: s.field_locks, likeness: s.likeness })),
+        subjects: subjects.map(characterSubjectRecord),
         active_subject_id: activeSubjectId,
         locks,
         collapsed,
@@ -3121,6 +3123,11 @@ export default function Builder({ studio = "standard" }) {
             simpleFieldKeys={SIMPLE_FIELD_KEYS[activeSection] || []}
             onRequestAdvanced={() => setMobileStudioMode("advanced")}
           />
+          {activeSection === "physique" && <CharacterDesignControls
+            value={activeSubject.design_profile}
+            subjectLabel={activeSubject.label}
+            onChange={design_profile => updateActiveSubject(() => ({ design_profile }))}
+          />}
           {sectionNavigation("bottom")}
           </div>
         </div>
