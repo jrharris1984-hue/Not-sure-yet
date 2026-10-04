@@ -9,6 +9,7 @@ import media_library as media
 class MediaConnectionTests(unittest.IsolatedAsyncioTestCase):
     async def asyncTearDown(self):
         media.configure_media_library_url(None)
+        media.configure_media_overlays(None)
 
     async def test_saved_address_is_used_for_json_and_images(self):
         media.configure_media_library_url(AsyncMock(return_value='http://media-server:8010/'))
@@ -35,3 +36,13 @@ class MediaConnectionTests(unittest.IsolatedAsyncioTestCase):
             health = await media.media_library_health()
         self.assertFalse(health['online'])
         self.assertIn('192.168.0.16:8010', health['error'])
+
+    async def test_overlays_are_applied_to_list_and_wrapped_detail_responses(self):
+        overlay = AsyncMock(return_value=[{'id': 1, 'person_count': 1}])
+        media.configure_media_overlays(overlay)
+        with patch.object(media, '_json_get', AsyncMock(return_value={'items': [{'id': 1}]})):
+            result = await media.media_library_list()
+            self.assertEqual(result['items'][0]['person_count'], 1)
+        with patch.object(media, '_json_get', AsyncMock(return_value={'item': {'id': 1}})):
+            result = await media.media_library_item(1)
+            self.assertEqual(result['item']['person_count'], 1)
