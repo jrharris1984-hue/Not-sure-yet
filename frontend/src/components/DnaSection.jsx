@@ -37,13 +37,13 @@ export function PoseChipGrid({ options, value, onChange, testIdPrefix }) {
             type="button"
             data-testid={`${testIdPrefix}-${opt.replace(/\s+/g, "-")}`}
             onClick={() => onChange(active ? "" : opt)}
-            className={`flex flex-col items-center justify-center gap-1 rounded-xl border p-2 text-[10px] leading-tight text-center min-h-[88px] transition-all ${
+            className={`flex flex-col items-center justify-center gap-1 rounded-xl border p-2 text-[10px] leading-tight text-center min-h-[108px] transition-all ${
               active
                 ? "border-amber-500 bg-amber-500/10 text-amber-100 shadow-[0_0_20px_rgba(245,158,11,0.15)]"
                 : "border-[#222634] bg-[#12141C] text-zinc-300 hover:border-zinc-600 hover:bg-[#1A1D28]"
             }`}
           >
-            <PoseIcon name={opt} size={40} active={active} />
+            <PoseIcon name={opt} size={56} active={active} />
             <span className="font-mono uppercase tracking-tight">{opt}</span>
           </button>
         );
