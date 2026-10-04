@@ -1,4 +1,4 @@
-import { physiqueControlStatus } from "./physiqueControlPriority";
+import { physiqueControlStatus, selectSizeControl, sizeControlMode } from "./physiqueControlPriority";
 import { compileModelPrompts } from "./modelPromptCompilers";
 import { DEFAULT_DNA } from "./dna";
 
@@ -29,4 +29,15 @@ test.each(["chroma", "krea2", "sdxl", "pony", "zimage", "flux2_klein"])("%s does
   dna.physique = { ...dna.physique, bust: "flat", bust_scale: 83, implant_volume: 2750, butt: "flat", butt_scale: 180, hips: "narrow", hip_scale: 90 };
   const result = compileModelPrompts({ promptStyle, dna });
   expect(result.positive).not.toMatch(/flat (breasts|bust|butt|ass)|narrow hips/i);
+});
+
+test('bust mode switches deactivate both competing size sources without mutating saved data', () => {
+  const saved = { bust: 'small', bust_scale: 80, implant_volume: 1500 };
+  const slider = selectSizeControl('bust', 'slider', saved);
+  expect(slider.implant_volume).toBe(0); expect(sizeControlMode('bust', slider)).toBe('slider');
+  const implant = selectSizeControl('bust', 'implant', slider);
+  expect(implant.bust_scale).toBe(0); expect(sizeControlMode('bust', implant)).toBe('implant');
+  const preset = selectSizeControl('bust', 'preset', implant);
+  expect(preset.bust_scale).toBe(0); expect(preset.implant_volume).toBe(0); expect(preset.bust).toBe('small');
+  expect(saved.implant_volume).toBe(1500);
 });

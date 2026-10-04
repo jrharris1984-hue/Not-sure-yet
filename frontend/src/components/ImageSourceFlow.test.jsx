@@ -50,3 +50,12 @@ test("a pending upload cannot dispatch an edit",()=>{
   render({source:{name:"source.png"},uploading:true});
   expect(container.querySelector('[data-testid="btn-source-workflow-render"]').disabled).toBe(true);
 });
+
+test('animation uses motion controls and a single video action without image count', () => {
+  render({ animation: true, source: { name: 'frame.png' } });
+  expect(container.textContent).toContain('Motion & duration');
+  expect(container.textContent).toContain('The starting frame supplies appearance');
+  expect(container.querySelector('select')).toBeNull();
+  expect(container.querySelector('[data-testid="btn-source-workflow-render"]').textContent).toBe('Create video');
+  expect(container.textContent).not.toContain('Qwen');
+});

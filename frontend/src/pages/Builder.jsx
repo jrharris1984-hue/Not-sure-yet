@@ -1,3 +1,5 @@
+import VariationInstruction from "@/components/VariationInstruction";
+import { resolveBuilderControls } from "@/lib/builderControlResolution";
 import CreationOutputControls from "@/components/CreationOutputControls";
 import CreateJourney from "@/components/CreateJourney";
 import { CREATE_STAGES, CREATE_MOBILE_STEPS } from "@/lib/createJourney";
@@ -173,7 +175,7 @@ export default function Builder({ studio = "standard" }) {
   // Multi-subject store: [{id, label, dna, field_locks}]. subjects[0] is Subject A (primary).
   const [subjects, setSubjects] = useState(() => [makeSubject({
     label: "A",
-    dna: studio === "feet" ? { ...DEFAULT_DNA, pose: { ...DEFAULT_DNA.pose, focus: "feet", distance: "full body" } } : DEFAULT_DNA,
+    dna: studio === "feet" ? { ...DEFAULT_DNA, feet: { ...DEFAULT_DNA.feet, composition_mode: "feet focus" }, pose: { ...DEFAULT_DNA.pose, focus: "feet", distance: "full body" } } : DEFAULT_DNA,
   })]);
   const [activeSubjectId, setActiveSubjectId] = useState(() => "");
   const [locks, setLocks] = useState({}); // section-level locks (shared across subjects — shot-level)
@@ -535,7 +537,7 @@ export default function Builder({ studio = "standard" }) {
   const isEditWorkflow = activeWorkflow?.kind === "edit";
   const isEnhanceWorkflow = activeWorkflow?.kind === "enhance";
   const isVariationWorkflow = activeWorkflow?.kind === "variation";
-  const isImageFirst = isVariationWorkflow || isEditWorkflow;
+  const isImageFirst = isVariationWorkflow || isEditWorkflow || activeWorkflow?.kind === "video";
   useEffect(() => {
     if (isImageFirst) setPoseAssistEnabled(false);
   }, [isImageFirst, workflowId]);
@@ -1061,8 +1063,8 @@ export default function Builder({ studio = "standard" }) {
         .trim()
     : translatedPlainLanguage.text;
   const generatedPositive = [languageLead, acceptsLikenessPrompt && likenessPrompt, positive, translatedUserText].filter(Boolean).join(", ");
-  const positiveBeforeLoraTriggers = isVariationWorkflow ? variationPrompt : (promptOverride || generatedPositive);
-  const activeLoraTriggers = [...new Set([
+  const positiveBeforeLoraTriggers = isVariationWorkflow ? variationPrompt : isVideoWorkflow ? (promptOverride || positive) : (promptOverride || generatedPositive);
+  const activeLoraTriggers = isVideoWorkflow ? [] : [...new Set([
     ...(selectedLora.name ? selectedLora.triggerWords || [] : []),
     ...(showSecondLora && secondaryLora.name ? secondaryLora.triggerWords || [] : []),
   ])];
@@ -1268,7 +1270,7 @@ export default function Builder({ studio = "standard" }) {
       toast.error("Pick a workflow first (Settings → Workflow library)");
       return;
     }
-    if (!isVariationWorkflow && promptAnalysis.blockers.length) {
+    if (!isImageFirst && promptAnalysis.blockers.length) {
       toast.error(promptAnalysis.blockers[0].message);
       return;
     }
@@ -1472,7 +1474,7 @@ export default function Builder({ studio = "standard" }) {
           label: s.label,
           dna: s.dna,
           field_locks: s.field_locks || {},
-          likeness: s.likeness,
+          likeness: isImageFirst ? undefined : s.likeness,
         })),
         locks,
         prompt_language: promptLanguage,
@@ -1480,13 +1482,13 @@ export default function Builder({ studio = "standard" }) {
         prompt_positive: editMode === "body_adjust" && isVariationWorkflow ? bodyAdjustInstruction : finalPositive,
         prompt_negative: finalNegative,
         workflow_id: workflowId,
-        lora_overrides: effectiveLoraOverrides,
+        lora_overrides: isVideoWorkflow ? {} : effectiveLoraOverrides,
         krea_style: "none",
         krea_lora_strength: 0.8,
-        selected_lora_name: selectedLora.name || "",
+        selected_lora_name: isVideoWorkflow ? "" : selectedLora.name || "",
         selected_lora_strength: selectedLora.strength,
-        selected_lora_triggers: selectedLora.triggerWords || [],
-        selected_loras: [selectedLora, ...(showSecondLora ? [secondaryLora] : [])]
+        selected_lora_triggers: isVideoWorkflow ? [] : selectedLora.triggerWords || [],
+        selected_loras: (isVideoWorkflow ? [] : [selectedLora, ...(showSecondLora ? [secondaryLora] : [])])
           .filter((lora) => lora.name)
           .map((lora) => ({ name: lora.name, strength: lora.strength, triggers: lora.triggerWords || [] })),
         parent_render_id: sourceRenderId || undefined,
@@ -1949,11 +1951,11 @@ export default function Builder({ studio = "standard" }) {
     if (isKrea2 && krea2Status && !krea2Status.ready) {
       issues.push(`Krea 2 setup needs: ${(krea2Status.missing || []).join(", ") || "local ComfyUI check"}.`);
     }
-    (!isVariationWorkflow ? promptAnalysis.blockers : []).slice(0, 2).forEach((blocker) => {
+    (!isImageFirst ? promptAnalysis.blockers : []).slice(0, 2).forEach((blocker) => {
       if (blocker?.message && !issues.includes(blocker.message)) issues.push(blocker.message);
     });
     const incompleteLikeness = subjects.find((subject) => subject?.likeness?.enabled && (!subject.likeness.node_id || !subject.likeness.lora_name));
-    if (incompleteLikeness && !isVariationWorkflow) issues.push(`Finish Likeness LoRA setup for Subject ${incompleteLikeness.label || "A"}.`);
+    if (incompleteLikeness && !isImageFirst) issues.push(`Finish Likeness LoRA setup for Subject ${incompleteLikeness.label || "A"}.`);
     if (isVariationWorkflow && !referenceImage?.name) issues.push("Add the source image you want to vary.");
     if ((isFaceWorkflow || isEditWorkflow || isEnhanceWorkflow || isVideoWorkflow) && !referenceImage?.name) {
       issues.push(
@@ -1975,7 +1977,7 @@ export default function Builder({ studio = "standard" }) {
     return [...new Set(issues)];
   }, [
     activeWorkflow, editMode, effectiveEditInstruction,
-    isEditWorkflow, isEnhanceWorkflow, isFaceWorkflow, isTextVideoWorkflow, isVideoWorkflow, isVariationWorkflow,
+    isEditWorkflow, isEnhanceWorkflow, isFaceWorkflow, isTextVideoWorkflow, isVideoWorkflow, isVariationWorkflow, isImageFirst,
     poseAssistAvailable, poseAssistEnabled, poseAssistStatus, poseReferenceImage?.name,
     isKrea2, krea2Status,
     promptAnalysis, referenceImage?.name, repairInstruction, repairTargets, subjects, videoInstruction,
@@ -2039,13 +2041,80 @@ export default function Builder({ studio = "standard" }) {
   );
 
   const imageSourceControls = (<>
+          {isVideoWorkflow && (
+            <div className="pane p-4 space-y-4" data-testid="wan-video-panel">
+              <div className="flex items-center gap-2">
+                <Camera className="h-4 w-4 text-emerald-300" />
+                <div className="section-label">WAN Image → Video</div>
+              </div>
+              <p className="text-xs text-zinc-400">
+                Upload the starting frame, then describe movement rather than redesigning the image.
+              </p>
+              <label className="block space-y-1">
+                <span className="text-xs uppercase tracking-widest text-zinc-500 font-mono">Movement instruction</span>
+                <Textarea rows={5} value={videoInstruction}
+                  onChange={(event) => setVideoInstruction(event.target.value)}
+                  placeholder="Example: She slowly turns toward the camera and smiles. Natural blinking and breathing, gentle hair movement, steady camera."
+                  className="bg-elevated border-hairline text-sm"
+                  data-testid="textarea-wan-motion" />
+              </label>
+              <button type="button" onClick={analyzeVideoImage}
+                disabled={analyzingVideoImage || !referenceImage?.name}
+                className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-cyan-500/40 bg-cyan-500/10 px-3 py-2 text-sm font-semibold text-cyan-200 hover:bg-cyan-500/20 disabled:opacity-40"
+                data-testid="btn-venice-analyze-video-image">
+                {analyzingVideoImage ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                Analyze image + draft motion with {aiProvider}
+              </button>
+              {videoImageAnalysis && (
+                <div className="rounded-lg border border-cyan-500/20 bg-cyan-500/5 p-3 text-xs text-zinc-300">
+                  <div className="mb-1 font-mono uppercase tracking-widest text-cyan-300">{aiProvider} image analysis</div>
+                  {videoImageAnalysis}
+                </div>
+              )}
+              <button type="button" onClick={enhanceVideoInstruction}
+                disabled={enhancingVideo || !videoInstruction.trim()}
+                className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm font-semibold text-amber-200 hover:bg-amber-500/20 disabled:opacity-40"
+                data-testid="btn-venice-enhance-video">
+                {enhancingVideo ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                Enhance movement with {aiProvider}
+              </button>
+              <div className="grid grid-cols-2 gap-3">
+                <label className="space-y-1">
+                  <span className="text-xs text-zinc-400">Duration</span>
+                  <select value={videoFrames} onChange={(e) => setVideoFrames(Number(e.target.value))}
+                    className="w-full rounded-lg border border-hairline bg-elevated px-3 py-2 text-sm"
+                    data-testid="select-wan-duration">
+                    {[41, 81, 121, 161, 201, 241].map(frames => <option key={frames} value={frames}>{((frames - 1) / videoFps).toFixed(1)} sec · {frames} frames</option>)}
+                  </select>
+                </label>
+                <label className="space-y-1">
+                  <span className="text-xs text-zinc-400">Playback FPS</span>
+                  <select value={videoFps} onChange={(e) => setVideoFps(Number(e.target.value))}
+                    className="w-full rounded-lg border border-hairline bg-elevated px-3 py-2 text-sm"
+                    data-testid="select-wan-fps">
+                    <option value={16}>16 FPS</option>
+                    <option value={20}>20 FPS</option>
+                    <option value={24}>24 FPS</option>
+                    <option value={30}>30 FPS</option>
+                  </select>
+                </label>
+              </div>
+              <label className="block space-y-1"><span className="text-xs text-zinc-400">Video size</span>
+                <select aria-label="Video size" value={`${videoWidth}x${videoHeight}`} onChange={event => { const [width, height] = event.target.value.split('x').map(Number); setVideoWidth(width); setVideoHeight(height); }}
+                  className="w-full rounded-lg border border-hairline bg-elevated px-3 py-2 text-sm">
+                  {[...new Set([`${videoWidth}x${videoHeight}`, '640x640', '512x768', '768x512', '480x832', '832x480'])].map(size => <option key={size} value={size}>{size.replace('x', ' × ')}</option>)}
+                </select>
+              </label>
+              <p className="text-[11px] text-zinc-500">
+                Longer clips require substantially more VRAM and generation time. Start with 41 frames for testing.
+              </p>
+            </div>
+          )}
           {isVariationWorkflow && (
             <div className="pane p-4 space-y-4" data-testid="image-variation-panel">
               <div className="section-label">Image Variations · Chroma</div>
-              <p className="text-xs text-zinc-400">Describe the variation and set its strength. Lower strength stays closer to the source image.</p>
-              <label className="block space-y-1"><span className="text-xs text-zinc-400">What should vary?</span>
-                <Textarea rows={4} value={variationPrompt} onChange={(event) => setVariationPrompt(event.target.value)} className="bg-elevated border-hairline text-sm" data-testid="textarea-variation-prompt" />
-              </label>
+              <p className="text-xs text-zinc-400">Chroma re-encodes the source image and samples a nearby result. Use it for subtle expression, texture or lighting changes. It is less precise than Qwen Edit for specific changes; higher strength may also change identity or composition.</p>
+              <VariationInstruction key={referenceImage?.name || workflowId} value={variationPrompt} onChange={setVariationPrompt} aiProvider={aiProvider} />
               <label className="block space-y-2"><span className="text-xs text-zinc-400">Change strength: {variationDenoise.toFixed(2)}</span>
                 <input type="range" min="0.10" max="0.45" step="0.01" value={variationDenoise} onChange={(event) => setVariationDenoise(Number(event.target.value))} className="w-full" data-testid="slider-variation-denoise" />
                 <span className="block text-[11px] text-zinc-500">Start at 0.22. Lower values stay closer to the original; higher values change more details.</span>
@@ -2387,11 +2456,11 @@ export default function Builder({ studio = "standard" }) {
             onClick={() => save.mutate()}
             disabled={save.isPending}
             data-testid="btn-save-character"
-            className="hidden md:inline-flex items-center gap-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-black text-sm font-semibold px-3 py-2 disabled:opacity-40"
+            className={`${isImageFirst ? "!hidden" : ""} hidden md:inline-flex items-center gap-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-black text-sm font-semibold px-3 py-2 disabled:opacity-40`}
           >
             {save.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Save
           </button>
-          {activeRecipeFamily === "image" && (
+          {!isImageFirst && activeRecipeFamily === "image" && (
             <select
               data-testid="select-render-count"
               value={poseAssistEnabled && !isVariationWorkflow ? 1 : renderCount}
@@ -2405,7 +2474,7 @@ export default function Builder({ studio = "standard" }) {
               ))}
             </select>
           )}
-          {activeRecipeFamily === "image" && renderCount > 1 && <select value={batchSeedMode}
+          {!isImageFirst && activeRecipeFamily === "image" && renderCount > 1 && <select value={batchSeedMode}
             onChange={(event) => setBatchSeedMode(event.target.value)} title="Explore uses widely spaced seeds; Nearby uses consecutive seeds. Both keep your selected prompt."
             className="hidden md:block bg-elevated border border-hairline rounded-lg px-3 py-2 text-sm text-zinc-100">
             <option value="explore">Explore different seeds</option>
@@ -2415,11 +2484,11 @@ export default function Builder({ studio = "standard" }) {
             onClick={doDispatch}
             disabled={dispatching || !workflowId || kreaRenderBlocked || ((isImageFirst || activeRecipeFamily === "edit") && !referenceImage?.name) || (poseAssistEnabled && !isVariationWorkflow && (!poseAssistAvailable || !poseReferenceImage?.name || (poseAssistStatus && !poseAssistStatus.ready)))}
             data-testid="btn-dispatch-comfyui-render"
-            className="hidden md:inline-flex items-center gap-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black text-sm font-semibold px-3 py-2 disabled:opacity-40"
+            className={`${isImageFirst ? "!hidden" : ""} hidden md:inline-flex items-center gap-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black text-sm font-semibold px-3 py-2 disabled:opacity-40`}
           >
             {dispatching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />} {poseAssistEnabled && !isVariationWorkflow ? "Pose Assist" : "Render"}
           </button>
-          <MobileOverflow testId="builder-overflow" always label="More">
+          {!isImageFirst && <MobileOverflow testId="builder-overflow" always label="More">
             <button
               type="button"
               onClick={() => save.mutate()}
@@ -2542,15 +2611,15 @@ export default function Builder({ studio = "standard" }) {
               <Upload className="h-4 w-4" /> Import
               <input type="file" accept="application/json" onChange={importJson} className="hidden" />
             </label>
-          </MobileOverflow>
+          </MobileOverflow>}
         </div>
         </div>
-        <div className={mobileStudioStep === "start" ? "block" : "hidden md:block"}>
+        <div className={isImageFirst ? "hidden" : mobileStudioStep === "start" ? "block" : "hidden md:block"}>
           <TagInput value={tags} onChange={setTags} placeholder="tag this character (mood, ethnicity, persona)…" testId="builder-tags" />
         </div>
       </div>
 
-      {isImageFirst && <ImageSourceFlow variation={isVariationWorkflow} source={referenceImage} preview={referencePreview}
+      {isImageFirst && <ImageSourceFlow animation={isVideoWorkflow} variation={isVariationWorkflow} source={referenceImage} preview={referencePreview}
         uploading={referenceUploading} busy={dispatching} onUpload={uploadReference} onRemove={clearReference} onRender={doDispatch}
         renderCount={renderCount} onRenderCount={setRenderCount}>{imageSourceControls}</ImageSourceFlow>}
 
@@ -3084,11 +3153,12 @@ export default function Builder({ studio = "standard" }) {
           <DnaSection
             key={`${activeSubjectId}-${activeSection}`}
             section={studioProfile && activeSection === studio
-              ? { ...SECTIONS[activeIdx], fields: SECTIONS[activeIdx].fields.filter((field) => studioProfile.fieldGroups[specialtyTab]?.keys.includes(field.key)) }
+              ? { ...SECTIONS[activeIdx], fields: SECTIONS[activeIdx].fields.filter((field) => field.key === "composition_mode" || studioProfile.fieldGroups[specialtyTab]?.keys.includes(field.key)) }
               : activeSection === "scenario" ? { ...SECTIONS[activeIdx], fields: SECTIONS[activeIdx].fields.filter(field => {
                 if (!["cast_age_mode", "cast_age_gap", "cast_resemblance"].includes(field.key)) return true;
                 return subjects.length > 1 && (field.key !== "cast_age_gap" || primaryDna.scenario?.cast_age_mode === "age contrast");
               }) } : SECTIONS[activeIdx]}
+            controlNotes={resolveBuilderControls(activeDna).notes.filter(note => note.section === activeSection).map(note => note.text)}
             value={(activeSection === "scenario" ? primaryDna : activeDna)[activeSection] || {}}
             onChange={(v) => setSection(activeSection, v)}
             locked={!!locks[activeSection]}
@@ -3145,7 +3215,7 @@ export default function Builder({ studio = "standard" }) {
             ))}
             {plainLanguage.trim() && <p className="text-xs text-zinc-400">Workflow translation: {translatedPlainLanguage.text || "Describe motion for image-to-video; the source image supplies appearance."}</p>}
           </div>
-          <PromptPreview
+          {isVideoWorkflow || isVariationWorkflow ? <details className="pane p-4" data-testid={isVideoWorkflow ? "video-motion-preview" : "variation-prompt-preview"}><summary className="cursor-pointer text-xs text-zinc-300">{isVideoWorkflow ? "Motion prompt sent to ComfyUI" : "Variation prompt sent to ComfyUI"}</summary><p className="mt-3 whitespace-pre-wrap text-xs text-zinc-400">{finalPositive}</p></details> : <PromptPreview
             aiProvider={aiProvider}
             positive={finalPositive}
             negative={finalNegative}
@@ -3173,102 +3243,12 @@ export default function Builder({ studio = "standard" }) {
               setNegativePromptOverride("");
               toast.success("Generated prompt restored");
             }}
-          />
+          />}
           </div>
           {activeWorkflow && promptStyle === "pony" && (
             <div className={`${mobileStudioMode === "advanced" ? "flex" : "hidden md:flex"} pane p-3 items-center gap-2`} data-testid="pony-style-badge">
               <span className="text-[10px] font-mono uppercase tracking-widest text-rose-300 bg-rose-500/10 border border-rose-500/40 rounded px-1.5 py-0.5">pony style</span>
               <span className="text-[11px] text-zinc-400">score_9 prefix + booru tag weighting enabled</span>
-            </div>
-          )}
-          {isVideoWorkflow && (
-            <div className="pane p-4 space-y-4" data-testid="wan-video-panel">
-              <div className="flex items-center gap-2">
-                <Camera className="h-4 w-4 text-emerald-300" />
-                <div className="section-label">WAN Image → Video</div>
-              </div>
-              <p className="text-xs text-zinc-400">
-                Upload the starting frame, then describe movement rather than redesigning the image.
-              </p>
-              {referencePreview ? (
-                <div className="relative rounded-lg overflow-hidden border hairline bg-elevated">
-                  <img src={referencePreview} alt="WAN starting frame" className="w-full max-h-72 object-contain" />
-                  <button type="button" onClick={clearReference}
-                    className="absolute right-2 top-2 rounded-full bg-black/70 p-2 text-zinc-100 hover:bg-red-500"
-                    aria-label="Remove WAN starting image" data-testid="btn-remove-wan-source">
-                    <X className="h-4 w-4" />
-                  </button>
-                </div>
-              ) : (
-                <label className="flex min-h-28 cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-emerald-500/40 bg-emerald-500/5 px-4 py-5 text-center hover:bg-emerald-500/10">
-                  {referenceUploading ? <Loader2 className="h-6 w-6 animate-spin text-emerald-300" /> : <Upload className="h-6 w-6 text-emerald-300" />}
-                  <span className="text-sm font-semibold text-emerald-100">
-                    {referenceUploading ? "Uploading…" : "Choose starting image"}
-                  </span>
-                  <span className="text-[11px] text-zinc-500">JPG, PNG, or WEBP · maximum 20 MB</span>
-                  <input type="file" accept="image/jpeg,image/png,image/webp"
-                    disabled={referenceUploading}
-                    onChange={(event) => uploadReference(event.target.files?.[0])}
-                    className="hidden" data-testid="input-wan-source" />
-                </label>
-              )}
-              <label className="block space-y-1">
-                <span className="text-xs uppercase tracking-widest text-zinc-500 font-mono">Movement instruction</span>
-                <Textarea rows={5} value={videoInstruction}
-                  onChange={(event) => setVideoInstruction(event.target.value)}
-                  placeholder="Example: She slowly turns toward the camera and smiles. Natural blinking and breathing, gentle hair movement, steady camera."
-                  className="bg-elevated border-hairline text-sm"
-                  data-testid="textarea-wan-motion" />
-              </label>
-              <button type="button" onClick={analyzeVideoImage}
-                disabled={analyzingVideoImage || !referenceImage?.name}
-                className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-cyan-500/40 bg-cyan-500/10 px-3 py-2 text-sm font-semibold text-cyan-200 hover:bg-cyan-500/20 disabled:opacity-40"
-                data-testid="btn-venice-analyze-video-image">
-                {analyzingVideoImage ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-                Analyze image + draft motion with {aiProvider}
-              </button>
-              {videoImageAnalysis && (
-                <div className="rounded-lg border border-cyan-500/20 bg-cyan-500/5 p-3 text-xs text-zinc-300">
-                  <div className="mb-1 font-mono uppercase tracking-widest text-cyan-300">{aiProvider} image analysis</div>
-                  {videoImageAnalysis}
-                </div>
-              )}
-              <button type="button" onClick={enhanceVideoInstruction}
-                disabled={enhancingVideo || !videoInstruction.trim()}
-                className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm font-semibold text-amber-200 hover:bg-amber-500/20 disabled:opacity-40"
-                data-testid="btn-venice-enhance-video">
-                {enhancingVideo ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-                Enhance movement with {aiProvider}
-              </button>
-              <div className="grid grid-cols-2 gap-3">
-                <label className="space-y-1">
-                  <span className="text-xs text-zinc-400">Duration</span>
-                  <select value={videoFrames} onChange={(e) => setVideoFrames(Number(e.target.value))}
-                    className="w-full rounded-lg border border-hairline bg-elevated px-3 py-2 text-sm"
-                    data-testid="select-wan-duration">
-                    <option value={41}>1.7 sec · 41 frames</option>
-                    <option value={81}>3.4 sec · 81 frames</option>
-                    <option value={121}>5 sec · 121 frames</option>
-                    <option value={161}>6.7 sec · 161 frames</option>
-                    <option value={201}>8.4 sec · 201 frames</option>
-                    <option value={241}>10 sec · 241 frames</option>
-                  </select>
-                </label>
-                <label className="space-y-1">
-                  <span className="text-xs text-zinc-400">Playback FPS</span>
-                  <select value={videoFps} onChange={(e) => setVideoFps(Number(e.target.value))}
-                    className="w-full rounded-lg border border-hairline bg-elevated px-3 py-2 text-sm"
-                    data-testid="select-wan-fps">
-                    <option value={16}>16 FPS</option>
-                    <option value={20}>20 FPS</option>
-                    <option value={24}>24 FPS</option>
-                    <option value={30}>30 FPS</option>
-                  </select>
-                </label>
-              </div>
-              <p className="text-[11px] text-zinc-500">
-                Longer clips require substantially more VRAM and generation time. Start with 41 frames for testing.
-              </p>
             </div>
           )}
           {isTextVideoWorkflow && (
@@ -3478,7 +3458,7 @@ export default function Builder({ studio = "standard" }) {
               </label>
             </div>
           )}
-          <div className={`${mobileStudioMode === "advanced" ? "contents" : "hidden md:contents"}`}>
+          <div className={`${isImageFirst ? "!hidden" : mobileStudioMode === "advanced" ? "contents" : "hidden md:contents"}`}>
             <LikenessLoraPanel
               workflowId={workflowId}
               subject={activeSubject}

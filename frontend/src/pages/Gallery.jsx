@@ -622,8 +622,8 @@ export default function Gallery() {
                     </span>
                     {!selectionMode && <button type="button" onClick={() => openRecipe.mutate(r)} disabled={openRecipe.isPending}
                       className="absolute bottom-2 right-2 z-10 rounded-lg border border-cyan-300/30 bg-black/80 px-2 py-1.5 text-[10px] font-semibold text-cyan-100 disabled:opacity-40"
-                      aria-label={`Use recipe for ${r.workflow_name || "render"}`} data-testid={`gallery-use-recipe-${r.id}`}>
-                      Use recipe
+                      aria-label={`Open exact recipe for ${r.workflow_name || "render"}`} title="Load the saved prompt, seed and settings into Builder for review; does not queue a render" data-testid={`gallery-use-recipe-${r.id}`}>
+                      Open exact recipe
                     </button>}
                     {r.album && <span className="absolute bottom-10 left-1 z-10 max-w-[90%] truncate rounded bg-black/65 px-1.5 py-0.5 text-[9px] text-zinc-200 pointer-events-none">{r.album}</span>}
                   </div>
@@ -806,6 +806,22 @@ export default function Gallery() {
               <details key={lightbox.id} className="rounded-lg border hairline bg-black/10 p-3" data-testid="gallery-other-tools">
                 <summary className="cursor-pointer text-xs font-semibold text-zinc-300">Review image, prompt & recipe tools</summary>
                 <div className="space-y-3 pt-3">
+                  <details className="rounded-lg border hairline p-2.5" data-testid="gallery-action-guide">
+                    <summary className="cursor-pointer text-xs text-cyan-200">What these actions do</summary>
+                    <dl className="mt-3 space-y-2 text-xs text-zinc-400">
+                      {[
+                        ['Open exact recipe', 'Loads saved prompts, seed and settings into Builder. Review or change them before rendering. The card shortcut does the same thing.'],
+                        ['Review image / Review again', 'AI compares the image with saved selections and reports missing details. It does not generate or edit an image.'],
+                        ['Recreate Exact', 'Queues the saved recipe with the same seed. ComfyUI may reuse cached results when the graph is unchanged.'],
+                        ['New seed', 'Queues the saved recipe with a different seed. This is a new generation, not an edit of the image.'],
+                        ['Rebuild prompt', 'Opens saved selections in Builder and replaces the saved prompt with the current compiler output and starts with a new seed. Does not render until you choose Render.'],
+                        ['Change body setup', 'Opens the original creation setup at Body controls to generate a new image with revised proportions. Does not edit the existing image.'],
+                        ['Edit image', 'Opens Qwen Edit with this image as its source. Describe the changes you want.'],
+                        ['Face reference', 'Uses this image to guide facial identity in a new generation and restores the saved character selections. Pose, outfit and body may change.'],
+                        ['Animate', 'Uses the image as the starting frame for WAN image-to-video. Describe motion and set clip length.'],
+                      ].map(([label, help]) => <div key={label}><dt className="font-semibold text-zinc-200">{label}</dt><dd>{help}</dd></div>)}
+                    </dl>
+                  </details>
               {!isVideoUrl(primaryOutput(lightbox)) && <section className="rounded-lg border border-cyan-500/30 bg-cyan-500/5 p-3 text-xs" data-testid="gallery-alignment-review">
                 <div className="flex items-center justify-between gap-2">
                   <span className="font-bold text-cyan-100">Image vs. selections</span>
@@ -984,7 +1000,7 @@ export default function Gallery() {
                       className="inline-flex items-center justify-center gap-2 rounded-lg border border-cyan-500/40 bg-cyan-500/10 px-3 py-2 text-xs font-semibold text-cyan-100 hover:bg-cyan-500/15 disabled:opacity-40"
                       title="Open the saved DNA/settings in Builder, clear saved prompt overrides, and regenerate the prompt with the current compiler"
                     >
-                      <BookOpen className="h-4 w-4" /> Current Compiler
+                      <BookOpen className="h-4 w-4" /> Rebuild prompt
                     </button>
                   </div>
                 </div>
@@ -1000,11 +1016,11 @@ export default function Gallery() {
                       <button type="button" onClick={() => openBodyCreation.mutate(lightbox)} disabled={openBodyCreation.isPending}
                         data-testid="btn-lightbox-body-adjust" title="Load the original creation setup and change its body sliders before generating a new image"
                         className="inline-flex min-w-0 flex-col items-center justify-center gap-1 rounded-lg border border-amber-500/30 bg-amber-500/5 text-amber-100 hover:bg-amber-500/10 text-xs font-semibold px-2 py-2.5 disabled:opacity-40">
-                        <SlidersHorizontal className="h-4 w-4" /> Body Adjust
+                        <SlidersHorizontal className="h-4 w-4" /> Change body setup
                       </button>
                       <button type="button" onClick={() => reuseAsReference.mutate({ render: lightbox, targetKind: "edit" })} disabled={reuseAsReference.isPending}
                         data-testid="btn-lightbox-edit-again" className="inline-flex min-w-0 flex-col items-center justify-center gap-1 rounded-lg border border-cyan-500/30 bg-cyan-500/5 text-cyan-100 hover:bg-cyan-500/10 text-xs font-semibold px-2 py-2.5 disabled:opacity-40">
-                        <Pencil className="h-4 w-4" /> Edit
+                        <Pencil className="h-4 w-4" /> Edit image
                       </button>
                       <button type="button" onClick={() => reuseAsReference.mutate({ render: lightbox, targetKind: "video" })} disabled={reuseAsReference.isPending}
                         data-testid="btn-lightbox-animate" className="inline-flex min-w-0 flex-col items-center justify-center gap-1 rounded-lg border border-emerald-500/30 bg-emerald-500/5 text-emerald-100 hover:bg-emerald-500/10 text-xs font-semibold px-2 py-2.5 disabled:opacity-40">
@@ -1013,7 +1029,7 @@ export default function Gallery() {
                       <button type="button" onClick={() => reuseAsReference.mutate({ render: lightbox, targetKind: "face", referenceMode: "keep_character" })} disabled={reuseAsReference.isPending}
                         data-testid="btn-lightbox-reference" title="Use this image as the face reference and restore its character selections"
                         className="inline-flex min-w-0 flex-col items-center justify-center gap-1 rounded-lg border border-rose-500/30 bg-rose-500/5 text-rose-100 hover:bg-rose-500/10 text-xs font-semibold px-2 py-2.5 disabled:opacity-40">
-                        <ScanFace className="h-4 w-4" /> Keep character
+                        <ScanFace className="h-4 w-4" /> Face reference
                       </button>
                     </div>
 

@@ -6,6 +6,19 @@ const sizes = {
   waist: ["waist_scale", "Waist width"],
 };
 
+export const SIZE_CONTROL_PAIRS = sizes;
+export function sizeControlMode(preset, physique = {}) {
+  if (preset === 'bust' && Number(physique.implant_volume) > 0) return 'implant';
+  return Number(physique[sizes[preset]?.[0]]) > 0 ? 'slider' : physique[`${preset}_control_mode`] === 'slider' ? 'slider' : 'preset';
+}
+export function selectSizeControl(preset, mode, physique = {}) {
+  const slider = sizes[preset]?.[0];
+  if (!slider) return physique;
+  return { ...physique, [`${preset}_control_mode`]: mode,
+    [slider]: mode === 'slider' ? Number(physique[slider]) || 50 : 0,
+    ...(preset === 'bust' ? { implant_volume: mode === 'implant' ? Number(physique.implant_volume) || 500 : 0 } : {}) };
+}
+
 export function physiqueControlStatus(key, physique = {}) {
   if (["bust", "bust_scale", "bust_shape"].includes(key) && Number(physique.implant_volume) > 0) {
     return { inactive: true, text: "Saved selection; implant visual size currently supplies bust size and the rounded augmented shape. Set implant size to 0 to use this control." };

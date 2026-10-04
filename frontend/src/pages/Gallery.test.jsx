@@ -136,3 +136,12 @@ test("Gallery clarifies the change and carries reviewed wording into Qwen Edit",
     targetKind: "edit", editInstruction: "Change the dress to blue; preserve unmentioned details.",
   }) });
 });
+
+test('recipe shortcuts have one label and the action guide distinguishes generation from image editing', async () => {
+  await render('/gallery?render=a');
+  expect(container.querySelector('[data-testid="gallery-use-recipe-a"]').textContent.trim()).toBe('Open exact recipe');
+  const guide = container.querySelector('[data-testid="gallery-action-guide"]');
+  expect(guide.textContent).toContain('The card shortcut does the same thing');
+  expect(guide.textContent).toContain('This is a new generation, not an edit');
+  expect(guide.textContent).toContain('Uses this image to guide facial identity');
+});
