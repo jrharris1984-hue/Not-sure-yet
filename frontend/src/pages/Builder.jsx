@@ -22,6 +22,7 @@ import { analyzePromptQuality } from "@/lib/promptQuality";
 import DnaSection from "@/components/DnaSection";
 import ImageSourceFlow from "@/components/ImageSourceFlow";
 import CharacterDesignControls from "@/components/CharacterDesignControls";
+import ClothedDesignRender from "@/components/ClothedDesignRender";
 import { characterSubjectRecord } from "@/lib/characterDesign";
 import PromptPreview from "@/components/PromptPreview";
 import AiAssistBar from "@/components/AiAssistBar";
@@ -3127,7 +3128,16 @@ export default function Builder({ studio = "standard" }) {
                 value={activeSubject.design_profile}
                 subjectLabel={activeSubject.label}
                 onChange={design_profile => updateActiveSubject(() => ({ design_profile }))}
-              />,
+              >
+                <ClothedDesignRender subject={activeSubject} characterId={id} disabled={dispatching}
+                  onQueued={queued => {
+                    setBatchRenders([queued]);
+                    setSelectedBatchRenderId(queued.id);
+                    setActiveRender(queued);
+                    setMobileStudioStep("create");
+                    toast.success("Clothed character design added to the render queue");
+                  }} />
+              </CharacterDesignControls>,
             } : {}}
           />
           {sectionNavigation("bottom")}
