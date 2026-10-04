@@ -27,6 +27,18 @@ function makeDevServerV5Compatible(devServerConfig) {
       : https
         ? "https"
         : "http";
+  // Tailscale Serve forwards the browser's .ts.net Host header. Keep host
+  // validation enabled while permitting the user's private Tailscale URL.
+  const currentAllowedHosts = compatibleConfig.allowedHosts;
+  if (currentAllowedHosts !== "all") {
+    const existingHosts = Array.isArray(currentAllowedHosts)
+      ? currentAllowedHosts
+      : currentAllowedHosts && currentAllowedHosts !== "auto"
+        ? [currentAllowedHosts]
+        : [];
+    compatibleConfig.allowedHosts = [...new Set([...existingHosts, ".ts.net"])];
+  }
+
   compatibleConfig.headers = {
     ...compatibleConfig.headers,
     "Cross-Origin-Resource-Policy": "same-origin",
