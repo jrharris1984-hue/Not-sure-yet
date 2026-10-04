@@ -342,8 +342,8 @@ describe("model-specific prompt compilers", () => {
     const lowResult = compileModelPrompts({ promptStyle: "chroma", dna: low });
     const highResult = compileModelPrompts({ promptStyle: "chroma", dna: high });
 
-    expect(lowResult.positive).toContain("moderate glute volume (size intensity 20/100)");
-    expect(highResult.positive).toContain("extremely oversized with strong rear projection glute volume (size intensity 80/100)");
+    expect(lowResult.positive).toContain("moderate glute volume (size intensity 20/300)");
+    expect(highResult.positive).toContain("extremely oversized with strong rear projection glute volume (size intensity 80/300)");
     expect(lowResult.positive).not.toContain("Large bust and prominent buttocks from imported analyzer metadata");
     expect(highResult.positive).not.toContain("Large bust and prominent buttocks from imported analyzer metadata");
     expect(lowResult.positive).not.toBe(highResult.positive);
