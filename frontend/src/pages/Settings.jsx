@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Save, KeyRound, Server, CheckCircle2, XCircle, Plus, Trash2, Download, ChevronDown, ChevronRight, Wand2, ArrowUp, ArrowDown } from "lucide-react";
@@ -210,6 +211,8 @@ export default function Settings() {
         <div className="section-label">Settings</div>
         <h1 className="font-display font-extrabold text-3xl sm:text-4xl mt-1">Studio configuration</h1>
       </div>
+
+      <Link to="/settings/prompts" className="pane block p-5 text-cyan-200">Edit Prompt Library →<span className="mt-1 block text-xs text-zinc-400">Customize categories, selection labels and prompt keywords without coding.</span></Link>
 
       <section className="pane p-5 space-y-4">
         <div className="flex items-center gap-2">

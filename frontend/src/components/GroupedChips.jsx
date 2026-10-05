@@ -12,6 +12,7 @@ export default function GroupedChips({
   testIdPrefix,
   variant = "chips",     // "chips" | "poses"
   multi = false,
+  labels = {},
 }) {
   const arr = useMemo(() => multi ? (Array.isArray(value) ? value : []) : null, [multi, value]);
   const reduceMotion = useReducedMotion();
@@ -69,7 +70,7 @@ export default function GroupedChips({
               data-testid={`${testIdPrefix}-selected-${opt.replace(/\s+/g, "-")}`}
               className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 text-amber-100 border border-amber-500/40 px-2 py-0.5 text-[11px] hover:bg-amber-500/25"
             >
-              {opt}
+              {labels[opt] || opt}
               <X className="h-3 w-3" />
             </button>
           ))}
@@ -138,7 +139,7 @@ export default function GroupedChips({
                 }`}
               >
                 <PoseIcon name={opt} size={56} active={isActive} />
-                <span className="font-mono uppercase tracking-tight">{opt}</span>
+                <span className="font-mono uppercase tracking-tight">{labels[opt] || opt}</span>
               </button>
             );
           })}
@@ -155,7 +156,7 @@ export default function GroupedChips({
                 className={`chip ${isActive ? "active" : ""}`}
                 onClick={() => toggle(opt)}
               >
-                {opt}
+                {labels[opt] || opt}
               </button>
             );
           })}

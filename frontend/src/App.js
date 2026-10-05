@@ -1,3 +1,7 @@
+import { useEffect } from "react";
+import { endpoints } from "@/lib/api";
+import { setPromptCatalog } from "@/lib/promptCatalog";
+import PromptLibraryEditor from "@/pages/PromptLibraryEditor";
 import "@/App.css";
 import { BrowserRouter, Routes, Route, Navigate, useParams } from "react-router-dom";
 import { Toaster } from "sonner";
@@ -26,6 +30,7 @@ function ImageToolRoute() {
 }
 
 function App() {
+  useEffect(() => {endpoints.settings().then(settings => setPromptCatalog(settings.prompt_catalog)).catch(() => {});}, []);
   return (
     <div className="App grain min-h-screen bg-obsidian text-zinc-100 font-body">
       <BrowserRouter>
@@ -52,6 +57,7 @@ function App() {
             <Route path="/shoots" element={<Shoots />} />
             <Route path="/shoot/new/:characterId" element={<ShootSetup />} />
             <Route path="/shoot/:shootId" element={<ShootDetail />} />
+            <Route path="/settings/prompts" element={<PromptLibraryEditor />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
