@@ -11,6 +11,7 @@ test('home shortcuts navigate to individual tools and explain empty groups',()=>
   global.IS_REACT_ACT_ENVIRONMENT=true;
   const container=document.createElement('div'),root=createRoot(container);
   act(()=>root.render(<HomeImageTools workflows={workflows}/>));
+  for (const mode of ['image','video','text-video']) expect(container.querySelector(`a[href="/create/${mode}"]`)).not.toBeNull();
   expect(container.querySelector('a[href="/image-tools/pose"]').textContent).toContain('AnyPose');
   expect(container.querySelector('a[href="/image-tools/video"]')).not.toBeNull();
   expect(container.querySelector('a[href="/image-tools/creator"]')).toBeNull();

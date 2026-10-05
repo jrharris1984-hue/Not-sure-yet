@@ -111,12 +111,13 @@ export const endpoints = {
       preserve_unmentioned: preserveUnmentioned,
       workflow_kind: workflowKind,
     }).then((r) => r.data),
-  aiImproveGeneratedPrompt: (positive, negative, promptStyle, workflowName) =>
+  aiImproveGeneratedPrompt: (positive, negative, promptStyle, workflowName, freeform = false) =>
     api.post("/ai/improve-generated-prompt", {
       positive,
       negative,
       prompt_style: promptStyle,
       workflow_name: workflowName,
+      freeform,
     }).then((r) => r.data),
   aiVideoPrompt: (instruction, mode = "image") =>
     api.post("/ai/video-prompt", { instruction, mode }).then((r) => r.data),
