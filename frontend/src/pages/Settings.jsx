@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Save, KeyRound, Server, CheckCircle2, XCircle, Plus, Trash2, Download, ChevronDown, ChevronRight, Wand2, ArrowUp, ArrowDown } from "lucide-react";
 import { toast } from "sonner";
 import { endpoints } from "@/lib/api";
+import WebResearchSettings from '@/components/WebResearchSettings';
 import { promptAssistantChoices } from "@/lib/promptAssistantModels";
 import { workflowCatalog } from "@/lib/workflowCatalog";
 import { Input } from "@/components/ui/input";
@@ -375,6 +376,7 @@ export default function Settings() {
             <Save className="h-4 w-4" /> Save AI settings
           </button>
         </div>
+        <WebResearchSettings />
       </section>
     </div>
   );

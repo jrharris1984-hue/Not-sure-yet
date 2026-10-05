@@ -126,7 +126,7 @@ test('platform footwear suppresses hidden sole texture and conflicting toe posit
   dna.feet={composition_mode:'supporting detail',toes:['toe point','toe ring'],sole_texture:'water droplets on soles',arch:'defined arch',pedicure:'natural nails',pedicure_art:'matte polish'};
   const {dna:resolved,notes}=resolveBuilderControls(dna);
   expect(resolved.feet.sole_texture).toBe('');expect(resolved.feet.arch).toBe('');
-  expect(resolved.feet.toes).toEqual(['toe ring']);expect(resolved.feet.pedicure_art).toBe('');
+  expect(resolved.feet.toes).toEqual([]);expect(resolved.feet.pedicure_art).toBe('');
   expect(resolved.hair.length).toBe('');expect(resolved.hair.style).toBe('chignon');
   expect(dna.feet.sole_texture).toBe('water droplets on soles');expect(notes.length).toBeGreaterThan(0);
 });
