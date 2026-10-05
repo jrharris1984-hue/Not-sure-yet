@@ -1,4 +1,4 @@
-from qwen_reference_edit import configure_reference_edit, resolve_reference_models
+from qwen_reference_edit import configure_reference_edit, resolve_reference_models, configure_camera_strength
 """Ultra Studio Character DNA Builder — FastAPI backend."""
 from fastapi import FastAPI, APIRouter, HTTPException, Body, BackgroundTasks, WebSocket, WebSocketDisconnect, Query, UploadFile, File, Form
 from fastapi.responses import FileResponse, JSONResponse, Response
@@ -1163,6 +1163,8 @@ class DispatchBody(BaseModel):
     qwen_camera_azimuth: Literal["front view", "front-right quarter view", "right side view", "back-right quarter view", "back view", "back-left quarter view", "left side view", "front-left quarter view"] = "front view"
     qwen_camera_elevation: Literal["low-angle shot", "eye-level shot", "elevated shot", "high-angle shot"] = "eye-level shot"
     qwen_camera_distance: Literal["close-up", "medium shot", "wide shot"] = "medium shot"
+    qwen_camera_denoise: float = Field(default=1.0, ge=0.5, le=1.0)
+    qwen_camera_lora_strength: float = Field(default=0.9, ge=0.8, le=1.0)
     reference_source_render_id: Optional[str] = None  # provenance token returned by /renders/{rid}/prepare-reference
     face_strength: float = 1.1
     faceid_v2_strength: float = 1.4
@@ -1791,6 +1793,8 @@ async def _perform_dispatch(body: "DispatchBody", queue_id: Optional[str] = None
                     workflow, reference_variant, body.reference_image, body.pose_reference_image,
                     notes=body.qwen_reference_notes, azimuth=body.qwen_camera_azimuth,
                     elevation=body.qwen_camera_elevation, distance=body.qwen_camera_distance)
+                if reference_variant == "camera":
+                    configure_camera_strength(workflow, body.qwen_camera_denoise, body.qwen_camera_lora_strength)
                 async with httpx.AsyncClient(timeout=15.0) as hc:
                     info_response = await hc.get(f"{s.comfyui_url.rstrip('/')}/object_info")
                     info_response.raise_for_status()

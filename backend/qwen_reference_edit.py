@@ -68,3 +68,15 @@ def resolve_reference_models(workflow, object_info):
         else:
             missing.append(requested if not matches else f'ambiguous model path for {name}')
     return sorted(set(missing))
+
+
+def configure_camera_strength(workflow, denoise=1.0, lora_strength=0.9):
+    """Change only the camera task controls; preserve model-specific sampling defaults."""
+    if not 0.5 <= denoise <= 1.0 or not 0.8 <= lora_strength <= 1.0:
+        raise ValueError('Camera denoise must be 0.5–1.0 and LoRA strength 0.8–1.0.')
+    sampler = workflow.get('sampler', {})
+    lora = workflow.get('task_lora', {})
+    if sampler.get('class_type') != 'KSampler' or lora.get('class_type') != 'LoraLoaderModelOnly':
+        raise ValueError('Camera workflow is missing its sampler or camera LoRA. Refresh bundled workflows in Settings.')
+    sampler['inputs']['denoise'] = denoise
+    lora['inputs']['strength_model'] = lora_strength
