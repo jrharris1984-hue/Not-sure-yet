@@ -1,3 +1,4 @@
+from qwen_test_models import resolve_qwen_test_models
 from assistant_research import AssistantResearchMiddleware, enrich_assistant_request
 from qwen_reference_edit import configure_reference_edit, resolve_reference_models, configure_camera_strength
 from ai_research import research_sources, research_messages, research_response, prompt_research_query, prompt_research_messages, prompt_research_metadata
@@ -226,6 +227,8 @@ def _detect_prompt_nodes(wf: Dict[str, Any]) -> Dict[str, str]:
 
 
 SEED_WORKFLOWS = [
+    {"file": "qwen_agqi_t2i.json", "name": "Qwen 2512 · AGQI V2 FP8", "kind": "image", "prompt_style": "qwen_image"},
+    {"file": "qwen_rapid_t2i.json", "name": "Qwen Rapid AIO v23 · Text to Image", "kind": "image", "prompt_style": "qwen_rapid"},
     {"file": "sdxl.json", "name": "SDXL · Juggernaut XL v9", "kind": "image", "prompt_style": "sdxl"},
     {"file": "sdxl_stable_yogi.json", "name": "SDXL · Realism by Stable Yogi XL V4", "kind": "image", "prompt_style": "sdxl"},
     {"file": "sdxl_realporn.json", "name": "SDXL · RealPornSDXXXL v1", "kind": "image", "prompt_style": "sdxl"},
@@ -1590,6 +1593,18 @@ async def _perform_dispatch(body: "DispatchBody", queue_id: Optional[str] = None
         await db.renders.insert_one(doc)
         doc.pop("_id", None)
         return doc
+
+    if wf_template and wf_template.prompt_style in {"qwen_image", "qwen_rapid"}:
+        missing = resolve_qwen_test_models(workflow, await _krea2_object_info(s.comfyui_url) or {}, wf_template.prompt_style)
+        if missing:
+            r.status = "failed"
+            r.error = "Qwen text-to-image setup needs: " + ", ".join(missing) + ". Check model folders, restart ComfyUI, and refresh bundled workflows."
+            doc = r.model_dump()
+            doc["workflow_id"] = wf_template.id
+            doc["workflow_name"] = wf_template.name
+            await db.renders.insert_one(doc)
+            doc.pop("_id", None)
+            return doc
 
     # Krea 2 workflows use model-only style LoRAs and zeroed negative conditioning.
     # Repair local filenames from ComfyUI object_info so shared/local model folders both work.

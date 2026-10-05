@@ -1,4 +1,14 @@
 const IMAGE_RECIPES = {
+  qwen_image: {
+    draft: { width: 768, height: 768, steps: 20, cfg: 4, batchSize: 1, sampler: "euler", note: "AGQI V2 quick test · simple scheduler" },
+    balanced: { width: 768, height: 1024, steps: 40, cfg: 4, batchSize: 1, sampler: "euler", note: "AGQI V2 author recipe · reuses Qwen encoder and VAE" },
+    quality: { width: 1024, height: 1024, steps: 50, cfg: 4, batchSize: 1, sampler: "euler", note: "AGQI V2 larger canvas · higher VRAM use" },
+  },
+  qwen_rapid: {
+    draft: { width: 768, height: 768, steps: 4, cfg: 1, batchSize: 1, sampler: "euler_ancestral", note: "Rapid AIO v23 · includes encoder, VAE and acceleration" },
+    balanced: { width: 768, height: 1024, steps: 4, cfg: 1, batchSize: 1, sampler: "euler_ancestral", note: "Rapid AIO v23 author baseline · beta scheduler" },
+    quality: { width: 1024, height: 1024, steps: 8, cfg: 1, batchSize: 1, sampler: "euler_ancestral", note: "Rapid AIO v23 8-step test · higher VRAM use" },
+  },
   sdxl_dmd2: {
     draft: { width: 768, height: 1024, steps: 4, cfg: 1.2, batchSize: 1, sampler: "lcm", note: "Fast DMD2 test · normal scheduler" },
     balanced: { width: 832, height: 1216, steps: 4, cfg: 1.2, batchSize: 1, sampler: "lcm", note: "DMD2 portrait · 4 steps, low CFG" },
@@ -43,7 +53,7 @@ const IMAGE_RECIPES = {
 
 const IMAGE_SCHEDULERS = {
   sdxl: "karras", sdxl_dmd2: "normal", pony: "normal",
-  zimage: "simple", krea2: "simple",
+  zimage: "simple", krea2: "simple", qwen_image: "simple", qwen_rapid: "beta",
 };
 
 const VIDEO_RECIPES = {

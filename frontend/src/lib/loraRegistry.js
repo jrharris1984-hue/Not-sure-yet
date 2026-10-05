@@ -149,6 +149,7 @@ export const LORA_REGISTRY = [
 ];
 
 export function workflowFamily(workflow = {}) {
+  if (workflow.prompt_style === "qwen_image") return "qwen_image";
   const text = [workflow.name, workflow.kind, workflow.prompt_style].filter(Boolean).join(" ").toLowerCase();
   if (/flux[. _-]?2.*klein|flux2_klein/.test(text)) return "flux2_klein";
   if (/z[- ]?image/.test(text)) return "zimage";
