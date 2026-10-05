@@ -14,6 +14,10 @@ export function imageToolGroups(workflows = []) {
 
 export default function HomeImageTools({ workflows, loading, error }) {
   return <section className="space-y-3" data-testid="home-image-tools">
+    <div className="pane p-4 space-y-3"><h2 className="font-display text-xl font-bold">Create from a prompt</h2>
+      <p className="text-sm text-zinc-400">Free-form prompts with optional AI help. No character setup required.</p>
+      <div className="grid gap-2 sm:grid-cols-3">{[['image', 'Text to image'], ['video', 'Image to video'], ['text-video', 'Text to video']].map(([mode, label]) => <Link key={mode} to={`/create/${mode}`} className="rounded-lg border border-cyan-400/30 px-3 py-3 text-cyan-200 hover:bg-cyan-500/10">{label} <ArrowUpRight className="inline h-4 w-4"/></Link>)}</div>
+    </div>
     <div><h2 className="font-display text-xl font-bold">Work with an existing image</h2>
       <p className="mt-1 text-sm text-zinc-400">Open a tool, upload your image, and describe the change.</p></div>
     {error ? <p className="text-sm text-amber-200">Image tools could not load. Try refreshing, or check <Link to="/settings" className="underline">Settings</Link>.</p>
