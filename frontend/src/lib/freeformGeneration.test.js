@@ -20,3 +20,23 @@ test('requires a compatible workflow, prompt, source for animation and valid see
   expect(() => freeformPayload({mode:'video',workflow:workflows[1],prompt:'motion'})).toThrow('Upload');
   expect(() => freeformPayload({mode:'image',workflow:workflows[0],prompt:'forest',seed:'abc'})).toThrow('seed');
 });
+
+test('LoRA payload keeps independent strength and triggers without changing free text', () => {
+  const body = freeformPayload({mode:'image',workflow:{id:'q',kind:'image',prompt_style:'qwen_image'},prompt:'Portrait',loras:[
+    {name:'Qwen_Image/portrait.safetensors',strength:0.6,triggerWords:['portrait style']},
+    {name:'Qwen_Image/daylight.safetensors',strength:0.4,triggerWords:[]},
+  ]});
+  expect(body.prompt_positive).toBe('Portrait');
+  expect(body.selected_loras).toEqual([{name:'Qwen_Image/portrait.safetensors',strength:0.6,triggers:['portrait style']},{name:'Qwen_Image/daylight.safetensors',strength:0.4,triggers:[]}]);
+});
+test.each([
+  [[{name:'Qwen_Image/test.safetensors',strength:0.6},{name:'Qwen_Image/TEST.safetensors',strength:0.6}], 'different'],
+  [[{name:'Qwen_Edit/test.safetensors',strength:0.6}], 'model family'],
+  [[{name:'Qwen_Image/test.safetensors',strength:NaN}], 'strength'],
+  [[1,2,3].map(n => ({name:`Qwen_Image/test${n}.safetensors`,strength:0.6})), 'two'],
+])('invalid LoRA configuration fails before dispatch', (loras, message) => {
+  expect(() => freeformPayload({mode:'image',workflow:{kind:'image',prompt_style:'qwen_image'},prompt:'Portrait',loras})).toThrow(message);
+});
+test('video payload does not inherit image LoRAs', () => {
+  expect(freeformPayload({mode:'text_video',workflow:workflows[2],prompt:'Ocean',loras:[{name:'Qwen_Image/test.safetensors',strength:0.8}]})).not.toHaveProperty('selected_loras');
+});

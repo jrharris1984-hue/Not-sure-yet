@@ -229,6 +229,7 @@ def _detect_prompt_nodes(wf: Dict[str, Any]) -> Dict[str, str]:
 SEED_WORKFLOWS = [
     {"file": "qwen_agqi_t2i.json", "name": "Qwen 2512 · AGQI V2 FP8", "kind": "image", "prompt_style": "qwen_image"},
     {"file": "qwen_rapid_t2i.json", "name": "Qwen Rapid AIO v23 · Text to Image", "kind": "image", "prompt_style": "qwen_rapid"},
+    {"file": "qwen_custom_loras_t2i.json", "name": "Qwen 2512 · Custom LoRAs (AGQI)", "kind": "image", "prompt_style": "qwen_image"},
     {"file": "sdxl.json", "name": "SDXL · Juggernaut XL v9", "kind": "image", "prompt_style": "sdxl"},
     {"file": "sdxl_stable_yogi.json", "name": "SDXL · Realism by Stable Yogi XL V4", "kind": "image", "prompt_style": "sdxl"},
     {"file": "sdxl_realporn.json", "name": "SDXL · RealPornSDXXXL v1", "kind": "image", "prompt_style": "sdxl"},

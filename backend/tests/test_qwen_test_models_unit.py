@@ -41,6 +41,19 @@ class QwenTestModelTests(unittest.TestCase):
         self.assertEqual(rapid['5']['inputs']['vae'], ['1', 2])
         self.assertNotIn('image1', rapid['5']['inputs'])
 
+    def test_custom_lora_workflow_uses_existing_models_without_fixed_adapters(self):
+        graph = json.loads((ROOT / 'backend/seed_workflows/qwen_custom_loras_t2i.json').read_text())
+        original = self.graph()
+        self.assertNotEqual(graph['10']['inputs']['filename_prefix'], original['10']['inputs']['filename_prefix'])
+        self.assertEqual({k:v for k,v in graph.items() if k != '10'}, {k:v for k,v in original.items() if k != '10'})
+        self.assertFalse(any('Lora' in node['class_type'] for node in graph.values()))
+        self.assertEqual(resolve_qwen_test_models(graph, self.info(graph), 'qwen_image'), [])
+        tree = ast.parse((ROOT / 'backend/server.py').read_text())
+        specs = ast.literal_eval(next(n.value for n in tree.body if isinstance(n, ast.Assign) and any(isinstance(t, ast.Name) and t.id == 'SEED_WORKFLOWS' for t in n.targets)))
+        custom = next(spec for spec in specs if spec['file'] == 'qwen_custom_loras_t2i.json')
+        self.assertEqual(custom['kind'], 'image')
+        self.assertEqual(custom['prompt_style'], 'qwen_image')
+
     def test_model_files_resolve_in_subfolders(self):
         for rapid, style in [(False, 'qwen_image'), (True, 'qwen_rapid')]:
             graph = self.graph(rapid)
