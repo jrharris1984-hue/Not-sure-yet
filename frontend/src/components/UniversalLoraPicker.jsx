@@ -1,9 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { Check, Search, SlidersHorizontal, Sparkles } from "lucide-react";
 import { endpoints } from "@/lib/api";
+import { readLoraPreferences, saveLoraPreference, loraFileKey, LORA_PREFERENCES_CHANGED } from "@/lib/loraPreferences";
 import { compatibleInstalledLoras, workflowFamily } from "@/lib/loraRegistry";
 
 export default function UniversalLoraPicker({ workflow, value, onChange, slotLabel = "LoRA", excludedNames = [] }) {
+  const [preferences, setPreferences] = useState(readLoraPreferences);
+  const [saveError, setSaveError] = useState("");
+  const [savedTriggerFor, setSavedTriggerFor] = useState("");
   const [installed, setInstalled] = useState([]);
   const [query, setQuery] = useState("");
   const [expanded, setExpanded] = useState(false);
@@ -12,6 +16,12 @@ export default function UniversalLoraPicker({ workflow, value, onChange, slotLab
   const [editedTriggerFor, setEditedTriggerFor] = useState("");
   const family = workflowFamily(workflow || {});
 
+  useEffect(() => {
+    const refresh = () => setPreferences(readLoraPreferences());
+    window.addEventListener(LORA_PREFERENCES_CHANGED, refresh);
+    window.addEventListener('storage', refresh);
+    return () => {window.removeEventListener(LORA_PREFERENCES_CHANGED, refresh); window.removeEventListener('storage', refresh);};
+  }, []);
   useEffect(() => {
     let alive = true;
     setLoadState("loading");
@@ -22,10 +32,10 @@ export default function UniversalLoraPicker({ workflow, value, onChange, slotLab
   }, [workflow?.id]);
 
   const options = useMemo(
-    () => compatibleInstalledLoras(workflow || {}, installed).filter((entry) =>
+    () => compatibleInstalledLoras(workflow || {}, installed, preferences).filter((entry) =>
       !excludedNames.some((name) => String(name).replace(/\\/g, "/").toLowerCase() === entry.installedName.replace(/\\/g, "/").toLowerCase())
     ),
-    [workflow, installed, excludedNames]
+    [workflow, installed, excludedNames, preferences]
   );
 
   const normalizedFile = (name = "") => String(name).replace(/\\/g, "/").toLowerCase();
@@ -67,7 +77,7 @@ export default function UniversalLoraPicker({ workflow, value, onChange, slotLab
   }, [value?.name, value?.triggerWords]);
 
   const choose = (entry) => {
-    setEditedTriggerFor("");
+    setEditedTriggerFor(""); setSavedTriggerFor(""); setSaveError("");
     if (!entry) {
       onChange({ name: "", strength: 0.8, triggerWords: [] });
       return;
@@ -83,6 +93,9 @@ export default function UniversalLoraPicker({ workflow, value, onChange, slotLab
     if (!selected) return;
     const triggerWords = [...new Set(triggerInput.split(/[,;\n]+/).map((word) => word.trim()).filter(Boolean))];
     setEditedTriggerFor(selected.installedName);
+    const saved = saveLoraPreference(selected.installedName, {triggerWords});
+    setSaveError(saved ? "" : "Could not save in this browser. Your trigger words are still applied to this selection.");
+    setSavedTriggerFor(saved ? selected.installedName : "");
     onChange({
       name: selected.installedName,
       strength,
@@ -182,6 +195,17 @@ export default function UniversalLoraPicker({ workflow, value, onChange, slotLab
           </button>
         )}
 
+        {loadState === "ready" && installed.length > 0 && <details className="rounded-lg border hairline p-3">
+          <summary className="cursor-pointer text-xs text-cyan-200">Missing a LoRA? Set its model family</summary>
+          <p className="my-2 text-xs text-zinc-400">All files reported by ComfyUI are listed here. Assign the training family from the model page; this does not convert a LoRA to another model.</p>
+          <div className="max-h-64 space-y-2 overflow-y-auto">{installed.map(name => <label key={name} className="block text-xs text-zinc-300"><span className="break-all">{name}</span>
+            <select aria-label={`Model family for ${name}`} className="mt-1 w-full rounded border hairline bg-elevated px-2 py-1" value={preferences[loraFileKey(name)]?.family || ""}
+              onChange={event => {const saved = saveLoraPreference(name, {family:event.target.value}); setSaveError(saved ? "" : "Could not save model family in this browser.");}}>
+              <option value="">Use filename / folder detection</option>
+              {[['qwen_image','Qwen Image 2512'],['qwen_edit','Qwen Image Edit'],['chroma','Chroma'],['krea2','Krea 2'],['flux','FLUX'],['flux2_klein','FLUX.2 Klein'],['zimage','Z-Image'],['pony','Pony'],['sdxl','SDXL'],['sd15','SD 1.5'],['wan22','WAN 2.2']].map(([key,label]) => <option key={key} value={key}>{label}</option>)}
+            </select></label>)}</div>
+        </details>}
+        {saveError && <p role="alert" className="text-xs text-amber-200">{saveError}</p>}
         {loadState !== "ready" && (
           <div className="rounded-lg border hairline px-3 py-2 text-xs text-amber-200" role="status">
             {loadState === "loading" ? "Checking installed LoRAs…" : "Could not read LoRAs from ComfyUI. Check the connection in Settings, then reload."}
@@ -225,12 +249,14 @@ export default function UniversalLoraPicker({ workflow, value, onChange, slotLab
             </div>
             <label className="mt-3 block text-[10px] text-zinc-400">
               Prompt trigger words (comma-separated)
-              <input type="text" value={triggerInput} onChange={(event) => setTriggerInput(event.target.value)}
+              <input type="text" value={triggerInput} onChange={(event) => {setTriggerInput(event.target.value); setSavedTriggerFor("");}}
                 onBlur={saveTriggers} onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); }}
                 placeholder="Enter the trigger from this LoRA's model page, if it has one"
                 className="mt-1 w-full rounded-md border hairline bg-elevated px-2 py-2 font-mono text-xs text-zinc-100 outline-none focus:border-cyan-400/50"
                 data-testid="lora-trigger-words" />
             </label>
+            <button type="button" onClick={saveTriggers} className="mt-2 text-xs text-cyan-200">Save trigger words</button>
+            {savedTriggerFor === selected.installedName && <p role="status" className="mt-1 text-xs text-emerald-300">Trigger words saved in this browser.</p>}
             <p className="mt-1 text-[10px] text-zinc-500">
               {selected.triggerWords?.length ? "Known trigger loaded automatically. You can edit it." : "No verified trigger is configured for this LoRA. Add one only if its model page specifies it."}
             </p>

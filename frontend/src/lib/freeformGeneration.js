@@ -1,3 +1,4 @@
+import { readLoraPreferences } from './loraPreferences';
 import { compatibleInstalledLoras } from './loraRegistry';
 import { workflowCatalog } from './workflowCatalog';
 
@@ -18,7 +19,7 @@ export function freeformPayload({ mode, workflow, prompt, negative = '', source,
   const names = selected.map(item => item.name.replace(/\\/g, '/').split('/').pop().toLowerCase());
   if (selected.length > 2 || new Set(names).size !== names.length) throw new Error('Select up to two different LoRAs.');
   for (const item of selected) {
-    if (!compatibleInstalledLoras(workflow, [item.name]).length) throw new Error('Select a LoRA matched to this workflow’s model family.');
+    if (!compatibleInstalledLoras(workflow, [item.name], readLoraPreferences()).length) throw new Error('Select a LoRA matched to this workflow’s model family.');
     if (!Number.isFinite(item.strength) || item.strength < 0 || item.strength > 2) throw new Error('Use a LoRA strength between 0 and 2.');
   }
   return {

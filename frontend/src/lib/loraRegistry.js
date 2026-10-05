@@ -412,7 +412,7 @@ function inferredTriggerWords(name = "") {
   return [match[1].replace(/\.safetensors$/i, "").replace(/[_-]+/g, " ").trim()];
 }
 
-export function compatibleInstalledLoras(workflow = {}, installed = []) {
+export function compatibleInstalledLoras(workflow = {}, installed = [], preferences = {}) {
   const family = workflowFamily(workflow);
   const allowedFamilies = family === "pony" ? new Set(["pony", "sdxl"]) : new Set([family]);
   const registryMatches = compatibleRegistryForWorkflow(workflow, installed);
@@ -423,7 +423,8 @@ export function compatibleInstalledLoras(workflow = {}, installed = []) {
     const normalizedName = normalized(installedName);
     const registered = registryByInstalled.get(normalizedName) ||
       LORA_REGISTRY.find((entry) => installedMatch(entry, [installedName]) && allowedFamilies.has(entry.family));
-    const inferredFamily = registered?.family || inferredFamilyForInstalled(installedName);
+    const assignedFamily = preferences[normalizedName]?.family;
+    const inferredFamily = assignedFamily || registered?.family || inferredFamilyForInstalled(installedName);
     if (!allowedFamilies.has(inferredFamily)) return;
     if (registered && ["required", "identity"].includes(registered.slot)) return;
     results.push({
@@ -432,7 +433,7 @@ export function compatibleInstalledLoras(workflow = {}, installed = []) {
       family: inferredFamily,
       slot: registered?.slot || "manual",
       installedName,
-      triggerWords: registered ? registered.triggerWords : inferredTriggerWords(installedName),
+      triggerWords: preferences[normalizedName]?.triggerWords ?? (registered ? registered.triggerWords : inferredTriggerWords(installedName)),
       defaultStrength: registered?.defaultStrength ?? 0.8,
       minStrength: registered?.minStrength ?? 0,
       maxStrength: registered?.maxStrength ?? 1.5,
