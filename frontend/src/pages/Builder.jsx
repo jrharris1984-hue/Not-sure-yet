@@ -1,3 +1,4 @@
+import { catalogSections, usePromptCatalog } from "@/lib/promptCatalog";
 import { useAssistantResearch, updateAssistantResearch } from '@/lib/assistantResearch';
 import VideoModeLinks from "@/components/VideoModeLinks";
 import RandomSceneControls from "@/components/RandomSceneControls";
@@ -22,7 +23,7 @@ import { mediaUrl } from "@/lib/media";
 import { buildMediaSubjects } from "@/lib/mediaLibraryImport";
 import { applyCastAppearance, editCastSubjectDna, CAST_AGE_OPTIONS, CAST_RESEMBLANCE_OPTIONS } from "@/lib/castAppearance";
 import {
-  SECTIONS, DEFAULT_DNA,
+  SECTIONS as BASE_SECTIONS, DEFAULT_DNA,
   randomizeDna, randomizeSection, resetSection,
   phaseOfSection,
   MAX_SUBJECTS, makeSubject, subjectsFromCharacter, subjectLabel,
@@ -112,6 +113,8 @@ async function waitForQueuedRender(queueId, onUpdate) {
 }
 
 export default function Builder({ studio = "standard", imageToolId = "" }) {
+  const promptCatalog = usePromptCatalog();
+  const SECTIONS = useMemo(() => catalogSections(BASE_SECTIONS, promptCatalog), [promptCatalog]);
   const { id, section: sectionParam } = useParams();
   const isNew = !id;
   const studioProfile = STUDIO_PROFILES[studio];
@@ -1024,6 +1027,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
         ? { ...activeDna, identity: { ...(activeDna.identity || {}), name: "" } }
         : activeDna;
       return compileModelPrompts({
+        promptCatalog,
         promptStyle,
         workflowKind: activeWorkflow?.kind,
         workflowName: activeWorkflow?.name,
@@ -1045,7 +1049,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
       activeFieldLocks, locks,
       promptStyle, activeWorkflow?.kind, activeWorkflow?.name, raunch,
       effectiveEditInstruction, repairInstruction, repairTargets, videoInstruction, preserveUnmentioned,
-      isEnhanceWorkflow,
+      isEnhanceWorkflow, promptCatalog,
     ]
   );
   const { positive, negative } = compiledPrompt;
@@ -3323,6 +3327,10 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
               {group.label}
             </button>)}
           </div>}
+          <nav className="mb-3 flex flex-wrap gap-2" aria-label="Custom prompt categories">
+            <Link to="/settings/prompts" className="text-xs text-cyan-200 underline">Edit Prompt Library</Link>
+            {SECTIONS.filter(section => section.key.startsWith('custom_')).map(section => <button type="button" key={section.key} onClick={() => goSection(section.key)} className="rounded-lg border hairline px-3 py-2 text-xs text-cyan-200">{section.title}</button>)}
+          </nav>
           <DnaSection
             key={`${activeSubjectId}-${activeSection}`}
             section={studioProfile && activeSection === studio
@@ -3336,8 +3344,10 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
             onChange={(v) => setSection(activeSection, v)}
             locked={!!locks[activeSection]}
             onToggleLock={() => setLocks({ ...locks, [activeSection]: !locks[activeSection] })}
-            onRandomize={() => setSection(activeSection, randomizeSection(activeSection, activeDna[activeSection] || {}, activeFieldLocks[activeSection] || {}))}
-            onReset={() => setSection(activeSection, resetSection(activeSection))}
+            onRandomize={() => setSection(activeSection, activeSection.startsWith("custom_")
+              ? Object.fromEntries(SECTIONS[activeIdx].fields.map(field => [field.key, activeFieldLocks[activeSection]?.[field.key] ? activeDna[activeSection]?.[field.key] : field.type === 'chips_multi' ? [] : field.options?.[Math.floor(Math.random() * field.options.length)] || '']))
+              : randomizeSection(activeSection, activeDna[activeSection] || {}, activeFieldLocks[activeSection] || {}))}
+            onReset={() => setSection(activeSection, activeSection.startsWith("custom_") ? {} : resetSection(activeSection))}
             onSuggest={() => runSuggest(activeSection)}
             fieldLocks={activeFieldLocks[activeSection] || {}}
             onToggleFieldLock={(fieldKey) => setActiveFieldLocks({

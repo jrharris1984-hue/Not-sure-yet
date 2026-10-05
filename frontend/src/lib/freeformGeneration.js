@@ -1,3 +1,4 @@
+import { applyCatalogRules } from './promptCatalog';
 import { readLoraPreferences } from './loraPreferences';
 import { compatibleInstalledLoras } from './loraRegistry';
 import { workflowCatalog } from './workflowCatalog';
@@ -22,13 +23,14 @@ export function freeformPayload({ mode, workflow, prompt, negative = '', source,
     if (!compatibleInstalledLoras(workflow, [item.name], readLoraPreferences()).length) throw new Error('Select a LoRA matched to this workflow’s model family.');
     if (!Number.isFinite(item.strength) || item.strength < 0 || item.strength > 2) throw new Error('Use a LoRA strength between 0 and 2.');
   }
+  const adjusted=applyCatalogRules({positive:prompt.trim(),negative:negative.trim()}, workflow.kind, undefined, workflow.prompt_style !== 'qwen_rapid');
   return {
     ...(selected.length ? { selected_loras: selected.map(item => ({name: item.name, strength: item.strength, triggers: item.triggerWords || []})) } : {}),
     workflow_id: workflow.id, workflow_type: workflow.kind,
-    prompt_positive: prompt.trim(), prompt_negative: negative.trim(),
+    prompt_positive: adjusted.positive, prompt_negative: adjusted.negative,
     ...(seed !== '' ? { seed: Number(seed) } : {}),
     ...(mode === 'image' ? { width, height, batch_size: 1 } : {
-      video_instruction: prompt.trim(), video_frames: frames, video_fps: fps,
+      video_instruction: adjusted.positive, video_frames: frames, video_fps: fps,
       video_width: width, video_height: height,
       ...(mode === 'video' ? { reference_image: [source.subfolder, source.name].filter(Boolean).join('/') } : {}),
     }),
