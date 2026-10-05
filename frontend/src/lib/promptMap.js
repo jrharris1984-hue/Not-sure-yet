@@ -468,8 +468,8 @@ export const PROMPT_MAP = {
     },
     foot_size: {
       "petite": "petite delicate feet",
-      "large": "large feet, size queen",
-      "size queen": "very large feet, dominant size-queen soles",
+      "large": "large feet",
+      "size queen": "very large feet",
     },
     foot_state: {
       "bare": "bare naked feet",

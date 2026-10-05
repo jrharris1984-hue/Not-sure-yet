@@ -119,3 +119,21 @@ test.each(families)('%s does not restore hidden feet details in the final fideli
   expect(positive).not.toContain('smooth soles');
   expect(positive).toContain('combat boots');
 });
+
+test('platform footwear suppresses hidden sole texture and conflicting toe positioning', () => {
+  const dna=base();dna.pose.action='bending over';dna.hair={length:'short bob',style:'chignon'};
+  dna.wardrobe.footwear='platform heels';
+  dna.feet={composition_mode:'supporting detail',toes:['toe point','toe ring'],sole_texture:'water droplets on soles',arch:'defined arch',pedicure:'natural nails',pedicure_art:'matte polish'};
+  const {dna:resolved,notes}=resolveBuilderControls(dna);
+  expect(resolved.feet.sole_texture).toBe('');expect(resolved.feet.arch).toBe('');
+  expect(resolved.feet.toes).toEqual(['toe ring']);expect(resolved.feet.pedicure_art).toBe('');
+  expect(resolved.hair.length).toBe('');expect(resolved.hair.style).toBe('chignon');
+  expect(dna.feet.sole_texture).toBe('water droplets on soles');expect(notes.length).toBeGreaterThan(0);
+});
+
+test('supporting foot fallback follows the subject and uses clear foot-size language', () => {
+  const dna=base();dna.style={anatomy_mode:'extreme'};dna.feet={composition_mode:'supporting detail',foot_size:'size queen',toenail_shape:'short rounded'};
+  const {positive}=compileModelPrompts({dna,promptStyle:'chroma'});
+  expect(positive.indexOf('Foot details:')).toBeGreaterThan(positive.indexOf('subject:'));
+  expect(positive).toContain('very large feet');expect(positive).not.toContain('size queen');
+});

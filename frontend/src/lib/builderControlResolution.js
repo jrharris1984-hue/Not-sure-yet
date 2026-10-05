@@ -118,6 +118,18 @@ export function resolveBuilderControls(source = {}) {
       omit('feet', field, 'Hidden by the selected closed footwear or opaque foot covering. Use bare feet, open footwear, or toeless hosiery to show this detail.');
     }
   }
+  if (footwear && footwear !== 'barefoot' && footwear !== 'none') {
+    omit('feet', 'sole_texture', 'Footwear hides the skin on the soles. Select bare feet to show sole texture.');
+    omit('feet', 'arch', 'Footwear controls the foot silhouette; a separate bare-foot arch description is inactive.');
+  }
+  if (!focus && p.action) {
+    const toePositions = ['toe curl', 'toe spread', 'toe point', 'toe scrunch', 'big toe out', 'wiggling toes', 'toes flexed', 'toes gripping fabric'];
+    if (list(f.toes).some(value => toePositions.includes(value))) {
+      f.toes = list(f.toes).filter(value => !toePositions.includes(value));
+      notes.push({ section: 'feet', field: 'toes', text: 'The main body pose controls toe position; foot accessories remain available.' });
+    }
+  }
+  if (f.pedicure === 'natural nails') omit('feet', 'pedicure_art', 'Natural nails takes priority over painted nail art.');
   if (!focus && croppedAboveFeet) for (const field of Object.keys(f)) {
     if (field !== 'composition_mode') omit('feet', field, 'Outside the selected crop. Choose a wider frame or Feet focus to show this detail.');
   }
@@ -134,6 +146,8 @@ export function resolveBuilderControls(source = {}) {
   }
   if ((p.angle === 'from above' && dna.camera.angle === 'low') || (p.angle === 'from below' && ['high', 'birds-eye'].includes(dna.camera.angle))) omit('camera', 'angle', 'Pose & framing controls camera height instead of the opposing Camera angle.');
   if (/bald|shaved/.test(lower(dna.hair.style))) for (const field of ['length', 'texture', 'bangs']) omit('hair', field, 'The selected shaved/bald hairstyle replaces this hair detail.');
+  if (/bun|chignon|ponytail|updo|braid|locs|twists/i.test(dna.hair.style) && ['pixie', 'short bob'].includes(dna.hair.length)) omit('hair', 'length', 'The selected tied or braided hairstyle replaces the conflicting short haircut.');
+  if (/pixie|buzz|bob/i.test(dna.hair.style) && ['long', 'waist-length'].includes(dna.hair.length)) omit('hair', 'length', 'The selected short hairstyle replaces the conflicting long hair length.');
   if (Number(dna.skin.glow) > 0 && ['matte', 'dewy', 'oiled', 'sweat-glistening', 'satin skin finish'].includes(dna.skin.texture)) omit('skin', 'texture', 'The Glow slider controls skin finish; the competing finish preset is inactive.');
   const environment = lower(dna.scene.environment);
   const indoor = /bedroom|bathroom|studio|office|living room|kitchen/.test(environment);

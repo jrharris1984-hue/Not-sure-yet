@@ -46,3 +46,12 @@ test('zeroed conditioning receives positive detail and retains its original nega
   expect(result.positive).toContain(PHOTO_DETAIL);
   expect(result.negative).toBe('original');
 });
+
+test('limb attachment instructions cover zeroed workflows as well as negative-enabled ones', () => {
+  const result=applyPhotographicGuidance({positive:'Full body photograph',negativeStrategy:'zeroed'});
+  expect(result.positive).toContain('Hands at the ends of arms');
+  expect(result.positive).toContain('footwear worn only on feet');
+  expect(result.negative).toBe('');
+  expect(applyPhotographicGuidance(result).positive).toBe(result.positive);
+  expect(applyPhotographicGuidance({positive:'A photograph'}).negative).toContain('feet replacing hands');
+});

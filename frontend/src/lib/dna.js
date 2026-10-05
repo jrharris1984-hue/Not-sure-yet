@@ -540,22 +540,53 @@ export function randomizeSection(sectionKey, current = {}, fieldLocks = {}, opti
   const section = SECTIONS.find((s) => s.key === sectionKey);
   const out = { ...current };
   const preserveProtected = options.preserveProtected !== false;
+  const basicPools = {
+    'pose.action': ['standing', 'standing hip out', 'standing hands on hips', 'sitting on edge', 'kneeling upright'],
+    'pose.angle': ['front', '3/4', 'profile'],
+    'pose.distance': ['full body', 'wide shot', 'thigh-up'],
+    'pose.focus': ['full frame', 'body', 'face'],
+    'pose.hands': ['at sides', 'on hips'],
+    'camera.angle': ['eye-level'],
+    'style.render': ['photorealistic'],
+    'style.anatomy_mode': ['natural', 'enhanced'],
+    'physique.bust': ['small', 'medium', 'large'],
+    'physique.butt': ['toned', 'round', 'large'],
+    'physique.thighs': ['slim', 'toned', 'athletic', 'thick'],
+    'physique.hips': ['narrow', 'average', 'wide'],
+    'physique.waist': ['average', 'slim', 'cinched'],
+    'physique.glute_shape': ['natural rounded', 'athletic lifted', 'soft pear-shaped', 'heart-shaped'],
+  };
+  const sliderRanges = {
+    'physique.muscularity': [0, 55], 'physique.implant_volume': [0, 1200],
+    'physique.bust_scale': [20, 60], 'physique.butt_scale': [25, 100],
+    'physique.thigh_scale': [20, 60], 'physique.hip_scale': [25, 65],
+    'physique.waist_scale': [25, 65], 'skin.glow': [0, 50],
+  };
   section.fields.forEach((f) => {
     if (fieldLocks?.[f.key]) return; // per-field lock — keep current value
     if (preserveProtected && RANDOMIZE_PROTECTED_FIELDS[sectionKey]?.has(f.key)) return;
     if (f.type === "chips" || f.type === "pose_chips") {
-      const pool = f.groups ? f.groups.flatMap((g) => g.options) : (f.options || []);
+      const pool = preserveProtected && basicPools[`${sectionKey}.${f.key}`] || (f.groups ? f.groups.flatMap((g) => g.options) : (f.options || []));
       if (pool.length) out[f.key] = pick(pool);
     }
     else if (f.type === "chips_multi") {
       const pool = f.groups ? f.groups.flatMap((g) => g.options) : (f.options || []);
-      const n = 1 + Math.floor(Math.random() * 3); // 1-3 items
+      const n = preserveProtected ? 1 : 1 + Math.floor(Math.random() * 3);
       const shuffled = [...pool].sort(() => Math.random() - 0.5);
       out[f.key] = shuffled.slice(0, n).reduce((picked, option) => normalizeMultiSelection(f, [...picked, option], picked), []);
     }
-    else if (f.type === "slider") out[f.key] = Math.floor(Math.random() * (f.max - f.min + 1)) + f.min;
+    else if (f.type === "slider") {
+      const [low, high] = preserveProtected && sliderRanges[`${sectionKey}.${f.key}`] || [f.min, f.max];
+      const min = Math.max(f.min, low), max = Math.min(f.max, high), step = f.step || 1;
+      out[f.key] = min + Math.floor(Math.random() * (Math.floor((max - min) / step) + 1)) * step;
+    }
     else if (f.type === "text") out[f.key] = out[f.key] || "";
   });
+  if (preserveProtected && sectionKey === 'hair' && !fieldLocks.length) {
+    if (/bun|chignon|ponytail|updo|braid|locs|twists/i.test(out.style) && ['pixie', 'short bob'].includes(out.length)) out.length = pick(['shoulder', 'long', 'waist-length']);
+    if (/pixie|buzz|bob/i.test(out.style)) out.length = /bob/i.test(out.style) ? 'short bob' : 'pixie';
+  }
+  if (preserveProtected && sectionKey === 'pose' && !fieldLocks.hands && out.action === 'standing hands on hips') out.hands = 'on hips';
   return out;
 }
 
@@ -701,6 +732,8 @@ export function randomizeDna(current = {}, locks = {}, fieldLocks = {}) {
   const out = { ...current };
   SECTIONS.forEach((s) => {
     if (locks[s.key]) return;
+    // Keep optional foot styling opt-in during whole-character randomization.
+    if (s.key === "feet") { out.feet = { ...(current.feet || {}) }; return; }
     out[s.key] = randomizeSection(s.key, current[s.key] || {}, fieldLocks?.[s.key] || {});
   });
   return out;

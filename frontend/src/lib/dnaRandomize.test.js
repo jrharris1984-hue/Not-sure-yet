@@ -105,3 +105,26 @@ describe("scenario intensity defaults", () => {
     expect(positive).toContain("hardcore kink scene");
   });
 });
+
+test('whole-character random uses simple poses, bounded scales and opt-in foot styling', () => {
+  for(let index=0;index<120;index++) {
+    const result=randomizeDna(DEFAULT_DNA);
+    expect(['standing','standing hip out','standing hands on hips','sitting on edge','kneeling upright']).toContain(result.pose.action);
+    expect(['front','3/4','profile']).toContain(result.pose.angle);
+    expect(result.camera.angle).toBe('eye-level');
+    expect(result.physique.implant_volume).toBeLessThanOrEqual(1200);
+    expect(result.physique.implant_volume % 50).toBe(0);
+    expect(result.physique.butt_scale).toBeLessThanOrEqual(100);
+    expect(result.feet).toEqual(DEFAULT_DNA.feet);
+    if(/bun|chignon|ponytail|updo|braid|locs|twists/i.test(result.hair.style)) expect(['pixie','short bob']).not.toContain(result.hair.length);
+  }
+});
+
+test('random preserves explicitly locked extremes and foot selections', () => {
+  const current={...DEFAULT_DNA, physique:{...DEFAULT_DNA.physique,butt_scale:218,implant_volume:1450},pose:{...DEFAULT_DNA.pose,action:'bending over',angle:'from above'},feet:{...DEFAULT_DNA.feet,pedicure:'painted red'}};
+  const result=randomizeDna(current,{pose:true},{physique:{butt_scale:true,implant_volume:true}});
+  expect(result.physique.butt_scale).toBe(218);
+  expect(result.physique.implant_volume).toBe(1450);
+  expect(result.pose).toEqual(current.pose);
+  expect(result.feet).toEqual(current.feet);
+});
