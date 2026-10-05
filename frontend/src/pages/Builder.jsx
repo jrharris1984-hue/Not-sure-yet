@@ -1,3 +1,5 @@
+import QwenReferenceControls from "@/components/QwenReferenceControls";
+import { QWEN_CAMERA_DEFAULTS, qwenReferenceInstruction } from "@/lib/qwenReferenceEdit";
 import { applyPhotographicGuidance } from "@/lib/photographicGuidance";
 import VariationInstruction from "@/components/VariationInstruction";
 import { resolveBuilderControls } from "@/lib/builderControlResolution";
@@ -212,6 +214,8 @@ export default function Builder({ studio = "standard" }) {
   const [faceIdV2Strength, setFaceIdV2Strength] = useState(1.4);
   const [editInstruction, setEditInstruction] = useState("");
   const [editMode, setEditMode] = useState("standard");
+  const [qwenCamera, setQwenCamera] = useState(QWEN_CAMERA_DEFAULTS);
+  const [qwenReferenceNotes, setQwenReferenceNotes] = useState("");
   const [bodyAdjustRegion, setBodyAdjustRegion] = useState("glutes");
   const [bodyAdjustAmount, setBodyAdjustAmount] = useState(50);
   const [poseTarget, setPoseTarget] = useState("");
@@ -290,6 +294,8 @@ export default function Builder({ studio = "standard" }) {
     if (draft.variationPrompt) setVariationPrompt(draft.variationPrompt);
     if (typeof draft.variationDenoise === "number") setVariationDenoise(draft.variationDenoise);
     setEditMode(draft.editMode || "standard");
+    setQwenCamera({ ...QWEN_CAMERA_DEFAULTS, ...(draft.qwenCamera || {}) });
+    setQwenReferenceNotes(draft.qwenReferenceNotes || "");
     setBodyAdjustRegion(draft.bodyAdjustRegion || "glutes");
     setBodyAdjustAmount(typeof draft.bodyAdjustAmount === "number" ? draft.bodyAdjustAmount : 50);
     setPoseTarget(draft.poseTarget || "");
@@ -536,6 +542,8 @@ export default function Builder({ studio = "standard" }) {
   const promptStyle = activeWorkflow?.prompt_style || "venice";
   const isFaceWorkflow = activeWorkflow?.kind === "face";
   const isEditWorkflow = activeWorkflow?.kind === "edit";
+  const qwenEditVariant = activeWorkflow?.edit_variant || "";
+  const isQwenReferenceWorkflow = isEditWorkflow && ["pose", "camera"].includes(qwenEditVariant);
   const isEnhanceWorkflow = activeWorkflow?.kind === "enhance";
   const isVariationWorkflow = activeWorkflow?.kind === "variation";
   const isImageFirst = isVariationWorkflow || isEditWorkflow || activeWorkflow?.kind === "video";
@@ -852,7 +860,7 @@ export default function Builder({ studio = "standard" }) {
       name, subjects, activeSubjectId, locks, collapsed, tags, raunch, promptLanguage,
       promptOverride, plainLanguage, negativePromptOverride, workflowId, loraOverrides,
       editInstruction, preserveUnmentioned, repairTargets, repairInstruction,
-      variationPrompt, variationDenoise,
+      variationPrompt, variationDenoise, qwenCamera, qwenReferenceNotes,
       editMode, bodyAdjustRegion, bodyAdjustAmount, poseTarget, poseNotes, poseLocks,
       referenceStudioView, referenceRecipe, referenceStrengths, poseReferenceAnalysis,
       videoInstruction, videoFrames, videoFps, videoWidth, videoHeight,
@@ -864,7 +872,7 @@ export default function Builder({ studio = "standard" }) {
     draftId, name, subjects, activeSubjectId, locks, collapsed, tags, raunch, promptLanguage,
     promptOverride, plainLanguage, negativePromptOverride, workflowId, loraOverrides,
     editInstruction, preserveUnmentioned, repairTargets, repairInstruction,
-    variationPrompt, variationDenoise,
+    variationPrompt, variationDenoise, qwenCamera, qwenReferenceNotes,
     editMode, bodyAdjustRegion, bodyAdjustAmount, poseTarget, poseNotes, poseLocks,
     referenceStudioView, referenceRecipe, referenceStrengths, poseReferenceAnalysis,
     videoInstruction, videoFrames, videoFps, videoWidth, videoHeight,
@@ -984,7 +992,9 @@ export default function Builder({ studio = "standard" }) {
     return `${level} LOCALIZED BODY EDIT: ${direction} only the subject's ${region}. ${scaleLanguage} This requested change is intentional and must be visibly apparent in the result; do not simply reproduce the source image unchanged. Preserve the same adult subject and identity, face, hair, expression, exact pose, hands, feet, clothing, camera position and framing, background, lighting, photographic style, and every unselected body region. Modify only the selected region and the immediately connected anatomy required for a coherent transition. Keep one coherent human body with realistic skin texture and photographic appearance.`;
   }, [bodyAdjustAmount, bodyAdjustRegion]);
 
-  const effectiveEditInstruction = editMode === "new_pose"
+  const effectiveEditInstruction = isQwenReferenceWorkflow
+    ? qwenReferenceInstruction(qwenEditVariant, qwenReferenceNotes, qwenCamera)
+    : editMode === "new_pose"
     ? poseInstruction
     : editMode === "body_adjust"
       ? bodyAdjustInstruction
@@ -1064,8 +1074,8 @@ export default function Builder({ studio = "standard" }) {
         .trim()
     : translatedPlainLanguage.text;
   const generatedPositive = [languageLead, acceptsLikenessPrompt && likenessPrompt, positive, translatedUserText].filter(Boolean).join(", ");
-  const positiveBeforeLoraTriggers = isVariationWorkflow ? variationPrompt : isVideoWorkflow ? (promptOverride || positive) : (promptOverride || generatedPositive);
-  const activeLoraTriggers = isVideoWorkflow ? [] : [...new Set([
+  const positiveBeforeLoraTriggers = isQwenReferenceWorkflow ? effectiveEditInstruction : isVariationWorkflow ? variationPrompt : isVideoWorkflow ? (promptOverride || positive) : (promptOverride || generatedPositive);
+  const activeLoraTriggers = isVideoWorkflow || isQwenReferenceWorkflow ? [] : [...new Set([
     ...(selectedLora.name ? selectedLora.triggerWords || [] : []),
     ...(showSecondLora && secondaryLora.name ? secondaryLora.triggerWords || [] : []),
   ])];
@@ -1192,6 +1202,14 @@ export default function Builder({ studio = "standard" }) {
     setNegativePromptOverride(rebuildCurrent ? "" : (saved.prompt_negative || ""));
     if (!bodyCreation && saved.reference_image) setReferenceImage({ name: saved.reference_image, type: "input", subfolder: "" });
     if (!bodyCreation && saved.edit_instruction) setEditInstruction(saved.edit_instruction);
+    if (!bodyCreation) {
+      setQwenCamera({ azimuth: saved.qwen_camera_azimuth || QWEN_CAMERA_DEFAULTS.azimuth,
+        elevation: saved.qwen_camera_elevation || QWEN_CAMERA_DEFAULTS.elevation,
+        distance: saved.qwen_camera_distance || QWEN_CAMERA_DEFAULTS.distance });
+      setQwenReferenceNotes(saved.qwen_reference_notes || "");
+      setPoseReferenceImage(saved.pose_reference_image ? { name: saved.pose_reference_image, type: "input" } : null);
+      setPoseReferencePreview("");
+    }
     if (!bodyCreation && saved.video_instruction) setVideoInstruction(saved.video_instruction);
     setPreserveUnmentioned(saved.preserve_unmentioned !== false);
     if (saved.quality_tier) setQualityTier(saved.quality_tier);
@@ -1289,6 +1307,10 @@ export default function Builder({ studio = "standard" }) {
     }
     if (isFaceWorkflow && !referenceImage?.name) {
       toast.error("Upload a reference photograph before using Face Preserve");
+      return;
+    }
+    if (isQwenReferenceWorkflow && qwenEditVariant === "pose" && !poseReferenceImage?.name) {
+      toast.error("Upload a target pose image for AnyPose");
       return;
     }
     if (isEditWorkflow && !referenceImage?.name) {
@@ -1490,17 +1512,17 @@ export default function Builder({ studio = "standard" }) {
         prompt_positive: editMode === "body_adjust" && isVariationWorkflow ? bodyAdjustInstruction : finalPositive,
         prompt_negative: finalNegative,
         workflow_id: workflowId,
-        lora_overrides: isVideoWorkflow ? {} : effectiveLoraOverrides,
+        lora_overrides: isVideoWorkflow || isQwenReferenceWorkflow ? {} : effectiveLoraOverrides,
         krea_style: "none",
         krea_lora_strength: 0.8,
-        selected_lora_name: isVideoWorkflow ? "" : selectedLora.name || "",
+        selected_lora_name: isVideoWorkflow || isQwenReferenceWorkflow ? "" : selectedLora.name || "",
         selected_lora_strength: selectedLora.strength,
-        selected_lora_triggers: isVideoWorkflow ? [] : selectedLora.triggerWords || [],
-        selected_loras: (isVideoWorkflow ? [] : [selectedLora, ...(showSecondLora ? [secondaryLora] : [])])
+        selected_lora_triggers: isVideoWorkflow || isQwenReferenceWorkflow ? [] : selectedLora.triggerWords || [],
+        selected_loras: (isVideoWorkflow || isQwenReferenceWorkflow ? [] : [selectedLora, ...(showSecondLora ? [secondaryLora] : [])])
           .filter((lora) => lora.name)
           .map((lora) => ({ name: lora.name, strength: lora.strength, triggers: lora.triggerWords || [] })),
         parent_render_id: sourceRenderId || undefined,
-        operation: isVariationWorkflow ? (editMode === "body_adjust" ? "body_adjust_chroma" : "variation") : sourceRenderId
+        operation: isQwenReferenceWorkflow ? `qwen_${qwenEditVariant}` : isVariationWorkflow ? (editMode === "body_adjust" ? "body_adjust_chroma" : "variation") : sourceRenderId
           ? (isVideoWorkflow ? "animate" : isFaceWorkflow ? "face_reference" : editMode === "new_pose" ? "new_pose" : "edit")
           : "render",
         width: activeRecipeFamily === "image" ? renderSettings.width : undefined,
@@ -1510,9 +1532,14 @@ export default function Builder({ studio = "standard" }) {
         cfg: activeRecipeFamily === "image" ? renderSettings.cfg : undefined,
         sampler_name: activeRecipeFamily === "image" ? renderSettings.sampler : undefined,
         scheduler: activeRecipeFamily === "image" ? renderSettings.scheduler : undefined,
-        seed: activeRecipeFamily === "image" ? uniqueSeed : undefined,
+        seed: activeRecipeFamily === "image" || isQwenReferenceWorkflow ? uniqueSeed : undefined,
         reference_image: (isFaceWorkflow || isEditWorkflow || isEnhanceWorkflow || isVideoWorkflow || isVariationWorkflow) ? referenceImage?.name : undefined,
         reference_source_render_id: referenceImage?.source_render_id || undefined,
+        pose_reference_image: isQwenReferenceWorkflow && qwenEditVariant === "pose" ? poseReferenceImage?.name : undefined,
+        qwen_reference_notes: isQwenReferenceWorkflow ? qwenReferenceNotes : undefined,
+        qwen_camera_azimuth: isQwenReferenceWorkflow ? qwenCamera.azimuth : undefined,
+        qwen_camera_elevation: isQwenReferenceWorkflow ? qwenCamera.elevation : undefined,
+        qwen_camera_distance: isQwenReferenceWorkflow ? qwenCamera.distance : undefined,
         refine_denoise: isVariationWorkflow
           ? (editMode === "body_adjust"
               ? Math.min(0.36, 0.16 + (Math.abs(bodyAdjustAmount - 50) / 50) * 0.20)
@@ -1964,6 +1991,7 @@ export default function Builder({ studio = "standard" }) {
     });
     const incompleteLikeness = subjects.find((subject) => subject?.likeness?.enabled && (!subject.likeness.node_id || !subject.likeness.lora_name));
     if (incompleteLikeness && !isImageFirst) issues.push(`Finish Likeness LoRA setup for Subject ${incompleteLikeness.label || "A"}.`);
+    if (isQwenReferenceWorkflow && qwenEditVariant === "pose" && !poseReferenceImage?.name) issues.push("Add a target pose image for AnyPose.");
     if (isVariationWorkflow && !referenceImage?.name) issues.push("Add the source image you want to vary.");
     if ((isFaceWorkflow || isEditWorkflow || isEnhanceWorkflow || isVideoWorkflow) && !referenceImage?.name) {
       issues.push(
@@ -1984,7 +2012,7 @@ export default function Builder({ studio = "standard" }) {
     }
     return [...new Set(issues)];
   }, [
-    activeWorkflow, editMode, effectiveEditInstruction,
+    activeWorkflow, editMode, effectiveEditInstruction, isQwenReferenceWorkflow, qwenEditVariant,
     isEditWorkflow, isEnhanceWorkflow, isFaceWorkflow, isTextVideoWorkflow, isVideoWorkflow, isVariationWorkflow, isImageFirst,
     poseAssistAvailable, poseAssistEnabled, poseAssistStatus, poseReferenceImage?.name,
     isKrea2, krea2Status,
@@ -2129,7 +2157,10 @@ export default function Builder({ studio = "standard" }) {
               </label>
             </div>
           )}
-          {isEditWorkflow && (
+          {isQwenReferenceWorkflow && <QwenReferenceControls variant={qwenEditVariant} camera={qwenCamera} onCamera={setQwenCamera}
+            notes={qwenReferenceNotes} onNotes={setQwenReferenceNotes} poseSource={poseReferenceImage} posePreview={poseReferencePreview}
+            uploading={poseReferenceUploading} busy={dispatching} onUpload={uploadPoseReference} onRemove={clearPoseReference} />}
+          {isEditWorkflow && !isQwenReferenceWorkflow && (
             <div className="pane p-4 space-y-4" data-testid="qwen-edit-panel">
               <div className="flex items-center gap-2">
                 <ImagePlus className="h-4 w-4 text-cyan-300" />
@@ -2628,7 +2659,8 @@ export default function Builder({ studio = "standard" }) {
       </div>
 
       {isImageFirst && <ImageSourceFlow animation={isVideoWorkflow} variation={isVariationWorkflow} source={referenceImage} preview={referencePreview}
-        uploading={referenceUploading} busy={dispatching} onUpload={uploadReference} onRemove={clearReference} onRender={doDispatch}
+        readyToRender={!isQwenReferenceWorkflow || qwenEditVariant !== "pose" || !!poseReferenceImage?.name}
+        uploading={referenceUploading || (isQwenReferenceWorkflow && poseReferenceUploading)} busy={dispatching} onUpload={uploadReference} onRemove={clearReference} onRender={doDispatch}
         renderCount={renderCount} onRenderCount={setRenderCount}>{imageSourceControls}</ImageSourceFlow>}
 
       {!isImageFirst && <MobileStudioFlow
@@ -2817,7 +2849,7 @@ export default function Builder({ studio = "standard" }) {
           </div>
         )}
 
-        {activeWorkflow && !["pose", "refine", "krea_style"].includes(activeWorkflow.kind) && (
+        {activeWorkflow && !isQwenReferenceWorkflow && !["pose", "refine", "krea_style"].includes(activeWorkflow.kind) && (
           <div className="mt-3 sm:mt-4">
             <UniversalLoraPicker
               workflow={activeWorkflow}

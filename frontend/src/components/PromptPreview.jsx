@@ -2,11 +2,13 @@ import { Copy, Check, ShieldCheck, Wand2, Undo2, AlertTriangle, Sparkles, Loader
 import { useState, useMemo, useEffect } from "react";
 import { toast } from "sonner";
 import { analyzePromptQuality, estimatePromptTokens } from "@/lib/promptQuality";
+import { requirementPresent } from "@/lib/promptPriority";
 
 export default function PromptPreview({ positive, negative, dna, workflow, context, compilerMeta, recipe, selectedLora, secondaryLora, imageCount = 1, optimized, improving, onImprove, onOptimize, onRestore, onApplyPrompts, aiProvider = "AI" }) {
   const [copied, setCopied] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [editing, setEditing] = useState(false);
+  const [reviewCompaction, setReviewCompaction] = useState(false);
   const [draftPositive, setDraftPositive] = useState(positive || "");
   const [draftNegative, setDraftNegative] = useState(negative || "");
   useEffect(() => {
@@ -30,6 +32,13 @@ export default function PromptPreview({ positive, negative, dna, workflow, conte
     [positive, dna, workflow, context, compilerMeta]
   );
   const lengthIssue = quality.issues.find((item) => item.code === "length");
+  const compactTokens = estimatePromptTokens(quality.cleaned);
+  const compactSavings = Math.max(0, tokens - compactTokens);
+  const missingSelections = [
+    ...(compilerMeta?.priorityPlan?.mustMatch || []),
+    ...(compilerMeta?.priorityPlan?.important || []),
+    ...(compilerMeta?.priorityPlan?.detail || []),
+  ].filter(item => !requirementPresent(positive, item));
   const hasBlockingIssue = quality.blockers.length > 0;
   const copy = () => {
     navigator.clipboard.writeText(positive || "");
@@ -84,6 +93,20 @@ export default function PromptPreview({ positive, negative, dna, workflow, conte
         </div>
         <div className="mt-2 text-[10px] text-zinc-500">{expanded ? "Hide full prompts" : "Show and edit full prompts"}</div>
       </button>
+      <details className="rounded-lg border hairline bg-black/20 p-3 text-xs text-zinc-400" data-testid="prompt-length-review">
+        <summary className="cursor-pointer">Length & selection review · ~{tokens} tokens · {String(positive || "").length} characters</summary>
+        <p className="mt-2">App guidance for {quality.profileLabel}: about {quality.warningTokens} tokens. This is an estimate, not a confirmed encoder limit. Sending more text does not guarantee the model uses every detail.</p>
+        {compilerMeta?.promptBudget && <p className="mt-2">Compiler budget: {compilerMeta.promptBudget} words before later additions. Essential selections can exceed it.</p>}
+        <p className="mt-2">{missingSelections.length ? `${missingSelections.length} selections were not detected in the current wording. Check the list below; matching is approximate.` : 'All tracked selections were detected in the current wording. This checks text, not image accuracy.'}</p>
+        {missingSelections.length > 0 && <ul className="mt-2 space-y-1">{missingSelections.map(item => <li key={item.key}>{item.label}: {item.value}</li>)}</ul>}
+        <button type="button" onClick={() => setReviewCompaction(value => !value)} className="mt-3 rounded-lg border hairline px-3 py-2 text-zinc-200" data-testid="btn-review-compaction">{reviewCompaction ? 'Hide compact preview' : 'Review compact wording'}</button>
+        {reviewCompaction && <div className="mt-3 space-y-2" data-testid="compact-prompt-review">
+          <p>~{compactTokens} tokens · saves approximately {compactSavings}. Removes repeated exact clauses within each subject block; retains separate subjects and their ages. Unique details are kept.</p>
+          <p className="max-h-64 overflow-auto whitespace-pre-wrap font-mono text-[11px] text-amber-100">{quality.cleaned}</p>
+          {quality.cleaned !== positive && <button type="button" onClick={() => { onOptimize?.(quality.cleaned); setReviewCompaction(false); }} className="rounded-lg border border-cyan-500/40 px-3 py-2 text-cyan-200">Apply reviewed wording</button>}
+          <p>If it remains long, simplify optional selections or split the work into generation followed by a focused image edit. Compression cannot guarantee every detail fits.</p>
+        </div>}
+      </details>
       {expanded && (
         <div className="space-y-3" data-testid="prompt-expanded-details">
           <div className="rounded-lg border hairline bg-elevated p-3 text-[11px] text-zinc-300" data-testid="render-recipe-preview">
@@ -145,7 +168,7 @@ export default function PromptPreview({ positive, negative, dna, workflow, conte
             </button>
           ) : null}
         </div>
-        {optimized && <div className="text-[10px] text-emerald-300">Safe cleanup is active and will be sent to ComfyUI.</div>}
+        {optimized && <div className="text-[10px] text-emerald-300">Reviewed or edited wording is active and will be sent to ComfyUI.</div>}
         {quality.issues.length ? (
           <ul className="space-y-1">
             {quality.issues.slice(0, 6).map((item) => (

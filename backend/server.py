@@ -1,3 +1,4 @@
+from qwen_reference_edit import configure_reference_edit, resolve_reference_models
 """Ultra Studio Character DNA Builder — FastAPI backend."""
 from fastapi import FastAPI, APIRouter, HTTPException, Body, BackgroundTasks, WebSocket, WebSocketDisconnect, Query, UploadFile, File, Form
 from fastapi.responses import FileResponse, JSONResponse, Response
@@ -131,6 +132,7 @@ class WorkflowTemplate(BaseModel):
     positive_node_id: str = ""
     negative_node_id: str = ""
     notes: str = ""
+    edit_variant: Literal["", "pose", "camera"] = ""
 
 
 class Settings(BaseModel):
@@ -231,6 +233,8 @@ SEED_WORKFLOWS = [
     {"file": "chroma.json", "name": "Chroma1-HD · Golden T2I", "kind": "image", "prompt_style": "chroma"},
     {"file": "zimage.json", "name": "Z-image Turbo · NSFW", "kind": "image", "prompt_style": "zimage"},
     {"file": "qwen.json", "name": "Qwen Image Edit 2511", "kind": "edit", "prompt_style": "qwen_edit"},
+    {"file": "qwen_anypose.json", "name": "Qwen Change Pose · AnyPose", "kind": "edit", "prompt_style": "qwen_edit", "edit_variant": "pose"},
+    {"file": "qwen_camera_angle.json", "name": "Qwen Camera Angle · Multiple Angles", "kind": "edit", "prompt_style": "qwen_edit", "edit_variant": "camera"},
     {"file": "qwen.json", "name": "Qwen Image Repair & Enhance", "kind": "enhance", "prompt_style": "qwen_edit"},
     {"file": "wan.json", "name": "WAN 2.2 5B · Image → Video", "kind": "video", "prompt_style": "wan_i2v"},
     {"file": "wan_t2v.json", "name": "WAN 2.2 14B · Text → Video", "kind": "text_video", "prompt_style": "wan_t2v"},
@@ -289,6 +293,7 @@ def _load_seed_workflows() -> List[WorkflowTemplate]:
                 name=spec["name"],
                 kind=spec["kind"],
                 prompt_style=spec.get("prompt_style", "venice"),
+                edit_variant=spec.get("edit_variant", ""),
                 json_str=raw,
                 positive_node_id=nodes["positive_node_id"],
                 negative_node_id=nodes["negative_node_id"],
@@ -542,6 +547,7 @@ class WorkflowUpsert(BaseModel):
     positive_node_id: Optional[str] = None
     negative_node_id: Optional[str] = None
     notes: Optional[str] = None
+    edit_variant: Optional[Literal["", "pose", "camera"]] = None
     auto_detect: bool = False
 
 
@@ -1152,6 +1158,11 @@ class DispatchBody(BaseModel):
     parent_render_id: Optional[str] = None
     operation: str = "render"
     reference_image: Optional[str] = None  # ComfyUI input filename returned by /reference-images/upload
+    pose_reference_image: Optional[str] = None
+    qwen_reference_notes: str = Field(default="", max_length=1000)
+    qwen_camera_azimuth: Literal["front view", "front-right quarter view", "right side view", "back-right quarter view", "back view", "back-left quarter view", "left side view", "front-left quarter view"] = "front view"
+    qwen_camera_elevation: Literal["low-angle shot", "eye-level shot", "elevated shot", "high-angle shot"] = "eye-level shot"
+    qwen_camera_distance: Literal["close-up", "medium shot", "wide shot"] = "medium shot"
     reference_source_render_id: Optional[str] = None  # provenance token returned by /renders/{rid}/prepare-reference
     face_strength: float = 1.1
     faceid_v2_strength: float = 1.4
@@ -1772,7 +1783,28 @@ async def _perform_dispatch(body: "DispatchBody", queue_id: Optional[str] = None
             await db.renders.insert_one(doc)
             doc.pop("_id", None)
             return doc
-        instruction = body.edit_instruction.strip()
+        reference_variant = wf_template.edit_variant
+        reference_prompt = ""
+        if reference_variant:
+            try:
+                reference_prompt = configure_reference_edit(
+                    workflow, reference_variant, body.reference_image, body.pose_reference_image,
+                    notes=body.qwen_reference_notes, azimuth=body.qwen_camera_azimuth,
+                    elevation=body.qwen_camera_elevation, distance=body.qwen_camera_distance)
+                async with httpx.AsyncClient(timeout=15.0) as hc:
+                    info_response = await hc.get(f"{s.comfyui_url.rstrip('/')}/object_info")
+                    info_response.raise_for_status()
+                missing = resolve_reference_models(workflow, info_response.json())
+                if missing:
+                    raise ValueError("Qwen reference editing needs: " + ", ".join(missing) + ". Run scripts/install-qwen-reference-tools.bat and restart ComfyUI.")
+            except (ValueError, httpx.HTTPError) as exc:
+                r.status = "failed"
+                r.error = str(exc)
+                doc = r.model_dump()
+                await db.renders.insert_one(doc)
+                doc.pop("_id", None)
+                return doc
+        instruction = reference_prompt or body.edit_instruction.strip()
         if not instruction:
             r.status = "failed"
             r.error = (
@@ -1784,12 +1816,12 @@ async def _perform_dispatch(body: "DispatchBody", queue_id: Optional[str] = None
             await db.renders.insert_one(doc)
             doc.pop("_id", None)
             return doc
-        image_patched = False
+        image_patched = bool(reference_variant)
         for node in workflow.values():
             if not isinstance(node, dict):
                 continue
             inputs = node.get("inputs", {})
-            if node.get("class_type") == "LoadImage" and "image" in inputs:
+            if not reference_variant and node.get("class_type") == "LoadImage" and "image" in inputs:
                 inputs["image"] = body.reference_image
                 image_patched = True
         if not image_patched:
@@ -1823,7 +1855,7 @@ async def _perform_dispatch(body: "DispatchBody", queue_id: Optional[str] = None
                 return doc
         else:
             positive_text = instruction
-            if body.preserve_unmentioned:
+            if body.preserve_unmentioned and not reference_variant:
                 positive_text += (
                     "\nPreserve every unrequested detail of the source image. Identity, face, age, "
                     "body proportions, composition, camera perspective, lighting, and background "

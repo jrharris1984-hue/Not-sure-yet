@@ -59,3 +59,10 @@ test('animation uses motion controls and a single video action without image cou
   expect(container.querySelector('[data-testid="btn-source-workflow-render"]').textContent).toBe('Create video');
   expect(container.textContent).not.toContain('Qwen');
 });
+
+test('a two-reference workflow cannot render until its second image is ready',()=>{
+  render({source:{name:'original.png'},readyToRender:false});
+  expect(container.querySelector('[data-testid="btn-source-workflow-render"]').disabled).toBe(true);
+  render({source:{name:'original.png'},readyToRender:true});
+  expect(container.querySelector('[data-testid="btn-source-workflow-render"]').disabled).toBe(false);
+});
