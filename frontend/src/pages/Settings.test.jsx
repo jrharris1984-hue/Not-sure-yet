@@ -1,6 +1,7 @@
 import { act } from "react";
 import { createRoot } from "react-dom/client";
 import Settings from "./Settings";
+jest.mock('@/components/WebResearchSettings', () => () => <div>Optional web research</div>);
 
 const mockMutate = jest.fn();
 let mockOllamaModels = [];

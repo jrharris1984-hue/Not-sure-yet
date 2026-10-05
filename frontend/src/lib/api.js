@@ -28,6 +28,10 @@ export const api = axios.create({
 });
 
 export const endpoints = {
+  researchConfig: () => api.get('/ai/research/config').then(r => r.data),
+  saveResearchKey: api_key => api.put('/ai/research/config', {api_key}).then(r => r.data),
+  removeResearchKey: () => api.delete('/ai/research/config').then(r => r.data),
+  aiResearch: (query, context = '') => api.post('/ai/research', {query, context}, {timeout:600000}).then(r => r.data),
   recoverRenderImage: (id, body) => api.post(`/renders/${id}/recover`, body).then((r) => r.data),
   mediaLibraryHealth: () => api.get("/media-library/health").then((r) => r.data),
   mediaLibraryStats: () => api.get("/media-library/stats").then((r) => r.data),

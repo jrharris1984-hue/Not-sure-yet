@@ -1,4 +1,5 @@
 import { wardrobeNudity } from "./wardrobeNudity";
+import { footVisibility } from './footVisibility';
 // Resolve shared visual controls on a copy. Saved selections remain editable.
 const list = value => Array.isArray(value) ? value : value ? [value] : [];
 const lower = value => String(value || '').toLowerCase();
@@ -102,25 +103,23 @@ export function resolveBuilderControls(source = {}) {
   if (w.hosiery_type) omit('feet', 'hosiery', 'Wardrobe hosiery controls coverage; the Feet hosiery fallback is inactive.');
   const hosiery = lower(w.hosiery_type || f.hosiery);
   const footwear = lower(w.heel_type || w.footwear);
-  const covered = /sock|opaque|footed/.test(hosiery) && !/toeless|footless|open.toe/.test(hosiery);
-  const closedShoe = /boot|sneaker|trainer|shoe|pump|loafer|flat|pointed.toe|round.toe|square.toe|mary jane/.test(footwear) && !/barefoot|open.toe|peep.toe|sandal/.test(footwear);
+  const visibility = footVisibility(w, f);
   if ((hosiery && hosiery !== 'bare') || (footwear && footwear !== 'barefoot')) {
     const state = list(f.foot_state);
-    const keep = state.filter(v => v !== 'bare' && !(hosiery && hosiery !== 'bare' && ['in socks', 'in nylons'].includes(v)));
+    const keep = state.filter(v => (v !== 'bare' || visibility.bare) && !(hosiery && hosiery !== 'bare' && ['in socks', 'in nylons'].includes(v)));
     if (keep.length !== state.length) {
       f.foot_state = keep;
       notes.push({ section: 'feet', field: 'foot_state', text: 'Selected footwear and hosiery control coverage instead of the conflicting foot-state choice.' });
     }
   }
-  if (footwear === 'barefoot' && hosiery && hosiery !== 'bare') omit('wardrobe', 'footwear', 'Selected hosiery replaces the barefoot description.');
-  if (covered || closedShoe) {
-    for (const field of ['pedicure', 'pedicure_art', 'toenail_shape', 'toe_length', 'toes', 'sole_texture', 'arch', 'foot_accessories', 'sole_presentation']) {
+  if (footwear === 'barefoot' && !visibility.bare) omit('wardrobe', 'footwear', 'Selected hosiery replaces the barefoot description.');
+  if (!visibility.toesVisible) {
+    for (const field of ['pedicure', 'pedicure_art', 'toenail_shape', 'toe_length', 'toes', 'foot_accessories']) {
       omit('feet', field, 'Hidden by the selected closed footwear or opaque foot covering. Use bare feet, open footwear, or toeless hosiery to show this detail.');
     }
   }
-  if (footwear && footwear !== 'barefoot' && footwear !== 'none') {
-    omit('feet', 'sole_texture', 'Footwear hides the skin on the soles. Select bare feet to show sole texture.');
-    omit('feet', 'arch', 'Footwear controls the foot silhouette; a separate bare-foot arch description is inactive.');
+  if (!visibility.soleVisible) {
+    for (const field of ['sole_texture', 'arch', 'sole_presentation']) omit('feet', field, 'Footwear or footed hosiery covers the sole. Select bare feet or footless hosiery to show bare sole details.');
   }
   if (!focus && p.action) {
     const toePositions = ['toe curl', 'toe spread', 'toe point', 'toe scrunch', 'big toe out', 'wiggling toes', 'toes flexed', 'toes gripping fabric'];

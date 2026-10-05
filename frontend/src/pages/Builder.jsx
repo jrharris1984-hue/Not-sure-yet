@@ -3,6 +3,7 @@ import { randomSceneSubjects } from "@/lib/randomScenes";
 import { IMAGE_TOOL_KINDS } from "@/components/HomeImageTools";
 import QwenReferenceControls from "@/components/QwenReferenceControls";
 import { QWEN_CAMERA_DEFAULTS, qwenReferenceInstruction } from "@/lib/qwenReferenceEdit";
+import AIResearchPanel from '@/components/AIResearchPanel';
 import { applyPhotographicGuidance } from "@/lib/photographicGuidance";
 import VariationInstruction from "@/components/VariationInstruction";
 import { resolveBuilderControls } from "@/lib/builderControlResolution";
@@ -2795,6 +2796,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
         readyToRender={!isQwenReferenceWorkflow || qwenEditVariant !== "pose" || !!poseReferenceImage?.name}
         uploading={referenceUploading || (isQwenReferenceWorkflow && poseReferenceUploading)} busy={dispatching} onUpload={uploadReference} onRemove={clearReference} onRender={doDispatch}
         renderCount={renderCount} onRenderCount={setRenderCount}>{imageSourceControls}</ImageSourceFlow>}
+      <AIResearchPanel context={finalPositive} />
 
       {!isImageFirst && <MobileStudioFlow
         steps={studioSteps}
