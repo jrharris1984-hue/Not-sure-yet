@@ -3,8 +3,9 @@ import { useState, useMemo, useEffect } from "react";
 import { toast } from "sonner";
 import { analyzePromptQuality, estimatePromptTokens } from "@/lib/promptQuality";
 import { requirementPresent } from "@/lib/promptPriority";
+import { WebPromptResearchOptions, PromptResearchNotes } from './WebPromptResearch';
 
-export default function PromptPreview({ positive, negative, dna, workflow, context, compilerMeta, recipe, selectedLora, secondaryLora, imageCount = 1, optimized, improving, onImprove, onOptimize, onRestore, onApplyPrompts, aiProvider = "AI" }) {
+export default function PromptPreview({ positive, negative, dna, workflow, context, compilerMeta, recipe, selectedLora, secondaryLora, imageCount = 1, optimized, improving, onImprove, onOptimize, onRestore, onApplyPrompts, aiProvider = "AI", researchEnabled = false, onResearchEnabled, researchFocus = '', onResearchFocus, aiSuggestion, onSuggestionChange, onApplySuggestion, onDiscardSuggestion, suggestionStale }) {
   const [copied, setCopied] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -40,6 +41,7 @@ export default function PromptPreview({ positive, negative, dna, workflow, conte
     ...(compilerMeta?.priorityPlan?.detail || []),
   ].filter(item => !requirementPresent(positive, item));
   const hasBlockingIssue = quality.blockers.length > 0;
+  const suggestionMissing = (compilerMeta?.priorityPlan?.mustMatch || []).filter(item => aiSuggestion && !requirementPresent(aiSuggestion.positive, item));
   const copy = () => {
     navigator.clipboard.writeText(positive || "");
     setCopied(true);
@@ -62,7 +64,7 @@ export default function PromptPreview({ positive, negative, dna, workflow, conte
           >
             ~{tokens} tok · {quality.profileLabel}
           </span>
-          <button
+      <button
             onClick={onImprove}
             disabled={improving || !positive}
             data-testid="btn-venice-improve-prompt"
@@ -93,13 +95,23 @@ export default function PromptPreview({ positive, negative, dna, workflow, conte
         </div>
         <div className="mt-2 text-[10px] text-zinc-500">{expanded ? "Hide full prompts" : "Show and edit full prompts"}</div>
       </button>
+        {onResearchEnabled && <WebPromptResearchOptions enabled={researchEnabled} onEnabled={onResearchEnabled} focus={researchFocus} onFocus={onResearchFocus} disabled={improving}/>}
+      {aiSuggestion && <section aria-label="AI prompt suggestion" className="space-y-3 rounded-lg border border-cyan-400/30 p-3">
+        <h3 className="text-sm font-semibold">Review AI prompt suggestion</h3>
+        {suggestionStale && <p className="text-xs text-amber-200">The prompt or workflow changed after this suggestion was requested. Request a new suggestion before applying.</p>}
+        {!!suggestionMissing.length && <p className="text-xs text-amber-200">Review these requirements: {suggestionMissing.map(item => item.label || item.text || item.id).join(', ')}. They may be missing from the suggestion; wording checks are approximate.</p>}
+        <label className="block text-xs">Suggested positive prompt<textarea aria-label="AI suggested positive prompt" rows={6} value={aiSuggestion.positive} disabled={improving} onChange={event => onSuggestionChange({...aiSuggestion,positive:event.target.value})} className="mt-1 w-full rounded-lg border hairline bg-elevated p-2"/></label>
+        <label className="block text-xs">Suggested negative prompt<textarea aria-label="AI suggested negative prompt" rows={2} value={aiSuggestion.negative} disabled={improving} onChange={event => onSuggestionChange({...aiSuggestion,negative:event.target.value})} className="mt-1 w-full rounded-lg border hairline bg-elevated p-2"/></label>
+        <PromptResearchNotes result={aiSuggestion}/>
+        <div className="flex gap-3 text-xs"><button type="button" disabled={improving || suggestionStale || !aiSuggestion.positive.trim()} onClick={onApplySuggestion} className="text-cyan-200">Apply AI suggestion</button><button type="button" disabled={improving} onClick={onDiscardSuggestion}>Discard AI suggestion</button></div>
+      </section>}
       <details className="rounded-lg border hairline bg-black/20 p-3 text-xs text-zinc-400" data-testid="prompt-length-review">
         <summary className="cursor-pointer">Length & selection review · ~{tokens} tokens · {String(positive || "").length} characters</summary>
         <p className="mt-2">App guidance for {quality.profileLabel}: about {quality.warningTokens} tokens. This is an estimate, not a confirmed encoder limit. Sending more text does not guarantee the model uses every detail.</p>
         {compilerMeta?.promptBudget && <p className="mt-2">Compiler budget: {compilerMeta.promptBudget} words before later additions. Essential selections can exceed it.</p>}
         <p className="mt-2">{missingSelections.length ? `${missingSelections.length} selections were not detected in the current wording. Check the list below; matching is approximate.` : 'All tracked selections were detected in the current wording. This checks text, not image accuracy.'}</p>
         {missingSelections.length > 0 && <ul className="mt-2 space-y-1">{missingSelections.map(item => <li key={item.key}>{item.label}: {item.value}</li>)}</ul>}
-        <button type="button" onClick={() => setReviewCompaction(value => !value)} className="mt-3 rounded-lg border hairline px-3 py-2 text-zinc-200" data-testid="btn-review-compaction">{reviewCompaction ? 'Hide compact preview' : 'Review compact wording'}</button>
+      <button type="button" onClick={() => setReviewCompaction(value => !value)} className="mt-3 rounded-lg border hairline px-3 py-2 text-zinc-200" data-testid="btn-review-compaction">{reviewCompaction ? 'Hide compact preview' : 'Review compact wording'}</button>
         {reviewCompaction && <div className="mt-3 space-y-2" data-testid="compact-prompt-review">
           <p>~{compactTokens} tokens · saves approximately {compactSavings}. Removes repeated exact clauses within each subject block; retains separate subjects and their ages. Unique details are kept.</p>
           <p className="max-h-64 overflow-auto whitespace-pre-wrap font-mono text-[11px] text-amber-100">{quality.cleaned}</p>
