@@ -2,7 +2,9 @@ import {act} from 'react';
 import {createRoot} from 'react-dom/client';
 import PromptLibraryEditor from './PromptLibraryEditor';
 import {endpoints} from '@/lib/api';
-import {getPromptCatalog,setPromptCatalog} from '@/lib/promptCatalog';
+import {getPromptCatalog,setPromptCatalog,editableSection} from '@/lib/promptCatalog';
+import {SECTIONS} from '@/lib/dna';
+import {expandPrompt} from '@/lib/promptMap';
 jest.mock('react-router-dom',() => ({Link:({to,children,...props}) => <a href={to} {...props}>{children}</a>}),{virtual:true});
 jest.mock('@/lib/api',() => ({endpoints:{settings:jest.fn(),updateSettings:jest.fn(),aiPromptLibrary:jest.fn()}}));
 let root,container;
@@ -41,6 +43,8 @@ test('Ollama suggestion is reviewed before applying and does not save automatica
   expect(endpoints.aiPromptLibrary).toHaveBeenCalledWith({category:'Atmosphere',subcategory:'Weather detail',label:'Morning mist',keywords:'gentle morning mist'});
   expect(container.querySelector('[aria-label^="Keywords custom_"]').value).toBe('gentle morning mist');
   expect(endpoints.updateSettings).not.toHaveBeenCalled();
+  const keywords=container.querySelector('[aria-label^="Keywords custom_"]');
+  expect(keywords.closest('div').querySelector('[aria-label="AI keyword suggestion"]')).not.toBeNull();
   act(() => button('Apply suggestion').click());
   expect(container.querySelector('[aria-label^="Keywords custom_"]').value).toContain('a thin layer');
   expect(endpoints.updateSettings).not.toHaveBeenCalled();
@@ -79,4 +83,37 @@ test('user prompt rule can be edited and toggled; category edits do not discard 
   act(() => container.querySelector('[aria-label^="Enable rule custom_"]').click());
   await act(async() => button('Save library').click());
   expect(getPromptCatalog().rules[0].enabled).toBe(false);
+});
+
+
+test('folders expose every built-in category and one choice editor with its existing wording and Ollama assistance', async() => {
+  await act(async() => root.render(<PromptLibraryEditor/>));
+  SECTIONS.forEach(section => expect(button(section.title)).toBeDefined());
+  expect(container.querySelector('aside').className).toContain('block');
+  act(() => button('Hair').click());
+  expect(container.querySelector('aside').className).toContain('hidden md:block');
+  act(() => button('📁 Color').click());
+  const color=editableSection(SECTIONS.find(section => section.key==='hair')).fields.find(field => field.key==='color');
+  const choice=color.options[0];
+  act(() => [...container.querySelector('[aria-label="Choice folders"]').querySelectorAll('button')][0].click());
+  expect(container.querySelectorAll('[aria-label^="Display name "]')).toHaveLength(1);
+  expect(container.querySelector(`[aria-label="Keywords ${choice.value}"]`).value).toBe(expandPrompt('hair','color',choice.value));
+  endpoints.aiPromptLibrary.mockResolvedValue({keywords:'natural dark hair with subtle highlights'});
+  await act(async() => button('Improve keywords with Ollama').click());
+  expect(endpoints.aiPromptLibrary).toHaveBeenCalledWith(expect.objectContaining({keywords:expandPrompt('hair','color',choice.value)}));
+  act(() => button('← Back').click());
+  expect(container.querySelector('[aria-label="Choice folders"]').className).not.toContain('hidden');
+  expect(endpoints.updateSettings).not.toHaveBeenCalled();
+});
+
+test('compiled preview uses draft keywords without saving and clears when the wording changes', async() => {
+  await setup();
+  act(() => button('Preview compiled prompt').click());
+  expect(container.querySelector('[aria-label="Compiled positive preview"]').value).toContain('gentle morning mist');
+  expect(endpoints.updateSettings).not.toHaveBeenCalled();
+  await enter(container.querySelector('[aria-label^="Keywords custom_"]'),'soft evening haze');
+  expect(container.querySelector('[aria-label="Compiled positive preview"]')).toBeNull();
+  act(() => button('Preview compiled prompt').click());
+  expect(container.querySelector('[aria-label="Compiled positive preview"]').value).toContain('soft evening haze');
+  expect(getPromptCatalog().sections).toEqual([]);
 });
