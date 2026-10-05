@@ -1,3 +1,4 @@
+import { updateAssistantResearch } from '@/lib/assistantResearch';
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import FreeformCreate from './FreeformCreate';
@@ -6,6 +7,7 @@ jest.mock('react-router-dom', () => ({ Link: ({to,children,...props}) => <a href
 jest.mock('@/lib/api', () => ({ endpoints: {settings:jest.fn(),listWorkflows:jest.fn(),aiImproveGeneratedPrompt:jest.fn(),aiVideoPrompt:jest.fn(),dispatchRender:jest.fn(),uploadReferenceImage:jest.fn()} }));
 let container, root;
 beforeEach(() => {
+  updateAssistantResearch({enabled:false,focus:'',result:null});
   global.IS_REACT_ACT_ENVIRONMENT=true; jest.clearAllMocks();
   endpoints.settings.mockResolvedValue({ai_provider:'ollama'});
   endpoints.listWorkflows.mockResolvedValue([{id:'image',name:'Image',kind:'image',prompt_style:'chroma'},{id:'video',name:'Animate',kind:'video'},{id:'text_video',name:'Video',kind:'text_video'}]);

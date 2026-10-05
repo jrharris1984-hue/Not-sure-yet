@@ -98,15 +98,22 @@ export function resolveBuilderControls(source = {}) {
     }
     omit('wardrobe', 'state', 'Open or shifted outfit controls garment position instead of the separate clothing-state choice.');
   }
-  if (w.outfit_set && (w.heel_type || w.hosiery_type || w.footwear)) notes.push({ section: 'wardrobe', field: 'outfit_set', text: 'This complete set may include shoes or hosiery. Use individual garments when you need separate footwear choices.' });
+  if (w.outfit_set) {
+    let set = w.outfit_set;
+    if (w.heel_type || w.footwear) set = set.replace(/\b(?:(?:embroidered|embellished|platform)\s+)?(?:heels|stilettos|pumps|boots|sandals|flats|shoes)\b/gi, '');
+    if (w.hosiery_type || f.hosiery) set = set.replace(/\b(?:(?:sheer|seamed|fishnet|lace)\s+)?(?:stockings|thigh-highs)\b/gi, '');
+    if (set !== w.outfit_set) {
+      w.outfit_set = set.replace(/\b(with|and)\s*(?=,|$)/gi, '').replace(/,\s*(?=,|$)/g, '').replace(/\s+/g, ' ').trim();
+      notes.push({ section: 'wardrobe', field: 'outfit_set', text: 'Separate footwear and hosiery selections replace those items in the complete outfit set; the rest of the set stays active.' });
+    }
+  }
   if (w.heel_type) omit('wardrobe', 'footwear', 'The selected heel type overrides the general footwear choice.');
   if (w.hosiery_type) omit('feet', 'hosiery', 'Wardrobe hosiery controls coverage; the Feet hosiery fallback is inactive.');
-  const hosiery = lower(w.hosiery_type || f.hosiery);
   const footwear = lower(w.heel_type || w.footwear);
   const visibility = footVisibility(w, f);
-  if ((hosiery && hosiery !== 'bare') || (footwear && footwear !== 'barefoot')) {
+  if (visibility.hasHosiery || visibility.hasShoe) {
     const state = list(f.foot_state);
-    const keep = state.filter(v => (v !== 'bare' || visibility.bare) && !(hosiery && hosiery !== 'bare' && ['in socks', 'in nylons'].includes(v)));
+    const keep = state.filter(v => (v !== 'bare' || visibility.bare) && !(visibility.hasHosiery && ['in socks', 'in nylons'].includes(v)));
     if (keep.length !== state.length) {
       f.foot_state = keep;
       notes.push({ section: 'feet', field: 'foot_state', text: 'Selected footwear and hosiery control coverage instead of the conflicting foot-state choice.' });
@@ -132,11 +139,27 @@ export function resolveBuilderControls(source = {}) {
   if (!focus && croppedAboveFeet) for (const field of Object.keys(f)) {
     if (field !== 'composition_mode') omit('feet', field, 'Outside the selected crop. Choose a wider frame or Feet focus to show this detail.');
   }
+  const bodyPose = lower(p.action);
+  const standing = /standing|walking|running|lunging|squatting|crouch/.test(bodyPose);
+  const seated = /sitting|seated/.test(bodyPose);
   const stance = lower(f.foot_pose);
-  if (focus && /walking|standing on tiptoe/.test(stance) && p.action && !/standing|walking/.test(lower(p.action))) {
-    omit('pose', 'action', 'The selected standing/walking foot pose replaces the conflicting body pose.');
+  if (focus && bodyPose) {
+    const conflictingStance =
+      (/walking|standing on tiptoe/.test(stance) && !/standing|walking|running/.test(bodyPose)) ||
+      (/feet dangling/.test(stance) && !seated) ||
+      (standing && /feet resting on a cushion|soles facing lens/.test(stance));
+    if (conflictingStance) omit('feet', 'foot_pose', 'The main body pose controls stance. This foot pose is inactive until you choose a compatible body pose.');
+    if (standing && /soles up|soles together|sole showcase|sole toward camera|both soles toward camera|crossed ankles soles visible/.test(lower(f.sole_presentation))) {
+      omit('feet', 'sole_presentation', 'This sole presentation needs raised or repositioned feet. The standing or squatting body pose stays primary.');
+    }
+    if (standing && ['sole close-up', 'POV under foot', 'low angle sole', 'both soles in foreground'].includes(f.framing)) {
+      omit('feet', 'framing', 'This under-sole framing conflicts with the weight-bearing pose. Choose a seated or lying pose, or another foot crop.');
+    }
   }
-  if (focus && /toes pointed|toes flexed/.test(stance)) {
+  if (/feet dangling/.test(lower(f.foot_pose))) {
+    omit('feet', 'ground_surface', 'Dangling feet do not rest on a surface. The scene still supplies the surroundings.');
+  }
+  if (focus && /toes pointed|toes flexed/.test(lower(f.foot_pose))) {
     const expected = stance === 'toes pointed' ? 'toe point' : 'toes flexed';
     if (list(f.toes).some(v => ['toe curl', 'toe spread', 'toe point', 'toes flexed'].includes(v) && v !== expected)) {
       f.toes = list(f.toes).filter(v => !['toe curl', 'toe spread', 'toe point', 'toes flexed'].includes(v));
@@ -152,6 +175,12 @@ export function resolveBuilderControls(source = {}) {
   const indoor = /bedroom|bathroom|studio|office|living room|kitchen/.test(environment);
   const outdoor = /beach|forest|park|garden|street|desert/.test(environment);
   if ((indoor && dna.scene.indoor_outdoor === 'outdoor') || (outdoor && dna.scene.indoor_outdoor === 'indoor')) omit('scene', 'indoor_outdoor', 'The selected environment controls whether the scene is indoors or outdoors.');
+  const surface = lower(f.ground_surface);
+  const indoorSurface = ['polished wood floor', 'tile floor', 'soft carpet', 'silk sheets', 'velvet cushion', 'marble floor'].includes(surface);
+  const outdoorSurface = ['warm sand', 'wet sand', 'grass'].includes(surface);
+  const inside = indoor || (!outdoor && dna.scene.indoor_outdoor === 'indoor');
+  const outside = outdoor || (!indoor && dna.scene.indoor_outdoor === 'outdoor');
+  if ((inside && outdoorSurface) || (outside && indoorSurface)) omit('feet', 'ground_surface', 'The selected scene takes priority over a conflicting indoor/outdoor surface under the feet.');
   return { dna, notes };
 }
 

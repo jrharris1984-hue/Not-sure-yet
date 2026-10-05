@@ -1,3 +1,4 @@
+import { WebPromptResearchOptions } from '@/components/WebPromptResearch';
 import { useEffect, useRef, useState } from 'react';
 import { endpoints } from '@/lib/api';
 import { SHOT_CONTROLS, SHOT_CATALOG } from '@/lib/shootPlanner';
@@ -46,6 +47,7 @@ export default function ShootPlanner({ characterId, workflow, count, lockScenari
       <textarea value={instruction} onChange={e => setInstruction(e.target.value)} maxLength={3000} rows={3}
         placeholder="Fashion shots on a staircase, warm lighting, varied full-body poses. Keep the character and outfit."
         className="mt-2 w-full bg-elevated border border-hairline rounded-lg p-3 text-sm" /></label>
+      <WebPromptResearchOptions disabled={busy}/>
     {!compatible && <p className="text-xs text-amber-200">Choose a text-to-image workflow to plan a photo shoot.</p>}
     <p className="text-xs text-zinc-400">{lockScenario ? 'Location is locked; AI keeps the saved setting.' : 'Location changes are allowed.'} Appearance and subject count stay saved. Empty choices keep the saved setting; outfit changes apply to every subject.</p>
     <button type="button" onClick={generate} disabled={busy || !compatible || !instruction.trim()}

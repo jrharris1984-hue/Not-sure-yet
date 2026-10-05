@@ -1,3 +1,4 @@
+import { WebPromptResearchOptions } from '@/components/WebPromptResearch';
 import { useState } from "react";
 
 export default function ImageRecoveryPanel({ busy = false, onRecover, onImprove, onEdit }) {
@@ -72,6 +73,7 @@ export default function ImageRecoveryPanel({ busy = false, onRecover, onImprove,
             onChange={(event) => { setInstruction(event.target.value); setAiApplied(false); setAiError(""); }}
             className="mt-1 w-full rounded-lg border hairline bg-elevated p-2 text-xs text-zinc-100" />
         </label>
+      <WebPromptResearchOptions disabled={working}/>
         {onImprove && <button type="button" onClick={improve} disabled={working || !instruction.trim()} data-testid="recovery-improve-instruction"
           className="rounded-lg border border-purple-500/40 px-3 py-2 text-xs font-semibold text-purple-100 disabled:opacity-40">
           {improving ? "Clarifying…" : "Clarify with AI"}

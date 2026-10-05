@@ -1,3 +1,5 @@
+import { WebPromptResearchOptions, PromptResearchNotes } from '@/components/WebPromptResearch';
+import { useAssistantResearch } from '@/lib/assistantResearch';
 import { useEffect, useRef } from "react";
 import MobileStudioNavigation, { StudioNavLinks } from "@/components/StudioNavigation";
 import { Link, useLocation } from "react-router-dom";
@@ -31,6 +33,7 @@ function ComfyStatus() {
 
 export default function AppShell({ children }) {
   const loc = useLocation();
+  const research = useAssistantResearch();
   const isBuilder = loc.pathname.startsWith("/character");
   const mainRef = useRef(null);
   const pageGroup = loc.pathname.split("/")[1] || "library";
@@ -79,7 +82,7 @@ export default function AppShell({ children }) {
       </header>
 
       <NowRenderingStrip />
-      <main id="studio-main" ref={mainRef} tabIndex={-1} className="studio-main flex-1 min-w-0">{children}</main>
+      <main id="studio-main" ref={mainRef} tabIndex={-1} className="studio-main flex-1 min-w-0"><div className="mx-auto max-w-4xl px-4 pt-3"><WebPromptResearchOptions/>{research.result && <details className="mt-2 text-xs"><summary className="cursor-pointer text-cyan-300">Latest AI research sources</summary><PromptResearchNotes result={research.result}/></details>}</div>{children}</main>
       <PwaInstallPrompt />
 
       <MobileStudioNavigation returnTo={isBuilder ? loc.pathname : undefined} />

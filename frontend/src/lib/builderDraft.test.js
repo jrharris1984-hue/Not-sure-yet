@@ -1,7 +1,7 @@
-import { builderDraftKey, clearBuilderDraft, readBuilderDraft, writeBuilderDraft } from "./builderDraft";
+import { builderDraftKey, clearBuilderDraft, readBuilderDraft, writeBuilderDraft, resetWorkspaceDrafts, startWorkspaceSession } from "./builderDraft";
 
 describe("builder drafts", () => {
-  afterEach(() => window.localStorage.clear());
+  afterEach(() => {window.localStorage.clear();resetWorkspaceDrafts();});
 
   it("saves and restores a versioned character editing session", () => {
     writeBuilderDraft("character-1", { name: "Still editing", workflowId: "zimage", subjects: [{ id: "a" }] });
@@ -10,7 +10,7 @@ describe("builder drafts", () => {
       name: "Still editing",
       workflowId: "zimage",
     });
-    expect(window.localStorage.getItem(builderDraftKey("character-1"))).toContain("Still editing");
+    expect(window.localStorage.getItem(builderDraftKey("character-1"))).toBeNull();
   });
 
   it("clears only the requested draft", () => {
@@ -18,4 +18,13 @@ describe("builder drafts", () => {
     clearBuilderDraft(null);
     expect(readBuilderDraft(null)).toBeNull();
   });
+});
+
+it('a new app load starts at the roster with no unfinished draft', () => {
+  writeBuilderDraft(null,{name:'Unsaved character'});
+  window.localStorage.setItem(builderDraftKey(null),JSON.stringify({version:1,name:'Old draft'}));
+  const browser={history:{replaceState:jest.fn()}};
+  startWorkspaceSession(browser);
+  expect(browser.history.replaceState).toHaveBeenCalledWith(null,'','/');
+  expect(readBuilderDraft(null)).toBeNull();
 });

@@ -1,3 +1,4 @@
+import { useAssistantResearch, updateAssistantResearch } from '@/lib/assistantResearch';
 import VideoModeLinks from "@/components/VideoModeLinks";
 import RandomSceneControls from "@/components/RandomSceneControls";
 import { randomSceneSubjects } from "@/lib/randomScenes";
@@ -30,7 +31,7 @@ import {
 } from "@/lib/dna";
 import { compileModelPrompts, resolvePromptCompiler } from "@/lib/modelPromptCompilers";
 import { batchSeed } from "@/lib/batchSeeds";
-import { translatePlainLanguage } from "@/lib/plainLanguagePrompt";
+import { resolveReferenceNotes, translatePlainLanguage } from "@/lib/plainLanguagePrompt";
 import { analyzePromptQuality } from "@/lib/promptQuality";
 import DnaSection from "@/components/DnaSection";
 import ImageSourceFlow from "@/components/ImageSourceFlow";
@@ -133,26 +134,12 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
   const goSection = (key) => nav(sectionUrl(key));
 
   const [mobileStudioStep, setMobileStudioStep] = useState(() => mobileStudioStepForSection(activeSection, studioSteps));
-  const [mobileStudioMode, setMobileStudioMode] = useState(() => {
-    try {
-      return window.localStorage.getItem("ultra-studio-mobile-mode") === "advanced" ? "advanced" : "simple";
-    } catch {
-      return "simple";
-    }
-  });
+  const [mobileStudioMode, setMobileStudioMode] = useState("simple");
   const [desktopQuickMode, setDesktopQuickMode] = useState(true);
   const [specialtyTab, setSpecialtyTab] = useState(0);
   const [quickReview, setQuickReview] = useState(false);
   useEffect(() => { setQuickReview(false); }, [activeSection]);
   const activeMobileStudioIndex = Math.max(0, studioSteps.findIndex((step) => step.id === mobileStudioStep));
-
-  useEffect(() => {
-    try {
-      window.localStorage.setItem("ultra-studio-mobile-mode", mobileStudioMode);
-    } catch {
-      // Local storage can be unavailable in private/restricted browser modes.
-    }
-  }, [mobileStudioMode]);
 
   const openMobileStudioStep = (stepId) => {
     const step = studioSteps.find((item) => item.id === stepId);
@@ -197,7 +184,9 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
   const [plainLanguage, setPlainLanguage] = useState("");
   const [negativePromptOverride, setNegativePromptOverride] = useState("");
   const [improvingPrompt, setImprovingPrompt] = useState(false);
-  const [usePromptResearch,setUsePromptResearch]=useState(false),[promptResearchFocus,setPromptResearchFocus]=useState('');
+  const {enabled:usePromptResearch,focus:promptResearchFocus}=useAssistantResearch();
+  const setUsePromptResearch=value=>updateAssistantResearch({enabled:value,result:null});
+  const setPromptResearchFocus=value=>updateAssistantResearch({focus:value,result:null});
   const [aiPromptSuggestion,setAiPromptSuggestion]=useState(null);
   const [dispatching, setDispatching] = useState(false);
   const [activeRender, setActiveRender] = useState(null);
@@ -1061,8 +1050,11 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
   );
   const { positive, negative } = compiledPrompt;
   const translatedPlainLanguage = useMemo(
-    () => translatePlainLanguage(plainLanguage, activeCompiler),
-    [plainLanguage, activeCompiler]
+    () => translatePlainLanguage(
+      !["qwen_edit", "wan_i2v"].includes(activeCompiler) ? resolveReferenceNotes(plainLanguage, activeDna, subjects) : plainLanguage,
+      activeCompiler
+    ),
+    [plainLanguage, activeCompiler, activeDna, subjects]
   );
   const likenessPrompt = useMemo(() => likenessTriggerText(subjects), [subjects]);
   const acceptsLikenessPrompt = !["qwen_edit", "wan_i2v"].includes(activeCompiler);
@@ -3395,6 +3387,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
               </p>
             ))}
             {plainLanguage.trim() && <p className="text-xs text-zinc-400">Workflow translation: {translatedPlainLanguage.text || "Describe motion for image-to-video; the source image supplies appearance."}</p>}
+            {plainLanguage.trim() && !["qwen_edit", "wan_i2v"].includes(activeCompiler) && resolveReferenceNotes(plainLanguage, activeDna, subjects) !== plainLanguage.trim() && <p className="text-xs text-amber-300">Current controls replace labeled reference notes for body orientation, camera angle, pose, framing and expression in the submitted prompt. Your original notes remain saved here.</p>}
           </div>
           {isVideoWorkflow || isVariationWorkflow ? <details className="pane p-4" data-testid={isVideoWorkflow ? "video-motion-preview" : "variation-prompt-preview"}><summary className="cursor-pointer text-xs text-zinc-300">{isVideoWorkflow ? "Motion prompt sent to ComfyUI" : "Variation prompt sent to ComfyUI"}</summary><p className="mt-3 whitespace-pre-wrap text-xs text-zinc-400">{finalPositive}</p></details> : <PromptPreview
             aiProvider={aiProvider}

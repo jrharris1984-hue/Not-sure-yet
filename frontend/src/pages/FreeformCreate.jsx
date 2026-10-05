@@ -1,3 +1,4 @@
+import { useAssistantResearch, updateAssistantResearch } from '@/lib/assistantResearch';
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { endpoints } from '@/lib/api';
@@ -22,7 +23,9 @@ export default function FreeformCreate({ mode = 'image' }) {
   const [error, setError] = useState(''), [queued, setQueued] = useState(false), [loading, setLoading] = useState(true);
   const [seed, setSeed] = useState(''), [width, setWidth] = useState(640), [height, setHeight] = useState(640);
   const [frames, setFrames] = useState(81), [fps, setFps] = useState(24);
-  const [useWebResearch,setUseWebResearch]=useState(false),[researchFocus,setResearchFocus]=useState('');
+  const {enabled:useWebResearch,focus:researchFocus}=useAssistantResearch();
+  const setUseWebResearch=value=>updateAssistantResearch({enabled:value,result:null});
+  const setResearchFocus=value=>updateAssistantResearch({focus:value,result:null});
   const previewRef = useRef('');
   useEffect(() => {
     let live = true;

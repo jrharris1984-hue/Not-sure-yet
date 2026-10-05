@@ -55,8 +55,9 @@ export function mapMediaTraits(incoming = {}) {
       alias(incoming.pose, [["kneeling","kneeling upright"],["bending over","bending over"],["lying","lying back"],["sitting","sitting on edge"],["standing","standing"],["walking","walking"]], poseOptions));
     map("Framing", "pose", "distance", exact(incoming.framing || incoming.cameraDistance, framingOptions) ||
       alias(incoming.framing || incoming.cameraDistance, [["close","close-up"],["medium","waist-up"],["full","full body"],["wide","wide shot"],["portrait","portrait"]], framingOptions));
-    map("Camera angle", "pose", "angle", exact(incoming.cameraAngle || incoming.orientation, angleOptions) ||
-      alias(incoming.cameraAngle || incoming.orientation, [["back","back"],["rear","back"],["profile","profile"],["side","profile"],["over-shoulder","over-shoulder"],["above","from above"],["below","from below"],["front","front"]], angleOptions));
+    const orientationAliases = [["back","back"],["rear","back"],["profile","profile"],["side","profile"],["over-shoulder","over-shoulder"],["above","from above"],["below","from below"],["front","front"]];
+    map("Camera angle", "pose", "angle", exact(incoming.orientation, angleOptions) || alias(incoming.orientation, orientationAliases, angleOptions) ||
+      exact(incoming.cameraAngle, angleOptions) || alias(incoming.cameraAngle, orientationAliases, angleOptions));
     map("Environment", "scene", "environment", exact(incoming.environment, envOptions) ||
       alias(incoming.environment, [["bedroom","bedroom"],["studio","studio"],["beach","beach"],["forest","forest"],["rooftop","rooftop"],["warehouse","warehouse"],["desert","desert"],["alley","neon alley"],["castle","castle"],["street","urban street"]], envOptions));
     map("Photo style", "style", "render", exact(incoming.photographicStyle, styleOptions) ||
@@ -82,7 +83,7 @@ export function mapMediaTraits(incoming = {}) {
     map("Lighting source", "lighting", "source", containsOption(incoming.lighting, lightSourceOptions));
     map("Lighting style", "lighting", "style", containsOption(incoming.lighting, lightStyleOptions));
     map("Lighting mood", "lighting", "mood", containsOption(incoming.lighting, lightMoodOptions));
-    map("Camera", "camera", "angle", alias(incoming.cameraAngle, [["eye-level","eye-level"],["low angle","low"],["high angle","high"],["dutch","dutch"],["bird","birds-eye"]], cameraAngleOptions));
+    map("Camera", "camera", "angle", alias(incoming.cameraAngle, [["eye-level","eye-level"],["eye level","eye-level"],["low angle","low"],["high angle","high"],["dutch","dutch"],["bird","birds-eye"]], cameraAngleOptions));
     map("Composition focus", "pose", "focus", alias(incoming.composition, [["face","face"],["full body","full frame"],["body","body"],["hip","hips"],["leg","legs"],["feet","feet"],["hand","hands"]], focusOptions));
 
     const proportionsText = lower([incoming.bodyBuild, incoming.bodyProportions, incoming.physicalAppearance].filter(Boolean).join(" "));
@@ -103,7 +104,7 @@ export function mapMediaTraits(incoming = {}) {
     addReferenceNote("Expression", incoming.expression, ["Expression"]);
     addReferenceNote("Wardrobe", incoming.wardrobe, ["Outfit", "Outfit color", "Material", "Fit"]);
     addReferenceNote("Pose", incoming.pose, ["Pose"]);
-    addReferenceNote("Body orientation", incoming.orientation, ["Camera angle", "Camera"]);
+    addReferenceNote("Body orientation", incoming.orientation, ["Camera angle"]);
     addReferenceNote("Framing", incoming.framing, ["Framing"]);
     addReferenceNote("Camera angle", incoming.cameraAngle, ["Camera angle", "Camera"]);
     addReferenceNote("Composition", incoming.composition, ["Composition focus"]);
