@@ -387,6 +387,8 @@ function inferredFamilyForInstalled(name = "") {
   if (/(^|\/)pony\//.test(value) || /pony/.test(value)) return "pony";
   if (/(^|\/)flux\//.test(value) || /flux/.test(value)) return "flux";
   if (/(^|\/)wan\//.test(value) || /wan2|lightx2v/.test(value)) return "wan22";
+  // Image 2512 adapters must not be offered for the Edit 2511 model.
+  if (/(^|\/)qwen[_ -]?image\//.test(value) || /qwen.*2512|qwen[-_ ]image(?![-_ ]edit)/.test(value)) return "qwen_image";
   if (/qwen/.test(value)) return "qwen_edit";
   if (/(^|\/)sd15\//.test(value) || /sd15/.test(value)) return "sd15";
   if (/(^|\/)sdxl\//.test(value) || /sdxl/.test(value)) return "sdxl";

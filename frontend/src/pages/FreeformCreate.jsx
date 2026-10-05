@@ -2,6 +2,7 @@ import { useAssistantResearch, updateAssistantResearch } from '@/lib/assistantRe
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { endpoints } from '@/lib/api';
+import UniversalLoraPicker from '@/components/UniversalLoraPicker';
 import VideoModeLinks from '@/components/VideoModeLinks';
 import AIResearchPanel from '@/components/AIResearchPanel';
 import { WebPromptResearchOptions, PromptResearchNotes } from '@/components/WebPromptResearch';
@@ -22,6 +23,9 @@ export default function FreeformCreate({ mode = 'image' }) {
   const [suggestion, setSuggestion] = useState(null), [busy, setBusy] = useState('');
   const [error, setError] = useState(''), [queued, setQueued] = useState(false), [loading, setLoading] = useState(true);
   const [seed, setSeed] = useState(''), [width, setWidth] = useState(640), [height, setHeight] = useState(640);
+  const [firstLora, setFirstLora] = useState({name:'',strength:0.8,triggerWords:[]});
+  const [secondLora, setSecondLora] = useState({name:'',strength:0.8,triggerWords:[]});
+  const [showSecondLora, setShowSecondLora] = useState(false);
   const [frames, setFrames] = useState(81), [fps, setFps] = useState(24);
   const {enabled:useWebResearch,focus:researchFocus}=useAssistantResearch();
   const setUseWebResearch=value=>updateAssistantResearch({enabled:value,result:null});
@@ -62,7 +66,7 @@ export default function FreeformCreate({ mode = 'image' }) {
   };
   const generate = () => run('Generate', async () => {
     setQueued(false);
-    const result = await endpoints.dispatchRender(freeformPayload({ mode, workflow, prompt, negative, source, seed, width, height, frames, fps }));
+    const result = await endpoints.dispatchRender(freeformPayload({ mode, workflow, prompt, negative, source, seed, width, height, frames, fps, loras: [firstLora, ...(showSecondLora ? [secondLora] : [])] }));
     if (['failed', 'offline'].includes(result.status)) throw new Error(result.error || 'Generation could not start.');
     setQueued(true);
   });
@@ -72,13 +76,22 @@ export default function FreeformCreate({ mode = 'image' }) {
     {mode !== 'image' && <VideoModeLinks mode={mode}/>}
     {error && <p role="alert" className="rounded-lg border border-red-400/30 p-3 text-red-200">{error}</p>}
     <section className="pane space-y-4 p-4">
-      <label className="block space-y-1">Workflow<select aria-label="Workflow" className={field} value={workflowId} disabled={!!busy} onChange={e => { setWorkflowId(e.target.value); setSuggestion(null); }}>
+      <label className="block space-y-1">Workflow<select aria-label="Workflow" className={field} value={workflowId} disabled={!!busy} onChange={e => { setWorkflowId(e.target.value); setSuggestion(null); setFirstLora({name:'',strength:0.8,triggerWords:[]}); setSecondLora({name:'',strength:0.8,triggerWords:[]}); setShowSecondLora(false); setQueued(false); }}>
         {workflows.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}
       </select></label>
       {loading ? <p>Loading workflows…</p> : !workflows.length && <p>No compatible workflow is available. <Link to="/settings" className="text-cyan-300 underline">Refresh bundled workflows in Settings</Link>.</p>}
       {mode === 'video' && <div className="space-y-2"><label className="block">Starting image<input aria-label="Starting image" type="file" accept="image/png,image/jpeg,image/webp" disabled={!!busy} onChange={upload} className="block mt-2 text-sm"/></label>
         {preview && <><img src={preview} alt="Starting frame" className="max-h-64 rounded-lg object-contain"/><button disabled={!!busy} onClick={() => { URL.revokeObjectURL(previewRef.current); previewRef.current = ''; setPreview(''); setSource(null); }}>Remove image</button></>}</div>}
       <label className="block space-y-1">{mode === 'video' ? 'Movement and camera prompt' : 'Your prompt'}<textarea aria-label="Your prompt" className={field} rows={7} value={prompt} disabled={!!busy} onChange={e => { setPrompt(e.target.value); setSuggestion(null); setQueued(false); }} placeholder={mode === 'video' ? 'Describe how the subject moves and how the camera follows.' : 'Describe the scene, subjects, style, lighting, and composition.'}/></label>
+      {mode === 'image' && workflow && <details><summary className="cursor-pointer text-zinc-300">Optional LoRAs · up to two</summary>
+        <fieldset disabled={!!busy} className="mt-3 space-y-3">
+          <UniversalLoraPicker workflow={workflow} value={firstLora} onChange={setFirstLora} slotLabel="LoRA 1" excludedNames={secondLora.name ? [secondLora.name] : []}/>
+          {showSecondLora && <UniversalLoraPicker workflow={workflow} value={secondLora} onChange={setSecondLora} slotLabel="LoRA 2" excludedNames={firstLora.name ? [firstLora.name] : []}/>}
+          <button type="button" className="text-sm text-cyan-300" onClick={() => {setShowSecondLora(!showSecondLora); setSecondLora({name:'',strength:0.8,triggerWords:[]});}}>{showSecondLora ? 'Remove second LoRA' : 'Add second LoRA'}</button>
+          <p className="text-xs text-zinc-400">Adjust each strength and its trigger words separately. Model-family matching is a guide; confirm compatibility on the model page. Compare a base render with each LoRA individually before combining them.</p>
+        </fieldset>
+      </details>}
+      {mode === 'image' && ['qwen_image','qwen_rapid'].includes(workflow?.prompt_style) && <button disabled={!!busy} className="text-sm text-cyan-300" onClick={() => {setPrompt('Photograph of an adult wearing a fully clothed casual outfit, natural proportions, relaxed standing pose, realistic skin texture, soft daylight, clear hands and feet, simple background.'); setSuggestion(null); setQueued(false);}}>Use clothed portrait test prompt</button>}
       <button className="rounded-lg border border-cyan-400/40 px-4 py-2 text-cyan-200" disabled={!!busy || !prompt.trim() || !workflow} onClick={assist}>Refine with {aiProvider}</button>
       <WebPromptResearchOptions enabled={useWebResearch} onEnabled={setUseWebResearch} focus={researchFocus} onFocus={setResearchFocus} disabled={!!busy}/>
       <p className="text-xs text-zinc-400">Uses your prompt assistant from Settings. Review the suggestion before applying it.</p>
