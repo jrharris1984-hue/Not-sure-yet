@@ -1,3 +1,4 @@
+from downloaded_models import resolve_downloaded_models, patch_ltx_video
 from prompt_catalog import validate_prompt_catalog
 from qwen_test_models import resolve_qwen_test_models
 from assistant_research import AssistantResearchMiddleware, enrich_assistant_request
@@ -230,6 +231,9 @@ def _detect_prompt_nodes(wf: Dict[str, Any]) -> Dict[str, str]:
 
 
 SEED_WORKFLOWS = [
+    {"file": "krea2_aio.json", "name": "Krea 2 Turbo · AIO v1.0", "kind": "image", "prompt_style": "krea2_aio"},
+    {"file": "qwen_remix_edit.json", "name": "Qwen Remix AIO v2 · Image Edit", "kind": "edit", "prompt_style": "qwen_remix"},
+    {"file": "sulphur2_t2v.json", "name": "Sulphur 2 Distilled NVFP4 · Text → Video + Audio", "kind": "text_video", "prompt_style": "ltx_t2v"},
     {"file": "qwen_agqi_t2i.json", "name": "Qwen 2512 · AGQI V2 FP8", "kind": "image", "prompt_style": "qwen_image"},
     {"file": "qwen_rapid_t2i.json", "name": "Qwen Rapid AIO v23 · Text to Image", "kind": "image", "prompt_style": "qwen_rapid"},
     {"file": "qwen_custom_loras_t2i.json", "name": "Qwen 2512 · Custom LoRAs (AGQI)", "kind": "image", "prompt_style": "qwen_image"},
@@ -1608,6 +1612,16 @@ async def _perform_dispatch(body: "DispatchBody", queue_id: Optional[str] = None
         doc.pop("_id", None)
         return doc
 
+    if wf_template and wf_template.prompt_style in {"krea2_aio", "qwen_remix", "ltx_t2v"}:
+        missing = resolve_downloaded_models(workflow, await _krea2_object_info(s.comfyui_url) or {}, wf_template.prompt_style)
+        if missing:
+            r.status = "failed"
+            r.error = "Workflow setup needs: " + ", ".join(missing) + ". Check model folders and restart ComfyUI."
+            doc = r.model_dump()
+            await db.renders.insert_one(doc)
+            doc.pop("_id", None)
+            return doc
+
     if wf_template and wf_template.prompt_style in {"qwen_image", "qwen_rapid"}:
         missing = resolve_qwen_test_models(workflow, await _krea2_object_info(s.comfyui_url) or {}, wf_template.prompt_style)
         if missing:
@@ -1905,18 +1919,23 @@ async def _perform_dispatch(body: "DispatchBody", queue_id: Optional[str] = None
         instruction = body.video_instruction.strip()
         if not instruction:
             r.status = "failed"
-            r.error = "Describe the video you want WAN to create."
+            r.error = "Describe the video you want to create."
             doc = r.model_dump()
             await db.renders.insert_one(doc)
             doc.pop("_id", None)
             return doc
 
+        is_ltx = wf_template.prompt_style == "ltx_t2v"
         requested_frames = max(41, min(241, int(body.video_frames)))
         # WAN uses frame counts in the 4n+1 family.
         frames = ((requested_frames - 1) // 4) * 4 + 1
         fps = max(8, min(30, int(body.video_fps)))
         image_patched = False
         latent_patched = False
+        if is_ltx:
+            frames, fps = patch_ltx_video(workflow, requested_frames, fps, body.video_width, body.video_height)
+            body.video_frames, body.video_fps = frames, fps
+            latent_patched = any(node.get("class_type") == "EmptyLTXVLatentVideo" for node in workflow.values() if isinstance(node, dict))
 
         for node in workflow.values():
             if not isinstance(node, dict):
@@ -1962,7 +1981,7 @@ async def _perform_dispatch(body: "DispatchBody", queue_id: Optional[str] = None
                 return doc
         elif not latent_patched:
             r.status = "failed"
-            r.error = "The selected WAN Text to Video workflow is missing its latent-video node."
+            r.error = "The selected Text to Video workflow is missing its latent-video node."
             doc = r.model_dump()
             await db.renders.insert_one(doc)
             doc.pop("_id", None)

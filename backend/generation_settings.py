@@ -9,6 +9,7 @@ SAMPLING_FIELDS = {
     "KSamplerSelect": {"sampler_name"},
     "BasicScheduler": {"steps", "scheduler"},
     "BetaSamplingScheduler": {"steps"},
+    "LTXVScheduler": {"steps"},
     "Flux2Scheduler": {"steps", "width", "height"},
 }
 LATENT_TYPES = {"EmptyLatentImage", "EmptySD3LatentImage", "EmptyFlux2LatentImage"}
@@ -41,6 +42,14 @@ def normalize_generation_settings(requested, prompt_style=""):
             values.pop("scheduler", None)
     if prompt_style == "qwen_rapid":
         values["cfg"] = 1.0
+    if prompt_style == "krea2_aio":
+        values.update(steps=12, cfg=1.0, sampler_name="euler_ancestral", scheduler="beta")
+    if prompt_style == "qwen_remix":
+        values.setdefault("steps", 8)
+        values.update(cfg=1.0, sampler_name="euler_ancestral", scheduler="beta")
+    if prompt_style == "ltx_t2v":
+        values.update(steps=8, cfg=1.0, sampler_name="euler")
+        values.pop("scheduler", None)
     return values
 
 
