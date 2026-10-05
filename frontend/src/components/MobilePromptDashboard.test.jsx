@@ -1,3 +1,4 @@
+import { SECTIONS } from '@/lib/dna';
 import { act, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import MobilePromptDashboard from './MobilePromptDashboard';
@@ -42,10 +43,12 @@ test('shows one subcategory and preserves selections across category navigation'
   act(() => tabs[1].click());
   expect(container.querySelector('[data-testid="tile-face-eyes-blue"]').getAttribute('aria-pressed')).toBe('true');
   click('[aria-label="Main categories"] button:nth-child(2)');
+  click('[data-testid="field-tile-wardrobe-tops"]');
   click('[data-testid="tile-wardrobe-tops-leather-jacket"]');
   click('[data-testid="tile-wardrobe-tops-cotton-shirt"]');
   expect(container.querySelectorAll('[aria-pressed="true"][data-testid^="tile-wardrobe"]')).toHaveLength(2);
   click('[aria-label="Main categories"] button:first-child');
+  click('[data-testid="field-tile-face-expression"]');
   expect(container.querySelector('[data-testid="tile-face-expression-smile"]').getAttribute('aria-pressed')).toBe('true');
 });
 
@@ -57,6 +60,7 @@ test('global search reaches matching choices in another category and hides unrel
   click('[data-testid="tile-wardrobe-tops-leather-jacket"]');
   click('[aria-label="Search choices"]');
   click('[aria-label="Main categories"] button:nth-child(2)');
+  click('[data-testid="field-tile-wardrobe-tops"]');
   expect(container.querySelector('[data-testid="tile-wardrobe-tops-leather-jacket"]').getAttribute('aria-pressed')).toBe('true');
 });
 
@@ -91,4 +95,38 @@ test('size presets and sliders stay together without duplicate subcategories', (
 test('single-choice legacy arrays show only the active value in the dock', () => {
   const selected=selectedOptions(sections,{face:{expression:['smile','smirk']}});
   expect(selected.map(item=>item.value)).toEqual(['smirk']);
+});
+
+
+test('category tile index exposes scenario and custom categories in organized groups', () => {
+  const catalog=[...sections,{key:'scenario',title:'Scenario',fields:[{key:'cast_size',label:'People',type:'chips',options:['solo','duo']}]},{key:'custom_outfits',title:'My outfits',fields:[{key:'coat',label:'Coat',type:'chips',options:['raincoat']}]}];
+  const onSection=jest.fn();const onTwoPeople=jest.fn();
+  act(()=>root.render(<MobilePromptDashboard sections={catalog} dna={{}} sectionKey="face" onSection={onSection} onChange={()=>{}} onToggleFieldLock={()=>{}} onTwoPeople={onTwoPeople} />));
+  act(()=>Array.from(container.querySelectorAll('button')).find(button=>button.textContent.trim()==='All categories').click());
+  expect(container.querySelector('[data-testid="category-tile-scenario"]')).not.toBeNull();
+  expect(container.querySelector('[data-testid="category-tile-custom_outfits"]')).not.toBeNull();
+  click('[data-testid="category-tile-scenario"]');expect(onSection).toHaveBeenCalledWith('scenario');
+  act(()=>Array.from(container.querySelectorAll('button')).find(button=>button.textContent.includes('2 people')).click());
+  expect(onTwoPeople).toHaveBeenCalledTimes(1);
+});
+
+
+test('all catalog controls are reachable through subcategory tiles', () => {
+  for (const section of SECTIONS) {
+    expect(new Set(fieldGroups(section).flatMap(group=>group.fields.map(field=>field.key)))).toEqual(new Set(section.fields.map(field=>field.key)));
+  }
+});
+
+test('scenario person tiles switch the edited subject and pose tiles apply a shared composition', () => {
+  const people=[{id:'a',label:'A'},{id:'b',label:'B'}];
+  const catalog=[...sections,{key:'scenario',title:'Scenario',fields:[{key:'cast_size',label:'Cast size',type:'chips',options:['solo','duo']}]},{key:'pose',title:'Pose',fields:[{key:'action',label:'Action',type:'chips',options:['standing']}]}];
+  const onSubject=jest.fn(), onSharedPose=jest.fn();
+  const props={sections:catalog,dna:{},subjects:people,activeSubjectId:'a',onSubject,onSharedPose,onSection:()=>{},onChange:()=>{},onToggleFieldLock:()=>{}};
+  act(()=>root.render(<MobilePromptDashboard {...props} sectionKey="scenario" />));
+  act(()=>Array.from(container.querySelectorAll('button')).find(button=>button.textContent.includes('All scenario controls')).click());
+  act(()=>Array.from(container.querySelectorAll('button')).find(button=>button.textContent.includes('Edit Subject B')).click());
+  expect(onSubject).toHaveBeenCalledWith('b');
+  act(()=>root.render(<MobilePromptDashboard {...props} sectionKey="pose" />));
+  act(()=>Array.from(container.querySelectorAll('button')).find(button=>button.textContent==='side by side').click());
+  expect(onSharedPose).toHaveBeenCalledWith('side by side');
 });
