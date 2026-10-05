@@ -1,10 +1,10 @@
 import { Upload, Loader2, X, Play } from "lucide-react";
 
-export default function ImageSourceFlow({ animation = false, variation, source, preview, uploading, busy, onUpload, onRemove, onRender, renderCount, onRenderCount, readyToRender = true, children }) {
+export default function ImageSourceFlow({ title, animation = false, variation, source, preview, uploading, busy, onUpload, onRemove, onRender, renderCount, onRenderCount, readyToRender = true, children }) {
   const ready = !!source?.name;
   return <section className="space-y-4" data-testid="image-source-flow">
     <div className="pane p-4 sm:p-5">
-      <div className="section-label">{animation ? "WAN · Image to video" : variation ? "Chroma · Image variations" : "Qwen · Image editing"}</div>
+      <div className="section-label">{title || (animation ? "WAN · Image to video" : variation ? "Chroma · Image variations" : "Qwen · Image editing")}</div>
       <h2 className="mt-1 font-display text-xl font-bold">Start with your image</h2>
       <div className="mt-4 grid grid-cols-3 gap-2 text-xs">
         {["Source image", animation ? "Motion & duration" : variation ? "Variation controls" : "Edit controls", "Render"].map((label,index)=><div key={label} className={`rounded-lg border p-2.5 ${index===0 || ready ? "border-cyan-400/30 text-cyan-100" : "hairline text-zinc-500"}`}><span className="mr-2 font-mono">{index+1}</span>{label}</div>)}
