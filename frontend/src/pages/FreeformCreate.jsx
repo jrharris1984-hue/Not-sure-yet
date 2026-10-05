@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { endpoints } from '@/lib/api';
+import AIResearchPanel from '@/components/AIResearchPanel';
 import { FREEFORM_MODES, freeformPayload, freeformWorkflows } from '@/lib/freeformGeneration';
 
 const field = 'w-full rounded-lg border hairline bg-elevated px-3 py-2 text-sm';
@@ -80,5 +81,6 @@ export default function FreeformCreate({ mode = 'image' }) {
       <button className="rounded-lg bg-cyan-400 px-5 py-2 font-semibold text-black disabled:opacity-40" disabled={!!busy || !workflow || !prompt.trim() || (mode === 'video' && !source)} onClick={generate}>{busy ? `${busy}…` : 'Generate'}</button>
       {queued && <p role="status" className="text-emerald-300">Queued. <Link to="/queue" className="underline">View progress</Link> · <Link to="/gallery" className="underline">Open Gallery</Link></p>}
     </section>
+    <AIResearchPanel context={prompt} onApply={value => {setPrompt(value);setSuggestion(null);setQueued(false);}} />
   </div>;
 }

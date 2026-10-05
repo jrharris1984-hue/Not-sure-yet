@@ -1,5 +1,6 @@
 import { applyPhotographicGuidance } from "./photographicGuidance";
 import { resolveBuilderControls, sliderPromptSignature } from "./builderControlResolution";
+import { footVisibility } from './footVisibility';
 import { resolvePhysiqueControls, bustShapePrompt, photographicPrompt } from "./physiqueControls";
 import { preserveGeneralSelections } from "./selectionFidelity";
 import { applyCastAppearance, castAppearancePrompt } from "./castAppearance";
@@ -616,7 +617,7 @@ function kreaWardrobeSentence(dna = {}, label = "") {
     !suppressClothing && !w.outfit_set && !w.dress_style && !w.skirt_style && w.bottom && w.bottom !== "none" ? w.bottom : "",
     !suppressClothing && !w.outfit_set && w.underwear && w.underwear !== "none" ? w.underwear : "",
     !w.outfit_set && w.hosiery_type ? `${w.hosiery_color ? `${w.hosiery_color} ` : ""}${w.hosiery_denier ? `${w.hosiery_denier} ` : ""}${w.hosiery_pattern && w.hosiery_pattern !== "plain" ? `${w.hosiery_pattern} ` : ""}${w.hosiery_type}` : "",
-    !w.outfit_set && feetVisible ? (w.heel_type ? `${w.heel_color ? `${w.heel_color} ` : ""}${w.heel_finish ? `${w.heel_finish} ` : ""}${w.heel_type}${w.heel_height ? `, ${w.heel_height} heel` : ""}` : w.footwear) : "",
+    feetVisible && (!w.outfit_set || w.footwear === 'barefoot') ? (w.heel_type ? `${w.heel_color ? `${w.heel_color} ` : ""}${w.heel_finish ? `${w.heel_finish} ` : ""}${w.heel_type}${w.heel_height ? `, ${w.heel_height} heel` : ""}` : w.footwear) : "",
     w.glasses_style ? `${w.glasses_color ? `${w.glasses_color} ` : ""}${w.glasses_style}` : "",
     w.nail_color ? `${w.nail_color} fingernails` : "",
     w.nail_shape ? `${w.nail_shape} nail shape` : "",
@@ -1180,10 +1181,14 @@ export function compileModelPrompts(options = {}) {
       && (Array.isArray(value) ? value.length : value)
       && !String(protectedResult.positive).toLowerCase().includes(Array.isArray(value) ? value.join(' and ').toLowerCase() : String(value).toLowerCase())).map(([key, value]) => `${key.replace(/_/g, ' ')}: ${key === 'foot_size' && value === 'size queen' ? 'very large feet' : Array.isArray(value) ? value.join(' and ') : value}`);
     const prefix = isMulti ? `Subject ${subject.label || String.fromCharCode(65 + index)} ` : '';
+    // Complete outfit presets must not erase an explicit barefoot choice.
+    // Use resolved coverage so heels or hosiery cannot regain conflicting skin details.
+    const bareFeet = d.wardrobe?.footwear === 'barefoot' && footVisibility(d.wardrobe, d.feet).bare && kreaFeetVisible(d);
+    const barefootText = bareFeet ? `${prefix}barefoot, uncovered feet with natural skin, natural heels and individually defined toes` : '';
     const footText = footDetails.length ? `${prefix}Foot details: ${footDetails.join(', ')}` : '';
     const feetFocused = d.pose?.focus === 'feet';
-    if (footText && !feetFocused) supportingFootDetails.push(footText);
-    return [values && `${prefix}Selected slider values: ${values}`, feetFocused && footText].filter(Boolean).join('; ');
+    if (!feetFocused) supportingFootDetails.push(...[barefootText, footText].filter(Boolean));
+    return [feetFocused && barefootText, values && `${prefix}Selected slider values: ${values}`, feetFocused && footText].filter(Boolean).join('; ');
   }).filter(Boolean).join('; ');
   if (controls) {
     // Keep requested slider values inside the early encoder context rather than

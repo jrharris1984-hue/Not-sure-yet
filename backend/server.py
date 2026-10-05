@@ -1,4 +1,5 @@
 from qwen_reference_edit import configure_reference_edit, resolve_reference_models, configure_camera_strength
+from ai_research import research_sources, research_messages, research_response
 """Ultra Studio Character DNA Builder — FastAPI backend."""
 from fastapi import FastAPI, APIRouter, HTTPException, Body, BackgroundTasks, WebSocket, WebSocketDisconnect, Query, UploadFile, File, Form
 from fastapi.responses import FileResponse, JSONResponse, Response
@@ -3951,6 +3952,72 @@ class ImproveGeneratedPromptBody(BaseModel):
 class VideoPromptBody(BaseModel):
     instruction: str
     mode: str = "image"
+
+
+class ResearchBody(BaseModel):
+    query: str = Field(min_length=3, max_length=400)
+    context: str = Field(default='', max_length=12000)
+
+
+class ResearchKeyBody(BaseModel):
+    api_key: str = Field(min_length=1, max_length=512)
+
+
+async def research_key():
+    configured = os.environ.get('OLLAMA_API_KEY', '').strip()
+    if configured:
+        return configured
+    saved = await db.ai_secrets.find_one({'id': 'web_search'})
+    return str((saved or {}).get('api_key') or '').strip()
+
+
+@api.get('/ai/research/config')
+async def research_config():
+    return {'configured': bool(await research_key()), 'managed_by_environment': bool(os.environ.get('OLLAMA_API_KEY', '').strip())}
+
+
+@api.put('/ai/research/config')
+async def save_research_key(body: ResearchKeyBody):
+    key = body.api_key.strip()
+    if not key:
+        raise HTTPException(400, 'Enter an Ollama web search API key.')
+    await db.ai_secrets.update_one({'id': 'web_search'}, {'$set': {'api_key': key}}, upsert=True)
+    return await research_config()
+
+
+@api.delete('/ai/research/config')
+async def remove_research_key():
+    await db.ai_secrets.delete_one({'id': 'web_search'})
+    return await research_config()
+
+
+@api.post('/ai/research')
+async def ai_research(body: ResearchBody):
+    query = body.query.strip()
+    if len(query) < 3:
+        raise HTTPException(400, 'Enter a specific research question.')
+    key = await research_key()
+    if not key:
+        raise HTTPException(400, 'Configure an Ollama web search API key in Settings first.')
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.post('https://ollama.com/api/web_search',
+                headers={'Authorization': f'Bearer {key}'}, json={'query': query, 'max_results': 5})
+        if response.status_code in (401, 403):
+            raise HTTPException(400, 'Ollama rejected the web search key. Check it in Settings.')
+        if response.status_code >= 400:
+            raise HTTPException(502, 'Web search is unavailable. Try again later.')
+        sources = research_sources(response.json())
+    except (httpx.HTTPError, ValueError):
+        raise HTTPException(502, 'Could not retrieve web search results. Try again later.')
+    if not sources:
+        raise HTTPException(404, 'No usable sources were found. Try a different question.')
+    system, user = research_messages(query, body.context, sources)
+    result = extract_json(await openrouter_chat(system, user, response_format_json=True))
+    try:
+        return research_response(result, sources)
+    except ValueError as exc:
+        raise HTTPException(502, str(exc))
 
 
 class VideoImageAnalysisBody(BaseModel):

@@ -10,6 +10,38 @@ import {
 } from "./modelPromptCompilers";
 
 describe("model-specific prompt compilers", () => {
+  it.each(['chroma','zimage','krea2','sdxl','pony'])('preserves explicit barefoot with an outfit set for %s', promptStyle => {
+    const dna = JSON.parse(JSON.stringify(DEFAULT_DNA));
+    dna.wardrobe = {...dna.wardrobe,outfit_set:'evening outfit',footwear:'barefoot',heel_type:'',hosiery_type:''};
+    dna.feet = {...dna.feet,composition_mode:'feet focus',framing:'full body',hosiery:''};
+    dna.pose = {...dna.pose,distance:'full body',focus:'feet'};
+    const result = compileModelPrompts({promptStyle,dna});
+    expect(result.positive).toContain('barefoot, uncovered feet');
+    expect(result.positive.indexOf('barefoot, uncovered feet')).toBeLessThan(result.positive.indexOf('Selected slider values'));
+    expect(dna.wardrobe.outfit_set).toBe('evening outfit');
+  });
+  it.each(['stiletto heels','opaque socks'])('does not reintroduce bare skin when %s is selected', covering => {
+    const dna = JSON.parse(JSON.stringify(DEFAULT_DNA));
+    dna.wardrobe = {...dna.wardrobe,footwear:'barefoot',heel_type:covering==='stiletto heels'?covering:'',hosiery_type:covering==='opaque socks'?covering:''};
+    dna.feet = {...dna.feet,composition_mode:'feet focus',framing:'full body',hosiery:''};
+    const result = compileModelPrompts({promptStyle:'chroma',dna});
+    expect(result.positive).not.toContain('barefoot, uncovered feet');
+  });
+  it('binds barefoot guidance to each person in a two-person foot scene', () => {
+    const dna = JSON.parse(JSON.stringify(DEFAULT_DNA));
+    dna.wardrobe = {...dna.wardrobe,outfit_set:'evening outfit',footwear:'barefoot',heel_type:'',hosiery_type:''};
+    dna.feet = {...dna.feet,composition_mode:'feet focus',framing:'full body',hosiery:'bare'};
+    const subjects = ['A','B'].map(label => ({label,dna:JSON.parse(JSON.stringify(dna))}));
+    const result = compileModelPrompts({promptStyle:'chroma',dna,subjects,isMulti:true});
+    for (const label of ['A','B']) expect(result.positive).toContain(`Subject ${label} barefoot, uncovered feet`);
+  });
+  it('does not add bare-foot anatomy to an upper-body crop', () => {
+    const dna = JSON.parse(JSON.stringify(DEFAULT_DNA));
+    dna.wardrobe = {...dna.wardrobe,footwear:'barefoot',heel_type:'',hosiery_type:''};
+    dna.feet = {...dna.feet,composition_mode:'supporting detail',hosiery:''};
+    dna.pose = {...dna.pose,distance:'waist-up',focus:'face'};
+    expect(compileModelPrompts({promptStyle:'chroma',dna}).positive).not.toContain('barefoot, uncovered feet');
+  });
   it("routes old saved workflows by kind or name", () => {
     expect(resolvePromptCompiler({ promptStyle: "venice", workflowName: "Z-image Turbo · NSFW" })).toBe("zimage");
     expect(resolvePromptCompiler({ promptStyle: "venice", workflowKind: "edit" })).toBe("qwen_edit");

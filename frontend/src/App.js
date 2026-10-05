@@ -6,6 +6,7 @@ import Library from "@/pages/Library";
 import MediaLibrary from "@/pages/MediaLibrary";
 import Builder from "@/pages/Builder";
 import FreeformCreate from "@/pages/FreeformCreate";
+import AIResearchPanel from '@/components/AIResearchPanel';
 import Gallery from "@/pages/Gallery";
 import Queue from "@/pages/Queue";
 import Settings from "@/pages/Settings";
@@ -31,6 +32,7 @@ function App() {
         <AppShell>
           <Routes>
             <Route path="/" element={<Library />} />
+            <Route path="/research" element={<div className="mx-auto max-w-4xl p-6"><AIResearchPanel open /></div>} />
             <Route path="/create/image" element={<FreeformCreate key="image" mode="image" />} />
             <Route path="/create/video" element={<FreeformCreate key="video" mode="video" />} />
             <Route path="/create/text-video" element={<FreeformCreate key="text_video" mode="text_video" />} />
