@@ -1,3 +1,5 @@
+import { clearUnlockedChoices } from "@/lib/mobilePromptGrid";
+import MobilePromptDashboard from "@/components/MobilePromptDashboard";
 import { catalogSections, usePromptCatalog } from "@/lib/promptCatalog";
 import { useAssistantResearch, updateAssistantResearch } from '@/lib/assistantResearch';
 import VideoModeLinks from "@/components/VideoModeLinks";
@@ -2533,6 +2535,24 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
 
   return (
     <div className={`mobile-builder-content mx-auto max-w-[1600px] px-2.5 sm:px-6 py-3 sm:py-6 space-y-3 sm:space-y-4 ${desktopQuickMode && !isImageFirst ? "quick-create-mode" : ""}`}>
+      {!isImageFirst && editMode !== "body_adjust" && mobileStudioStep !== "create" && <MobilePromptDashboard
+        sections={SECTIONS} dna={{ ...activeDna, scenario: primaryDna.scenario }} sectionKey={activeSection}
+        onSection={goSection} onChange={setSection} locks={locks} fieldLocks={activeFieldLocks}
+        onToggleFieldLock={(section, field) => setActiveFieldLocks({ ...activeFieldLocks,
+          [section]: { ...(activeFieldLocks[section] || {}), [field]: !activeFieldLocks[section]?.[field] } })}
+        subjects={subjects} activeSubjectId={activeSubjectId} onSubject={setActiveSubjectId}
+        workflows={selectableWorkflows} workflowId={workflowId} onWorkflow={setWorkflowId}
+        name={name} onName={setName} onSave={() => save.mutate()} saving={save.isPending}
+        onToggleSectionLock={key => setLocks(current => ({ ...current, [key]: !current[key] }))}
+        onAddSubject={addSubject} onRemoveSubject={removeSubject} onRandomize={randomizePerson}
+        onClearAll={() => setSubjects(current => current.map((subject, index) => {
+          if (subject.id !== activeSubjectId && index !== 0) return subject;
+          const cleared = clearUnlockedChoices(SECTIONS, subject.dna, locks, subject.field_locks || {});
+          return { ...subject, dna: subject.id === activeSubjectId ? { ...cleared, scenario: index === 0 ? cleared.scenario : subject.dna.scenario }
+            : { ...subject.dna, scenario: cleared.scenario } };
+        }))}
+        onReview={() => setMobileStudioStep("create")} />}
+      <div className={`${!isImageFirst && editMode !== "body_adjust" && mobileStudioStep !== "create" ? "hidden md:block" : "block"} space-y-3 sm:space-y-4`}>
       {galleryRecipeMode === "current" && (
         <div className="pane border border-cyan-500/30 bg-cyan-500/[0.06] px-3 py-2.5 text-xs text-cyan-100" data-testid="current-compiler-rebuild-banner">
           <div className="flex items-start gap-2">
@@ -3755,6 +3775,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
             </div>
           )}
         </aside>
+      </div>
       </div>
     </div>
   );
