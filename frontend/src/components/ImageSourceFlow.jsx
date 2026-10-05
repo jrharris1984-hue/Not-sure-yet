@@ -1,6 +1,6 @@
 import { Upload, Loader2, X, Play } from "lucide-react";
 
-export default function ImageSourceFlow({ animation = false, variation, source, preview, uploading, busy, onUpload, onRemove, onRender, renderCount, onRenderCount, children }) {
+export default function ImageSourceFlow({ animation = false, variation, source, preview, uploading, busy, onUpload, onRemove, onRender, renderCount, onRenderCount, readyToRender = true, children }) {
   const ready = !!source?.name;
   return <section className="space-y-4" data-testid="image-source-flow">
     <div className="pane p-4 sm:p-5">
@@ -34,7 +34,7 @@ export default function ImageSourceFlow({ animation = false, variation, source, 
               {[1,2,4,6,8,10].map(count=><option key={count} value={count} label={`${count} image${count>1?"s":""}`}/>)}
             </select>
           </label>}
-          <button type="button" onClick={onRender} disabled={!ready || uploading || busy} data-testid="btn-source-workflow-render" className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-500 px-4 py-3 font-semibold text-black disabled:opacity-40">
+          <button type="button" onClick={onRender} disabled={!ready || !readyToRender || uploading || busy} data-testid="btn-source-workflow-render" className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-500 px-4 py-3 font-semibold text-black disabled:opacity-40">
             {busy ? <Loader2 className="h-4 w-4 animate-spin"/> : <Play className="h-4 w-4"/>}{animation ? "Create video" : variation ? "Create variations" : "Apply edit"}
           </button>
         </div>

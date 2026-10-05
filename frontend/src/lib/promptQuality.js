@@ -44,13 +44,25 @@ function normalizedSegment(segment) {
 }
 
 export function optimizePromptText(text = "") {
-  const seen = new Set();
-  return String(text).split(",").map((segment) => segment.trim()).filter(Boolean).filter((segment) => {
-    const key = normalizedSegment(segment);
-    if (!key || PLACEHOLDER_SEGMENTS.has(key) || seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  }).join(", ");
+  // Weighted/grouped ComfyUI syntax must retain its punctuation and grouping.
+  if (/[()[\]{}]/.test(String(text))) return String(text).trim();
+  let seen = new Set();
+  const kept = [];
+  // Restart deduplication at each named subject. Identical outfits or traits
+  // on two people are requirements for both, not redundant wording.
+  const parts = String(text).split(/([,;\n]+)/);
+  let separator = "";
+  for (let index = 0; index < parts.length; index += 2) {
+    const segment = parts[index].trim();
+    if (/\bsubject\s+[a-z0-9]+\b/i.test(segment)) seen = new Set();
+    const key = segment.toLowerCase().replace(/\s+/g, " ").trim();
+    if (key && !PLACEHOLDER_SEGMENTS.has(key) && !seen.has(key)) {
+      kept.push(`${kept.length ? separator || ", " : ""}${segment}`);
+      seen.add(key);
+    }
+    if (parts[index + 1]) separator = parts[index + 1].includes(";") ? "; " : parts[index + 1].includes("\n") ? "\n" : ", ";
+  }
+  return kept.join("");
 }
 
 function hasAny(text, values) {
@@ -70,8 +82,15 @@ export function analyzePromptQuality({
   const limits = PROFILE_LIMITS[profile];
   const tokens = estimatePromptTokens(positive);
   const cleaned = optimizePromptText(positive);
-  const segments = String(positive).split(",").map(normalizedSegment).filter(Boolean);
-  const duplicateCount = segments.length - new Set(segments).size;
+  let scopeSeen = new Set();
+  let duplicateCount = 0;
+  String(positive).split(/[,;\n]+/).forEach(segment => {
+    if (/\bsubject\s+[a-z0-9]+\b/i.test(segment)) scopeSeen = new Set();
+    const key = normalizedSegment(segment);
+    if (!key || PLACEHOLDER_SEGMENTS.has(key)) return;
+    if (scopeSeen.has(key)) duplicateCount += 1;
+    scopeSeen.add(key);
+  });
   const issues = [];
 
   const subjectCount = Number(context.subjectCount || 1);
@@ -110,8 +129,13 @@ export function analyzePromptQuality({
       && String(dna?.pose?.focus || "").toLowerCase() === "face"
       && ["", "full body", "wide shot", "waist-up", "thigh-up", "knees-up"].includes(String(dna?.pose?.distance || "").toLowerCase())))
     .filter((item) => !requirementPresent(positive, item));
-  const droppedImportant = (compilerMeta?.droppedClauses || []).filter((item) => item.priority === "important");
-  const droppedDetail = (compilerMeta?.droppedClauses || []).filter((item) => item.priority === "detail");
+  const trackedSelections = [...(priorityPlan.mustMatch || []), ...(priorityPlan.important || []), ...(priorityPlan.detail || [])];
+  const stillDropped = (compilerMeta?.droppedClauses || []).filter(item => {
+    const requirement = trackedSelections.find(selection => selection.key === item.key);
+    return !requirement || !requirementPresent(positive, requirement);
+  });
+  const droppedImportant = stillDropped.filter((item) => item.priority === "important");
+  const droppedDetail = stillDropped.filter((item) => item.priority === "detail");
 
   if (missingMust.length) {
     const preview = missingMust.slice(0, 3).map((item) => `${item.label}: ${item.value}`).join(", ");
@@ -368,6 +392,7 @@ export function analyzePromptQuality({
   return {
     profile,
     profileLabel: limits.label,
+    warningTokens: limits.warningTokens,
     tokens,
     score,
     alignmentScore,
