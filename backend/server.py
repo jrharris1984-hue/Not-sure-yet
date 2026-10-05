@@ -3941,6 +3941,7 @@ class ImproveGeneratedPromptBody(BaseModel):
     negative: str = ""
     prompt_style: str = "venice"
     workflow_name: str = ""
+    freeform: bool = False
 
 
 class VideoPromptBody(BaseModel):
@@ -4194,6 +4195,18 @@ async def ai_improve_generated_prompt(body: ImproveGeneratedPromptBody):
         " Return JSON with exactly two strings: positive and negative. The negative prompt should remain concise, "
         "technical, and must not negate anything requested by the positive prompt. No markdown or commentary."
     )
+    if body.freeform:
+        system = (
+            "You refine free-form image prompts for Ultra Studio. Preserve the user's requested subjects, "
+            "subject count, actions, composition, setting, and visual style. The prompt may describe landscapes, "
+            "objects, abstract art, illustrations, or people. Do not impose photography, realism, human anatomy, "
+            "or character-builder assumptions on unrelated requests. Clarify wording, remove repetition, and "
+            "put essential requirements first without inventing new subjects or changing the intent. "
+            "Use the selected model's prompt syntax: preserve Pony score tags and weights when present; "
+            "otherwise use concise natural language. For Chroma keep the prompt comfortably below 512 tokens. "
+            "Return JSON with exactly two strings: positive and negative. Keep negatives concise and technical; "
+            "never negate the requested style or contents. No markdown or commentary."
+        )
     user = (
         f"WORKFLOW: {workflow}\nPROMPT STYLE: {style}\n\n"
         f"CURRENT POSITIVE:\n{positive}\n\nCURRENT NEGATIVE:\n{body.negative.strip()}"
@@ -4212,7 +4225,7 @@ async def ai_video_prompt(body: VideoPromptBody):
     if body.mode == "text":
         system = (
             "You write production-ready text-to-video prompts for WAN 2.2. Expand the user's idea "
-            "into one coherent shot describing the adult subject, action over time, environment, "
+            "into one coherent shot describing the requested subjects, action over time, environment, "
             "lighting, composition, camera movement, and realistic motion. Keep identity and anatomy "
             "consistent from first frame to last. Avoid scene cuts, sudden transformations, duplicate "
             "people, or contradictory motion. Return only the finished prompt with no heading."

@@ -5,6 +5,7 @@ import AppShell from "@/components/AppShell";
 import Library from "@/pages/Library";
 import MediaLibrary from "@/pages/MediaLibrary";
 import Builder from "@/pages/Builder";
+import FreeformCreate from "@/pages/FreeformCreate";
 import Gallery from "@/pages/Gallery";
 import Queue from "@/pages/Queue";
 import Settings from "@/pages/Settings";
@@ -30,6 +31,9 @@ function App() {
         <AppShell>
           <Routes>
             <Route path="/" element={<Library />} />
+            <Route path="/create/image" element={<FreeformCreate key="image" mode="image" />} />
+            <Route path="/create/video" element={<FreeformCreate key="video" mode="video" />} />
+            <Route path="/create/text-video" element={<FreeformCreate key="text_video" mode="text_video" />} />
             <Route path="/image-tools/:workflowId" element={<ImageToolRoute />} />
             <Route path="/media" element={<MediaLibrary />} />
             <Route path="/studios" element={<Navigate to="/character/new" replace />} />
