@@ -1,0 +1,42 @@
+[
+  {
+    "mode": "rapid",
+    "folder": "checkpoints",
+    "name": "Qwen-Rapid-AIO-NSFW-v23.safetensors",
+    "aliases": [
+      "phr00tQwenImageEditRapid_v230.safetensors"
+    ],
+    "url": "https://huggingface.co/Phr00t/Qwen-Image-Edit-Rapid-AIO/resolve/691024f438640508f8aa86414863fc15edfb8a84/v23/Qwen-Rapid-AIO-NSFW-v23.safetensors",
+    "bytes": 28431840023,
+    "sha256": "fdb919fc81bea63f13759967fc92c9118142e5c70d4e6795199233a35eefa233"
+  },
+  {
+    "mode": "agqi",
+    "folder": "diffusion_models",
+    "name": "AGQI_2512_V2_fp8_e5m2.safetensors",
+    "aliases": [
+      "agqi2512NSFW_agqi2512V2_2456477.safetensors",
+      "agqi2512NSFW_agqi2512V2.safetensors",
+      "agqi2512NSFW_agqi2512V2_full_fp8.safetensors"
+    ],
+    "url": "https://civitai.red/api/download/models/2567280?fileId=2456477",
+    "bytes": 20430679664,
+    "sha256": "22262CFEA60977AE093BFFC10E9E02CA6CBEA69794184797C6F453F5AFC5C467"
+  },
+  {
+    "mode": "companions",
+    "folder": "text_encoders",
+    "repository": "Comfy-Org/Qwen-Image_ComfyUI",
+    "path": "split_files/text_encoders/qwen_2.5_vl_7b_fp8_scaled.safetensors",
+    "name": "qwen_2.5_vl_7b_fp8_scaled.safetensors",
+    "aliases": []
+  },
+  {
+    "mode": "companions",
+    "folder": "vae",
+    "repository": "Comfy-Org/Qwen-Image_ComfyUI",
+    "path": "split_files/vae/qwen_image_vae.safetensors",
+    "name": "qwen_image_vae.safetensors",
+    "aliases": []
+  }
+]

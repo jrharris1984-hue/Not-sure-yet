@@ -4,6 +4,8 @@ import { wardrobeNudity } from "@/lib/wardrobeNudity";
 const PLACEHOLDER_SEGMENTS = new Set(["none", "average", "default", "n/a", "undefined", "null"]);
 
 const PROFILE_LIMITS = {
+  qwen_image: { label: "Qwen Image 2512", warningTokens: 360, hardTokens: 512 },
+  qwen_rapid: { label: "Qwen Rapid AIO", warningTokens: 360, hardTokens: 512 },
   sdxl: { label: "SDXL / CLIP", warningTokens: 175, hardTokens: 225 },
   chroma: { label: "Golden Chroma", warningTokens: 480, hardTokens: 512 },
   krea2: { label: "Krea 2 Turbo", warningTokens: 480, hardTokens: 640 },
@@ -26,6 +28,7 @@ export function promptProfile(workflow = {}) {
   const kind = String(workflow?.kind || "").toLowerCase();
   const name = String(workflow?.name || "").toLowerCase();
   const haystack = `${style} ${name}`;
+  if (["qwen_image", "qwen_rapid"].includes(style) && !["edit", "enhance"].includes(kind)) return style;
   if (kind === "edit" || kind === "enhance" || style === "qwen_edit" || haystack.includes("qwen")) return "qwen_edit";
   if (kind === "video" || style === "wan_i2v") return "wan_i2v";
   if (kind === "text_video" || style === "wan_t2v") return "wan_t2v";
@@ -183,7 +186,7 @@ export function analyzePromptQuality({
     issues.push(issue("error", "adult-age", "The subject age must be 21 or older.", { blocking: true }));
   }
 
-  const generatedImageProfile = ["default", "sdxl", "zimage", "chroma", "krea2", "pony", "flux", "flux2_klein", "wan_t2v"].includes(profile);
+  const generatedImageProfile = ["default", "sdxl", "zimage", "chroma", "krea2", "pony", "flux", "flux2_klein", "qwen_image", "qwen_rapid", "wan_t2v"].includes(profile);
   if (generatedImageProfile) {
     const explicitLevel = Number(dna?.scenario?.explicit_level || 0);
     const nudityLevel = wardrobeNudity(dna?.wardrobe).level;

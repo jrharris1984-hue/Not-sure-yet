@@ -39,6 +39,8 @@ def normalize_generation_settings(requested, prompt_style=""):
         else:
             # FLUX.2 uses Flux2Scheduler rather than a named scheduler.
             values.pop("scheduler", None)
+    if prompt_style == "qwen_rapid":
+        values["cfg"] = 1.0
     return values
 
 
