@@ -18,3 +18,18 @@ test('compact preview requires application and reports current missing selection
   expect(onOptimize).toHaveBeenCalledWith('Subject A: 75-year-old adult woman, red dress; Subject B: 45-year-old adult woman, red dress');
   act(()=>root.unmount());
 });
+
+test('AI review preserves the current prompt and blocks applying stale suggestions', () => {
+  global.IS_REACT_ACT_ENVIRONMENT=true;
+  const container=document.createElement('div'),root=createRoot(container),onApplySuggestion=jest.fn();
+  const props={positive:'Current prompt',negative:'',workflow:{name:'Chroma',prompt_style:'chroma'},aiSuggestion:{positive:'Suggested prompt',negative:'',changes:['Clearer wording']},onApplySuggestion,onDiscardSuggestion:jest.fn(),onSuggestionChange:jest.fn()};
+  act(()=>root.render(<PromptPreview {...props} suggestionStale/>));
+  const apply=()=>[...container.querySelectorAll('button')].find(button=>button.textContent==='Apply AI suggestion');
+  expect(apply().disabled).toBe(true);
+  expect(onApplySuggestion).not.toHaveBeenCalled();
+  act(()=>root.render(<PromptPreview {...props} suggestionStale={false}/>));
+  expect(apply().disabled).toBe(false);
+  act(()=>apply().click());
+  expect(onApplySuggestion).toHaveBeenCalledTimes(1);
+  act(()=>root.unmount());
+});

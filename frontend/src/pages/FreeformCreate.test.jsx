@@ -66,3 +66,22 @@ test('uploaded starting frame enables animation and is sent with the motion prom
   act(() => button('Remove image').click());
   expect(button('Generate').disabled).toBe(true);
 });
+
+test.each([['image', 'image'], ['video', 'image'], ['text_video', 'text']])('%s web refinement is opt-in and sources are reviewed before applying', async (mode, aiMode) => {
+  const reply = {positive:'Researched forest',prompt:'Researched forest',negative:'blur',changes:['Clarified lighting'],sources:[{id:'S1',title:'Official guide',url:'https://author.example/guide',cited:true}]};
+  endpoints.aiImproveGeneratedPrompt.mockResolvedValue(reply);
+  endpoints.aiVideoPrompt.mockResolvedValue(reply);
+  await act(async () => root.render(<FreeformCreate mode={mode}/>)); await enter('forest');
+  expect(container.querySelector('[aria-label="Use web research"]').checked).toBe(false);
+  act(() => container.querySelector('[aria-label="Use web research"]').click());
+  await act(async () => button('Refine with AI').click());
+  const options={use_web_research:true,research_focus:''};
+  if(mode==='image') expect(endpoints.aiImproveGeneratedPrompt).toHaveBeenCalledWith('forest','','chroma','Image',true,options);
+  else expect(endpoints.aiVideoPrompt).toHaveBeenCalledWith('forest',aiMode,options);
+  expect(container.querySelector('[aria-label="Your prompt"]').value).toBe('forest');
+  expect(container.querySelector('[aria-label="Prompt research notes"]').textContent).toContain('Clarified lighting');
+  expect(container.querySelector('a[href="https://author.example/guide"]')).not.toBeNull();
+  expect(endpoints.dispatchRender).not.toHaveBeenCalled();
+  await act(async () => button('Apply suggestion').click());
+  expect(container.querySelector('[aria-label="Your prompt"]').value).toBe('Researched forest');
+});

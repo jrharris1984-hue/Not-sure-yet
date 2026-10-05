@@ -196,6 +196,8 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
   const [plainLanguage, setPlainLanguage] = useState("");
   const [negativePromptOverride, setNegativePromptOverride] = useState("");
   const [improvingPrompt, setImprovingPrompt] = useState(false);
+  const [usePromptResearch,setUsePromptResearch]=useState(false),[promptResearchFocus,setPromptResearchFocus]=useState('');
+  const [aiPromptSuggestion,setAiPromptSuggestion]=useState(null);
   const [dispatching, setDispatching] = useState(false);
   const [activeRender, setActiveRender] = useState(null);
   const [renderCount, setRenderCount] = useState(1);
@@ -1254,16 +1256,18 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
       return;
     }
     setImprovingPrompt(true);
+    setAiPromptSuggestion(null);
     try {
       const result = await endpoints.aiImproveGeneratedPrompt(
         finalPositive,
         finalNegative,
         activeCompiler,
-        activeWorkflow?.name || ""
+        activeWorkflow?.name || "", false,
+        usePromptResearch ? {use_web_research:true,research_focus:promptResearchFocus} : {}
       );
-      setPromptOverride(result.positive || finalPositive);
-      setNegativePromptOverride(result.negative || finalNegative);
-      toast.success(`${aiProvider} improved the compiled prompt — review it before rendering`);
+      setAiPromptSuggestion({...result,positive:result.positive || finalPositive,negative:result.negative ?? finalNegative,
+        originalPositive:finalPositive,originalNegative:finalNegative,workflowId:activeWorkflow?.id});
+      toast.success(`${aiProvider} prepared a prompt suggestion for review`);
     } catch (error) {
       toast.error(error?.response?.data?.detail || `${aiProvider} could not improve the prompt`);
     } finally {
@@ -3405,6 +3409,10 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
             optimized={!!promptOverride}
             improving={improvingPrompt}
             onImprove={improveCompiledPrompt}
+            researchEnabled={usePromptResearch} onResearchEnabled={setUsePromptResearch} researchFocus={promptResearchFocus} onResearchFocus={setPromptResearchFocus}
+            aiSuggestion={aiPromptSuggestion} onSuggestionChange={setAiPromptSuggestion} onDiscardSuggestion={() => setAiPromptSuggestion(null)}
+            suggestionStale={!!aiPromptSuggestion && (aiPromptSuggestion.originalPositive !== finalPositive || aiPromptSuggestion.originalNegative !== finalNegative || aiPromptSuggestion.workflowId !== activeWorkflow?.id)}
+            onApplySuggestion={() => {setPromptOverride(aiPromptSuggestion.positive);setNegativePromptOverride(aiPromptSuggestion.negative);setAiPromptSuggestion(null);}}
             onApplyPrompts={(nextPositive, nextNegative) => {
               setPromptOverride(nextPositive);
               setNegativePromptOverride(nextNegative);

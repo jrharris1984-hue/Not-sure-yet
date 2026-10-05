@@ -1,5 +1,5 @@
 from qwen_reference_edit import configure_reference_edit, resolve_reference_models, configure_camera_strength
-from ai_research import research_sources, research_messages, research_response
+from ai_research import research_sources, research_messages, research_response, prompt_research_query, prompt_research_messages, prompt_research_metadata
 """Ultra Studio Character DNA Builder — FastAPI backend."""
 from fastapi import FastAPI, APIRouter, HTTPException, Body, BackgroundTasks, WebSocket, WebSocketDisconnect, Query, UploadFile, File, Form
 from fastapi.responses import FileResponse, JSONResponse, Response
@@ -3947,11 +3947,15 @@ class ImproveGeneratedPromptBody(BaseModel):
     prompt_style: str = "venice"
     workflow_name: str = ""
     freeform: bool = False
+    use_web_research: bool = False
+    research_focus: str = Field(default='', max_length=200)
 
 
 class VideoPromptBody(BaseModel):
     instruction: str
     mode: str = "image"
+    use_web_research: bool = False
+    research_focus: str = Field(default='', max_length=200)
 
 
 class ResearchBody(BaseModel):
@@ -3991,11 +3995,7 @@ async def remove_research_key():
     return await research_config()
 
 
-@api.post('/ai/research')
-async def ai_research(body: ResearchBody):
-    query = body.query.strip()
-    if len(query) < 3:
-        raise HTTPException(400, 'Enter a specific research question.')
+async def retrieve_research_sources(query):
     key = await research_key()
     if not key:
         raise HTTPException(400, 'Configure an Ollama web search API key in Settings first.')
@@ -4005,6 +4005,8 @@ async def ai_research(body: ResearchBody):
                 headers={'Authorization': f'Bearer {key}'}, json={'query': query, 'max_results': 5})
         if response.status_code in (401, 403):
             raise HTTPException(400, 'Ollama rejected the web search key. Check it in Settings.')
+        if response.status_code == 429:
+            raise HTTPException(429, 'Ollama web search reached its rate or usage limit. Try later, or turn off web research to refine locally.')
         if response.status_code >= 400:
             raise HTTPException(502, 'Web search is unavailable. Try again later.')
         sources = research_sources(response.json())
@@ -4012,6 +4014,37 @@ async def ai_research(body: ResearchBody):
         raise HTTPException(502, 'Could not retrieve web search results. Try again later.')
     if not sources:
         raise HTTPException(404, 'No usable sources were found. Try a different question.')
+    return sources
+
+
+async def retrieve_prompt_sources(prompt, workflow, style, focus=''):
+    sources = await retrieve_research_sources(prompt_research_query(workflow, style))
+    if not focus.strip():
+        plan = extract_json(await openrouter_chat(
+            'Choose a short web search query only if this image/video description needs factual visual '
+            'reference information, such as architecture, historic clothing, objects, or a named artistic '
+            'technique. Do not research private identities or send personal details, body traits, or the '
+            'whole prompt to search. For a generic scene needing no factual references, return an empty '
+            'focus. Return JSON with one string: focus (maximum 200 characters).',
+            prompt[:12000], response_format_json=True))
+        focus = str(plan.get('focus') or '')[:200] if isinstance(plan, dict) else ''
+    if focus.strip():
+        try:
+            visual_sources = await retrieve_research_sources(focus.strip()[:200])
+            sources = research_sources({'results': sources[:2] + visual_sources[:3]})
+        except HTTPException as exc:
+            if exc.status_code not in (404, 502):
+                raise
+            # Model documentation still supports refinement if scene research has no results.
+    return sources
+
+
+@api.post('/ai/research')
+async def ai_research(body: ResearchBody):
+    query = body.query.strip()
+    if len(query) < 3:
+        raise HTTPException(400, 'Enter a specific research question.')
+    sources = await retrieve_research_sources(query)
     system, user = research_messages(query, body.context, sources)
     result = extract_json(await openrouter_chat(system, user, response_format_json=True))
     try:
@@ -4282,12 +4315,17 @@ async def ai_improve_generated_prompt(body: ImproveGeneratedPromptBody):
         f"WORKFLOW: {workflow}\nPROMPT STYLE: {style}\n\n"
         f"CURRENT POSITIVE:\n{positive}\n\nCURRENT NEGATIVE:\n{body.negative.strip()}"
     )
+    sources = []
+    if body.use_web_research:
+        sources = await retrieve_prompt_sources(positive, workflow, style, body.research_focus)
+        system, user = prompt_research_messages(system, user, sources)
     result = extract_json(await openrouter_chat(system, user, response_format_json=True))
     improved_positive = str(result.get("positive") or "").strip()
     improved_negative = str(result.get("negative") or body.negative).strip()
     if not improved_positive:
         raise HTTPException(502, "Venice did not return an improved prompt")
-    return {"positive": improved_positive, "negative": improved_negative}
+    return {"positive": improved_positive, "negative": improved_negative,
+            **(prompt_research_metadata(result, sources) if body.use_web_research else {})}
 
 
 @api.post("/ai/video-prompt")
@@ -4310,6 +4348,15 @@ async def ai_video_prompt(body: VideoPromptBody):
             "Avoid scene cuts, sudden transformations, new people, or invented wardrobe changes. "
             "Return only the finished motion prompt with no heading or explanation."
         )
+    if body.use_web_research:
+        sources = await retrieve_prompt_sources(body.instruction, 'WAN 2.2', 'image-to-video' if body.mode == 'image' else 'text-to-video', body.research_focus)
+        system += ' Return JSON with positive (the motion prompt) and negative (empty unless needed).'
+        system, user = prompt_research_messages(system, body.instruction, sources)
+        result = extract_json(await openrouter_chat(system, user, response_format_json=True))
+        prompt = str(result.get('positive') or '').strip()
+        if not prompt:
+            raise HTTPException(502, 'The assistant returned an empty video prompt. Try again.')
+        return {'prompt': prompt, **prompt_research_metadata(result, sources)}
     prompt = await openrouter_chat(system, body.instruction, response_format_json=False)
     return {"prompt": prompt.strip()}
 
