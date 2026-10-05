@@ -1,3 +1,4 @@
+import ChoiceTileGrid from "./ChoiceTileGrid";
 import { Slider } from "@/components/ui/slider";
 import { Input } from "@/components/ui/input";
 import { Shuffle, RotateCcw, Lock, LockOpen, Wand2, ChevronDown } from "lucide-react";
@@ -72,9 +73,11 @@ export default function DnaSection({
   simpleFieldKeys = [],
   onRequestAdvanced,
   controlNotes = [],
+  tileMode = false,
+  tileQuery = "",
 }) {
   const set = (k, v) => {
-    if (fieldLocks?.[k]) return; // ignore edits to a locked field
+    if ((tileMode && locked) || fieldLocks?.[k]) return; // ignore edits to a locked field
     onChange(k === "exposure_mode"
       ? { ...value, exposure_mode: v || "use selected outfit", nudity_level: 0, nudity_outfit: "" }
       : { ...value, [k]: v });
@@ -83,9 +86,9 @@ export default function DnaSection({
   return (
     <section
       data-testid={`dna-section-${section.key}`}
-      className="pane selection-panel p-3 sm:p-6 space-y-3 sm:space-y-4"
+      className={tileMode ? "space-y-3" : "pane selection-panel p-3 sm:p-6 space-y-3 sm:space-y-4"}
     >
-      <header className="flex items-start sm:items-center justify-between gap-2">
+      {!tileMode && <header className="flex items-start sm:items-center justify-between gap-2">
         <button
           type="button"
           onClick={onToggleCollapsed}
@@ -138,7 +141,7 @@ export default function DnaSection({
             {locked ? <Lock className="h-4 w-4" /> : <LockOpen className="h-4 w-4" />}
           </button>
         </div>
-      </header>
+      </header>}
 
       {!collapsed && controlNotes.length > 0 && <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-3 text-xs text-amber-100 space-y-1" data-testid="builder-control-notes">
         {[...new Set(controlNotes)].map(note => <p key={note}>{note}</p>)}
@@ -161,7 +164,7 @@ export default function DnaSection({
               <div className="flex gap-2" role="group" aria-label={`${SIZE_CONTROL_PAIRS[preset][1]} control`}>
                 {(preset === 'bust' ? ['preset', 'slider', 'implant'] : ['preset', 'slider']).map(choice => <button type="button" key={choice}
                   data-testid={`size-mode-${preset}-${choice}`} aria-pressed={mode === choice}
-                  disabled={!!fieldLocks[preset] || !!fieldLocks[SIZE_CONTROL_PAIRS[preset][0]] || (preset === 'bust' && !!fieldLocks.implant_volume)}
+                  disabled={(tileMode && locked) || !!fieldLocks[preset] || !!fieldLocks[SIZE_CONTROL_PAIRS[preset][0]] || (preset === 'bust' && !!fieldLocks.implant_volume)}
                   onClick={() => onChange(selectSizeControl(preset, choice, value))}
                   className={`rounded-lg border px-3 py-2 text-xs disabled:opacity-40 ${mode === choice ? 'border-cyan-400 text-cyan-100 bg-cyan-500/10' : 'hairline text-zinc-400'}`}>
                   {choice === 'preset' ? 'Preset' : choice === 'slider' ? 'Size slider' : 'Implant size'}
@@ -187,7 +190,7 @@ export default function DnaSection({
                     onClick={(e) => { e.preventDefault(); e.stopPropagation(); onToggleFieldLock(f.key); }}
                     data-testid={`btn-field-lock-${section.key}-${f.key}`}
                     title={fLocked ? "Unlock — value can change again" : "Lock — keep this value and prioritize it as Must Match"}
-                    className={`h-5 w-5 grid place-items-center rounded ${
+                    className={`${tileMode ? "h-10 w-10" : "h-5 w-5"} grid place-items-center rounded ${
                       fLocked ? "text-amber-300" : "text-zinc-500 hover:text-zinc-200"
                     }`}
                   >
@@ -196,9 +199,15 @@ export default function DnaSection({
                 )}
               </div>
             </div>
-            {priority && <p data-testid={`control-priority-${f.key}`} className={`text-xs leading-relaxed ${priority.inactive ? "text-amber-200/80" : "text-zinc-500"}`}>{priority.text}</p>}
-            {f.help && f.type !== "slider" && <p className="text-xs text-zinc-500 leading-relaxed">{f.help}</p>}
-            {f.type === "chips_multi" && (
+            {!tileMode && priority && <p data-testid={`control-priority-${f.key}`} className={`text-xs leading-relaxed ${priority.inactive ? "text-amber-200/80" : "text-zinc-500"}`}>{priority.text}</p>}
+            {!tileMode && f.help && f.type !== "slider" && <p className="text-xs text-zinc-500 leading-relaxed">{f.help}</p>}
+            {tileMode && ["chips", "chips_multi", "pose_chips"].includes(f.type) && <ChoiceTileGrid
+              field={f} sectionKey={section.key} query={tileQuery}
+              disabled={locked || fLocked}
+              value={f.key === "exposure_mode" ? wardrobeExposure(value) : f.type !== "chips_multi" && Array.isArray(value[f.key]) ? value[f.key].at(-1) || "" : value[f.key] || (f.type === "chips_multi" ? [] : "")}
+              onChange={v => set(f.key, f.type === "chips_multi" ? normalizeMultiSelection(f, v, Array.isArray(value[f.key]) ? value[f.key] : []) : v)}
+            />}
+            {!tileMode && f.type === "chips_multi" && (
               <GroupedChips
                 labels={f.optionLabels}
                 groups={f.groups || [{ name: "All", options: f.options || [] }]}
@@ -209,7 +218,7 @@ export default function DnaSection({
                 multi
               />
             )}
-            {f.type === "chips" && f.groups && (
+            {!tileMode && f.type === "chips" && f.groups && (
               <GroupedChips
                 labels={f.optionLabels}
                 groups={f.groups}
@@ -219,7 +228,7 @@ export default function DnaSection({
                 variant="chips"
               />
             )}
-            {f.type === "chips" && !f.groups && (
+            {!tileMode && f.type === "chips" && !f.groups && (
               <ChipRow
                 options={f.options}
                 labels={f.optionLabels}
@@ -228,7 +237,7 @@ export default function DnaSection({
                 testIdPrefix={`chip-${section.key}-${f.key}`}
               />
             )}
-            {f.type === "pose_chips" && f.groups && (
+            {!tileMode && f.type === "pose_chips" && f.groups && (
               <GroupedChips
                 labels={f.optionLabels}
                 groups={f.groups}
@@ -238,7 +247,7 @@ export default function DnaSection({
                 variant="poses"
               />
             )}
-            {f.type === "pose_chips" && !f.groups && (
+            {!tileMode && f.type === "pose_chips" && !f.groups && (
               <PoseChipGrid
                 options={f.options}
                 labels={f.optionLabels}
@@ -255,20 +264,22 @@ export default function DnaSection({
                 step={f.step || 1}
                 value={[Number(value[f.key] ?? f.min)]}
                 onValueChange={(v) => set(f.key, v[0])}
-                disabled={fLocked}
+                disabled={fLocked || (tileMode && locked)}
               />
-              {f.help && <p className="text-xs text-zinc-500 leading-relaxed">{f.help}</p>}
+              {!tileMode && f.help && <p className="text-xs text-zinc-500 leading-relaxed">{f.help}</p>}
               </>
             )}
             {f.type === "text" && (
               <Input
                 data-testid={`input-${section.key}-${f.key}`}
                 value={value[f.key] || ""}
+                disabled={tileMode && (locked || fLocked)}
                 onChange={(e) => set(f.key, e.target.value)}
                 placeholder={`Enter ${f.label.toLowerCase()}...`}
                 className="bg-elevated border-hairline text-zinc-100 font-mono text-sm"
               />
             )}
+            {tileMode && (f.help || priority) && <details className="text-xs text-zinc-500"><summary className="cursor-pointer py-2">About this control</summary>{priority && <p className="py-1">{priority.text}</p>}{f.help && <p className="py-1">{f.help}</p>}</details>}
             </>}
           </div>
           );
