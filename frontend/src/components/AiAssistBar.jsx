@@ -155,6 +155,12 @@ export default function AiAssistBar({ dna, onApplyDna, onApplySubjects, aiProvid
           {busy === "freeform" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />}
           Draft scene
         </button>
+        <button type="button" data-testid="btn-clear-ai-description" aria-label="Clear description"
+          disabled={!!busy || saving || !text}
+          onClick={() => { setText(""); setDescriptionName(""); setSelectedDescription(""); setDraft(null); }}
+          className="ml-2 rounded-lg border hairline px-3 py-2 text-sm text-zinc-300 hover:bg-white/5 disabled:opacity-40">
+          Clear
+        </button>
       </div>
 
       <div className="space-y-2">
