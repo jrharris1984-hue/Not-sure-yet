@@ -1,6 +1,8 @@
 import { AlertTriangle, CheckCircle2, Lock, Target } from "lucide-react";
+import { useState } from "react";
 
 export default function PromptAlignmentCard({ analysis, priorityPlan, adjustments = [], mode = "simple" }) {
+  const [showAllRequirements, setShowAllRequirements] = useState(false);
   if (!analysis) return null;
 
   const must = priorityPlan?.mustMatch || [];
@@ -8,6 +10,10 @@ export default function PromptAlignmentCard({ analysis, priorityPlan, adjustment
   const droppedImportant = analysis.droppedImportantCount || 0;
   const strong = analysis.alignmentScore >= 90;
   const review = analysis.alignmentScore < 75;
+  const limit = mode === "advanced" ? 10 : 4;
+  // Every person's age remains visible even when the compact view hides details.
+  const visibleMust = showAllRequirements ? must : must.filter((item, index) => index < limit || item.key.split(":").pop() === "identity.age");
+  const hiddenCount = must.length - visibleMust.length;
 
   return (
     <section className="pane overflow-hidden" data-testid="prompt-alignment-card">
@@ -56,15 +62,15 @@ export default function PromptAlignmentCard({ analysis, priorityPlan, adjustment
             <Lock className="h-3.5 w-3.5" /> Must match
           </div>
           <div className="flex flex-wrap gap-1.5">
-            {must.slice(0, mode === "advanced" ? 10 : 4).map((item) => (
+            {visibleMust.map((item) => (
               <span key={item.key} className="rounded-md border border-emerald-500/20 bg-emerald-500/[0.05] px-2 py-1 text-[10px] text-zinc-300">
                 {item.label}: {item.value}
               </span>
             ))}
-            {must.length > (mode === "advanced" ? 10 : 4) && (
-              <span className="rounded-md border hairline px-2 py-1 text-[10px] text-zinc-500">
-                +{must.length - (mode === "advanced" ? 10 : 4)} more
-              </span>
+            {(hiddenCount > 0 || showAllRequirements) && (
+              <button type="button" aria-expanded={showAllRequirements} onClick={() => setShowAllRequirements(value => !value)} className="rounded-md border hairline px-2 py-1 text-[10px] text-zinc-400">
+                {showAllRequirements ? "Show fewer" : `Show ${hiddenCount} more`}
+              </button>
             )}
           </div>
         </div>

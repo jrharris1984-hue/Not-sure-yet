@@ -191,3 +191,32 @@ describe("prompt quality preflight", () => {
     expect(result.issues.some((issue) => issue.code === "skin-conflict" && issue.severity === "error")).toBe(true);
   });
 });
+
+test('compact wording preserves shared traits on different subjects and unique details', () => {
+  const source='Subject A: 75-year-old adult woman, red dress, red dress; Subject B: 45-year-old adult woman, red dress, blue eyes, blue eyes; staircase background';
+  const compact=optimizePromptText(source);
+  expect(compact).toBe('Subject A: 75-year-old adult woman, red dress; Subject B: 45-year-old adult woman, red dress, blue eyes; staircase background');
+  expect(optimizePromptText(compact)).toBe(compact);
+  expect(compact.match(/red dress/g)).toHaveLength(2);
+});
+
+test('compact wording keeps numeric strengths and later subject blocks', () => {
+  const source='Subject A Selected slider values: waist 31, hips 182; Subject B Selected slider values: waist 31, hips 182; (red dress:1.2), golden light';
+  expect(optimizePromptText(source)).toBe(source);
+});
+
+test('matching traits on separate people are not duplicate warnings', () => {
+  const quality=analyzePromptQuality({positive:'Subject A: 75-year-old adult woman, red dress; Subject B: 45-year-old adult woman, red dress',context:{subjectCount:2}});
+  expect(quality.issues.some(item=>item.code==='duplicates')).toBe(false);
+});
+
+test('restored selections are no longer reported as trimmed', () => {
+  const requirement={key:'hair.color',label:'Hair color',value:'blue',matchTerms:['blue hair'],priority:'important'};
+  const quality=analyzePromptQuality({positive:'adult woman, blue hair',compilerMeta:{priorityPlan:{mustMatch:[],important:[requirement],detail:[]},droppedClauses:[requirement]}});
+  expect(quality.droppedImportantCount).toBe(0);
+});
+
+test('compact review leaves weighted grouping untouched', () => {
+  const source='red dress, (red dress, blue eyes:1.2), red dress';
+  expect(optimizePromptText(source)).toBe(source);
+});
