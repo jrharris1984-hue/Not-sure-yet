@@ -33,7 +33,7 @@ describe("model-specific prompt compilers", () => {
     expect(result.positive).toContain("44-year-old adult");
     expect(result.positive).toMatch(/oversized|extremely/);
     expect(result.negativeStrategy).toBe("text");
-    expect(result.negative).toBe("");
+    expect(result.negative).toContain("airbrushed skin");
     expect(result.promptBudget).toBe(150);
   });
 

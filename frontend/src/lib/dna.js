@@ -215,7 +215,7 @@ export const SECTIONS = [
     title: "Wardrobe",
     fields: [
       { key: "exposure_mode", type: "chips", label: "Clothing coverage", options: EXPOSURE_CHOICES,
-        help: "Progress from your selected outfit to lingerie showing underneath, lingerie only, open or shifted clothing, partial nudity, and nudity. Lingerie only replaces outer clothing; accessories and hosiery remain available." },
+        help: "Progress from your selected outfit to lingerie showing underneath, lingerie only, open or shifted clothing, partial nudity, and nudity. Lingerie only replaces outer clothing. Partial nudity keeps some selected clothing on (plain briefs if none is selected); Nude removes garments. Accessories and hosiery remain available." },
       { key: "outfit_preset", type: "chips", label: "Outfit preset", groups: [
         { name: "Bare", options: ["nude", "topless", "bottomless", "just panties", "just a shirt", "boyfriend's shirt"] },
         { name: "Lingerie", options: ["boudoir lingerie", "sheer negligee", "silk robe open", "lace lingerie set", "satin slip", "corset and garters", "sheer bodysuit"] },

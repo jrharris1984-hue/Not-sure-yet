@@ -803,6 +803,12 @@ export default function Gallery() {
                     <Download className="h-4 w-4" /> Download video
                   </button>
                 )}
+              <button type="button" disabled={!lightbox.prompt_positive} onClick={async () => {
+                try {
+                  await navigator.clipboard.writeText(lightbox.prompt_positive || "");
+                  toast.success("Prompt copied");
+                } catch { toast.error("Could not copy the prompt. Select it in Prompt & advanced actions to copy manually."); }
+              }} data-testid="btn-lightbox-copy-prompt" className="w-full rounded-lg border hairline px-3 py-2 text-sm disabled:opacity-40"><Copy className="inline h-4 w-4 mr-2" />Copy prompt</button>
               <details key={lightbox.id} className="rounded-lg border hairline bg-black/10 p-3" data-testid="gallery-other-tools">
                 <summary className="cursor-pointer text-xs font-semibold text-zinc-300">Review image, prompt & recipe tools</summary>
                 <div className="space-y-3 pt-3">
@@ -1047,7 +1053,6 @@ export default function Gallery() {
                       </button>
                     )}
                     {lightbox.prompt_positive && <div className="text-[11px] font-mono text-zinc-300 bg-elevated border hairline rounded-md p-2 max-h-32 overflow-y-auto whitespace-pre-wrap">{lightbox.prompt_positive}</div>}
-                    <button onClick={() => { navigator.clipboard.writeText(lightbox.prompt_positive || ""); toast.success("Prompt copied"); }} data-testid="btn-lightbox-copy-prompt" className="w-full rounded-lg border hairline px-3 py-2 text-sm"><Copy className="inline h-4 w-4 mr-2" />Copy prompt</button>
                     {originalOutput(lightbox) && originalOutput(lightbox) !== primaryOutput(lightbox) && (
                       <button onClick={() => downloadImage(originalOutput(lightbox), `${lightbox.workflow_name || "render"}-${lightbox.id.slice(0, 8)}-original.png`)} data-testid="btn-lightbox-download-original" className="w-full rounded-lg border hairline px-3 py-2 text-sm">
                         <Download className="inline h-4 w-4 mr-2" />Download original
