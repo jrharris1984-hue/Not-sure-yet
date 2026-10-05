@@ -1,7 +1,10 @@
 // Visibility rules use actual coverage, rather than asking an LLM to guess.
 export function footVisibility(wardrobe = {}, feet = {}) {
-  const shoe = String(wardrobe.heel_type || wardrobe.footwear || '').toLowerCase();
-  const hosiery = String(wardrobe.hosiery_type || feet.hosiery || '').toLowerCase();
+  const set = String(wardrobe.outfit_set || '').toLowerCase();
+  const setShoe = set.match(/\b(?:heels|stilettos|pumps|boots|sandals|flats|shoes)\b/)?.[0];
+  const setHosiery = set.match(/\b(?:stockings|thigh-highs)\b/)?.[0];
+  const shoe = String(wardrobe.heel_type || wardrobe.footwear || setShoe || '').toLowerCase();
+  const hosiery = String(wardrobe.hosiery_type || feet.hosiery || setHosiery || '').toLowerCase();
   const hasShoe = !!shoe && !['barefoot','none'].includes(shoe);
   const openToe = /open.toe|peep.toe|sandal/.test(shoe);
   const closedToe = hasShoe && !openToe;

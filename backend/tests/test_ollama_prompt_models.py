@@ -7,6 +7,7 @@ from types import SimpleNamespace
 import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from assistant_research import enrich_assistant_request
 from ollama_prompt_models import configure_prompt_request, GEMMA_PROMPT_MODELS, LLAMA_PROMPT_MODELS
 
 
@@ -41,6 +42,7 @@ class PromptModelTests(unittest.TestCase):
                      if isinstance(node, ast.AsyncFunctionDef) and node.name == "openrouter_chat")
         namespace = dict(get_settings=get_settings, _ollama_model=selected_model,
                          configure_prompt_request=configure_prompt_request,
+                         enrich_assistant_request=enrich_assistant_request, retrieve_prompt_sources=None,
                          httpx=SimpleNamespace(AsyncClient=Client, HTTPError=RuntimeError),
                          HTTPException=RuntimeError)
         exec(compile(ast.Module(body=[route], type_ignores=[]), str(source), "exec"), namespace)

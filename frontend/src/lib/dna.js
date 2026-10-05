@@ -168,7 +168,7 @@ export const SECTIONS = [
     key: "feet",
     title: "Feet & styling",
     fields: [
-      { key: "composition_mode", type: "chips", label: "Role in the photograph", options: ["supporting detail", "feet focus"], help: "Supporting detail keeps the crop and pose selected in Pose. Feet focus lets this section control foot framing. Unset follows Pose focus." },
+      { key: "composition_mode", type: "chips", label: "Role in the photograph", options: ["supporting detail", "feet focus"], help: "Supporting detail keeps the crop and pose selected in Pose. Feet focus controls the crop, while the main Pose controls body stance. Wardrobe controls coverage and Scene controls the setting. Conflicting foot details stay saved but are omitted from the prompt with an explanation. Unset follows Pose focus." },
       { key: "sole_presentation", type: "pose_chips", label: "Sole presentation", groups: [
         { name: "Presentation", options: ["soles up", "soles together", "sole showcase", "sole toward camera", "one sole raised", "both soles toward camera", "crossed ankles soles visible", "heel lifted toward camera"] },
         { name: "Detail", options: ["wrinkled soles", "smooth soles", "oiled soles", "dirty soles", "muddy soles", "freshly washed", "arched soles", "detailed toe pads"] },

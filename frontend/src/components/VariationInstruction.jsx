@@ -1,3 +1,4 @@
+import { WebPromptResearchOptions } from '@/components/WebPromptResearch';
 import { useState } from 'react';
 import { endpoints } from '@/lib/api';
 
@@ -25,6 +26,7 @@ export default function VariationInstruction({ value, onChange, aiProvider = 'AI
       className="rounded-lg border border-purple-500/40 px-3 py-2 text-xs text-purple-100 disabled:opacity-40">
       {busy ? 'Clarifying…' : `Clarify with ${aiProvider}`}
     </button>
+      <WebPromptResearchOptions disabled={busy}/>
     {error && <p role="alert" className="text-xs text-amber-200">{error}</p>}
     {proposal && <div className="space-y-2 rounded-lg border border-purple-500/30 p-3">
       <label className="block text-xs text-zinc-400">AI suggestion · review before applying

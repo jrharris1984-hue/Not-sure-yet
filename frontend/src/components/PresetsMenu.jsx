@@ -1,3 +1,4 @@
+import { WebPromptResearchOptions } from '@/components/WebPromptResearch';
 import { useState, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -248,6 +249,7 @@ export default function PresetsMenu({ onApply, currentDna, sectionLocks = {}, fi
                     </div>
                     <p className="mt-1 text-[11px] text-zinc-400">Describe the adult character you want. {aiProvider} can only select fields and values Ultra Studio supports.</p>
                   </div>
+      <WebPromptResearchOptions disabled={generate.isPending}/>
                   <textarea value={description} onChange={(event) => setDescription(event.target.value)}
                     placeholder="Example: A confident 42-year-old Colombian woman with an athletic hourglass build, long wavy black hair, warm editorial styling, and natural skin texture."
                     className="w-full min-h-28 resize-y rounded-lg border hairline bg-elevated p-3 text-sm text-zinc-100 outline-none focus:border-violet-500/60"

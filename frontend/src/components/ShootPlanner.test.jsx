@@ -30,7 +30,7 @@ test('draft is reviewable and edits only take effect after Apply; selected revis
   act(() => input(select, 'profile'));
   act(() => button('Apply reviewed').click());
   expect(apply.mock.calls[0][0][0].view).toBe('profile');
-  act(() => container.querySelector('input[type="checkbox"]').click());
+  act(() => container.querySelector('input[type="checkbox"]:not([aria-label="Use web research"])').click());
   endpoints.aiShootPlan.mockResolvedValue({ frames: [{ pose_action: 'seated', framing: 'full body' }], warnings: [] });
   await act(async () => button('Revise 1 selected').click());
   expect(endpoints.aiShootPlan.mock.calls[1][0].count).toBe(1);

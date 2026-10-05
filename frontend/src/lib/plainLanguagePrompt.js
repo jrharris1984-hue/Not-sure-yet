@@ -1,5 +1,24 @@
 import { implantVisualPrompt } from "./implantVisualScale";
 
+// Labeled observations from an imported photo are reference metadata. Current
+// Builder controls own these instructions; leave unlabeled requests untouched.
+export function resolveReferenceNotes(input, dna = {}, subjects = []) {
+  const ownedValues = (source) => ({
+    "body orientation": source.pose?.angle,
+    "camera angle": source.camera?.angle,
+    pose: source.pose?.action,
+    framing: source.pose?.distance,
+    expression: source.face?.expression,
+  });
+  return String(input || "").split(/\n/).filter(line => {
+    const match = line.match(/^\s*(?:Subject\s+(\w+)\s*—\s*)?([^:]+):/i);
+    if (!match) return true;
+    const source = match[1] ? subjects.find(subject => subject.label === match[1])?.dna : dna;
+    const value = ownedValues(source || {})[match[2].trim().toLowerCase()];
+    return !value || ["none", "default"].includes(String(value).toLowerCase());
+  }).join("\n").trim();
+}
+
 // Keep the user's words separate from model wording. This makes the translation
 // reviewable and prevents a model switch from permanently rewriting the input.
 export function translatePlainLanguage(input, compiler = "sdxl") {
