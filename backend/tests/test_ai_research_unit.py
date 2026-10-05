@@ -6,7 +6,7 @@ import unittest
 from pathlib import Path
 from types import SimpleNamespace
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from ai_research import research_sources, research_messages, research_response
+from ai_research import research_sources, research_messages, research_response, prompt_research_query
 
 
 class ResearchTests(unittest.TestCase):
@@ -46,11 +46,11 @@ class ResearchTests(unittest.TestCase):
         class HTTPException(Exception):
             def __init__(self,status,detail):self.status=status;self.detail=detail
         path=Path(__file__).resolve().parents[1]/'server.py'
-        route=next(node for node in ast.parse(path.read_text()).body if isinstance(node,ast.AsyncFunctionDef) and node.name=='ai_research')
-        route.decorator_list=[]
+        routes=[node for node in ast.parse(path.read_text()).body if isinstance(node,ast.AsyncFunctionDef) and node.name in ('ai_research','retrieve_research_sources')]
+        for route in routes:route.decorator_list=[]
         ns=dict(ResearchBody=object,research_key=research_key,httpx=SimpleNamespace(AsyncClient=Client,HTTPError=OSError),HTTPException=HTTPException,
                 research_sources=research_sources,research_messages=research_messages,research_response=research_response,extract_json=lambda value:value,openrouter_chat=chat)
-        exec(compile(ast.Module(body=[route],type_ignores=[]),str(path),'exec'),ns)
+        exec(compile(ast.Module(body=routes,type_ignores=[]),str(path),'exec'),ns)
         return ns['ai_research'],seen,HTTPException
 
     def test_route_sends_only_question_to_search_and_context_to_selected_assistant(self):
@@ -67,6 +67,33 @@ class ResearchTests(unittest.TestCase):
             with self.assertRaises(error) as caught:asyncio.run(route(SimpleNamespace(query='Model settings',context='')))
             self.assertIn(expected,caught.exception.detail)
             self.assertNotIn('secret',caught.exception.detail)
+
+    def test_rate_limit_does_not_recommend_payment_or_expose_key(self):
+        route,seen,error=self.route('secret',429)
+        with self.assertRaises(error) as caught:
+            asyncio.run(route(SimpleNamespace(query='camera settings',context='')))
+        self.assertEqual(caught.exception.status,429)
+        self.assertIn('turn off web research',caught.exception.detail)
+        self.assertNotIn('secret',caught.exception.detail)
+
+    def test_prompt_retrieval_bounds_search_calls_and_keeps_raw_prompt_local(self):
+        path=Path(__file__).resolve().parents[1]/'server.py'
+        node=next(node for node in ast.parse(path.read_text()).body if isinstance(node,ast.AsyncFunctionDef) and node.name=='retrieve_prompt_sources')
+        queries=[]
+        async def retrieve(query):
+            queries.append(query)
+            return research_sources({'results':[{'url':'https://author.example/'+str(len(queries)), 'content':query}]})
+        async def chat(system,user,response_format_json):
+            self.assertEqual(user,'private full scene')
+            self.assertIn('Do not research private identities',system)
+            return {'focus':'Victorian interior architecture'}
+        ns=dict(retrieve_research_sources=retrieve,prompt_research_query=prompt_research_query,extract_json=lambda value:value,openrouter_chat=chat,HTTPException=RuntimeError,research_sources=research_sources)
+        exec(compile(ast.Module(body=[node],type_ignores=[]),str(path),'exec'),ns)
+        result=asyncio.run(ns[node.name]('private full scene','Chroma','chroma'))
+        self.assertEqual(len(queries),2)
+        self.assertEqual(queries[1],'Victorian interior architecture')
+        self.assertTrue(all('private full scene' not in query for query in queries))
+        self.assertEqual([source['id'] for source in result],['S1','S2'])
 
 
 if __name__=='__main__':unittest.main()

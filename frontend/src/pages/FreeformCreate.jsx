@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { endpoints } from '@/lib/api';
 import AIResearchPanel from '@/components/AIResearchPanel';
+import { WebPromptResearchOptions, PromptResearchNotes } from '@/components/WebPromptResearch';
 import { FREEFORM_MODES, freeformPayload, freeformWorkflows } from '@/lib/freeformGeneration';
 
 const field = 'w-full rounded-lg border hairline bg-elevated px-3 py-2 text-sm';
@@ -14,6 +15,7 @@ export default function FreeformCreate({ mode = 'image' }) {
   const [error, setError] = useState(''), [queued, setQueued] = useState(false), [loading, setLoading] = useState(true);
   const [seed, setSeed] = useState(''), [width, setWidth] = useState(640), [height, setHeight] = useState(640);
   const [frames, setFrames] = useState(81), [fps, setFps] = useState(24);
+  const [useWebResearch,setUseWebResearch]=useState(false),[researchFocus,setResearchFocus]=useState('');
   const previewRef = useRef('');
   useEffect(() => {
     let live = true;
@@ -34,11 +36,11 @@ export default function FreeformCreate({ mode = 'image' }) {
   };
   const assist = () => run('AI', async () => {
     const result = mode === 'image'
-      ? await endpoints.aiImproveGeneratedPrompt(prompt, negative, workflow.prompt_style, workflow.name, true)
-      : await endpoints.aiVideoPrompt(prompt, mode === 'video' ? 'image' : 'text');
+      ? await endpoints.aiImproveGeneratedPrompt(prompt, negative, workflow.prompt_style, workflow.name, true, ...(useWebResearch ? [{use_web_research:true,research_focus:researchFocus}] : []))
+      : await endpoints.aiVideoPrompt(prompt, mode === 'video' ? 'image' : 'text', ...(useWebResearch ? [{use_web_research:true,research_focus:researchFocus}] : []));
     const positive = result.positive || result.prompt;
     if (!positive?.trim()) throw new Error('AI returned an empty prompt. Try again.');
-    setSuggestion({ positive, negative: result.negative ?? negative });
+    setSuggestion({ ...result, positive, negative: result.negative ?? negative });
   });
   const upload = event => {
     const file = event.target.files?.[0]; event.target.value = ''; if (!file) return;
@@ -67,8 +69,10 @@ export default function FreeformCreate({ mode = 'image' }) {
         {preview && <><img src={preview} alt="Starting frame" className="max-h-64 rounded-lg object-contain"/><button disabled={!!busy} onClick={() => { URL.revokeObjectURL(previewRef.current); previewRef.current = ''; setPreview(''); setSource(null); }}>Remove image</button></>}</div>}
       <label className="block space-y-1">{mode === 'video' ? 'Movement and camera prompt' : 'Your prompt'}<textarea aria-label="Your prompt" className={field} rows={7} value={prompt} disabled={!!busy} onChange={e => { setPrompt(e.target.value); setSuggestion(null); setQueued(false); }} placeholder={mode === 'video' ? 'Describe how the subject moves and how the camera follows.' : 'Describe the scene, subjects, style, lighting, and composition.'}/></label>
       <button className="rounded-lg border border-cyan-400/40 px-4 py-2 text-cyan-200" disabled={!!busy || !prompt.trim() || !workflow} onClick={assist}>Refine with AI</button>
+      <WebPromptResearchOptions enabled={useWebResearch} onEnabled={setUseWebResearch} focus={researchFocus} onFocus={setResearchFocus} disabled={!!busy}/>
       <p className="text-xs text-zinc-400">Uses your prompt assistant from Settings. Review the suggestion before applying it.</p>
       {suggestion && <section className="space-y-3 rounded-lg border border-cyan-400/30 p-3" aria-label="AI suggestion"><h2 className="font-semibold">AI suggestion</h2><textarea aria-label="Suggested prompt" className={field} rows={6} value={suggestion.positive} onChange={e => setSuggestion({ ...suggestion, positive: e.target.value })}/>
+        <PromptResearchNotes result={suggestion}/>
         {suggestion.negative !== negative && <label className="block">Suggested negative prompt<textarea aria-label="Suggested negative prompt" className={field} value={suggestion.negative} onChange={e => setSuggestion({ ...suggestion, negative: e.target.value })}/></label>}
         <div className="flex gap-3"><button disabled={!!busy || !suggestion.positive.trim()} onClick={() => { setPrompt(suggestion.positive); setNegative(suggestion.negative); setSuggestion(null); setQueued(false); }}>Apply suggestion</button><button disabled={!!busy} onClick={() => setSuggestion(null)}>Discard</button></div></section>}
       <details><summary className="cursor-pointer text-zinc-300">Output settings & negative prompt</summary><div className="mt-3 space-y-3">
