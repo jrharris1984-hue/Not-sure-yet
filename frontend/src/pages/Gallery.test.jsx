@@ -158,3 +158,51 @@ test('Copy prompt copies the saved prompt and reports clipboard failures', async
   await act(async () => button.click());
   expect(require('sonner').toast.error).toHaveBeenCalledWith(expect.stringContaining('Could not copy'));
 });
+
+test('mobile options start collapsed, can close, and retain filter values', async () => {
+  await render();
+  const toggle = container.querySelector('[data-testid="btn-gallery-options"]');
+  const panel = container.querySelector('[data-testid="gallery-options"]');
+  expect(toggle.getAttribute('aria-expanded')).toBe('false');
+  expect(panel.classList.contains('hidden')).toBe(true);
+  expect(panel.classList.contains('sm:block')).toBe(true);
+  expect(panel.contains(container.querySelector('[aria-label="Search Gallery"]'))).toBe(true);
+  expect(panel.contains(container.querySelector('[data-testid="gallery-album-filter"]'))).toBe(true);
+  expect(panel.contains(container.querySelector('[data-testid="gallery-thumbnail-size"]'))).toBe(true);
+  act(() => toggle.click());
+  expect(toggle.getAttribute('aria-expanded')).toBe('true');
+  expect(panel.classList.contains('hidden')).toBe(false);
+  inputSearch('blue');
+  act(() => Array.from(panel.querySelectorAll('button')).find(node => node.textContent === 'Done').click());
+  expect(panel.classList.contains('hidden')).toBe(true);
+  expect(container.querySelectorAll('[data-testid^="gallery-thumb-"]').length).toBe(1);
+  act(() => toggle.click());
+  expect(container.querySelector('[aria-label="Search Gallery"]').value).toBe('blue');
+});
+
+test('defaults to 24 images per page and paginates without skipping images', async () => {
+  endpoints.listRenders.mockResolvedValue(Array.from({ length: 30 }, (_, i) => ({ ...records[0], id: `image-${i}`, output_files: [`image-${i}.png`] })));
+  await render();
+  expect(container.querySelector('[data-testid="gallery-page-size-24"]').getAttribute('aria-pressed')).toBe('true');
+  expect(container.querySelectorAll('[data-testid^="gallery-thumb-"]').length).toBe(24);
+  const pages = container.querySelector('[aria-label="Gallery pages"]');
+  act(() => Array.from(pages.querySelectorAll('button')).find(node => node.textContent === 'Next').click());
+  expect(container.querySelectorAll('[data-testid^="gallery-thumb-"]').length).toBe(6);
+  expect(container.querySelector('[data-testid="gallery-thumb-24"]')).not.toBeNull();
+  act(() => container.querySelector('[data-testid="gallery-page-size-12"]').click());
+  expect(container.querySelectorAll('[data-testid^="gallery-thumb-"]').length).toBe(12);
+  expect(container.querySelector('[data-testid="gallery-thumb-0"]')).not.toBeNull();
+});
+
+test('selection returns to the images and its tools remain reachable', async () => {
+  await render();
+  const toggle = container.querySelector('[data-testid="btn-gallery-options"]');
+  act(() => toggle.click());
+  act(() => container.querySelector('[data-testid="btn-gallery-select"]').click());
+  expect(toggle.getAttribute('aria-expanded')).toBe('false');
+  const card = container.querySelector('[data-testid="gallery-thumb-0"]');
+  act(() => card.querySelector('[aria-label="Select render"]').click());
+  expect(container.textContent).toContain('1 selected');
+  act(() => toggle.click());
+  expect(container.querySelector('[data-testid="btn-gallery-delete-selected"]')).not.toBeNull();
+});
