@@ -567,9 +567,13 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
     workflowName: activeWorkflow?.name,
   });
   const isGoldenChroma = activeCompiler === "chroma";
-  const isKrea2 = activeCompiler === "krea2";
+  const isKrea2Aio = promptStyle === "krea2_aio";
+  const isLtxVideo = promptStyle === "ltx_t2v";
+  const isKrea2 = activeCompiler === "krea2" && !isKrea2Aio;
   const activeRecipeFamily = recipeFamily(activeCompiler);
-  const renderSettings = isKrea2
+  const renderSettings = isKrea2Aio
+    ? { ...chromaSettings, steps: 12, cfg: 1, sampler: "euler_ancestral", scheduler: "beta" }
+    : isKrea2
     ? { ...chromaSettings, steps: 8, cfg: 1, sampler: "euler", scheduler: "simple" }
     : activeCompiler === "flux2_klein"
       ? { ...chromaSettings, steps: 4, cfg: 1, sampler: "euler" }
@@ -578,7 +582,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
   const kreaRenderBlocked = !!kreaBaseBlocked;
 
   const applyQualityTier = (tier) => {
-    const recipe = getRenderRecipe(activeCompiler, tier);
+    const recipe = getRenderRecipe(isKrea2Aio || isLtxVideo ? promptStyle : activeCompiler, tier);
     setQualityTier(tier);
     if (recipe.family === "image") {
       setChromaSettings((current) => ({
@@ -642,7 +646,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
     const workflow = workflows.find((item) => item.id === recommendation.workflowId);
     if (!workflow) return;
     const compiler = resolvePromptCompiler({ promptStyle: workflow.prompt_style, workflowKind: workflow.kind, workflowName: workflow.name });
-    const recipe = getRenderRecipe(compiler, recommendation.qualityTier);
+    const recipe = getRenderRecipe(["krea2_aio", "ltx_t2v"].includes(workflow.prompt_style) ? workflow.prompt_style : compiler, recommendation.qualityTier);
     setWorkflowId(workflow.id);
     setLoraOverrides({});
     setQualityTier(recommendation.qualityTier);
@@ -1356,7 +1360,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
     }
     if ((isVideoWorkflow || isTextVideoWorkflow) && !videoInstruction.trim()) {
       toast.error(isTextVideoWorkflow
-        ? "Describe the video you want WAN to create"
+        ? "Describe the video you want to create"
         : "Describe the movement you want WAN to create");
       return;
     }
@@ -3169,7 +3173,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
                 tier={qualityTier} onTier={applyQualityTier} count={poseAssistEnabled && !isVariationWorkflow ? 1 : renderCount} onCount={setRenderCount}
                 countLocked={poseAssistEnabled && !isVariationWorkflow}
                 settings={renderSettings} onSettings={setChromaSettings} family={activeRecipeFamily}
-                fixedSampling={isKrea2 || activeCompiler === "flux2_klein"} busy={dispatching} />
+                fixedSampling={isKrea2 || isKrea2Aio || activeCompiler === "flux2_klein"} busy={dispatching} />
               <details className="rounded-xl border hairline p-3">
                 <summary className="cursor-pointer text-xs font-semibold text-zinc-300">Optional LoRAs</summary>
                 <div className="mt-3"><UniversalLoraPicker workflow={activeWorkflow} value={selectedLora}
@@ -3444,7 +3448,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
               <VideoModeLinks mode="text_video"/>
               <div className="flex items-center gap-2">
                 <Camera className="h-4 w-4 text-violet-300" />
-                <div className="section-label">WAN Text → Video</div>
+                <div className="section-label">{isLtxVideo ? "Sulphur 2 · Video + Audio" : "WAN Text → Video"}</div>
               </div>
               <p className="text-xs text-zinc-400">
                 Describe the complete shot: adult subject, action, environment, lighting, framing, and camera motion. No starting image is required.
@@ -3470,10 +3474,11 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
                   <select value={videoFrames} onChange={(e) => setVideoFrames(Number(e.target.value))}
                     className="w-full rounded-lg border border-hairline bg-elevated px-3 py-2 text-sm"
                     data-testid="select-wan-t2v-duration">
-                    <option value={41}>2.6 sec · 41 frames</option>
-                    <option value={81}>5.1 sec · 81 frames</option>
-                    <option value={121}>7.6 sec · 121 frames</option>
-                    <option value={161}>10 sec · 161 frames</option>
+                    <option value={41}>{(41 / videoFps).toFixed(1)} sec · 41 frames</option>
+                    {isLtxVideo && <option value={73}>{(73 / videoFps).toFixed(1)} sec · 73 frames</option>}
+                    <option value={81}>{(81 / videoFps).toFixed(1)} sec · 81 frames</option>
+                    <option value={121}>{(121 / videoFps).toFixed(1)} sec · 121 frames</option>
+                    <option value={161}>{(161 / videoFps).toFixed(1)} sec · 161 frames</option>
                   </select>
                 </label>
                 <label className="space-y-1">
@@ -3488,7 +3493,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
                 </label>
               </div>
               <p className="text-[11px] text-zinc-500">
-                This 14B workflow is much heavier than the 5B Image → Video workflow. Test with 41 frames first.
+                {isLtxVideo ? "Sulphur needs the full LTX VAE and Gemma encoder. Start with Draft and 41 frames; describe sound with Audio: in your prompt." : "This 14B workflow is much heavier than the 5B Image → Video workflow. Test with 41 frames first."}
               </p>
             </div>
           )}

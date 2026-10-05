@@ -138,7 +138,8 @@ export default function Gallery() {
   const [browse, setBrowse] = useState({ search: "", model: "all", media: "all", sort: "newest" });
   const [showQcFlagged, setShowQcFlagged] = useState(true);
   const [thumbSize, setThumbSize] = useState("medium");
-  const [pageSize, setPageSize] = useState(12);
+  const [pageSize, setPageSize] = useState(24);
+  const [optionsOpen, setOptionsOpen] = useState(false);
   const [page, setPage] = useState(1);
   const [slideDirection, setSlideDirection] = useState(1);
   const [compareOpen, setCompareOpen] = useState(false);
@@ -424,14 +425,25 @@ export default function Gallery() {
     : [];
 
   return (
-    <div className="mx-auto max-w-[1400px] px-4 sm:px-6 py-6 sm:py-10 space-y-6">
+    <div className="mx-auto max-w-[1400px] px-3 sm:px-6 py-4 sm:py-10 space-y-3 sm:space-y-6">
       <div className="flex items-end justify-between gap-4 flex-wrap">
         <div>
-          <div className="section-label">Gallery</div>
-          <h1 className="font-display font-extrabold text-3xl sm:text-4xl mt-1">Renders</h1>
-          <p className="text-sm text-zinc-400 mt-1">
-            {withOutput.length} finished · {inFlight.length} in flight. Tap a thumbnail to open.
+          <div className="section-label hidden sm:block">Gallery</div>
+          <h1 className="font-display font-extrabold text-2xl sm:text-4xl sm:mt-1">Renders</h1>
+          <p className="text-xs sm:text-sm text-zinc-400 mt-1">
+            {withOutput.length} finished · {inFlight.length} in flight.
+            <span className="hidden sm:inline"> Tap a thumbnail to open.</span>
+            {selectionMode && <span className="ml-2 text-amber-200">{selected.length} selected</span>}
           </p>
+        </div>
+        <div className="flex items-center gap-2 sm:hidden">
+          {selectionMode && <button type="button" onClick={() => { setSelectionMode(false); setSelected([]); }}
+            className="rounded-lg border hairline px-3 py-2 text-xs text-zinc-200">Cancel selection</button>}
+          <button type="button" aria-expanded={optionsOpen} aria-controls="gallery-options"
+            onClick={() => setOptionsOpen(value => !value)} data-testid="btn-gallery-options"
+            className="inline-flex items-center gap-2 rounded-lg border hairline px-3 py-2 text-sm text-zinc-200">
+            <SlidersHorizontal className="h-4 w-4" /> {optionsOpen ? "Hide options" : "Options"}
+          </button>
         </div>
         {returnTo && (
           <button type="button" onClick={() => nav(returnTo)}
@@ -440,6 +452,14 @@ export default function Gallery() {
             <ChevronLeft className="h-4 w-4" /> Back to editor
           </button>
         )}
+      </div>
+
+      <div id="gallery-options" data-testid="gallery-options"
+        className={`${optionsOpen ? "block" : "hidden"} sm:block space-y-4`}>
+        <div className="flex items-center justify-between sm:hidden">
+          <span className="section-label">Gallery options</span>
+          <button type="button" onClick={() => setOptionsOpen(false)} className="rounded-lg border hairline px-3 py-2 text-xs text-zinc-200">Done</button>
+        </div>
         {(withOutput.length > 0 || cancelled.length > 0) && (
           <div className="flex flex-wrap gap-2">
             {cancelled.length > 0 && (
@@ -456,6 +476,7 @@ export default function Gallery() {
               onClick={() => {
                 setSelectionMode((value) => !value);
                 setSelected([]);
+                setOptionsOpen(false);
               }}
               className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm ${selectionMode ? "border-amber-500/50 bg-amber-500/10 text-amber-200" : "hairline text-zinc-200"}`}
               data-testid="btn-gallery-select">
@@ -499,49 +520,64 @@ export default function Gallery() {
             </label>
           </div>
         )}
+        <GalleryBrowseControls value={browse} models={models} onChange={(next) => { setBrowse(next); setPage(1); }}
+          matches={displayedOutput.length} total={withOutput.length} onRefresh={() => refetch()} refreshing={isFetching} />
+        {withOutput.length > 0 && (
+          <div className="gallery-shelf" data-testid="gallery-album-filter">
+            {[{ key: "all", label: `All ${withOutput.length}` }, { key: "unfiled", label: "Unfiled" }, ...albums.map((album) => ({ key: album, label: album }))].map((item) => (
+              <button key={item.key} type="button" onClick={() => { setAlbumFilter(item.key); setPage(1); }}
+                aria-pressed={albumFilter === item.key}
+                className={`gallery-album ${albumFilter === item.key ? "gallery-album-active" : ""}`}>
+                {(() => {
+                  const cover = withOutput.find((render) => item.key === "all" || (item.key === "unfiled" ? !render.album : render.album === item.key));
+                  const coverUrl = cover && primaryOutput(cover);
+                  return coverUrl && !isVideoUrl(coverUrl) ? <img src={coverUrl} alt="" loading="lazy" /> : null;
+                })()}
+                <span className="gallery-album-title">{item.label}</span>
+              </button>
+            ))}
+          </div>
+        )}
+
+        {qcFlagged.length > 0 && (
+          <div className="flex flex-wrap items-center gap-3 rounded-lg border hairline bg-elevated p-3 text-xs text-zinc-300" data-testid="gallery-qc-controls">
+            <button type="button" aria-pressed={showQcFlagged} data-testid="btn-gallery-show-qc"
+              onClick={() => { setShowQcFlagged((value) => !value); setSelected([]); setLightbox(null); setPage(1); }}
+              className={`rounded-lg border px-3 py-2 ${showQcFlagged ? "border-amber-400/50 bg-amber-400/10 text-amber-100" : "hairline"}`}>
+              Show QC-flagged images: {showQcFlagged ? "On" : "Off"}
+            </button>
+            <button type="button" disabled={removeQcFlagged.isPending} data-testid="btn-gallery-delete-all-qc"
+              onClick={() => window.confirm(deleteFiles
+                ? "Permanently delete ALL QC-flagged renders and their ComfyUI output files from your hard drive? This cannot be undone."
+                : "Remove ALL QC-flagged renders from the Gallery, including older pages? ComfyUI files will remain on disk.") && removeQcFlagged.mutate(deleteFiles)}
+              className="rounded-lg border border-red-500/40 px-3 py-2 text-red-200 hover:bg-red-500/10 disabled:opacity-40">
+              <Trash2 className="mr-1 inline h-3.5 w-3.5" /> Delete all QC-flagged
+            </button>
+          </div>
+        )}
+
+        {withOutput.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2 text-xs text-zinc-400" data-testid="gallery-thumbnail-size">
+            <span>Thumbnails</span>
+            {["small", "medium", "large"].map((size) => (
+              <button key={size} type="button" onClick={() => setThumbSize(size)} aria-pressed={thumbSize === size}
+                className={`rounded-lg border px-2 py-1 capitalize ${thumbSize === size ? "border-cyan-400 text-cyan-100 bg-cyan-400/10" : "hairline"}`}>{size}</button>
+            ))}
+            <span className="ml-2">Per page</span>
+            {[12, 16, 20, 24].map((size) => (
+              <button key={size} type="button" onClick={() => { setPageSize(size); setPage(1); }} aria-pressed={pageSize === size}
+                data-testid={`gallery-page-size-${size}`}
+                className={`rounded-lg border px-2 py-1 ${pageSize === size ? "border-amber-400 text-amber-100 bg-amber-400/10" : "hairline"}`}>{size}</button>
+            ))}
+          </div>
+        )}
       </div>
 
-      <GalleryBrowseControls value={browse} models={models} onChange={(next) => { setBrowse(next); setPage(1); }}
-        matches={displayedOutput.length} total={withOutput.length} onRefresh={() => refetch()} refreshing={isFetching} />
       {isError && <div role="alert" className="pane border-rose-500/40 p-4 text-sm text-rose-200">
         Could not refresh Gallery. {error?.response?.data?.detail || "Check the backend connection and try Refresh."}
         {!!renders.length && <span className="block mt-1 text-xs text-zinc-400">Your last loaded images remain available.</span>}
       </div>}
       {requestedError && <p role="alert" className="text-sm text-rose-300">The requested render could not be opened. It may have been removed.</p>}
-      {withOutput.length > 0 && (
-        <div className="gallery-shelf" data-testid="gallery-album-filter">
-          {[{ key: "all", label: `All ${withOutput.length}` }, { key: "unfiled", label: "Unfiled" }, ...albums.map((album) => ({ key: album, label: album }))].map((item) => (
-            <button key={item.key} type="button" onClick={() => { setAlbumFilter(item.key); setPage(1); }}
-              aria-pressed={albumFilter === item.key}
-              className={`gallery-album ${albumFilter === item.key ? "gallery-album-active" : ""}`}>
-              {(() => {
-                const cover = withOutput.find((render) => item.key === "all" || (item.key === "unfiled" ? !render.album : render.album === item.key));
-                const coverUrl = cover && primaryOutput(cover);
-                return coverUrl && !isVideoUrl(coverUrl) ? <img src={coverUrl} alt="" loading="lazy" /> : null;
-              })()}
-              <span className="gallery-album-title">{item.label}</span>
-            </button>
-          ))}
-        </div>
-      )}
-
-      {qcFlagged.length > 0 && (
-        <div className="flex flex-wrap items-center gap-3 rounded-lg border hairline bg-elevated p-3 text-xs text-zinc-300" data-testid="gallery-qc-controls">
-          <button type="button" aria-pressed={showQcFlagged} data-testid="btn-gallery-show-qc"
-            onClick={() => { setShowQcFlagged((value) => !value); setSelected([]); setLightbox(null); setPage(1); }}
-            className={`rounded-lg border px-3 py-2 ${showQcFlagged ? "border-amber-400/50 bg-amber-400/10 text-amber-100" : "hairline"}`}>
-            Show QC-flagged images: {showQcFlagged ? "On" : "Off"}
-          </button>
-          <button type="button" disabled={removeQcFlagged.isPending} data-testid="btn-gallery-delete-all-qc"
-            onClick={() => window.confirm(deleteFiles
-              ? "Permanently delete ALL QC-flagged renders and their ComfyUI output files from your hard drive? This cannot be undone."
-              : "Remove ALL QC-flagged renders from the Gallery, including older pages? ComfyUI files will remain on disk.") && removeQcFlagged.mutate(deleteFiles)}
-            className="rounded-lg border border-red-500/40 px-3 py-2 text-red-200 hover:bg-red-500/10 disabled:opacity-40">
-            <Trash2 className="mr-1 inline h-3.5 w-3.5" /> Delete all QC-flagged
-          </button>
-        </div>
-      )}
-
       {isLoading ? (
         <StudioLoading label="Loading Gallery…" />
       ) : !isError && withOutput.length === 0 && inFlight.length === 0 ? (
@@ -554,23 +590,11 @@ export default function Gallery() {
           {displayedOutput.length > 0 && (
             <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-zinc-400">
               <span>Showing {(currentPage - 1) * pageSize + 1}–{Math.min(currentPage * pageSize, displayedOutput.length)} of {displayedOutput.length}</span>
-              <div className="flex flex-wrap items-center gap-2" data-testid="gallery-thumbnail-size">
-                <span>Thumbnails</span>
-                {["small", "medium", "large"].map((size) => (
-                  <button key={size} type="button" onClick={() => setThumbSize(size)} aria-pressed={thumbSize === size}
-                    className={`rounded-lg border px-2 py-1 capitalize ${thumbSize === size ? "border-cyan-400 text-cyan-100 bg-cyan-400/10" : "hairline"}`}>{size}</button>
-                ))}
-                <span className="ml-2">Per page</span>
-                {[12, 16, 20, 24].map((size) => (
-                  <button key={size} type="button" onClick={() => { setPageSize(size); setPage(1); }} aria-pressed={pageSize === size}
-                    data-testid={`gallery-page-size-${size}`}
-                    className={`rounded-lg border px-2 py-1 ${pageSize === size ? "border-amber-400 text-amber-100 bg-amber-400/10" : "hairline"}`}>{size}</button>
-                ))}
-              </div>
             </div>
           )}
           {displayedOutput.length === 0 && withOutput.length > 0 && <div className="pane p-8 text-center text-zinc-400">
             No images match these filters. Clear the search or choose another album.
+            <button type="button" onClick={() => setOptionsOpen(true)} className="mt-3 rounded-lg border hairline px-3 py-2 text-sm text-zinc-200 sm:hidden">Show options</button>
           </div>}
           {/* Thumbnail grid — dense, clean, contact-sheet style */}
           {displayedOutput.length > 0 && (
@@ -598,7 +622,7 @@ export default function Gallery() {
                         <GalleryImage src={output} alt={r.prompt_positive?.slice(0, 40) || "render"} />
                       )}
                       <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-transparent to-transparent opacity-40 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity" />
-                      <div className="gallery-poster-caption absolute inset-x-0 bottom-0 p-2 transition-opacity">
+                      <div className="gallery-poster-caption hidden sm:block absolute inset-x-0 bottom-0 p-2 transition-opacity">
                         <div className="text-[10px] font-mono uppercase tracking-widest text-zinc-300 truncate">
                           {r.workflow_name || r.workflow_type}
                         </div>
@@ -612,20 +636,20 @@ export default function Gallery() {
                       </button>
                     ) : (
                       <button type="button" onClick={() => confirmRemoveOne(r)}
-                        className="absolute left-1 top-1 z-10 h-7 w-7 rounded-full bg-black/70 text-zinc-200 grid place-items-center opacity-100 sm:opacity-0 sm:group-hover:opacity-100 hover:bg-red-500"
+                        className="absolute left-1 top-1 z-10 h-7 w-7 rounded-full bg-black/70 text-zinc-200 hidden sm:grid place-items-center sm:opacity-0 sm:group-hover:opacity-100 hover:bg-red-500"
                         aria-label="Remove from Gallery" data-testid={`btn-delete-render-${i}`}>
                         <Trash2 className="h-3.5 w-3.5" />
                       </button>
                     )}
-                    <span className="absolute top-1 right-1 z-10 text-[9px] font-mono px-1.5 py-0.5 rounded backdrop-blur-sm bg-black/60 text-emerald-300 pointer-events-none">
+                    <span className="absolute top-1 right-1 z-10 hidden sm:block text-[9px] font-mono px-1.5 py-0.5 rounded backdrop-blur-sm bg-black/60 text-emerald-300 pointer-events-none">
                       {r.anatomy_guard_status === "failed" ? "QC flagged" : isVideoUrl(output) ? "video" : r.output_variants?.enhanced?.length ? "enhanced" : "done"}
                     </span>
                     {!selectionMode && <button type="button" onClick={() => openRecipe.mutate(r)} disabled={openRecipe.isPending}
-                      className="absolute bottom-2 right-2 z-10 rounded-lg border border-cyan-300/30 bg-black/80 px-2 py-1.5 text-[10px] font-semibold text-cyan-100 disabled:opacity-40"
+                      className="absolute bottom-2 right-2 z-10 hidden sm:inline-flex rounded-lg border border-cyan-300/30 bg-black/80 px-2 py-1.5 text-[10px] font-semibold text-cyan-100 disabled:opacity-40"
                       aria-label={`Open exact recipe for ${r.workflow_name || "render"}`} title="Load the saved prompt, seed and settings into Builder for review; does not queue a render" data-testid={`gallery-use-recipe-${r.id}`}>
                       Open exact recipe
                     </button>}
-                    {r.album && <span className="absolute bottom-10 left-1 z-10 max-w-[90%] truncate rounded bg-black/65 px-1.5 py-0.5 text-[9px] text-zinc-200 pointer-events-none">{r.album}</span>}
+                    {r.album && <span className="absolute bottom-10 left-1 z-10 hidden sm:block max-w-[90%] truncate rounded bg-black/65 px-1.5 py-0.5 text-[9px] text-zinc-200 pointer-events-none">{r.album}</span>}
                   </div>
                 );
               })}

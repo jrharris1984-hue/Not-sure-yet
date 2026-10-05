@@ -1,4 +1,9 @@
 const IMAGE_RECIPES = {
+  krea2_aio: {
+    draft: { width: 768, height: 1024, steps: 12, cfg: 1, batchSize: 1, sampler: "euler_ancestral", note: "Krea AIO small canvas test" },
+    balanced: { width: 1024, height: 1024, steps: 12, cfg: 1, batchSize: 1, sampler: "euler_ancestral", note: "Krea AIO · beta scheduler" },
+    quality: { width: 2048, height: 2048, steps: 12, cfg: 1, batchSize: 1, sampler: "euler_ancestral", note: "Author canvas · much higher memory use" },
+  },
   qwen_image: {
     draft: { width: 768, height: 768, steps: 20, cfg: 4, batchSize: 1, sampler: "euler", note: "AGQI V2 quick test · simple scheduler" },
     balanced: { width: 768, height: 1024, steps: 40, cfg: 4, batchSize: 1, sampler: "euler", note: "AGQI V2 author recipe · reuses Qwen encoder and VAE" },
@@ -53,10 +58,15 @@ const IMAGE_RECIPES = {
 
 const IMAGE_SCHEDULERS = {
   sdxl: "karras", sdxl_dmd2: "normal", pony: "normal",
-  zimage: "simple", krea2: "simple", qwen_image: "simple", qwen_rapid: "beta",
+  krea2_aio: "beta", zimage: "simple", krea2: "simple", qwen_image: "simple", qwen_rapid: "beta",
 };
 
 const VIDEO_RECIPES = {
+  ltx_t2v: {
+    draft: { videoFrames: 41, videoFps: 24, videoWidth: 512, videoHeight: 320, note: "Sulphur short test with synchronized audio" },
+    balanced: { videoFrames: 73, videoFps: 24, videoWidth: 832, videoHeight: 480, note: "Publisher test dimensions · about 3 seconds" },
+    quality: { videoFrames: 121, videoFps: 24, videoWidth: 832, videoHeight: 480, note: "About 5 seconds · more memory" },
+  },
   wan_i2v: {
     draft: { videoFrames: 41, videoFps: 24, videoWidth: 512, videoHeight: 512, note: "About 1.7 seconds · fastest test" },
     balanced: { videoFrames: 81, videoFps: 24, videoWidth: 640, videoHeight: 640, note: "About 3.4 seconds · recommended" },

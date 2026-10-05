@@ -1,0 +1,249 @@
+{
+  "1": {
+    "class_type": "CheckpointLoaderSimple",
+    "inputs": {
+      "ckpt_name": "sulphur2DistilledNVFP4_nvfp4.safetensors"
+    }
+  },
+  "2": {
+    "class_type": "LTXAVTextEncoderLoader",
+    "inputs": {
+      "text_encoder": "split_files/text_encoders/gemma_3_12B_it_fp4_mixed.safetensors",
+      "ckpt_name": "sulphur2DistilledNVFP4_nvfp4.safetensors",
+      "device": "default"
+    }
+  },
+  "3": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "text": "Cinematic tracking shot of a woman walking through a rainy Taipei street at night, glowing neon signs reflecting on wet pavement, shallow depth of field, photorealistic, shot on 35mm film, film grain, steadicam. Audio: rain falling, distant city traffic, footsteps on wet ground.",
+      "clip": [
+        "2",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "Positive Prompt"
+    }
+  },
+  "4": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "text": "cartoon, anime, video game, 3d render, cgi, octane render, illustration, concept art, digital painting, stylized, cel shaded, oversaturated, plastic look, blurry, low quality, distorted, watermark, text, jpeg artifacts",
+      "clip": [
+        "2",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "Negative Prompt"
+    }
+  },
+  "5": {
+    "class_type": "LTXVConditioning",
+    "inputs": {
+      "positive": [
+        "3",
+        0
+      ],
+      "negative": [
+        "4",
+        0
+      ],
+      "frame_rate": 24.0
+    }
+  },
+  "6": {
+    "class_type": "EmptyLTXVLatentVideo",
+    "inputs": {
+      "width": 832,
+      "height": 480,
+      "length": 73,
+      "batch_size": 1
+    }
+  },
+  "7": {
+    "class_type": "LTXVScheduler",
+    "inputs": {
+      "steps": 8,
+      "max_shift": 2.05,
+      "base_shift": 0.95,
+      "stretch": true,
+      "terminal": 0.1,
+      "latent": [
+        "6",
+        0
+      ]
+    }
+  },
+  "8": {
+    "class_type": "KSamplerSelect",
+    "inputs": {
+      "sampler_name": "euler"
+    }
+  },
+  "9": {
+    "class_type": "RandomNoise",
+    "inputs": {
+      "noise_seed": 778899
+    }
+  },
+  "10": {
+    "class_type": "CFGGuider",
+    "inputs": {
+      "model": [
+        "1",
+        0
+      ],
+      "positive": [
+        "5",
+        0
+      ],
+      "negative": [
+        "5",
+        1
+      ],
+      "cfg": 1.0
+    }
+  },
+  "11": {
+    "class_type": "SamplerCustomAdvanced",
+    "inputs": {
+      "noise": [
+        "9",
+        0
+      ],
+      "guider": [
+        "10",
+        0
+      ],
+      "sampler": [
+        "8",
+        0
+      ],
+      "sigmas": [
+        "7",
+        0
+      ],
+      "latent_image": [
+        "19",
+        0
+      ]
+    }
+  },
+  "12": {
+    "class_type": "LTXVCropGuides",
+    "inputs": {
+      "positive": [
+        "5",
+        0
+      ],
+      "negative": [
+        "5",
+        1
+      ],
+      "latent": [
+        "20",
+        0
+      ]
+    }
+  },
+  "13": {
+    "class_type": "VAEDecode",
+    "inputs": {
+      "samples": [
+        "12",
+        2
+      ],
+      "vae": [
+        "22",
+        0
+      ]
+    }
+  },
+  "14": {
+    "class_type": "CreateVideo",
+    "inputs": {
+      "images": [
+        "13",
+        0
+      ],
+      "fps": 24.0,
+      "audio": [
+        "21",
+        0
+      ]
+    }
+  },
+  "15": {
+    "class_type": "SaveVideo",
+    "inputs": {
+      "video": [
+        "14",
+        0
+      ],
+      "filename_prefix": "UltraStudio_Sulphur2",
+      "format": "auto",
+      "codec": "auto"
+    }
+  },
+  "17": {
+    "class_type": "LTXVAudioVAELoader",
+    "inputs": {
+      "ckpt_name": "sulphur2DistilledNVFP4_nvfp4.safetensors"
+    }
+  },
+  "18": {
+    "class_type": "LTXVEmptyLatentAudio",
+    "inputs": {
+      "frames_number": 73,
+      "frame_rate": 24,
+      "batch_size": 1,
+      "audio_vae": [
+        "17",
+        0
+      ]
+    }
+  },
+  "19": {
+    "class_type": "LTXVConcatAVLatent",
+    "inputs": {
+      "video_latent": [
+        "6",
+        0
+      ],
+      "audio_latent": [
+        "18",
+        0
+      ]
+    }
+  },
+  "20": {
+    "class_type": "LTXVSeparateAVLatent",
+    "inputs": {
+      "av_latent": [
+        "11",
+        0
+      ]
+    }
+  },
+  "21": {
+    "class_type": "LTXVAudioVAEDecode",
+    "inputs": {
+      "samples": [
+        "20",
+        1
+      ],
+      "audio_vae": [
+        "17",
+        0
+      ]
+    }
+  },
+  "22": {
+    "class_type": "VAELoader",
+    "inputs": {
+      "vae_name": "ltx_full_vae.safetensors"
+    }
+  }
+}

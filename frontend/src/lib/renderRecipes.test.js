@@ -73,3 +73,12 @@ describe("model-aware render recipes", () => {
     expect(recipe.steps).toBeGreaterThan(0);
   });
 });
+
+
+test("downloaded AIO and LTX recipes use their own sampling and frame families", () => {
+  const krea = getRenderRecipe("krea2_aio");
+  expect([krea.steps, krea.cfg, krea.sampler, krea.scheduler]).toEqual([12, 1, "euler_ancestral", "beta"]);
+  expect(recipeFamily("ltx_t2v")).toBe("video");
+  const video = getRenderRecipe("ltx_t2v");
+  expect([video.videoFrames, video.videoFps, video.videoWidth, video.videoHeight]).toEqual([73, 24, 832, 480]);
+});
