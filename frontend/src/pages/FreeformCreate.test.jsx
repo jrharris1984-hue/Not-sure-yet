@@ -4,11 +4,12 @@ import { createRoot } from 'react-dom/client';
 import FreeformCreate from './FreeformCreate';
 import { endpoints } from '@/lib/api';
 jest.mock('react-router-dom', () => ({ Link: ({to,children,...props}) => <a href={to} {...props}>{children}</a> }), {virtual:true});
-jest.mock('@/lib/api', () => ({ endpoints: {settings:jest.fn(),listWorkflows:jest.fn(),aiImproveGeneratedPrompt:jest.fn(),aiVideoPrompt:jest.fn(),dispatchRender:jest.fn(),uploadReferenceImage:jest.fn()} }));
+jest.mock('@/lib/api', () => ({ endpoints: {comfyLoras:jest.fn(),settings:jest.fn(),listWorkflows:jest.fn(),aiImproveGeneratedPrompt:jest.fn(),aiVideoPrompt:jest.fn(),dispatchRender:jest.fn(),uploadReferenceImage:jest.fn()} }));
 let container, root;
 beforeEach(() => {
   updateAssistantResearch({enabled:false,focus:'',result:null});
   global.IS_REACT_ACT_ENVIRONMENT=true; jest.clearAllMocks();
+  endpoints.comfyLoras.mockResolvedValue({loras:[]});
   endpoints.settings.mockResolvedValue({ai_provider:'ollama'});
   endpoints.listWorkflows.mockResolvedValue([{id:'image',name:'Image',kind:'image',prompt_style:'chroma'},{id:'video',name:'Animate',kind:'video'},{id:'text_video',name:'Video',kind:'text_video'}]);
   endpoints.dispatchRender.mockResolvedValue({id:'job',status:'queued'});
@@ -96,4 +97,36 @@ test.each(['video','text_video'])('%s offers both video modes with Ollama assist
   expect(nav.querySelector('a[href="/create/text-video"]')).not.toBeNull();
   expect(nav.querySelector('[aria-current="page"]').textContent).toContain(mode==='video'?'Image to video':'Text to video');
   expect(button('Refine with Ollama')).not.toBeUndefined();
+});
+
+test('Qwen freeform exposes two independent slots and dispatches them', async () => {
+  endpoints.listWorkflows.mockResolvedValue([{id:'q',name:'Qwen Image',kind:'image',prompt_style:'qwen_image'},{id:'c',name:'Chroma',kind:'image',prompt_style:'chroma'}]);
+  endpoints.comfyLoras.mockResolvedValue({loras:['Qwen_Image/portrait.safetensors','Qwen_Image/daylight.safetensors','Qwen_Edit/other.safetensors']});
+  await act(async () => root.render(<FreeformCreate/>));
+  act(() => button('Use clothed portrait test prompt').click());
+  expect(container.querySelector('[aria-label="Your prompt"]').value).toContain('fully clothed');
+  const pickers = () => [...container.querySelectorAll('[data-testid="universal-lora-picker"]')];
+  const choose = (picker, file) => picker.querySelector(`button[title="${file}"]`);
+  expect(choose(pickers()[0], 'Qwen_Edit/other.safetensors')).toBeNull();
+  await act(async () => choose(pickers()[0], 'Qwen_Image/portrait.safetensors').click());
+  await act(async () => button('Add second LoRA').click());
+  expect(choose(pickers()[1], 'Qwen_Image/portrait.safetensors')).toBeNull();
+  await act(async () => choose(pickers()[1], 'Qwen_Image/daylight.safetensors').click());
+  const strength = pickers()[1].querySelector('input[type="range"]');
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(strength,'0.5');
+    strength.dispatchEvent(new Event('input',{bubbles:true}));
+  });
+  await act(async () => button('Generate').click());
+  expect(endpoints.dispatchRender.mock.calls[0][0].selected_loras).toEqual([
+    {name:'Qwen_Image/portrait.safetensors',strength:0.8,triggers:[]},
+    {name:'Qwen_Image/daylight.safetensors',strength:0.5,triggers:[]},
+  ]);
+  await act(async () => button('Remove second LoRA').click());
+  await act(async () => button('Generate').click());
+  expect(endpoints.dispatchRender.mock.calls[1][0].selected_loras).toHaveLength(1);
+  const workflow = container.querySelector('[aria-label="Workflow"]');
+  await act(async () => {workflow.value='c'; workflow.dispatchEvent(new Event('change',{bubbles:true}));});
+  await act(async () => button('Generate').click());
+  expect(endpoints.dispatchRender.mock.calls[2][0]).not.toHaveProperty('selected_loras');
 });

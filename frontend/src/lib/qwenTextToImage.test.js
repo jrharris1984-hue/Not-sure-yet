@@ -1,3 +1,4 @@
+import { workflowCatalog } from './workflowCatalog';
 import { compileModelPrompts, resolvePromptCompiler } from './modelPromptCompilers';
 import { getRenderRecipe, recipeFamily } from './renderRecipes';
 import { analyzePromptQuality, promptProfile } from './promptQuality';
@@ -29,4 +30,14 @@ test('AGQI and Rapid get their own sampler, scheduler and guidance recipes', () 
 test('AGQI does not recommend edit-only LoRAs; normal Qwen editing stays an edit', () => {
   expect(workflowFamily({ name: 'Qwen AGQI', prompt_style: 'qwen_image', kind: 'image' })).toBe('qwen_image');
   expect(resolvePromptCompiler({ workflowName: 'Qwen Image Edit 2511', workflowKind: 'edit', promptStyle: 'qwen_edit' })).toBe('qwen_edit');
+});
+
+test('custom LoRA workflow stays independently selectable alongside both existing Qwen workflows', () => {
+  const entries = [
+    ['agqi', 'Qwen 2512 · AGQI V2 FP8', 'qwen_image', require('../../../backend/seed_workflows/qwen_agqi_t2i.json')],
+    ['rapid', 'Qwen Rapid AIO v23 · Text to Image', 'qwen_rapid', require('../../../backend/seed_workflows/qwen_rapid_t2i.json')],
+    ['custom', 'Qwen 2512 · Custom LoRAs (AGQI)', 'qwen_image', require('../../../backend/seed_workflows/qwen_custom_loras_t2i.json')],
+  ].map(([id, name, prompt_style, graph]) => ({id,name,prompt_style,kind:'image',positive_node_id:'5',negative_node_id:'6',json_str:JSON.stringify(graph)}));
+  expect(workflowCatalog(entries).primary.map(item => item.id)).toEqual(['agqi','rapid','custom']);
+  expect(workflowCatalog(entries).redundant).toEqual([]);
 });
