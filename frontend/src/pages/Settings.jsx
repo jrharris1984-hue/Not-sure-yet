@@ -17,7 +17,7 @@ const KIND_OPTIONS = [
   { value: "face", label: "Face-preserved" },
 ];
 
-function WorkflowRow({ w, isDefault, isFallback, isFirst, isLast, onSetDefault, onDelete, onSave, onMoveUp, onMoveDown }) {
+function WorkflowRow({ w, isDefault, isFallback, isFirst, isLast, onSetDefault, onDelete, onSave, onMoveUp, onMoveDown, builderVisible, onBuilderVisibility }) {
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState(w);
   useEffect(() => setForm(w), [w]);
@@ -58,6 +58,9 @@ function WorkflowRow({ w, isDefault, isFallback, isFirst, isLast, onSetDefault, 
           {!isDefault && isFallback && <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-300 border border-emerald-500/40">fallback</span>}
         </button>
       </div>
+      {onBuilderVisibility && <label className="flex items-center gap-2 px-4 pb-3 text-xs text-zinc-300">
+        <input type="checkbox" aria-label={`Show ${w.name} in character builder`} checked={builderVisible} onChange={event => onBuilderVisibility(w.id, event.target.checked)} />Show in character builder
+      </label>}
       {open && (
         <div className="p-3 space-y-3 border-t hairline">
           <div className="grid sm:grid-cols-2 gap-2">
@@ -289,6 +292,12 @@ export default function Settings() {
             {showSupportingWorkflows ? "Hide internal and legacy workflows" : "Show internal and legacy workflows"}
           </button>
         </div>}
+        <p className="text-xs text-zinc-400">Choose which workflows appear in the character builder dropdown, then Save workflow choices. Hidden workflows remain installed and available through saved recipes and dedicated image tools.</p>
+        <div className="flex flex-wrap gap-2">
+          <button type="button" data-testid="btn-save-builder-workflows" disabled={saveSettings.isPending} className="rounded-lg border hairline px-3 py-2 text-xs text-cyan-200 disabled:opacity-40" onClick={() => saveSettings.mutate({builder_hidden_workflow_ids: form.builder_hidden_workflow_ids || []})}>Save workflow choices</button>
+          <button type="button" className="rounded-lg border hairline px-3 py-2 text-xs" onClick={() => set("builder_hidden_workflow_ids", [])}>Show all in builder</button>
+          <button type="button" className="rounded-lg border hairline px-3 py-2 text-xs" onClick={() => set("builder_hidden_workflow_ids", catalog.primary.map(w => w.id))}>Hide all in builder</button>
+        </div>
         <div className="space-y-2">
           {visibleWorkflows.map((w, index) => (
             <div key={w.id}>
@@ -296,6 +305,8 @@ export default function Settings() {
             <WorkflowRow
               key={w.id}
               w={w}
+              builderVisible={!(form.builder_hidden_workflow_ids || []).includes(w.id)}
+              onBuilderVisibility={catalog.primary.some(item => item.id === w.id) && !["pose", "refine", "krea_style"].includes(w.kind) ? (id, shown) => set("builder_hidden_workflow_ids", shown ? (form.builder_hidden_workflow_ids || []).filter(value => value !== id) : [...new Set([...(form.builder_hidden_workflow_ids || []), id])]) : undefined}
               isDefault={form.default_workflow_id === w.id}
               isFallback={workflows[0]?.id === w.id && !form.default_workflow_id}
               isFirst={index === 0}

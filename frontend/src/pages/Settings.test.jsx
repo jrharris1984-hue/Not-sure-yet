@@ -1,6 +1,7 @@
 import { act } from "react";
 import { createRoot } from "react-dom/client";
 import Settings from "./Settings";
+jest.mock('react-router-dom', () => ({Link: ({to, children, ...props}) => <a href={to} {...props}>{children}</a>}), {virtual: true});
 jest.mock('@/components/WebResearchSettings', () => () => <div>Optional web research</div>);
 
 const mockMutate = jest.fn();
@@ -55,4 +56,26 @@ test("Settings keeps the main catalog clean and can reveal retained legacy prese
   }
   act(() => root.unmount());
   mockOllamaModels = [];
+});
+
+
+test("workflow visibility is a settings draft until saved and can be restored without deleting workflows", () => {
+  global.IS_REACT_ACT_ENVIRONMENT = true;
+  mockMutate.mockClear();
+  const container=document.createElement("div");
+  const root=createRoot(container);
+  act(() => root.render(<Settings />));
+  const checkbox=container.querySelector('[aria-label="Show Krea 2 Turbo in character builder"]');
+  expect(checkbox.checked).toBe(true);
+  act(() => checkbox.click());
+  expect(checkbox.checked).toBe(false);
+  expect(mockMutate).not.toHaveBeenCalled();
+  act(() => container.querySelector('[data-testid="btn-save-builder-workflows"]').click());
+  expect(mockMutate).toHaveBeenLastCalledWith(expect.objectContaining({builder_hidden_workflow_ids:["base"]}));
+  act(() => [...container.querySelectorAll('button')].find(button => button.textContent==='Show all in builder').click());
+  expect(checkbox.checked).toBe(true);
+  act(() => container.querySelector('[data-testid="btn-save-builder-workflows"]').click());
+  expect(mockMutate).toHaveBeenLastCalledWith(expect.objectContaining({builder_hidden_workflow_ids:[]}));
+  expect(container.querySelector('[data-testid="workflow-row-base"]')).not.toBeNull();
+  act(() => root.unmount());
 });

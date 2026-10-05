@@ -60,7 +60,7 @@ import RenderRecipeSelector from "@/components/RenderRecipeSelector";
 import SmartSetupPanel from "@/components/SmartSetupPanel";
 import { getRenderRecipe, recipeFamily } from "@/lib/renderRecipes";
 import { useCompiledPromptReset } from "@/lib/useCompiledPromptReset";
-import { selectableCatalogWorkflows } from "@/lib/workflowCatalog";
+import { builderCatalogWorkflows } from "@/lib/workflowCatalog";
 import { readBuilderDraft, writeBuilderDraft, clearBuilderDraft } from "@/lib/builderDraft";
 import { STUDIO_PROFILES, applyStudioPreset } from "@/lib/studioProfiles";
 import { buildSameCharacterPoseInstruction, DEFAULT_POSE_LOCKS, SAME_CHARACTER_POSES } from "@/lib/sameCharacterPose";
@@ -406,8 +406,8 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
   });
   const { data: settings } = useQuery({ queryKey: ["settings"], queryFn: endpoints.settings });
   const selectableWorkflows = useMemo(
-    () => selectableCatalogWorkflows(workflows, settings?.default_workflow_id, workflowId).filter(workflow => !imageToolId || IMAGE_TOOL_KINDS.includes(workflow.kind)),
-    [workflows, settings?.default_workflow_id, workflowId, imageToolId]
+    () => builderCatalogWorkflows(workflows, settings?.default_workflow_id, workflowId, imageToolId ? [] : settings?.builder_hidden_workflow_ids, !!galleryRecipeMode || !!location.state?.renderRecipe).filter(workflow => !imageToolId || IMAGE_TOOL_KINDS.includes(workflow.kind)),
+    [workflows, settings?.default_workflow_id, settings?.builder_hidden_workflow_ids, workflowId, imageToolId, galleryRecipeMode, location.state?.renderRecipe]
   );
   useEffect(() => {
     if (!imageToolId || !editorHydrated || !workflows.length || imageToolApplied.current) return;
@@ -420,11 +420,11 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
 
   const aiProvider = settings?.ai_provider === "ollama" ? "Ollama" : "Venice";
   useEffect(() => {
-    if (!imageToolId && !workflowId && workflows.length) {
+    if (!imageToolId && settings && !galleryRecipeMode && !location.state?.renderRecipe && workflows.length && (!workflowId || !selectableWorkflows.some(workflow => workflow.id === workflowId))) {
       const preferred = selectableWorkflows.find((workflow) => workflow.id === settings?.default_workflow_id);
       setWorkflowId(preferred?.id || selectableWorkflows[0]?.id || "");
     }
-  }, [workflows, settings, workflowId, selectableWorkflows, imageToolId]);
+  }, [workflows, settings, workflowId, selectableWorkflows, imageToolId, galleryRecipeMode, location.state?.renderRecipe]);
 
   useEffect(() => {
     const incoming = location.state?.galleryReference;
@@ -2608,7 +2608,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
             }}
             className={`${isImageFirst || mobileStudioStep === "start" || mobileStudioStep === "create" ? "block" : "hidden md:block"} bg-elevated border border-hairline rounded-lg px-3 py-2 text-sm text-zinc-100 w-full sm:w-auto sm:min-w-[200px]`}
           >
-            {workflows.length === 0 && <option value="">No workflows — open Settings</option>}
+            {selectableWorkflows.length === 0 && <option value="">No visible workflows — choose workflows in Settings</option>}
             {selectableWorkflows.filter((w) => !["sdxl", "sdxl_dmd2"].includes(w.prompt_style) && !w.name.startsWith("Pony · Ultra Realistic")).map((w) => (
               <option key={w.id} value={w.id}>{w.kind.toUpperCase()} · {w.name}</option>
             ))}
