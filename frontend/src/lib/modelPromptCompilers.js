@@ -241,7 +241,7 @@ function chromaLeanSingleSubjectPrompt(dna = {}, primaryGuard = {}, sourceDna = 
     wardrobe.heel_color,
     wardrobe.heel_type,
     !wardrobe.heel_type && kreaFeetVisible(dna) ? wardrobe.footwear : "",
-  ].filter(Boolean).join(" ");
+  ].filter(value => value && value !== "none").join(" ");
 
   const framing = [
     pose.distance,
@@ -1171,15 +1171,19 @@ export function compileModelPrompts(options = {}) {
   if (photographic) {
     protectedResult = { ...protectedResult, ...applyPhotographicGuidance(protectedResult) };
   }
+  const supportingFootDetails = [];
   const controls = resolvedSubjects.map((subject, index) => {
     const d = subject.dna;
     const values = sliderPromptSignature(d);
     const footDetails = Object.entries(d.feet || {}).filter(([key, value]) =>
       key !== 'composition_mode' && !['framing', 'sole_presentation', 'foot_pose', 'foot_act'].includes(key)
       && (Array.isArray(value) ? value.length : value)
-      && !String(protectedResult.positive).toLowerCase().includes(Array.isArray(value) ? value.join(' and ').toLowerCase() : String(value).toLowerCase())).map(([key, value]) => `${key.replace(/_/g, ' ')}: ${Array.isArray(value) ? value.join(' and ') : value}`);
+      && !String(protectedResult.positive).toLowerCase().includes(Array.isArray(value) ? value.join(' and ').toLowerCase() : String(value).toLowerCase())).map(([key, value]) => `${key.replace(/_/g, ' ')}: ${key === 'foot_size' && value === 'size queen' ? 'very large feet' : Array.isArray(value) ? value.join(' and ') : value}`);
     const prefix = isMulti ? `Subject ${subject.label || String.fromCharCode(65 + index)} ` : '';
-    return [values && `${prefix}Selected slider values: ${values}`, footDetails.length && `${prefix}Foot details: ${footDetails.join(', ')}`].filter(Boolean).join('; ');
+    const footText = footDetails.length ? `${prefix}Foot details: ${footDetails.join(', ')}` : '';
+    const feetFocused = d.pose?.focus === 'feet';
+    if (footText && !feetFocused) supportingFootDetails.push(footText);
+    return [values && `${prefix}Selected slider values: ${values}`, feetFocused && footText].filter(Boolean).join('; ');
   }).filter(Boolean).join('; ');
   if (controls) {
     // Keep requested slider values inside the early encoder context rather than
@@ -1187,6 +1191,7 @@ export function compileModelPrompts(options = {}) {
     const score = protectedResult.positive.match(/^((?:score_[^,; ]+,?\s*)+)/)?.[0] || '';
     protectedResult.positive = `${score}${controls}; ${protectedResult.positive.slice(score.length)}`;
   }
+  if (supportingFootDetails.length) protectedResult.positive += `; ${supportingFootDetails.join('; ')}`;
   protectedResult.promptWords = clean(protectedResult.positive).split(/\s+/).filter(Boolean).length;
   if (!contract) return protectedResult;
   const positive = `${contract} ${protectedResult.positive}`;
