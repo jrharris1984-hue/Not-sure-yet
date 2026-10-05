@@ -1,3 +1,4 @@
+import { catalogDna, customCatalogPrompt, getPromptCatalog, applyCatalogRules } from "./promptCatalog";
 import { applyPhotographicGuidance } from "./photographicGuidance";
 import { resolveBuilderControls, sliderPromptSignature } from "./builderControlResolution";
 import { footVisibility } from './footVisibility';
@@ -1160,6 +1161,13 @@ function compileModelPromptsRaw({
 // Apply the same cast contract after each family-specific compiler. Headcount,
 // selected ages and resemblance cannot be lost to a later word-budget trim.
 export function compileModelPrompts(options = {}) {
+  const promptCatalog = options.promptCatalog || getPromptCatalog();
+  const originalSubjects = options.subjects?.length > 1 ? options.subjects : [{dna:options.dna || options.subjects?.[0]?.dna || {}}];
+  const customKeywords = originalSubjects.map((subject,index) => {
+    const phrase=customCatalogPrompt(subject.dna, promptCatalog);
+    return phrase ? `${originalSubjects.length > 1 ? `Subject ${subject.label || String.fromCharCode(65+index)}: ` : ''}${phrase}` : '';
+  }).filter(Boolean).join('; ');
+  options = {...options, dna:catalogDna(options.dna || {}, promptCatalog), subjects:options.subjects?.map(subject => ({...subject,dna:catalogDna(subject.dna, promptCatalog)}))};
   const compiler = resolvePromptCompiler(options);
   const direct = ["qwen_edit", "wan_i2v"].includes(compiler);
   const photographic = !direct && compiler !== "wan_t2v";
@@ -1169,9 +1177,10 @@ export function compileModelPrompts(options = {}) {
   const isMulti = !direct && source.length > 1;
   const scenario = source[0]?.dna?.scenario || options.dna?.scenario || {};
   const subjects = isMulti ? applyCastAppearance(source, scenario, options.sectionLocks) : source;
-  const result = compileModelPromptsRaw({ ...options, subjects, isMulti: isMulti || (!source.length && !!options.isMulti), dna: isMulti ? subjects[0].dna : options.dna });
+  let result = compileModelPromptsRaw({ ...options, subjects, isMulti: isMulti || (!source.length && !!options.isMulti), dna: isMulti ? subjects[0].dna : options.dna });
+  if (customKeywords) result = {...result,positive:`${result.positive}; ${customKeywords}`};
   const contract = isMulti ? castAppearancePrompt(subjects) : "";
-  if (direct) return result;
+  if (direct) return applyCatalogRules(result, options.workflowKind || "edit", promptCatalog);
   const fidelitySubjects = isMulti ? subjects : [{ dna: options.dna || source[0]?.dna || {} }];
   // Preserve resolved selections so the fidelity pass cannot re-add conflicts.
   const resolvedSubjects = fidelitySubjects.map(subject => ({ ...subject, dna: (compiler === 'chroma' ? resolveChromaComposition : resolveZImageComposition)(subject.dna, { forceMulti: isMulti }).dna }));
@@ -1210,10 +1219,10 @@ export function compileModelPrompts(options = {}) {
   }
   if (supportingFootDetails.length) protectedResult.positive += `; ${supportingFootDetails.join('; ')}`;
   protectedResult.promptWords = clean(protectedResult.positive).split(/\s+/).filter(Boolean).length;
-  if (!contract) return protectedResult;
+  if (!contract) return applyCatalogRules(protectedResult, options.workflowKind || "image", promptCatalog);
   const positive = `${contract} ${protectedResult.positive}`;
   const negative = scenario.cast_resemblance === "matching faces"
     ? String(protectedResult.negative || "").split(",").filter(clause => !/duplicate face/i.test(clause)).join(",").trim()
     : protectedResult.negative;
-  return { ...protectedResult, positive, negative, promptWords: clean(positive).split(/\s+/).filter(Boolean).length };
+  return applyCatalogRules({ ...protectedResult, positive, negative, promptWords: clean(positive).split(/\s+/).filter(Boolean).length }, options.workflowKind || "image", promptCatalog);
 }

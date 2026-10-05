@@ -7,7 +7,7 @@ import { wardrobeExposure } from "@/lib/wardrobeNudity";
 import { normalizeMultiSelection } from "@/lib/dna";
 import { physiqueControlStatus, SIZE_CONTROL_PAIRS, sizeControlMode, selectSizeControl } from "@/lib/physiqueControlPriority";
 
-export function ChipRow({ options, value, onChange, testIdPrefix }) {
+export function ChipRow({ options, value, onChange, testIdPrefix, labels = {} }) {
   return (
     <div className="flex flex-wrap gap-2">
       {options.map((opt) => {
@@ -21,7 +21,7 @@ export function ChipRow({ options, value, onChange, testIdPrefix }) {
             className={`chip ${active ? "active" : ""}`}
             onClick={() => onChange(active ? "" : opt)}
           >
-            {opt}
+            {labels[opt] || opt}
           </button>
         );
       })}
@@ -29,7 +29,7 @@ export function ChipRow({ options, value, onChange, testIdPrefix }) {
   );
 }
 
-export function PoseChipGrid({ options, value, onChange, testIdPrefix }) {
+export function PoseChipGrid({ options, value, onChange, testIdPrefix, labels = {} }) {
   return (
     <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
       {options.map((opt) => {
@@ -47,7 +47,7 @@ export function PoseChipGrid({ options, value, onChange, testIdPrefix }) {
             }`}
           >
             <PoseIcon name={opt} size={56} active={active} />
-            <span className="font-mono uppercase tracking-tight">{opt}</span>
+            <span className="font-mono uppercase tracking-tight">{labels[opt] || opt}</span>
           </button>
         );
       })}
@@ -200,6 +200,7 @@ export default function DnaSection({
             {f.help && f.type !== "slider" && <p className="text-xs text-zinc-500 leading-relaxed">{f.help}</p>}
             {f.type === "chips_multi" && (
               <GroupedChips
+                labels={f.optionLabels}
                 groups={f.groups || [{ name: "All", options: f.options || [] }]}
                 value={Array.isArray(value[f.key]) ? value[f.key] : []}
                 onChange={(v) => set(f.key, normalizeMultiSelection(f, v, Array.isArray(value[f.key]) ? value[f.key] : []))}
@@ -210,6 +211,7 @@ export default function DnaSection({
             )}
             {f.type === "chips" && f.groups && (
               <GroupedChips
+                labels={f.optionLabels}
                 groups={f.groups}
                 value={f.key === "exposure_mode" ? wardrobeExposure(value) : Array.isArray(value[f.key]) ? value[f.key].at(-1) || "" : value[f.key] || ""}
                 onChange={(v) => set(f.key, v)}
@@ -220,6 +222,7 @@ export default function DnaSection({
             {f.type === "chips" && !f.groups && (
               <ChipRow
                 options={f.options}
+                labels={f.optionLabels}
                 value={f.key === "exposure_mode" ? wardrobeExposure(value) : Array.isArray(value[f.key]) ? value[f.key].at(-1) || "" : value[f.key] || ""}
                 onChange={(v) => set(f.key, v)}
                 testIdPrefix={`chip-${section.key}-${f.key}`}
@@ -227,6 +230,7 @@ export default function DnaSection({
             )}
             {f.type === "pose_chips" && f.groups && (
               <GroupedChips
+                labels={f.optionLabels}
                 groups={f.groups}
                 value={value[f.key] || ""}
                 onChange={(v) => set(f.key, v)}
@@ -237,6 +241,7 @@ export default function DnaSection({
             {f.type === "pose_chips" && !f.groups && (
               <PoseChipGrid
                 options={f.options}
+                labels={f.optionLabels}
                 value={value[f.key] || ""}
                 onChange={(v) => set(f.key, v)}
                 testIdPrefix={`pose-${section.key}-${f.key}`}
