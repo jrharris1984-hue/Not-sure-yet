@@ -895,6 +895,7 @@ export function resolvePromptCompiler({ promptStyle = "", workflowKind = "", wor
   const style = clean(promptStyle).toLowerCase();
   const kind = clean(workflowKind).toLowerCase();
   const name = clean(workflowName).toLowerCase();
+  if (["qwen_image", "qwen_rapid"].includes(style) && !["edit", "enhance"].includes(kind)) return style;
   if (kind === "edit" || kind === "enhance" || style === "qwen_edit" || name.includes("qwen")) return "qwen_edit";
   if (kind === "video" || style === "wan_i2v") return "wan_i2v";
   if (kind === "text_video" || style === "wan_t2v") return "wan_t2v";
@@ -1130,6 +1131,10 @@ function compileModelPromptsRaw({
     sectionLocks,
     priorityPlan,
   });
+  if (["qwen_image", "qwen_rapid"].includes(compiler)) {
+    const result = withPriorityGuard(basePrompts({ dna: primaryGuard.dna, subjects: guardedSubjects, isMulti, raunch }), "standard");
+    return compiler === "qwen_rapid" ? { ...result, negative: "", negativeStrategy: "zeroed" } : result;
+  }
   if (compiler === "qwen_edit") return attachDirectMeta(
     buildQwenEditPrompts({ instruction: editInstruction, preserveUnmentioned })
   );
