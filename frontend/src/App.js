@@ -18,6 +18,11 @@ function LegacyStudioRedirect() {
   return <Navigate to={destination} replace />;
 }
 
+function ImageToolRoute() {
+  const { workflowId } = useParams();
+  return <Builder key={workflowId} imageToolId={workflowId} />;
+}
+
 function App() {
   return (
     <div className="App grain min-h-screen bg-obsidian text-zinc-100 font-body">
@@ -25,6 +30,7 @@ function App() {
         <AppShell>
           <Routes>
             <Route path="/" element={<Library />} />
+            <Route path="/image-tools/:workflowId" element={<ImageToolRoute />} />
             <Route path="/media" element={<MediaLibrary />} />
             <Route path="/studios" element={<Navigate to="/character/new" replace />} />
             <Route path="/studio/:studio/:id/s/:section" element={<LegacyStudioRedirect />} />
