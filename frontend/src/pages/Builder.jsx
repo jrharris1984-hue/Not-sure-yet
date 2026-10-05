@@ -1,3 +1,5 @@
+import RandomSceneControls from "@/components/RandomSceneControls";
+import { randomSceneSubjects } from "@/lib/randomScenes";
 import { IMAGE_TOOL_KINDS } from "@/components/HomeImageTools";
 import QwenReferenceControls from "@/components/QwenReferenceControls";
 import { QWEN_CAMERA_DEFAULTS, qwenReferenceInstruction } from "@/lib/qwenReferenceEdit";
@@ -38,7 +40,6 @@ import LivePreview from "@/components/LivePreview";
 import TagInput from "@/components/TagInput";
 import GroupedSectionRail from "@/components/GroupedSectionRail";
 import DnaAtAGlance from "@/components/DnaAtAGlance";
-import MobileOverflow from "@/components/MobileOverflow";
 import MobileStudioFlow, {
   SIMPLE_FIELD_KEYS,
   mobileStudioStepForSection,
@@ -201,6 +202,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
   const [batchRenders, setBatchRenders] = useState([]);
   const [selectedBatchRenderId, setSelectedBatchRenderId] = useState(null);
   const [postRenderBusy, setPostRenderBusy] = useState("");
+  const [randomProfile, setRandomProfile] = useState("adventurous");
   const [workflowId, setWorkflowId] = useState("");
   const [loraOverrides, setLoraOverrides] = useState({});
   const [selectedLora, setSelectedLora] = useState({ name: "", strength: 0.8, triggerWords: [] });
@@ -1857,12 +1859,19 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
   };
   const randomizeActive = () =>
     updateActiveSubject((s) => ({
-      dna: randomizeDna(s.dna, { ...locks, kink: true, scenario: true, watersports: true }, s.field_locks),
+      dna: randomizeDna(s.dna, { ...locks, kink: true, scenario: true, watersports: true }, s.field_locks, { profile: randomProfile }),
     }));
   const randomizeAllSubjects = () => {
     const nonPlayLocks = { ...locks, kink: true, scenario: true, watersports: true };
-    setSubjects((cur) => cur.map((s) => ({ ...s, dna: randomizeDna(s.dna, nonPlayLocks, s.field_locks) })));
+    setSubjects((cur) => cur.map((s) => ({ ...s, dna: randomizeDna(s.dna, nonPlayLocks, s.field_locks, { profile: randomProfile }) })));
     toast.success(`Randomized ${subjects.length} subject${subjects.length > 1 ? "s" : ""} · Play preserved`);
+  };
+  const randomizeSceneMode = (mode) => {
+    const next = randomSceneSubjects(subjects, mode, randomProfile, locks);
+    setSubjects(next);
+    setActiveSubjectId(next[0].id);
+    setMobileStudioStep("create");
+    toast.success("Random scene ready for review");
   };
   const resetCharacter = () => {
     const confirmed = window.confirm(
@@ -2640,7 +2649,17 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
           >
             {dispatching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />} {poseAssistEnabled && !isVariationWorkflow ? "Pose Assist" : "Render"}
           </button>
-          {!isImageFirst && <MobileOverflow testId="builder-overflow" always label="More">
+
+        </div>
+        </div>
+        <div className={isImageFirst ? "hidden" : mobileStudioStep === "start" ? "block" : "hidden md:block"}>
+          <TagInput value={tags} onChange={setTags} placeholder="tag this character (mood, ethnicity, persona)…" testId="builder-tags" />
+        </div>
+      </div>
+
+      {!isImageFirst && <section className="pane p-3 sm:p-4 space-y-3" aria-label="Character tools" data-testid="builder-action-toolbar">
+        <div className="section-label">Character tools</div>
+        <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
               onClick={() => save.mutate()}
@@ -2763,13 +2782,10 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
               <Upload className="h-4 w-4" /> Import
               <input type="file" accept="application/json" onChange={importJson} className="hidden" />
             </label>
-          </MobileOverflow>}
         </div>
-        </div>
-        <div className={isImageFirst ? "hidden" : mobileStudioStep === "start" ? "block" : "hidden md:block"}>
-          <TagInput value={tags} onChange={setTags} placeholder="tag this character (mood, ethnicity, persona)…" testId="builder-tags" />
-        </div>
-      </div>
+      </section>}
+
+      {!isImageFirst && <RandomSceneControls profile={randomProfile} onProfile={setRandomProfile} onRandomize={randomizeSceneMode} busy={dispatching} />}
 
       {isImageFirst && <ImageSourceFlow title={activeWorkflow?.name} animation={isVideoWorkflow} variation={isVariationWorkflow} source={referenceImage} preview={referencePreview}
         readyToRender={!isQwenReferenceWorkflow || qwenEditVariant !== "pose" || !!poseReferenceImage?.name}

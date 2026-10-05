@@ -540,6 +540,7 @@ export function randomizeSection(sectionKey, current = {}, fieldLocks = {}, opti
   const section = SECTIONS.find((s) => s.key === sectionKey);
   const out = { ...current };
   const preserveProtected = options.preserveProtected !== false;
+  const conservative = options.profile !== "adventurous";
   const basicPools = {
     'pose.action': ['standing', 'standing hip out', 'standing hands on hips', 'sitting on edge', 'kneeling upright'],
     'pose.angle': ['front', '3/4', 'profile'],
@@ -566,17 +567,17 @@ export function randomizeSection(sectionKey, current = {}, fieldLocks = {}, opti
     if (fieldLocks?.[f.key]) return; // per-field lock — keep current value
     if (preserveProtected && RANDOMIZE_PROTECTED_FIELDS[sectionKey]?.has(f.key)) return;
     if (f.type === "chips" || f.type === "pose_chips") {
-      const pool = preserveProtected && basicPools[`${sectionKey}.${f.key}`] || (f.groups ? f.groups.flatMap((g) => g.options) : (f.options || []));
+      const pool = conservative && basicPools[`${sectionKey}.${f.key}`] || (f.groups ? f.groups.flatMap((g) => g.options) : (f.options || []));
       if (pool.length) out[f.key] = pick(pool);
     }
     else if (f.type === "chips_multi") {
       const pool = f.groups ? f.groups.flatMap((g) => g.options) : (f.options || []);
-      const n = preserveProtected ? 1 : 1 + Math.floor(Math.random() * 3);
+      const n = conservative ? 1 : 1 + Math.floor(Math.random() * 3);
       const shuffled = [...pool].sort(() => Math.random() - 0.5);
       out[f.key] = shuffled.slice(0, n).reduce((picked, option) => normalizeMultiSelection(f, [...picked, option], picked), []);
     }
     else if (f.type === "slider") {
-      const [low, high] = preserveProtected && sliderRanges[`${sectionKey}.${f.key}`] || [f.min, f.max];
+      const [low, high] = conservative && sliderRanges[`${sectionKey}.${f.key}`] || [f.min, f.max];
       const min = Math.max(f.min, low), max = Math.min(f.max, high), step = f.step || 1;
       out[f.key] = min + Math.floor(Math.random() * (Math.floor((max - min) / step) + 1)) * step;
     }
@@ -728,13 +729,13 @@ export function createHeritageCharacterVariation(
   return next;
 }
 
-export function randomizeDna(current = {}, locks = {}, fieldLocks = {}) {
+export function randomizeDna(current = {}, locks = {}, fieldLocks = {}, options = {}) {
   const out = { ...current };
   SECTIONS.forEach((s) => {
     if (locks[s.key]) return;
     // Keep optional foot styling opt-in during whole-character randomization.
     if (s.key === "feet") { out.feet = { ...(current.feet || {}) }; return; }
-    out[s.key] = randomizeSection(s.key, current[s.key] || {}, fieldLocks?.[s.key] || {});
+    out[s.key] = randomizeSection(s.key, current[s.key] || {}, fieldLocks?.[s.key] || {}, options);
   });
   return out;
 }
