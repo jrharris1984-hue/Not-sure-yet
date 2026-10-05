@@ -93,3 +93,20 @@ class PromptCatalogSettingsTests(unittest.IsolatedAsyncioTestCase):
         fn,update=await self.setup_update()
         with self.assertRaises(ValueError):await fn({'prompt_catalog':{'sections':'invalid'}})
         update.assert_not_awaited()
+
+
+class BuilderWorkflowVisibilitySettingsTests(unittest.IsolatedAsyncioTestCase):
+    setup_update = PromptCatalogSettingsTests.setup_update
+    async def test_visibility_saves_deduplicated_ids_without_changing_other_settings(self):
+        handler,update=await self.setup_update()
+        result=await handler({'builder_hidden_workflow_ids':['one','two','one']})
+        self.assertEqual(result.doc['builder_hidden_workflow_ids'],['one','two'])
+        self.assertEqual(result.doc['ollama_text_model'],'my-model')
+        update.assert_awaited_once()
+
+    async def test_invalid_visibility_is_rejected_before_persistence(self):
+        for hidden in [None,'one',[1],[''],['x'*201]]:
+            handler,update=await self.setup_update()
+            with self.assertRaises(ValueError):
+                await handler({'builder_hidden_workflow_ids':hidden})
+            update.assert_not_awaited()

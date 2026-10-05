@@ -153,6 +153,7 @@ class Settings(BaseModel):
     prompt_catalog: Dict[str, Any] = Field(default_factory=lambda: {"sections": []})
     workflows: List[WorkflowTemplate] = Field(default_factory=list)
     default_workflow_id: str = ""
+    builder_hidden_workflow_ids: List[str] = Field(default_factory=list)
     # deprecated legacy fields (kept for older docs)
     image_workflow_json: str = ""
     video_workflow_json: str = ""
@@ -546,6 +547,11 @@ async def update_settings(body: Dict[str, Any] = Body(...)):
             current["prompt_catalog"] = validate_prompt_catalog(body["prompt_catalog"])
         except ValueError as exc:
             raise HTTPException(400, str(exc))
+    if "builder_hidden_workflow_ids" in body:
+        hidden = body["builder_hidden_workflow_ids"]
+        if not isinstance(hidden, list) or len(hidden) > 2000 or any(not isinstance(value, str) or not value.strip() or len(value) > 200 for value in hidden):
+            raise HTTPException(400, "Builder workflow visibility must contain a list of workflow IDs.")
+        current["builder_hidden_workflow_ids"] = list(dict.fromkeys(hidden))
     current["updated_at"] = now_iso()
     await db.settings.update_one({"id": "singleton"}, {"$set": current}, upsert=True)
     return Settings(**current)

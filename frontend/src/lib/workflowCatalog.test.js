@@ -1,4 +1,4 @@
-import { workflowCatalog, selectableCatalogWorkflows } from "./workflowCatalog";
+import { workflowCatalog, selectableCatalogWorkflows, builderCatalogWorkflows } from "./workflowCatalog";
 
 const workflow = (id, overrides = {}) => ({
   id, name: id, kind: "image", prompt_style: "sdxl", positive_node_id: "2", negative_node_id: "3",
@@ -44,4 +44,19 @@ test("a saved recipe can still select a duplicate by its original ID", () => {
   expect(selectableCatalogWorkflows(workflows, "", "").map((w) => w.id)).toEqual(["primary"]);
   expect(selectableCatalogWorkflows(workflows, "", "copy").map((w) => w.id)).toEqual(["primary", "copy"]);
   expect(selectableCatalogWorkflows(workflows, "", "copy")[1].name).toContain("saved recipe");
+});
+
+
+test("builder visibility hides the default without deleting it and can leave the list empty", () => {
+  const workflows=[workflow("default"),workflow("other",{json_str:"{}"})];
+  expect(builderCatalogWorkflows(workflows,"default","default",["default"]).map(w => w.id)).toEqual(["other"]);
+  expect(builderCatalogWorkflows(workflows,"default","default",["default","other"])).toEqual([]);
+  expect(workflows).toHaveLength(2);
+  expect(builderCatalogWorkflows(workflows,"default","").map(w => w.id)).toEqual(["default","other"]);
+});
+
+test("an explicitly opened recipe can retain a hidden workflow without revealing other hidden choices", () => {
+  const workflows=[workflow("default"),workflow("other",{json_str:"{}"})];
+  expect(builderCatalogWorkflows(workflows,"default","default",["default","other"],true).map(w => w.id)).toEqual(["default"]);
+  expect(selectableCatalogWorkflows(workflows,"default","")).toHaveLength(2);
 });
