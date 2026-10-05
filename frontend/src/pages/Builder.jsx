@@ -1216,9 +1216,11 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
     if (!bodyCreation && saved.reference_image) setReferenceImage({ name: saved.reference_image, type: "input", subfolder: "" });
     if (!bodyCreation && saved.edit_instruction) setEditInstruction(saved.edit_instruction);
     if (!bodyCreation) {
-      setQwenCamera({ azimuth: saved.qwen_camera_azimuth || QWEN_CAMERA_DEFAULTS.azimuth,
+      setQwenCamera({ ...QWEN_CAMERA_DEFAULTS, azimuth: saved.qwen_camera_azimuth || QWEN_CAMERA_DEFAULTS.azimuth,
         elevation: saved.qwen_camera_elevation || QWEN_CAMERA_DEFAULTS.elevation,
-        distance: saved.qwen_camera_distance || QWEN_CAMERA_DEFAULTS.distance });
+        distance: saved.qwen_camera_distance || 'medium shot',
+        denoise: saved.qwen_camera_denoise ?? 1,
+        loraStrength: saved.qwen_camera_lora_strength ?? 0.9 });
       setQwenReferenceNotes(saved.qwen_reference_notes || "");
       setPoseReferenceImage(saved.pose_reference_image ? { name: saved.pose_reference_image, type: "input" } : null);
       setPoseReferencePreview("");
@@ -1553,6 +1555,8 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
         qwen_camera_azimuth: isQwenReferenceWorkflow ? qwenCamera.azimuth : undefined,
         qwen_camera_elevation: isQwenReferenceWorkflow ? qwenCamera.elevation : undefined,
         qwen_camera_distance: isQwenReferenceWorkflow ? qwenCamera.distance : undefined,
+        qwen_camera_denoise: isQwenReferenceWorkflow && qwenEditVariant === "camera" ? qwenCamera.denoise : undefined,
+        qwen_camera_lora_strength: isQwenReferenceWorkflow && qwenEditVariant === "camera" ? qwenCamera.loraStrength : undefined,
         refine_denoise: isVariationWorkflow
           ? (editMode === "body_adjust"
               ? Math.min(0.36, 0.16 + (Math.abs(bodyAdjustAmount - 50) / 50) * 0.20)

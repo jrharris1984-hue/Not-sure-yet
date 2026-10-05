@@ -1,4 +1,17 @@
-export const QWEN_CAMERA_DEFAULTS = { azimuth: 'front view', elevation: 'eye-level shot', distance: 'medium shot' };
+export const QWEN_CAMERA_DEFAULTS = { azimuth: 'front view', elevation: 'eye-level shot', distance: 'close-up', denoise: 0.75, loraStrength: 0.9, sourceFraming: 'unknown' };
+export const QWEN_CAMERA_PRESETS = {
+  preserve: { label: 'Subtle camera change', distance: 'close-up', denoise: 0.75, loraStrength: 0.9 },
+  full: { label: 'Full viewpoint change', distance: 'medium shot', denoise: 1, loraStrength: 0.9 },
+};
+export function cameraWarnings(camera) {
+  const warnings = [];
+  const crop = { 'close-up': 0, 'medium shot': 1, 'wide shot': 2 };
+  if (camera.sourceFraming in crop && crop[camera.distance] > crop[camera.sourceFraming]) warnings.push('Wider framing than the source requires inventing unseen areas. Keep the source framing for a closer match.');
+  if (/back|side/.test(camera.azimuth)) warnings.push('Side and rear views reveal unseen details. Identity, clothing and background may drift.');
+  if (camera.denoise >= 0.95) warnings.push('Full reconstruction gives the camera more freedom, with more risk of changing the original image.');
+  if (camera.denoise <= 0.65) warnings.push('High preservation can weaken or prevent the requested viewpoint change.');
+  return warnings;
+}
 export const QWEN_CAMERA_OPTIONS = {
   azimuth: ['front view', 'front-right quarter view', 'right side view', 'back-right quarter view', 'back view', 'back-left quarter view', 'left side view', 'front-left quarter view'],
   elevation: ['low-angle shot', 'eye-level shot', 'elevated shot', 'high-angle shot'],
