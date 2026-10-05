@@ -84,3 +84,21 @@ test('lingerie stage preserves an existing lingerie set or supplies an explicit 
   expect(fallback.dna.wardrobe.outfit_preset).toBe('lace lingerie set');
   expect(fallback.notes.some(note => note.text.includes('until you select'))).toBe(true);
 });
+
+test.each(families)('%s keeps actual clothing in partial nudity and distinguishes full nudity', promptStyle => {
+  const wardrobe = { exposure_mode: 'partially nude', bottom: 'jeans', state: 'fully clothed' };
+  const partial = compileModelPrompts({ promptStyle, dna: base(wardrobe) }).positive;
+  expect(partial).toContain('some clothing remains');
+  expect(partial).toMatch(/jeans/i);
+  expect(partial).not.toMatch(/fully nude|fully clothed/);
+  const nude = compileModelPrompts({ promptStyle, dna: base({ ...wardrobe, exposure_mode: 'nude' }) }).positive;
+  expect(nude).toContain('fully nude');
+  expect(nude).not.toMatch(/jeans|some clothing remains/);
+  expect(wardrobe.state).toBe('fully clothed');
+});
+
+test.each(families)('%s supplies remaining coverage when partial nudity has no selected clothing', promptStyle => {
+  const { positive } = compileModelPrompts({ promptStyle, dna: base({ exposure_mode: 'partially nude', outfit_preset: 'nude' }) });
+  expect(positive).toContain('plain briefs');
+  expect(positive).not.toContain('fully nude');
+});

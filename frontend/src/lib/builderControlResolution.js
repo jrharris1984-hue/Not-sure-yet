@@ -80,6 +80,13 @@ export function resolveBuilderControls(source = {}) {
     if (!w.underwear || w.underwear === 'none') w.underwear = 'lace lingerie set';
     omit('wardrobe', 'state', 'Lingerie showing opens the outer outfit instead of the separate clothing-state choice.');
   }
+  if (exposure.mode === 'partially nude') {
+    omit('wardrobe', 'state', 'Partial nudity controls coverage instead of the separate clothing-state choice. Some clothing stays on.');
+    if (![w.outfit_set, w.outfit_preset, w.dress_style, w.skirt_style, w.top, w.bottom, w.underwear].some(item => item && item !== 'none')) {
+      w.underwear = 'plain briefs';
+      notes.push({ section: 'wardrobe', field: 'exposure_mode', text: 'Partial nudity keeps plain briefs on when no garment is selected. Choose a garment to customize the remaining coverage.' });
+    }
+  }
   if (exposure.suppressClothing) {
     for (const field of ['outfit_set', 'outfit_set_color', 'outfit_preset', 'dress_style', 'skirt_style', 'top', 'bottom', 'underwear', 'material', 'garment_color', 'garment_pattern', 'palette', 'fit', 'state']) {
       omit('wardrobe', field, 'Clothing coverage overrides this garment detail. Your selection stays saved; choose Use selected outfit or Open or shifted outfit to include it.');
