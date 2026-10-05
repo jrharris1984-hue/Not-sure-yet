@@ -62,3 +62,23 @@ it('loads a server-saved description and deletes only the saved copy', async () 
   expect(container.querySelector('select')).toBeNull();
   expect(container.querySelector('[data-testid="input-ai-freeform"]').value).toBe('Adult in a garden');
 });
+
+it('clears the current text and preview while preserving saved descriptions for reuse', async () => {
+  endpoints.listSavedDescriptions.mockResolvedValue([{id:'saved-1',name:'Garden',text:'Adult in a garden'}]);
+  endpoints.aiSceneDraft.mockResolvedValue({subjects:[{dna:DEFAULT_DNA}]});
+  const onApplySubjects=jest.fn();
+  await render({onApplySubjects});
+  const select=container.querySelector('[aria-label="Saved descriptions"]');
+  act(()=>{select.value='saved-1';select.dispatchEvent(new Event('change',{bubbles:true}));});
+  await act(async()=>button('Draft scene').click());
+  expect(container.querySelector('[data-testid="ai-dna-preview"]')).not.toBeNull();
+  act(()=>container.querySelector('[aria-label="Clear description"]').click());
+  expect(container.querySelector('[data-testid="input-ai-freeform"]').value).toBe('');
+  expect(container.querySelector('[data-testid="ai-dna-preview"]')).toBeNull();
+  expect(window.localStorage.getItem('ultra-studio:ai-description-draft:v1')).toBe('');
+  expect(container.querySelector('[aria-label="Saved descriptions"]').value).toBe('');
+  expect(endpoints.deleteSavedDescription).not.toHaveBeenCalled();
+  expect(onApplySubjects).not.toHaveBeenCalled();
+  act(()=>{select.value='saved-1';select.dispatchEvent(new Event('change',{bubbles:true}));});
+  expect(container.querySelector('[data-testid="input-ai-freeform"]').value).toBe('Adult in a garden');
+});
