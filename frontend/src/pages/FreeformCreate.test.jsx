@@ -8,6 +8,7 @@ jest.mock('@/lib/api', () => ({ endpoints: {comfyLoras:jest.fn(),settings:jest.f
 let container, root;
 beforeEach(() => {
   updateAssistantResearch({enabled:false,focus:'',result:null});
+  localStorage.clear();
   global.IS_REACT_ACT_ENVIRONMENT=true; jest.clearAllMocks();
   endpoints.comfyLoras.mockResolvedValue({loras:[]});
   endpoints.settings.mockResolvedValue({ai_provider:'ollama'});
@@ -129,4 +130,29 @@ test('Qwen freeform exposes two independent slots and dispatches them', async ()
   await act(async () => {workflow.value='c'; workflow.dispatchEvent(new Event('change',{bubbles:true}));});
   await act(async () => button('Generate').click());
   expect(endpoints.dispatchRender.mock.calls[2][0]).not.toHaveProperty('selected_loras');
+});
+
+test('unclassified installed LoRA can be assigned its documented family; saved triggers survive reopening', async () => {
+  const name='local_portrait.safetensors';
+  endpoints.listWorkflows.mockResolvedValue([{id:'q',name:'Qwen Image',kind:'image',prompt_style:'qwen_image'}]);
+  endpoints.comfyLoras.mockResolvedValue({loras:[name]});
+  await act(async () => root.render(<FreeformCreate/>));
+  expect(container.querySelector(`button[title="${name}"]`)).toBeNull();
+  const family=container.querySelector(`[aria-label="Model family for ${name}"]`);
+  await act(async () => {family.value='qwen_image'; family.dispatchEvent(new Event('change',{bubbles:true}));});
+  await act(async () => container.querySelector(`button[title="${name}"]`).click());
+  const triggers=container.querySelector('[data-testid="lora-trigger-words"]');
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(triggers,'portrait style, soft daylight');
+    triggers.dispatchEvent(new Event('input',{bubbles:true}));
+  });
+  await act(async () => button('Save trigger words').click());
+  expect(container.textContent).toContain('Trigger words saved in this browser.');
+  await act(async () => root.unmount()); root=createRoot(container);
+  await act(async () => root.render(<FreeformCreate/>));
+  await act(async () => container.querySelector(`button[title="${name}"]`).click());
+  expect(container.querySelector('[data-testid="lora-trigger-words"]').value).toBe('portrait style, soft daylight');
+  await enter('Portrait photograph');
+  await act(async () => button('Generate').click());
+  expect(endpoints.dispatchRender.mock.calls[0][0].selected_loras[0]).toMatchObject({name,triggers:['portrait style','soft daylight']});
 });
