@@ -115,6 +115,7 @@ test("lightbox puts image changes first and collapses secondary tools", async ()
   expect(tools.querySelector('[data-testid="gallery-improve-render"]')).not.toBeNull();
   expect(container.querySelector('[data-testid="image-recovery-panel"]').closest("details")).toBeNull();
   expect(container.querySelector('[data-testid="btn-lightbox-download"]').closest("details")).toBeNull();
+  expect(container.querySelector('[data-testid="btn-lightbox-copy-prompt"]').closest("details")).toBeNull();
   act(() => tools.querySelector("summary").click());
   expect(tools.open).toBe(true);
 });
@@ -144,4 +145,16 @@ test('recipe shortcuts have one label and the action guide distinguishes generat
   expect(guide.textContent).toContain('The card shortcut does the same thing');
   expect(guide.textContent).toContain('This is a new generation, not an edit');
   expect(guide.textContent).toContain('Uses this image to guide facial identity');
+});
+
+test('Copy prompt copies the saved prompt and reports clipboard failures', async () => {
+  const writeText = jest.fn().mockResolvedValue(undefined);
+  Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } });
+  await render('/gallery?render=a');
+  const button = container.querySelector('[data-testid="btn-lightbox-copy-prompt"]');
+  await act(async () => button.click());
+  expect(writeText).toHaveBeenCalledWith('Blue dress');
+  writeText.mockRejectedValueOnce(new Error('denied'));
+  await act(async () => button.click());
+  expect(require('sonner').toast.error).toHaveBeenCalledWith(expect.stringContaining('Could not copy'));
 });

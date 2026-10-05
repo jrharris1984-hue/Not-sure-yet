@@ -1,3 +1,4 @@
+import { applyPhotographicGuidance } from "@/lib/photographicGuidance";
 import VariationInstruction from "@/components/VariationInstruction";
 import { resolveBuilderControls } from "@/lib/builderControlResolution";
 import CreationOutputControls from "@/components/CreationOutputControls";
@@ -1068,11 +1069,18 @@ export default function Builder({ studio = "standard" }) {
     ...(selectedLora.name ? selectedLora.triggerWords || [] : []),
     ...(showSecondLora && secondaryLora.name ? secondaryLora.triggerWords || [] : []),
   ])];
+  const photoPrompts = applyPhotographicGuidance({
+    positive: positiveBeforeLoraTriggers,
+    negative: isVariationWorkflow ? (negativePromptOverride || "") : (negativePromptOverride || negative),
+    negativeStrategy: compiledPrompt.negativeStrategy,
+    enabled: !isVideoWorkflow && !["qwen_edit", "wan_i2v"].includes(activeCompiler)
+      && !(galleryRecipeMode === "exact" && promptOverride),
+  });
   const finalPositive = activeLoraTriggers.reduce(
     (text, trigger) => text.toLowerCase().includes(trigger.toLowerCase()) ? text : `${trigger}, ${text}`,
-    positiveBeforeLoraTriggers
+    photoPrompts.positive
   );
-  const finalNegative = isVariationWorkflow ? (negativePromptOverride || "") : (negativePromptOverride || negative);
+  const finalNegative = photoPrompts.negative;
   const preflightContext = useMemo(() => ({
     hasReferenceImage: !!referenceImage?.name,
     hasNegativeOverride: !!negativePromptOverride.trim(),
@@ -1357,7 +1365,7 @@ export default function Builder({ studio = "standard" }) {
         }));
         const foundationPrompt = [
           "Follow the supplied pose reference closely. Preserve coherent human anatomy, subject count, joint placement, and limb connections.",
-          positiveBeforeLoraTriggers,
+          photoPrompts.positive,
         ].filter(Boolean).join(" ");
 
         const foundationQueued = await endpoints.dispatchRender({

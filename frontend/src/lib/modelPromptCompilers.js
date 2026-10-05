@@ -1,3 +1,4 @@
+import { applyPhotographicGuidance } from "./photographicGuidance";
 import { resolveBuilderControls, sliderPromptSignature } from "./builderControlResolution";
 import { resolvePhysiqueControls, bustShapePrompt, photographicPrompt } from "./physiqueControls";
 import { preserveGeneralSelections } from "./selectionFidelity";
@@ -233,6 +234,7 @@ function chromaLeanSingleSubjectPrompt(dna = {}, primaryGuard = {}, sourceDna = 
     !nudity.suppressClothing && (wardrobe.outfit_set || wardrobe.dress_style || wardrobe.skirt_style || wardrobe.outfit_preset),
     !nudity.suppressClothing && !wardrobe.outfit_set && !wardrobe.dress_style ? wardrobe.top : "",
     !nudity.suppressClothing && !wardrobe.outfit_set && !wardrobe.dress_style && !wardrobe.skirt_style ? wardrobe.bottom : "",
+    !nudity.suppressClothing && wardrobe.underwear && wardrobe.underwear !== "none" ? wardrobe.underwear : "",
     wardrobe.hosiery_color,
     wardrobe.hosiery_type,
     wardrobe.hosiery_pattern,
@@ -1167,10 +1169,7 @@ export function compileModelPrompts(options = {}) {
     positive: photographic ? photographicPrompt(detailed ? normalizeSelectedProportionLanguage(protectedResult.positive, resolvedSubjects.find(subject => hasDetailedBodyScale(subject.dna)).dna) : protectedResult.positive) : protectedResult.positive,
   };
   if (photographic) {
-    protectedResult.positive += '; photographic skin texture with fine pores, lifelike light and shadow, realistic lens perspective';
-    if (protectedResult.negativeStrategy === 'text' && protectedResult.negative) {
-      protectedResult.negative = dedupeClauses(`${protectedResult.negative}, cartoon, anime, illustration, CGI, 3d render, doll-like skin, plastic skin`);
-    }
+    protectedResult = { ...protectedResult, ...applyPhotographicGuidance(protectedResult) };
   }
   const controls = resolvedSubjects.map((subject, index) => {
     const d = subject.dna;

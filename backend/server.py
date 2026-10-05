@@ -2351,6 +2351,11 @@ async def review_render_alignment(rid: str):
     image = await _render_image_bytes(render, settings)
     dna = render.get("dna_snapshot") or {}
     fields = {section: dna.get(section) or {} for section in ("identity", "face", "hair", "physique", "wardrobe", "pose")}
+    fields["wardrobe"] = dict(fields["wardrobe"])
+    if fields["wardrobe"].get("exposure_mode"):
+        # Named coverage supersedes the legacy slider stored in newer recipes.
+        fields["wardrobe"].pop("nudity_level", None)
+        fields["wardrobe"].pop("nudity_outfit", None)
     character = await db.characters.find_one({"id": render.get("character_id")}, {"_id": 0}) if render.get("character_id") else None
     reference = None
     if character and character.get("default_image_render_id"):
@@ -2367,6 +2372,8 @@ async def review_render_alignment(rid: str):
         "detail, retry_instruction), uncertain (array of short strings). Categories must be one of "
         "identity, wardrobe, pose, framing, anatomy, other. List a missing detail only if it was "
         "explicitly requested and visually assessable; mark occluded or ambiguous details uncertain. "
+        "Clothing exposure_mode is authoritative when supplied. Partial nudity requires some clothing "
+        "to remain; a fully undressed subject does not match that choice. "
         "Compare facial identity only when a reference image is provided. Ignore artistic preference, "
         "moral judgments, and body size plausibility. Retry instructions must be concise visual directions "
         "for a new render, without inventing new content. Limit matched and missing to five each and uncertain to three; keep each detail under 100 characters."
