@@ -3,10 +3,11 @@ import { createRoot } from 'react-dom/client';
 import FreeformCreate from './FreeformCreate';
 import { endpoints } from '@/lib/api';
 jest.mock('react-router-dom', () => ({ Link: ({to,children,...props}) => <a href={to} {...props}>{children}</a> }), {virtual:true});
-jest.mock('@/lib/api', () => ({ endpoints: {listWorkflows:jest.fn(),aiImproveGeneratedPrompt:jest.fn(),aiVideoPrompt:jest.fn(),dispatchRender:jest.fn(),uploadReferenceImage:jest.fn()} }));
+jest.mock('@/lib/api', () => ({ endpoints: {settings:jest.fn(),listWorkflows:jest.fn(),aiImproveGeneratedPrompt:jest.fn(),aiVideoPrompt:jest.fn(),dispatchRender:jest.fn(),uploadReferenceImage:jest.fn()} }));
 let container, root;
 beforeEach(() => {
   global.IS_REACT_ACT_ENVIRONMENT=true; jest.clearAllMocks();
+  endpoints.settings.mockResolvedValue({ai_provider:'ollama'});
   endpoints.listWorkflows.mockResolvedValue([{id:'image',name:'Image',kind:'image',prompt_style:'chroma'},{id:'video',name:'Animate',kind:'video'},{id:'text_video',name:'Video',kind:'text_video'}]);
   endpoints.dispatchRender.mockResolvedValue({id:'job',status:'queued'});
   container=document.createElement('div'); root=createRoot(container);
@@ -21,7 +22,7 @@ const enter = async text => { await act(async () => {
 test('AI suggestion is reviewable and only applied explicitly; generation has no DNA', async () => {
   await act(async () => root.render(<FreeformCreate/>)); await enter('watercolor forest');
   endpoints.aiImproveGeneratedPrompt.mockResolvedValue({positive:'Watercolor forest at dawn',negative:'blur'});
-  await act(async () => button('Refine with AI').click());
+  await act(async () => button('Refine with Ollama').click());
   expect(endpoints.aiImproveGeneratedPrompt).toHaveBeenCalledWith('watercolor forest','','chroma','Image',true);
   expect(container.querySelector('[aria-label="Your prompt"]').value).toBe('watercolor forest');
   expect(endpoints.dispatchRender).not.toHaveBeenCalled();
@@ -34,7 +35,7 @@ test('AI suggestion is reviewable and only applied explicitly; generation has no
 test.each([['video','image'],['text_video','text']])('%s uses the correct AI mode and upload requirement', async (mode, aiMode) => {
   await act(async () => root.render(<FreeformCreate mode={mode}/>)); await enter('Camera moves left');
   endpoints.aiVideoPrompt.mockResolvedValue({prompt:'Slow camera pan left'});
-  await act(async () => button('Refine with AI').click());
+  await act(async () => button('Refine with Ollama').click());
   expect(endpoints.aiVideoPrompt).toHaveBeenCalledWith('Camera moves left',aiMode);
   expect(!!container.querySelector('[aria-label="Starting image"]')).toBe(mode==='video');
   expect(button('Generate').disabled).toBe(mode==='video');
@@ -47,7 +48,7 @@ test.each([['video','image'],['text_video','text']])('%s uses the correct AI mod
 test('AI failure preserves the user prompt', async () => {
   await act(async () => root.render(<FreeformCreate/>)); await enter('forest');
   endpoints.aiImproveGeneratedPrompt.mockRejectedValue(new Error('Assistant offline'));
-  await act(async () => button('Refine with AI').click());
+  await act(async () => button('Refine with Ollama').click());
   expect(container.querySelector('[role="alert"]').textContent).toBe('Assistant offline');
   expect(container.querySelector('[aria-label="Your prompt"]').value).toBe('forest');
 });
@@ -74,7 +75,7 @@ test.each([['image', 'image'], ['video', 'image'], ['text_video', 'text']])('%s 
   await act(async () => root.render(<FreeformCreate mode={mode}/>)); await enter('forest');
   expect(container.querySelector('[aria-label="Use web research"]').checked).toBe(false);
   act(() => container.querySelector('[aria-label="Use web research"]').click());
-  await act(async () => button('Refine with AI').click());
+  await act(async () => button('Refine with Ollama').click());
   const options={use_web_research:true,research_focus:''};
   if(mode==='image') expect(endpoints.aiImproveGeneratedPrompt).toHaveBeenCalledWith('forest','','chroma','Image',true,options);
   else expect(endpoints.aiVideoPrompt).toHaveBeenCalledWith('forest',aiMode,options);
@@ -84,4 +85,13 @@ test.each([['image', 'image'], ['video', 'image'], ['text_video', 'text']])('%s 
   expect(endpoints.dispatchRender).not.toHaveBeenCalled();
   await act(async () => button('Apply suggestion').click());
   expect(container.querySelector('[aria-label="Your prompt"]').value).toBe('Researched forest');
+});
+
+test.each(['video','text_video'])('%s offers both video modes with Ollama assistance', async mode => {
+  await act(async () => root.render(<FreeformCreate mode={mode}/>));
+  const nav=container.querySelector('[aria-label="Video creation mode"]');
+  expect(nav.querySelector('a[href="/create/video"]')).not.toBeNull();
+  expect(nav.querySelector('a[href="/create/text-video"]')).not.toBeNull();
+  expect(nav.querySelector('[aria-current="page"]').textContent).toContain(mode==='video'?'Image to video':'Text to video');
+  expect(button('Refine with Ollama')).not.toBeUndefined();
 });
