@@ -1,3 +1,4 @@
+import VideoModeLinks from "@/components/VideoModeLinks";
 import RandomSceneControls from "@/components/RandomSceneControls";
 import { randomSceneSubjects } from "@/lib/randomScenes";
 import { IMAGE_TOOL_KINDS } from "@/components/HomeImageTools";
@@ -2206,6 +2207,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
 
           {isVideoWorkflow && (
             <div className="pane p-4 space-y-4" data-testid="wan-video-panel">
+              <VideoModeLinks mode="video"/>
               <div className="flex items-center gap-2">
                 <Camera className="h-4 w-4 text-emerald-300" />
                 <div className="section-label">WAN Image → Video</div>
@@ -3436,6 +3438,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
           )}
           {isTextVideoWorkflow && (
             <div className="pane p-4 space-y-4" data-testid="wan-text-video-panel">
+              <VideoModeLinks mode="text_video"/>
               <div className="flex items-center gap-2">
                 <Camera className="h-4 w-4 text-violet-300" />
                 <div className="section-label">WAN Text → Video</div>
