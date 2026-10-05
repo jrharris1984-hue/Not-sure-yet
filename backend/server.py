@@ -1,3 +1,4 @@
+from assistant_research import AssistantResearchMiddleware, enrich_assistant_request
 from qwen_reference_edit import configure_reference_edit, resolve_reference_models, configure_camera_strength
 from ai_research import research_sources, research_messages, research_response, prompt_research_query, prompt_research_messages, prompt_research_metadata
 """Ultra Studio Character DNA Builder — FastAPI backend."""
@@ -338,6 +339,7 @@ async def openrouter_chat(system: str, user: str, response_format_json: bool = F
     Falls back to Settings.openrouter_api_key if a legacy key is stored there and no
     VENICE_API_KEY is present, but by default reads from env."""
     s = await get_settings()
+    system, user = await enrich_assistant_request(system, user, retrieve_prompt_sources)
     if s.ai_provider == "ollama":
         model = await _ollama_model(s, vision=False)
         payload = {"model": model, "stream": False, "messages": [
@@ -418,6 +420,7 @@ async def ollama_models():
 
 
 async def _ollama_vision_json(settings: Settings, system: str, user: str, image_bytes: bytes, reference_bytes: Optional[bytes] = None) -> Dict[str, Any]:
+    system, user = await enrich_assistant_request(system, user, retrieve_prompt_sources, vision=True)
     model = await _ollama_model(settings, vision=True)
     def compact_image(data: bytes) -> str:
         with Image.open(io.BytesIO(data)) as source:
@@ -4574,12 +4577,14 @@ async def ai_suggest(body: SuggestBody):
 app.include_router(api)
 app.include_router(media_library_router)
 
+app.add_middleware(AssistantResearchMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
     allow_origins=os.environ.get("CORS_ORIGINS", "*").split(","),
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["X-Ultra-Research-Result"],
 )
 
 

@@ -1,3 +1,5 @@
+import { readDescriptionDraft, writeDescriptionDraft } from '@/lib/builderDraft';
+import { WebPromptResearchOptions } from '@/components/WebPromptResearch';
 import { useEffect, useState } from "react";
 import { Textarea } from "@/components/ui/textarea";
 import { Sparkles, Wand2, Loader2, ChevronDown, Save, Trash2 } from "lucide-react";
@@ -5,12 +7,6 @@ import { toast } from "sonner";
 import { endpoints } from "@/lib/api";
 import { DEFAULT_DNA } from "@/lib/dna";
 import { normalizeAiSceneSubjects } from "@/lib/aiSceneDraft";
-
-const DESCRIPTION_DRAFT_KEY = "ultra-studio:ai-description-draft:v1";
-const readDescriptionDraft = () => {
-  try { return window.localStorage.getItem(DESCRIPTION_DRAFT_KEY) || ""; }
-  catch { return ""; }
-};
 
 export default function AiAssistBar({ dna, onApplyDna, onApplySubjects, aiProvider = "AI" }) {
   const [text, setText] = useState(readDescriptionDraft);
@@ -25,8 +21,7 @@ export default function AiAssistBar({ dna, onApplyDna, onApplySubjects, aiProvid
   const [savedError, setSavedError] = useState("");
 
   useEffect(() => {
-    try { window.localStorage.setItem(DESCRIPTION_DRAFT_KEY, text); }
-    catch { /* Named saves remain available when browser storage is unavailable. */ }
+    writeDescriptionDraft(text);
   }, [text]);
 
   useEffect(() => {
@@ -133,6 +128,7 @@ export default function AiAssistBar({ dna, onApplyDna, onApplySubjects, aiProvid
         <ChevronDown className={`h-4 w-4 text-zinc-400 transition-transform duration-200 ${expanded ? "rotate-180" : ""}`} />
       </button>
       {expanded && <div className="space-y-3 ai-assist-reveal">
+      <WebPromptResearchOptions disabled={!!busy}/>
       <p className="text-xs text-zinc-400">Describe one to four adults. AI will propose a separate profile for each person. Refine changes only the current subject.</p>
 
       <div className="space-y-2">
@@ -164,7 +160,7 @@ export default function AiAssistBar({ dna, onApplyDna, onApplySubjects, aiProvid
       </div>
 
       <div className="space-y-2">
-        <p className="text-[11px] text-zinc-400">Your draft stays here after applying. Save a named description to reuse it on any device.</p>
+        <p className="text-[11px] text-zinc-400">Your draft stays during this session. Closing or refreshing clears unfinished text. Save a named description to reuse it on any device.</p>
         <div className="flex flex-wrap gap-2">
           <input aria-label="Description name" placeholder="Description name" maxLength={100}
             value={descriptionName} onChange={e => setDescriptionName(e.target.value)}

@@ -137,3 +137,66 @@ test('supporting foot fallback follows the subject and uses clear foot-size lang
   expect(positive.indexOf('Foot details:')).toBeGreaterThan(positive.indexOf('subject:'));
   expect(positive).toContain('very large feet');expect(positive).not.toContain('size queen');
 });
+
+test.each(families)('%s keeps the body pose when a foot pose requests a different stance', promptStyle => {
+  const dna = base();
+  dna.pose.action = 'sitting on edge';
+  dna.feet = { composition_mode: 'feet focus', framing: 'full body', foot_pose: 'walking barefoot' };
+  const original = JSON.stringify(dna);
+  const resolved = resolveBuilderControls(dna);
+  expect(resolved.dna.pose.action).toBe('sitting on edge');
+  expect(resolved.dna.feet.foot_pose).toBe('');
+  expect(compileModelPrompts({ dna, promptStyle }).positive).not.toContain('walking barefoot');
+  expect(JSON.stringify(dna)).toBe(original);
+});
+
+test('weight-bearing poses omit competing sole presentation and under-sole framing', () => {
+  const dna = base(); dna.pose.action = 'squatting spread';
+  dna.feet = { composition_mode: 'feet focus', framing: 'POV under foot', sole_presentation: 'both soles toward camera', foot_pose: 'soles facing lens' };
+  const resolved = resolveBuilderControls(dna);
+  expect(resolved.dna.pose.action).toBe('squatting spread');
+  expect(resolved.dna.feet).toMatchObject({ sole_presentation: '', foot_pose: '', framing: '' });
+  expect(resolved.notes.some(note => note.field === 'sole_presentation')).toBe(true);
+});
+
+test('compatible seated sole presentation remains available', () => {
+  const dna = base(); dna.pose.action = 'sitting on edge';
+  dna.feet = { composition_mode: 'feet focus', sole_presentation: 'both soles toward camera', foot_pose: 'soles facing lens', framing: 'sole close-up' };
+  expect(resolveBuilderControls(dna).dna.feet).toEqual(dna.feet);
+});
+
+test.each([
+  ['beach', 'polished wood floor', ''], ['bedroom', 'warm sand', ''],
+  ['beach', 'warm sand', 'warm sand'], ['studio', 'tile floor', 'tile floor'],
+  ['', 'shallow water', 'shallow water'],
+])('scene %s resolves surface %s conservatively', (environment, ground_surface, expected) => {
+  const dna = base(); dna.scene.environment = environment;
+  dna.feet = { composition_mode: 'feet focus', ground_surface };
+  expect(resolveBuilderControls(dna).dna.feet.ground_surface).toBe(expected);
+});
+
+test('dangling feet omit the contact surface without changing scene surroundings', () => {
+  const dna = base(); dna.pose.action = 'sitting on edge'; dna.scene.environment = 'bedroom';
+  dna.feet = { composition_mode: 'feet focus', foot_pose: 'feet dangling', ground_surface: 'soft carpet' };
+  const resolved = resolveBuilderControls(dna).dna;
+  expect(resolved.feet.ground_surface).toBe('');
+  expect(resolved.scene.environment).toBe('bedroom');
+});
+
+test.each(families)('%s lets explicit coverage replace embedded outfit footwear and stockings', promptStyle => {
+  const dna = base();
+  dna.wardrobe = { outfit_set: 'French maid dress with apron, matching lingerie, stockings and heels', footwear: 'barefoot', hosiery_type: 'footless tights' };
+  dna.feet = { composition_mode: 'feet focus', framing: 'full body', pedicure: 'painted red', sole_texture: 'natural sole creases' };
+  expect(resolveBuilderControls(dna).dna.wardrobe.outfit_set).toBe('French maid dress with apron, matching lingerie');
+  const { positive } = compileModelPrompts({ dna, promptStyle });
+  expect(positive).toContain('French maid dress');
+  expect(positive).toContain('footless tights');
+  expect(positive).not.toMatch(/stockings and heels/);
+  expect(positive).toContain('painted red');
+});
+
+test('coverage included in a complete outfit hides bare-sole details even without separate shoe fields', () => {
+  const dna = base(); dna.wardrobe.outfit_set = 'classic maid dress with lace headpiece, stockings and pumps';
+  dna.feet = { composition_mode: 'feet focus', sole_texture: 'smooth soles', sole_presentation: 'soles up', pedicure: 'painted red', foot_state: ['bare'] };
+  expect(resolveBuilderControls(dna).dna.feet).toMatchObject({ sole_texture: '', sole_presentation: '', pedicure: '', foot_state: [] });
+});

@@ -501,6 +501,13 @@ export function resolveZImageComposition(dna = {}, options = {}) {
     composition = `PRIMARY COMPOSITION — ${crop}, coherent perspective`;
   }
 
+  const selectedView = {
+    back: "REQUIRED VIEW — camera behind the subject, rear view of the body, subject facing away from the camera",
+    front: "REQUIRED VIEW — front view of the body, subject facing the camera",
+    profile: "REQUIRED VIEW — side profile of the body",
+  }[lower(resolved.pose?.angle)];
+  if (selectedView && !options.forceMulti) composition = `${composition}; ${selectedView}`;
+
   const multiBodyGuard = options.forceMulti
     ? "MULTI-SUBJECT ANATOMY — each adult is a separate complete person with one head, one torso and pelvis, two arms and two legs; keep visible separation between torsos and pelvises; no merged bodies, shared limbs, stacked torsos or duplicated anatomy"
     : "";
@@ -616,8 +623,8 @@ function kreaWardrobeSentence(dna = {}, label = "") {
     !suppressClothing && !w.outfit_set && !w.dress_style && w.top && w.top !== "none" ? w.top : "",
     !suppressClothing && !w.outfit_set && !w.dress_style && !w.skirt_style && w.bottom && w.bottom !== "none" ? w.bottom : "",
     !suppressClothing && !w.outfit_set && w.underwear && w.underwear !== "none" ? w.underwear : "",
-    !w.outfit_set && w.hosiery_type ? `${w.hosiery_color ? `${w.hosiery_color} ` : ""}${w.hosiery_denier ? `${w.hosiery_denier} ` : ""}${w.hosiery_pattern && w.hosiery_pattern !== "plain" ? `${w.hosiery_pattern} ` : ""}${w.hosiery_type}` : "",
-    feetVisible && (!w.outfit_set || w.footwear === 'barefoot') ? (w.heel_type ? `${w.heel_color ? `${w.heel_color} ` : ""}${w.heel_finish ? `${w.heel_finish} ` : ""}${w.heel_type}${w.heel_height ? `, ${w.heel_height} heel` : ""}` : w.footwear) : "",
+    w.hosiery_type ? `${w.hosiery_color ? `${w.hosiery_color} ` : ""}${w.hosiery_denier ? `${w.hosiery_denier} ` : ""}${w.hosiery_pattern && w.hosiery_pattern !== "plain" ? `${w.hosiery_pattern} ` : ""}${w.hosiery_type}` : "",
+    feetVisible ? (w.heel_type ? `${w.heel_color ? `${w.heel_color} ` : ""}${w.heel_finish ? `${w.heel_finish} ` : ""}${w.heel_type}${w.heel_height ? `, ${w.heel_height} heel` : ""}` : w.footwear) : "",
     w.glasses_style ? `${w.glasses_color ? `${w.glasses_color} ` : ""}${w.glasses_style}` : "",
     w.nail_color ? `${w.nail_color} fingernails` : "",
     w.nail_shape ? `${w.nail_shape} nail shape` : "",

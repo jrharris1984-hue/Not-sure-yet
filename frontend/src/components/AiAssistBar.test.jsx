@@ -1,3 +1,4 @@
+import { writeDescriptionDraft, readDescriptionDraft } from '@/lib/builderDraft';
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import AiAssistBar from './AiAssistBar';
@@ -12,6 +13,7 @@ let container, root;
 beforeEach(() => {
   global.IS_REACT_ACT_ENVIRONMENT = true;
   window.localStorage.clear();
+  writeDescriptionDraft('');
   jest.clearAllMocks();
   endpoints.listSavedDescriptions.mockResolvedValue([]);
   container = document.createElement('div'); document.body.appendChild(container);
@@ -28,7 +30,7 @@ const type = (element, value) => act(() => {
   element.dispatchEvent(new Event('input', { bubbles: true }));
 });
 it('restores unfinished text and keeps it after applying a scene', async () => {
-  window.localStorage.setItem('ultra-studio:ai-description-draft:v1', 'An adult in a garden');
+  writeDescriptionDraft('An adult in a garden');
   endpoints.aiSceneDraft.mockResolvedValue({ subjects: [{ dna: DEFAULT_DNA }] });
   const onApplySubjects = jest.fn();
   await render({ onApplySubjects });
@@ -38,7 +40,7 @@ it('restores unfinished text and keeps it after applying a scene', async () => {
   await act(async () => button('Apply settings').click());
   expect(onApplySubjects).toHaveBeenCalledTimes(1);
   expect(input.value).toBe('An adult in a garden');
-  expect(window.localStorage.getItem('ultra-studio:ai-description-draft:v1')).toBe(input.value);
+  expect(readDescriptionDraft()).toBe(input.value);
 });
 it('saves the original text under a name without calling the AI', async () => {
   endpoints.createSavedDescription.mockResolvedValue({ id: 'saved-1', name: 'Garden', text: 'Adult in a garden' });
@@ -75,7 +77,7 @@ it('clears the current text and preview while preserving saved descriptions for 
   act(()=>container.querySelector('[aria-label="Clear description"]').click());
   expect(container.querySelector('[data-testid="input-ai-freeform"]').value).toBe('');
   expect(container.querySelector('[data-testid="ai-dna-preview"]')).toBeNull();
-  expect(window.localStorage.getItem('ultra-studio:ai-description-draft:v1')).toBe('');
+  expect(readDescriptionDraft()).toBe('');
   expect(container.querySelector('[aria-label="Saved descriptions"]').value).toBe('');
   expect(endpoints.deleteSavedDescription).not.toHaveBeenCalled();
   expect(onApplySubjects).not.toHaveBeenCalled();

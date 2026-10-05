@@ -2,6 +2,13 @@ import { mediaPeopleMetadata, mediaLibraryTraits } from "./mediaLibraryMetadata"
 import { buildMediaSubjects } from "./mediaLibraryImport";
 import { expectedSubjectCount } from "./dna";
 
+test("body orientation maps independently from camera elevation", () => {
+  const result = buildMediaSubjects({ orientation: "front-facing", cameraAngle: "eye level" });
+  expect(result.subjects[0].dna.pose.angle).toBe("front");
+  expect(result.subjects[0].dna.camera.angle).toBe("eye-level");
+  expect(result.notes.join("\n")).not.toMatch(/Body orientation:|Camera angle:/);
+});
+
 test("reads structured counts, JSON analysis and per-person records", () => {
   const result = mediaPeopleMetadata({ analysis_json: JSON.stringify({ person_count: "2", people: [{ hair_color: "black" }, { hair_color: "blonde" }] }) });
   expect(result.personCount).toBe(2);
