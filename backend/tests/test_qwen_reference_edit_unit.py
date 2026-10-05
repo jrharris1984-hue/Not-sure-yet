@@ -7,7 +7,7 @@ import sys
 import unittest
 from unittest.mock import AsyncMock
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from qwen_reference_edit import configure_reference_edit, resolve_reference_models, reference_edit_prompt, AZIMUTHS, ELEVATIONS, DISTANCES
+from qwen_reference_edit import configure_reference_edit, resolve_reference_models, reference_edit_prompt, configure_camera_strength, AZIMUTHS, ELEVATIONS, DISTANCES
 
 ROOT = Path(__file__).resolve().parents[1]
 def graph(variant):
@@ -25,6 +25,20 @@ def object_info(workflow):
     return result
 
 class ReferenceWorkflowTests(unittest.TestCase):
+    def test_camera_preservation_only_changes_task_strengths(self):
+        workflow = graph('camera')
+        original = copy.deepcopy(workflow)
+        configure_camera_strength(workflow, 0.75, 0.85)
+        self.assertEqual(workflow['sampler']['inputs']['denoise'], 0.75)
+        self.assertEqual(workflow['task_lora']['inputs']['strength_model'], 0.85)
+        workflow['sampler']['inputs']['denoise'] = original['sampler']['inputs']['denoise']
+        workflow['task_lora']['inputs']['strength_model'] = original['task_lora']['inputs']['strength_model']
+        self.assertEqual(workflow, original)
+        for denoise, strength in [(0.49,0.9),(1.01,0.9),(0.75,0.79),(0.75,1.01)]:
+            with self.assertRaises(ValueError): configure_camera_strength(workflow, denoise, strength)
+        configure_camera_strength(workflow)
+        self.assertEqual(workflow, original)
+
     def test_two_references_keep_separate_roles_and_latent_uses_original(self):
         workflow = graph('pose')
         prompt = configure_reference_edit(workflow, 'pose', 'original.png', 'target.png')
@@ -94,7 +108,7 @@ class EditDispatchTests(unittest.IsolatedAsyncioTestCase):
                                    qwen_camera_azimuth='front view',qwen_camera_elevation='eye-level shot',qwen_camera_distance='medium shot',
                                    edit_instruction='stale generic instruction',preserve_unmentioned=True),
             's':SimpleNamespace(comfyui_url='http://comfy'), 'httpx':SimpleNamespace(AsyncClient=lambda **kwargs:Client(),HTTPError=RuntimeError),
-            'configure_reference_edit':configure_reference_edit, 'resolve_reference_models':resolve_reference_models,
+            'configure_reference_edit':configure_reference_edit, 'resolve_reference_models':resolve_reference_models, 'configure_camera_strength':configure_camera_strength,
             'r':record,'db':SimpleNamespace(renders=SimpleNamespace(insert_one=AsyncMock()))}
         module=ast.fix_missing_locations(ast.Module(body=[wrapper],type_ignores=[]))
         exec(compile(module,'server.py','exec'),ns)
@@ -106,3 +120,13 @@ class EditDispatchTests(unittest.IsolatedAsyncioTestCase):
         failed=await ns['run']()
         self.assertEqual(failed['status'],'failed')
         self.assertIn('target-pose',failed['error'])
+        workflow = graph('camera')
+        ns['workflow'] = workflow
+        ns['wf_template'].edit_variant = 'camera'
+        ns['body'].qwen_camera_denoise = 0.75
+        ns['body'].qwen_camera_lora_strength = 0.85
+        ns['body'].qwen_camera_distance = 'close-up'
+        result = await ns['run']()
+        self.assertTrue(result.startswith('<sks> front view eye-level shot close-up'))
+        self.assertEqual(workflow['sampler']['inputs']['denoise'], 0.75)
+        self.assertEqual(workflow['task_lora']['inputs']['strength_model'], 0.85)
