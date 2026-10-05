@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { endpoints } from '@/lib/api';
+import VideoModeLinks from '@/components/VideoModeLinks';
 import AIResearchPanel from '@/components/AIResearchPanel';
 import { WebPromptResearchOptions, PromptResearchNotes } from '@/components/WebPromptResearch';
 import { FREEFORM_MODES, freeformPayload, freeformWorkflows } from '@/lib/freeformGeneration';
@@ -8,6 +9,12 @@ import { FREEFORM_MODES, freeformPayload, freeformWorkflows } from '@/lib/freefo
 const field = 'w-full rounded-lg border hairline bg-elevated px-3 py-2 text-sm';
 export default function FreeformCreate({ mode = 'image' }) {
   const config = FREEFORM_MODES[mode];
+  const [aiProvider, setAiProvider] = useState('AI');
+  useEffect(() => {
+    let live = true;
+    endpoints.settings().then(settings => { if (live) setAiProvider(settings.ai_provider === 'ollama' ? 'Ollama' : 'Venice'); }).catch(() => {});
+    return () => { live = false; };
+  }, []);
   const [workflows, setWorkflows] = useState([]), [workflowId, setWorkflowId] = useState('');
   const [prompt, setPrompt] = useState(''), [negative, setNegative] = useState('');
   const [source, setSource] = useState(null), [preview, setPreview] = useState('');
@@ -59,6 +66,7 @@ export default function FreeformCreate({ mode = 'image' }) {
   return <div className="mx-auto max-w-4xl space-y-5 p-4 sm:p-6" data-testid="freeform-create">
     <Link to="/" className="text-sm text-cyan-300">← Main screen</Link>
     <header><h1 className="font-display text-3xl font-bold">{config.title}</h1><p className="mt-2 text-zinc-400">{config.description} Write freely or let AI help refine your prompt.</p></header>
+    {mode !== 'image' && <VideoModeLinks mode={mode}/>}
     {error && <p role="alert" className="rounded-lg border border-red-400/30 p-3 text-red-200">{error}</p>}
     <section className="pane space-y-4 p-4">
       <label className="block space-y-1">Workflow<select aria-label="Workflow" className={field} value={workflowId} disabled={!!busy} onChange={e => { setWorkflowId(e.target.value); setSuggestion(null); }}>
@@ -68,7 +76,7 @@ export default function FreeformCreate({ mode = 'image' }) {
       {mode === 'video' && <div className="space-y-2"><label className="block">Starting image<input aria-label="Starting image" type="file" accept="image/png,image/jpeg,image/webp" disabled={!!busy} onChange={upload} className="block mt-2 text-sm"/></label>
         {preview && <><img src={preview} alt="Starting frame" className="max-h-64 rounded-lg object-contain"/><button disabled={!!busy} onClick={() => { URL.revokeObjectURL(previewRef.current); previewRef.current = ''; setPreview(''); setSource(null); }}>Remove image</button></>}</div>}
       <label className="block space-y-1">{mode === 'video' ? 'Movement and camera prompt' : 'Your prompt'}<textarea aria-label="Your prompt" className={field} rows={7} value={prompt} disabled={!!busy} onChange={e => { setPrompt(e.target.value); setSuggestion(null); setQueued(false); }} placeholder={mode === 'video' ? 'Describe how the subject moves and how the camera follows.' : 'Describe the scene, subjects, style, lighting, and composition.'}/></label>
-      <button className="rounded-lg border border-cyan-400/40 px-4 py-2 text-cyan-200" disabled={!!busy || !prompt.trim() || !workflow} onClick={assist}>Refine with AI</button>
+      <button className="rounded-lg border border-cyan-400/40 px-4 py-2 text-cyan-200" disabled={!!busy || !prompt.trim() || !workflow} onClick={assist}>Refine with {aiProvider}</button>
       <WebPromptResearchOptions enabled={useWebResearch} onEnabled={setUseWebResearch} focus={researchFocus} onFocus={setResearchFocus} disabled={!!busy}/>
       <p className="text-xs text-zinc-400">Uses your prompt assistant from Settings. Review the suggestion before applying it.</p>
       {suggestion && <section className="space-y-3 rounded-lg border border-cyan-400/30 p-3" aria-label="AI suggestion"><h2 className="font-semibold">AI suggestion</h2><textarea aria-label="Suggested prompt" className={field} rows={6} value={suggestion.positive} onChange={e => setSuggestion({ ...suggestion, positive: e.target.value })}/>
