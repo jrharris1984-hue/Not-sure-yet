@@ -1,4 +1,5 @@
 import { heritagePrompt } from "./heritageProfiles";
+import { ageAppearancePrompt } from './ageAppearance';
 import { resolveWardrobeMode } from "./wardrobeMode";
 import { catalogDna, catalogSelection, customCatalogPrompt, getPromptCatalog, applyCatalogRules } from "./promptCatalog";
 import { applyPhotographicGuidance } from "./photographicGuidance";
@@ -201,6 +202,7 @@ function chromaLeanSingleSubjectPrompt(dna = {}, primaryGuard = {}, sourceDna = 
   const gender = id.gender === "male" ? "man" : "woman";
   const subject = [
     age ? `${age}-year-old adult ${gender}` : `adult ${gender}`,
+    ageAppearancePrompt(age),
     heritagePrompt(id.ethnicity, dna),
     ph.body_type && `${ph.body_type} build`,
     ph.height && ph.height !== "average" ? `${ph.height} height` : "",
@@ -558,7 +560,7 @@ function kreaSubjectSentence(dna = {}, label = "") {
   const skin = dna.skin || {};
   const age = Number(id.age || 0);
   const person = kreaGenderLabel(id.gender);
-  const head = age ? `${age}-year-old adult ${person}` : `adult ${person}`;
+  const head = [age ? `${age}-year-old adult ${person}` : `adult ${person}`, ageAppearancePrompt(age)].filter(Boolean).join(', ');
   const body = kreaList(
     heritagePrompt(id.ethnicity, dna),
     ph.height && ph.height !== "average" ? `${ph.height} height` : "",

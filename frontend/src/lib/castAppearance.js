@@ -1,3 +1,4 @@
+import { skinAfterAgeChange } from './ageAppearance';
 export const CAST_AGE_OPTIONS = ["individual ages", "same age", "age contrast"];
 export const CAST_RESEMBLANCE_OPTIONS = ["from cast pairing", "individual faces", "similar facial features", "matching faces"];
 const FACE_STRUCTURE = ["eye_shape", "eye_color", "jawline", "nose", "lips"];
@@ -14,10 +15,11 @@ export function applyCastAppearance(subjects = [], scenario = {}, sectionLocks =
   const contrastAge = primaryAge + gap <= 80 ? primaryAge + gap : Math.max(18, primaryAge - gap);
   return subjects.map((subject, index) => {
     if (!index) return subject;
-    const dna = clone(subject.dna || {});
+    let dna = clone(subject.dna || {});
     const locked = (section, key) => sectionLocks[section] || subject.field_locks?.[section]?.[key];
     if (["same age", "age contrast"].includes(scenario.cast_age_mode) && !locked("identity", "age")) {
       dna.identity = { ...dna.identity, age: scenario.cast_age_mode === "same age" ? primaryAge : contrastAge };
+      if (!locked('skin','texture')) dna = skinAfterAgeChange(dna, subject.dna?.identity?.age);
     }
     if (["similar facial features", "matching faces"].includes(scenario.cast_resemblance)) {
       dna.face = { ...dna.face };
@@ -49,6 +51,8 @@ export function castAppearancePrompt(subjects = []) {
 export function editCastSubjectDna(subjects, subjectId, dna) {
   const previous = subjects.find(subject => subject.id === subjectId)?.dna || {};
   const ageChanged = previous.identity?.age !== dna.identity?.age;
+  const subject = subjects.find(item => item.id === subjectId);
+  if (!subject?.field_locks?.skin?.texture) dna = skinAfterAgeChange(dna, previous.identity?.age);
   const faceChanged = FACE_STRUCTURE.some(key => previous.face?.[key] !== dna.face?.[key]);
   return subjects.map((subject, index) => {
     const nextDna = subject.id === subjectId ? dna : subject.dna;

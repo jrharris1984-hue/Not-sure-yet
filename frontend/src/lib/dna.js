@@ -1,3 +1,4 @@
+import { ageAppearancePrompt, resolveAgeSkin } from './ageAppearance';
 import { HERITAGE_GROUPS, HERITAGE_LABELS, HERITAGE_PROFILES, heritageLabel } from "./heritageProfiles";
 import { ADDITIONAL_OUTFIT_GROUPS, OUTFIT_SET_LABELS, LAYERED_OUTFIT_GROUP, SET_LINGERIE_GROUPS } from "./completeOutfitSets";
 import { resolveWardrobeMode } from "./wardrobeMode";
@@ -15,7 +16,7 @@ export const SECTIONS = [
     title: "Identity",
     fields: [
       { key: "gender", type: "chips", label: "Gender", options: ["female", "male"] },
-      { key: "age", type: "slider", label: "Age (adult)", min: 18, max: 80, step: 1, defaultValue: 30 },
+      { key: "age", type: "slider", label: "Age (adult)", min: 18, max: 80, step: 1, defaultValue: 30, help: "Changing age updates skin texture automatically. New images use age-specific facial detail; hair color and cosmetic finishes stay separate." },
       { key: "ethnicity", type: "chips", label: "Ethnicity", groups: HERITAGE_GROUPS, optionLabels: HERITAGE_LABELS },
       { key: "archetype", type: "chips", label: "Archetype (character theme)", groups: [
         { name: "Everyday", options: ["girl next door", "athlete", "artist", "socialite", "scholar"] },
@@ -98,7 +99,7 @@ export const SECTIONS = [
         { name: "Medium", options: ["olive", "tan", "warm tan", "golden", "caramel", "bronze"] },
         { name: "Deep", options: ["deep bronze", "dark brown", "rich brown", "mahogany", "ebony"] },
       ] },
-      { key: "texture", type: "chips", label: "Texture", groups: [
+      { key: "texture", type: "chips", label: "Texture", help: "Age changes select an appropriate skin texture automatically. Cosmetic finishes such as Matte or Dewy stay selected while facial detail follows the age.", groups: [
         { name: "Natural", options: ["natural pores", "fine lines", "visible skin texture", "freckled", "subtle acne marks", "mature skin texture"] },
         { name: "Finish", options: ["smooth", "textured", "matte", "dewy", "oiled", "sweat-glistening", "satin skin finish"] },
       ] },
@@ -1168,6 +1169,7 @@ function visualScale(value, noun, labels) {
 }
 
 function _veniceSubjectBlock(dna = {}, opts = {}) {
+  dna = resolveAgeSkin(dna);
   dna = { ...dna, wardrobe: resolveWardrobeMode(dna.wardrobe || {}) };
   const raunch = !!opts.raunch;
   const val = (section, field) => dna?.[section]?.[field] || "";
@@ -1196,17 +1198,8 @@ function _veniceSubjectBlock(dna = {}, opts = {}) {
     : id.gender === "androgynous" ? "androgynous adult"
     : "woman";
   const age = Number(id.age || 0);
-  const ageBand = age >= 60 ? "older mature adult"
-    : age >= 50 ? "early-to-late 50s"
-    : age >= 45 ? "mid-to-late 40s"
-    : age >= 40 ? "early 40s"
-    : age >= 35 ? "mid-to-late 30s"
-    : "";
-  const ageStr = age >= 45
-    ? `(${age}-year-old mature ${gender}:1.35), ${ageBand}, fine lines around the eyes and mouth, natural mature facial texture`
-    : age >= 35
-      ? `(${age}-year-old adult ${gender}:1.2), ${ageBand}, subtle expression lines`
-      : age ? `${age}-year-old adult ${gender}` : `adult ${gender}`;
+  const ageHead = age ? `${age}-year-old ${age >= 45 ? 'mature' : 'adult'} ${gender}` : `adult ${gender}`;
+  const ageStr = join([age >= 45 ? `(${ageHead}:1.35)` : ageHead, ageAppearancePrompt(age)]);
   const heritage = exp("identity", "ethnicity");
   const skinTone = exp("skin", "tone") || (skin.tone ? `${skin.tone} skin` : "");
   const bodyType = exp("physique", "body_type");

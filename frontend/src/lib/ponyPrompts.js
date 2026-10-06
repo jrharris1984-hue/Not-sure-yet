@@ -1,3 +1,4 @@
+import { ageAppearancePrompt, resolveAgeSkin } from './ageAppearance';
 import { bustShapePrompt } from "./physiqueControls";
 import { gluteSizePrompt } from "@/lib/gluteControls";
 // Pony V6 XL prompt builder — uses Pony's score_9 quality prefix and booru-style tag weighting.
@@ -323,6 +324,7 @@ function _ponySharedBlock(dna = {}, opts = {}, subjectCount = 1) {
 }
 
 function _ponySubjectBlock(dna = {}, opts = {}) {
+  dna = resolveAgeSkin(dna);
   const raunch = !!opts.raunch;
   const val = (section, field) => dna?.[section]?.[field] || "";
   const exp = (section, field) => {
@@ -344,16 +346,8 @@ function _ponySubjectBlock(dna = {}, opts = {}) {
     : id.gender === "androgynous" ? "androgynous adult"
     : "woman";
   const age = Number(id.age || 0);
-  const ageBand = age >= 60 ? "older mature adult"
-    : age >= 50 ? "50s"
-    : age >= 45 ? "mid-to-late 40s"
-    : age >= 40 ? "early 40s"
-    : age >= 35 ? "mid-to-late 30s" : "";
-  const ageStr = age >= 45
-    ? w(`${age}-year-old mature ${gender}, ${ageBand}, fine lines around eyes and mouth, natural mature facial texture`, 1.35)
-    : age >= 35
-      ? w(`${age}-year-old adult ${gender}, ${ageBand}, subtle expression lines`, 1.2)
-      : age ? `${age}-year-old adult ${gender}` : `adult ${gender}`;
+  const ageHead = age ? `${age}-year-old ${age >= 45 ? 'mature' : 'adult'} ${gender}` : `adult ${gender}`;
+  const ageStr = join([age >= 45 ? w(ageHead, 1.35) : ageHead, ageAppearancePrompt(age)]);
   const heritage = exp("identity", "ethnicity");
   const curveBuiltIn = ["curvy", "voluptuous", "plus size", "hourglass", "bombshell"].includes(ph.body_type);
   const curveModifier = ph.curves > 85 && !curveBuiltIn ? "pronounced feminine curves"
