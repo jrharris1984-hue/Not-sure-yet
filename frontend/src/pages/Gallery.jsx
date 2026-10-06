@@ -1,3 +1,4 @@
+import GalleryCarousel from "@/components/GalleryCarousel";
 import StudioLoading from "@/components/StudioLoading";
 import GalleryBrowseControls from "@/components/GalleryBrowseControls";
 import { browseGallery, galleryIsVideo, galleryModel, galleryRefreshInterval } from "@/lib/galleryBrowse";
@@ -141,9 +142,8 @@ export default function Gallery() {
   const [pageSize, setPageSize] = useState(24);
   const [optionsOpen, setOptionsOpen] = useState(false);
   const [page, setPage] = useState(1);
-  const [slideDirection, setSlideDirection] = useState(1);
   const [compareOpen, setCompareOpen] = useState(false);
-  const swipeStartX = useRef(null);
+  const carousel = useRef(null);
   const directOpenApplied = useRef(false);
   const { data: versions = [] } = useQuery({
     queryKey: ["render-versions", lightbox?.id],
@@ -370,13 +370,14 @@ export default function Gallery() {
   const inFlight = renders.filter((r) => !primaryOutput(r) && ["queued", "dispatching", "running"].includes(r.status));
   const cancelled = renders.filter((r) => !primaryOutput(r) && r.status === "cancelled");
   const lightboxIndex = lightbox ? displayedOutput.findIndex((r) => r.id === lightbox.id) : -1;
-  const showAdjacent = (offset) => {
+  const commitAdjacent = (offset) => {
     if (!displayedOutput.length || lightboxIndex < 0) return;
     const nextIndex = (lightboxIndex + offset + displayedOutput.length) % displayedOutput.length;
-    setSlideDirection(offset);
     setLightbox(displayedOutput[nextIndex]);
     setShowDetails(false);
   };
+
+  const showAdjacent = offset => carousel.current?.navigate(offset);
 
   const { data: requestedRender, isError: requestedError } = useQuery({
     queryKey: ["gallery-requested-render", requestedRenderId],
@@ -745,28 +746,10 @@ export default function Gallery() {
             )}
 
             {/* Image column */}
-            <div className="flex-1 min-h-0 h-full flex items-center justify-center touch-pan-y"
-              onTouchStart={(event) => { swipeStartX.current = event.touches[0]?.clientX ?? null; }}
-              onTouchEnd={(event) => {
-                if (swipeStartX.current == null) return;
-                const delta = (event.changedTouches[0]?.clientX ?? swipeStartX.current) - swipeStartX.current;
-                swipeStartX.current = null;
-                if (Math.abs(delta) >= 50) showAdjacent(delta > 0 ? -1 : 1);
-              }}>
-              {isVideoUrl(primaryOutput(lightbox)) ? (
-                <video src={primaryOutput(lightbox)} controls autoPlay playsInline loop
-                  data-testid="gallery-lightbox-video"
-                  className="max-h-[100dvh] md:max-h-[85vh] max-w-full object-contain md:rounded-lg shadow-2xl" />
-              ) : (
-                <img
-                  key={lightbox.id}
-                  src={primaryOutput(lightbox)}
-                  alt={lightbox.prompt_positive?.slice(0, 60) || "render"}
-                  data-testid="gallery-lightbox-image"
-                  className={`max-h-[100dvh] md:max-h-[85vh] max-w-full object-contain md:rounded-lg shadow-2xl ${slideDirection > 0 ? "gallery-slide-right" : "gallery-slide-left"}`}
-                />
-              )}
-            </div>
+            <GalleryCarousel ref={carousel} current={lightbox}
+              previous={displayedOutput.length > 1 && lightboxIndex >= 0 ? displayedOutput[(lightboxIndex - 1 + displayedOutput.length) % displayedOutput.length] : null}
+              next={displayedOutput.length > 1 && lightboxIndex >= 0 ? displayedOutput[(lightboxIndex + 1) % displayedOutput.length] : null}
+              onNavigate={commitAdjacent} outputUrl={primaryOutput} isVideo={isVideoUrl} />
 
             {/* Meta column */}
             <aside className={`${showDetails ? "flex" : "hidden"} md:flex flex-col fixed md:static inset-x-0 bottom-0 z-40 w-full md:w-96 shrink-0 pane rounded-t-2xl rounded-b-none md:rounded-[14px] p-4 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] md:pb-4 space-y-3 max-h-[84dvh] md:max-h-[85vh] overflow-y-auto scroll-fade shadow-2xl`}>
