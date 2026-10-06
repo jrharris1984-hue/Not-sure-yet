@@ -2596,6 +2596,46 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
           />
   );
 
+  const characterPresets = <PresetsMenu
+              currentDna={activeDna}
+              sectionLocks={locks}
+              fieldLocks={activeFieldLocks}
+              onApply={(preset, context = {}) => {
+                const next = { ...preset };
+                Object.keys(locks).forEach((k) => { if (locks[k]) next[k] = activeDna[k]; });
+                if (context.type === "heritage") {
+                  const cast = HERITAGE_CASTS[context.cast] || HERITAGE_CASTS.solo;
+                  const primaryDna = {
+                    ...next,
+                    scenario: {
+                      ...(next.scenario || {}),
+                      cast_size: cast.castSize,
+                      cast_type: cast.castType,
+                    },
+                  };
+                  const primary = {
+                    ...(subjects[0] || activeSubject),
+                    label: "A",
+                    dna: primaryDna,
+                  };
+                  if (context.cast === "solo") {
+                    setSubjects([primary]);
+                    setActiveSubjectId(primary.id);
+                  } else {
+                    const relativeDna = seedSubjectFromPairing(primaryDna, 1);
+                    const relative = makeSubject({ label: "B", dna: relativeDna });
+                    setSubjects([primary, relative]);
+                    setActiveSubjectId(primary.id);
+                  }
+                  toast.success(`${cast.label} heritage cast created`);
+                } else {
+                  setActiveDna(next);
+                  toast.success(`Preset applied to Subject ${activeSubject.label}`);
+                }
+                if (sheetViewport) setMobileSheets(true);
+              }}
+            />;
+
   if (imageToolId && (!editorHydrated || workflowsLoading)) return <div className="mx-auto max-w-4xl p-6 text-zinc-400">Loading image tool…</div>;
   if (imageToolId && !workflows.some(workflow => workflow.id === imageToolId && IMAGE_TOOL_KINDS.includes(workflow.kind))) return <div className="mx-auto max-w-4xl p-6 text-zinc-400">This image tool is unavailable. <button type="button" onClick={() => nav('/')} className="text-cyan-300 underline">Return to the main screen</button> or refresh workflows in Settings.</div>;
   if (imageToolId && !IMAGE_TOOL_KINDS.includes(activeWorkflow?.kind)) return <div className="mx-auto max-w-4xl p-6 text-zinc-400">Opening image tool…</div>;
@@ -2627,6 +2667,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
         }))}
         subjects={subjects} activeId={activeSubjectId} onSubject={setActiveSubjectId}
         onPeople={() => goSection("scenario")}
+        presetsControl={characterPresets}
         values={(activeSection === "scenario" ? primaryDna : activeDna)[activeSection] || {}}
         renderControls={renderDnaControls}
         preview={activeRender?.output_files?.[0] || referencePreview}
@@ -2810,45 +2851,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
             >
               <Shuffle className="h-4 w-4" /> {isMulti ? "Randomize all" : "Randomize"}
             </button>
-            <div className="mobile-tools-panel" data-mobile-tools="presets"><PresetsMenu
-              currentDna={activeDna}
-              sectionLocks={locks}
-              fieldLocks={activeFieldLocks}
-              onApply={(preset, context = {}) => {
-                const next = { ...preset };
-                Object.keys(locks).forEach((k) => { if (locks[k]) next[k] = activeDna[k]; });
-                if (context.type === "heritage") {
-                  const cast = HERITAGE_CASTS[context.cast] || HERITAGE_CASTS.solo;
-                  const primaryDna = {
-                    ...next,
-                    scenario: {
-                      ...(next.scenario || {}),
-                      cast_size: cast.castSize,
-                      cast_type: cast.castType,
-                    },
-                  };
-                  const primary = {
-                    ...(subjects[0] || activeSubject),
-                    label: "A",
-                    dna: primaryDna,
-                  };
-                  if (context.cast === "solo") {
-                    setSubjects([primary]);
-                    setActiveSubjectId(primary.id);
-                  } else {
-                    const relativeDna = seedSubjectFromPairing(primaryDna, 1);
-                    const relative = makeSubject({ label: "B", dna: relativeDna });
-                    setSubjects([primary, relative]);
-                    setActiveSubjectId(primary.id);
-                  }
-                  toast.success(`${cast.label} heritage cast created`);
-                } else {
-                  setActiveDna(next);
-                  toast.success(`Preset applied to Subject ${activeSubject.label}`);
-                }
-                if (sheetViewport) setMobileSheets(true);
-              }}
-            /></div>
+            <div className="mobile-tools-panel" data-mobile-tools="presets">{!sheetViewport && characterPresets}</div>
             <div data-mobile-tools="prompts"
               className="inline-flex items-center gap-1 rounded-lg border border-hairline bg-elevated p-1 text-sm text-zinc-300"
               title="Changes prompt vocabulary only; it never adds activities or changes DNA selections."

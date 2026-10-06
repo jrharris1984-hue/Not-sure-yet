@@ -103,3 +103,16 @@ test('Reset closes detailed options and returns to the expanded category sheet',
   expect(container.querySelector('[data-testid="primary-creation-sheet"]').className).toContain('sheet-expanded');
   expect(onReset).toHaveBeenCalledTimes(1);
 });
+
+test('Scenario places character presets beside the person controls and other categories hide them', () => {
+  const onPresets = jest.fn();
+  const presetsControl = <button type="button" onClick={onPresets}>Character presets</button>;
+  paint({ section: sections[1], presetsControl });
+  const edit = [...container.querySelectorAll('button')].find(button => button.textContent === 'Edit A');
+  const presets = [...container.querySelectorAll('button')].find(button => button.textContent === 'Character presets');
+  expect(presets.parentElement).toBe(edit.parentElement);
+  expect(edit.nextElementSibling).toBe(presets);
+  click('Character presets'); expect(onPresets).toHaveBeenCalledTimes(1);
+  paint({ section: sections[0], presetsControl });
+  expect([...container.querySelectorAll('button')].some(button => button.textContent === 'Character presets')).toBe(false);
+});
