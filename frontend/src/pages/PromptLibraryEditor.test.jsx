@@ -146,3 +146,28 @@ test('bulk editing is available for built-in categories and can load existing en
     expect(endpoints.updateSettings).not.toHaveBeenCalled();
   }
 });
+
+test('compact wording edits preview the draft and persist without replacing detailed keywords', async() => {
+  await setup();
+  await enter(container.querySelector('[aria-label^="Compact wording custom_"]'),'morning mist');
+  await enter(container.querySelector('[aria-label^="Compact tags custom_"]'),'morning_mist');
+  act(() => button('Preview compact prompt').click());
+  expect(container.querySelector('[aria-label="Compiled positive preview"]').value).toContain('morning mist');
+  expect(endpoints.updateSettings).not.toHaveBeenCalled();
+  await act(async() => button('Save library').click());
+  const option = getPromptCatalog().sections[0].fields[0].options[0];
+  expect(option.short).toBe('morning mist');
+  expect(option.short_tags).toBe('morning_mist');
+  expect(option.keywords).toBe('gentle morning mist');
+});
+
+test('Ollama compact suggestions require review and apply only to compact wording', async() => {
+  await setup();
+  endpoints.aiPromptLibrary.mockResolvedValue({keywords:'morning mist'});
+  await act(async() => button('Suggest compact wording with Ollama').click());
+  expect(endpoints.aiPromptLibrary).toHaveBeenCalledWith(expect.objectContaining({compact:true,keywords:'gentle morning mist'}));
+  expect(endpoints.updateSettings).not.toHaveBeenCalled();
+  act(() => button('Apply compact wording').click());
+  expect(container.querySelector('[aria-label^="Compact wording custom_"]').value).toBe('morning mist');
+  expect(container.querySelector('[aria-label^="Keywords custom_"]').value).toBe('gentle morning mist');
+});

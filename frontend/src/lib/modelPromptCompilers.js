@@ -1,5 +1,6 @@
 import { heritagePrompt } from "./heritageProfiles";
 import { ageAppearancePrompt } from './ageAppearance';
+import { buildCompactNarrative } from './compactNarrative';
 import { resolveWardrobeMode } from "./wardrobeMode";
 import { catalogDna, catalogSelection, customCatalogPrompt, getPromptCatalog, applyCatalogRules } from "./promptCatalog";
 import { applyPhotographicGuidance } from "./photographicGuidance";
@@ -1224,10 +1225,23 @@ export function compileModelPrompts(options = {}) {
   }
   if (supportingFootDetails.length) protectedResult.positive += `; ${supportingFootDetails.join('; ')}`;
   protectedResult.promptWords = clean(protectedResult.positive).split(/\s+/).filter(Boolean).length;
-  if (!contract) return applyCatalogRules(protectedResult, options.workflowKind || "image", promptCatalog);
+  const finalize = prompts => {
+    // Compact output is opt-in for still images. Edit and motion instructions
+    // retain their dedicated compilers and existing model conditioning.
+    if (options.promptFormat === 'compact' && photographic) {
+      const compact = buildCompactNarrative(resolvedSubjects, promptCatalog, compiler, options.raunch);
+      const positive = [contract, compact.positive].filter(Boolean).join(' ');
+      prompts = {...prompts, positive, profile:compact.profile, compactRequirements:compact.requirements,
+        detailedPromptWords:clean(prompts.positive).split(/\s+/).filter(Boolean).length,
+        promptWords:clean(positive).split(/\s+/).filter(Boolean).length,
+        promptBudget:null, droppedClauses:[], omittedClauseCount:0};
+    }
+    return applyCatalogRules(prompts, options.workflowKind || 'image', promptCatalog);
+  };
+  if (!contract) return finalize(protectedResult);
   const positive = `${contract} ${protectedResult.positive}`;
   const negative = scenario.cast_resemblance === "matching faces"
     ? String(protectedResult.negative || "").split(",").filter(clause => !/duplicate face/i.test(clause)).join(",").trim()
     : protectedResult.negative;
-  return applyCatalogRules({ ...protectedResult, positive, negative, promptWords: clean(positive).split(/\s+/).filter(Boolean).length }, options.workflowKind || "image", promptCatalog);
+  return finalize({ ...protectedResult, positive, negative, promptWords: clean(positive).split(/\s+/).filter(Boolean).length });
 }
