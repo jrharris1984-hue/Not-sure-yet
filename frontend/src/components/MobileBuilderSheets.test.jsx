@@ -77,3 +77,21 @@ test('switching categories preserves the expanded sheet height', () => {
   paint({ onSection, section: sections[1] });
   expect(sheet.className).toContain('sheet-expanded');
 });
+
+test('selected options review opens the selected category and person accents follow the active subject', () => {
+  const onSection = jest.fn();
+  paint({ onSection, subjects: [{ id: 'a', label: 'A' }, { id: 'b', label: 'B' }], activeId: 'b',
+    selectedItems: [{ section: 'hair', field: 'color', category: 'Hair', label: 'Color', value: 'black' }] });
+  expect(container.querySelector('[data-testid="mobile-sheet-builder"]').style.getPropertyValue('--person-accent')).toBe('#93c5fd');
+  expect(container.querySelectorAll('.studio-person-badge')).toHaveLength(2);
+  click('Selected · 1');
+  expect(container.querySelector('[role="dialog"]').textContent).toContain('Hair · Color');
+  act(() => container.querySelector('.studio-selected-option').click());
+  expect(onSection).toHaveBeenCalledWith('hair');
+});
+
+test('Reset beside Save calls the current-person reset action', () => {
+  const onReset = jest.fn(); paint({ onReset }); click('Reset');
+  expect(onReset).toHaveBeenCalledTimes(1);
+  expect(container.querySelector('[aria-label="Reset current person"]')).not.toBeNull();
+});

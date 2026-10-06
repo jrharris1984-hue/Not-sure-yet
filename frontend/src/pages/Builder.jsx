@@ -2592,6 +2592,11 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
     <div className={`mobile-builder-content ${mobileSheets && !isImageFirst && editMode !== "body_adjust" ? "nested-mobile-builder" : ""} mx-auto max-w-[1600px] px-2.5 sm:px-6 py-3 sm:py-6 space-y-3 sm:space-y-4 ${desktopQuickMode && !isImageFirst ? "quick-create-mode" : ""}`}>
       {sheetViewport && !isImageFirst && editMode !== "body_adjust" && (mobileSheets ? <MobileBuilderSheets
         sections={SECTIONS} section={SECTIONS[activeIdx]} onSection={goSection}
+        selectedItems={SECTIONS.flatMap(category => category.fields.flatMap(field => {
+          const value = (category.key === "scenario" ? primaryDna : activeDna)[category.key]?.[field.key];
+          const label = Array.isArray(value) ? value.join(", ") : String(value ?? "");
+          return label && !["0", "none"].includes(label) ? [{ section: category.key, field: field.key, category: category.title, label: field.label, value: label }] : [];
+        }))}
         subjects={subjects} activeId={activeSubjectId} onSubject={setActiveSubjectId}
         onPeople={() => goSection("scenario")}
         values={(activeSection === "scenario" ? primaryDna : activeDna)[activeSection] || {}}
@@ -2601,6 +2606,15 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
         livePreview={activeRender && ["queued", "running"].includes(activeRender.status)
           ? <LivePreview clientId={activeRender.id} /> : null}
         onSave={() => save.mutate()} saving={save.isPending}
+        onReset={() => {
+          const previous = activeSubject;
+          const fresh = JSON.parse(JSON.stringify(DEFAULT_DNA));
+          setSubjects(current => current.map(person => person.id === previous.id
+            ? { ...person, dna: { ...fresh, ...Object.fromEntries(["scenario", "scene", "lighting", "camera", "style"].map(key => [key, person.dna[key] || fresh[key]])) }, field_locks: {} } : person));
+          toast.success(`Person ${previous.label} reset`, { action: { label: "Undo", onClick: () => {
+            setSubjects(current => current.map(person => person.id === previous.id ? previous : person));
+          } } });
+        }}
         onGenerate={doDispatch} generating={dispatching}
         canGenerate={!!workflowId && mobileCreateIssues.length === 0}
         issues={mobileCreateIssues} imageCount={poseAssistEnabled && !isVariationWorkflow ? 1 : renderCount}
