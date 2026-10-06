@@ -29,6 +29,17 @@ export function catalogSections(base, config = catalog) {
 function buildField(base, saved) {
   if (!saved) return base;
   if (base && !['chips','chips_multi','pose_chips'].includes(base.type)) return {...base,label:saved.label};
+  if (base?.key === 'ethnicity' && base.groups) {
+    const builtins = base.groups.flatMap(group => group.options.map(value => ({
+      value, label:base.optionLabels?.[value] || value, keywords:'', group:group.name,
+    })));
+    const existing = new Map((saved.options || []).map(option => [option.value, option]));
+    saved = {...saved, options:[
+      ...builtins.map(option => ({...option, ...existing.get(option.value), group:option.group,
+        label:existing.get(option.value)?.label === option.value ? option.label : existing.get(option.value)?.label || option.label})),
+      ...(saved.options || []).filter(option => !builtins.some(builtin => builtin.value === option.value)),
+    ]};
+  }
   const options = saved.options || [];
   const groupNames = [...new Set(options.map(option => option.group || 'Choices'))];
   return {...base,key:saved.key,label:saved.label,type:base?.type || saved.type || 'chips',

@@ -245,7 +245,7 @@ function _ponySharedBlock(dna = {}, opts = {}, subjectCount = 1) {
   const raunch = !!opts.raunch;
   const exp = (section, field) => {
     const v = dna?.[section]?.[field] || "";
-    return v ? expandPrompt(section, field, v, { raunch }) : "";
+    return v ? expandPrompt(section, field, v, { raunch, dna }) : "";
   };
   const join = _join;
   const qualityPrefix = "score_9, score_8_up, source_photo, photorealistic";
@@ -327,7 +327,7 @@ function _ponySubjectBlock(dna = {}, opts = {}) {
   const val = (section, field) => dna?.[section]?.[field] || "";
   const exp = (section, field) => {
     const v = val(section, field);
-    return v ? expandPrompt(section, field, v, { raunch }) : "";
+    return v ? expandPrompt(section, field, v, { raunch, dna }) : "";
   };
   const join = _join;
 

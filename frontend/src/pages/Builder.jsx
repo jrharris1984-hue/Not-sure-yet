@@ -1,3 +1,4 @@
+import { builderSectionLayout, builderSectionValue, builderSectionChange } from "@/lib/builderSectionLayout";
 import MobileToolsNavigation from "@/components/MobileToolsNavigation";
 import { confirmPermanentDelete } from "@/lib/permanentDeleteConfirmation";
 import { applyScenarioSelection } from "@/lib/scenarioSelection";
@@ -119,7 +120,7 @@ async function waitForQueuedRender(queueId, onUpdate) {
 export default function Builder({ studio = "standard", imageToolId = "" }) {
   const promptCatalog = usePromptCatalog();
   const SECTIONS = useMemo(() => {
-    const sections = catalogSections(BASE_SECTIONS, promptCatalog);
+    const sections = builderSectionLayout(catalogSections(BASE_SECTIONS, promptCatalog));
     const scenario = sections.find(section => section.key === "scenario");
     return scenario ? [scenario, ...sections.filter(section => section.key !== "scenario")] : sections;
   }, [promptCatalog]);
@@ -2571,8 +2572,11 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
                 return subjects.length > 1 && (field.key !== "cast_age_gap" || primaryDna.scenario?.cast_age_mode === "age contrast");
               }) } : SECTIONS[activeIdx]}
             controlNotes={resolveBuilderControls(activeDna).notes.filter(note => note.section === activeSection).map(note => note.text)}
-            value={(activeSection === "scenario" ? primaryDna : activeDna)[activeSection] || {}}
-            onChange={(v) => setSection(activeSection, v)}
+            value={builderSectionValue(activeSection, activeDna, primaryDna)}
+            onChange={(v) => {
+              const change = builderSectionChange(activeSection, v, primaryDna);
+              setSection(change.section, change.value);
+            }}
             locked={!!locks[activeSection]}
             onToggleLock={() => setLocks({ ...locks, [activeSection]: !locks[activeSection] })}
             onRandomize={() => setSection(activeSection, activeSection.startsWith("custom_")
@@ -2580,11 +2584,13 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
               : randomizeSection(activeSection, activeDna[activeSection] || {}, activeFieldLocks[activeSection] || {}))}
             onReset={() => setSection(activeSection, activeSection.startsWith("custom_") ? {} : resetSection(activeSection))}
             onSuggest={() => runSuggest(activeSection)}
-            fieldLocks={activeFieldLocks[activeSection] || {}}
-            onToggleFieldLock={(fieldKey) => setActiveFieldLocks({
-              ...activeFieldLocks,
-              [activeSection]: { ...(activeFieldLocks[activeSection] || {}), [fieldKey]: !(activeFieldLocks[activeSection] || {})[fieldKey] },
-            })}
+            fieldLocks={activeSection === "pose" ? { ...activeFieldLocks.pose, explicit_level: !!locks.scenario || !!activeFieldLocks.scenario?.explicit_level } : activeFieldLocks[activeSection] || {}}
+            onToggleFieldLock={(fieldKey) => {
+              const sourceSection = activeSection === "pose" && fieldKey === "explicit_level" ? "scenario" : activeSection;
+              setActiveFieldLocks({ ...activeFieldLocks, [sourceSection]: {
+                ...activeFieldLocks[sourceSection], [fieldKey]: !activeFieldLocks[sourceSection]?.[fieldKey],
+              } });
+            }}
             onToggleCollapsed={() => setCollapsed((cur) => ({ ...cur, [activeSection]: !cur[activeSection] }))}
             simpleMode={!sheetField && mobileStudioMode === "simple"}
             focusedField={sheetField}
@@ -2659,14 +2665,14 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
       {sheetViewport && !isImageFirst && editMode !== "body_adjust" && (mobileSheets ? <MobileBuilderSheets
         sections={SECTIONS} section={SECTIONS[activeIdx]} onSection={goSection}
         selectedItems={SECTIONS.flatMap(category => category.fields.flatMap(field => {
-          const value = (category.key === "scenario" ? primaryDna : activeDna)[category.key]?.[field.key];
+          const value = builderSectionValue(category.key, activeDna, primaryDna)[field.key];
           const label = Array.isArray(value) ? value.join(", ") : String(value ?? "");
           return label && !["0", "none"].includes(label) ? [{ section: category.key, field: field.key, category: category.title, label: field.label, value: label }] : [];
         }))}
         subjects={subjects} activeId={activeSubjectId} onSubject={setActiveSubjectId}
         onPeople={() => goSection("scenario")}
         presetsControl={characterPresets}
-        values={(activeSection === "scenario" ? primaryDna : activeDna)[activeSection] || {}}
+        values={builderSectionValue(activeSection, activeDna, primaryDna)}
         renderControls={renderDnaControls}
         preview={activeRender?.output_files?.[0] || referencePreview}
         renderStatus={activeRender?.status} renderError={activeRender?.error}

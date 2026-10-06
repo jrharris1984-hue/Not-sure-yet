@@ -1,3 +1,4 @@
+import { HERITAGE_GROUPS, HERITAGE_LABELS, HERITAGE_PROFILES, heritageLabel } from "./heritageProfiles";
 import { ADDITIONAL_OUTFIT_GROUPS, OUTFIT_SET_LABELS, LAYERED_OUTFIT_GROUP, SET_LINGERIE_GROUPS } from "./completeOutfitSets";
 import { resolveWardrobeMode } from "./wardrobeMode";
 import { bustShapePrompt } from "./physiqueControls";
@@ -15,19 +16,7 @@ export const SECTIONS = [
     fields: [
       { key: "gender", type: "chips", label: "Gender", options: ["female", "male"] },
       { key: "age", type: "slider", label: "Age (adult)", min: 18, max: 80, step: 1, defaultValue: 30 },
-      { key: "ethnicity", type: "chips", label: "Ethnicity", groups: [
-        { name: "Latin", options: ["latina", "mexican", "brazilian", "colombian", "puerto rican", "cuban", "dominican", "venezuelan", "argentinian", "peruvian"] },
-        { name: "East Asian", options: ["east asian", "japanese", "korean", "chinese", "vietnamese", "thai", "filipina", "indonesian", "cambodian"] },
-        { name: "South Asian", options: ["south asian", "indian", "pakistani", "bangladeshi", "sri lankan"] },
-        { name: "Black", options: ["black", "african american", "ebony", "afro-caribbean", "nigerian", "ethiopian", "somali"] },
-        { name: "European", options: ["white", "caucasian", "european", "british", "french", "german", "italian", "spanish", "irish", "russian", "polish"] },
-        { name: "Nordic", options: ["nordic", "scandinavian", "swedish", "norwegian", "icelandic"] },
-        { name: "Middle Eastern", options: ["middle eastern", "arab", "persian", "turkish", "lebanese", "egyptian", "moroccan", "israeli"] },
-        { name: "Islander", options: ["polynesian", "hawaiian", "samoan", "maori"] },
-        { name: "Indigenous", options: ["native american", "indigenous"] },
-        { name: "Mixed", options: ["mixed", "blasian", "afro-latina", "eurasian", "mulatto", "mestiza", "creole", "amerasian"] },
-        { name: "Mediterranean", options: ["mediterranean", "greek"] },
-      ]},
+      { key: "ethnicity", type: "chips", label: "Ethnicity", groups: HERITAGE_GROUPS, optionLabels: HERITAGE_LABELS },
       { key: "archetype", type: "chips", label: "Archetype (character theme)", groups: [
         { name: "Everyday", options: ["girl next door", "athlete", "artist", "socialite", "scholar"] },
         { name: "Royal & cinematic", options: ["queen", "Bollywood princess", "Indian royal", "Arabian princess", "desert queen", "regal heroine"] },
@@ -1079,7 +1068,7 @@ function _veniceSharedBlock(dna = {}, opts = {}, subjectCount = 1) {
   const val = (section, field) => dna?.[section]?.[field] || "";
   const exp = (section, field) => {
     const v = val(section, field);
-    return v ? expandPrompt(section, field, v, { raunch }) : "";
+    return v ? expandPrompt(section, field, v, { raunch, dna }) : "";
   };
   const join = _join;
 
@@ -1186,7 +1175,7 @@ function _veniceSubjectBlock(dna = {}, opts = {}) {
   const val = (section, field) => dna?.[section]?.[field] || "";
   const exp = (section, field) => {
     const v = val(section, field);
-    return v ? expandPrompt(section, field, v, { raunch }) : "";
+    return v ? expandPrompt(section, field, v, { raunch, dna }) : "";
   };
   const expArr = (section, field) => {
     const v = dna?.[section]?.[field];
@@ -1669,14 +1658,14 @@ const HERITAGE_EDITORIAL_PRESETS = [
 
 const identitySection = SECTIONS.find((section) => section.key === "identity");
 const ethnicityField = identitySection?.fields.find((field) => field.key === "ethnicity");
-const titleCase = (value) => String(value || "").replace(/\b\w/g, (letter) => letter.toUpperCase());
 
 // Every ethnicity supported by the Identity section gets a searchable one-tap
 // selector. These intentionally change only heritage and preserve the rest of
 // the current character; the editorial cards below offer fuller looks.
 const ALL_HERITAGE_PRESETS = (ethnicityField?.groups || []).flatMap((group) =>
   group.options.map((ethnicity) => ({
-    name: `${titleCase(ethnicity)} Heritage`,
+    name: `${heritageLabel(ethnicity)} Heritage`,
+    description: HERITAGE_PROFILES[ethnicity]?.description,
     tags: ["heritage", group.name, ethnicity, "preserves current DNA"],
     dna: { identity: { ethnicity } },
   }))

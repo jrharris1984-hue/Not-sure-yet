@@ -93,7 +93,7 @@ export default function PresetsMenu({ onApply, currentDna, sectionLocks = {}, fi
     const grouped = category === "types" && typeGroup !== "All" ? source.filter(p => p.group === typeGroup) : source;
     if (!query) return grouped;
     return grouped.filter(
-      (p) => p.name.toLowerCase().includes(query) || (p.tags || []).some((t) => t.toLowerCase().includes(query))
+      (p) => p.name.toLowerCase().includes(query) || (p.description || "").toLowerCase().includes(query) || (p.tags || []).some((t) => t.toLowerCase().includes(query))
     );
   }, [q, source, category, typeGroup]);
 
@@ -295,6 +295,7 @@ export default function PresetsMenu({ onApply, currentDna, sectionLocks = {}, fi
                   <button onClick={() => apply(p)} data-testid={`preset-${p.name.replace(/\s+/g, "-")}`}
                     className="w-full text-left p-3 pr-10 rounded-lg hover:bg-rose-500/5">
                     <div className="font-display font-bold text-sm">{p.name}</div>
+                    {p.description && <p className="mt-1 text-[11px] leading-relaxed text-zinc-400 line-clamp-2" title={p.description}>{p.description}</p>}
                     {p.description && <p className="mt-1 text-xs text-zinc-400">{p.description}</p>}
                     <div className="mt-1.5 flex flex-wrap gap-1">
                       {(p.tags || []).map((t) => (
