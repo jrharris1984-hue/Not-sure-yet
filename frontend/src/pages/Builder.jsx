@@ -6,6 +6,7 @@ import { catalogSections, usePromptCatalog } from "@/lib/promptCatalog";
 import { useAssistantResearch, updateAssistantResearch } from '@/lib/assistantResearch';
 import VideoModeLinks from "@/components/VideoModeLinks";
 import RandomSceneControls from "@/components/RandomSceneControls";
+import {useOllamaPrompt} from "@/lib/useOllamaPrompt";
 import PromptFormatControl from "@/components/PromptFormatControl";
 import { randomSceneSubjects } from "@/lib/randomScenes";
 import { IMAGE_TOOL_KINDS } from "@/components/HomeImageTools";
@@ -205,12 +206,16 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
   const [raunch, setRaunch] = useState(false);
   const [promptLanguage, setPromptLanguage] = useState("editorial");
   const [promptOverride, setPromptOverride] = useState("");
-  const [promptFormat, setPromptFormat] = useState(() => localStorage.getItem('ultra-prompt-format') === 'compact' ? 'compact' : 'detailed');
-  const changePromptFormat = value => {
+  const [promptFormat, setPromptFormat] = useState(() => ['compact','ollama'].includes(localStorage.getItem('ultra-prompt-format')) ? localStorage.getItem('ultra-prompt-format') : 'detailed');
+  const promptFormatTouched = useRef(false);
+  const changePromptFormat = async value => {
+    promptFormatTouched.current = true;
     setPromptFormat(value);
     localStorage.setItem('ultra-prompt-format', value);
     setPromptOverride('');
     setNegativePromptOverride('');
+    try { const saved=await endpoints.updateSettings({builder_prompt_format:value});qc.setQueryData(['settings'],saved); }
+    catch { toast.error('Format saved in this browser; server preference could not be saved.'); }
   };
   const [plainLanguage, setPlainLanguage] = useState("");
   const [negativePromptOverride, setNegativePromptOverride] = useState("");
@@ -433,6 +438,12 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
     refetchInterval: kreaStatusEnabled ? 15000 : false,
   });
   const { data: settings } = useQuery({ queryKey: ["settings"], queryFn: endpoints.settings });
+  useEffect(()=>{
+    if(!promptFormatTouched.current && ['detailed','compact','ollama'].includes(settings?.builder_prompt_format)) {
+      setPromptFormat(settings.builder_prompt_format);
+      localStorage.setItem('ultra-prompt-format',settings.builder_prompt_format);
+    }
+  },[settings?.builder_prompt_format]);
   const selectableWorkflows = useMemo(
     () => builderCatalogWorkflows(workflows, settings?.default_workflow_id, workflowId, imageToolId ? [] : settings?.builder_hidden_workflow_ids, !!galleryRecipeMode || !!location.state?.renderRecipe).filter(workflow => !imageToolId || IMAGE_TOOL_KINDS.includes(workflow.kind)),
     [workflows, settings?.default_workflow_id, settings?.builder_hidden_workflow_ids, workflowId, imageToolId, galleryRecipeMode, location.state?.renderRecipe]
@@ -1064,7 +1075,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
         ? { ...activeDna, identity: { ...(activeDna.identity || {}), name: "" } }
         : activeDna;
       return compileModelPrompts({
-        promptFormat,
+        promptFormat:promptFormat === 'ollama' ? 'compact' : promptFormat,
         promptCatalog,
         promptStyle,
         workflowKind: activeWorkflow?.kind,
@@ -1090,7 +1101,10 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
       isEnhanceWorkflow, promptCatalog, promptFormat,
     ]
   );
-  const { positive, negative } = compiledPrompt;
+  const ollamaCompiled = useOllamaPrompt(compiledPrompt.positive, promptFormat === 'ollama' && compiledPrompt.profile === 'compact-narrative-v1');
+  const positive = ollamaCompiled.positive;
+  const { negative } = compiledPrompt;
+  const promptFormatMeta = {...compiledPrompt,promptWords:positive.trim().split(/\s+/).filter(Boolean).length};
   const translatedPlainLanguage = useMemo(
     () => translatePlainLanguage(
       !["qwen_edit", "wan_i2v"].includes(activeCompiler) ? resolveReferenceNotes(plainLanguage, activeDna, subjects) : plainLanguage,
@@ -1347,6 +1361,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
   });
 
   const doDispatch = async () => {
+    if (ollamaCompiled.pending) {toast.error('Wait for Ollama compilation or switch to Compact.');return;}
     if (!workflowId) {
       toast.error("Pick a workflow first (Settings → Workflow library)");
       return;
@@ -2051,6 +2066,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
 
   const mobileCreateIssues = useMemo(() => {
     const issues = [];
+    if (ollamaCompiled.pending) issues.push("Waiting for Ollama compilation.");
     if (!activeWorkflow) issues.push("Choose a workflow.");
     if (poseAssistEnabled && !isVariationWorkflow && !poseAssistAvailable) issues.push("Install Pose Assist workflows.");
     if (poseAssistEnabled && !isVariationWorkflow && poseAssistStatus && !poseAssistStatus.ready && poseAssistAvailable) {
@@ -2085,7 +2101,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
       issues.push(isTextVideoWorkflow ? "Describe the video you want to create." : "Describe how you want the image to move.");
     }
     return [...new Set(issues)];
-  }, [
+  }, [ollamaCompiled.pending,
     activeWorkflow, editMode, effectiveEditInstruction, isQwenReferenceWorkflow, qwenEditVariant,
     isEditWorkflow, isEnhanceWorkflow, isFaceWorkflow, isTextVideoWorkflow, isVideoWorkflow, isVariationWorkflow, isImageFirst,
     poseAssistAvailable, poseAssistEnabled, poseAssistStatus, poseReferenceImage?.name,
@@ -3319,7 +3335,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
                 <div><span className="text-zinc-500">Model</span><div className="font-semibold">{activeWorkflow?.name || "Select a model"}</div></div>
                 <div><span className="text-zinc-500">Output</span><div className="font-semibold">{qualityTier} · {activeRecipeFamily === "image" ? `${renderCount} image${renderCount === 1 ? "" : "s"}` : activeRecipeFamily}</div></div>
               </div>
-              <PromptFormatControl value={promptFormat} onChange={changePromptFormat} meta={compiledPrompt} />
+              <PromptFormatControl value={promptFormat} onChange={changePromptFormat} meta={promptFormatMeta} status={promptFormat === 'ollama' ? ollamaCompiled.reason : ''} />
               <details className="rounded-xl border hairline bg-black/20 p-3">
                 <summary className="cursor-pointer text-xs font-semibold text-zinc-300">Prompt preview</summary>
                 <div className="mt-2 max-h-44 overflow-y-auto text-xs leading-relaxed text-zinc-400">{finalPositive || "Choose the subject and scene to build a prompt."}</div>
@@ -3499,7 +3515,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
             {plainLanguage.trim() && <p className="text-xs text-zinc-400">Workflow translation: {translatedPlainLanguage.text || "Describe motion for image-to-video; the source image supplies appearance."}</p>}
             {plainLanguage.trim() && !["qwen_edit", "wan_i2v"].includes(activeCompiler) && resolveReferenceNotes(plainLanguage, activeDna, subjects) !== plainLanguage.trim() && <p className="text-xs text-amber-300">Current controls replace labeled reference notes for body orientation, camera angle, pose, framing and expression in the submitted prompt. Your original notes remain saved here.</p>}
           </div>
-          {isVideoWorkflow || isVariationWorkflow ? <details data-mobile-tools="prompts" className="pane p-4" data-testid={isVideoWorkflow ? "video-motion-preview" : "variation-prompt-preview"}><summary className="cursor-pointer text-xs text-zinc-300">{isVideoWorkflow ? "Motion prompt sent to ComfyUI" : "Variation prompt sent to ComfyUI"}</summary><p className="mt-3 whitespace-pre-wrap text-xs text-zinc-400">{finalPositive}</p></details> : <div className="mobile-tools-panel" data-mobile-tools="prompts">{!isImageFirst && <PromptFormatControl value={promptFormat} onChange={changePromptFormat} meta={compiledPrompt} />}<PromptPreview
+          {isVideoWorkflow || isVariationWorkflow ? <details data-mobile-tools="prompts" className="pane p-4" data-testid={isVideoWorkflow ? "video-motion-preview" : "variation-prompt-preview"}><summary className="cursor-pointer text-xs text-zinc-300">{isVideoWorkflow ? "Motion prompt sent to ComfyUI" : "Variation prompt sent to ComfyUI"}</summary><p className="mt-3 whitespace-pre-wrap text-xs text-zinc-400">{finalPositive}</p></details> : <div className="mobile-tools-panel" data-mobile-tools="prompts">{!isImageFirst && <PromptFormatControl value={promptFormat} onChange={changePromptFormat} meta={promptFormatMeta} status={promptFormat === 'ollama' ? ollamaCompiled.reason : ''} />}<PromptPreview
             aiProvider={aiProvider}
             positive={finalPositive}
             negative={finalNegative}

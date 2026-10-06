@@ -164,7 +164,7 @@ export default function Settings() {
   useEffect(() => { if (settings && !form) setForm(settings); }, [settings, form]);
 
   const saveSettings = useMutation({
-    mutationFn: (payload) => endpoints.updateSettings(payload || form),
+    mutationFn: (payload) => {const {builder_prompt_format, ...patch}=payload || form;return endpoints.updateSettings(patch);},
     onSuccess: () => { toast.success("Settings saved"); qc.invalidateQueries({ queryKey: ["settings"] }); qc.invalidateQueries({ queryKey: ["comfy-health"] }); qc.invalidateQueries({ queryKey: ["ollama-models"] }); qc.invalidateQueries({ queryKey: ["media-library-health"] }); qc.invalidateQueries({ queryKey: ["media-library"] }); },
     onError: (e) => toast.error(e?.response?.data?.detail || "Save failed"),
   });
