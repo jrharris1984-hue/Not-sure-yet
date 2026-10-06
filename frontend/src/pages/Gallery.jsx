@@ -1,3 +1,4 @@
+import { confirmPermanentDelete } from "@/lib/permanentDeleteConfirmation";
 import GalleryCarousel from "@/components/GalleryCarousel";
 import StudioLoading from "@/components/StudioLoading";
 import GalleryBrowseControls from "@/components/GalleryBrowseControls";
@@ -322,7 +323,7 @@ export default function Gallery() {
 
   const confirmRemoveOne = (render) => {
     const message = "Permanently delete this image or video and its output files from your hard drive? This cannot be undone.";
-    if (window.confirm(message)) {
+    if (confirmPermanentDelete(message)) {
       removeOne.mutate({ id: render.id });
     }
   };
@@ -330,7 +331,7 @@ export default function Gallery() {
   const confirmRemoveSelected = () => {
     if (!selected.length) return;
     const message = `Permanently delete ${selected.length} selected items and their output files from your hard drive? This cannot be undone.`;
-    if (window.confirm(message)) {
+    if (confirmPermanentDelete(message)) {
       removeMany.mutate({ ids: selected });
     }
   };
@@ -401,7 +402,7 @@ export default function Gallery() {
 
   const confirmClearCancelled = () => {
     if (!cancelled.length) return;
-    if (window.confirm(`Permanently remove ${cancelled.length} cancelled record${cancelled.length === 1 ? "" : "s"} from Ultra Studio? Any associated output files will also be permanently deleted.`)) {
+    if (confirmPermanentDelete(`Permanently remove ${cancelled.length} cancelled record${cancelled.length === 1 ? "" : "s"} from Ultra Studio? Any associated output files will also be permanently deleted.`)) {
       clearCancelled.mutate();
     }
   };
@@ -537,7 +538,7 @@ export default function Gallery() {
               Show QC-flagged images: {showQcFlagged ? "On" : "Off"}
             </button>
             <button type="button" disabled={removeQcFlagged.isPending} data-testid="btn-gallery-delete-all-qc"
-              onClick={() => window.confirm("Permanently delete ALL QC-flagged renders and their output files from your hard drive? This cannot be undone.") && removeQcFlagged.mutate()}
+              onClick={() => confirmPermanentDelete("Permanently delete ALL QC-flagged renders and their output files from your hard drive? This cannot be undone.") && removeQcFlagged.mutate()}
               className="rounded-lg border border-red-500/40 px-3 py-2 text-red-200 hover:bg-red-500/10 disabled:opacity-40">
               <Trash2 className="mr-1 inline h-3.5 w-3.5" /> Delete all QC-flagged
             </button>
