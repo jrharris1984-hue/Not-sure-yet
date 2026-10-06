@@ -1,5 +1,6 @@
 from ollama_compiler import validate_ollama_prompt
 from shoot_progress import refresh_shoot_progress
+from shoot_queue import load_shoot_renders, link_shoot_render
 from wardrobe_catalog_upgrade import upgrade_wardrobe_catalog
 from downloaded_models import resolve_downloaded_models, patch_ltx_video
 from prompt_catalog import validate_prompt_catalog
@@ -2258,6 +2259,8 @@ async def _enqueue_render(body: DispatchBody) -> Dict[str, Any]:
         "workflow_name": selected.name if selected else "Render",
         "workflow_type": selected.kind if selected else body.workflow_type,
         "character_id": body.character_id,
+        "shoot_id": body.shoot_id,
+        "shoot_frame_index": body.shoot_frame_index,
         "render_id": None,
         "error": None,
         "attempts": 0,
@@ -2806,7 +2809,10 @@ async def retry_queue_job(qid: str):
 
 @api.delete("/queue/completed")
 async def clear_completed_queue():
-    result = await db.render_queue.delete_many({"status": {"$in": list(QUEUE_TERMINAL)}})
+    jobs = await db.render_queue.find({"status": {"$in": list(QUEUE_TERMINAL)}}, {"_id": 0}).to_list(None)
+    for job in jobs:
+        await link_shoot_render(db, job)
+    result = await db.render_queue.delete_many({"id": {"$in": [job["id"] for job in jobs]}, "status": {"$in": list(QUEUE_TERMINAL)}})
     return {"ok": True, "deleted": result.deleted_count}
 
 
@@ -3055,6 +3061,8 @@ async def _poll_render_doc(rid: str) -> Optional[Dict[str, Any]]:
 
 
 async def _sync_queue_job(job: Dict[str, Any]) -> Dict[str, Any]:
+    if (job.get("payload") or {}).get("shoot_id"):
+        await link_shoot_render(db, job)
     if job.get("status") == "cancelled":
         return job
     render_id = job.get("render_id")
@@ -3374,6 +3382,8 @@ async def _render_queue_worker():
                 continue
             try:
                 render = await _perform_dispatch(DispatchBody(**queued.get("payload", {})), queue_id=queued["id"])
+                if (queued.get("payload") or {}).get("shoot_id"):
+                    await link_shoot_render(db, {**queued, "render_id": render.get("id")})
                 status = render.get("status", "running")
                 patch = {
                     "render_id": render.get("id"),
@@ -3420,6 +3430,7 @@ class ShootFrame(BaseModel):
     prompt_negative: str = ""
     seed: Optional[int] = None
     render_id: Optional[str] = None
+    queue_id: Optional[str] = None
     status: str = "pending"  # pending | running | done | failed | offline | queued
 
 
@@ -3494,7 +3505,7 @@ def _apply_frame_to_dna(dna: Dict[str, Any], frame: Dict[str, Any], lock_scenari
 
 
 async def _run_shoot_background(shoot_id: str):
-    """Sequential dispatch of all frames for a shoot."""
+    """Persist all shoot frames in the shared sequential render queue."""
     shoot_doc = await db.shoots.find_one({"id": shoot_id}, {"_id": 0})
     if not shoot_doc:
         return
@@ -3550,9 +3561,10 @@ async def _run_shoot_background(shoot_id: str):
             shoot_frame_index=i,
         )
         try:
-            r_doc = await _perform_dispatch(body)
+            r_doc = await _enqueue_render(body)
             status = r_doc.get("status", "failed")
-            frame.render_id = r_doc.get("id")
+            frame.queue_id = r_doc.get("id")
+            frame.render_id = r_doc.get("render_id")
             frame.status = status
         except Exception as e:
             frame.status = "failed"
@@ -3562,13 +3574,11 @@ async def _run_shoot_background(shoot_id: str):
         await db.shoots.update_one(
             {"id": shoot_id},
             {"$set": {
-                "frames": [f.model_dump() for f in shoot.frames],
+                f"frames.{i}": frame.model_dump(),
                 "progress": sum(f.status in {"done", "failed", "offline", "cancelled", "rejected"} for f in shoot.frames) / total if total else 1.0,
                 "updated_at": now_iso(),
             }},
         )
-        # Small pacing gap so ComfyUI can queue cleanly
-        await asyncio.sleep(0.5)
 
     # Submission completion is not image completion; read endpoints reconcile
     # the shoot against the latest render results while ComfyUI drains its queue.
@@ -3631,8 +3641,8 @@ async def create_shoot(body: ShootCreateBody, background_tasks: BackgroundTasks)
         status="queued",
     )
     await db.shoots.insert_one(shoot.model_dump())
-    background_tasks.add_task(_run_shoot_background, shoot.id)
-    return shoot.model_dump()
+    await _run_shoot_background(shoot.id)
+    return await get_shoot(shoot.id)
 
 
 @api.get("/shoots")
@@ -3641,16 +3651,18 @@ async def list_shoots(character_id: Optional[str] = None, limit: int = 100):
     if character_id:
         query["character_id"] = character_id
     docs = await db.shoots.find(query, {"_id": 0}).sort("created_at", -1).to_list(limit)
-    render_ids = [f.get("render_id") for shoot in docs for f in shoot.get("frames", []) if f.get("render_id")]
-    renders = await db.renders.find({"id": {"$in": render_ids}}, {"_id": 0, "id": 1, "status": 1, "output_files": 1, "output_variants": 1}).to_list(len(render_ids)) if render_ids else []
-    by_id = {render["id"]: render for render in renders}
+    all_frames = [frame for shoot in docs for frame in shoot.get("frames", [])]
+    slots = await load_shoot_renders(db, all_frames)
+    offset = 0
     for shoot in docs:
         frames = shoot.get("frames") or []
-        refresh_shoot_progress(shoot, [by_id.get(frame.get("render_id")) for frame in frames])
+        renders = slots[offset:offset + len(frames)]
+        offset += len(frames)
+        refresh_shoot_progress(shoot, renders)
         preferred = shoot.get("cover_frame_index")
         order = ([preferred] if isinstance(preferred, int) and 0 <= preferred < len(frames) else []) + list(range(len(frames)))
         for index in order:
-            render = by_id.get(frames[index].get("render_id")) or {}
+            render = renders[index] or {}
             variants = render.get("output_variants") or {}
             images = (variants.get("enhanced") or []) + (render.get("output_files") or [])
             if images:
@@ -3671,7 +3683,7 @@ async def set_shoot_cover(sid: str, body: ShootCoverBody):
     frames = shoot.get("frames") or []
     if body.frame_index < 0 or body.frame_index >= len(frames):
         raise HTTPException(400, "Invalid frame")
-    render = await db.renders.find_one({"id": frames[body.frame_index].get("render_id")}, {"_id": 0})
+    render = (await load_shoot_renders(db, [frames[body.frame_index]]))[0]
     if not render or not render.get("output_files"):
         raise HTTPException(400, "Choose a completed image")
     await db.shoots.update_one({"id": sid}, {"$set": {"cover_frame_index": body.frame_index}})
@@ -3683,14 +3695,7 @@ async def get_shoot(sid: str):
     doc = await db.shoots.find_one({"id": sid}, {"_id": 0})
     if not doc:
         raise HTTPException(404, "Shoot not found")
-    # Attach latest render docs (for output_files + status refresh)
-    render_ids = [f.get("render_id") for f in doc.get("frames", []) if f.get("render_id")]
-    renders = []
-    if render_ids:
-        renders = await db.renders.find({"id": {"$in": render_ids}}, {"_id": 0}).to_list(len(render_ids))
-    by_id = {r["id"]: r for r in renders}
-    # Keep one render slot for every frame, including pending frames without a render ID.
-    doc["renders"] = [by_id.get(frame.get("render_id")) for frame in doc.get("frames", [])]
+    doc["renders"] = await load_shoot_renders(db, doc.get("frames") or [])
     refresh_shoot_progress(doc, doc["renders"])
     return doc
 
@@ -3708,15 +3713,13 @@ async def download_shoot_images(sid: str, body: ShootDownloadBody):
     indices = sorted(set(body.frames))
     if not indices or len(indices) > 100 or any(not isinstance(i, int) or i < 0 or i >= len(frames) for i in indices):
         raise HTTPException(400, "Select between 1 and 100 valid frames")
-    ids = [frames[i].get("render_id") for i in indices if frames[i].get("render_id")]
-    renders = await db.renders.find({"id": {"$in": ids}}, {"_id": 0}).to_list(len(ids)) if ids else []
-    by_id = {render["id"]: render for render in renders}
+    renders = await load_shoot_renders(db, frames)
     settings = await get_settings()
     archive = io.BytesIO()
     with zipfile.ZipFile(archive, "w", compression=zipfile.ZIP_STORED) as zipped:
         async with httpx.AsyncClient(timeout=httpx.Timeout(120.0, connect=8.0)) as client:
             for index in indices:
-                render = by_id.get(frames[index].get("render_id"))
+                render = renders[index]
                 variants = (render or {}).get("output_variants") or {}
                 url = next(iter((variants.get("enhanced") or []) + ((render or {}).get("output_files") or [])), None)
                 if not url:
@@ -3746,10 +3749,17 @@ async def delete_shoot(sid: str):
     doc = await db.shoots.find_one({"id": sid}, {"_id": 0})
     if not doc:
         raise HTTPException(404, "Shoot not found")
+    # Removing a shoot must also stop its waiting frames from rendering later.
+    jobs = await db.render_queue.find({"payload.shoot_id": sid}, {"_id": 0}).to_list(None)
+    for job in jobs:
+        if job.get("status") not in QUEUE_TERMINAL:
+            await cancel_render(job["id"])
     render_ids = [f.get("render_id") for f in doc.get("frames", []) if f.get("render_id")]
+    render_ids.extend(job["render_id"] for job in jobs if job.get("render_id"))
     if render_ids:
         await db.renders.delete_many({"id": {"$in": render_ids}})
     await db.shoots.delete_one({"id": sid})
+    await db.render_queue.delete_many({"payload.shoot_id": sid})
     return {"ok": True}
 
 
@@ -3774,9 +3784,11 @@ async def retry_shoot_frame(sid: str, frame_index: int, body: ShootRetryBody, ba
         char = await db.characters.find_one({"id": shoot.character_id}, {"_id": 0})
         if not char:
             return
-        # Delete old render doc if any
-        if frame.render_id:
-            await db.renders.delete_one({"id": frame.render_id})
+        if frame.queue_id:
+            job = await db.render_queue.find_one({"id": frame.queue_id}, {"_id": 0})
+            if job and job.get("status") not in QUEUE_TERMINAL:
+                raise HTTPException(409, "This frame is still queued or rendering")
+        # Keep old render records; retries must not delete Gallery outputs.
         original_subjects = char.get("subjects") or []
         per_subjects = [{**subject, "dna": _apply_frame_to_dna(subject.get("dna") or {}, frame.model_dump(), shoot.lock_scenario)}
                         for subject in original_subjects]
@@ -3810,8 +3822,9 @@ async def retry_shoot_frame(sid: str, frame_index: int, body: ShootRetryBody, ba
             shoot_id=sid,
             shoot_frame_index=frame_index,
         )
-        r_doc = await _perform_dispatch(body_disp)
-        frame.render_id = r_doc.get("id")
+        r_doc = await _enqueue_render(body_disp)
+        frame.queue_id = r_doc.get("id")
+        frame.render_id = r_doc.get("render_id")
         frame.status = r_doc.get("status", "failed")
         # persist back
         cur = await db.shoots.find_one({"id": sid}, {"_id": 0})
@@ -3820,10 +3833,10 @@ async def retry_shoot_frame(sid: str, frame_index: int, body: ShootRetryBody, ba
             frames[frame_index] = frame.model_dump()
             await db.shoots.update_one(
                 {"id": sid},
-                {"$set": {"frames": frames, "updated_at": now_iso()}},
+                {"$set": {f"frames.{frame_index}": frame.model_dump(), "updated_at": now_iso()}},
             )
 
-    background_tasks.add_task(_retry)
+    await _retry()
     return {"ok": True, "frame_index": frame_index}
 
 
