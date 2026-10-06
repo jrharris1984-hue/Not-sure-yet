@@ -17,7 +17,7 @@ test.each(RANDOM_SCENE_MODES)('$label creates the requested female cast and one 
 
 test('two-person foot mode keeps both bodies and foot ownership in the compiled prompt',()=>{
   const result=randomSceneSubjects(people,'duo_feet','balanced');
-  result.forEach(subject=>{expect(subject.dna.feet.composition_mode).toBe('feet focus');expect(subject.dna.feet.framing).toBe('full body');expect(subject.dna.pose.action).toBe('sitting on edge');});
+  result.forEach(subject=>{expect(subject.dna.feet.composition_mode).toBe('feet focus');expect(subject.dna.feet.framing).toBe('full body');expect(['sitting on edge', 'seated hands folded in lap', 'seated leaning on chair arm']).toContain(subject.dna.pose.action);});
   const prompt=compileModelPrompts({promptStyle:'chroma',subjects:result,dna:result[0].dna}).positive;
   expect(prompt).toContain('Exactly 2 separate adult people');
   expect(prompt).toMatch(/Subject B: \d+-year-old adult woman/);
@@ -43,4 +43,47 @@ test('other locks survive scene modes and new subjects receive independent DNA',
   expect(result[0].dna.hair).toEqual(current[0].dna.hair);
   const added=randomSceneSubjects(current.slice(0,1),'duo','balanced');
   expect(added[1].id).not.toBe(added[0].id);expect(added[1].dna).not.toBe(added[0].dna);
+});
+
+test.each(RANDOM_SCENE_MODES)('$label changes unlocked choices even with repeated RNG values', mode => {
+  const spy = jest.spyOn(Math, 'random').mockReturnValue(.25);
+  try {
+    const first = randomSceneSubjects(people, mode.id, 'balanced');
+    const second = randomSceneSubjects(first, mode.id, 'balanced');
+    for (let i=0; i<first.length; i++) {
+      expect(second[i].dna.hair.color).not.toBe(first[i].dna.hair.color);
+      expect(second[i].dna.scene.environment).not.toBe(first[i].dna.scene.environment);
+      if (mode.id.includes('feet')) {
+        expect(second[i].dna.pose.action).not.toBe(first[i].dna.pose.action);
+        expect(second[i].dna.feet.pedicure).not.toBe(first[i].dna.feet.pedicure);
+        if (mode.id === 'duo_feet') expect(second[i].dna.feet.framing).toBe('full body');
+      }
+    }
+  } finally { spy.mockRestore(); }
+});
+
+test('custom outfits clear unlocked stale dress overrides but preserve locked garments', () => {
+  const source = copy(people);
+  source[0].dna.wardrobe = {...source[0].dna.wardrobe, outfit_mode:'custom', dress_style:'mermaid gown', skirt_style:'pencil skirt'};
+  const result = randomSceneSubjects(source, 'solo');
+  expect(result[0].dna.wardrobe.dress_style).toBe('');
+  expect(result[0].dna.wardrobe.skirt_style).toBe('');
+  expect(result[0].dna.wardrobe.outfit_set).toBe('');
+  source[0].field_locks = {wardrobe:{dress_style:true}};
+  expect(randomSceneSubjects(source,'solo')[0].dna.wardrobe.dress_style).toBe('mermaid gown');
+  expect(source[0].dna.wardrobe.skirt_style).toBe('pencil skirt');
+});
+
+test('foot templates preserve locked pose and pedicure choices', () => {
+  const source = copy(people);
+  source[0].dna.pose.action = 'standing';
+  source[0].dna.feet.pedicure = 'painted french';
+  source[0].field_locks = {pose:{action:true}, feet:{pedicure:true}};
+  const result = randomSceneSubjects(source,'feet');
+  expect(result[0].dna.pose.action).toBe('standing');
+  expect(result[0].dna.feet.pedicure).toBe('painted french');
+  const locked = randomSceneSubjects(source,'feet','balanced',{pose:true,feet:true,wardrobe:true});
+  expect(locked[0].dna.pose).toEqual(source[0].dna.pose);
+  expect(locked[0].dna.feet).toEqual(source[0].dna.feet);
+  expect(locked[0].dna.wardrobe).toEqual(source[0].dna.wardrobe);
 });
