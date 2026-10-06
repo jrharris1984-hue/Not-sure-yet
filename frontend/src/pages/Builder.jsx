@@ -2708,12 +2708,16 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
         onGenerate={doDispatch} generating={dispatching}
         canGenerate={!!workflowId && mobileCreateIssues.length === 0}
         issues={mobileCreateIssues} imageCount={poseAssistEnabled && !isVariationWorkflow ? 1 : renderCount}
-        outputControls={<CreationOutputControls workflows={selectableWorkflows} workflowId={workflowId}
+        outputControls={<><CreationOutputControls workflows={selectableWorkflows} workflowId={workflowId}
           onWorkflow={setWorkflowId} family={activeRecipeFamily} tier={qualityTier}
           onTier={applyQualityTier} count={poseAssistEnabled && !isVariationWorkflow ? 1 : renderCount} onCount={setRenderCount}
           countLocked={poseAssistEnabled && !isVariationWorkflow}
           settings={renderSettings} onSettings={setChromaSettings}
-          fixedSampling={isKrea2 || isKrea2Aio || activeCompiler === "flux2_klein"} busy={dispatching} />}
+          fixedSampling={isKrea2 || isKrea2Aio || activeCompiler === "flux2_klein"} busy={dispatching} />
+          {activeRecipeFamily === "image" && !isVariationWorkflow && <section className="pane p-3 mt-3 space-y-3" aria-label="Prompt compiler">
+            <h3 className="section-label">Prompt compiler</h3>
+            <PromptFormatControl value={promptFormat} onChange={changePromptFormat} meta={promptFormatMeta} status={promptFormat === 'ollama' ? ollamaCompiled.reason : ''} />
+          </section>}</>}
         onTools={() => { setMobileToolsGroup("overview"); setMobileSheets(false); setMobileStudioMode("advanced"); setMobileStudioStep("create"); window.scrollTo({ top: 0, behavior: "auto" }); }}
       /> : <button data-mobile-tools="none" type="button" className="md:hidden chip" onClick={() => setMobileSheets(true)}>Back to bottom sheets</button>)}
       {galleryRecipeMode === "current" && (
@@ -3007,6 +3011,10 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
             mode={mobileStudioMode}
             onRequestAdvanced={() => setMobileStudioMode("advanced")}
           /></div>
+          {activeRecipeFamily === "image" && !isVariationWorkflow && <section data-mobile-tools="none" className="md:hidden pane p-3 space-y-3" aria-label="Prompt compiler">
+            <h3 className="section-label">Prompt compiler</h3>
+            <PromptFormatControl value={promptFormat} onChange={changePromptFormat} meta={promptFormatMeta} status={promptFormat === 'ollama' ? ollamaCompiled.reason : ''} />
+          </section>}
           {activeRecipeFamily === "image" && renderCount > 1 && <label data-mobile-tools="none" className="md:hidden pane p-3 flex items-center justify-between gap-3 text-xs text-zinc-200">
             Batch variety
             <select value={batchSeedMode} onChange={(event) => setBatchSeedMode(event.target.value)}
