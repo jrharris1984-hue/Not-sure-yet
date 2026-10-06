@@ -19,6 +19,8 @@ const MUST_FIELDS = new Set([
   "identity.age",
   "physique.body_type",
   "wardrobe.outfit_preset",
+  "wardrobe.outfit_set",
+  "wardrobe.exposure_direction",
   "pose.action",
   "pose.distance",
   "pose.angle",
@@ -94,6 +96,7 @@ function literalRequirement(section, field, value, locked = false) {
   if (!display && display !== "0") return "";
 
   const key = `${section}.${field}`;
+  if (key === "wardrobe.exposure_direction" || key === "wardrobe.outfit_set") return display;
   const numeric = Number(value);
   if (key === "physique.muscularity") {
     if (numeric > 85) return "highly muscular fitness physique";
@@ -200,8 +203,12 @@ function collectSubjectItems(dna = {}, {
   raunch = false,
 } = {}) {
   const items = [];
+  // Coverage is a derived selection, but it must survive the same budget as
+  // identity and the selected outfit. Do not emit the legacy numeric controls.
+  const coverage = wardrobeNudity(dna.wardrobe).direction;
+  const sections = { ...dna, ...(dna.wardrobe ? { wardrobe: { ...dna.wardrobe, exposure_direction: coverage } } : {}) };
 
-  Object.entries(dna || {}).forEach(([section, fields]) => {
+  Object.entries(sections).forEach(([section, fields]) => {
     if (!fields || typeof fields !== "object" || Array.isArray(fields)) return;
     Object.entries(fields).forEach(([field, value]) => {
       if (section === "scenario" && ["cast_age_mode", "cast_age_gap", "cast_resemblance", "kink_level"].includes(field)) return;
@@ -228,6 +235,8 @@ function collectSubjectItems(dna = {}, {
         normalize(phrase),
         normalize(literal),
         ...expandedTerms(section, field, value, raunch),
+        ...(section === "wardrobe" && ["outfit_set", "exposure_direction"].includes(field)
+          ? literal.split(/,\s*/).map(normalize).filter(term => term.length >= 5) : []),
       ].filter((term) => term && term.length >= 5)));
 
       items.push({

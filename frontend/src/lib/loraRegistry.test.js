@@ -212,7 +212,7 @@ describe("LoRA registry planner", () => {
 
   test("recognizes the expanded local Krea 2 library and known trigger tokens", () => {
     const local = [
-      "Krea2\\KREA2_CUMSHOT_v1.safetensors",
+      "Krea2\\KREA2_CUMSH0T_v1.safetensors",
       "Krea2\\krea_feet_lora_v3.safetensors",
       "Krea2\\RLY-thot_shot-KREA2-briana-v1-trigger-rlybriana.safetensors",
       "Krea2\\Private_Magazine_1990s_v1.safetensors",

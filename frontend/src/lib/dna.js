@@ -1,3 +1,4 @@
+import { catalogSelection } from './promptCatalog';
 import { ageAppearancePrompt, resolveAgeSkin } from './ageAppearance';
 import { HERITAGE_GROUPS, HERITAGE_LABELS, HERITAGE_PROFILES, heritageLabel } from "./heritageProfiles";
 import { ADDITIONAL_OUTFIT_GROUPS, OUTFIT_SET_LABELS, LAYERED_OUTFIT_GROUP, SET_LINGERIE_GROUPS } from "./completeOutfitSets";
@@ -1193,9 +1194,10 @@ function _veniceSubjectBlock(dna = {}, opts = {}) {
 
   const ex = Number(ph.exaggeration || 0);
 
-  const gender = id.gender === "male" ? "man"
-    : id.gender === "non-binary" ? "non-binary adult"
-    : id.gender === "androgynous" ? "androgynous adult"
+  const selectedGender = catalogSelection(dna, "identity", "gender");
+  const gender = selectedGender === "male" ? "man"
+    : selectedGender === "non-binary" ? "non-binary adult"
+    : selectedGender === "androgynous" ? "androgynous adult"
     : "woman";
   const age = Number(id.age || 0);
   const ageHead = age ? `${age}-year-old ${age >= 45 ? 'mature' : 'adult'} ${gender}` : `adult ${gender}`;

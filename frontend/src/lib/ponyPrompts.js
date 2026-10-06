@@ -1,3 +1,4 @@
+import { catalogSelection } from './promptCatalog';
 import { ageAppearancePrompt, resolveAgeSkin } from './ageAppearance';
 import { bustShapePrompt } from "./physiqueControls";
 import { gluteSizePrompt } from "@/lib/gluteControls";
@@ -207,7 +208,7 @@ export function buildMultiPonyPrompts(subjects = [], opts = {}) {
   if (!Array.isArray(subjects) || subjects.length === 0) return buildPonyPrompts({}, opts);
   if (subjects.length === 1) return buildPonyPrompts(subjects[0].dna || {}, opts);
   const primary = subjects[0].dna || {};
-  const shared = _ponySharedBlock(primary, opts, subjects.length);
+  const shared = _ponySharedBlock(primary, opts, subjects.length, subjects);
   const clauses = subjects.map((s) => {
     const clause = _ponySubjectBlock(s.dna || {}, opts);
     const label = s.label || "A";
@@ -242,7 +243,7 @@ export function buildMultiPonyPrompts(subjects = [], opts = {}) {
 
 const _join = (parts, sep = ", ") => parts.filter((p) => p && String(p).trim()).map(String).join(sep);
 
-function _ponySharedBlock(dna = {}, opts = {}, subjectCount = 1) {
+function _ponySharedBlock(dna = {}, opts = {}, subjectCount = 1, subjects = []) {
   const raunch = !!opts.raunch;
   const exp = (section, field) => {
     const v = dna?.[section]?.[field] || "";
@@ -255,11 +256,18 @@ function _ponySharedBlock(dna = {}, opts = {}, subjectCount = 1) {
   const ratingTag = explicitLevel >= 65 ? "rating_explicit, explicit content, uncensored"
                   : explicitLevel > 40 ? "rating_explicit, nsfw" : "";
 
-  const castSize = sc.cast_size || "solo";
-  const castType = sc.cast_type || "none";
+  const castSize = catalogSelection(dna, 'scenario', 'cast_size') || "solo";
+  const castType = catalogSelection(dna, 'scenario', 'cast_type') || "none";
   const isPairing = castType && castType !== "none";
   const effectiveCount = Math.max(subjectCount, 1);
   const countTag = (() => {
+    const genders = subjects.length ? subjects.map(subject => catalogSelection(subject.dna, 'identity', 'gender'))
+      : effectiveCount === 1 && castSize === 'solo' && !isPairing ? [catalogSelection(dna, 'identity', 'gender')] : [];
+    if (genders.length && genders.every(gender => ['male', 'female'].includes(gender))) {
+      const men = genders.filter(gender => gender === 'male').length;
+      const women = genders.length - men;
+      return [men && `${men}boy${men > 1 ? 's' : ''}`, women && `${women}girl${women > 1 ? 's' : ''}`, genders.length === 1 && 'solo'].filter(Boolean).join(', ');
+    }
     if (effectiveCount >= 6 || castSize === "orgy" || castSize === "gangbang") return "multiple_girls, 6+girls";
     if (effectiveCount >= 5 || castSize === "group") return "multiple_girls, 5girls";
     if (effectiveCount >= 4 || castSize === "foursome") return "4girls";
@@ -315,7 +323,7 @@ function _ponySharedBlock(dna = {}, opts = {}, subjectCount = 1) {
     st.extra,
   ]);
   const anatomy = "anatomically correct, realistic proportions, natural weight distribution, detailed anatomy";
-  const multiSubject = countTag !== "1girl, solo";
+  const multiSubject = !countTag.endsWith(', solo');
   return {
     qualityPrefix, ratingTag, countTag, pairingTag,
     scenario: scenarioStr, scene: sceneStr, lighting: lightingStr, camera: camStr, style: styleStr,
@@ -341,9 +349,10 @@ function _ponySubjectBlock(dna = {}, opts = {}) {
 
   const ex = Number(ph.exaggeration || 0);
   const eWeight = ex >= 85 ? 1.5 : ex >= 65 ? 1.3 : ex >= 40 ? 1.15 : 1;
-  const gender = id.gender === "male" ? "man"
-    : id.gender === "non-binary" ? "non-binary adult"
-    : id.gender === "androgynous" ? "androgynous adult"
+  const selectedGender = catalogSelection(dna, "identity", "gender");
+  const gender = selectedGender === "male" ? "man"
+    : selectedGender === "non-binary" ? "non-binary adult"
+    : selectedGender === "androgynous" ? "androgynous adult"
     : "woman";
   const age = Number(id.age || 0);
   const ageHead = age ? `${age}-year-old ${age >= 45 ? 'mature' : 'adult'} ${gender}` : `adult ${gender}`;
