@@ -8,8 +8,7 @@ const filledValues = (value) => {
 };
 
 export function analyzeGenerationIntent(dna = {}, subjectCount = 1, hasReference = false) {
-  const explicit = Number(dna?.scenario?.explicit_level || 0) > 0
-    || Number(dna?.scenario?.kink_level || 0) > 0;
+  const explicit = Number(dna?.scenario?.explicit_level || 0) > 0;
   const feetFocus = filledValues(dna?.feet || {}) > 0 || text(dna?.pose?.focus) === "feet";
   const poseComplex = ["kneeling", "squatting", "bending", "lying legs up", "on back legs up"].includes(text(dna?.pose?.action))
     || ["pov", "over-shoulder", "back"].includes(text(dna?.pose?.angle));
@@ -18,7 +17,7 @@ export function analyzeGenerationIntent(dna = {}, subjectCount = 1, hasReference
     + filledValues(dna?.face || {})
     + filledValues(dna?.hair || {})
   ) >= 8;
-  const detailCount = filledValues(dna);
+  const detailCount = filledValues({ ...dna, scenario: { ...dna.scenario, kink_level: undefined } });
   return {
     explicit,
     feetFocus,

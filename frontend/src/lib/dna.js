@@ -426,7 +426,6 @@ export const SECTIONS = [
         { name: "BDSM", options: ["bondage", "shibari", "tied up", "collared and leashed", "spanking", "gagged"] },
       ]},
       { key: "explicit_level", type: "slider", label: "Explicit level (off → depraved)", min: 0, max: 100, step: 1, defaultValue: 0 },
-      { key: "kink_level", type: "slider", label: "Kink level (off → extreme kink)", min: 0, max: 100, step: 1, defaultValue: 0 },
       { key: "extra_acts", type: "text", label: "Additional acts / notes" },
     ],
   },
@@ -529,7 +528,7 @@ const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
 export const RANDOMIZE_PROTECTED_FIELDS = {
   intimate: new Set(["cum_state", "saliva", "squirt", "sweat", "lube", "tears"]),
   feet: new Set(["foot_state", "hosiery", "foot_act"]),
-  scenario: new Set(["explicit_level", "kink_level"]),
+  scenario: new Set(["explicit_level"]),
   wardrobe: new Set(["exposure_mode", "nudity_level", "hosiery_type", "hosiery_color", "hosiery_pattern", "heel_type", "heel_color", "heel_height", "heel_finish", "garment_color", "dress_style", "skirt_style", "garment_pattern", "nail_color", "nail_shape", "glasses_style", "glasses_color"]),
 };
 
@@ -809,7 +808,6 @@ export function randomizeWetDream(current = {}, locks = {}) {
   if (!locks.scenario) {
     const sc = { ...(current.scenario || {}) };
     sc.explicit_level = 40 + Math.floor(Math.random() * 61); // 40-100
-    sc.kink_level = 30 + Math.floor(Math.random() * 71); // 30-100
     const section = SECTIONS.find((s) => s.key === "scenario");
     const actsField = section.fields.find((f) => f.key === "acts");
     const pool = actsField.groups ? actsField.groups.flatMap((g) => g.options) : (actsField.options || []);
@@ -1136,15 +1134,11 @@ function _veniceSharedBlock(dna = {}, opts = {}, subjectCount = 1) {
 
   const sc = dna.scenario || {};
   const explicitLevel = Number(sc.explicit_level ?? sc.intensity ?? 0);
-  const kinkLevel = Number(sc.kink_level ?? 0);
   // Dials below 40 are treated as neutral defaults. Specific selected content
   // still appears through the intimate/kink/watersports blocks.
   const explicitTag = explicitLevel >= 85 ? "extreme depraved XXX hardcore, uncensored graphic pornographic scene"
                      : explicitLevel >= 65 ? "hardcore explicit adult scene, uncensored NSFW"
                      : explicitLevel > 40 ? "explicit adult content, NSFW" : "";
-  const kinkTag = kinkLevel >= 85 ? "extreme hardcore BDSM, brutal kink, total power exchange, degradation and mind-break"
-                 : kinkLevel >= 65 ? "hardcore kink scene, heavy BDSM, rough dominance and submission"
-                 : kinkLevel > 40 ? "playful kink, light BDSM, teasing dominance" : "";
 
   const scenarioStr = join([
     sc.cast_size && sc.cast_size !== "solo" && exp("scenario", "cast_size"),
@@ -1154,7 +1148,6 @@ function _veniceSharedBlock(dna = {}, opts = {}, subjectCount = 1) {
       ? sc.acts.filter((a) => a && a !== "none").map((a) => expandPrompt("scenario", "acts", a, { raunch })).join(", ")
       : (sc.acts && sc.acts !== "none" && exp("scenario", "acts")),
     explicitTag,
-    kinkTag,
     sc.extra_acts,
   ]);
 
@@ -1170,7 +1163,7 @@ function _veniceSharedBlock(dna = {}, opts = {}, subjectCount = 1) {
     style: styleStr,
     scenario: scenarioStr,
     qualityTail,
-    hasExplicit: !!scenarioStr || explicitLevel > 0 || kinkLevel > 0,
+    hasExplicit: !!scenarioStr || explicitLevel > 0,
     anatomy: (has) => has
       ? "detailed anatomy with natural proportions, anatomically correct body, realistic weight distribution, natural breast shape with realistic gravity, detailed vulva, visible labia, realistic skin flush, natural moisture"
       : "detailed anatomy with natural proportions, anatomically correct body, natural weight distribution",
@@ -1915,7 +1908,7 @@ export const KINK_PRESETS = [
       feet: { sole_presentation: "sole showcase", toes: ["toe curl", "toe spread"], arch: "high arch", pedicure: "painted red", foot_state: ["oiled"], hosiery: "bare", foot_act: ["foot worship", "sole licking"], framing: "POV under foot" },
       pose: { angle: "from below", distance: "detail shot", focus: "feet", body_language: "dominant" },
       lighting: { source: "softbox", style: "cinematic", mood: "sensual" },
-      scenario: { kink_level: 55, explicit_level: 40 },
+      scenario: { explicit_level: 40 },
     },
   },
   {
@@ -1926,7 +1919,7 @@ export const KINK_PRESETS = [
       kink: { humiliation: ["degradation stare", "spit on face", "drooling", "mascara tears"] },
       face: { expression: "sultry" },
       wardrobe: { state: "coming off" },
-      scenario: { explicit_level: 80, kink_level: 70 },
+      scenario: { explicit_level: 80 },
     },
   },
   {
@@ -1936,14 +1929,14 @@ export const KINK_PRESETS = [
       kink: { restraint: ["rope shibari", "wrists overhead"], gag: ["ball gag", "drool bib"], marks: ["red handprint", "rope marks", "welts"], humiliation: ["ahegao expression", "mind-break", "drooling", "mascara tears"], orgasm_control: ["forced orgasm", "overstimulation"], power_dynamic: "master and slave" },
       face: { expression: "sultry" },
       intimate: { tears: "mascara tears", saliva: ["drool from mouth", "drool from chin"] },
-      scenario: { kink_level: 90, explicit_level: 70 },
+      scenario: { explicit_level: 70 },
     },
   },
   {
     name: "Bukkake Queen",
     tags: ["cum", "group", "facial"],
     dna: {
-      scenario: { cast_size: "group", acts: ["bukkake", "facial", "cum on tits", "cum on face"], explicit_level: 95, kink_level: 40 },
+      scenario: { cast_size: "group", acts: ["bukkake", "facial", "cum on tits", "cum on face"], explicit_level: 95 },
       intimate: { cum_state: ["cum on face", "cum in mouth open display", "cum on tits", "cum in hair", "cum-covered whole body"], saliva: ["drool from mouth"] },
       pose: { angle: "front", distance: "portrait", focus: "face", body_language: "submissive" },
     },
@@ -1956,7 +1949,7 @@ export const KINK_PRESETS = [
       pose: { action: "all fours", body_language: "submissive", hands: ["at sides"] },
       face: { expression: "sultry" },
       wardrobe: { accessories: ["leather collar", "leash"] },
-      scenario: { kink_level: 75, explicit_level: 50 },
+      scenario: { explicit_level: 50 },
     },
   },
   {
@@ -1967,7 +1960,7 @@ export const KINK_PRESETS = [
       physique: { bust: "huge", bust_shape: "natural" },
       pose: { focus: "breasts", body_language: "sensual" },
       wardrobe: { outfit_preset: "topless" },
-      scenario: { roleplay: "milf", explicit_level: 60, kink_level: 30 },
+      scenario: { roleplay: "milf", explicit_level: 60 },
     },
   },
   {
@@ -1976,7 +1969,7 @@ export const KINK_PRESETS = [
     dna: {
       watersports: { source: "group", direction: ["in mouth", "on face", "held in"], stream: "steady stream", container: "toilet", desperation: "humiliated", aftermath: ["smeared mascara", "wet hair", "wet clothes"] },
       kink: { restraint: ["collar and leash"], humiliation: ["degradation stare", "spit on face", "used", "wrecked", "drooling"], power_dynamic: "owner and pet" },
-      scenario: { explicit_level: 90, kink_level: 85 },
+      scenario: { explicit_level: 90 },
     },
   },
 ];

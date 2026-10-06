@@ -198,7 +198,7 @@ const sliders = [
   ['physique', 'butt_scale', 'glute size', 300], ['physique', 'thigh_scale', 'thigh size', 100],
   ['physique', 'hip_scale', 'hip width', 100], ['physique', 'waist_scale', 'waist width', 100],
   ['skin', 'glow', 'skin glow', 100],
-  ['scenario', 'explicit_level', 'scenario intensity', 100], ['scenario', 'kink_level', 'scenario styling intensity', 100],
+  ['scenario', 'explicit_level', 'scenario intensity', 100],
 ];
 export function sliderPromptSignature(dna = {}) {
   return sliders.flatMap(([section, key, label, max]) => {

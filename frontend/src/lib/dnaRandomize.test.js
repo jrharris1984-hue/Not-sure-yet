@@ -1,5 +1,9 @@
 import { DEFAULT_DNA, SECTIONS, buildPrompts, normalizeMultiSelection, randomizeDna, randomizeSection } from "./dna";
 import { buildPonyPrompts } from "./ponyPrompts";
+import { buildPromptPriorityPlan } from "./promptPriority";
+import { sliderPromptSignature } from "./builderControlResolution";
+import { analyzeGenerationIntent } from "./smartGeneration";
+import { catalogSections } from "./promptCatalog";
 
 const protectedIntimate = {
   cum_state: ["cum on face"],
@@ -82,9 +86,9 @@ describe("Feet and Play prompt priority", () => {
 
 
 describe("scenario intensity defaults", () => {
-  test("new characters start with Explicit and Kink at zero", () => {
+  test("new characters keep Explicit at zero and omit the removed Kink slider", () => {
     expect(DEFAULT_DNA.scenario.explicit_level).toBe(0);
-    expect(DEFAULT_DNA.scenario.kink_level).toBe(0);
+    expect(DEFAULT_DNA.scenario.kink_level).toBeUndefined();
   });
 
   test("zero dials do not emit implicit explicit or kink intensity tags", () => {
@@ -102,7 +106,7 @@ describe("scenario intensity defaults", () => {
     };
     const { positive } = buildPrompts(dna);
     expect(positive).toContain("hardcore explicit adult scene");
-    expect(positive).toContain("hardcore kink scene");
+    expect(positive).not.toContain("hardcore kink scene");
   });
 });
 
@@ -127,4 +131,28 @@ test('random preserves explicitly locked extremes and foot selections', () => {
   expect(result.physique.implant_volume).toBe(1450);
   expect(result.pose).toEqual(current.pose);
   expect(result.feet).toEqual(current.feet);
+});
+
+
+test.each([50, 70, 100])("saved kink level %s no longer changes prompts or guidance", (level) => {
+  const clean = { ...DEFAULT_DNA, scenario: { ...DEFAULT_DNA.scenario, explicit_level: 0 } };
+  const legacy = { ...clean, scenario: { ...clean.scenario, kink_level: level } };
+  expect(buildPrompts(legacy)).toEqual(buildPrompts(clean));
+  expect(buildPonyPrompts(legacy)).toEqual(buildPonyPrompts(clean));
+  expect(sliderPromptSignature(legacy)).toEqual(sliderPromptSignature(clean));
+  expect(analyzeGenerationIntent(legacy)).toEqual(analyzeGenerationIntent(clean));
+  expect(buildPromptPriorityPlan({ dna: legacy, fieldLocks: { scenario: { kink_level: true } } }))
+    .toEqual(buildPromptPriorityPlan({ dna: clean }));
+});
+
+
+test("saved prompt catalogs cannot restore the removed scenario slider", () => {
+  const sections = catalogSections(SECTIONS, { sections: [{ key: "scenario", title: "Scenario", fields: [
+    { key: "kink_level", label: "Legacy intensity", type: "slider", options: [] },
+    { key: "custom_scene", label: "Custom scene", type: "text", options: [] },
+  ] }] });
+  const fields = sections.find(section => section.key === "scenario").fields;
+  expect(fields.some(field => field.key === "kink_level")).toBe(false);
+  expect(fields.some(field => field.key === "explicit_level")).toBe(true);
+  expect(fields.some(field => field.key === "custom_scene")).toBe(true);
 });

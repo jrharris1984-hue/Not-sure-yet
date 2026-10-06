@@ -122,12 +122,6 @@ function literalRequirement(section, field, value, locked = false) {
     if (numeric > 40) return "explicit adult intensity";
     return "";
   }
-  if (key === "scenario.kink_level") {
-    if (numeric >= 85) return "extreme kink intensity";
-    if (numeric >= 65) return "high kink intensity";
-    if (numeric > 40) return "light kink intensity";
-    return "";
-  }
   if (key === "identity.age") return `${display}-year-old adult`;
   if (key === "identity.gender") return `${display} adult subject`;
   if (key === "scenario.cast_size") {
@@ -207,7 +201,7 @@ function collectSubjectItems(dna = {}, {
   Object.entries(dna || {}).forEach(([section, fields]) => {
     if (!fields || typeof fields !== "object" || Array.isArray(fields)) return;
     Object.entries(fields).forEach(([field, value]) => {
-      if (section === "scenario" && ["cast_age_mode", "cast_age_gap", "cast_resemblance"].includes(field)) return;
+      if (section === "scenario" && ["cast_age_mode", "cast_age_gap", "cast_resemblance", "kink_level"].includes(field)) return;
       // The fine control replaces its older coarse chip in the compiler.
       const fineControl = { bust: "bust_scale", butt: "butt_scale", hips: "hip_scale", waist: "waist_scale", thighs: "thigh_scale" }[field];
       if (section === "physique" && ["bust", "bust_scale", "bust_shape"].includes(field) && Number(fields.implant_volume) > 0) return;
