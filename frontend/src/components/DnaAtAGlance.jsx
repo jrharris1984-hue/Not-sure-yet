@@ -95,7 +95,6 @@ function computeAllStrips(dna = {}) {
     sc.roleplay && sc.roleplay !== "none" && sc.roleplay,
     Array.isArray(sc.acts) && sc.acts.length && sc.acts.slice(0, 3).join(" · "),
     Number(sc.explicit_level) > 0 && `explicit ${sc.explicit_level}%`,
-    Number(sc.kink_level) > 0 && `kink ${sc.kink_level}%`,
     Array.isArray(kk.restraint) && kk.restraint.length && kk.restraint[0],
     Array.isArray(kk.gag) && kk.gag.length && kk.gag[0],
     ws.source && ws.source !== "none" && "watersports",

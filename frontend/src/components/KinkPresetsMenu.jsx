@@ -23,7 +23,6 @@ export default function KinkPresetsMenu({ currentDna, onApply }) {
   const [selectedPreset, setSelectedPreset] = useState(null);
   const [sections, setSections] = useState({});
   const [explicitLevel, setExplicitLevel] = useState(0);
-  const [kinkLevel, setKinkLevel] = useState(0);
   const [powerDynamic, setPowerDynamic] = useState("preset");
   const [restraintMode, setRestraintMode] = useState("preset");
   const [role, setRole] = useState("preset");
@@ -77,7 +76,6 @@ export default function KinkPresetsMenu({ currentDna, onApply }) {
     enabled.lighting = false;
     setSections(enabled);
     setExplicitLevel(preset.dna?.scenario?.explicit_level ?? currentDna?.scenario?.explicit_level ?? 0);
-    setKinkLevel(preset.dna?.scenario?.kink_level ?? currentDna?.scenario?.kink_level ?? 0);
     setPowerDynamic(preset.dna?.kink?.power_dynamic ? "preset" : "preserve");
     setRestraintMode(preset.dna?.kink?.restraint?.length ? "preset" : "preserve");
     setRole(preset.dna?.scenario?.roleplay ? "preset" : "preserve");
@@ -90,7 +88,7 @@ export default function KinkPresetsMenu({ currentDna, onApply }) {
   const apply = () => {
     if (!selectedPreset) return;
     onApply(applyAdjustedKinkPreset(currentDna || DEFAULT_DNA, selectedPreset, {
-      sections, explicitLevel, kinkLevel, powerDynamic, restraintMode, role, position, expression, mood,
+      sections, explicitLevel, powerDynamic, restraintMode, role, position, expression, mood,
     }));
     toast.success(`Applied adjusted "${selectedPreset.name}"`);
     setSelectedPreset(null);
@@ -122,7 +120,7 @@ export default function KinkPresetsMenu({ currentDna, onApply }) {
     if (currentDna?.scenario) {
       const sc = currentDna.scenario;
       const carry = {};
-      ["explicit_level", "kink_level", "acts"].forEach((f) => {
+      ["explicit_level", "acts"].forEach((f) => {
         if (sc[f] !== undefined && sc[f] !== "" && !(Array.isArray(sc[f]) && sc[f].length === 0)) {
           carry[f] = sc[f];
         }
@@ -245,11 +243,6 @@ export default function KinkPresetsMenu({ currentDna, onApply }) {
                     <div className="flex justify-between text-xs text-zinc-300"><span>Explicit intensity</span><span className="font-mono text-amber-300">{explicitLevel}%</span></div>
                     <input type="range" min="0" max="100" value={explicitLevel} onChange={(e) => setExplicitLevel(Number(e.target.value))}
                       className="w-full accent-amber-400" data-testid="kink-editor-explicit-level" />
-                  </label>
-                  <label className="space-y-1.5">
-                    <div className="flex justify-between text-xs text-zinc-300"><span>Kink intensity</span><span className="font-mono text-fuchsia-300">{kinkLevel}%</span></div>
-                    <input type="range" min="0" max="100" value={kinkLevel} onChange={(e) => setKinkLevel(Number(e.target.value))}
-                      className="w-full accent-fuchsia-400" data-testid="kink-editor-kink-level" />
                   </label>
                 </div>
 
