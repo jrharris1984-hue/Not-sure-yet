@@ -1,80 +1,76 @@
-import { forwardRef, useEffect, useImperativeHandle, useLayoutEffect, useRef, useState } from 'react';
-import { clamp, motionDuration, swipeDestination } from '@/lib/dragMotion';
+import { forwardRef, useEffect, useImperativeHandle, useLayoutEffect, useRef } from 'react';
+import { motionDuration } from '@/lib/dragMotion';
 
-const GalleryCarousel = forwardRef(function GalleryCarousel({ current, previous, next, onNavigate, outputUrl, isVideo }, ref) {
+// Native scrolling owns touch tracking, momentum and snapping. React only commits
+// the selected record once scrolling has stopped. A fast flick can cross many slides.
+const GalleryCarousel = forwardRef(function GalleryCarousel({ current, items, previous, next, onNavigate, outputUrl, isVideo }, ref) {
   const viewport = useRef(null);
-  const gesture = useRef(null);
-  const pending = useRef(null);
   const timer = useRef(null);
+  const navigating = useRef(false);
+  const touching = useRef(false);
   const callback = useRef(onNavigate);
+  const available = useRef(false);
+  const slides = items?.some(item => item.id === current.id) ? items : previous && next ? [previous, current, next] : [current];
+  const index = items?.some(item => item.id === current.id) ? items.findIndex(item => item.id === current.id) : previous && next ? 1 : 0;
+  const position = useRef({ index, count: slides.length });
+  position.current = { index, count: slides.length };
   callback.current = onNavigate;
-  const [offset, setOffset] = useState(0);
-  const [dragging, setDragging] = useState(false);
-  const [settling, setSettling] = useState(false);
-  const finish = () => {
-    const direction = pending.current;
-    pending.current = null;
+  available.current = slides.length > 1;
+  const width = () => viewport.current?.clientWidth || viewport.current?.getBoundingClientRect().width || window.innerWidth;
+  const recenter = () => {
+    if (viewport.current) viewport.current.scrollLeft = width() * position.current.index;
+  };
+  const settled = () => {
     clearTimeout(timer.current);
-    if (direction) callback.current(direction);
-    setSettling(false); setOffset(0);
+    if (!viewport.current || touching.current) return;
+    const destination = Math.max(0, Math.min(position.current.count - 1, Math.round(viewport.current.scrollLeft / width())));
+    const direction = destination - position.current.index;
+    navigating.current = false;
+    if (available.current && direction) callback.current(direction);
+    else recenter();
   };
-  const navigate = direction => {
-    if (!previous || !next || pending.current !== null || settling) return;
-    const width = viewport.current?.getBoundingClientRect().width || window.innerWidth;
-    const duration = motionDuration();
-    if (!duration) { callback.current(direction); setOffset(0); setDragging(false); return; }
-    pending.current = direction;
-    setDragging(false); setSettling(true); setOffset(-direction * width);
-    timer.current = setTimeout(finish, duration + 40);
-  };
-  useImperativeHandle(ref, () => ({ navigate }));
+  useImperativeHandle(ref, () => ({ navigate(direction) {
+    if (!available.current || navigating.current) return;
+    const destination = position.current.index + direction;
+    if (!motionDuration() || destination < 0 || destination >= position.current.count) { callback.current(direction); return; }
+    navigating.current = true;
+    viewport.current.scrollTo({ left: width() * destination, behavior: 'smooth' });
+    // Scroll events continually postpone this fallback until the animation stops.
+    timer.current = setTimeout(settled, 200);
+  } }));
   useLayoutEffect(() => {
-    clearTimeout(timer.current); pending.current = null; gesture.current = null;
-    setOffset(0); setSettling(false); setDragging(false);
-  }, [current.id]);
-  useEffect(() => () => clearTimeout(timer.current), []);
-  const settleBack = () => { gesture.current = null; setDragging(false); setOffset(0); };
-  const end = (event, cancelled = false) => {
-    const drag = gesture.current;
-    if (!drag || drag.id !== event.pointerId) return;
-    gesture.current = null;
-    if (cancelled || drag.axis !== 'x') { settleBack(); return; }
-    const delta = event.clientX - drag.x;
-    const velocity = event.timeStamp - drag.time > 80 ? 0 : drag.velocity;
-    const direction = swipeDestination(delta, velocity, viewport.current.getBoundingClientRect().width || window.innerWidth);
-    if (direction) navigate(direction); else settleBack();
-  };
-  const slides = [previous || current, current, next || current];
+    clearTimeout(timer.current); navigating.current = false; touching.current = false; recenter();
+  }, [current.id, index]);
+  useEffect(() => {
+    const node = viewport.current;
+    let measuredWidth = width();
+    const resize = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(() => {
+      const nextWidth = width();
+      if (Math.abs(nextWidth - measuredWidth) < 1) return;
+      measuredWidth = nextWidth;
+      clearTimeout(timer.current); navigating.current = false; recenter();
+    });
+    resize?.observe(node);
+    return () => { clearTimeout(timer.current); resize?.disconnect(); };
+  }, []);
   return <div ref={viewport} className="gallery-carousel-viewport flex-1 min-h-0 h-full" data-testid="gallery-carousel"
-    onPointerDown={event => {
-      if (!previous || !next || settling || event.isPrimary === false || event.button > 0 || event.target.closest('video, button, input, a')) return;
-      gesture.current = { id: event.pointerId, x: event.clientX, y: event.clientY, last: event.clientX, time: event.timeStamp, velocity: 0, axis: null };
+    style={{ overflowX: available.current ? 'auto' : 'hidden' }}
+    onTouchStart={() => { touching.current = true; clearTimeout(timer.current); }}
+    onTouchEnd={event => {
+      touching.current = event.touches.length > 0;
+      if (!touching.current) { clearTimeout(timer.current); timer.current = setTimeout(settled, 160); }
     }}
-    onPointerMove={event => {
-      const drag = gesture.current;
-      if (!drag || drag.id !== event.pointerId) return;
-      const dx = event.clientX - drag.x, dy = event.clientY - drag.y;
-      if (!drag.axis && Math.max(Math.abs(dx), Math.abs(dy)) > 6) {
-        drag.axis = Math.abs(dx) > Math.abs(dy) ? 'x' : 'y';
-        if (drag.axis === 'x') { event.currentTarget.setPointerCapture?.(event.pointerId); setDragging(true); }
-      }
-      if (drag.axis !== 'x') return;
-      const elapsed = event.timeStamp - drag.time;
-      if (elapsed > 0) drag.velocity = (event.clientX - drag.last) / elapsed;
-      drag.last = event.clientX; drag.time = event.timeStamp;
-      const width = viewport.current.getBoundingClientRect().width || window.innerWidth;
-      setOffset(clamp(dx, -width, width));
-    }}
-    onPointerUp={event => end(event)} onPointerCancel={event => end(event, true)}
-    onLostPointerCapture={event => { if (gesture.current) end(event, true); }}>
-    <div className="gallery-carousel-track" data-testid="gallery-carousel-track"
-      style={{ transform: `translate3d(calc(-100% + ${offset}px), 0, 0)`, transition: dragging ? 'none' : undefined }}
-      onTransitionEnd={event => { if (event.target === event.currentTarget && event.propertyName === 'transform' && pending.current !== null) finish(); }}>
-      {slides.map((item, position) => <div className="gallery-carousel-slide" key={`${position}-${item.id}`} aria-hidden={position !== 1} inert={position !== 1}>
-        {isVideo(outputUrl(item)) ? <video src={outputUrl(item)} controls={position === 1} autoPlay={position === 1} playsInline loop preload={position === 1 ? 'metadata' : 'none'}
-          data-testid={position === 1 ? 'gallery-lightbox-video' : undefined} />
-          : <img src={outputUrl(item)} draggable={false} alt={position === 1 ? item.prompt_positive?.slice(0, 60) || 'render' : ''}
-            data-testid={position === 1 ? 'gallery-lightbox-image' : undefined} />}
+    onTouchCancel={() => { touching.current = false; clearTimeout(timer.current); timer.current = setTimeout(settled, 160); }}
+    onScroll={() => {
+      clearTimeout(timer.current);
+      timer.current = setTimeout(settled, 160);
+    }}>
+    <div className="gallery-carousel-track" data-testid="gallery-carousel-track">
+      {slides.map((item, position) => <div className="gallery-carousel-slide" key={`${position}-${item.id}`} aria-hidden={position !== index} inert={position !== index}>
+        {isVideo(outputUrl(item)) ? <video src={outputUrl(item)} controls={position === index} autoPlay={position === index} playsInline loop preload={position === index ? 'metadata' : 'none'}
+          data-testid={position === index ? 'gallery-lightbox-video' : undefined} />
+          : <img src={outputUrl(item)} loading={Math.abs(position - index) <= 1 ? "eager" : "lazy"} draggable={false} alt={position === index ? item.prompt_positive?.slice(0, 60) || 'render' : ''}
+            data-testid={position === index ? 'gallery-lightbox-image' : undefined} />}
       </div>)}
     </div>
   </div>;
