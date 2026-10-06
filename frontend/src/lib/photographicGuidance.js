@@ -1,4 +1,4 @@
-export const PHOTO_DETAIL = 'Natural photographic skin texture with subtle pores, realistic lighting and lens detail; preserve the selected subjects, proportions, pose and composition';
+export const PHOTO_DETAIL = 'Natural photographic skin texture with subtle pores, realistic lighting and lens detail';
 export const PHOTO_EXCLUSIONS = 'cartoon, anime, illustration, CGI, 3d render, doll-like skin, plastic skin, waxy skin, airbrushed skin, overly smooth skin';
 export const LIMB_DETAIL = 'Hands at the ends of arms; feet at the ends of legs; footwear worn only on feet';
 

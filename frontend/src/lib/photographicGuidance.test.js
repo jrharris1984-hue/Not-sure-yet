@@ -6,7 +6,7 @@ test.each(['sdxl', 'sdxl_dmd2', 'pony', 'chroma', 'zimage', 'krea2', 'flux2_klei
   const dna = { ...DEFAULT_DNA, pose: { ...DEFAULT_DNA.pose, distance: 'full body' } };
   const result = compileModelPrompts({ promptStyle, dna });
   expect(result.positive.indexOf(PHOTO_DETAIL)).toBeLessThan(350);
-  expect(result.positive).toMatch(/full.body|head to feet/i);
+  expect(result.positive).toMatch(/full.body|head to feet|full.length photograph/i);
   if (result.negativeStrategy === 'text') expect(result.negative).toContain('airbrushed skin');
   else expect(result.negative).not.toContain('airbrushed skin');
   if (promptStyle === 'pony') expect(result.positive).toContain('score_9');

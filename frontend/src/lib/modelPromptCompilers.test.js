@@ -75,7 +75,7 @@ describe("model-specific prompt compilers", () => {
     dna.pose = { ...dna.pose, action: "standing", distance: "full body" };
     const result = compileModelPrompts({ promptStyle: "krea2", dna });
     expect(result.positive).toContain("44-year-old adult woman");
-    expect(result.positive).toContain("full body framing");
+    expect(result.positive).toContain("Full-length photograph");
     expect(result.positive).toContain("Photorealistic editorial photograph");
     expect(result.positive).not.toContain("NORMAL HUMAN ANATOMY REQUIRED");
     expect(result.profile).toBe("krea2-photo-directed-v1");

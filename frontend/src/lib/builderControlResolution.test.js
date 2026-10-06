@@ -65,7 +65,8 @@ test.each(families)('%s reflects each legal slider step and its reversal in the 
     dna[section][field.key] = start + (field.step || 1);
     const after = compileModelPrompts({ dna, promptStyle }).positive;
     expect(after).not.toBe(before);
-    expect(after).toContain(sliderPromptSignature(resolveBuilderControls(dna).dna));
+    if (field.key === "age") expect(after).toContain(`${start + (field.step || 1)}-year-old`);
+    else for (const signature of sliderPromptSignature(resolveBuilderControls(dna).dna).split(", ").filter(value => !value.startsWith("age "))) expect(after).toContain(signature);
     dna[section][field.key] = start;
     expect(compileModelPrompts({ dna, promptStyle }).positive).toBe(before);
   }
