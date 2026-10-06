@@ -1,3 +1,4 @@
+import { heritagePrompt } from "./heritageProfiles";
 import { resolveWardrobeMode } from "./wardrobeMode";
 import { catalogDna, customCatalogPrompt, getPromptCatalog, applyCatalogRules } from "./promptCatalog";
 import { applyPhotographicGuidance } from "./photographicGuidance";
@@ -210,7 +211,7 @@ function chromaLeanSingleSubjectPrompt(dna = {}, primaryGuard = {}, sourceDna = 
   const gender = id.gender === "male" ? "man" : "woman";
   const subject = [
     age ? `${age}-year-old adult ${gender}` : `adult ${gender}`,
-    id.ethnicity,
+    heritagePrompt(id.ethnicity, dna),
     ph.body_type && `${ph.body_type} build`,
     ph.height && ph.height !== "average" ? `${ph.height} height` : "",
     face.eye_shape && `${face.eye_shape} eyes`,
@@ -565,7 +566,7 @@ function kreaSubjectSentence(dna = {}, label = "") {
   const person = kreaGenderLabel(id.gender);
   const head = age ? `${age}-year-old adult ${person}` : `adult ${person}`;
   const body = kreaList(
-    id.ethnicity,
+    heritagePrompt(id.ethnicity, dna),
     ph.height && ph.height !== "average" ? `${ph.height} height` : "",
     ph.body_type && `${ph.body_type} body type`,
     Number(ph.muscularity || 0) > 60 ? (Number(ph.muscularity) > 85 ? "highly muscular build" : "athletic toned build") : "",
