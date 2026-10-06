@@ -861,8 +861,8 @@ export function subjectsFromCharacter(character) {
 // How many subjects a scenario currently expects (min 1).
 export function expectedSubjectCount(dna = {}) {
   const sc = dna?.scenario || {};
-  const cs = sc.cast_size || "solo";
-  const ct = sc.cast_type || "none";
+  const cs = dna._catalogSelections?.scenario?.cast_size || sc.cast_size || "solo";
+  const ct = dna._catalogSelections?.scenario?.cast_type || sc.cast_type || "none";
   const isPairing = ct && ct !== "none";
   if (ct === "triplets" || ct === "grandmother, mother and daughter") return 3;
   if (cs === "orgy" || cs === "gangbang") return Math.min(MAX_SUBJECTS, 4);
@@ -1004,7 +1004,7 @@ export function buildMultiVenicePrompts(subjects = [], opts = {}) {
   }
   const primary = subjects[0].dna || {};
   const shared = _veniceSharedBlock(primary, opts, subjects.length);
-  const pairing = primary?.scenario?.cast_type || "none";
+  const pairing = primary?._catalogSelections?.scenario?.cast_type || primary?.scenario?.cast_type || "none";
   const familyPairings = new Set(["twins", "identical twins", "sisters", "mother and daughter", "aunt and niece", "grandma and granddaughter"]);
   const familyScene = familyPairings.has(pairing);
   const clauses = subjects.map((s) => {
@@ -1076,17 +1076,13 @@ function _veniceSharedBlock(dna = {}, opts = {}, subjectCount = 1) {
   const genre = exp("style", "render") || "photorealistic photograph";
   const qualityLead = join(["photorealistic editorial photograph", "high detail", "natural color", "realistic texture"]);
 
-  const sc0 = dna.scenario || {};
-  const cs = sc0.cast_size || "solo";
-  const ct = sc0.cast_type || "none";
-  const isPairing = ct && ct !== "none";
   // Cast headcount — force multi-subject language when scenario says duo/threesome/pair
   // OR when we have >1 explicit subject fed in.
   const castHeadcount = (() => {
     // Explicit subject records are authoritative. A generic "group" must not
     // introduce a fifth person or turn a mixed cast into women only.
     if (subjectCount > 1) return `exactly ${subjectCount} adult people in the frame, every selected subject visible`;
-    const inferred = cs === "duo" ? 2 : ["trio", "threesome"].includes(cs) ? 3 : ["foursome", "group"].includes(cs) ? 4 : isPairing ? 2 : 1;
+    const inferred = expectedSubjectCount(dna);
     if (inferred > 1) return `exactly ${inferred} adult people in the frame, every selected subject visible`;
     return "";
   })();

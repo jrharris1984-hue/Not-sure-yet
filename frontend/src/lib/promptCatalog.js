@@ -49,15 +49,37 @@ function buildField(base, saved) {
   };
 }
 // Stable option values keep saved characters intact when display names change.
-export function catalogDna(dna = {}, config = catalog) {
+export const catalogSelection = (dna, section, field) => dna?._catalogSelections?.[section]?.[field] ?? dna?.[section]?.[field];
+
+// Preset prose must not reintroduce traits owned by independent controls.
+function physiqueKeywords(keywords, field, physique = {}) {
+  const controls = [
+    ['height', /\b(?:petite|tall|short|statuesque|towering|height|stature)\b/i],
+    ['hips', /\bhips?\b|waist-to-hip/i, 'hip_scale'],
+    ['waist', /\bwaist\b|midsection|stomach/i, 'waist_scale'],
+    ['shoulders', /\bshoulders?\b/i],
+    ['thighs', /\bthighs?\b/i, 'thigh_scale'],
+    ['legs', /\blegs?\b|inseam|limbs/i],
+    ['body_type', /\b(?:athletic|muscular|fitness|petite) build\b|fitness physique/i],
+  ];
+  return keywords.split(',').map(clause => clause.trim()).filter(clause => clause && !controls.some(([key, pattern, slider]) =>
+    field !== key && (physique[key] || slider && Number(physique[slider]) > 0) && pattern.test(clause)
+  )).join(', ');
+}
+
+export function catalogDna(dna = {}, config = catalog, preserveSelections = false) {
   const result = {...dna};
+  if (preserveSelections) result._catalogSelections = {};
   for (const section of config.sections) {
     if (!dna[section.key]) continue;
     result[section.key] = {...dna[section.key]};
+    if (preserveSelections) result._catalogSelections[section.key] = {...dna[section.key]};
     for (const field of section.fields) {
       const translate = value => {
         const option = field.options?.find(item => item.value === value);
-        return option ? option.keywords.trim() || (String(value).startsWith('custom_') ? option.label : value) : String(value || '').startsWith('custom_') ? '' : value;
+        const keywords = option?.keywords.trim();
+        const phrase = section.key === 'physique' && keywords ? physiqueKeywords(keywords, field.key, dna.physique) : keywords;
+        return option ? phrase || (String(value).startsWith('custom_') ? option.label : value) : String(value || '').startsWith('custom_') ? '' : value;
       };
       const value = dna[section.key][field.key];
       if (value !== undefined && ['chips','chips_multi','pose_chips'].includes(field.type)) result[section.key][field.key] = Array.isArray(value) ? value.map(translate).filter(Boolean) : translate(value);

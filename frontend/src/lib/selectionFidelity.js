@@ -22,7 +22,7 @@ export function appearanceSignature(dna = {}, existing = "") {
     const valuePresent = chunk.includes(text(value).toLowerCase());
     const contextPresent = label === "build" ? /\bbuild\b|body type|physique/.test(chunk) : chunk.includes(context);
     return valuePresent && (!label || contextPresent);
-  });
+  }) || (text(value).includes(',') && existing.toLowerCase().includes(text(value).toLowerCase()));
   const heritage = HERITAGE_PROFILES[dna.identity?.ethnicity]?.ancestry;
   const heritagePresent = heritage ? existing.toLowerCase().includes(heritage.split(",")[0].toLowerCase()) : present(dna.identity?.ethnicity);
   if (meaningful(dna.identity?.ethnicity) && !heritagePresent) {

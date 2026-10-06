@@ -1,4 +1,5 @@
 import { POSE_ACTION_PROMPTS } from './photographyPoses';
+import { catalogSelection } from './promptCatalog';
 import { resolveWardrobeMode } from "./wardrobeMode";
 import { wardrobeNudity } from "./wardrobeNudity";
 import { footVisibility } from './footVisibility';
@@ -18,7 +19,8 @@ export function resolveBuilderControls(source = {}) {
   const p = dna.pose, f = dna.feet, w = dna.wardrobe;
   // A named pose with defined arm placement owns the hands; do not ask the
   // same arms to occupy a second position. Custom wording remains untouched.
-  const poseKey = POSE_ACTION_PROMPTS[p.action] ? p.action
+  const selectedPose = catalogSelection(dna, 'pose', 'action');
+  const poseKey = POSE_ACTION_PROMPTS[selectedPose] ? selectedPose : POSE_ACTION_PROMPTS[p.action] ? p.action
     : Object.keys(POSE_ACTION_PROMPTS).find(key => POSE_ACTION_PROMPTS[key] === p.action);
   const handsDefined = new Set([
     'standing thumbs in pockets', 'standing arms loosely crossed', 'standing one hand on waist',
@@ -26,7 +28,8 @@ export function resolveBuilderControls(source = {}) {
     'leaning forearms on railing', 'adjusting jacket lapel', 'kneeling hands floor',
     'all fours', 'hands on knees',
   ]);
-  if (handsDefined.has(poseKey)) omit('pose', 'hands', 'The selected pose already defines arm and hand placement. The separate Hand position is inactive for this pose.');
+  const customHands = /\b(?:hands?|forearms?|arms?|wrists?|thumbs?)\s+(?:(?:are|resting|placed|raised|bound|folded|loosely|hooked|planted|leaning)\s+)*(?:on|in|at|over|above|behind|against|crossed|bound|folded|up)\b/i.test(p.action || '');
+  if (handsDefined.has(poseKey) || customHands) omit('pose', 'hands', 'The selected pose already defines arm and hand placement. The separate Hand position is inactive for this pose.');
   if (poseKey && p.body_language && lower(POSE_ACTION_PROMPTS[poseKey]).split(/[^a-z-]+/).includes(lower(p.body_language))) {
     omit('pose', 'body_language', 'The selected pose already includes this body language.');
   }
