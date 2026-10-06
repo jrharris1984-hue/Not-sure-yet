@@ -89,7 +89,7 @@ export default function MobileBuilderSheets({ sections, section, onSection, subj
     <div className="sheet-workspace">
       <header className="flex items-center justify-between gap-2">
         <div><div className="section-label">Character workspace</div><div className="text-sm font-semibold">{subjects.length} {subjects.length === 1 ? "person" : "people"} · editing {subjects.find(person => person.id === activeId)?.label || "A"}</div></div>
-        <div className="flex gap-2"><button type="button" className="chip" onClick={onReset} title="Reset the current person’s character options" aria-label="Reset current person">Reset</button><button type="button" className="chip" disabled={saving} onClick={onSave}>{saving ? "Saving…" : "Save"}</button></div>
+        <div className="flex gap-2"><button type="button" className="chip" onClick={() => { setDetail(null); setClosing(false); setDetailOffset(0); setHeight("expanded"); onReset?.(); }} title="Clear the character setup and start with one person" aria-label="Reset character setup">Reset</button><button type="button" className="chip" disabled={saving} onClick={onSave}>{saving ? "Saving…" : "Save"}</button></div>
       </header>
       <div className="sheet-preview">
         {livePreview || (preview ? <img src={mediaUrl(preview)} alt="Latest character result" /> : <div className="text-center text-zinc-500 text-sm p-6">Your generated character will appear here.<br /><span className="text-xs">Open a category below to start.</span></div>)}

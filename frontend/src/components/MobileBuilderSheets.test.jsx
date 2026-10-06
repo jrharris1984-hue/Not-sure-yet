@@ -89,8 +89,17 @@ test('selected options review opens the selected category and person accents fol
   expect(onSection).toHaveBeenCalledWith('hair');
 });
 
-test('Reset beside Save calls the current-person reset action', () => {
+test('Reset beside Save calls the full character reset action', () => {
   const onReset = jest.fn(); paint({ onReset }); click('Reset');
   expect(onReset).toHaveBeenCalledTimes(1);
-  expect(container.querySelector('[aria-label="Reset current person"]')).not.toBeNull();
+  expect(container.querySelector('[aria-label="Reset character setup"]')).not.toBeNull();
+});
+
+test('Reset closes detailed options and returns to the expanded category sheet', () => {
+  const onReset = jest.fn(); paint({ onReset }); click('Colorblack');
+  expect(container.querySelector('[role="dialog"]')).not.toBeNull();
+  click('Reset');
+  expect(container.querySelector('[role="dialog"]')).toBeNull();
+  expect(container.querySelector('[data-testid="primary-creation-sheet"]').className).toContain('sheet-expanded');
+  expect(onReset).toHaveBeenCalledTimes(1);
 });

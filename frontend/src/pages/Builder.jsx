@@ -1913,13 +1913,11 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
     toast.success("Random scene ready for review");
   };
   const resetCharacter = () => {
-    const confirmed = window.confirm(
-      "Reset this character? This clears all current selections, prompts, tags, locks, and the uploaded reference image. Saved characters and Gallery images will not be deleted."
-    );
-    if (!confirmed) return;
     clearBuilderDraft(draftId);
     if (referencePreview) URL.revokeObjectURL(referencePreview);
-    const fresh = makeSubject({ label: "A", dna: JSON.parse(JSON.stringify(DEFAULT_DNA)) });
+    const freshDna = JSON.parse(JSON.stringify(DEFAULT_DNA));
+    freshDna.scenario = { ...freshDna.scenario, cast_size: "solo", cast_type: "none" };
+    const fresh = makeSubject({ label: "A", dna: freshDna });
     setName("Untitled");
     setSubjects([fresh]);
     setActiveSubjectId(fresh.id);
@@ -1935,6 +1933,13 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
     setRaunch(false);
     setPromptLanguage("editorial");
     setLoraOverrides({});
+    setSelectedLora({ name: "", strength: 0.8, triggerWords: [] });
+    setSecondaryLora({ name: "", strength: 0.8, triggerWords: [] });
+    setShowSecondLora(false);
+    setPlainLanguage("");
+    setPromptOverride("");
+    setNegativePromptOverride("");
+    setAiPromptSuggestion(null);
     setReferenceImage(null);
     setReferencePreview("");
     setSourceRenderId(null);
@@ -1972,7 +1977,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
       sampler: "euler",
       seed: "",
     });
-    goSection("identity");
+    goSection("scenario");
     toast.success("Character reset to defaults");
   };
 
@@ -2611,15 +2616,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
         livePreview={activeRender && ["queued", "running"].includes(activeRender.status)
           ? <LivePreview clientId={activeRender.id} /> : null}
         onSave={() => save.mutate()} saving={save.isPending}
-        onReset={() => {
-          const previous = activeSubject;
-          const fresh = JSON.parse(JSON.stringify(DEFAULT_DNA));
-          setSubjects(current => current.map(person => person.id === previous.id
-            ? { ...person, dna: { ...fresh, ...Object.fromEntries(["scenario", "scene", "lighting", "camera", "style"].map(key => [key, person.dna[key] || fresh[key]])) }, field_locks: {} } : person));
-          toast.success(`Person ${previous.label} reset`, { action: { label: "Undo", onClick: () => {
-            setSubjects(current => current.map(person => person.id === previous.id ? previous : person));
-          } } });
-        }}
+        onReset={resetCharacter}
         onGenerate={doDispatch} generating={dispatching}
         canGenerate={!!workflowId && mobileCreateIssues.length === 0}
         issues={mobileCreateIssues} imageCount={poseAssistEnabled && !isVariationWorkflow ? 1 : renderCount}
