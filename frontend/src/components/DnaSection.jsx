@@ -154,12 +154,15 @@ export default function DnaSection({
       <div className="grid gap-5">
         {section.key === 'wardrobe' && <div className="space-y-2" data-testid="wardrobe-mode-controls">
           <div className="flex gap-2" role="group" aria-label="Outfit mode">{['full', 'custom'].map(mode => <button type="button" key={mode} className={`chip ${wardrobeMode(value) === mode ? 'active' : ''}`} aria-pressed={wardrobeMode(value) === mode} data-testid={`wardrobe-mode-${mode}`} disabled={!!fieldLocks.outfit_mode} onClick={() => set('outfit_mode', mode)}>{mode === 'full' ? 'Full set' : 'Custom'}</button>)}</div>
-          <p className="text-xs text-zinc-400">{wardrobeMode(value) === 'full' ? 'Choose one complete set and its color. Coverage reveals the matching lingerie layer. Separate garments, shoes and accessories are disabled to avoid conflicts.' : 'Build your outfit from separate garments and accessories. Complete sets are inactive.'}</p>
+          <p className="text-xs text-zinc-400">{wardrobeMode(value) === 'full' ? 'Choose one complete set and its color. The lingerie underneath is optional. Separate garments, shoes and accessories are disabled to avoid conflicts.' : 'Build your outfit from separate garments and accessories. Complete sets are inactive.'}</p>
         </div>}
 
         {section.fields.map((f) => {
           if (section.key === "wardrobe" && f.key === "outfit_mode") return null;
           const outfitDisabled = section.key === "wardrobe" && wardrobeFieldDisabled(f.key, value);
+          const visibleChoice = option => !(section.key === 'wardrobe' && f.key === 'exposure_mode'
+            && wardrobeMode(value) === 'full' && value.set_lingerie_mode === 'none'
+            && ['lingerie showing', 'lingerie only'].includes(option));
           if (focusedField && focusedField !== "all") {
             const family = Object.entries(SIZE_CONTROL_PAIRS).find(([key, [slider]]) => [key, slider, ...(key === "bust" ? ["implant_volume", "bust_shape"] : [])].includes(focusedField));
             const keys = family ? [family[0], family[1][0], ...(family[0] === "bust" ? ["implant_volume", "bust_shape"] : [])] : [focusedField];
@@ -187,7 +190,9 @@ export default function DnaSection({
                 </button>)}
               </div>
             </div>}
-            {outfitDisabled && <p className="text-xs text-zinc-500">{wardrobeMode(value) === 'full' ? 'Controlled by the full set. Switch to Custom to edit.' : 'Switch to Full set to choose a coordinated outfit.'}</p>}
+            {outfitDisabled && <p className="text-xs text-zinc-500">{f.key === 'set_lingerie' && wardrobeMode(value) === 'full' && value.set_lingerie_mode === 'none'
+              ? 'Choose Include lingerie to select an underneath layer.'
+              : wardrobeMode(value) === 'full' ? 'Controlled by the full set. Switch to Custom to edit.' : 'Switch to Full set to choose a coordinated outfit.'}</p>}
             {(!isModeHeader || mode === 'preset') && <fieldset disabled={outfitDisabled} className={`space-y-2 min-w-0 ${outfitDisabled ? 'opacity-40' : ''}`}>
 
             <div className="flex items-center justify-between text-xs text-zinc-400 font-mono uppercase tracking-widest">
@@ -233,7 +238,7 @@ export default function DnaSection({
             {f.type === "chips" && f.groups && (
               <GroupedChips
                 labels={f.optionLabels}
-                groups={f.groups}
+                groups={f.groups.map(group => ({...group, options:group.options.filter(visibleChoice)})).filter(group => group.options.length)}
                 value={f.key === "exposure_mode" ? wardrobeExposure(value) : Array.isArray(value[f.key]) ? value[f.key].at(-1) || "" : value[f.key] || ""}
                 onChange={(v) => set(f.key, v)}
                 testIdPrefix={`chip-${section.key}-${f.key}`}
@@ -242,7 +247,7 @@ export default function DnaSection({
             )}
             {f.type === "chips" && !f.groups && (
               <ChipRow
-                options={f.options}
+                options={(f.options || []).filter(visibleChoice)}
                 labels={f.optionLabels}
                 value={f.key === "exposure_mode" ? wardrobeExposure(value) : Array.isArray(value[f.key]) ? value[f.key].at(-1) || "" : value[f.key] || ""}
                 onChange={(v) => set(f.key, v)}
