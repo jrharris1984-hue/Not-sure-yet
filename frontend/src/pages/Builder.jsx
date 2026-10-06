@@ -2846,6 +2846,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
                   setActiveDna(next);
                   toast.success(`Preset applied to Subject ${activeSubject.label}`);
                 }
+                if (sheetViewport) setMobileSheets(true);
               }}
             /></div>
             <div data-mobile-tools="prompts"

@@ -81,3 +81,22 @@ test('sheet field focus keeps the complete size-control family and excludes unre
     expect(container.querySelector('[data-testid="size-mode-waist"]')).toBeNull();
   } finally { act(() => root.unmount()); container.remove(); }
 });
+
+test('full-set mode disables separate garments and Custom reactivates saved choices', () => {
+  global.IS_REACT_ACT_ENVIRONMENT = true;
+  const container = document.createElement('div'); document.body.appendChild(container);
+  const root = createRoot(container);
+  const section = SECTIONS.find(s => s.key === 'wardrobe');
+  let value = { outfit_mode: 'full', outfit_set: 'matching satin set', top: 'corset' };
+  const paint = () => root.render(<DnaSection section={{ ...section, fields: section.fields.filter(f => ['outfit_mode', 'top', 'outfit_set_color'].includes(f.key)) }} value={value} onChange={next => { value = next; paint(); }} />);
+  try {
+    act(paint);
+    expect(container.querySelector('[data-testid="chip-wardrobe-top-corset"]').closest('fieldset').disabled).toBe(true);
+    act(() => container.querySelector('[data-testid="wardrobe-mode-custom"]').click());
+    expect(container.querySelector('[data-testid="chip-wardrobe-top-corset"]').closest('fieldset').disabled).toBe(false);
+    expect(value.top).toBe('corset'); expect(value.outfit_mode).toBe('custom');
+    act(() => container.querySelector('[data-testid="chip-wardrobe-top-tube-top"]').click());
+    expect(value.top).toBe('tube top');
+    expect(container.querySelector('[data-testid="chip-wardrobe-outfit_set_color-tab-Classic"]').closest('fieldset').disabled).toBe(true);
+  } finally { act(() => root.unmount()); container.remove(); }
+});

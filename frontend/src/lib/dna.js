@@ -1,3 +1,5 @@
+import { ADDITIONAL_OUTFIT_GROUPS, OUTFIT_SET_LABELS, LAYERED_OUTFIT_GROUP, SET_LINGERIE_GROUPS } from "./completeOutfitSets";
+import { resolveWardrobeMode } from "./wardrobeMode";
 import { bustShapePrompt } from "./physiqueControls";
 import { PHOTOGRAPHY_POSE_GROUPS } from "@/lib/photographyPoses";
 import { GLUTE_SIZE_MAX, gluteSizePrompt } from "@/lib/gluteControls";
@@ -214,6 +216,7 @@ export const SECTIONS = [
     key: "wardrobe",
     title: "Wardrobe",
     fields: [
+      { key: "outfit_mode", type: "chips", label: "Outfit mode", options: ["full", "custom"], optionLabels: { full: "Full set", custom: "Custom" }, help: "Full set uses one coordinated outfit. Custom enables separate clothing, hosiery, shoes and accessories." },
       { key: "exposure_mode", type: "chips", label: "Clothing coverage", options: EXPOSURE_CHOICES,
         help: "Progress from your selected outfit to lingerie showing underneath, lingerie only, open or shifted clothing, partial nudity, and nudity. Lingerie only replaces outer clothing. Partial nudity keeps some selected clothing on (plain briefs if none is selected); Nude removes garments. Accessories and hosiery remain available." },
       { key: "outfit_preset", type: "chips", label: "Outfit preset", groups: [
@@ -229,11 +232,13 @@ export const SECTIONS = [
         { name: "Indian & Bollywood", options: ["embroidered lehenga choli with dupatta", "silk sari with fitted blouse", "ornate anarkali suit", "sharara set with dupatta", "gharara set with embroidered kurta", "Bollywood princess gown with jewelry"] },
         { name: "Arabian inspired", options: ["embroidered kaftan", "formal abaya with matching headscarf", "ornate jalabiya", "beaded evening kaftan"] },
       ]},
-      { key: "outfit_set", type: "chips", label: "Complete outfit set", groups: [
+      { key: "outfit_set", type: "chips", label: "Complete outfit set", optionLabels: OUTFIT_SET_LABELS, groups: [
         { name: "Lingerie sets", options: ["lace balconette set with matching panties, garter belt, stockings and heels", "satin push-up bra set with matching briefs, sheer thigh-highs and stilettos", "embroidered bralette and high-waist panties with seamed stockings and pumps", "sheer mesh bra and thong with fishnet stockings and platform heels", "silk corset and matching panties with garters, lace stockings and heels"] },
         { name: "Costume sets", options: ["French maid dress with apron, matching lingerie, stockings and heels", "classic maid dress with lace headpiece, stockings and pumps", "superheroine bodysuit with matching cape, gloves and boots", "armored heroine suit with matching cape, belt and boots", "royal princess gown with matching jewelry, veil and heels"] },
         { name: "Cultural fashion sets", options: ["Bollywood royal lehenga choli with dupatta, jewelry and embroidered heels", "Indian silk sari with matching blouse, bangles and sandals", "embroidered anarkali with dupatta, earrings and embellished flats", "formal embroidered kaftan with matching jewelry and sandals", "ornate abaya with matching scarf, jewelry and shoes"] },
+        ...ADDITIONAL_OUTFIT_GROUPS, LAYERED_OUTFIT_GROUP,
       ] },
+      { key: "set_lingerie", type: "chips", label: "Lingerie underneath", optionLabels: OUTFIT_SET_LABELS, groups: SET_LINGERIE_GROUPS, help: "Leave unset to use the full set’s matching lingerie. Clothing coverage reveals this layer or shows it alone." },
       { key: "outfit_set_color", type: "chips", label: "Set color", groups: [
         { name: "Classic", options: ["black", "white", "ivory", "red", "burgundy", "navy", "gold", "silver"] },
         { name: "Bright", options: ["emerald", "royal blue", "hot pink", "saffron", "turquoise", "purple"] },
@@ -564,6 +569,7 @@ export function randomizeSection(sectionKey, current = {}, fieldLocks = {}, opti
     'physique.waist_scale': [25, 65], 'skin.glow': [0, 50],
   };
   section.fields.forEach((f) => {
+    if (sectionKey === "wardrobe" && f.key === "outfit_mode") return; // keep the chosen outfit workflow
     if (fieldLocks?.[f.key]) return; // per-field lock — keep current value
     if (preserveProtected && RANDOMIZE_PROTECTED_FIELDS[sectionKey]?.has(f.key)) return;
     if (f.type === "chips" || f.type === "pose_chips") {
@@ -1182,6 +1188,7 @@ function visualScale(value, noun, labels) {
 }
 
 function _veniceSubjectBlock(dna = {}, opts = {}) {
+  dna = { ...dna, wardrobe: resolveWardrobeMode(dna.wardrobe || {}) };
   const raunch = !!opts.raunch;
   const val = (section, field) => dna?.[section]?.[field] || "";
   const exp = (section, field) => {
@@ -1279,7 +1286,7 @@ function _veniceSubjectBlock(dna = {}, opts = {}) {
   const subject = join([nameTag, subjectHead, subjectBody, subjectFace, hairStr, hairExtras, skinDetails]);
 
   // -------- Wardrobe --------
-  const wd = dna.wardrobe || {};
+  const wd = resolveWardrobeMode(dna.wardrobe || {});
   const nudity = wardrobeNudity(wd);
   const outfitPieces = [];
   if (!nudity.suppressClothing && wd.outfit_set) outfitPieces.push(`${wd.outfit_set_color ? `${wd.outfit_set_color} ` : ""}${wd.outfit_set}`);

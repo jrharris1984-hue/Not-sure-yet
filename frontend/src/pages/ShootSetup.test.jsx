@@ -40,3 +40,21 @@ test('photoshoot passes selected workflow metadata and character selections into
     expect(planner.textContent).toContain('Golden Chroma is for chroma, not krea2.');
   } finally { act(() => root.unmount()); }
 });
+
+test('ordered coverage mode previews four shots per stage for a 28-photo run', () => {
+  global.IS_REACT_ACT_ENVIRONMENT = true;
+  const container = document.createElement('div'); const root = createRoot(container);
+  try {
+    act(() => root.render(<ShootSetup />));
+    act(() => container.querySelector('[data-testid="enable-clothing-sequence"]').click());
+    expect(container.querySelector('[data-testid="clothing-sequence-total"]').textContent).toContain('7 stages × 4 photos = 28 photos');
+    expect(container.querySelector('[data-testid="shoot-count-value"]').textContent).toBe('28');
+    expect(container.querySelector('[data-testid="slider-shoot-count"]').disabled).toBe(true);
+    expect(container.querySelector('[data-testid="shoot-outfit-panel"]').disabled).toBe(true);
+    expect(container.querySelector('[data-testid="shoot-preview-frame-3"]').textContent).toContain('use selected outfit');
+    expect(container.querySelector('[data-testid="shoot-preview-frame-4"]').textContent).toContain('slightly revealing');
+    expect(container.querySelector('[data-testid="shoot-preview-frame-27"]').textContent).toContain('nude');
+    act(() => container.querySelector('[data-testid="enable-clothing-sequence"]').click());
+    expect(container.querySelector('[data-testid="shoot-count-value"]').textContent).toBe('8');
+  } finally { act(() => root.unmount()); }
+});

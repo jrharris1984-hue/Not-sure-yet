@@ -1,3 +1,4 @@
+import { wardrobeFieldDisabled, wardrobeMode } from "@/lib/wardrobeMode";
 import { useEffect, useRef, useState } from "react";
 import { clamp, sheetSnap, motionDuration } from "@/lib/dragMotion";
 import { UserRound, ScanFace, Scissors, Shirt, PersonStanding, Users, Palette, Sun, Camera, MapPin, Sparkles, Layers, Footprints, Droplets } from "lucide-react";
@@ -122,9 +123,9 @@ export default function MobileBuilderSheets({ sections, section, onSection, subj
         <div className="sheet-field-scroll">
           <div className="flex justify-between items-center mb-3"><h2 className="font-semibold">{section.title}</h2><div className="flex gap-2"><button type="button" className="text-xs text-cyan-200" onClick={() => open("selected")}>Selected · {selectedItems.length}</button><button type="button" className="text-xs text-cyan-200" onClick={() => open("all")}>All controls</button></div></div>
           <div className="grid grid-cols-2 gap-2">
-            {section.fields.map(field => <button key={field.key} type="button" className={`sheet-field-card ${Array.isArray(values[field.key]) ? values[field.key].length ? "has-selection" : "" : values[field.key] ? "has-selection" : ""}`} onClick={() => open(field.key)}>
+            {section.fields.map(field => <button key={field.key} type="button" disabled={section.key === "wardrobe" && wardrobeFieldDisabled(field.key, values)} className={`sheet-field-card disabled:opacity-40 ${Array.isArray(values[field.key]) ? values[field.key].length ? "has-selection" : "" : values[field.key] ? "has-selection" : ""}`} onClick={() => open(field.key)}>
               <span className="block text-sm font-semibold">{field.label}</span>
-              <span className="block text-xs text-zinc-400 mt-1 truncate">{Array.isArray(values[field.key]) ? values[field.key].join(", ") || "Choose" : String(values[field.key] ?? "Choose") || "Choose"}</span>
+              <span className="block text-xs text-zinc-400 mt-1 truncate">{section.key === "wardrobe" && field.key === "outfit_mode" ? wardrobeMode(values) === "full" ? "Full set" : "Custom" : section.key === "wardrobe" && wardrobeFieldDisabled(field.key, values) ? "Switch outfit mode to edit" : Array.isArray(values[field.key]) ? values[field.key].join(", ") || "Choose" : String(values[field.key] ?? "Choose") || "Choose"}</span>
             </button>)}
           </div>
         </div>

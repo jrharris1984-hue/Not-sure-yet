@@ -1,3 +1,6 @@
+import { clothingSequence, DEFAULT_CLOTHING_STAGES } from "@/lib/shootClothingSequence";
+import { EXPOSURE_CHOICES } from "@/lib/wardrobeNudity";
+import GroupedChips from "@/components/GroupedChips";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -59,7 +62,13 @@ export default function ShootSetup() {
   const { data: settings } = useQuery({ queryKey: ["settings"], queryFn: endpoints.settings });
 
   const [aiFrames, setAiFrames] = useState(null);
-  const [count, setCount] = useState(8);
+  const [manualCount, setCount] = useState(8);
+  const [sequenceEnabled, setSequenceEnabled] = useState(false);
+  const [coverageStages, setCoverageStages] = useState(DEFAULT_CLOTHING_STAGES);
+  const [shotsPerStage, setShotsPerStage] = useState(4);
+  const [sequenceSet, setSequenceSet] = useState('');
+  const coverageFrames = useMemo(() => clothingSequence(coverageStages, shotsPerStage, sequenceSet), [coverageStages, shotsPerStage, sequenceSet]);
+  const count = sequenceEnabled ? coverageFrames.length : manualCount;
   const [workflowId, setWorkflowId] = useState("");
   const [poseMode, setPoseMode] = useState("pack"); // random | pack | manual
   const [packKey, setPackKey] = useState("editorial");
@@ -86,7 +95,7 @@ export default function ShootSetup() {
     }
   }, [workflows, settings, workflowId]);
 
-  useEffect(() => { setAiFrames(null); }, [workflowId, count, lockScenario]);
+  useEffect(() => { setAiFrames(null); }, [workflowId, count, lockScenario, sequenceEnabled]);
 
   // Preview: compute what each frame will be
   const previewFrames = useMemo(() => {
@@ -96,10 +105,10 @@ export default function ShootSetup() {
       const planned = aiFrames ? plannedFrameControls(aiFrames[i], lockScenario) : null;
       const p = planned ? planned.pose_action : sampledPose;
       const scene_direction = shotScript.length ? shotScript[i % shotScript.length] : "";
-      const outfit_overrides = planned ? planned.outfit_overrides : outs[i] || {};
+      const outfit_overrides = sequenceEnabled ? coverageFrames[i] : planned ? planned.outfit_overrides : outs[i] || {};
       const face_overrides = planned ? planned.face_overrides : expressions.length ? { expression: expressions[i % expressions.length] } : {};
       const baseDna = character?.subjects?.[0]?.dna || character?.dna || {};
-      const planControls = { wardrobeOverrides: planned?.outfit_overrides, poseOverrides: planned?.pose_overrides, lightingOverrides: planned?.lighting_overrides, sceneOverrides: planned?.scene_overrides, lockScenario };
+      const planControls = { wardrobeOverrides: outfit_overrides, poseOverrides: planned?.pose_overrides, lightingOverrides: planned?.lighting_overrides, sceneOverrides: planned?.scene_overrides, lockScenario };
       const frameDna = shootFrameDna(baseDna, { poseAction: p, outfitPreset: outfit_overrides.outfit_preset, faceOverrides: face_overrides, ...planControls });
       const subjects = (character?.subjects || []).map((subject, index) =>
         ({ ...subject, dna: index === 0 ? frameDna : shootFrameDna(subject.dna, {
@@ -135,7 +144,7 @@ export default function ShootSetup() {
         prompt_negative: compiled?.negative || "",
       };
     });
-  }, [poseMode, packKey, manualPoses, count, outfits, expressions, shotScript, character, shootWorkflow, aiFrames, lockScenario]);
+  }, [sequenceEnabled, coverageFrames, poseMode, packKey, manualPoses, count, outfits, expressions, shotScript, character, shootWorkflow, aiFrames, lockScenario]);
 
   const create = useMutation({
     mutationFn: async () => {
@@ -233,21 +242,22 @@ export default function ShootSetup() {
                   data-testid="slider-shoot-count"
                   type="range"
                   min={4}
-                  max={20}
+                  max={40}
+                  disabled={sequenceEnabled}
                   step={1}
                   value={count}
                   onChange={(e) => setCount(Number(e.target.value))}
                   className="w-full accent-amber-400"
                 />
                 <div className="flex justify-between text-[10px] font-mono text-zinc-500">
-                  <span>4</span><span>8</span><span>12</span><span>16</span><span>20</span>
+                  <span>4</span><span>12</span><span>20</span><span>28</span><span>40</span>
                 </div>
               </label>
             </div>
           </section>
 
-          <ShootPlanner characterId={characterId} workflow={shootWorkflow} count={count} lockScenario={lockScenario}
-            appliedFrames={aiFrames} onApply={setAiFrames} />
+          {!sequenceEnabled && count <= 20 && <ShootPlanner characterId={characterId} workflow={shootWorkflow} count={count} lockScenario={lockScenario}
+            appliedFrames={aiFrames} onApply={setAiFrames} />}
           {aiFrames && <div className="pane p-4 text-sm text-cyan-200">AI shot plan applied. Pose, outfit and expression rotations below are replaced by the shot cards.
             <button type="button" className="chip ml-2" onClick={() => setAiFrames(null)}>Return to manual rotation</button></div>}
           {/* Pose source */}
@@ -350,8 +360,19 @@ export default function ShootSetup() {
             )}
           </fieldset>
 
+          <section className="pane p-4 sm:p-6 space-y-4" data-testid="shoot-clothing-sequence">
+            <label className="flex items-center gap-3 text-sm font-semibold"><input type="checkbox" checked={sequenceEnabled} onChange={event => { setSequenceEnabled(event.target.checked); setAiFrames(null); }} data-testid="enable-clothing-sequence" />Ordered clothing coverage sequence</label>
+            <p className="text-xs text-zinc-400">Repeat each selected coverage stage before moving to the next. Uses the saved outfit and matching lingerie, or choose a complete set below.</p>
+            {sequenceEnabled && <>
+              <div className="flex items-center gap-3"><label className="text-xs text-zinc-300">Photos per stage <select aria-label="Photos per coverage stage" value={shotsPerStage} onChange={event => setShotsPerStage(Number(event.target.value))} className="bg-elevated border hairline rounded-lg px-3 py-2 ml-2">{[1,2,3,4,5].map(n => <option key={n} value={n}>{n}</option>)}</select></label><span className="text-sm text-brass" data-testid="clothing-sequence-total">{coverageStages.length} stages × {shotsPerStage} photos = {count} photos</span></div>
+              <div className="grid grid-cols-2 gap-2">{EXPOSURE_CHOICES.map(stage => <button key={stage} type="button" className={`chip text-left ${coverageStages.includes(stage) ? 'active' : ''}`} aria-pressed={coverageStages.includes(stage)} data-testid={`coverage-stage-${stage.replace(/ /g, '-')}`} onClick={() => setCoverageStages(current => current.includes(stage) ? current.filter(value => value !== stage) : [...current, stage])}>{stage}</button>)}</div>
+              <details><summary className="text-xs text-cyan-200 cursor-pointer">Choose a complete outfit for this shoot</summary><div className="pt-3"><GroupedChips groups={WARDROBE_SECTION.fields.find(field => field.key === 'outfit_set').groups} labels={WARDROBE_SECTION.fields.find(field => field.key === 'outfit_set').optionLabels} value={sequenceSet} onChange={setSequenceSet} testIdPrefix="shoot-complete-set" /></div></details>
+              {count === 0 && <p className="text-xs text-amber-200">Select at least one coverage stage.</p>}
+              <p className="text-xs text-zinc-500">Stages run in coverage order. Poses and expressions can still vary. Outfit rotation and AI shot planning resume when this sequence is turned off.</p>
+            </>}
+          </section>
           {/* Outfits */}
-          <fieldset disabled={!!aiFrames} className="pane p-4 sm:p-6 space-y-4" data-testid="shoot-outfit-panel">
+          <fieldset disabled={!!aiFrames || sequenceEnabled} className="pane p-4 sm:p-6 space-y-4 disabled:opacity-40" data-testid="shoot-outfit-panel">
             <div className="flex items-center justify-between">
               <div>
                 <div className="section-label">Outfit rotation</div>
@@ -521,6 +542,7 @@ export default function ShootSetup() {
                     {f.outfit_overrides?.outfit_preset && (
                       <div className="text-amber-300/80 truncate">{f.outfit_overrides.outfit_preset}</div>
                     )}
+                    {f.outfit_overrides?.exposure_mode && <div className="text-amber-300 text-xs">{f.outfit_overrides.exposure_mode}</div>}
                     {f.face_overrides?.expression && <div className="text-cyan-300/80 truncate">{f.face_overrides.expression}</div>}
                     {[...Object.values(f.pose_overrides || {}), ...Object.values(f.lighting_overrides || {}), ...Object.values(f.scene_overrides || {})].filter(Boolean).map((value, index) => <div key={index} className="text-zinc-400 break-words">{value}</div>)}
                     {f.control_notes?.map(note => <p key={note} className="text-amber-200 mt-1">{note}</p>)}
@@ -539,7 +561,7 @@ export default function ShootSetup() {
           <button
             type="button"
             onClick={() => create.mutate()}
-            disabled={create.isPending || !workflowId}
+            disabled={count < 1 || create.isPending || !workflowId}
             data-testid="btn-start-shoot"
             className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black text-sm font-semibold px-4 py-3 disabled:opacity-40"
           >

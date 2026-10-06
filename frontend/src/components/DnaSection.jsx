@@ -1,3 +1,4 @@
+import { wardrobeMode, wardrobeFieldDisabled, editWardrobeField } from "@/lib/wardrobeMode";
 import { Slider } from "@/components/ui/slider";
 import { Input } from "@/components/ui/input";
 import { Shuffle, RotateCcw, Lock, LockOpen, Wand2, ChevronDown } from "lucide-react";
@@ -76,6 +77,11 @@ export default function DnaSection({
 }) {
   const set = (k, v) => {
     if (fieldLocks?.[k]) return; // ignore edits to a locked field
+    if (section.key === "wardrobe") {
+      const next = editWardrobeField(value, k, v);
+      if (next !== value) onChange(k === "exposure_mode" ? { ...next, exposure_mode: v || "use selected outfit", nudity_level: 0, nudity_outfit: "" } : next);
+      return;
+    }
     onChange(k === "exposure_mode"
       ? { ...value, exposure_mode: v || "use selected outfit", nudity_level: 0, nudity_outfit: "" }
       : { ...value, [k]: v });
@@ -146,7 +152,14 @@ export default function DnaSection({
       </div>}
       {!collapsed && (
       <div className="grid gap-5">
+        {section.key === 'wardrobe' && <div className="space-y-2" data-testid="wardrobe-mode-controls">
+          <div className="flex gap-2" role="group" aria-label="Outfit mode">{['full', 'custom'].map(mode => <button type="button" key={mode} className={`chip ${wardrobeMode(value) === mode ? 'active' : ''}`} aria-pressed={wardrobeMode(value) === mode} data-testid={`wardrobe-mode-${mode}`} disabled={!!fieldLocks.outfit_mode} onClick={() => set('outfit_mode', mode)}>{mode === 'full' ? 'Full set' : 'Custom'}</button>)}</div>
+          <p className="text-xs text-zinc-400">{wardrobeMode(value) === 'full' ? 'Choose one complete set and its color. Coverage reveals the matching lingerie layer. Separate garments, shoes and accessories are disabled to avoid conflicts.' : 'Build your outfit from separate garments and accessories. Complete sets are inactive.'}</p>
+        </div>}
+
         {section.fields.map((f) => {
+          if (section.key === "wardrobe" && f.key === "outfit_mode") return null;
+          const outfitDisabled = section.key === "wardrobe" && wardrobeFieldDisabled(f.key, value);
           if (focusedField && focusedField !== "all") {
             const family = Object.entries(SIZE_CONTROL_PAIRS).find(([key, [slider]]) => [key, slider, ...(key === "bust" ? ["implant_volume", "bust_shape"] : [])].includes(focusedField));
             const keys = family ? [family[0], family[1][0], ...(family[0] === "bust" ? ["implant_volume", "bust_shape"] : [])] : [focusedField];
@@ -174,7 +187,9 @@ export default function DnaSection({
                 </button>)}
               </div>
             </div>}
-            {(!isModeHeader || mode === 'preset') && <>
+            {outfitDisabled && <p className="text-xs text-zinc-500">{wardrobeMode(value) === 'full' ? 'Controlled by the full set. Switch to Custom to edit.' : 'Switch to Full set to choose a coordinated outfit.'}</p>}
+            {(!isModeHeader || mode === 'preset') && <fieldset disabled={outfitDisabled} className={`space-y-2 min-w-0 ${outfitDisabled ? 'opacity-40' : ''}`}>
+
             <div className="flex items-center justify-between text-xs text-zinc-400 font-mono uppercase tracking-widest">
               <span className="flex items-center gap-1.5">
                 {f.label}
@@ -275,7 +290,7 @@ export default function DnaSection({
                 className="bg-elevated border-hairline text-zinc-100 font-mono text-sm"
               />
             )}
-            </>}
+            </fieldset>}
           </div>
           );
         })}

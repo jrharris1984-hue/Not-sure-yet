@@ -1,3 +1,4 @@
+import { resolveWardrobeMode } from "./wardrobeMode";
 import { wardrobeNudity } from "./wardrobeNudity";
 import { footVisibility } from './footVisibility';
 // Resolve shared visual controls on a copy. Saved selections remain editable.
@@ -12,7 +13,12 @@ export function resolveBuilderControls(source = {}) {
     dna[section][field] = Array.isArray(dna[section][field]) ? [] : '';
     notes.push({ section, field, text });
   };
+  dna.wardrobe = resolveWardrobeMode(dna.wardrobe);
   const p = dna.pose, f = dna.feet, w = dna.wardrobe;
+  if (w.outfit_mode === 'full') {
+    if (!w.outfit_set) notes.push({ section: 'wardrobe', field: 'outfit_set', text: 'Choose a complete outfit set or switch to Custom for individual garments.' });
+    omit('feet', 'hosiery', 'The full outfit set controls hosiery. Switch Wardrobe to Custom to use separate hosiery.');
+  }
   const croppedAboveFeet = ['waist-up', 'thigh-up', 'knees-up', 'portrait', 'close-up'].includes(p.distance);
   const focus = f.composition_mode === 'feet focus' || (!f.composition_mode && p.focus === 'feet' && !croppedAboveFeet);
   if (!focus && p.focus === 'feet' && croppedAboveFeet) {
@@ -67,7 +73,7 @@ export function resolveBuilderControls(source = {}) {
   }
   if (exposure.mode === 'lingerie only') {
     const saved = source.wardrobe || {};
-    const lingerie = [saved.outfit_set, saved.outfit_preset].find(value => /lingerie|negligee|chemise|babydoll|corset and garters|sheer bodysuit/i.test(value || ''));
+    const lingerie = [saved.outfit_set, saved.outfit_preset].find(value => /lingerie|negligee|chemise|babydoll|bra|bralette|knickers|teddy|corselette|corset and garters|sheer bodysuit/i.test(value || ''));
     for (const field of ['outfit_set', 'outfit_set_color', 'outfit_preset', 'dress_style', 'skirt_style', 'top', 'bottom', 'state', 'material', 'garment_pattern', 'fit']) {
       omit('wardrobe', field, 'Lingerie only replaces outer clothing. Your outfit stays saved for other coverage choices.');
     }
