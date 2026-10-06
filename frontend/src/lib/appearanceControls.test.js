@@ -60,7 +60,8 @@ test("Krea resolves an obscured bust, thigh-up crop, feet focus, and conflicting
   expect(positive).toContain("Thigh-up photograph");
   expect(positive).toContain("projected bust unmistakably visible");
   expect(positive).toContain("projected chest silhouette visible");
-  expect(positive).toContain("partially nude with exposed skin");
+  expect(positive).toContain("partially nude");
+  expect(positive).toContain("some clothing remains");
   expect(positive).not.toContain("nude wardrobe");
   expect(positive).not.toContain("feet composition priority");
   expect(positive).not.toContain("long nails pedicure");
