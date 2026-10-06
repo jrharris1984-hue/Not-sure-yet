@@ -117,3 +117,32 @@ test('compiled preview uses draft keywords without saving and clears when the wo
   expect(container.querySelector('[aria-label="Compiled positive preview"]').value).toContain('soft evening haze');
   expect(getPromptCatalog().sections).toEqual([]);
 });
+
+
+test('bulk choices review and apply multiple updates without saving automatically', async() => {
+  await setup();
+  const originalValue=container.querySelector('[aria-label^="Display name custom_"]').getAttribute('aria-label').replace('Display name ','');
+  await enter(container.querySelector('[aria-label="Bulk choice entries"]'),'[Weather]\nMorning mist: exact revised mist wording\nEvening haze: exact evening haze wording');
+  act(()=>button('Preview batch').click());
+  expect(container.querySelector('[aria-label="Bulk batch preview"]').textContent).toContain('1 new · 1 updates');
+  expect(endpoints.updateSettings).not.toHaveBeenCalled();
+  act(()=>button('Apply batch to draft').click());
+  expect(getPromptCatalog().sections).toEqual([]);
+  await act(async()=>button('Save library').click());
+  const options=getPromptCatalog().sections[0].fields[0].options;
+  expect(options).toHaveLength(2);
+  expect(options[0]).toMatchObject({value:originalValue,label:'Morning mist',keywords:'exact revised mist wording',group:'Weather'});
+  expect(options[1]).toMatchObject({label:'Evening haze',keywords:'exact evening haze wording',group:'Weather'});
+});
+
+test('bulk editing is available for built-in categories and can load existing entries', async() => {
+  await act(async()=>root.render(<PromptLibraryEditor/>));
+  for (const [category,field] of [['Hair','Color'],['Skin','Tone'],['Pose','Pose']]) {
+    act(()=>button(category).click());
+    act(()=>button(`📁 ${field}`).click());
+    expect(container.querySelector('[data-testid="bulk-choice-editor"]')).not.toBeNull();
+    act(()=>button('Load current entries for editing').click());
+    expect(container.querySelector('[aria-label="Bulk choice entries"]').value).toContain(': ');
+    expect(endpoints.updateSettings).not.toHaveBeenCalled();
+  }
+});

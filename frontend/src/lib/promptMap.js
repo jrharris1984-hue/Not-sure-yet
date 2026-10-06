@@ -1,5 +1,5 @@
 import { HERITAGE_PROFILES, heritagePrompt } from "./heritageProfiles";
-import { PHOTOGRAPHY_POSE_PROMPTS } from "@/lib/photographyPoses";
+import { POSE_ACTION_PROMPTS } from "@/lib/photographyPoses";
 // Prompt expansion map: turns each DNA chip / option into a rich prompt phrase
 // suitable for SDXL / Flux / Chroma / Qwen / IPAdapter workflows.
 // Structure: PROMPT_MAP[sectionKey][fieldKey][optionValue] = "detailed phrase"
@@ -824,45 +824,7 @@ export const PROMPT_MAP = {
   },
 
   pose: {
-    action: {
-      ...PHOTOGRAPHY_POSE_PROMPTS,
-      "standing": "standing upright, natural stance",
-      "standing hip out": "standing with hip cocked out to the side, weight on one leg",
-      "standing hands on hips": "standing with hands on hips, confident power pose",
-      "standing arms up": "standing with arms raised overhead, stretching",
-      "standing back arched": "standing with back arched dramatically, chest pushed forward, ass out",
-      "standing legs apart": "standing with legs spread wide apart",
-      "standing splits": "doing a standing splits, one leg raised high overhead",
-      "walking": "walking toward camera, mid-stride",
-      "leaning wall": "leaning back against a wall, hip cocked out",
-      "leaning forward": "leaning forward toward camera, breasts hanging down and forward",
-      "bending over": "bending over from waist, ass raised high, pussy peeking out",
-      "sitting legs crossed": "sitting elegantly with legs crossed",
-      "sitting legs open": "sitting with legs spread wide open, pussy exposed",
-      "sitting reverse chair": "straddling a chair backwards, arms resting on back",
-      "sitting on edge": "sitting on the edge, legs dangling",
-      "kneeling upright": "kneeling upright on both knees, thighs together",
-      "kneeling back arched": "kneeling with back arched dramatically, chest thrust forward, ass raised",
-      "kneeling hands floor": "on hands and knees, kneeling with hands on the floor, ass presented",
-      "lying back": "lying flat on back, relaxed",
-      "lying side": "lying on side, curves accentuated, hip out",
-      "lying stomach": "lying on stomach, ass raised, feet kicked up",
-      "lying legs spread": "lying on back with legs spread wide open, pussy fully exposed",
-      "lying legs up": "lying with legs raised straight up in the air",
-      "on back legs up": "on back with legs pulled up to shoulders, ankles by head, pussy fully exposed and vulnerable",
-      "all fours": "on all fours on hands and knees, presenting ass",
-      "doggy arched": "on all fours with back arched dramatically, ass raised high, pushed out and presenting, ready for doggy style",
-      "doggy low": "chest down ass up, face-down doggy position, ass raised high",
-      "squatting": "squatting deeply, thighs open",
-      "squatting spread": "squatting with legs spread wide, pussy fully exposed and open",
-      "squatting deep": "deep asian squat, ass low to ground",
-      "over shoulder look": "back to camera looking seductively over shoulder, ass front and center",
-      "arched on knees": "kneeling with back arched dramatically, ass raised, chest low, presenting",
-      "hands on knees": "bent forward with hands on knees, cleavage exposed",
-      "hair flip": "hair flip mid-motion, dynamic movement",
-      "dancing": "sensual dancing, mid-movement, hips shaking",
-      "reverse view": "back to camera, rear view, ass and back visible",
-    },
+    action: POSE_ACTION_PROMPTS,
     angle: {
       "front": "front-facing view, straight on",
       "3/4": "three-quarter angle view",
