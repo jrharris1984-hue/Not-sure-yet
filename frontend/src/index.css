@@ -449,3 +449,36 @@ html[data-studio-theme], html[data-studio-theme] body, html[data-studio-theme] #
 .studio-theme-selected { border-color: var(--studio-accent); outline: 1px solid var(--studio-accent-edge); }
 .studio-app-header [data-testid="brand-home"] > div:first-child { border-color: var(--studio-accent-edge); background: linear-gradient(155deg, var(--studio-accent-wash), var(--studio-secondary-wash)); }
 .studio-app-header [data-testid="brand-home"] svg { color: var(--studio-accent); }
+
+.mobile-tools-panel { display: contents; }
+@media (max-width: 767px) {
+  .organized-mobile-tools > :not([data-mobile-tools]):not([data-mobile-tools-container]):not(.mobile-tools-navigation) { display: none !important; }
+  .organized-mobile-tools [data-mobile-tools] { display: none !important; }
+  .organized-mobile-tools [data-mobile-tools-container] { display: none !important; }
+  .mobile-tools-navigation { padding: 4px 0 12px; }
+  .organized-mobile-tools[data-mobile-tools-group="presets"] [data-mobile-tools="presets"] { display: revert !important; }
+  .organized-mobile-tools[data-mobile-tools-group="generation"] [data-mobile-tools="generation"] { display: revert !important; }
+  .organized-mobile-tools[data-mobile-tools-group="loras"] [data-mobile-tools="loras"] { display: revert !important; }
+  .organized-mobile-tools[data-mobile-tools-group="prompts"] [data-mobile-tools="prompts"] { display: revert !important; }
+  .organized-mobile-tools[data-mobile-tools-group="references"] [data-mobile-tools="references"] { display: revert !important; }
+  .organized-mobile-tools[data-mobile-tools-group="review"] [data-mobile-tools="review"] { display: revert !important; }
+  .organized-mobile-tools[data-mobile-tools-group="files"] [data-mobile-tools="files"] { display: revert !important; }
+  .organized-mobile-tools[data-mobile-tools-group="results"] [data-mobile-tools="results"] { display: revert !important; }
+  .organized-mobile-tools .mobile-tools-panel { width: 100%; }
+}
+
+@media (max-width: 767px) { .organized-mobile-tools[data-mobile-tools-group="presets"] [data-mobile-tools-container~="presets"] { display: block !important; } }
+
+@media (max-width: 767px) { .organized-mobile-tools[data-mobile-tools-group="generation"] [data-mobile-tools-container~="generation"] { display: block !important; } }
+
+@media (max-width: 767px) { .organized-mobile-tools[data-mobile-tools-group="loras"] [data-mobile-tools-container~="loras"] { display: block !important; } }
+
+@media (max-width: 767px) { .organized-mobile-tools[data-mobile-tools-group="prompts"] [data-mobile-tools-container~="prompts"] { display: block !important; } }
+
+@media (max-width: 767px) { .organized-mobile-tools[data-mobile-tools-group="references"] [data-mobile-tools-container~="references"] { display: block !important; } }
+
+@media (max-width: 767px) { .organized-mobile-tools[data-mobile-tools-group="review"] [data-mobile-tools-container~="review"] { display: block !important; } }
+
+@media (max-width: 767px) { .organized-mobile-tools[data-mobile-tools-group="files"] [data-mobile-tools-container~="files"] { display: block !important; } }
+
+@media (max-width: 767px) { .organized-mobile-tools[data-mobile-tools-group="results"] [data-mobile-tools-container~="results"] { display: block !important; } }

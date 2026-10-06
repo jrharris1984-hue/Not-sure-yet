@@ -1,3 +1,4 @@
+import MobileToolsNavigation from "@/components/MobileToolsNavigation";
 import { confirmPermanentDelete } from "@/lib/permanentDeleteConfirmation";
 import { applyScenarioSelection } from "@/lib/scenarioSelection";
 import { catalogSections, usePromptCatalog } from "@/lib/promptCatalog";
@@ -146,6 +147,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
   const [mobileStudioStep, setMobileStudioStep] = useState(() => mobileStudioStepForSection(activeSection, studioSteps));
   const [mobileStudioMode, setMobileStudioMode] = useState("simple");
   const [mobileSheets, setMobileSheets] = useState(true);
+  const [mobileToolsGroup, setMobileToolsGroup] = useState("overview");
   const [sheetViewport, setSheetViewport] = useState(() => window.matchMedia?.("(max-width: 767px)").matches ?? window.innerWidth < 768);
   useEffect(() => {
     const query = window.matchMedia?.("(max-width: 767px)");
@@ -2599,7 +2601,23 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
   if (imageToolId && !IMAGE_TOOL_KINDS.includes(activeWorkflow?.kind)) return <div className="mx-auto max-w-4xl p-6 text-zinc-400">Opening image tool…</div>;
 
   return (
-    <div className={`mobile-builder-content ${mobileSheets && !isImageFirst && editMode !== "body_adjust" ? "nested-mobile-builder" : ""} mx-auto max-w-[1600px] px-2.5 sm:px-6 py-3 sm:py-6 space-y-3 sm:space-y-4 ${desktopQuickMode && !isImageFirst ? "quick-create-mode" : ""}`}>
+    <div className={`mobile-builder-content ${sheetViewport && !mobileSheets && !isImageFirst && editMode !== "body_adjust" ? "organized-mobile-tools" : ""} ${mobileSheets && !isImageFirst && editMode !== "body_adjust" ? "nested-mobile-builder" : ""} mx-auto max-w-[1600px] px-2.5 sm:px-6 py-3 sm:py-6 space-y-3 sm:space-y-4 ${desktopQuickMode && !isImageFirst ? "quick-create-mode" : ""}`} data-mobile-tools-group={mobileToolsGroup}>
+      {sheetViewport && !mobileSheets && !isImageFirst && editMode !== "body_adjust" && <>
+        <MobileToolsNavigation group={mobileToolsGroup} onGroup={group => { setMobileToolsGroup(group); window.scrollTo({ top: 0, behavior: "auto" }); }} onBack={() => setMobileSheets(true)} />
+        <section data-mobile-tools="generation" className="pane p-4 space-y-4">
+          <CreationOutputControls workflows={selectableWorkflows} workflowId={workflowId} onWorkflow={setWorkflowId}
+            tier={qualityTier} onTier={applyQualityTier} count={poseAssistEnabled && !isVariationWorkflow ? 1 : renderCount}
+            onCount={setRenderCount} countLocked={poseAssistEnabled && !isVariationWorkflow}
+            settings={renderSettings} onSettings={setChromaSettings} family={activeRecipeFamily}
+            fixedSampling={isKrea2 || isKrea2Aio || activeCompiler === "flux2_klein"} busy={dispatching} />
+          <button type="button" className="w-full rounded-xl bg-emerald-400 text-black py-3 font-bold disabled:opacity-40"
+            onClick={doDispatch} disabled={dispatching || !workflowId || mobileCreateIssues.length > 0}>{dispatching ? "Queuing…" : "Generate"}</button>
+          {mobileCreateIssues.length > 0 && <p className="text-xs text-amber-200">{mobileCreateIssues.join(" ")}</p>}
+        </section>
+        <section data-mobile-tools="presets" className="pane p-4"><label className="block text-xs text-zinc-300 space-y-2"><span>Character name</span><Input value={name} onChange={event => setName(event.target.value)} className="bg-elevated border-hairline" /></label></section>
+        <section data-mobile-tools="files" className="pane p-4"><div className="section-label mb-3">Character tags</div><TagInput value={tags} onChange={setTags} placeholder="Tag this character…" testId="mobile-tools-tags" /></section>
+        {!activeRender && batchRenders.length === 0 && <section data-mobile-tools="results" className="pane p-4 text-sm text-zinc-400">Your generation progress and results will appear here.</section>}
+      </>}
       {sheetViewport && !isImageFirst && editMode !== "body_adjust" && (mobileSheets ? <MobileBuilderSheets
         sections={SECTIONS} section={SECTIONS[activeIdx]} onSection={goSection}
         selectedItems={SECTIONS.flatMap(category => category.fields.flatMap(field => {
@@ -2626,10 +2644,10 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
           countLocked={poseAssistEnabled && !isVariationWorkflow}
           settings={renderSettings} onSettings={setChromaSettings}
           fixedSampling={isKrea2 || isKrea2Aio || activeCompiler === "flux2_klein"} busy={dispatching} />}
-        onTools={() => { setMobileSheets(false); setMobileStudioMode("advanced"); setMobileStudioStep("create"); }}
-      /> : <button type="button" className="md:hidden chip" onClick={() => setMobileSheets(true)}>Back to bottom sheets</button>)}
+        onTools={() => { setMobileToolsGroup("overview"); setMobileSheets(false); setMobileStudioMode("advanced"); setMobileStudioStep("create"); window.scrollTo({ top: 0, behavior: "auto" }); }}
+      /> : <button data-mobile-tools="none" type="button" className="md:hidden chip" onClick={() => setMobileSheets(true)}>Back to bottom sheets</button>)}
       {galleryRecipeMode === "current" && (
-        <div className="pane border border-cyan-500/30 bg-cyan-500/[0.06] px-3 py-2.5 text-xs text-cyan-100" data-testid="current-compiler-rebuild-banner">
+        <div data-mobile-tools="none" className="pane border border-cyan-500/30 bg-cyan-500/[0.06] px-3 py-2.5 text-xs text-cyan-100" data-testid="current-compiler-rebuild-banner">
           <div className="flex items-start gap-2">
             <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-cyan-300" />
             <div>
@@ -2642,7 +2660,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
         </div>
       )}
       {mediaImportSummary && (
-        <div className="pane border border-amber-400/30 bg-amber-500/[0.06] p-3 sm:p-4" data-testid="media-import-summary">
+        <div data-mobile-tools="none" className="pane border border-amber-400/30 bg-amber-500/[0.06] p-3 sm:p-4" data-testid="media-import-summary">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <div className="font-display font-bold text-amber-200">Imported from Media</div>
@@ -2667,7 +2685,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
         </div>
       )}
       {/* Header */}
-      <div className={`${isImageFirst ? "!hidden" : ""} hidden md:flex items-center gap-2 rounded-xl border border-cyan-400/20 bg-black/40 p-2 text-xs`} aria-label="Builder shortcuts">
+      <div data-mobile-tools="none" className={`${isImageFirst ? "!hidden" : ""} hidden md:flex items-center gap-2 rounded-xl border border-cyan-400/20 bg-black/40 p-2 text-xs`} aria-label="Builder shortcuts">
         <span className="px-2 font-mono uppercase tracking-wider text-cyan-300">Studio</span>
         {!desktopQuickMode && [["studio-model", "01 · Model"], ["studio-sections", "02 · Character"], ["studio-render", "03 · Render"]].map(([target, label]) => (
           <button key={target} type="button" onClick={() => document.getElementById(target)?.scrollIntoView({ behavior: "smooth", block: "start" })}
@@ -2681,7 +2699,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
           {desktopQuickMode ? "Full Studio · all options" : "Quick Create"}
         </button>
       </div>
-      <div id="studio-model" className="pane scroll-mt-24 p-2.5 sm:p-4 flex flex-col gap-2.5 sm:gap-3">
+      <div data-mobile-tools="none" id="studio-model" className="pane scroll-mt-24 p-2.5 sm:p-4 flex flex-col gap-2.5 sm:gap-3">
         <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
           <Input
             data-testid="input-character-name"
@@ -2763,10 +2781,10 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
         </div>
       </div>
 
-      {!isImageFirst && <section className="pane p-3 sm:p-4 space-y-3" aria-label="Character tools" data-testid="builder-action-toolbar">
-        <div className="section-label">Character tools</div>
-        <div className="flex flex-wrap items-center gap-2">
-            <button
+      {!isImageFirst && <section data-mobile-tools-container="presets prompts files" className="pane p-3 sm:p-4 space-y-3" aria-label="Character tools" data-testid="builder-action-toolbar">
+        <div data-mobile-tools="none" className="section-label">Character tools</div>
+        <div data-mobile-tools-container="presets prompts files" className="flex flex-wrap items-center gap-2">
+            <button data-mobile-tools="presets"
               type="button"
               onClick={() => save.mutate()}
               disabled={save.isPending}
@@ -2775,7 +2793,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
             >
               {save.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Save character
             </button>
-            <button
+            <button data-mobile-tools="presets"
               type="button"
               onClick={resetCharacter}
               data-testid="btn-reset-character"
@@ -2784,7 +2802,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
             >
               <RotateCcw className="h-4 w-4" /> Reset
             </button>
-            <button
+            <button data-mobile-tools="presets"
               onClick={randomizeAllSubjects}
               data-testid="btn-randomize-all"
               className="inline-flex items-center gap-1.5 rounded-lg border hairline px-3 py-2 text-sm text-zinc-200 hover:bg-white/5"
@@ -2792,7 +2810,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
             >
               <Shuffle className="h-4 w-4" /> {isMulti ? "Randomize all" : "Randomize"}
             </button>
-            <PresetsMenu
+            <div className="mobile-tools-panel" data-mobile-tools="presets"><PresetsMenu
               currentDna={activeDna}
               sectionLocks={locks}
               fieldLocks={activeFieldLocks}
@@ -2829,8 +2847,8 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
                   toast.success(`Preset applied to Subject ${activeSubject.label}`);
                 }
               }}
-            />
-            <div
+            /></div>
+            <div data-mobile-tools="prompts"
               className="inline-flex items-center gap-1 rounded-lg border border-hairline bg-elevated p-1 text-sm text-zinc-300"
               title="Changes prompt vocabulary only; it never adds activities or changes DNA selections."
               data-testid="prompt-language-control"
@@ -2863,16 +2881,16 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
               ))}
             </div>
             {!isNew && (
-              <Link
+              <div className="mobile-tools-panel" data-mobile-tools="files"><Link
                 to={`/shoot/new/${id}`}
                 data-testid="btn-open-shoot"
                 className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/40 bg-emerald-500/10 text-emerald-200 text-sm font-semibold px-3 py-2 hover:bg-emerald-500/20"
                 title="Batch photo shoot"
               >
                 <Camera className="h-4 w-4" /> Shoot
-              </Link>
+              </Link></div>
             )}
-            <button
+            <button data-mobile-tools="files"
               onClick={exportJson}
               data-testid="btn-export-json"
               className="inline-flex items-center gap-1.5 rounded-lg border hairline px-3 py-2 text-sm text-zinc-300"
@@ -2880,7 +2898,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
             >
               <Download className="h-4 w-4" /> Export
             </button>
-            <label
+            <label data-mobile-tools="files"
               data-testid="btn-import-json"
               className="inline-flex items-center gap-1.5 rounded-lg border hairline px-3 py-2 text-sm text-zinc-300 cursor-pointer"
               title="Import DNA JSON"
@@ -2891,15 +2909,15 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
         </div>
       </section>}
 
-      {!isImageFirst && <RandomSceneControls profile={randomProfile} onProfile={setRandomProfile} onRandomize={randomizeSceneMode} busy={dispatching} />}
+      {!isImageFirst && <div className="mobile-tools-panel" data-mobile-tools="presets"><RandomSceneControls profile={randomProfile} onProfile={setRandomProfile} onRandomize={randomizeSceneMode} busy={dispatching} /></div>}
 
-      {isImageFirst && <ImageSourceFlow title={activeWorkflow?.name} animation={isVideoWorkflow} variation={isVariationWorkflow} source={referenceImage} preview={referencePreview}
+      {isImageFirst && <div className="mobile-tools-panel" data-mobile-tools="none"><ImageSourceFlow title={activeWorkflow?.name} animation={isVideoWorkflow} variation={isVariationWorkflow} source={referenceImage} preview={referencePreview}
         readyToRender={!isQwenReferenceWorkflow || qwenEditVariant !== "pose" || !!poseReferenceImage?.name}
         uploading={referenceUploading || (isQwenReferenceWorkflow && poseReferenceUploading)} busy={dispatching} onUpload={uploadReference} onRemove={clearReference} onRender={doDispatch}
-        renderCount={renderCount} onRenderCount={setRenderCount}>{imageSourceControls}</ImageSourceFlow>}
-      <AIResearchPanel context={finalPositive} />
+        renderCount={renderCount} onRenderCount={setRenderCount}>{imageSourceControls}</ImageSourceFlow></div>}
+      <div className="mobile-tools-panel" data-mobile-tools="prompts"><AIResearchPanel context={finalPositive} /></div>
 
-      {!isImageFirst && <MobileStudioFlow
+      {!isImageFirst && <div className="mobile-tools-panel" data-mobile-tools="none"><MobileStudioFlow
         steps={studioSteps}
         title={studioProfile?.title || "Studio flow"}
         currentStep={mobileStudioStep}
@@ -2914,9 +2932,9 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
           setMobileStudioStep(mobileStudioStepForSection(key, studioSteps));
           goSection(key);
         }}
-      />}
+      /></div>}
 
-      {!isImageFirst && !desktopQuickMode && <nav className={`hidden md:grid ${studioProfile ? "grid-cols-5" : "grid-cols-3"} gap-2`} aria-label="Creation steps" data-testid="desktop-creation-steps">
+      {!isImageFirst && !desktopQuickMode && <nav data-mobile-tools="none" className={`hidden md:grid ${studioProfile ? "grid-cols-5" : "grid-cols-3"} gap-2`} aria-label="Creation steps" data-testid="desktop-creation-steps">
         {studioSteps.map((step, index) => {
           const selected = step.id === mobileStudioStep;
           return <button key={step.id} type="button" onClick={() => openMobileStudioStep(step.id)}
@@ -2929,7 +2947,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
         })}
       </nav>}
 
-      <div className={isImageFirst ? "hidden" : mobileStudioStep === "start" ? "block" : "hidden md:block"}>
+      <div data-mobile-tools="prompts" className={isImageFirst ? "hidden" : mobileStudioStep === "start" ? "block" : "hidden md:block"}>
         <AiAssistBar dna={activeDna} aiProvider={aiProvider}
           onApplyDna={(draft) => { setActiveDna(draft); setPlainLanguage(""); }}
           onApplySubjects={(draftSubjects) => {
@@ -2943,7 +2961,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
 
       {!isImageFirst && mobileStudioStep === "create" && !showMobileResult && (
         <>
-          <MobileCreateReview
+          <div className="mobile-tools-panel" data-mobile-tools="none"><MobileCreateReview
             workflow={activeWorkflow}
             compiler={activeCompiler}
             family={activeRecipeFamily}
@@ -2955,8 +2973,8 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
             issues={mobileCreateIssues}
             mode={mobileStudioMode}
             onRequestAdvanced={() => setMobileStudioMode("advanced")}
-          />
-          {activeRecipeFamily === "image" && renderCount > 1 && <label className="md:hidden pane p-3 flex items-center justify-between gap-3 text-xs text-zinc-200">
+          /></div>
+          {activeRecipeFamily === "image" && renderCount > 1 && <label data-mobile-tools="none" className="md:hidden pane p-3 flex items-center justify-between gap-3 text-xs text-zinc-200">
             Batch variety
             <select value={batchSeedMode} onChange={(event) => setBatchSeedMode(event.target.value)}
               className="bg-elevated border border-hairline rounded-lg px-2 py-2 text-xs text-zinc-100">
@@ -2965,7 +2983,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
             </select>
           </label>}
           {activeRecipeFamily === "image" && !isKrea2 && !isVariationWorkflow && (
-            <div className="md:hidden">
+            <div data-mobile-tools="references" className="md:hidden">
               <PoseAssistPanel
                 enabled={poseAssistEnabled}
                 onEnabled={changePoseAssistEnabled}
@@ -2985,17 +3003,17 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
               />
             </div>
           )}
-          <PromptAlignmentCard
+          <div className="mobile-tools-panel" data-mobile-tools="review"><PromptAlignmentCard
             analysis={promptAnalysis}
             priorityPlan={compiledPrompt.priorityPlan}
             adjustments={compiledPrompt.guardAdjustments || []}
             mode={mobileStudioMode}
-          />
+          /></div>
         </>
       )}
 
       {showMobileResult && (
-        <MobileRenderResult
+        <div className="mobile-tools-panel" data-mobile-tools="results"><MobileRenderResult
           render={mobileResultRender}
           batch={batchRenders}
           selectedId={selectedBatchRenderId}
@@ -3014,10 +3032,10 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
             `render-${activeRender.render_id || activeRender.id}.${/\.(webm|mp4|mov)(?:[?&]|$)/i.test(decodeURIComponent(url)) ? "webm" : "png"}`
           )}
           busy={postRenderBusy}
-        />
+        /></div>
       )}
 
-      <div className={(showMobileResult || isImageFirst ? "hidden " : "md:hidden ") + "fixed inset-x-0 z-30 mobile-builder-actions border-t hairline bg-[#111017]/95 px-2.5 py-2 backdrop-blur-xl shadow-[0_-12px_30px_rgba(0,0,0,0.28)]"} data-testid="mobile-builder-actions">
+      <div data-mobile-tools="none" className={(showMobileResult || isImageFirst ? "hidden " : "md:hidden ") + "fixed inset-x-0 z-30 mobile-builder-actions border-t hairline bg-[#111017]/95 px-2.5 py-2 backdrop-blur-xl shadow-[0_-12px_30px_rgba(0,0,0,0.28)]"} data-testid="mobile-builder-actions">
         <div className="grid grid-cols-[0.9fr_1.4fr] gap-2">
           <button
             type="button"
@@ -3052,9 +3070,9 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
         </div>
       </div>
 
-      <div className={`quick-hide ${isImageFirst ? "!hidden" : ""} ${mobileStudioStep === "create" ? "block" : "hidden md:block"}`}>
+      <div data-mobile-tools-container="generation references loras" className={`quick-hide ${isImageFirst ? "!hidden" : ""} ${mobileStudioStep === "create" ? "block" : "hidden md:block"}`}>
         {activeWorkflow && (activeCompiler !== "qwen_edit" || isEnhanceWorkflow) && (
-          <div className="hidden md:block">
+          <div data-mobile-tools="generation" className="hidden md:block">
             <RenderRecipeSelector
               compiler={activeCompiler}
               value={qualityTier}
@@ -3064,7 +3082,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
         )}
 
         {activeRecipeFamily === "image" && !isKrea2 && !isVariationWorkflow && (
-          <div className="hidden md:block mt-3 sm:mt-4">
+          <div data-mobile-tools="references" className="hidden md:block mt-3 sm:mt-4">
             <PoseAssistPanel
               enabled={poseAssistEnabled}
               onEnabled={changePoseAssistEnabled}
@@ -3086,7 +3104,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
         )}
 
         {activeWorkflow && !isQwenReferenceWorkflow && !["pose", "refine", "krea_style"].includes(activeWorkflow.kind) && (
-          <div className="mt-3 sm:mt-4">
+          <div data-mobile-tools="loras" className="mt-3 sm:mt-4">
             <UniversalLoraPicker
               workflow={activeWorkflow}
               value={selectedLora}
@@ -3113,7 +3131,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
         )}
 
         {isGoldenChroma && (
-          <div className={(mobileStudioMode === "advanced" ? "block " : "hidden md:block ") + "mt-3 sm:mt-4"}>
+          <div data-mobile-tools="generation" className={(mobileStudioMode === "advanced" ? "block " : "hidden md:block ") + "mt-3 sm:mt-4"}>
             <ChromaControls value={{ ...chromaSettings, batchSize: renderCount }} onChange={(next) => {
               setChromaSettings(next);
               setRenderCount(next.batchSize);
@@ -3123,7 +3141,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
       </div>
 
       {/* Subject controls stay available, but stay out of Simple Create review. */}
-      {!isImageFirst && activeSection !== "identity" && <div className={`quick-hide ${mobileStudioStep === "create" && mobileStudioMode === "simple" ? "hidden md:block" : "block"}`}>
+      {!isImageFirst && (activeSection !== "identity" || (sheetViewport && !mobileSheets)) && <div data-mobile-tools="presets" className={`quick-hide ${mobileStudioStep === "create" && mobileStudioMode === "simple" ? "hidden md:block" : "block"}`}>
         <SubjectSwitcher
           subjects={subjects}
           activeId={activeSubjectId}
@@ -3137,7 +3155,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
         />
       </div>}
 
-      <div className={`quick-hide ${isImageFirst ? "!hidden" : ""} ${mobileStudioStep === "create" && mobileStudioMode === "advanced" ? "space-y-2" : "hidden md:block md:space-y-2"}`}>
+      <div data-mobile-tools="review" className={`quick-hide ${isImageFirst ? "!hidden" : ""} ${mobileStudioStep === "create" && mobileStudioMode === "advanced" ? "space-y-2" : "hidden md:block md:space-y-2"}`}>
         <div className="pane px-3 py-2 flex items-center gap-2" data-testid="glance-header">
           <button
             type="button"
@@ -3152,9 +3170,9 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
         {!collapsed._glance && <DnaAtAGlance dna={activeDna} name={name} subjects={isMulti ? subjects : undefined} />}
       </div>
 
-      <div className={isImageFirst || editMode === "body_adjust" ? "grid grid-cols-1 gap-4" : "grid grid-cols-1 lg:grid-cols-[260px_1fr_380px] gap-4"}>
+      <div data-mobile-tools-container="generation references prompts loras results" className={isImageFirst || editMode === "body_adjust" ? "grid grid-cols-1 gap-4" : "grid grid-cols-1 lg:grid-cols-[260px_1fr_380px] gap-4"}>
         {/* Left rail - grouped-by-phase section nav (uses active subject's dna for filled dots) */}
-        <aside className={`quick-hide hidden lg:block h-fit sticky top-20 ${isImageFirst || editMode === "body_adjust" ? "!hidden" : ""}`}>
+        <aside data-mobile-tools="none" className={`quick-hide hidden lg:block h-fit sticky top-20 ${isImageFirst || editMode === "body_adjust" ? "!hidden" : ""}`}>
           <GroupedSectionRail
             dna={activeDna}
             locks={locks}
@@ -3165,7 +3183,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
         </aside>
 
         {/* Mobile section chips — grouped by phase */}
-        <div className={`hidden md:flex lg:hidden overflow-x-auto scroll-fade -mx-3 px-3 gap-2 pb-1 ${isImageFirst || editMode === "body_adjust" ? "!hidden" : ""}`}>
+        <div data-mobile-tools="none" className={`hidden md:flex lg:hidden overflow-x-auto scroll-fade -mx-3 px-3 gap-2 pb-1 ${isImageFirst || editMode === "body_adjust" ? "!hidden" : ""}`}>
           {SECTIONS.map((s) => (
             <Link
               key={s.key}
@@ -3180,7 +3198,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
 
         {/* Center - single active section */}
         {!isImageFirst && editMode === "body_adjust" && (
-          <section className="pane border-amber-500/30 bg-amber-500/[0.04] p-4 sm:p-5 space-y-4" data-testid="focused-body-adjust-banner">
+          <section data-mobile-tools="none" className="pane border-amber-500/30 bg-amber-500/[0.04] p-4 sm:p-5 space-y-4" data-testid="focused-body-adjust-banner">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <div className="section-label text-amber-200">Edit existing image</div>
@@ -3236,7 +3254,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
             <p className="text-[10px] text-zinc-500">Face, pose, wardrobe, framing, scene, lighting, and unselected body regions are preserved.</p>
           </section>
         )}
-        <div id="studio-sections" className={`${isImageFirst ? "!hidden" : ""} ${mobileStudioStep === "create" ? "hidden md:block" : "block"} ${editMode === "body_adjust" ? "hidden" : ""} scroll-mt-24 space-y-4`}>
+        <div data-mobile-tools="none" id="studio-sections" className={`${isImageFirst ? "!hidden" : ""} ${mobileStudioStep === "create" ? "hidden md:block" : "block"} ${editMode === "body_adjust" ? "hidden" : ""} scroll-mt-24 space-y-4`}>
       {studioProfile && <section className="pane border-cyan-400/25 p-3 sm:p-4" data-testid={`studio-${studio}-presets`}>
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
@@ -3429,14 +3447,14 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
         </div>
 
         {/* Right - preview + AI + render */}
-        <aside id="studio-render" className={`quick-hide ${isImageFirst || mobileStudioStep === "create" ? "block" : "hidden md:block"} scroll-mt-24 space-y-4 lg:sticky lg:top-20 lg:h-fit`}>
-          <div className={isImageFirst ? "hidden" : mobileStudioMode === "advanced" ? "block" : "hidden md:block"}>
+        <aside data-mobile-tools-container="generation references prompts loras results" id="studio-render" className={`quick-hide ${isImageFirst || mobileStudioStep === "create" ? "block" : "hidden md:block"} scroll-mt-24 space-y-4 lg:sticky lg:top-20 lg:h-fit`}>
+          <div data-mobile-tools="generation" className={isImageFirst ? "hidden" : mobileStudioMode === "advanced" ? "block" : "hidden md:block"}>
             <SmartSetupPanel workflows={selectableWorkflows} activeWorkflow={activeWorkflow} dna={activeDna}
               subjectCount={subjects.length} hasReference={!!referenceImage?.name} onApply={applySmartSetup} />
           </div>
-          <div className={mobileStudioMode === "advanced" || mobileStudioStep === "create" ? "block" : "hidden md:block"}>
+          <div data-mobile-tools-container="references prompts" className={mobileStudioMode === "advanced" || mobileStudioStep === "create" ? "block" : "hidden md:block"}>
           {activeCompiler === "krea2" && (
-            <div className="pane p-4 mb-4 space-y-2" data-testid="krea-framing-control">
+            <div data-mobile-tools="references" className="pane p-4 mb-4 space-y-2" data-testid="krea-framing-control">
               <div className="section-label">Krea 2 · magazine framing</div>
               <p className="text-xs text-zinc-400">Choose the crop for every subject. Face priority keeps the face clear within this shot.</p>
               <div className="flex gap-2">
@@ -3450,7 +3468,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
               <p className="text-[11px] text-zinc-500">Selected scene details: {(activeDna.scenario?.acts || []).length + String(activeDna.scenario?.extra_acts || "").split(/[,;]+/).filter((part) => part.trim()).length}. Keep this to one main action and up to two supporting details. The preview below shows the exact prompt sent to ComfyUI.</p>
             </div>
           )}
-          <div className={`${isImageFirst ? "!hidden" : ""} pane p-4 mb-4 space-y-2`} data-testid="plain-language-prompt">
+          <div data-mobile-tools="prompts" className={`${isImageFirst ? "!hidden" : ""} pane p-4 mb-4 space-y-2`} data-testid="plain-language-prompt">
             <label htmlFor="plain-language-input" className="section-label">Describe it in your own words</label>
             <Textarea id="plain-language-input" rows={2} value={plainLanguage}
               onChange={(event) => setPlainLanguage(event.target.value)}
@@ -3463,7 +3481,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
             {plainLanguage.trim() && <p className="text-xs text-zinc-400">Workflow translation: {translatedPlainLanguage.text || "Describe motion for image-to-video; the source image supplies appearance."}</p>}
             {plainLanguage.trim() && !["qwen_edit", "wan_i2v"].includes(activeCompiler) && resolveReferenceNotes(plainLanguage, activeDna, subjects) !== plainLanguage.trim() && <p className="text-xs text-amber-300">Current controls replace labeled reference notes for body orientation, camera angle, pose, framing and expression in the submitted prompt. Your original notes remain saved here.</p>}
           </div>
-          {isVideoWorkflow || isVariationWorkflow ? <details className="pane p-4" data-testid={isVideoWorkflow ? "video-motion-preview" : "variation-prompt-preview"}><summary className="cursor-pointer text-xs text-zinc-300">{isVideoWorkflow ? "Motion prompt sent to ComfyUI" : "Variation prompt sent to ComfyUI"}</summary><p className="mt-3 whitespace-pre-wrap text-xs text-zinc-400">{finalPositive}</p></details> : <PromptPreview
+          {isVideoWorkflow || isVariationWorkflow ? <details data-mobile-tools="prompts" className="pane p-4" data-testid={isVideoWorkflow ? "video-motion-preview" : "variation-prompt-preview"}><summary className="cursor-pointer text-xs text-zinc-300">{isVideoWorkflow ? "Motion prompt sent to ComfyUI" : "Variation prompt sent to ComfyUI"}</summary><p className="mt-3 whitespace-pre-wrap text-xs text-zinc-400">{finalPositive}</p></details> : <div className="mobile-tools-panel" data-mobile-tools="prompts"><PromptPreview
             aiProvider={aiProvider}
             positive={finalPositive}
             negative={finalNegative}
@@ -3495,16 +3513,16 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
               setNegativePromptOverride("");
               toast.success("Generated prompt restored");
             }}
-          />}
+          /></div>}
           </div>
           {activeWorkflow && promptStyle === "pony" && (
-            <div className={`${mobileStudioMode === "advanced" ? "flex" : "hidden md:flex"} pane p-3 items-center gap-2`} data-testid="pony-style-badge">
+            <div data-mobile-tools="loras" className={`${mobileStudioMode === "advanced" ? "flex" : "hidden md:flex"} pane p-3 items-center gap-2`} data-testid="pony-style-badge">
               <span className="text-[10px] font-mono uppercase tracking-widest text-rose-300 bg-rose-500/10 border border-rose-500/40 rounded px-1.5 py-0.5">pony style</span>
               <span className="text-[11px] text-zinc-400">score_9 prefix + booru tag weighting enabled</span>
             </div>
           )}
           {isTextVideoWorkflow && (
-            <div className="pane p-4 space-y-4" data-testid="wan-text-video-panel">
+            <div data-mobile-tools="references" className="pane p-4 space-y-4" data-testid="wan-text-video-panel">
               <VideoModeLinks mode="text_video"/>
               <div className="flex items-center gap-2">
                 <Camera className="h-4 w-4 text-violet-300" />
@@ -3558,7 +3576,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
             </div>
           )}
           {isFaceWorkflow && (
-            <div className="pane p-4 space-y-4" data-testid="face-reference-panel">
+            <div data-mobile-tools="references" className="pane p-4 space-y-4" data-testid="face-reference-panel">
               <div className="flex items-center gap-2">
                 <ImagePlus className="h-4 w-4 text-amber-400" />
                 <div className="section-label">Keep this character · Face Preserve</div>
@@ -3615,7 +3633,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
               </label>
             </div>
           )}
-          <div className={`${isImageFirst ? "!hidden" : mobileStudioMode === "advanced" ? "contents" : "hidden md:contents"}`}>
+          <div data-mobile-tools="loras" className={`${isImageFirst ? "!hidden" : mobileStudioMode === "advanced" ? "contents" : "hidden md:contents"}`}>
             <LikenessLoraPanel
               workflowId={workflowId}
               subject={activeSubject}
@@ -3623,7 +3641,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
             />
           </div>
           {batchRenders.length > 1 && (
-            <div className="pane p-4 space-y-3" data-testid="batch-render-progress">
+            <div data-mobile-tools="results" className="pane p-4 space-y-3" data-testid="batch-render-progress">
               {(() => {
                 const completed = batchRenders.filter((r) => r.status === "done").length;
                 const failed = batchRenders.filter((r) => ["failed", "offline", "cancelled"].includes(r.status)).length;
@@ -3684,7 +3702,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
           )}
 
           {activeRender && (!poseAssistEnabled || poseAssistStage === "done") && (
-            <div className={`${showMobileResult ? "hidden md:block" : "block"} pane p-4 space-y-3`} data-testid="render-status-panel">
+            <div data-mobile-tools="results" className={`${showMobileResult ? "hidden md:block" : "block"} pane p-4 space-y-3`} data-testid="render-status-panel">
               <div className="flex items-center justify-between">
                 <div className="section-label">Render</div>
                 <span
