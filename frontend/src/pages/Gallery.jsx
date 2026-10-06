@@ -134,7 +134,6 @@ export default function Gallery() {
   const [showDetails, setShowDetails] = useState(false);
   const [selectionMode, setSelectionMode] = useState(false);
   const [selected, setSelected] = useState([]);
-  const [deleteFiles, setDeleteFiles] = useState(false);
   const [albumFilter, setAlbumFilter] = useState("all");
   const [browse, setBrowse] = useState({ search: "", model: "all", media: "all", sort: "newest" });
   const [showQcFlagged, setShowQcFlagged] = useState(true);
@@ -153,26 +152,24 @@ export default function Gallery() {
   });
 
   const removeOne = useMutation({
-    mutationFn: ({ id, files }) => endpoints.deleteRender(id, files),
+    mutationFn: ({ id }) => endpoints.deleteRender(id),
     onSuccess: (result, { id }) => {
       setSelected((current) => current.filter((item) => item !== id));
       if (lightbox?.id === id) setLightbox(null);
       qc.invalidateQueries({ queryKey: ["renders"] });
-      if (result.files_unavailable) toast.warning(`Removed from Gallery. ${result.files_unavailable} file(s) were not found in the configured ComfyUI output folder and may remain elsewhere on disk.`);
-      else toast.success(result.files_deleted ? `Removed from Gallery and deleted ${result.files_deleted} file(s)` : "Removed from Gallery");
+      toast.success(`Permanently deleted ${result.files_deleted || 0} output file(s)`);
     },
     onError: (error) => toast.error(error?.response?.data?.detail || "Could not remove render"),
   });
 
   const removeMany = useMutation({
-    mutationFn: ({ ids, files }) => endpoints.deleteRenders(ids, files),
+    mutationFn: ({ ids }) => endpoints.deleteRenders(ids),
     onSuccess: (result) => {
       setSelected([]);
       setSelectionMode(false);
       setLightbox(null);
       qc.invalidateQueries({ queryKey: ["renders"] });
-      if (result.files_unavailable) toast.warning(`Removed ${result.deleted || 0} Gallery items and deleted ${result.files_deleted || 0} file(s). ${result.files_unavailable} file(s) were not found in the configured output folder and may remain elsewhere on disk.`);
-      else toast.success(`Removed ${result.deleted || 0} Gallery items${result.files_deleted ? ` and deleted ${result.files_deleted} file(s)` : ""}`);
+      toast.success(`Permanently deleted ${result.deleted || 0} items and ${result.files_deleted || 0} output file(s)`);
     },
     onError: (error) => toast.error(error?.response?.data?.detail || "Could not remove selected renders"),
   });
@@ -183,8 +180,7 @@ export default function Gallery() {
       setLightbox(null);
       setPage(1);
       qc.invalidateQueries({ queryKey: ["renders"] });
-      if (result.files_unavailable) toast.warning(`Removed ${result.deleted || 0} QC-flagged Gallery items and deleted ${result.files_deleted || 0} file(s). ${result.files_unavailable} file(s) were not found in the configured output folder and may remain elsewhere on disk.`);
-      else toast.success(`Removed ${result.deleted || 0} QC-flagged Gallery items${result.files_deleted ? ` and deleted ${result.files_deleted} file(s)` : ""}`);
+      toast.success(`Permanently deleted ${result.deleted || 0} items and ${result.files_deleted || 0} output file(s)`);
     },
     onError: (error) => toast.error(error?.response?.data?.detail || "Could not remove QC-flagged items"),
   });
@@ -325,21 +321,17 @@ export default function Gallery() {
   });
 
   const confirmRemoveOne = (render) => {
-    const message = deleteFiles
-      ? "Permanently delete this image and its ComfyUI output files from your hard drive? This cannot be undone."
-      : "Remove this item from the Ultra Studio Gallery? The ComfyUI output files will remain on disk.";
+    const message = "Permanently delete this image or video and its output files from your hard drive? This cannot be undone.";
     if (window.confirm(message)) {
-      removeOne.mutate({ id: render.id, files: deleteFiles });
+      removeOne.mutate({ id: render.id });
     }
   };
 
   const confirmRemoveSelected = () => {
     if (!selected.length) return;
-    const message = deleteFiles
-      ? `Permanently delete ${selected.length} selected images and their ComfyUI output files from your hard drive? This cannot be undone.`
-      : `Remove ${selected.length} selected items from the Ultra Studio Gallery? ComfyUI output files will remain on disk.`;
+    const message = `Permanently delete ${selected.length} selected items and their output files from your hard drive? This cannot be undone.`;
     if (window.confirm(message)) {
-      removeMany.mutate({ ids: selected, files: deleteFiles });
+      removeMany.mutate({ ids: selected });
     }
   };
 
@@ -409,7 +401,7 @@ export default function Gallery() {
 
   const confirmClearCancelled = () => {
     if (!cancelled.length) return;
-    if (window.confirm(`Permanently remove ${cancelled.length} cancelled record${cancelled.length === 1 ? "" : "s"} from Ultra Studio? ComfyUI output files are not deleted.`)) {
+    if (window.confirm(`Permanently remove ${cancelled.length} cancelled record${cancelled.length === 1 ? "" : "s"} from Ultra Studio? Any associated output files will also be permanently deleted.`)) {
       clearCancelled.mutate();
     }
   };
@@ -511,14 +503,11 @@ export default function Gallery() {
                   disabled={removeMany.isPending}
                   className="inline-flex items-center gap-2 rounded-lg border border-red-500/50 bg-red-500/10 px-3 py-2 text-sm text-red-200 disabled:opacity-40"
                   data-testid="btn-gallery-delete-selected">
-                  <Trash2 className="h-4 w-4" /> Remove {selected.length}
+                  <Trash2 className="h-4 w-4" /> Delete {selected.length}
                 </button>
               </>
             )}
-            <label className="inline-flex items-center gap-2 text-xs text-zinc-300" data-testid="toggle-delete-gallery-files">
-              <input type="checkbox" checked={deleteFiles} onChange={(event) => setDeleteFiles(event.target.checked)} />
-              Also delete files from disk
-            </label>
+
           </div>
         )}
         <GalleryBrowseControls value={browse} models={models} onChange={(next) => { setBrowse(next); setPage(1); }}
@@ -548,9 +537,7 @@ export default function Gallery() {
               Show QC-flagged images: {showQcFlagged ? "On" : "Off"}
             </button>
             <button type="button" disabled={removeQcFlagged.isPending} data-testid="btn-gallery-delete-all-qc"
-              onClick={() => window.confirm(deleteFiles
-                ? "Permanently delete ALL QC-flagged renders and their ComfyUI output files from your hard drive? This cannot be undone."
-                : "Remove ALL QC-flagged renders from the Gallery, including older pages? ComfyUI files will remain on disk.") && removeQcFlagged.mutate(deleteFiles)}
+              onClick={() => window.confirm("Permanently delete ALL QC-flagged renders and their output files from your hard drive? This cannot be undone.") && removeQcFlagged.mutate()}
               className="rounded-lg border border-red-500/40 px-3 py-2 text-red-200 hover:bg-red-500/10 disabled:opacity-40">
               <Trash2 className="mr-1 inline h-3.5 w-3.5" /> Delete all QC-flagged
             </button>
@@ -638,7 +625,7 @@ export default function Gallery() {
                     ) : (
                       <button type="button" onClick={() => confirmRemoveOne(r)}
                         className="absolute left-1 top-1 z-10 h-7 w-7 rounded-full bg-black/70 text-zinc-200 hidden sm:grid place-items-center sm:opacity-0 sm:group-hover:opacity-100 hover:bg-red-500"
-                        aria-label="Remove from Gallery" data-testid={`btn-delete-render-${i}`}>
+                        aria-label="Permanently delete image or video" data-testid={`btn-delete-render-${i}`}>
                         <Trash2 className="h-3.5 w-3.5" />
                       </button>
                     )}
@@ -717,6 +704,11 @@ export default function Gallery() {
               aria-label="Close full-screen image"
             >
               <X className="h-5 w-5" />
+            </button>
+            <button type="button" onClick={() => confirmRemoveOne(lightbox)} disabled={removeOne.isPending}
+              data-testid="btn-lightbox-delete-fullscreen" aria-label="Permanently delete this image or video"
+              className={`absolute right-16 ${returnTo ? "md:left-24" : "md:left-3"} md:right-auto top-[calc(.75rem+env(safe-area-inset-top,0px))] z-30 inline-flex h-10 items-center gap-1.5 rounded-full border border-red-400/50 bg-black/75 px-3 text-xs font-semibold text-red-200 disabled:opacity-40`}>
+              <Trash2 className="h-4 w-4" />{removeOne.isPending ? "Deleting…" : "Delete"}
             </button>
             <button
               type="button"
@@ -1064,11 +1056,8 @@ export default function Gallery() {
                         <Download className="inline h-4 w-4 mr-2" />Download original
                       </button>
                     )}
-                    <label className="flex items-center gap-2 text-xs text-red-200" data-testid="toggle-delete-gallery-files-lightbox">
-                      <input type="checkbox" checked={deleteFiles} onChange={(event) => setDeleteFiles(event.target.checked)} />
-                      Also delete ComfyUI files from disk
-                    </label>
-                    <button type="button" onClick={() => confirmRemoveOne(lightbox)} disabled={removeOne.isPending} data-testid="btn-lightbox-delete" className="w-full rounded-lg border border-red-500/40 px-3 py-2 text-sm text-red-200"><Trash2 className="inline h-4 w-4 mr-2" />Remove from Gallery</button>
+
+                    <button type="button" onClick={() => confirmRemoveOne(lightbox)} disabled={removeOne.isPending} data-testid="btn-lightbox-delete" className="w-full rounded-lg border border-red-500/40 px-3 py-2 text-sm text-red-200"><Trash2 className="inline h-4 w-4 mr-2" />Delete permanently</button>
                     {lightbox.character_id && <Link to={`/character/${lightbox.character_id}`} data-testid="btn-lightbox-open-character" className="w-full inline-flex items-center justify-center gap-2 rounded-lg border hairline px-3 py-2 text-sm"><ExternalLink className="h-4 w-4" />Open character</Link>}
                   </div>
                 </details>

@@ -5,7 +5,7 @@ import { endpoints } from "@/lib/api";
 import Gallery from "./Gallery";
 
 jest.mock("@/lib/api", () => ({ API_BASE: "/api", endpoints: {
-  aiEditPrompt: jest.fn(), prepareRenderReference: jest.fn(), recoverRenderImage: jest.fn(), listRenders: jest.fn(), getRender: jest.fn(), getRenderVersions: jest.fn(), getRenderRecipe: jest.fn(),
+  deleteRender: jest.fn(), deleteRenders: jest.fn(), deleteQcFlaggedRenders: jest.fn(), aiEditPrompt: jest.fn(), prepareRenderReference: jest.fn(), recoverRenderImage: jest.fn(), listRenders: jest.fn(), getRender: jest.fn(), getRenderVersions: jest.fn(), getRenderRecipe: jest.fn(),
 } }));
 jest.mock("sonner", () => ({ toast: { error: jest.fn(), success: jest.fn() } }));
 
@@ -205,4 +205,19 @@ test('selection returns to the images and its tools remain reachable', async () 
   expect(container.textContent).toContain('1 selected');
   act(() => toggle.click());
   expect(container.querySelector('[data-testid="btn-gallery-delete-selected"]')).not.toBeNull();
+});
+
+test('fullscreen Delete permanently deletes without a disk checkbox', async () => {
+  const confirm = jest.spyOn(window, 'confirm').mockReturnValue(true);
+  endpoints.deleteRender.mockResolvedValue({ deleted: 1, files_deleted: 1 });
+  try {
+    await render('/gallery?render=a');
+    expect(container.querySelector('[data-testid="toggle-delete-gallery-files"]')).toBeNull();
+    expect(container.querySelector('[data-testid="toggle-delete-gallery-files-lightbox"]')).toBeNull();
+    const button = container.querySelector('[data-testid="btn-lightbox-delete-fullscreen"]');
+    expect(button).not.toBeNull();
+    await act(async () => { button.click(); await new Promise(resolve => setTimeout(resolve, 20)); });
+    expect(confirm).toHaveBeenCalledWith(expect.stringContaining('Permanently delete'));
+    expect(endpoints.deleteRender).toHaveBeenCalledWith('a');
+  } finally { confirm.mockRestore(); }
 });
