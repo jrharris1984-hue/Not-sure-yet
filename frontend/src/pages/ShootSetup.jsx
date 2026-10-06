@@ -1,18 +1,19 @@
+import { referenceShootWorkflows, shootContinuityDefaults, shootReferenceInstruction, shootReferencePreview } from "@/lib/shootContinuity";
 import { clothingSequence, DEFAULT_CLOTHING_STAGES } from "@/lib/shootClothingSequence";
 import { EXPOSURE_CHOICES } from "@/lib/wardrobeNudity";
 import GroupedChips from "@/components/GroupedChips";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Camera, Shuffle, Play, Loader2, X, ChevronLeft } from "lucide-react";
-import { endpoints } from "@/lib/api";
+import { Camera, Shuffle, Play, Loader2, ChevronLeft } from "lucide-react";
+import { API_BASE, endpoints } from "@/lib/api";
 import { SECTIONS } from "@/lib/dna";
 import { POSE_PACKS, samplePoses, cycleOutfits } from "@/lib/posePacks";
 import ShootPlanner from "@/components/ShootPlanner";
 import { plannedFrameControls } from "@/lib/shootPlanner";
 import LoraPanel from "@/components/LoraPanel";
-import { likenessOverrides } from "@/components/LikenessLoraPanel";
+import { likenessOverrides, likenessTriggerText } from "@/components/LikenessLoraPanel";
 import { compileModelPrompts } from "@/lib/modelPromptCompilers";
 import { resolveBuilderControls } from "@/lib/builderControlResolution";
 import { shootFrameDna } from "@/lib/shootFrames";
@@ -25,7 +26,6 @@ const ALL_POSES = POSE_FIELD.groups.flatMap((g) => g.options);
 // Flat pool of outfit_preset options
 const WARDROBE_SECTION = SECTIONS.find((s) => s.key === "wardrobe");
 const OUTFIT_FIELD = WARDROBE_SECTION.fields.find((f) => f.key === "outfit_preset");
-const ALL_OUTFITS = OUTFIT_FIELD.groups.flatMap((g) => g.options);
 const OUTFIT_GROUPS = OUTFIT_FIELD.groups;
 const FACE_SECTION = SECTIONS.find((s) => s.key === "face");
 const EXPRESSION_FIELD = FACE_SECTION?.fields.find((f) => f.key === "expression");
@@ -34,7 +34,7 @@ const EXPRESSION_GROUPS = EXPRESSION_FIELD?.groups || (EXPRESSION_FIELD?.options
   : []);
 
 const CONTINUITY_PRESETS = [
-  { key: "maximum", label: "Maximum match", hint: "Same seed and locked location for the strongest visual continuity.", seedMode: "same", lockScenario: true },
+  { key: "maximum", label: "Maximum match", hint: "Reuse the source seed and location; text-only renders can still change faces.", seedMode: "same", lockScenario: true },
   { key: "balanced", label: "Consistent variety", hint: "Recommended: locked location with a small seed offset for each pose.", seedMode: "character_pose", lockScenario: true },
   { key: "creative", label: "Creative", hint: "Fresh seeds allow more variety, with greater identity drift.", seedMode: "fresh", lockScenario: false },
 ];
@@ -61,6 +61,20 @@ export default function ShootSetup() {
   const { data: workflows = [] } = useQuery({ queryKey: ["workflows"], queryFn: endpoints.listWorkflows });
   const { data: settings } = useQuery({ queryKey: ["settings"], queryFn: endpoints.settings });
 
+  const { data: shootContext, isLoading: contextLoading, isError: contextError, refetch: refetchContext } = useQuery({
+    queryKey: ["shoot-context", characterId], queryFn: () => endpoints.characterShootContext(characterId), enabled: !!characterId,
+  });
+  const [shootStep, setShootStep] = useState("character");
+  const shootNavigation = useRef(null);
+  const goShootStep = step => {
+    setShootStep(step);
+    shootNavigation.current?.scrollIntoView?.({ block: "start", behavior: "smooth" });
+  };
+  const [identityMode, setIdentityMode] = useState("text");
+  const continuityLoaded = useRef(false);
+  const [setControls, setSetControls] = useState({ scene: {}, lighting: {}, camera: {} });
+  const referenceWorkflows = referenceShootWorkflows(workflows);
+  const availableWorkflows = identityMode === "reference" ? referenceWorkflows : workflows.filter(w => ["image", "pony"].includes(w.kind));
   const [aiFrames, setAiFrames] = useState(null);
   const [manualCount, setCount] = useState(8);
   const [sequenceEnabled, setSequenceEnabled] = useState(false);
@@ -75,9 +89,9 @@ export default function ShootSetup() {
   const [manualPoses, setManualPoses] = useState([]);
   const [outfits, setOutfits] = useState([]); // list of outfit_preset strings
   const [expressions, setExpressions] = useState([]);
-  const [continuity, setContinuity] = useState("balanced");
+  const [continuity, setContinuity] = useState("maximum");
   const [lockScenario, setLockScenario] = useState(true);
-  const [seedMode, setSeedMode] = useState("character_pose"); // same | character_pose | fresh
+  const [seedMode, setSeedMode] = useState("same"); // same | character_pose | fresh
   const [baseSeed, setBaseSeed] = useState("");
   const [loraOverrides, setLoraOverrides] = useState({});
   const [name, setName] = useState("");
@@ -90,10 +104,11 @@ export default function ShootSetup() {
   const shootWorkflow = workflows.find((workflow) => workflow.id === workflowId);
 
   useEffect(() => {
-    if (!workflowId && workflows.length) {
-      setWorkflowId(settings?.default_workflow_id || workflows[0].id);
-    }
-  }, [workflows, settings, workflowId]);
+    if (continuityLoaded.current || contextLoading || !character || !workflows.length || !shootContext) return;
+    const defaults = shootContinuityDefaults(shootContext, workflows, settings?.default_workflow_id);
+    setIdentityMode(defaults.mode); setWorkflowId(defaults.workflowId); setBaseSeed(String(defaults.seed)); setLoraOverrides(defaults.loras);
+    continuityLoaded.current = true;
+  }, [shootContext, contextLoading, character, workflows, settings]);
 
   useEffect(() => { setAiFrames(null); }, [workflowId, count, lockScenario, sequenceEnabled]);
 
@@ -107,17 +122,19 @@ export default function ShootSetup() {
       const scene_direction = shotScript.length ? shotScript[i % shotScript.length] : "";
       const outfit_overrides = sequenceEnabled ? coverageFrames[i] : planned ? planned.outfit_overrides : outs[i] || {};
       const face_overrides = planned ? planned.face_overrides : expressions.length ? { expression: expressions[i % expressions.length] } : {};
-      const baseDna = character?.subjects?.[0]?.dna || character?.dna || {};
-      const planControls = { wardrobeOverrides: outfit_overrides, poseOverrides: planned?.pose_overrides, lightingOverrides: planned?.lighting_overrides, sceneOverrides: planned?.scene_overrides, lockScenario };
+      const savedDna = character?.subjects?.[0]?.dna || character?.dna || {};
+      const baseDna = { ...savedDna, scene: { ...savedDna.scene, ...setControls.scene }, lighting: { ...savedDna.lighting, ...setControls.lighting }, camera: { ...savedDna.camera, ...setControls.camera } };
+      const planControls = { wardrobeOverrides: outfit_overrides, poseOverrides: planned?.pose_overrides, lightingOverrides: { ...setControls.lighting, ...planned?.lighting_overrides }, sceneOverrides: { ...setControls.scene, ...planned?.scene_overrides }, lockScenario };
       const frameDna = shootFrameDna(baseDna, { poseAction: p, outfitPreset: outfit_overrides.outfit_preset, faceOverrides: face_overrides, ...planControls });
       const subjects = (character?.subjects || []).map((subject, index) =>
-        ({ ...subject, dna: index === 0 ? frameDna : shootFrameDna(subject.dna, {
+        ({ ...subject, dna: index === 0 ? frameDna : shootFrameDna({ ...subject.dna, scene: { ...subject.dna?.scene, ...setControls.scene }, lighting: { ...subject.dna?.lighting, ...setControls.lighting }, camera: { ...subject.dna?.camera, ...setControls.camera } }, {
           poseAction: p, outfitPreset: outfit_overrides.outfit_preset, faceOverrides: face_overrides, ...planControls,
         }) }));
       const compiled = shootWorkflow ? compileModelPrompts({
-        promptStyle: shootWorkflow.prompt_style,
-        workflowKind: shootWorkflow.kind,
-        workflowName: shootWorkflow.name,
+        promptStyle: identityMode === "reference" ? "qwen_rapid" : shootWorkflow.prompt_style,
+        workflowKind: identityMode === "reference" ? "image" : shootWorkflow.kind,
+        workflowName: identityMode === "reference" ? "Qwen Rapid" : shootWorkflow.name,
+        promptFormat: ["compact", "ollama"].includes(settings?.builder_prompt_format) ? "compact" : "detailed",
         dna: frameDna,
         subjects,
         isMulti: subjects.length > 1,
@@ -140,11 +157,16 @@ export default function ShootSetup() {
           outfit_overrides.outfit_preset && `Frame outfit for every subject: ${outfit_overrides.outfit_preset}`,
           scene_direction,
           compiled.positive,
+          identityMode === "text" && likenessTriggerText(character?.subjects || []),
         ].filter(Boolean).join(". ") : "",
         prompt_negative: compiled?.negative || "",
+        edit_instruction: identityMode === "reference" ? shootReferenceInstruction([
+          compiled?.positive, scene_direction,
+        ].filter(Boolean).join(". ")) : "",
+
       };
     });
-  }, [sequenceEnabled, coverageFrames, poseMode, packKey, manualPoses, count, outfits, expressions, shotScript, character, shootWorkflow, aiFrames, lockScenario]);
+  }, [sequenceEnabled, coverageFrames, poseMode, packKey, manualPoses, count, outfits, expressions, shotScript, character, shootWorkflow, aiFrames, lockScenario, setControls, identityMode, settings?.builder_prompt_format]);
 
   const create = useMutation({
     mutationFn: async () => {
@@ -154,7 +176,10 @@ export default function ShootSetup() {
         workflow_id: workflowId,
         count,
         frames: previewFrames,
-        lora_overrides: { ...loraOverrides, ...savedLikenessOverrides },
+        lora_overrides: identityMode === "reference" ? {} : { ...loraOverrides, ...savedLikenessOverrides },
+        source_render_id: identityMode === "reference" ? shootContext?.render_id : null,
+        set_overrides: setControls,
+        dispatch_settings: identityMode === "text" && workflowId === shootContext?.recipe?.workflow_id ? shootContext.recipe : {},
         pose_mode: poseMode,
         pose_pack: poseMode === "pack" ? packKey : "",
         seed_mode: seedMode,
@@ -170,17 +195,6 @@ export default function ShootSetup() {
     onError: (e) => toast.error(e?.response?.data?.detail || "Shoot creation failed"),
   });
 
-  const toggleManualPose = (p) => {
-    setManualPoses((cur) => (cur.includes(p) ? cur.filter((x) => x !== p) : [...cur, p]));
-  };
-  const toggleOutfit = (o) => {
-    setOutfits((cur) => (cur.includes(o) ? cur.filter((x) => x !== o) : [...cur, o]));
-  };
-  const toggleExpression = (expression) => {
-    setExpressions((current) => current.includes(expression)
-      ? current.filter((item) => item !== expression)
-      : [...current, expression]);
-  };
   const applyContinuity = (preset) => {
     setContinuity(preset.key);
     setSeedMode(preset.seedMode);
@@ -203,11 +217,29 @@ export default function ShootSetup() {
         </div>
       </div>
 
+      <section ref={shootNavigation} className="pane scroll-mt-24 p-3 sm:p-4 space-y-3" aria-label="Shoot plan">
+        <div className="flex flex-wrap items-center gap-2 text-xs text-zinc-300"><span className="chip">{identityMode === "reference" ? "Saved photo reference" : "Text-based identity"}</span><span>{count} shots</span><span>·</span><span>{shootWorkflow?.name || "Choose workflow"}</span></div>
+        <nav className="flex gap-2 overflow-x-auto pb-1" aria-label="Shoot setup sections">
+          {[['character','Character'],['shots','Shot list'],['wardrobe','Wardrobe'],['set','Set & lighting'],['review','Review & queue']].map(([key,label],index) => <button key={key} type="button" aria-pressed={shootStep === key} onClick={() => goShootStep(key)} className={`chip shrink-0 ${shootStep === key ? 'active' : ''}`}>{index + 1}. {label}</button>)}
+        </nav>
+      </section>
+      {contextError && <div role="alert" className="pane p-4 text-sm text-amber-200">Could not load the character's shoot reference.<button type="button" className="chip ml-2" onClick={() => refetchContext()}>Try again</button></div>}
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-4">
         {/* Left column - config */}
         <div className="space-y-4">
+          {shootStep === "character" && <section className="pane p-4 space-y-3">
+            <h2 className="section-label">Character continuity</h2>
+            <p className="text-sm text-zinc-300">{shootContext?.render_id ? "Uses your chosen default photo, or the latest character render before a shoot." : "Render and save a character photo first to enable photo reference mode."}</p>
+            {shootContext?.preview && <img src={shootReferencePreview(shootContext.preview, API_BASE)} alt="Character reference for this shoot" className="h-40 w-full rounded-xl object-contain bg-black/20" />}
+            <div className="flex flex-wrap gap-2">{[['reference','Match saved photo'],['text','Generate from selections']].map(([mode,label]) => <button type="button" key={mode} className={`chip ${identityMode === mode ? 'active' : ''}`} aria-pressed={identityMode === mode} disabled={mode === 'reference' && (!shootContext?.render_id || !referenceWorkflows.length)} onClick={() => {
+              setIdentityMode(mode); setAiFrames(null);
+              const next = mode === 'reference' ? referenceWorkflows[0] : workflows.find(w => w.id === shootContext?.recipe?.workflow_id && ['image','pony'].includes(w.kind)) || workflows.find(w => ['image','pony'].includes(w.kind));
+              setWorkflowId(next?.id || ''); setLoraOverrides(mode === 'text' && next?.id === shootContext?.recipe?.workflow_id ? shootContext.recipe.lora_overrides || {} : {});
+            }}>{label}</button>)}</div>
+            <p className="text-xs text-zinc-400">{identityMode === 'reference' ? 'Uses Qwen Image Edit with the same source photo for every frame. Large pose or wardrobe changes can still cause drift.' : 'Text and seeds describe traits; they cannot lock the exact face. Source workflow, seed and render settings are reused when available.'}</p>
+          </section>}
           {/* Basics */}
-          <section className="pane p-4 sm:p-6 space-y-4" data-testid="shoot-basics-panel">
+          <section hidden={shootStep !== "character"} className="pane p-4 sm:p-6 space-y-4" data-testid="shoot-basics-panel">
             <div className="grid gap-4 sm:grid-cols-2">
               <label className="space-y-2">
                 <span className="text-xs text-zinc-400 font-mono uppercase tracking-widest">Shoot name</span>
@@ -228,7 +260,7 @@ export default function ShootSetup() {
                   className="w-full bg-elevated border border-hairline rounded-lg px-3 py-2 text-sm text-zinc-100"
                 >
                   {workflows.length === 0 && <option value="">No workflows — open Settings</option>}
-                  {workflows.map((w) => (
+                  {availableWorkflows.map((w) => (
                     <option key={w.id} value={w.id}>{w.kind.toUpperCase()} · {w.name}</option>
                   ))}
                 </select>
@@ -256,12 +288,12 @@ export default function ShootSetup() {
             </div>
           </section>
 
-          {!sequenceEnabled && count <= 20 && <ShootPlanner characterId={characterId} workflow={shootWorkflow} count={count} lockScenario={lockScenario}
+          <div hidden={shootStep !== "shots"}>{!sequenceEnabled && count <= 20 && <ShootPlanner characterId={characterId} workflow={shootWorkflow} count={count} lockScenario={lockScenario}
             appliedFrames={aiFrames} onApply={setAiFrames} />}
           {aiFrames && <div className="pane p-4 text-sm text-cyan-200">AI shot plan applied. Pose, outfit and expression rotations below are replaced by the shot cards.
-            <button type="button" className="chip ml-2" onClick={() => setAiFrames(null)}>Return to manual rotation</button></div>}
+            <button type="button" className="chip ml-2" onClick={() => setAiFrames(null)}>Return to manual rotation</button></div>}</div>
           {/* Pose source */}
-          <fieldset disabled={!!aiFrames} className="pane p-4 sm:p-6 space-y-4 disabled:opacity-40" data-testid="shoot-pose-panel">
+          <fieldset disabled={!!aiFrames} className="pane p-4 sm:p-6 space-y-4 disabled:opacity-40" data-testid="shoot-pose-panel" hidden={shootStep !== "shots"}>
             {shotScript.length > 0 && <div className="rounded-lg border border-cyan-400/30 bg-cyan-400/5 p-3 text-xs text-cyan-100" data-testid="shoot-scenario-script">
               <strong>Scenario shot script · {pairing}</strong>
               <p className="mt-1 text-zinc-300">Each frame follows a portrait direction for the selected relationship. Character appearance and the shared location stay consistent.</p>
@@ -312,45 +344,7 @@ export default function ShootSetup() {
               </div>
             )}
 
-            {poseMode === "manual" && (
-              <div className="space-y-2">
-                {manualPoses.length > 0 && (
-                  <div className="flex flex-wrap items-center gap-1.5 p-2 rounded-md bg-amber-500/5 border border-amber-500/30">
-                    <span className="text-[10px] font-mono uppercase tracking-widest text-amber-300">
-                      {manualPoses.length} picked
-                    </span>
-                    {manualPoses.map((p) => (
-                      <button
-                        key={p}
-                        type="button"
-                        onClick={() => toggleManualPose(p)}
-                        className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 text-amber-100 border border-amber-500/40 px-2 py-0.5 text-[11px] hover:bg-amber-500/25"
-                      >
-                        {p} <X className="h-3 w-3" />
-                      </button>
-                    ))}
-                  </div>
-                )}
-                {POSE_FIELD.groups.map((g) => (
-                  <div key={g.name}>
-                    <div className="text-[10px] font-mono uppercase tracking-widest text-zinc-500 mb-1">{g.name}</div>
-                    <div className="flex flex-wrap gap-1.5">
-                      {g.options.map((opt) => (
-                        <button
-                          key={opt}
-                          type="button"
-                          onClick={() => toggleManualPose(opt)}
-                          data-testid={`btn-manual-pose-${opt.replace(/\s+/g, "-")}`}
-                          className={`chip ${manualPoses.includes(opt) ? "active" : ""}`}
-                        >
-                          {opt}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
+            {poseMode === "manual" && <GroupedChips groups={POSE_FIELD.groups} value={manualPoses} onChange={setManualPoses} multi testIdPrefix="shoot-manual-pose" />}
 
             {poseMode === "random" && (
               <div className="text-xs text-zinc-400 p-3 rounded-md bg-elevated border border-hairline flex items-center gap-2">
@@ -360,7 +354,7 @@ export default function ShootSetup() {
             )}
           </fieldset>
 
-          <section className="pane p-4 sm:p-6 space-y-4" data-testid="shoot-clothing-sequence">
+          <section className="pane p-4 sm:p-6 space-y-4" data-testid="shoot-clothing-sequence" hidden={shootStep !== "wardrobe"}>
             <label className="flex items-center gap-3 text-sm font-semibold"><input type="checkbox" checked={sequenceEnabled} onChange={event => { setSequenceEnabled(event.target.checked); setAiFrames(null); }} data-testid="enable-clothing-sequence" />Ordered clothing coverage sequence</label>
             <p className="text-xs text-zinc-400">Repeat each selected coverage stage before moving to the next. Uses the saved outfit and matching lingerie, or choose a complete set below.</p>
             {sequenceEnabled && <>
@@ -372,64 +366,18 @@ export default function ShootSetup() {
             </>}
           </section>
           {/* Outfits */}
-          <fieldset disabled={!!aiFrames || sequenceEnabled} className="pane p-4 sm:p-6 space-y-4 disabled:opacity-40" data-testid="shoot-outfit-panel">
+          <fieldset disabled={!!aiFrames || sequenceEnabled} className="pane p-4 sm:p-6 space-y-4 disabled:opacity-40" data-testid="shoot-outfit-panel" hidden={shootStep !== "wardrobe"}>
             <div className="flex items-center justify-between">
               <div>
                 <div className="section-label">Outfit rotation</div>
                 <p className="text-xs text-zinc-500">Leave empty to keep the character's saved outfit. Pick multiple to cycle across shots.</p>
               </div>
-              {outfits.length > 0 && (
-                <button
-                  type="button"
-                  onClick={() => setOutfits([])}
-                  data-testid="btn-clear-outfits"
-                  className="text-[10px] font-mono uppercase tracking-widest text-zinc-400 hover:text-zinc-100"
-                >
-                  clear all
-                </button>
-              )}
             </div>
-
-            {outfits.length > 0 && (
-              <div className="flex flex-wrap items-center gap-1.5 p-2 rounded-md bg-amber-500/5 border border-amber-500/30">
-                <span className="text-[10px] font-mono uppercase tracking-widest text-amber-300">
-                  {outfits.length} chosen
-                </span>
-                {outfits.map((o) => (
-                  <button
-                    key={o}
-                    type="button"
-                    onClick={() => toggleOutfit(o)}
-                    className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 text-amber-100 border border-amber-500/40 px-2 py-0.5 text-[11px] hover:bg-amber-500/25"
-                  >
-                    {o} <X className="h-3 w-3" />
-                  </button>
-                ))}
-              </div>
-            )}
-
-            {OUTFIT_GROUPS.map((g) => (
-              <div key={g.name}>
-                <div className="text-[10px] font-mono uppercase tracking-widest text-zinc-500 mb-1">{g.name}</div>
-                <div className="flex flex-wrap gap-1.5">
-                  {g.options.map((opt) => (
-                    <button
-                      key={opt}
-                      type="button"
-                      onClick={() => toggleOutfit(opt)}
-                      data-testid={`btn-outfit-${opt.replace(/\s+/g, "-")}`}
-                      className={`chip ${outfits.includes(opt) ? "active" : ""}`}
-                    >
-                      {opt}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            ))}
+            <GroupedChips groups={OUTFIT_GROUPS} value={outfits} onChange={setOutfits} multi testIdPrefix="shoot-outfit" />
           </fieldset>
 
           {/* Advanced: scenario + seed */}
-          <section className="pane p-4 sm:p-6 space-y-4" data-testid="shoot-advanced-panel">
+          <section className="pane p-4 sm:p-6 space-y-4" data-testid="shoot-advanced-panel" hidden={shootStep !== "character"}>
             <div className="section-label">Consistency</div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
               {CONTINUITY_PRESETS.map((preset) => (
@@ -459,7 +407,7 @@ export default function ShootSetup() {
               <div className="text-xs text-zinc-400 font-mono uppercase tracking-widest">Seed mode</div>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                 {[
-                  { k: "same", label: "Locked", hint: "Same seed for every shot — max character consistency, minimal pose variety." },
+                  { k: "same", label: "Locked", hint: "Same seed for every shot; identity can still drift without a photo reference." },
                   { k: "character_pose", label: "Locked + offset", hint: "Base seed anchors the character; +1 per shot adds slight pose drift." },
                   { k: "fresh", label: "Fresh", hint: "New seed per shot — max pose variety, character may drift." },
                 ].map((m) => (
@@ -503,30 +451,34 @@ export default function ShootSetup() {
             </div>
           </section>
 
-          <fieldset disabled={!!aiFrames} className="pane p-4 sm:p-6 space-y-4" data-testid="shoot-expression-panel">
+          <fieldset disabled={!!aiFrames} className="pane p-4 sm:p-6 space-y-4" data-testid="shoot-expression-panel" hidden={shootStep !== "shots"}>
             <div className="flex items-center justify-between gap-3">
               <div>
                 <div className="section-label">Expression rotation</div>
-                <p className="text-xs text-zinc-500">Optional. Selected expressions cycle across the shoot while identity remains fixed.</p>
+                <p className="text-xs text-zinc-500">Optional. Selected expressions cycle across the shoot; reference mode asks the model to preserve identity.</p>
               </div>
               {expressions.length > 0 && <button type="button" onClick={() => setExpressions([])} className="text-[10px] font-mono uppercase tracking-widest text-zinc-400">clear</button>}
             </div>
-            {EXPRESSION_GROUPS.map((group) => (
-              <div key={group.name}>
-                <div className="text-[10px] font-mono uppercase tracking-widest text-zinc-500 mb-1">{group.name}</div>
-                <div className="flex flex-wrap gap-1.5">
-                  {group.options.map((expression) => (
-                    <button key={expression} type="button" onClick={() => toggleExpression(expression)}
-                      className={`chip ${expressions.includes(expression) ? "active" : ""}`}>{expression}</button>
-                  ))}
-                </div>
-              </div>
-            ))}
+            <GroupedChips groups={EXPRESSION_GROUPS} value={expressions} onChange={setExpressions} multi testIdPrefix="shoot-expression" />
           </fieldset>
+          <div hidden={shootStep !== "character" || identityMode === "reference"}><LoraPanel workflowId={workflowId} workflow={shootWorkflow} dna={character?.subjects?.[0]?.dna || character?.dna || {}} values={loraOverrides} onChange={setLoraOverrides} /></div>
+          <section hidden={shootStep !== "set"} className="pane p-4 space-y-4" data-testid="shoot-set-panel">
+            <h2 className="section-label">Set, lighting & camera · shared across the shoot</h2>
+            <p className="text-xs text-zinc-400">Start from the character's saved scene. These changes apply to every frame; the AI plan can add per-shot lighting.</p>
+            {['scene','lighting','camera'].map(section => <div key={section} className="space-y-3"><h3 className="text-sm font-semibold">{section === 'scene' ? 'Set' : section === 'lighting' ? 'Lighting' : 'Camera'}</h3>{SECTIONS.find(s => s.key === section).fields.filter(field => field.key !== 'aspect_ratio').map(field => {
+              const value = setControls[section][field.key] ?? (character.subjects?.[0]?.dna || character.dna)?.[section]?.[field.key] ?? '';
+              const change = next => setSetControls(current => ({...current, [section]: {...current[section], [field.key]:next}}));
+              return <div key={field.key}><label className="text-xs text-zinc-300">{field.label}</label>{field.type === 'text' ? <input aria-label={`Shoot ${field.label}`} value={value} onChange={e => change(e.target.value)} className="mt-1 w-full rounded-lg border hairline bg-elevated p-2 text-sm" /> : <GroupedChips groups={field.groups || [{name:field.label,options:field.options || []}]} value={value} onChange={change} />}</div>;
+            })}</div>)}
+          </section>
+          <div className="flex justify-between gap-2" aria-label="Shoot section navigation">
+            <button type="button" className="chip" disabled={shootStep === 'character'} onClick={() => { const steps=['character','shots','wardrobe','set','review'];goShootStep(steps[Math.max(0,steps.indexOf(shootStep)-1)]); }}>Back</button>
+            {shootStep !== 'review' && <button type="button" className="chip active" onClick={() => { const steps=['character','shots','wardrobe','set','review'];goShootStep(steps[steps.indexOf(shootStep)+1]); }}>Next section</button>}
+          </div>
         </div>
 
         {/* Right column - preview + LoRA + dispatch */}
-        <aside className="space-y-4 lg:sticky lg:top-20 lg:h-fit">
+        <aside className={`${shootStep === "review" ? "block" : "hidden lg:block"} space-y-4 lg:sticky lg:top-20 lg:h-fit`}>
           <section className="pane p-4 space-y-3" data-testid="shoot-preview-panel">
             <div className="section-label">Preview · {count} shots</div>
             <div className="max-h-[360px] overflow-y-auto space-y-1 -mx-1 px-1">
@@ -556,12 +508,12 @@ export default function ShootSetup() {
             </div>
           </section>
 
-          <LoraPanel workflowId={workflowId} workflow={shootWorkflow} dna={character?.subjects?.[0]?.dna || character?.dna || {}} values={loraOverrides} onChange={setLoraOverrides} />
+
 
           <button
             type="button"
             onClick={() => create.mutate()}
-            disabled={count < 1 || create.isPending || !workflowId}
+            disabled={count < 1 || create.isPending || !workflowId || contextLoading || contextError || !continuityLoaded.current}
             data-testid="btn-start-shoot"
             className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black text-sm font-semibold px-4 py-3 disabled:opacity-40"
           >

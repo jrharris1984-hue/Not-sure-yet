@@ -42,25 +42,28 @@ class ShootQueueTests(unittest.IsolatedAsyncioTestCase):
                 self.seed = seed
                 self.prompt_positive = f"frame {seed}"
                 self.prompt_negative = "negative"
+                self.edit_instruction = ""
                 self.pose_action = self.scene_direction = ""
                 self.outfit_overrides = self.face_overrides = {}
                 self.render_id = self.queue_id = None
                 self.status = "pending"
             def model_dump(self): return dict(self.__dict__)
         frames = [Frame(42), Frame(43)]
-        shoot = SimpleNamespace(frames=frames, character_id="c", workflow_id="wf", lora_overrides={}, lock_scenario=True)
+        shoot = SimpleNamespace(frames=frames, character_id="c", workflow_id="wf", lora_overrides={}, lock_scenario=True, dispatch_settings={"steps": 4}, reference_image="input-photo.png", source_render_id="photo", set_overrides={})
         db = SimpleNamespace(shoots=SimpleNamespace(find_one=AsyncMock(return_value={"id": "s"}), update_one=AsyncMock()),
                              characters=SimpleNamespace(find_one=AsyncMock(return_value={"name": "Character", "dna": {}})))
         enqueue = AsyncMock(side_effect=[{"id": "q1", "status": "queued"}, {"id": "q2", "status": "queued"}])
         submit = AsyncMock()
         ns = {"db": db, "Shoot": lambda **kw: shoot, "DispatchBody": lambda **kw: SimpleNamespace(**kw),
-              "_enqueue_render": enqueue, "_perform_dispatch": submit, "_apply_frame_to_dna": lambda dna, *args: dna,
+              "shoot_base_dna": lambda dna, _: dna, "_enqueue_render": enqueue, "_perform_dispatch": submit, "_apply_frame_to_dna": lambda dna, *args: dna,
               "now_iso": lambda: "now", "logger": SimpleNamespace(warning=lambda *a: None)}
         exec(compile(ast.Module(body=[node], type_ignores=[]), "shoot", "exec"), ns)
         await ns["_run_shoot_background"]("s")
         submit.assert_not_called()
         self.assertEqual([call.args[0].seed for call in enqueue.call_args_list], [42, 43])
         self.assertEqual([call.args[0].shoot_frame_index for call in enqueue.call_args_list], [0, 1])
+        self.assertEqual([call.args[0].reference_image for call in enqueue.call_args_list], ["input-photo.png", "input-photo.png"])
+        self.assertTrue(all(call.args[0].parent_render_id == "photo" and call.args[0].steps == 4 for call in enqueue.call_args_list))
         self.assertEqual([frame.queue_id for frame in frames], ["q1", "q2"])
         self.assertTrue(all(frame.render_id is None for frame in frames))
 

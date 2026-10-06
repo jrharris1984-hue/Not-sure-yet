@@ -73,6 +73,7 @@ export const endpoints = {
   listCharacters: (params = {}) => api.get("/characters", { params }).then((r) => r.data),
   listCharacterTags: () => api.get("/characters/tags").then((r) => r.data),
   createCharacter: (body) => api.post("/characters", body).then((r) => r.data),
+  characterShootContext: (id) => api.get(`/characters/${id}/shoot-context`).then((r) => r.data),
   getCharacter: (id) => api.get(`/characters/${id}`).then((r) => r.data),
   updateCharacter: (id, body) => api.patch(`/characters/${id}`, body).then((r) => r.data),
   deleteCharacter: (id) => api.delete(`/characters/${id}`).then((r) => r.data),
