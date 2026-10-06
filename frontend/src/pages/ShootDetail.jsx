@@ -58,7 +58,7 @@ export default function ShootDetail() {
   // Also poll individual running renders so ComfyUI outputs pop in
   useEffect(() => {
     if (!shoot?.renders) return;
-    const running = shoot.renders.filter((r) => r && r.status === "running" && r.comfy_prompt_id);
+    const running = shoot.renders.filter((r) => r && ["queued", "running"].includes(r.status) && r.comfy_prompt_id);
     if (!running.length) return;
     const t = setInterval(async () => {
       try {
