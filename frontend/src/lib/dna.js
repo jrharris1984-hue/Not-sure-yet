@@ -566,7 +566,8 @@ export function randomizeSection(sectionKey, current = {}, fieldLocks = {}, opti
     if (preserveProtected && RANDOMIZE_PROTECTED_FIELDS[sectionKey]?.has(f.key)) return;
     if (f.type === "chips" || f.type === "pose_chips") {
       const pool = conservative && basicPools[`${sectionKey}.${f.key}`] || (f.groups ? f.groups.flatMap((g) => g.options) : (f.options || []));
-      if (pool.length) out[f.key] = pick(pool);
+      const alternatives = options.avoidCurrent ? pool.filter(value => value !== current[f.key]) : pool;
+      if (pool.length) out[f.key] = pick(alternatives.length ? alternatives : pool);
     }
     else if (f.type === "chips_multi") {
       const pool = f.groups ? f.groups.flatMap((g) => g.options) : (f.options || []);
