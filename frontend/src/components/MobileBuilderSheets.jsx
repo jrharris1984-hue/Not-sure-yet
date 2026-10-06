@@ -98,7 +98,7 @@ export default function MobileBuilderSheets({ sections, section, onSection, subj
         </div>
         <nav className="sheet-category-tabs" aria-label="Character categories">
           {sections.map(item => <button type="button" key={item.key} aria-pressed={item.key === section.key}
-            className={`chip shrink-0 ${item.key === section.key ? "active" : ""}`} onClick={() => { onSection(item.key); setHeight("half"); }}>{item.title}</button>)}
+            className={`chip shrink-0 ${item.key === section.key ? "active" : ""}`} onClick={() => onSection(item.key)}>{item.title}</button>)}
         </nav>
         <div className="sheet-field-scroll">
           <div className="flex justify-between items-center mb-3"><h2 className="font-semibold">{section.title}</h2><button type="button" className="text-xs text-cyan-200" onClick={() => open("all")}>All controls</button></div>
