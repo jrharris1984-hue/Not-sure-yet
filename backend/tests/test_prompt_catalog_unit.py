@@ -134,3 +134,22 @@ class CompactCatalogTests(unittest.TestCase):
                 library['sections'][0]['fields'][0]['options'][0][field] = value
                 with self.assertRaises(ValueError):
                     validate_prompt_catalog(library)
+
+class BuilderPromptFormatSettingsTests(unittest.IsolatedAsyncioTestCase):
+    setup_update = PromptCatalogSettingsTests.setup_update
+    async def test_format_persists_without_replacing_connection_settings(self):
+        for mode in ['detailed','compact','ollama']:
+            handler,update=await self.setup_update()
+            result=await handler({'builder_prompt_format':mode})
+            self.assertEqual(result.doc['builder_prompt_format'],mode)
+            self.assertEqual(result.doc['comfyui_url'],'http://comfy:8188')
+            update.assert_awaited_once()
+    async def test_invalid_format_never_persists(self):
+        for mode in ['bogus',False,12]:
+            handler,update=await self.setup_update()
+            with self.assertRaises(ValueError):await handler({'builder_prompt_format':mode})
+            update.assert_not_awaited()
+    async def test_legacy_unset_preference_does_not_break_settings_saves(self):
+        handler,update=await self.setup_update()
+        await handler({'builder_prompt_format':None})
+        self.assertNotIn('builder_prompt_format',update.call_args.args[1]['$set'])

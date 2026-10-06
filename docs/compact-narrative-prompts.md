@@ -24,3 +24,11 @@ When there is no compact wording, custom keywords are retained in full. Built-in
 The preview reports **word counts**, not tokenizer counts. Compact output preserves resolved active selections, rather than inactive cached clothing options or combinations removed by conflict rules. It does not promise a fixed token limit or guarantee every detail appears in a generated image.
 
 Compare Detailed and Compact with the same character, workflow and seed in your own ComfyUI. Small details may need closer framing or a separate refinement workflow. This update does not install custom nodes or add automatic detail passes.
+
+## Ollama format and saved preference
+
+**Prompt format → Ollama · checked description** uses the Ollama URL and text model from Settings, even when another assistant provider is selected for other tools. It first compiles the resolved compact description, then asks Ollama to arrange that wording. Required phrases, numbers, weights, explicit negations and person ownership receive conservative checks. A failed check or unavailable model falls back to the compact description, with a visible status message. These are phrase checks, not a guarantee of semantic equivalence or image quality; novel paraphrases may be rejected deliberately.
+
+Compilation starts after selections settle briefly. Requests from older selections are cancelled/discarded; generation waits until the current request finishes or falls back. Extra reference notes and LoRA triggers retain their existing handling. Edit/video workflows retain their dedicated instruction compilers.
+
+All three formats are saved as the server preference when selected and mirrored in the browser. Other devices load that preference. If saving to the server fails, a message explains that only the browser preference was retained. Normal Settings saves do not overwrite this hidden preference. Choosing a different format also clears a manual prompt override, so the chosen compiler is used.
