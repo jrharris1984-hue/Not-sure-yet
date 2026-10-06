@@ -135,7 +135,7 @@ export function validateCatalogDraft(value) {
     if(!validKey(section?.key) || !validText(section.title) || !Array.isArray(section.fields) || section.fields.length>80 || !unique(section.fields.map(field => field?.key)))throw new Error('Enter valid category and subcategory names.');
     for(const field of section.fields) {
       if(!validKey(field?.key) || !validText(field.label) || !['chips','chips_multi','pose_chips','slider','text'].includes(field.type) || !Array.isArray(field.options) || field.options.length>300 || !unique(field.options.map(option => option?.value)))throw new Error('Invalid subcategory or duplicate choices.');
-      if(field.options.some(option => !validText(option?.value) || !validText(option.label) || !validText(option.keywords,true,1500) || !validText(option.group || '',true)))throw new Error('Enter valid choice names, groups and keywords (maximum 1,500 characters).');
+      if(field.options.some(option => !validText(option?.value) || !validText(option.label) || !validText(option.keywords,true,1500) || !validText(option.group || '',true) || !validText(option.short === undefined ? '' : option.short,true,500) || !validText(option.short_tags === undefined ? '' : option.short_tags,true,500)))throw new Error('Enter valid choice names, groups and keywords; compact wording allows 500 characters.');
     }
   }
   const rules=value.rules || [];

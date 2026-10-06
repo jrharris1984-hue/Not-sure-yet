@@ -42,6 +42,9 @@ def validate_prompt_catalog(value):
                 if oid in option_keys: raise ValueError('Duplicate choice.')
                 option_keys.add(oid)
                 clean_options.append({'value':oid,'label':text(option,'label',200),'keywords':text(option,'keywords',1500,True),'group':text(option,'group',200,True)})
+                for compact_key in ('short', 'short_tags'):
+                    if compact_key in option:
+                        clean_options[-1][compact_key] = text(option,compact_key,500,True)
             clean_fields.append({'key':fid,'label':text(field,'label',200),'type':kind,'options':clean_options})
         sections.append({'key':sid,'title':text(section,'title',200),'fields':clean_fields})
     rules=value.get('rules',[])

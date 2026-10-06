@@ -1,0 +1,26 @@
+# Compact prompt format
+
+In the character builder's generation area, choose **Prompt format → Compact · ordered description**. The same control is available with the full prompt preview. The choice is remembered in that browser. Switching formats clears a manually applied prompt override so the new format is actually submitted. Detailed remains the initial default for comparison.
+
+Compact mode runs the existing wardrobe, age, pose, physique and composition resolvers, then describes each person independently in this order: identity and age, appearance, clothing, pose/framing, additional selections, then the shared scenario, setting, lighting, camera and style. The format never tries to identify selections by searching an already-expanded paragraph.
+
+Qwen, Chroma, Z-Image, Krea and FLUX use ordered descriptive text. SDXL/Pony use comma-separated phrases within the same subject boundaries; Pony retains its quality and gender/count tags. Edit and video instruction compilers retain their existing output. Model-specific negative conditioning remains in place. Library rules and manually supplied freeform/LoRA text still apply.
+
+## Library wording
+
+Each option can now store:
+
+- `short`: optional compact natural wording, maximum 500 characters.
+- `short_tags`: optional compact SDXL/Pony tags, maximum 500 characters; falls back to `short`.
+
+Edit these under the choice in Prompt Library. **Preview compact prompt** uses the unsaved draft. **Save library** makes the wording available to new renders; backups preserve both fields. Old libraries require no re-import.
+
+When there is no compact wording, custom keywords are retained in full. Built-in appearance fields use concise contextual labels instead of repeated expansion boilerplate. No generic adjective-merging or text truncation is applied. A heavily detailed custom library can therefore still produce long prompts.
+
+**Suggest compact wording with Ollama** (or the configured assistant) proposes a phrase for the current choice only. Review it, click **Apply compact wording**, then save the library. Suggestions cannot automatically rewrite the whole cast or replace detailed keywords. Check that every unique attribute and exact trigger or weight remains; generated suggestions are not a semantic guarantee.
+
+## Verification and limits
+
+The preview reports **word counts**, not tokenizer counts. Compact output preserves resolved active selections, rather than inactive cached clothing options or combinations removed by conflict rules. It does not promise a fixed token limit or guarantee every detail appears in a generated image.
+
+Compare Detailed and Compact with the same character, workflow and seed in your own ComfyUI. Small details may need closer framing or a separate refinement workflow. This update does not install custom nodes or add automatic detail passes.
