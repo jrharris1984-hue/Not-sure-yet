@@ -134,7 +134,7 @@ export default function PresetsMenu({ onApply, currentDna, sectionLocks = {}, fi
         onClick={() => setOpen(true)}
         data-overflow-stay-open
         data-testid="btn-open-presets"
-        className="inline-flex items-center gap-1.5 rounded-lg border border-rose-500/40 text-rose-200 hover:bg-rose-500/10 text-sm font-semibold px-3 py-2"
+        className="shrink-0 inline-flex items-center gap-1.5 rounded-lg border border-rose-500/40 text-rose-200 hover:bg-rose-500/10 text-sm font-semibold px-3 py-2"
       >
         <Star className="h-4 w-4" /> Character presets
       </button>

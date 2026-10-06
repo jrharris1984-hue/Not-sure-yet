@@ -55,7 +55,7 @@ function Handle({ label, onStart, onDrag, onEnd, onClick }) {
 }
 
 export default function MobileBuilderSheets({ sections, section, onSection, subjects, activeId, onSubject,
-  onPeople, values, renderControls, preview, livePreview, renderStatus, renderError, outputControls,
+  onPeople, presetsControl, values, renderControls, preview, livePreview, renderStatus, renderError, outputControls,
   onSave, onReset, saving, onGenerate, generating, canGenerate, issues = [], imageCount, onTools, selectedItems = [] }) {
   const [height, setHeight] = useState("expanded");
   const [detail, setDetail] = useState(null);
@@ -112,6 +112,7 @@ export default function MobileBuilderSheets({ sections, section, onSection, subj
           <button type="button" className="chip shrink-0" onClick={onPeople}>People · {subjects.length}</button>
           {subjects.map((person, index) => <button type="button" key={person.id} style={personStyle(index)} aria-pressed={person.id === activeId}
             className={`chip sheet-person-button shrink-0 ${person.id === activeId ? "active" : ""}`} onClick={() => onSubject(person.id)}><span className="studio-person-badge" aria-hidden="true" data-label={person.label} />Edit {person.label}</button>)}
+          {section.key === "scenario" && presetsControl}
         </div>
         <nav className="sheet-category-tabs" aria-label="Character categories">
           {sections.map(item => {

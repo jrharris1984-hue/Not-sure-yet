@@ -1,6 +1,6 @@
 import { Users, SlidersHorizontal, Layers, Sparkles, ImagePlus, ClipboardList, FolderOpen, Images, ChevronLeft } from 'lucide-react';
 export const MOBILE_TOOL_GROUPS = [
-  { id: 'presets', title: 'Presets & people', description: 'Heritage, character presets, cast and randomize.', icon: Users },
+  { id: 'presets', title: 'Presets & people', description: 'Name, cast and randomize. Character presets are on Scenario.', icon: Users },
   { id: 'generation', title: 'Model & output', description: 'Workflow, quality, canvas and sampling.', icon: SlidersHorizontal },
   { id: 'loras', title: 'LoRAs', description: 'Style models, strengths and likeness.', icon: Layers },
   { id: 'prompts', title: 'Prompt & AI', description: 'Describe the scene, review prompts and get AI help.', icon: Sparkles },
