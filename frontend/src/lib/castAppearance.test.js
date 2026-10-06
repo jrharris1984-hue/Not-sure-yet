@@ -114,3 +114,33 @@ test("explicit absence selections remain visible in creator prompts", () => {
     expect(result.positive).toContain("no freckles");
   }
 });
+
+test.each(['qwen_rapid', 'krea2', 'sdxl', 'pony'])('%s preserves shared cast rules after catalog expansion', promptStyle => {
+  const subjects = [person('A', 72, {nose:'straight'}, 'male'), person('B', 26, {nose:'aquiline'}, 'female')];
+  subjects[0].dna.scenario = {cast_size:'duo', cast_age_mode:'same age', cast_resemblance:'matching faces'};
+  const chip = (key, value, keywords) => ({key, type:'chips', options:[{value, label:value, keywords}]});
+  const promptCatalog = {sections:[
+    {key:'identity', fields:[chip('gender', 'male', 'adult male subject')]},
+    {key:'scenario', fields:[chip('cast_age_mode','same age','both people share the same age'),
+      chip('cast_resemblance','matching faces','matching facial structure for both people')]},
+  ]};
+  const result = compileModelPrompts({promptStyle, dna:subjects[0].dna, subjects, isMulti:true, promptCatalog});
+  expect(result.positive).toContain('Subject A: 72-year-old adult man');
+  expect(result.positive).toContain('Subject B: 72-year-old adult woman');
+  expect(result.positive).toContain('Matching eye shape, eye color, nose');
+  expect(result.positive).not.toMatch(/26-year-old/);
+  expect(subjects[1].dna.identity.age).toBe(26);
+});
+
+test.each(['chroma', 'krea2', 'sdxl', 'pony', 'zimage', 'qwen_rapid'])('%s keeps male identity when the catalog expands its label', promptStyle => {
+  const dna = copy(DEFAULT_DNA);
+  dna.identity = {...dna.identity, age:72, gender:'male'};
+  const promptCatalog = {sections:[{key:'identity',fields:[{key:'gender',type:'chips',options:[{value:'male',label:'Male',keywords:'adult male subject'}]}]}]};
+  const result = compileModelPrompts({promptStyle, dna, promptCatalog});
+  expect(result.positive).toMatch(/72-year-old (?:adult|mature) man/);
+  expect(result.positive).not.toMatch(/72-year-old (?:adult|mature) woman/);
+  if (promptStyle === 'pony') {
+    expect(result.positive).toContain('1boy, solo');
+    expect(result.positive).not.toContain('1girl');
+  }
+});

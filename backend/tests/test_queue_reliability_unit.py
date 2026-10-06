@@ -84,11 +84,13 @@ class QueueReliabilityTests(unittest.IsolatedAsyncioTestCase):
                                 update_one=AsyncMock(), update_many=AsyncMock())
         renders = SimpleNamespace(find_one=AsyncMock(return_value={"id": "render", "status": "dispatching"}), update_one=AsyncMock())
         async def worker(): pass
-        namespace = {"db": SimpleNamespace(render_queue=queue, renders=renders), "asyncio": asyncio,
+        corrections = SimpleNamespace(create_index=AsyncMock())
+        namespace = {"db": SimpleNamespace(render_queue=queue, renders=renders, media_corrections=corrections), "asyncio": asyncio,
                      "now_iso": lambda: "now", "interrupted_submission_patch": interrupted_submission_patch,
                      "_render_queue_worker": worker}
         exec(compile(ast.Module(body=[node], type_ignores=[]), "startup", "exec"), namespace)
         await namespace["_startup"]()
+        corrections.create_index.assert_awaited_once_with([("source", 1), ("media_id", 1)], unique=True)
         self.assertEqual(queue.update_one.call_args.args[1]["$set"]["render_id"], "render")
         self.assertEqual(renders.update_one.call_args.args[1]["$set"]["status"], "failed")
         self.assertEqual(queue.update_many.call_args.args[0], {"status": "dispatching", "render_id": None})

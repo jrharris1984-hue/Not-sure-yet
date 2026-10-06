@@ -1,4 +1,5 @@
 import { skinAfterAgeChange } from './ageAppearance';
+import { catalogSelection } from './promptCatalog';
 export const CAST_AGE_OPTIONS = ["individual ages", "same age", "age contrast"];
 export const CAST_RESEMBLANCE_OPTIONS = ["from cast pairing", "individual faces", "similar facial features", "matching faces"];
 const FACE_STRUCTURE = ["eye_shape", "eye_color", "jawline", "nose", "lips"];
@@ -32,17 +33,17 @@ export function applyCastAppearance(subjects = [], scenario = {}, sectionLocks =
 
 export function castAppearancePrompt(subjects = []) {
   if (subjects.length < 2) return "";
-  const scenario = subjects[0]?.dna?.scenario || {};
+  const primary = subjects[0]?.dna || {};
   const cast = subjects.map((subject, index) => {
     const identity = subject.dna?.identity || {};
     const label = subject.label || String.fromCharCode(65 + index);
-    return `Subject ${label}: ${age(identity.age)}-year-old adult ${identity.gender === "male" ? "man" : "woman"}`;
+    return `Subject ${label}: ${age(identity.age)}-year-old adult ${catalogSelection(subject.dna, 'identity', 'gender') === "male" ? "man" : "woman"}`;
   }).join("; ");
   const resemblance = {
     "individual faces": "Each person has a distinct face; preserve each person's selected facial features",
     "similar facial features": "Shared eye shape, nose structure and jawline create visible resemblance, while each person remains individually recognizable",
     "matching faces": "Matching eye shape, eye color, nose, jawline and lip shape; separate individuals with their own expressions and selected ages",
-  }[scenario.cast_resemblance] || "";
+  }[catalogSelection(primary, 'scenario', 'cast_resemblance')] || "";
   return [`Exactly ${subjects.length} separate adult people`, cast, resemblance].filter(Boolean).join("; ") + ".";
 }
 
