@@ -2537,13 +2537,38 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
     <div className={`mobile-builder-content mx-auto max-w-[1600px] px-2.5 sm:px-6 py-3 sm:py-6 space-y-3 sm:space-y-4 ${desktopQuickMode && !isImageFirst ? "quick-create-mode" : ""}`}>
       {!isImageFirst && editMode !== "body_adjust" && mobileStudioStep !== "create" && <MobilePromptDashboard
         sections={SECTIONS} dna={{ ...activeDna, scenario: primaryDna.scenario }} sectionKey={activeSection}
-        onSection={goSection} onChange={setSection} locks={locks} fieldLocks={activeFieldLocks}
-        onToggleFieldLock={(section, field) => setActiveFieldLocks({ ...activeFieldLocks,
-          [section]: { ...(activeFieldLocks[section] || {}), [field]: !activeFieldLocks[section]?.[field] } })}
+        onSection={goSection} onChange={setSection} locks={locks} fieldLocks={{ ...activeFieldLocks, scenario: subjects[0]?.field_locks?.scenario || {} }}
+        onToggleFieldLock={(section, field) => {
+          if (section === "scenario") {
+            setSubjects(current => current.map((subject, index) => index === 0 ? { ...subject,
+              field_locks: { ...subject.field_locks, scenario: { ...subject.field_locks?.scenario,
+                [field]: !subject.field_locks?.scenario?.[field] } } } : subject));
+          } else setActiveFieldLocks({ ...activeFieldLocks,
+            [section]: { ...(activeFieldLocks[section] || {}), [field]: !activeFieldLocks[section]?.[field] } });
+        }}
         subjects={subjects} activeSubjectId={activeSubjectId} onSubject={setActiveSubjectId}
         workflows={selectableWorkflows} workflowId={workflowId} onWorkflow={setWorkflowId}
         name={name} onName={setName} onSave={() => save.mutate()} saving={save.isPending}
         onToggleSectionLock={key => setLocks(current => ({ ...current, [key]: !current[key] }))}
+        onSharedPose={pose => {
+          if (locks.pose) return;
+          setSubjects(current => current.map(subject => ({ ...subject, dna: { ...subject.dna,
+            pose: { ...subject.dna.pose,
+              ...(!subject.field_locks?.pose?.action ? { action: pose } : {}),
+              ...(!subject.field_locks?.pose?.distance ? { distance: "wide shot" } : {}) } } })));
+        }}
+        onTwoPeople={() => {
+          if (subjects.length > 2 || locks.scenario || subjects[0]?.field_locks?.scenario?.cast_size) return;
+          const scenario = { ...primaryDna.scenario, cast_size: "duo" };
+          if (expectedSubjectCount({ scenario }) > 2) {
+            if (subjects[0]?.field_locks?.scenario?.cast_type) {
+              toast.error("Unlock the cast pairing before choosing two people.");
+              return;
+            }
+            scenario.cast_type = "none";
+          }
+          updateCastScenario(scenario);
+        }}
         onAddSubject={addSubject} onRemoveSubject={removeSubject} onRandomize={randomizePerson}
         onClearAll={() => setSubjects(current => current.map((subject, index) => {
           if (subject.id !== activeSubjectId && index !== 0) return subject;

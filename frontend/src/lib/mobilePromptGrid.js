@@ -36,3 +36,14 @@ export function clearUnlockedChoices(sections, dna, locks = {}, fieldLocks = {})
   });
   return result;
 }
+
+export function categoryGroups(sections) {
+  const definitions = [
+    ['People & scenario', ['identity', 'scenario']],
+    ['Character', ['physique', 'face', 'hair', 'skin', 'wardrobe', 'feet', 'intimate']],
+    ['Composition & setting', ['pose', 'scene', 'lighting', 'camera', 'style']],
+  ];
+  const assigned = new Set(definitions.flatMap(([, keys]) => keys));
+  return [...definitions.map(([title, keys]) => ({ title, sections: keys.map(key => sections.find(s => s.key === key)).filter(Boolean) })),
+    { title: 'More categories', sections: sections.filter(s => !assigned.has(s.key)) }].filter(group => group.sections.length);
+}
