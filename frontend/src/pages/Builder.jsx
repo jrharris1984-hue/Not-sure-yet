@@ -1,5 +1,4 @@
-import { clearUnlockedChoices } from "@/lib/mobilePromptGrid";
-import MobilePromptDashboard from "@/components/MobilePromptDashboard";
+import { applyScenarioSelection } from "@/lib/scenarioSelection";
 import { catalogSections, usePromptCatalog } from "@/lib/promptCatalog";
 import { useAssistantResearch, updateAssistantResearch } from '@/lib/assistantResearch';
 import VideoModeLinks from "@/components/VideoModeLinks";
@@ -933,11 +932,16 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
   const setActiveDna = (newDna) => setSubjects(current => editCastSubjectDna(current, activeSubjectId, newDna));
   const setActiveFieldLocks = (newLocks) => updateActiveSubject(() => ({ field_locks: newLocks }));
 
-  const updateCastScenario = (scenario) => setSubjects(current => {
-    const next = current.map((subject, index) => index === 0
-      ? { ...subject, dna: { ...subject.dna, scenario } } : subject);
-    return applyCastAppearance(next, scenario, locks);
-  });
+  const updateCastScenario = (scenario, identity) => {
+    if (scenario.cast_size !== primaryDna.scenario?.cast_size && (!scenario.cast_size || scenario.cast_size === "solo")) {
+      setActiveSubjectId(subjects[0].id);
+    }
+    setSubjects(current => {
+      const next = applyScenarioSelection(current, scenario);
+      if (identity && next[0]) next[0] = { ...next[0], dna: { ...next[0].dna, identity } };
+      return applyCastAppearance(next, next[0]?.dna.scenario || scenario, locks);
+    });
+  };
 
   const setSection = (key, val) => {
     if (key === "scenario") { updateCastScenario(val); return; }
@@ -1783,7 +1787,12 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
     const seeded = seedSubjectFromPairing(primaryDna, subjects.length);
     const label = subjectLabel(subjects.length);
     const newSub = makeSubject({ label, dna: seeded });
-    setSubjects((cur) => applyCastAppearance([...cur, newSub], primaryDna.scenario, locks));
+    setSubjects(cur => {
+      const expanded = [...cur, newSub];
+      const scenario = { ...cur[0].dna.scenario, cast_size: ["solo", "duo", "trio", "foursome"][expanded.length - 1] };
+      const next = applyScenarioSelection(expanded, scenario);
+      return applyCastAppearance(next, next[0].dna.scenario, locks);
+    });
     setActiveSubjectId(newSub.id);
     toast.success(`Subject ${label} added`);
   };
@@ -1853,7 +1862,9 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
     setSubjects((cur) => {
       const filtered = cur.filter((s) => s.id !== subjectId);
       // Re-label sequentially so A, B, C stays contiguous
-      return filtered.map((s, i) => ({ ...s, label: subjectLabel(i) }));
+      const relabeled = filtered.map((s, i) => ({ ...s, label: subjectLabel(i) }));
+      return applyScenarioSelection(relabeled, { ...relabeled[0].dna.scenario,
+        cast_size: ["solo", "duo", "trio", "foursome"][relabeled.length - 1] });
     });
     // If we removed the active one, snap to Subject A
     if (subjectId === activeSubjectId) setActiveSubjectId(subjects[0].id);
@@ -2535,49 +2546,6 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
 
   return (
     <div className={`mobile-builder-content mx-auto max-w-[1600px] px-2.5 sm:px-6 py-3 sm:py-6 space-y-3 sm:space-y-4 ${desktopQuickMode && !isImageFirst ? "quick-create-mode" : ""}`}>
-      {!isImageFirst && editMode !== "body_adjust" && mobileStudioStep !== "create" && <MobilePromptDashboard
-        sections={SECTIONS} dna={{ ...activeDna, scenario: primaryDna.scenario }} sectionKey={activeSection}
-        onSection={goSection} onChange={setSection} locks={locks} fieldLocks={{ ...activeFieldLocks, scenario: subjects[0]?.field_locks?.scenario || {} }}
-        onToggleFieldLock={(section, field) => {
-          if (section === "scenario") {
-            setSubjects(current => current.map((subject, index) => index === 0 ? { ...subject,
-              field_locks: { ...subject.field_locks, scenario: { ...subject.field_locks?.scenario,
-                [field]: !subject.field_locks?.scenario?.[field] } } } : subject));
-          } else setActiveFieldLocks({ ...activeFieldLocks,
-            [section]: { ...(activeFieldLocks[section] || {}), [field]: !activeFieldLocks[section]?.[field] } });
-        }}
-        subjects={subjects} activeSubjectId={activeSubjectId} onSubject={setActiveSubjectId}
-        workflows={selectableWorkflows} workflowId={workflowId} onWorkflow={setWorkflowId}
-        name={name} onName={setName} onSave={() => save.mutate()} saving={save.isPending}
-        onToggleSectionLock={key => setLocks(current => ({ ...current, [key]: !current[key] }))}
-        onSharedPose={pose => {
-          if (locks.pose) return;
-          setSubjects(current => current.map(subject => ({ ...subject, dna: { ...subject.dna,
-            pose: { ...subject.dna.pose,
-              ...(!subject.field_locks?.pose?.action ? { action: pose } : {}),
-              ...(!subject.field_locks?.pose?.distance ? { distance: "wide shot" } : {}) } } })));
-        }}
-        onTwoPeople={() => {
-          if (subjects.length > 2 || locks.scenario || subjects[0]?.field_locks?.scenario?.cast_size) return;
-          const scenario = { ...primaryDna.scenario, cast_size: "duo" };
-          if (expectedSubjectCount({ scenario }) > 2) {
-            if (subjects[0]?.field_locks?.scenario?.cast_type) {
-              toast.error("Unlock the cast pairing before choosing two people.");
-              return;
-            }
-            scenario.cast_type = "none";
-          }
-          updateCastScenario(scenario);
-        }}
-        onAddSubject={addSubject} onRemoveSubject={removeSubject} onRandomize={randomizePerson}
-        onClearAll={() => setSubjects(current => current.map((subject, index) => {
-          if (subject.id !== activeSubjectId && index !== 0) return subject;
-          const cleared = clearUnlockedChoices(SECTIONS, subject.dna, locks, subject.field_locks || {});
-          return { ...subject, dna: subject.id === activeSubjectId ? { ...cleared, scenario: index === 0 ? cleared.scenario : subject.dna.scenario }
-            : { ...subject.dna, scenario: cleared.scenario } };
-        }))}
-        onReview={() => setMobileStudioStep("create")} />}
-      <div className={`${!isImageFirst && editMode !== "body_adjust" && mobileStudioStep !== "create" ? "hidden md:block" : "block"} space-y-3 sm:space-y-4`}>
       {galleryRecipeMode === "current" && (
         <div className="pane border border-cyan-500/30 bg-cyan-500/[0.06] px-3 py-2.5 text-xs text-cyan-100" data-testid="current-compiler-rebuild-banner">
           <div className="flex items-start gap-2">
@@ -3288,16 +3256,9 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
                     <select
                       data-testid={`person-${field.key}`}
                       value={primaryDna.scenario?.[field.key] || (field.key === "cast_size" ? "solo" : "none")}
-                      onChange={(event) => setSubjects((cur) => cur.map((subject, index) => index === 0 ? {
-                        ...subject,
-                        dna: { ...subject.dna,
-                          ...(field.key === "cast_type" && ["mother and daughter", "stepmom and stepdaughter", "grandmother, mother and daughter"].includes(event.target.value) ? { identity: { ...subject.dna.identity, age: Math.max(event.target.value === "grandmother, mother and daughter" ? 68 : 44, Number(subject.dna.identity?.age) || 44), gender: "female" } } : {}),
-                          scenario: {
-                          ...subject.dna.scenario,
-                          [field.key]: event.target.value,
-                          ...(field.key === "cast_type" && event.target.value !== "none" ? { cast_size: ["triplets", "grandmother, mother and daughter"].includes(event.target.value) ? "trio" : "duo" } : {}),
-                        } },
-                      } : subject))}
+                      onChange={event => updateCastScenario({ ...primaryDna.scenario, [field.key]: event.target.value },
+                        field.key === "cast_type" && ["mother and daughter", "stepmom and stepdaughter", "grandmother, mother and daughter"].includes(event.target.value)
+                          ? { ...primaryDna.identity, age: Math.max(event.target.value === "grandmother, mother and daughter" ? 68 : 44, Number(primaryDna.identity?.age) || 44), gender: "female" } : undefined)}
                       className="w-full rounded-lg border hairline bg-elevated px-3 py-2 text-sm text-zinc-100"
                     >
                       {field.options.map((option) => <option key={option} value={option}>{option}</option>)}
@@ -3800,7 +3761,6 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
             </div>
           )}
         </aside>
-      </div>
       </div>
     </div>
   );

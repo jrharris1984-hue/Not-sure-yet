@@ -330,23 +330,3 @@ button:not(:disabled):active, a[role="button"]:active {
   [role="dialog"][data-state], .studio-dialog-overlay[data-state] { animation: none !important; transition: none !important; }
   .studio-shell .animate-spin, .studio-shell .animate-pulse { animation: none; }
 }
-
-/* Mobile prompt dashboard: navigation + one scroll area + action dock. */
-@media (max-width: 767px) {
-  .mobile-prompt-dashboard {
-    display: flex;
-    flex-direction: column;
-    height: calc(100dvh - 9rem - env(safe-area-inset-bottom, 0px));
-    min-height: 0;
-    overflow: hidden;
-  }
-  .mobile-builder-content:has(.mobile-prompt-dashboard) {
-    padding-bottom: 0;
-  }
-}
-
-@media (max-width: 767px) {
-  .studio-main:has(.mobile-prompt-dashboard) > div:first-child {
-    display: none;
-  }
-}
