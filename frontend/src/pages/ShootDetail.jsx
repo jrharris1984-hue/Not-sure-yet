@@ -45,7 +45,7 @@ export default function ShootDetail() {
   const [bestFirst, setBestFirst] = useState(false);
   const [reviewProgress, setReviewProgress] = useState(null);
 
-  const { data: shoot, isLoading } = useQuery({
+  const { data: shoot, isLoading, error, refetch } = useQuery({
     queryKey: ["shoot", shootId],
     queryFn: () => endpoints.getShoot(shootId),
     enabled: !!shootId,
@@ -152,6 +152,11 @@ export default function ShootDetail() {
   });
 
   if (isLoading) return <div className="p-8 text-zinc-400">Loading shoot…</div>;
+  if (error) return <div className="p-8 space-y-3" role="alert">
+    <p>{error?.response?.data?.detail || "Could not load this shoot. Check the backend connection and try again."}</p>
+    <button type="button" className="chip" onClick={() => refetch()}>Try again</button>
+    <Link to="/shoots" className="chip">Back to photo shoots</Link>
+  </div>;
   if (!shoot) return <div className="p-8 text-zinc-400">Shoot not found.</div>;
 
   const doneCount = shoot.rendered_count ?? shoot.frames.filter((f) => f.status === "done").length;
@@ -189,6 +194,10 @@ export default function ShootDetail() {
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+        {images.length > 0 && <button type="button" onClick={() => { setSlideDirection(1); setActiveFrame(images[0].index); }}
+          data-testid="btn-view-shoot-photos" className="inline-flex items-center gap-2 rounded-lg bg-amber-500 px-3 py-2 text-xs font-semibold text-black">
+          <Camera className="h-4 w-4" />View photos ({images.length})
+        </button>}
         {images.length > 0 && <button type="button" disabled={downloading} onClick={() => downloadFrames(images.map((image) => image.index))}
           className="rounded-lg border hairline px-3 py-2 text-xs text-zinc-200"><Download className="mr-1 inline h-4 w-4" />Download entire shoot</button>}
         {selectedFrames.length > 0 && <button type="button" disabled={downloading} onClick={() => downloadFrames(selectedFrames)}
@@ -259,10 +268,10 @@ export default function ShootDetail() {
                     )}
                   </div>
                 )}
-                <span className="absolute top-1 left-1 text-[10px] font-mono bg-black/60 text-zinc-100 px-1.5 py-0.5 rounded">
+                <span className="pointer-events-none absolute top-1 left-1 text-[10px] font-mono bg-black/60 text-zinc-100 px-1.5 py-0.5 rounded">
                   #{i + 1}
                 </span>
-                <span className={`absolute top-1 right-1 text-[10px] font-mono px-1.5 py-0.5 rounded bg-black/60 ${STATUS_COLOR[status] || "text-zinc-400"}`}>
+                <span className={`pointer-events-none absolute top-1 right-1 text-[10px] font-mono px-1.5 py-0.5 rounded bg-black/60 ${STATUS_COLOR[status] || "text-zinc-400"}`}>
                   {status}
                 </span>
               </div>
