@@ -3786,14 +3786,14 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
                     </button>
                     <button type="button"
                       onClick={async () => {
-                        if (!window.confirm("Remove this render from the Gallery? The original ComfyUI output remains on disk.")) return;
+                        if (!window.confirm("Permanently delete this render and its output files from your hard drive? This cannot be undone.")) return;
                         try {
                           const renderId = activeRender.render_id || activeRender.id;
                           await endpoints.deleteRender(renderId);
                           setBatchRenders((current) => current.filter((render) => (render.render_id || render.id) !== renderId));
                           setActiveRender(null);
                           setSelectedBatchRenderId(null);
-                          toast.success("Removed from Gallery");
+                          toast.success("Render and output files permanently deleted");
                         } catch (e) {
                           toast.error(e?.response?.data?.detail || "Could not remove render");
                         }

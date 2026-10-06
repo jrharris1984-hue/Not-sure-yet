@@ -3127,14 +3127,16 @@ async def poll_render(rid: str):
 
 @api.delete("/renders/cancelled")
 async def delete_cancelled_renders():
-    """Remove cancelled render/queue records without touching ComfyUI output files."""
-    render_result = await db.renders.delete_many({"status": "cancelled"})
+    """Permanently delete cancelled renders, their outputs and queue records."""
+    ids = [render["id"] for render in await db.renders.find({"status": "cancelled"}, {"_id": 0, "id": 1}).to_list(None)]
+    result = await _delete_gallery_records(ids) if ids else {"ok": True, "deleted": 0, "files_deleted": 0}
     queue_result = await db.render_queue.delete_many({"status": "cancelled"})
-    return {
-        "ok": True,
-        "deleted": render_result.deleted_count,
-        "queue_deleted": queue_result.deleted_count,
-    }
+    return {**result, "queue_deleted": queue_result.deleted_count}
+
+
+def _gallery_output_urls(render: Dict[str, Any]) -> List[str]:
+    variants = render.get("output_variants") or {}
+    return list(dict.fromkeys((render.get("output_files") or []) + [url for values in variants.values() if isinstance(values, list) for url in values]))
 
 
 def _comfy_output_paths(renders: List[Dict[str, Any]]) -> tuple[List[Path], int]:
@@ -3143,8 +3145,7 @@ def _comfy_output_paths(renders: List[Dict[str, Any]]) -> tuple[List[Path], int]
     paths = set()
     unavailable = set()
     for render in renders:
-        variants = render.get("output_variants") or {}
-        for url in (render.get("output_files") or []) + (variants.get("enhanced") or []):
+        for url in _gallery_output_urls(render):
             params = parse_qs(urlparse(str(url)).query)
             if (params.get("type") or ["output"])[0] != "output":
                 raise HTTPException(400, "Only ComfyUI output files can be deleted from disk.")
@@ -3162,18 +3163,22 @@ def _comfy_output_paths(renders: List[Dict[str, Any]]) -> tuple[List[Path], int]
     return sorted(paths), len(unavailable)
 
 
-async def _delete_gallery_records(ids: List[str], delete_files: bool = False) -> Dict[str, Any]:
+async def _delete_gallery_records(ids: List[str], delete_files: bool = True) -> Dict[str, Any]:
+    # Legacy clients may still send false; Gallery deletion is always permanent.
+    delete_files = True
     renders = await db.renders.find({"id": {"$in": ids}}, {"_id": 0}).to_list(len(ids))
     files, unavailable = _comfy_output_paths(renders) if delete_files else ([], 0)
+    if unavailable:
+        raise HTTPException(409, f"Cannot access {unavailable} output file(s). Check the COMFYUI_OUTPUT_DIR Docker mount before deleting. Gallery records were kept.")
     if delete_files:
         # A reused output must remain available to any other Gallery record.
-        urls = [url for render in renders for url in (render.get("output_files") or []) +
-                ((render.get("output_variants") or {}).get("enhanced") or [])]
+        urls = [url for render in renders for url in _gallery_output_urls(render)]
         shared = await db.renders.find_one({"id": {"$nin": ids}, "$or": [
             {"output_files": {"$in": urls}}, {"output_variants.enhanced": {"$in": urls}},
+            {"output_variants.original": {"$in": urls}}, {"output_variants.other": {"$in": urls}},
         ]}, {"_id": 1}) if urls else None
         if shared:
-            raise HTTPException(409, "An output file is also used by another Gallery item. Remove that item too, or remove Gallery records only.")
+            raise HTTPException(409, "An output file is also used by another Gallery item. Select and delete all Gallery items that use this output together.")
         try:
             for path in files:
                 path.unlink()
@@ -3185,13 +3190,13 @@ async def _delete_gallery_records(ids: List[str], delete_files: bool = False) ->
 
 
 @api.delete("/renders/{rid}")
-async def delete_render(rid: str, delete_files: bool = False):
+async def delete_render(rid: str, delete_files: bool = True):
     return await _delete_gallery_records([rid], delete_files)
 
 
 class BulkRenderDeleteBody(BaseModel):
     ids: List[str] = Field(default_factory=list)
-    delete_files: bool = False
+    delete_files: bool = True
 
 
 class RenderAlbumBody(BaseModel):
@@ -3267,7 +3272,7 @@ async def delete_renders_bulk(body: BulkRenderDeleteBody):
 
 
 @api.post("/renders/delete-qc-flagged")
-async def delete_qc_flagged_renders(delete_files: bool = False):
+async def delete_qc_flagged_renders(delete_files: bool = True):
     ids = [render["id"] for render in await db.renders.find(
         {"anatomy_guard_status": "failed"}, {"_id": 0, "id": 1}
     ).to_list(None)]
