@@ -1,6 +1,6 @@
 import { heritagePrompt } from "./heritageProfiles";
 import { resolveWardrobeMode } from "./wardrobeMode";
-import { catalogDna, customCatalogPrompt, getPromptCatalog, applyCatalogRules } from "./promptCatalog";
+import { catalogDna, catalogSelection, customCatalogPrompt, getPromptCatalog, applyCatalogRules } from "./promptCatalog";
 import { applyPhotographicGuidance } from "./photographicGuidance";
 import { resolveBuilderControls, sliderPromptSignature } from "./builderControlResolution";
 import { footVisibility } from './footVisibility';
@@ -374,9 +374,13 @@ export function resolveZImageComposition(dna = {}, options = {}) {
     resolved.hair.style = "";
     adjustments.push("Kept the pixie cut and removed the competing long wave/curl hairstyle wording.");
   }
-  const bodyType = lower(resolved.physique.body_type);
-  const buttSize = lower(resolved.physique.butt);
-  if (lower(resolved.physique.hips) === "narrow" && (
+  const bodyType = lower(catalogSelection(resolved, 'physique', 'body_type'));
+  const buttSize = lower(catalogSelection(resolved, 'physique', 'butt'));
+  const expandedBodyPreset = resolved._catalogSelections && (
+    resolved.physique.body_type !== catalogSelection(resolved, 'physique', 'body_type') ||
+    resolved.physique.butt !== catalogSelection(resolved, 'physique', 'butt')
+  );
+  if (!expandedBodyPreset && lower(resolved.physique.hips) === "narrow" && (
     ["curvy", "voluptuous", "plus size", "bbw", "pear", "hourglass"].includes(bodyType) ||
     ["large", "very large", "huge", "hyper"].includes(buttSize)
   )) {
@@ -384,7 +388,7 @@ export function resolveZImageComposition(dna = {}, options = {}) {
     adjustments.push("Replaced narrow hips that conflicted with the selected curvy lower-body proportions.");
   }
 
-  const action = lower(resolved.pose.action);
+  const action = lower(catalogSelection(resolved, 'pose', 'action'));
   const complexLegsUp = ["lying legs up", "on back legs up"].includes(action);
   if (mode !== "extreme" && complexLegsUp) {
     if (["close-up", "portrait", "waist-up", "detail shot"].includes(lower(resolved.pose.distance))) {
@@ -1161,7 +1165,7 @@ export function compileModelPrompts(options = {}) {
     const phrase=customCatalogPrompt(subject.dna, promptCatalog);
     return phrase ? `${originalSubjects.length > 1 ? `Subject ${subject.label || String.fromCharCode(65+index)}: ` : ''}${phrase}` : '';
   }).filter(Boolean).join('; ');
-  options = {...options, dna:catalogDna(options.dna || {}, promptCatalog), subjects:options.subjects?.map(subject => ({...subject,dna:catalogDna(subject.dna, promptCatalog)}))};
+  options = {...options, dna:catalogDna(options.dna || {}, promptCatalog, true), subjects:options.subjects?.map(subject => ({...subject,dna:catalogDna(subject.dna, promptCatalog, true)}))};
   const compiler = resolvePromptCompiler(options);
   const direct = ["qwen_edit", "wan_i2v"].includes(compiler);
   const photographic = !direct && compiler !== "wan_t2v";
