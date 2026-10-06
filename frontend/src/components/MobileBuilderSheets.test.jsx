@@ -3,8 +3,8 @@ import { createRoot } from 'react-dom/client';
 import MobileBuilderSheets from './MobileBuilderSheets';
 
 let root, container;
-beforeEach(() => { global.IS_REACT_ACT_ENVIRONMENT = true; container = document.createElement('div'); document.body.appendChild(container); root = createRoot(container); });
-afterEach(() => { act(() => root.unmount()); container.remove(); });
+beforeEach(() => { jest.useFakeTimers(); global.IS_REACT_ACT_ENVIRONMENT = true; container = document.createElement('div'); document.body.appendChild(container); root = createRoot(container); });
+afterEach(() => { act(() => root.unmount()); container.remove(); jest.useRealTimers(); });
 const sections = [{ key: 'hair', title: 'Hair', fields: [{ key: 'color', label: 'Color' }] }, { key: 'scenario', title: 'Scenario', fields: [] }];
 const defaults = { sections, section: sections[0], subjects: [{ id: 'a', label: 'A' }], activeId: 'a', values: { color: 'black' },
   renderControls: field => <button type="button">Edit {field}</button>, outputControls: <div>Workflow settings</div>, imageCount: 2, canGenerate: true };
@@ -16,6 +16,7 @@ test('opens a scoped detail sheet and returns to the unchanged category selectio
   expect(container.querySelector('.sheet-scoped-scrim').parentElement).toBe(container.querySelector('[data-testid="primary-creation-sheet"]'));
   expect(container.querySelector('.sheet-primary-content').getAttribute('aria-hidden')).toBe('true');
   click('Done');
+  act(() => jest.advanceTimersByTime(320));
   expect(container.querySelector('[role="dialog"]')).toBeNull();
   expect(container.textContent).toContain('Colorblack');
 });
@@ -31,10 +32,38 @@ test('settings, Escape dismissal, and More tools remain reachable', () => {
   const onTools = jest.fn(); paint({ onTools }); click('Settings');
   expect(container.querySelector('[role="dialog"]').textContent).toContain('Workflow settings');
   act(() => container.querySelector('[role="dialog"]').dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })));
+  act(() => jest.advanceTimersByTime(320));
   expect(container.querySelector('[role="dialog"]')).toBeNull(); click('More tools'); expect(onTools).toHaveBeenCalledTimes(1);
 });
 test('category changes close stale detail controls and generation respects readiness', () => {
   paint(); click('Colorblack'); paint({ section: sections[1], canGenerate: false });
   expect(container.querySelector('[role="dialog"]')).toBeNull();
   expect(Array.from(container.querySelectorAll('button')).find(button => button.textContent === 'Generate (2)').disabled).toBe(true);
+});
+
+function pointer(target, type, y, time) {
+  const event = new Event(type, { bubbles: true });
+  Object.defineProperties(event, { pointerId: { value: 1 }, clientY: { value: y }, timeStamp: { value: time }, button: { value: 0 } });
+  act(() => target.dispatchEvent(event));
+}
+test('primary sheet follows the finger before release and settles to an expanded stop', () => {
+  paint(); const sheet = container.querySelector('[data-testid="primary-creation-sheet"]');
+  sheet.getBoundingClientRect = () => ({ height: 400 });
+  sheet.parentElement.getBoundingClientRect = () => ({ height: 800 });
+  const handle = sheet.querySelector('.sheet-handle');
+  pointer(handle, 'pointerdown', 400, 0); pointer(handle, 'pointermove', 240, 100);
+  expect(sheet.style.height).toBe('560px'); expect(sheet.style.transition).toBe('none');
+  pointer(handle, 'pointerup', 240, 200);
+  expect(sheet.className).toContain('sheet-expanded'); expect(sheet.style.height).toBe('');
+});
+test('detail drag tracks movement, returns on cancellation, and animates dismissal', () => {
+  paint(); click('Colorblack'); let sheet = container.querySelector('[role="dialog"]');
+  let handle = sheet.querySelector('.sheet-handle');
+  pointer(handle, 'pointerdown', 200, 0); pointer(handle, 'pointermove', 260, 100);
+  expect(sheet.style.transform).toContain('60px');
+  pointer(handle, 'pointercancel', 260, 200);
+  expect(sheet.style.transform).toContain('0px');
+  pointer(handle, 'pointerdown', 200, 300); pointer(handle, 'pointermove', 350, 500); pointer(handle, 'pointerup', 350, 600);
+  expect(sheet.className).toContain('sheet-closing');
+  act(() => jest.advanceTimersByTime(320)); expect(container.querySelector('[role="dialog"]')).toBeNull();
 });
