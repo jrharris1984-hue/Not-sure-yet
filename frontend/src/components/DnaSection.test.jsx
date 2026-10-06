@@ -67,3 +67,17 @@ test('named exposure displays legacy state, removes the slider and clears old ov
     expect(value.nudity_level).toBe(100);
   } finally { act(() => root.unmount()); }
 });
+
+
+test('sheet field focus keeps the complete size-control family and excludes unrelated fields', () => {
+  global.IS_REACT_ACT_ENVIRONMENT = true;
+  const container = document.createElement('div'); document.body.appendChild(container);
+  const root = createRoot(container);
+  const section = SECTIONS.find(s => s.key === 'physique');
+  try {
+    act(() => root.render(<DnaSection section={section} focusedField="bust_scale" value={{ bust_scale: 75 }} onChange={jest.fn()} />));
+    expect(container.querySelector('[data-testid="size-mode-bust"]')).not.toBeNull();
+    expect(container.querySelector('[data-testid="slider-physique-bust_scale"]')).not.toBeNull();
+    expect(container.querySelector('[data-testid="size-mode-waist"]')).toBeNull();
+  } finally { act(() => root.unmount()); container.remove(); }
+});

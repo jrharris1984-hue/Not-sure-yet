@@ -72,6 +72,7 @@ export default function DnaSection({
   simpleFieldKeys = [],
   onRequestAdvanced,
   controlNotes = [],
+  focusedField = null,
 }) {
   const set = (k, v) => {
     if (fieldLocks?.[k]) return; // ignore edits to a locked field
@@ -146,6 +147,11 @@ export default function DnaSection({
       {!collapsed && (
       <div className="grid gap-5">
         {section.fields.map((f) => {
+          if (focusedField && focusedField !== "all") {
+            const family = Object.entries(SIZE_CONTROL_PAIRS).find(([key, [slider]]) => [key, slider, ...(key === "bust" ? ["implant_volume", "bust_shape"] : [])].includes(focusedField));
+            const keys = family ? [family[0], family[1][0], ...(family[0] === "bust" ? ["implant_volume", "bust_shape"] : [])] : [focusedField];
+            if (!keys.includes(f.key)) return null;
+          }
           const preset = section.key === 'physique' ? Object.keys(SIZE_CONTROL_PAIRS).find(key => key === f.key || SIZE_CONTROL_PAIRS[key][0] === f.key || (key === 'bust' && f.key === 'implant_volume')) : null;
           const mode = preset ? sizeControlMode(preset, value) : null;
           const isModeHeader = preset === f.key;
