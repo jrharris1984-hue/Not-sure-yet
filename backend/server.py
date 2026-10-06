@@ -1,3 +1,4 @@
+from wardrobe_catalog_upgrade import upgrade_wardrobe_catalog
 from downloaded_models import resolve_downloaded_models, patch_ltx_video
 from prompt_catalog import validate_prompt_catalog
 from qwen_test_models import resolve_qwen_test_models
@@ -152,6 +153,7 @@ class Settings(BaseModel):
     ollama_text_model: str = ""
     ollama_vision_model: str = ""
     prompt_catalog: Dict[str, Any] = Field(default_factory=lambda: {"sections": []})
+    wardrobe_catalog_version: int = 1
     workflows: List[WorkflowTemplate] = Field(default_factory=list)
     default_workflow_id: str = ""
     builder_hidden_workflow_ids: List[str] = Field(default_factory=list)
@@ -324,6 +326,10 @@ async def get_settings() -> Settings:
             s.default_workflow_id = s.workflows[0].id
         await db.settings.insert_one(s.model_dump())
         return s
+    if doc.get("wardrobe_catalog_version", 0) < 1:
+        catalog = upgrade_wardrobe_catalog(doc.get("prompt_catalog"))
+        await db.settings.update_one({"id": "singleton", "$or": [{"wardrobe_catalog_version": {"$exists": False}}, {"wardrobe_catalog_version": {"$lt": 1}}]}, {"$set": {"prompt_catalog": catalog, "wardrobe_catalog_version": 1}})
+        doc = await db.settings.find_one({"id": "singleton"}, {"_id": 0})
     return Settings(**doc)
 
 
@@ -3460,13 +3466,15 @@ def _apply_frame_to_dna(dna: Dict[str, Any], frame: Dict[str, Any], lock_scenari
         out.setdefault("wardrobe", {})
         if outfit.get("outfit_preset"):
             out["wardrobe"].update({
-                "outfit_set": "", "outfit_set_color": "", "dress_style": "", "skirt_style": "",
+                "outfit_mode": "custom", "outfit_set": "", "outfit_set_color": "", "set_lingerie": "", "dress_style": "", "skirt_style": "",
                 "top": "none", "bottom": "none", "underwear": "none", "nudity_level": 0,
                 "nudity_outfit": "", "exposure_mode": "use selected outfit", "state": "", "material": "", "garment_color": "",
                 "garment_pattern": "", "palette": "", "fit": "",
             })
         for k, v in outfit.items():
             out["wardrobe"][k] = v
+    if outfit.get("exposure_mode") and out.get("wardrobe", {}).get("outfit_set") and out["wardrobe"].get("outfit_mode") != "custom":
+        out["wardrobe"]["outfit_mode"] = "full"
     if outfit.get("garment_color") and out.get("wardrobe", {}).get("outfit_set"):
         out["wardrobe"]["outfit_set_color"] = outfit["garment_color"]
     face = frame.get("face_overrides") or {}

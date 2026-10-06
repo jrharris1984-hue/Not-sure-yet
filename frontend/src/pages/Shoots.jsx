@@ -55,7 +55,7 @@ export default function Shoots() {
         <div className="pane p-10 text-center">
           <div className="section-label mb-2">No shoots yet</div>
           <h3 className="font-display text-xl">Pick a character to start a shoot</h3>
-          <p className="text-sm text-zinc-400 mt-1">Open a character in the Library and hit the Shoot button to batch 4–20 frames with pose and outfit variations.</p>
+          <p className="text-sm text-zinc-400 mt-1">Open a character in the Library and hit the Shoot button to batch 4–40 frames with pose and outfit variations.</p>
           <Link to="/" data-testid="btn-shoots-empty-lib" className="inline-flex mt-4 items-center gap-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-black text-sm font-semibold px-4 py-2">
             <Plus className="h-4 w-4" /> Open Library
           </Link>
