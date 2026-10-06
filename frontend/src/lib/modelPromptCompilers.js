@@ -199,7 +199,7 @@ function chromaLeanSingleSubjectPrompt(dna = {}, primaryGuard = {}, sourceDna = 
   const style = dna.style || {};
 
   const age = Number(id.age || 0);
-  const gender = id.gender === "male" ? "man" : "woman";
+  const gender = catalogSelection(dna, "identity", "gender") === "male" ? "man" : "woman";
   const subject = [
     age ? `${age}-year-old adult ${gender}` : `adult ${gender}`,
     ageAppearancePrompt(age),
@@ -559,7 +559,7 @@ function kreaSubjectSentence(dna = {}, label = "") {
   const hair = dna.hair || {};
   const skin = dna.skin || {};
   const age = Number(id.age || 0);
-  const person = kreaGenderLabel(id.gender);
+  const person = kreaGenderLabel(catalogSelection(dna, "identity", "gender"));
   const head = [age ? `${age}-year-old adult ${person}` : `adult ${person}`, ageAppearancePrompt(age)].filter(Boolean).join(', ');
   const body = kreaList(
     heritagePrompt(id.ethnicity, dna),
@@ -891,7 +891,8 @@ export function buildKrea2Prompts({
 }
 
 export function resolvePromptCompiler({ promptStyle = "", workflowKind = "", workflowName = "" } = {}) {
-  const style = clean(promptStyle).toLowerCase();
+  const rawStyle = clean(promptStyle).toLowerCase();
+  const style = ({ krea2_aio: "krea2", qwen_remix: "qwen_edit", ltx_t2v: "wan_t2v" })[rawStyle] || rawStyle;
   const kind = clean(workflowKind).toLowerCase();
   const name = clean(workflowName).toLowerCase();
   if (["qwen_image", "qwen_rapid"].includes(style) && !["edit", "enhance"].includes(kind)) return style;
@@ -1175,7 +1176,11 @@ export function compileModelPrompts(options = {}) {
   if (photographic) options = { ...options, dna: photoDna(options.dna || {}), subjects: (options.subjects || []).map(subject => ({ ...subject, dna: photoDna(subject.dna || {}) })) };
   const source = Array.isArray(options.subjects) ? options.subjects : [];
   const isMulti = !direct && source.length > 1;
-  const scenario = source[0]?.dna?.scenario || options.dna?.scenario || {};
+  const scenarioDna = source[0]?.dna || options.dna || {};
+  const scenario = { ...scenarioDna.scenario,
+    cast_age_mode: catalogSelection(scenarioDna, 'scenario', 'cast_age_mode'),
+    cast_resemblance: catalogSelection(scenarioDna, 'scenario', 'cast_resemblance'),
+  };
   const subjects = isMulti ? applyCastAppearance(source, scenario, options.sectionLocks) : source;
   let result = compileModelPromptsRaw({ ...options, subjects, isMulti: isMulti || (!source.length && !!options.isMulti), dna: isMulti ? subjects[0].dna : options.dna });
   if (customKeywords) result = {...result,positive:`${result.positive}; ${customKeywords}`};
