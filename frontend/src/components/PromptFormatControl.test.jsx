@@ -7,6 +7,8 @@ test('format control switches to compact and identifies word counts accurately',
   act(()=>root.render(<PromptFormatControl value="compact" onChange={onChange} meta={{detailedPromptWords:180,promptWords:95}}/>));
   expect(container.textContent).toContain('180 detailed words → 95 compact words');
   expect(container.textContent).toContain('not model tokens');
+  expect(container.querySelector('option[value="ollama"]')).not.toBeNull();
+  expect(container.textContent).toContain('stays saved until you change it');
   const select=container.querySelector('select');
   act(()=>{select.value='detailed';select.dispatchEvent(new Event('change',{bubbles:true}));});
   expect(onChange).toHaveBeenCalledWith('detailed');
