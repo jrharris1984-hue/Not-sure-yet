@@ -1,12 +1,20 @@
+import { useEffect, useState } from "react";
 import { Check, Smile, Shirt, Palette, Sparkles } from 'lucide-react';
 import PoseIcon from './PoseIcon';
 
 export default function ChoiceTileGrid({ field, sectionKey, value, onChange, query = '', disabled = false }) {
+  const [groupName, setGroupName] = useState('');
+  useEffect(() => setGroupName(''), [sectionKey, field.key]);
+  const groups = field.groups || [];
   const options = [...new Set([...(field.options || []), ...(field.groups || []).flatMap(group => group.options || [])])];
   const label = option => field.optionLabels?.[option] || option;
-  const visible = options.filter(option => `${option} ${label(option)}`.toLowerCase().includes(query.trim().toLowerCase()));
+  const visible = options.filter(option => (!groupName || query.trim() || groups.find(group => group.name === groupName)?.options.includes(option))).filter(option => `${option} ${label(option)}`.toLowerCase().includes(query.trim().toLowerCase()));
   const Icon = sectionKey === 'face' ? Smile : sectionKey === 'wardrobe' ? Shirt : ['hair', 'skin', 'lighting'].includes(sectionKey) ? Palette : Sparkles;
-  return <div className="grid grid-cols-2 gap-2" aria-label={`${field.label} choices`}>
+  return <div>
+    {groups.length > 1 && !query.trim() && <div className="mb-3 flex gap-2 overflow-x-auto pb-1" aria-label={`${field.label} groups`}>
+      {[{ name: '', label: 'All', options }, ...groups.map(group => ({ ...group, label: group.name }))].map(group => <button type="button" key={group.name} aria-pressed={groupName === group.name} onClick={() => setGroupName(group.name)} className={`min-h-10 shrink-0 rounded-full border px-3 text-xs ${groupName === group.name ? 'border-cyan-400 text-cyan-100' : 'border-zinc-700 text-zinc-400'}`}>{group.label} ({group.options.length})</button>)}
+    </div>}
+    <div className="grid grid-cols-2 gap-2" aria-label={`${field.label} choices`}>
     {visible.map(option => {
       const selected = Array.isArray(value) ? value.includes(option) : value === option;
       return <button key={option} type="button" aria-pressed={selected} disabled={disabled}
@@ -21,5 +29,5 @@ export default function ChoiceTileGrid({ field, sectionKey, value, onChange, que
       </button>;
     })}
     {!visible.length && <p className="col-span-2 py-6 text-center text-xs text-zinc-500">No matching choices.</p>}
-  </div>;
+  </div></div>;
 }
