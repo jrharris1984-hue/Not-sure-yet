@@ -1,6 +1,7 @@
 import StudioLoading from "@/components/StudioLoading";
 import QueueConnectionStatus from "@/components/QueueConnectionStatus";
 import { useMemo } from "react";
+import { Link } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Ban, CheckCircle2, Clock3, Loader2, RefreshCw, RotateCcw, Trash2, XCircle } from "lucide-react";
 import { toast } from "sonner";
@@ -77,6 +78,7 @@ export default function Queue() {
             )}
           </div>
           <h2 className="mt-2 truncate font-display font-bold text-zinc-100">{job.workflow_name || job.workflow_type || "Render"}</h2>
+          {job.shoot_id && <Link to={`/shoot/${job.shoot_id}`} className="mt-1 inline-block text-xs text-cyan-200">Photo shoot · frame {Number(job.shoot_frame_index) + 1} →</Link>}
           <div className="mt-1 text-[11px] font-mono text-zinc-500">
             Added {when(job.created_at)}
             {job.attempts > 0 ? ` · retry ${job.attempts}` : ""}
