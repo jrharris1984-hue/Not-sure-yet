@@ -1,4 +1,5 @@
 import { HERITAGE_PROFILES } from './heritageProfiles';
+import { ageAppearancePrompt } from './ageAppearance';
 const meaningful = value => value !== undefined && value !== null && value !== "" && value !== "none" && value !== "default";
 const text = value => String(value).replace(/\s+/g, " ").trim();
 
@@ -14,6 +15,8 @@ const appearanceFields = {
 // It intentionally excludes intimate anatomy and sexual activity fields.
 export function appearanceSignature(dna = {}, existing = "") {
   const traits = [];
+  const ageCues = ageAppearancePrompt(dna.identity?.age);
+  if (ageCues && !existing.toLowerCase().includes(ageCues.toLowerCase())) traits.push(ageCues);
   if (dna.hair?.bangs === "none" && !/\bno bangs\b/i.test(existing)) traits.push("no bangs");
   if (dna.skin?.freckles === "none" && !/\bno freckles\b/i.test(existing)) traits.push("no freckles");
   const chunks = existing.toLowerCase().split(/[,;.!]/);

@@ -1,5 +1,6 @@
 import { POSE_ACTION_PROMPTS } from './photographyPoses';
 import { catalogSelection } from './promptCatalog';
+import { resolveAgeSkin } from './ageAppearance';
 import { resolveWardrobeMode } from "./wardrobeMode";
 import { wardrobeNudity } from "./wardrobeNudity";
 import { footVisibility } from './footVisibility';
@@ -7,9 +8,10 @@ import { footVisibility } from './footVisibility';
 const list = value => Array.isArray(value) ? value : value ? [value] : [];
 const lower = value => String(value || '').toLowerCase();
 export function resolveBuilderControls(source = {}) {
-  const dna = JSON.parse(JSON.stringify(source));
+  const dna = resolveAgeSkin(JSON.parse(JSON.stringify(source)));
   for (const section of ['pose', 'feet', 'wardrobe', 'hair', 'skin', 'scene', 'camera']) dna[section] ||= {};
   const notes = [];
+  if (dna.skin?.texture !== source.skin?.texture && source.skin?.texture) notes.push({section:'skin',field:'texture',text:'The selected age uses age-appropriate skin texture instead of competing smoothing or aging wording.'});
   const omit = (section, field, text) => {
     if (!dna[section][field] || (Array.isArray(dna[section][field]) && !dna[section][field].length)) return;
     dna[section][field] = Array.isArray(dna[section][field]) ? [] : '';

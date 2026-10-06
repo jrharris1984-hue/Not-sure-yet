@@ -194,7 +194,10 @@ export const PROMPT_MAP = {
     texture: {
       "smooth": "flawless smooth skin, poreless complexion",
       "natural pores": "realistic skin with natural pores and texture, high detail",
-      "textured": "highly textured skin with visible pores, freckles, and imperfections",
+      "fine lines": "natural skin texture with subtle facial expression lines",
+      "mature skin texture": "natural mature skin texture with visible facial lines and realistic skin detail",
+      "visible skin texture": "visible natural skin texture and pores",
+      "textured": "highly textured skin with visible pores and natural surface detail",
       "matte": "matte velvety skin, no shine",
       "dewy": "dewy glowing skin, healthy sheen, luminous",
       "oiled": "oiled slick glistening skin, wet shiny body oil",
