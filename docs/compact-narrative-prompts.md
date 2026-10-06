@@ -1,6 +1,6 @@
 # Compact prompt format
 
-In the character builder's generation area, choose **Prompt format → Compact · ordered description**. The same control is available with the full prompt preview. The choice is remembered in that browser. Switching formats clears a manually applied prompt override so the new format is actually submitted. Detailed remains the initial default for comparison.
+In the character builder's generation area, choose **Prompt format → Compact · ordered description**. On mobile, tap **Settings** beside Generate in the bottom sheet, then find **Prompt compiler** beneath the output controls. The mobile render review and the full prompt preview also offer this selector. The choice is saved to the server and remembered in the browser. Switching formats clears a manually applied prompt override so the new format is actually submitted. Detailed remains the initial default for comparison.
 
 Compact mode runs the existing wardrobe, age, pose, physique and composition resolvers, then describes each person independently in this order: identity and age, appearance, clothing, pose/framing, additional selections, then the shared scenario, setting, lighting, camera and style. The format never tries to identify selections by searching an already-expanded paragraph.
 
