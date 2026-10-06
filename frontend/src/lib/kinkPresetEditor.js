@@ -29,7 +29,7 @@ export function applyAdjustedKinkPreset(baseDna = {}, preset = {}, options = {})
 
   out.scenario = { ...(out.scenario || {}) };
   if (options.explicitLevel != null) out.scenario.explicit_level = Number(options.explicitLevel);
-  if (options.kinkLevel != null) out.scenario.kink_level = Number(options.kinkLevel);
+  delete out.scenario.kink_level;
 
   if (options.powerDynamic && options.powerDynamic !== "preserve") {
     out.kink = { ...(out.kink || {}) };

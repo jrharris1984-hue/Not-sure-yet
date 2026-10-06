@@ -22,7 +22,9 @@ export function catalogSections(base, config = catalog) {
     if (!saved) return section;
     return {...section,title:saved.title,fields:section.fields.map(field => buildField(field,saved.fields.find(item => item.key === field.key))).concat(saved.fields.filter(field => !section.fields.some(item => item.key === field.key)).map(field => buildField(null,field)))};
   });
-  return result.concat(config.sections.filter(section => !base.some(item => item.key === section.key)).map(section => ({...section,fields:section.fields.map(field => buildField(null,field))})));
+  return result.concat(config.sections.filter(section => !base.some(item => item.key === section.key)).map(section => ({...section,fields:section.fields.map(field => buildField(null,field))}))).map(section => section.key === "scenario"
+    ? {...section, fields:section.fields.filter(field => field.key !== "kink_level")}
+    : section);
 }
 function buildField(base, saved) {
   if (!saved) return base;

@@ -38,7 +38,8 @@ describe("adjustable kink presets", () => {
     expect(result.kink.power_dynamic).toBe("submissive");
     expect(result.kink.restraint).toEqual([]);
     expect(result.scenario.roleplay).toBe("dominatrix");
-    expect(result.scenario).toMatchObject({ explicit_level: 35, kink_level: 50 });
+    expect(result.scenario).toMatchObject({ explicit_level: 35 });
+    expect(result.scenario.kink_level).toBeUndefined();
   });
 
   it("summarizes only the sections that will change", () => {

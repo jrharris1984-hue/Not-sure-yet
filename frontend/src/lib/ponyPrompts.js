@@ -251,11 +251,8 @@ function _ponySharedBlock(dna = {}, opts = {}, subjectCount = 1) {
   const qualityPrefix = "score_9, score_8_up, source_photo, photorealistic";
   const sc = dna.scenario || {};
   const explicitLevel = Number(sc.explicit_level ?? sc.intensity ?? 0);
-  const kinkLevel = Number(sc.kink_level ?? 0);
   const ratingTag = explicitLevel >= 65 ? "rating_explicit, explicit content, uncensored"
                   : explicitLevel > 40 ? "rating_explicit, nsfw" : "";
-  const kinkTag = kinkLevel >= 65 ? w("bdsm, kink, dominance_and_submission", 1.3)
-                 : kinkLevel > 40 ? w("bdsm, light_kink", 1.15) : "";
 
   const castSize = sc.cast_size || "solo";
   const castType = sc.cast_type || "none";
@@ -292,7 +289,6 @@ function _ponySharedBlock(dna = {}, opts = {}, subjectCount = 1) {
       ? sc.acts.filter((a) => a && a !== "none").map((a) => w(expandPrompt("scenario", "acts", a, { raunch }), 1.3)).join(", ")
       : (sc.acts && sc.acts !== "none" && w(exp("scenario", "acts"), 1.3)),
     sc.extra_acts,
-    kinkTag,
   ]);
   const scene = dna.scene || {};
   const sceneStr = join([

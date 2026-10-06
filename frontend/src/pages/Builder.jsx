@@ -2006,7 +2006,6 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
     } else if (mobileStudioStep === "fine-tune") {
       values.push(activeDna.scenario?.cast_size, activeDna.scenario?.roleplay);
       if ((activeDna.scenario?.explicit_level || 0) > 0) values.push(`explicit ${activeDna.scenario.explicit_level}%`);
-      if ((activeDna.scenario?.kink_level || 0) > 0) values.push(`kink ${activeDna.scenario.kink_level}%`);
     } else if (mobileStudioStep === "focus") {
       values.push(studio === "feet" ? activeDna.feet?.framing : activeDna.watersports?.container);
       values.push(studio === "feet" ? activeDna.feet?.pedicure : activeDna.watersports?.stream);
@@ -2036,7 +2035,6 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
         activeDna.scenario?.cast_size,
         activeDna.scenario?.roleplay,
         (activeDna.scenario?.explicit_level || 0) > 0 ? `explicit ${activeDna.scenario.explicit_level}%` : "",
-        (activeDna.scenario?.kink_level || 0) > 0 ? `kink ${activeDna.scenario.kink_level}%` : ""
       ),
     };
   }, [activeDna]);
