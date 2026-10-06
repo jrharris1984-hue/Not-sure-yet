@@ -171,6 +171,9 @@ function literalRequirement(section, field, value, locked = false) {
 function expandedTerms(section, field, value, raunch) {
   const values = Array.isArray(value) ? value : [value];
   const terms = [];
+  if (section === 'pose' && field === 'distance' && value === 'full body') {
+    terms.push(...['full-length photograph', 'full character visible head to feet', 'head-to-feet composition'].map(normalize));
+  }
   values.filter((item) => isMeaningful(item, true)).forEach((item) => {
     if (typeof item === "number" || typeof item === "boolean") return;
     const expanded = clean(expandPrompt(section, field, item, { raunch }));

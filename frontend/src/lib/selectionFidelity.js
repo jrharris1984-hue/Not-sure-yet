@@ -1,3 +1,4 @@
+import { HERITAGE_PROFILES } from './heritageProfiles';
 const meaningful = value => value !== undefined && value !== null && value !== "" && value !== "none" && value !== "default";
 const text = value => String(value).replace(/\s+/g, " ").trim();
 
@@ -13,14 +14,20 @@ const appearanceFields = {
 // It intentionally excludes intimate anatomy and sexual activity fields.
 export function appearanceSignature(dna = {}, existing = "") {
   const traits = [];
-  if (dna.hair?.bangs === "none") traits.push("no bangs");
-  if (dna.skin?.freckles === "none") traits.push("no freckles");
+  if (dna.hair?.bangs === "none" && !/\bno bangs\b/i.test(existing)) traits.push("no bangs");
+  if (dna.skin?.freckles === "none" && !/\bno freckles\b/i.test(existing)) traits.push("no freckles");
   const chunks = existing.toLowerCase().split(/[,;.!]/);
   const present = (value, label = "") => chunks.some(chunk => {
     const context = label.includes("eye") ? "eye" : label.includes("hair") || label === "bangs" ? "hair" : label.includes("lip") ? "lip" : label.includes("nose") ? "nose" : label.includes("skin") ? "skin" : label.includes("fingernail") ? "nail" : label.includes("glasses") ? "glass" : label.split(" ")[0];
-    return chunk.includes(text(value).toLowerCase()) && (!label || chunk.includes(context));
+    const valuePresent = chunk.includes(text(value).toLowerCase());
+    const contextPresent = label === "build" ? /\bbuild\b|body type|physique/.test(chunk) : chunk.includes(context);
+    return valuePresent && (!label || contextPresent);
   });
-  if (meaningful(dna.identity?.ethnicity) && !present(dna.identity.ethnicity)) traits.push(`${text(dna.identity.ethnicity)} heritage`);
+  const heritage = HERITAGE_PROFILES[dna.identity?.ethnicity]?.ancestry;
+  const heritagePresent = heritage ? existing.toLowerCase().includes(heritage.split(",")[0].toLowerCase()) : present(dna.identity?.ethnicity);
+  if (meaningful(dna.identity?.ethnicity) && !heritagePresent) {
+    traits.push(heritage || `${text(dna.identity.ethnicity)} heritage`);
+  }
   for (const [section, fields] of Object.entries(appearanceFields)) {
     for (const [key, label] of Object.entries(fields)) {
       const value = dna[section]?.[key];
@@ -43,14 +50,20 @@ export function generalSelectionRequirements(dna = {}) {
   }));
 }
 
+export function subjectPromptText(positive, label, multi = false) {
+  const all = String(positive || "");
+  if (!multi) return all;
+  const start = all.indexOf(`Subject ${label}`);
+  if (start < 0) return "";
+  const remaining = all.slice(start);
+  const other = remaining.slice(`Subject ${label}`.length).search(/Subject [A-D]\b/);
+  return other >= 0 ? remaining.slice(0, other + `Subject ${label}`.length) : remaining;
+}
+
 export function preserveGeneralSelections(result, subjects = []) {
   const appearances = subjects.map((subject, index) => {
     const label = subject.label || String.fromCharCode(65 + index);
-    const all = String(result.positive || "");
-    const start = subjects.length > 1 ? all.indexOf(`Subject ${label}`) : 0;
-    const remaining = start >= 0 ? all.slice(start) : "";
-    const other = subjects.length > 1 ? remaining.slice(`Subject ${label}`.length).search(/Subject [A-D]\b/) : -1;
-    const existing = other >= 0 ? remaining.slice(0, other + `Subject ${label}`.length) : remaining;
+    const existing = subjectPromptText(result.positive, label, subjects.length > 1);
     const signature = appearanceSignature(subject.dna, existing);
     return signature ? `${subjects.length > 1 ? `Subject ${subject.label || String.fromCharCode(65 + index)} appearance` : "Selected appearance"}: ${signature}` : "";
   }).filter(Boolean);

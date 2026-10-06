@@ -1,3 +1,4 @@
+import { POSE_ACTION_PROMPTS } from './photographyPoses';
 import { resolveWardrobeMode } from "./wardrobeMode";
 import { wardrobeNudity } from "./wardrobeNudity";
 import { footVisibility } from './footVisibility';
@@ -15,6 +16,25 @@ export function resolveBuilderControls(source = {}) {
   };
   dna.wardrobe = resolveWardrobeMode(dna.wardrobe);
   const p = dna.pose, f = dna.feet, w = dna.wardrobe;
+  // A named pose with defined arm placement owns the hands; do not ask the
+  // same arms to occupy a second position. Custom wording remains untouched.
+  const poseKey = POSE_ACTION_PROMPTS[p.action] ? p.action
+    : Object.keys(POSE_ACTION_PROMPTS).find(key => POSE_ACTION_PROMPTS[key] === p.action);
+  const handsDefined = new Set([
+    'standing thumbs in pockets', 'standing arms loosely crossed', 'standing one hand on waist',
+    'standing hands on hips', 'standing arms up', 'seated hands folded in lap',
+    'leaning forearms on railing', 'adjusting jacket lapel', 'kneeling hands floor',
+    'all fours', 'hands on knees',
+  ]);
+  if (handsDefined.has(poseKey)) omit('pose', 'hands', 'The selected pose already defines arm and hand placement. The separate Hand position is inactive for this pose.');
+  if (poseKey && p.body_language && lower(POSE_ACTION_PROMPTS[poseKey]).split(/[^a-z-]+/).includes(lower(p.body_language))) {
+    omit('pose', 'body_language', 'The selected pose already includes this body language.');
+  }
+  if (poseKey === 'reverse view' && p.angle && p.angle !== 'back') {
+    p.angle = 'back';
+    notes.push({section:'pose',field:'angle',text:'Reverse view uses the rear camera view instead of a competing body angle.'});
+  }
+
   if (w.outfit_mode === 'full') {
     if (!w.outfit_set) notes.push({ section: 'wardrobe', field: 'outfit_set', text: 'Choose a complete outfit set or switch to Custom for individual garments.' });
     omit('feet', 'hosiery', 'The full outfit set controls hosiery. Switch Wardrobe to Custom to use separate hosiery.');
@@ -172,7 +192,7 @@ export function resolveBuilderControls(source = {}) {
       notes.push({ section: 'feet', field: 'toes', text: 'The selected foot pose controls toe position.' });
     }
   }
-  if ((p.angle === 'from above' && dna.camera.angle === 'low') || (p.angle === 'from below' && ['high', 'birds-eye'].includes(dna.camera.angle))) omit('camera', 'angle', 'Pose & framing controls camera height instead of the opposing Camera angle.');
+  if (['from above', 'from below'].includes(p.angle) && ['eye-level', 'low', 'high', 'birds-eye'].includes(dna.camera.angle)) omit('camera', 'angle', 'Pose & framing already controls camera height. The separate Camera height is inactive.');
   if (/bald|shaved/.test(lower(dna.hair.style))) for (const field of ['length', 'texture', 'bangs']) omit('hair', field, 'The selected shaved/bald hairstyle replaces this hair detail.');
   if (/bun|chignon|ponytail|updo|braid|locs|twists/i.test(dna.hair.style) && ['pixie', 'short bob'].includes(dna.hair.length)) omit('hair', 'length', 'The selected tied or braided hairstyle replaces the conflicting short haircut.');
   if (/pixie|buzz|bob/i.test(dna.hair.style) && ['long', 'waist-length'].includes(dna.hair.length)) omit('hair', 'length', 'The selected short hairstyle replaces the conflicting long hair length.');
@@ -200,7 +220,7 @@ const sliders = [
   ['skin', 'glow', 'skin glow', 100],
   ['scenario', 'explicit_level', 'scenario intensity', 100],
 ];
-export function sliderPromptSignature(dna = {}) {
+export function sliderPromptSignature(dna = {}, existing = "") {
   return sliders.flatMap(([section, key, label, max]) => {
     const raw = dna[section]?.[key];
     if (!Number.isFinite(Number(raw)) || raw === '' || raw === undefined || raw === null) return [];
@@ -208,7 +228,7 @@ export function sliderPromptSignature(dna = {}) {
     if (key !== 'age' && !value) return []; // 0 restores the preset.
     if (['bust_scale'].includes(key) && Number(dna.physique?.implant_volume) > 0) return [];
     if (key === 'implant_volume' && !value) return [];
-    if (key === 'age') return [`age ${value} years`];
+    if (key === 'age') return new RegExp(`\\b${value}(?:-year-old|\\s*(?:years?\\b|yo\\b))`, 'i').test(existing) ? [] : [`age ${value} years`];
     return [`${label} ${value}/${max}`];
   }).join(', ');
 }
