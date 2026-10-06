@@ -358,3 +358,44 @@ button:not(:disabled):active, a[role="button"]:active {
 @media (prefers-reduced-motion: reduce) { .primary-creation-sheet, .nested-creation-sheet, .sheet-scoped-scrim, .gallery-carousel-track { transition: none; animation: none; } }
 
 .sheet-handle:not(:disabled):active { scale: 1; filter: none; }
+
+/* Raised mobile controls, with a consistent accent for the person being edited. */
+.mobile-sheet-builder .chip,
+.mobile-sheet-builder .sheet-field-card,
+.mobile-sheet-builder .sheet-detail-scroll button[aria-pressed],
+.mobile-sheet-builder .sheet-detail-scroll button[data-testid^="pose-"] {
+  background: linear-gradient(155deg, #343443 0%, #242432 48%, #1b1b26 100%);
+  border: 1px solid #4c4c5e;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.12), inset 0 -1px 0 rgba(0,0,0,.45), 0 3px 0 #0d0d15, 0 6px 12px rgba(0,0,0,.24);
+  transition: transform 130ms ease, box-shadow 130ms ease, border-color 130ms ease;
+}
+.mobile-sheet-builder .chip.active,
+.mobile-sheet-builder .sheet-field-card.has-selection,
+.mobile-sheet-builder .sheet-detail-scroll button[aria-pressed="true"],
+.mobile-sheet-builder .sheet-detail-scroll button[data-testid^="pose-"][class*="border-amber-500"] {
+  border-color: var(--person-accent);
+  color: var(--person-accent);
+  background: linear-gradient(155deg, var(--person-wash), #20202d 85%);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.13), 0 3px 0 #0d0d15, 0 0 0 1px var(--person-edge), 0 6px 14px rgba(0,0,0,.26);
+}
+.mobile-sheet-builder .sheet-person-button { border-color: var(--person-edge); }
+.mobile-sheet-builder .chip:not(:disabled):active,
+.mobile-sheet-builder .sheet-field-card:not(:disabled):active,
+.mobile-sheet-builder .sheet-detail-scroll button[aria-pressed]:not(:disabled):active {
+  scale: 1;
+  transform: translateY(2px);
+  box-shadow: inset 0 2px 4px rgba(0,0,0,.28), 0 1px 0 #0d0d15;
+}
+.mobile-sheet-builder button:focus-visible { outline: 2px solid var(--person-accent); outline-offset: 3px; }
+.mobile-sheet-builder .sheet-generate-button {
+  background: linear-gradient(160deg, #a7f3d0, #34d399 65%, #10b981);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.4), 0 3px 0 #065f46, 0 6px 14px rgba(0,0,0,.25);
+}
+.mobile-sheet-builder .sheet-generate-button:not(:disabled):active { scale: 1; transform: translateY(2px); box-shadow: inset 0 2px 4px #059669, 0 1px 0 #065f46; }
+.mobile-sheet-builder .primary-creation-sheet,
+.mobile-sheet-builder .nested-creation-sheet { border-color: var(--person-edge); }
+.mobile-sheet-builder .sheet-workspace header { border-bottom: 1px solid var(--person-edge); padding-bottom: 8px; }
+.mobile-sheet-builder .sheet-workspace header .section-label { color: var(--person-accent); }
+@media (prefers-reduced-motion: reduce) {
+  .mobile-sheet-builder .chip, .mobile-sheet-builder .sheet-field-card, .mobile-sheet-builder .sheet-detail-scroll button[aria-pressed] { transition: none; }
+}

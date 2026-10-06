@@ -2,6 +2,17 @@ import { useEffect, useRef, useState } from "react";
 import { clamp, sheetSnap, motionDuration } from "@/lib/dragMotion";
 import { mediaUrl } from "@/lib/media";
 
+const PERSON_TONES = [
+  { accent: "#86efac", wash: "rgba(74, 222, 128, .13)", edge: "rgba(74, 222, 128, .48)" },
+  { accent: "#93c5fd", wash: "rgba(96, 165, 250, .13)", edge: "rgba(96, 165, 250, .48)" },
+  { accent: "#c4b5fd", wash: "rgba(167, 139, 250, .13)", edge: "rgba(167, 139, 250, .48)" },
+  { accent: "#fdba74", wash: "rgba(251, 146, 60, .13)", edge: "rgba(251, 146, 60, .48)" },
+];
+const personStyle = index => {
+  const tone = PERSON_TONES[Math.max(0, index) % PERSON_TONES.length];
+  return { "--person-accent": tone.accent, "--person-wash": tone.wash, "--person-edge": tone.edge };
+};
+
 // Only handles capture vertical gestures, leaving option lists free to scroll.
 function Handle({ label, onStart, onDrag, onEnd, onClick }) {
   const gesture = useRef(null);
@@ -69,7 +80,7 @@ export default function MobileBuilderSheets({ sections, section, onSection, subj
   const close = () => { setDetailDragging(false); setClosing(true); };
   const open = key => { setDetailInteracted(false); setClosing(false); setDetailOffset(0); setDetail(key); };
   const label = detail === "output" ? "Generation settings" : section.fields.find(field => field.key === detail)?.label || section.title;
-  return <section className="mobile-sheet-builder md:hidden" data-testid="mobile-sheet-builder">
+  return <section className="mobile-sheet-builder md:hidden" data-testid="mobile-sheet-builder" style={personStyle(subjects.findIndex(person => person.id === activeId))}>
     <div className="sheet-workspace">
       <header className="flex items-center justify-between gap-2">
         <div><div className="section-label">Character workspace</div><div className="text-sm font-semibold">{subjects.length} {subjects.length === 1 ? "person" : "people"} · editing {subjects.find(person => person.id === activeId)?.label || "A"}</div></div>
@@ -93,8 +104,8 @@ export default function MobileBuilderSheets({ sections, section, onSection, subj
       <div className="sheet-primary-content" inert={!!detail} aria-hidden={detail ? true : undefined}>
         <div className="flex gap-2 items-center px-3 pb-2 overflow-x-auto">
           <button type="button" className="chip shrink-0" onClick={onPeople}>People · {subjects.length}</button>
-          {subjects.map(person => <button type="button" key={person.id} aria-pressed={person.id === activeId}
-            className={`chip shrink-0 ${person.id === activeId ? "active" : ""}`} onClick={() => onSubject(person.id)}>Edit {person.label}</button>)}
+          {subjects.map((person, index) => <button type="button" key={person.id} style={personStyle(index)} aria-pressed={person.id === activeId}
+            className={`chip sheet-person-button shrink-0 ${person.id === activeId ? "active" : ""}`} onClick={() => onSubject(person.id)}>Edit {person.label}</button>)}
         </div>
         <nav className="sheet-category-tabs" aria-label="Character categories">
           {sections.map(item => <button type="button" key={item.key} aria-pressed={item.key === section.key}
@@ -103,7 +114,7 @@ export default function MobileBuilderSheets({ sections, section, onSection, subj
         <div className="sheet-field-scroll">
           <div className="flex justify-between items-center mb-3"><h2 className="font-semibold">{section.title}</h2><button type="button" className="text-xs text-cyan-200" onClick={() => open("all")}>All controls</button></div>
           <div className="grid grid-cols-2 gap-2">
-            {section.fields.map(field => <button key={field.key} type="button" className="sheet-field-card" onClick={() => open(field.key)}>
+            {section.fields.map(field => <button key={field.key} type="button" className={`sheet-field-card ${Array.isArray(values[field.key]) ? values[field.key].length ? "has-selection" : "" : values[field.key] ? "has-selection" : ""}`} onClick={() => open(field.key)}>
               <span className="block text-sm font-semibold">{field.label}</span>
               <span className="block text-xs text-zinc-400 mt-1 truncate">{Array.isArray(values[field.key]) ? values[field.key].join(", ") || "Choose" : String(values[field.key] ?? "Choose") || "Choose"}</span>
             </button>)}
@@ -141,7 +152,7 @@ export default function MobileBuilderSheets({ sections, section, onSection, subj
     <footer className="sheet-generation-dock">
       <div className="flex gap-2"><button type="button" className="chip" onClick={() => { setHeight("half"); open("output"); }}>Settings</button>
         <button type="button" className="chip" onClick={onTools}>More tools</button>
-        <button type="button" className="flex-1 rounded-xl bg-emerald-400 text-black py-3 text-sm font-bold disabled:opacity-40" disabled={!canGenerate || generating} onClick={onGenerate}>{generating ? "Queuing…" : `Generate (${imageCount})`}</button></div>
+        <button type="button" className="sheet-generate-button flex-1 rounded-xl bg-emerald-400 text-black py-3 text-sm font-bold disabled:opacity-40" disabled={!canGenerate || generating} onClick={onGenerate}>{generating ? "Queuing…" : `Generate (${imageCount})`}</button></div>
       {issues.length > 0 && <p className="text-xs text-amber-200 mt-1">{issues.join(" ")}</p>}
     </footer>
   </section>;
