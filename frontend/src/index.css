@@ -330,3 +330,26 @@ button:not(:disabled):active, a[role="button"]:active {
   [role="dialog"][data-state], .studio-dialog-overlay[data-state] { animation: none !important; transition: none !important; }
   .studio-shell .animate-spin, .studio-shell .animate-pulse { animation: none; }
 }
+
+@media (max-width: 767px) {
+  .nested-mobile-builder > :not(.mobile-sheet-builder) { display: none !important; }
+  .mobile-sheet-builder { position: fixed; inset: 64px 0 0; z-index: 35; background: #0d0d14; }
+  .sheet-workspace { height: 43%; padding: 12px 16px; display: flex; flex-direction: column; gap: 8px; }
+  .sheet-preview { flex: 1; min-height: 0; display: grid; place-items: center; overflow: hidden; border-radius: 18px; background: #15151f; }
+  .sheet-preview img { height: 100%; width: 100%; object-fit: contain; }
+  .primary-creation-sheet { position: absolute; left: 0; right: 0; bottom: calc(76px + env(safe-area-inset-bottom)); height: 52%; background: #191922; border: 1px solid #393944; border-radius: 24px 24px 0 0; transition: height .22s ease; display: flex; flex-direction: column; overflow: hidden; }
+  .primary-creation-sheet.sheet-expanded { height: 72%; }
+  .primary-creation-sheet.sheet-peek { height: 115px; }
+  .sheet-handle { display: grid; place-items: center; min-height: 32px; width: 100%; flex-shrink: 0; touch-action: none; }
+  .sheet-handle span { width: 42px; height: 5px; border-radius: 999px; background: #71717a; }
+  .sheet-primary-content { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+  .sheet-category-tabs { display: flex; overflow-x: auto; gap: 8px; padding: 0 12px 10px; flex-shrink: 0; }
+  .sheet-field-scroll, .sheet-detail-scroll { overflow-y: auto; overscroll-behavior: contain; min-height: 0; flex: 1; padding: 12px; }
+  .sheet-field-card { padding: 14px 12px; border: 1px solid #3a3a46; border-radius: 14px; background: #22222e; text-align: left; min-width: 0; }
+  .sheet-scoped-scrim { position: absolute; inset: 0; background: #0008; z-index: 1; }
+  .nested-creation-sheet { position: absolute; inset: 12px 0 0; z-index: 2; border-radius: 22px 22px 0 0; background: #242430; border-top: 1px solid #555566; display: flex; flex-direction: column; animation: creation-sheet-up .2s ease-out; }
+  .sheet-generation-dock { position: absolute; bottom: 0; left: 0; right: 0; background: #111118; padding: 10px 12px calc(10px + env(safe-area-inset-bottom)); min-height: 76px; }
+  .sheet-generation-dock .chip { font-size: 11px; padding: 8px; }
+}
+@keyframes creation-sheet-up { from { transform: translateY(35%); opacity: .6; } to { transform: translateY(0); opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .primary-creation-sheet, .nested-creation-sheet { transition: none; animation: none; } }

@@ -35,6 +35,7 @@ import { compileModelPrompts, resolvePromptCompiler } from "@/lib/modelPromptCom
 import { batchSeed } from "@/lib/batchSeeds";
 import { resolveReferenceNotes, translatePlainLanguage } from "@/lib/plainLanguagePrompt";
 import { analyzePromptQuality } from "@/lib/promptQuality";
+import MobileBuilderSheets from "@/components/MobileBuilderSheets";
 import DnaSection from "@/components/DnaSection";
 import ImageSourceFlow from "@/components/ImageSourceFlow";
 import PromptPreview from "@/components/PromptPreview";
@@ -139,6 +140,16 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
 
   const [mobileStudioStep, setMobileStudioStep] = useState(() => mobileStudioStepForSection(activeSection, studioSteps));
   const [mobileStudioMode, setMobileStudioMode] = useState("simple");
+  const [mobileSheets, setMobileSheets] = useState(true);
+  const [sheetViewport, setSheetViewport] = useState(() => window.matchMedia?.("(max-width: 767px)").matches ?? window.innerWidth < 768);
+  useEffect(() => {
+    const query = window.matchMedia?.("(max-width: 767px)");
+    if (!query) return;
+    const update = () => setSheetViewport(query.matches);
+    update();
+    query.addEventListener("change", update);
+    return () => query.removeEventListener("change", update);
+  }, []);
   const [desktopQuickMode, setDesktopQuickMode] = useState(true);
   const [specialtyTab, setSpecialtyTab] = useState(0);
   const [quickReview, setQuickReview] = useState(false);
@@ -2540,12 +2551,67 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
           )}
   </>);
 
+  const renderDnaControls = (sheetField = null) => (
+<DnaSection
+            key={`${activeSubjectId}-${activeSection}`}
+            section={!sheetField && studioProfile && activeSection === studio
+              ? { ...SECTIONS[activeIdx], fields: SECTIONS[activeIdx].fields.filter((field) => field.key === "composition_mode" || studioProfile.fieldGroups[specialtyTab]?.keys.includes(field.key)) }
+              : activeSection === "scenario" ? { ...SECTIONS[activeIdx], fields: SECTIONS[activeIdx].fields.filter(field => {
+                if (!["cast_age_mode", "cast_age_gap", "cast_resemblance"].includes(field.key)) return true;
+                return subjects.length > 1 && (field.key !== "cast_age_gap" || primaryDna.scenario?.cast_age_mode === "age contrast");
+              }) } : SECTIONS[activeIdx]}
+            controlNotes={resolveBuilderControls(activeDna).notes.filter(note => note.section === activeSection).map(note => note.text)}
+            value={(activeSection === "scenario" ? primaryDna : activeDna)[activeSection] || {}}
+            onChange={(v) => setSection(activeSection, v)}
+            locked={!!locks[activeSection]}
+            onToggleLock={() => setLocks({ ...locks, [activeSection]: !locks[activeSection] })}
+            onRandomize={() => setSection(activeSection, activeSection.startsWith("custom_")
+              ? Object.fromEntries(SECTIONS[activeIdx].fields.map(field => [field.key, activeFieldLocks[activeSection]?.[field.key] ? activeDna[activeSection]?.[field.key] : field.type === 'chips_multi' ? [] : field.options?.[Math.floor(Math.random() * field.options.length)] || '']))
+              : randomizeSection(activeSection, activeDna[activeSection] || {}, activeFieldLocks[activeSection] || {}))}
+            onReset={() => setSection(activeSection, activeSection.startsWith("custom_") ? {} : resetSection(activeSection))}
+            onSuggest={() => runSuggest(activeSection)}
+            fieldLocks={activeFieldLocks[activeSection] || {}}
+            onToggleFieldLock={(fieldKey) => setActiveFieldLocks({
+              ...activeFieldLocks,
+              [activeSection]: { ...(activeFieldLocks[activeSection] || {}), [fieldKey]: !(activeFieldLocks[activeSection] || {})[fieldKey] },
+            })}
+            onToggleCollapsed={() => setCollapsed((cur) => ({ ...cur, [activeSection]: !cur[activeSection] }))}
+            simpleMode={!sheetField && mobileStudioMode === "simple"}
+            focusedField={sheetField}
+            collapsed={sheetField ? false : !!collapsed[activeSection]}
+            simpleFieldKeys={SIMPLE_FIELD_KEYS[activeSection] || []}
+            onRequestAdvanced={() => setMobileStudioMode("advanced")}
+          />
+  );
+
   if (imageToolId && (!editorHydrated || workflowsLoading)) return <div className="mx-auto max-w-4xl p-6 text-zinc-400">Loading image tool…</div>;
   if (imageToolId && !workflows.some(workflow => workflow.id === imageToolId && IMAGE_TOOL_KINDS.includes(workflow.kind))) return <div className="mx-auto max-w-4xl p-6 text-zinc-400">This image tool is unavailable. <button type="button" onClick={() => nav('/')} className="text-cyan-300 underline">Return to the main screen</button> or refresh workflows in Settings.</div>;
   if (imageToolId && !IMAGE_TOOL_KINDS.includes(activeWorkflow?.kind)) return <div className="mx-auto max-w-4xl p-6 text-zinc-400">Opening image tool…</div>;
 
   return (
-    <div className={`mobile-builder-content mx-auto max-w-[1600px] px-2.5 sm:px-6 py-3 sm:py-6 space-y-3 sm:space-y-4 ${desktopQuickMode && !isImageFirst ? "quick-create-mode" : ""}`}>
+    <div className={`mobile-builder-content ${mobileSheets && !isImageFirst && editMode !== "body_adjust" ? "nested-mobile-builder" : ""} mx-auto max-w-[1600px] px-2.5 sm:px-6 py-3 sm:py-6 space-y-3 sm:space-y-4 ${desktopQuickMode && !isImageFirst ? "quick-create-mode" : ""}`}>
+      {sheetViewport && !isImageFirst && editMode !== "body_adjust" && (mobileSheets ? <MobileBuilderSheets
+        sections={SECTIONS} section={SECTIONS[activeIdx]} onSection={goSection}
+        subjects={subjects} activeId={activeSubjectId} onSubject={setActiveSubjectId}
+        onPeople={() => goSection("scenario")}
+        values={(activeSection === "scenario" ? primaryDna : activeDna)[activeSection] || {}}
+        renderControls={renderDnaControls}
+        preview={activeRender?.output_files?.[0] || referencePreview}
+        renderStatus={activeRender?.status} renderError={activeRender?.error}
+        livePreview={activeRender && ["queued", "running"].includes(activeRender.status)
+          ? <LivePreview clientId={activeRender.id} /> : null}
+        onSave={() => save.mutate()} saving={save.isPending}
+        onGenerate={doDispatch} generating={dispatching}
+        canGenerate={!!workflowId && mobileCreateIssues.length === 0}
+        issues={mobileCreateIssues} imageCount={poseAssistEnabled && !isVariationWorkflow ? 1 : renderCount}
+        outputControls={<CreationOutputControls workflows={selectableWorkflows} workflowId={workflowId}
+          onWorkflow={setWorkflowId} family={activeRecipeFamily} tier={qualityTier}
+          onTier={applyQualityTier} count={poseAssistEnabled && !isVariationWorkflow ? 1 : renderCount} onCount={setRenderCount}
+          countLocked={poseAssistEnabled && !isVariationWorkflow}
+          settings={renderSettings} onSettings={setChromaSettings}
+          fixedSampling={isKrea2 || isKrea2Aio || activeCompiler === "flux2_klein"} busy={dispatching} />}
+        onTools={() => { setMobileSheets(false); setMobileStudioMode("advanced"); setMobileStudioStep("create"); }}
+      /> : <button type="button" className="md:hidden chip" onClick={() => setMobileSheets(true)}>Back to bottom sheets</button>)}
       {galleryRecipeMode === "current" && (
         <div className="pane border border-cyan-500/30 bg-cyan-500/[0.06] px-3 py-2.5 text-xs text-cyan-100" data-testid="current-compiler-rebuild-banner">
           <div className="flex items-start gap-2">
@@ -3341,35 +3407,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
             <Link to="/settings/prompts" className="text-xs text-cyan-200 underline">Edit Prompt Library</Link>
             {SECTIONS.filter(section => section.key.startsWith('custom_')).map(section => <button type="button" key={section.key} onClick={() => goSection(section.key)} className="rounded-lg border hairline px-3 py-2 text-xs text-cyan-200">{section.title}</button>)}
           </nav>
-          <DnaSection
-            key={`${activeSubjectId}-${activeSection}`}
-            section={studioProfile && activeSection === studio
-              ? { ...SECTIONS[activeIdx], fields: SECTIONS[activeIdx].fields.filter((field) => field.key === "composition_mode" || studioProfile.fieldGroups[specialtyTab]?.keys.includes(field.key)) }
-              : activeSection === "scenario" ? { ...SECTIONS[activeIdx], fields: SECTIONS[activeIdx].fields.filter(field => {
-                if (!["cast_age_mode", "cast_age_gap", "cast_resemblance"].includes(field.key)) return true;
-                return subjects.length > 1 && (field.key !== "cast_age_gap" || primaryDna.scenario?.cast_age_mode === "age contrast");
-              }) } : SECTIONS[activeIdx]}
-            controlNotes={resolveBuilderControls(activeDna).notes.filter(note => note.section === activeSection).map(note => note.text)}
-            value={(activeSection === "scenario" ? primaryDna : activeDna)[activeSection] || {}}
-            onChange={(v) => setSection(activeSection, v)}
-            locked={!!locks[activeSection]}
-            onToggleLock={() => setLocks({ ...locks, [activeSection]: !locks[activeSection] })}
-            onRandomize={() => setSection(activeSection, activeSection.startsWith("custom_")
-              ? Object.fromEntries(SECTIONS[activeIdx].fields.map(field => [field.key, activeFieldLocks[activeSection]?.[field.key] ? activeDna[activeSection]?.[field.key] : field.type === 'chips_multi' ? [] : field.options?.[Math.floor(Math.random() * field.options.length)] || '']))
-              : randomizeSection(activeSection, activeDna[activeSection] || {}, activeFieldLocks[activeSection] || {}))}
-            onReset={() => setSection(activeSection, activeSection.startsWith("custom_") ? {} : resetSection(activeSection))}
-            onSuggest={() => runSuggest(activeSection)}
-            fieldLocks={activeFieldLocks[activeSection] || {}}
-            onToggleFieldLock={(fieldKey) => setActiveFieldLocks({
-              ...activeFieldLocks,
-              [activeSection]: { ...(activeFieldLocks[activeSection] || {}), [fieldKey]: !(activeFieldLocks[activeSection] || {})[fieldKey] },
-            })}
-            collapsed={!!collapsed[activeSection]}
-            onToggleCollapsed={() => setCollapsed((cur) => ({ ...cur, [activeSection]: !cur[activeSection] }))}
-            simpleMode={mobileStudioMode === "simple"}
-            simpleFieldKeys={SIMPLE_FIELD_KEYS[activeSection] || []}
-            onRequestAdvanced={() => setMobileStudioMode("advanced")}
-          />
+          {renderDnaControls()}
           {sectionNavigation("bottom")}
           </div>
         </div>
