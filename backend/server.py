@@ -1,5 +1,6 @@
 from ollama_compiler import validate_ollama_prompt
 from shoot_progress import refresh_shoot_progress
+from shoot_continuity import shoot_render_settings, shoot_base_dna
 from shoot_queue import load_shoot_renders, link_shoot_render
 from wardrobe_catalog_upgrade import upgrade_wardrobe_catalog
 from downloaded_models import resolve_downloaded_models, patch_ltx_video
@@ -970,6 +971,23 @@ async def get_character(cid: str):
     if not doc:
         raise HTTPException(404, "Character not found")
     return Character(**doc)
+
+
+@api.get("/characters/{cid}/shoot-context")
+async def character_shoot_context(cid: str):
+    char = await db.characters.find_one({"id": cid}, {"_id": 0})
+    if not char:
+        raise HTTPException(404, "Character not found")
+    query = {"character_id": cid, "output_files.0": {"$exists": True}, "hidden_from_gallery": {"$ne": True}, "workflow_type": {"$nin": ["video", "text_video"]}}
+    render = None
+    if char.get("default_image_render_id"):
+        render = await db.renders.find_one({**query, "id": char["default_image_render_id"]}, {"_id": 0})
+    if not render:
+        render = await db.renders.find_one({**query, "shoot_id": None, "workflow_type": {"$nin": ["video", "text_video"]}}, {"_id": 0}, sort=[("created_at", -1)])
+    if not render:
+        return {"render_id": None, "recipe": {}}
+    _, recipe = await _render_recipe(render["id"])
+    return {"render_id": render["id"], "recipe": recipe, "preview": (render.get("output_variants", {}).get("enhanced") or render["output_files"])[0]}
 
 
 @api.patch("/characters/{cid}", response_model=Character)
@@ -3428,6 +3446,7 @@ class ShootFrame(BaseModel):
     scene_overrides: Dict[str, Any] = Field(default_factory=dict)
     prompt_positive: str = ""
     prompt_negative: str = ""
+    edit_instruction: str = ""
     seed: Optional[int] = None
     render_id: Optional[str] = None
     queue_id: Optional[str] = None
@@ -3449,6 +3468,10 @@ class Shoot(BaseModel):
     seed_mode: str = "fresh"  # same | character_pose | fresh
     base_seed: Optional[int] = None
     lock_scenario: bool = True
+    dispatch_settings: Dict[str, Any] = Field(default_factory=dict)
+    set_overrides: Dict[str, Dict[str, str]] = Field(default_factory=dict)
+    reference_image: Optional[str] = None
+    source_render_id: Optional[str] = None
     status: str = "queued"  # queued | running | done | failed
     progress: float = 0.0
     error: Optional[str] = None
@@ -3468,6 +3491,10 @@ class ShootCreateBody(BaseModel):
     seed_mode: str = "fresh"
     base_seed: Optional[int] = None
     lock_scenario: bool = True
+    dispatch_settings: Dict[str, Any] = Field(default_factory=dict)
+    set_overrides: Dict[str, Dict[str, str]] = Field(default_factory=dict)
+    reference_image: Optional[str] = None
+    source_render_id: Optional[str] = None
 
 
 def _apply_frame_to_dna(dna: Dict[str, Any], frame: Dict[str, Any], lock_scenario: bool) -> Dict[str, Any]:
@@ -3520,9 +3547,9 @@ async def _run_shoot_background(shoot_id: str):
     for i, frame in enumerate(shoot.frames):
         frame_dict = frame.model_dump()
         original_subjects = char.get("subjects") or []
-        per_subjects = [{**subject, "dna": _apply_frame_to_dna(subject.get("dna") or {}, frame_dict, shoot.lock_scenario)}
+        per_subjects = [{**subject, "dna": _apply_frame_to_dna(shoot_base_dna(subject.get("dna") or {}, shoot.set_overrides), frame_dict, shoot.lock_scenario)}
                         for subject in original_subjects]
-        per_dna = per_subjects[0]["dna"] if per_subjects else _apply_frame_to_dna(char.get("dna") or {}, frame_dict, shoot.lock_scenario)
+        per_dna = per_subjects[0]["dna"] if per_subjects else _apply_frame_to_dna(shoot_base_dna(char.get("dna") or {}, shoot.set_overrides), frame_dict, shoot.lock_scenario)
         # Build prompts on server side? No — the client sent the base prompt in char.prompt_positive.
         # We rebuild by using char's stored prompt_positive as a fallback baseline, but we honor
         # any per-frame prompt overrides sent by the client through outfit changes only.
@@ -3549,6 +3576,11 @@ async def _run_shoot_background(shoot_id: str):
 
         seed = frame.seed
         body = DispatchBody(
+            **shoot.dispatch_settings,
+            reference_image=shoot.reference_image,
+            reference_source_render_id=shoot.source_render_id,
+            parent_render_id=shoot.source_render_id,
+            edit_instruction=frame.edit_instruction,
             character_id=shoot.character_id,
             dna=per_dna,
             subjects=per_subjects,
@@ -3599,6 +3631,28 @@ async def create_shoot(body: ShootCreateBody, background_tasks: BackgroundTasks)
     if not char:
         raise HTTPException(404, "Character not found")
 
+    reference_image = None
+    if body.source_render_id:
+        if any(not str(frame.get("edit_instruction") or "").strip() for frame in body.frames):
+            raise HTTPException(400, "Every reference-photo frame needs an edit instruction")
+        source = await db.renders.find_one({"id": body.source_render_id, "character_id": body.character_id}, {"_id": 0})
+        if not source or not source.get("output_files"):
+            raise HTTPException(400, "Choose a completed image belonging to this character")
+        settings = await get_settings()
+        workflow = next((w for w in settings.workflows if w.id == body.workflow_id), None)
+        if not workflow or workflow.kind != "edit" or workflow.edit_variant:
+            raise HTTPException(400, "Photo reference shoots require a standard image-edit workflow")
+        prepared = await prepare_render_reference(body.source_render_id, None)
+        reference_image = prepared["name"]
+    dispatch_settings = shoot_render_settings(body.dispatch_settings)
+    if body.source_render_id:
+        # Image-edit checkpoints use their own sampling and LoRA configuration.
+        dispatch_settings = {key: value for key, value in dispatch_settings.items() if key in {"prompt_language", "locks"}}
+    try:
+        DispatchBody(**dispatch_settings)  # validate controls before saving queue jobs
+    except ValueError as exc:
+        raise HTTPException(400, "Invalid shoot render settings") from exc
+
     # Compute seeds according to seed_mode if not explicitly set
     base_seed = body.base_seed if body.base_seed is not None else random.randint(1, 2**31 - 1)
     frames: List[ShootFrame] = []
@@ -3622,6 +3676,7 @@ async def create_shoot(body: ShootCreateBody, background_tasks: BackgroundTasks)
             scene_overrides=f.get("scene_overrides") or {},
             prompt_positive=str(f.get("prompt_positive") or "")[:10000],
             prompt_negative=str(f.get("prompt_negative") or "")[:10000],
+            edit_instruction=str(f.get("edit_instruction") or "")[:10000],
             seed=int(seed),
             status="pending",
         ))
@@ -3638,6 +3693,10 @@ async def create_shoot(body: ShootCreateBody, background_tasks: BackgroundTasks)
         seed_mode=body.seed_mode,
         base_seed=base_seed,
         lock_scenario=body.lock_scenario,
+        dispatch_settings=dispatch_settings,
+        set_overrides=body.set_overrides,
+        reference_image=reference_image,
+        source_render_id=body.source_render_id,
         status="queued",
     )
     await db.shoots.insert_one(shoot.model_dump())
@@ -3790,9 +3849,9 @@ async def retry_shoot_frame(sid: str, frame_index: int, body: ShootRetryBody, ba
                 raise HTTPException(409, "This frame is still queued or rendering")
         # Keep old render records; retries must not delete Gallery outputs.
         original_subjects = char.get("subjects") or []
-        per_subjects = [{**subject, "dna": _apply_frame_to_dna(subject.get("dna") or {}, frame.model_dump(), shoot.lock_scenario)}
+        per_subjects = [{**subject, "dna": _apply_frame_to_dna(shoot_base_dna(subject.get("dna") or {}, shoot.set_overrides), frame.model_dump(), shoot.lock_scenario)}
                         for subject in original_subjects]
-        per_dna = per_subjects[0]["dna"] if per_subjects else _apply_frame_to_dna(char.get("dna") or {}, frame.model_dump(), shoot.lock_scenario)
+        per_dna = per_subjects[0]["dna"] if per_subjects else _apply_frame_to_dna(shoot_base_dna(char.get("dna") or {}, shoot.set_overrides), frame.model_dump(), shoot.lock_scenario)
         pos = frame.prompt_positive or char.get("prompt_positive", "")
         neg = frame.prompt_negative if frame.prompt_positive else char.get("prompt_negative", "")
         aug_parts = []
@@ -3811,6 +3870,11 @@ async def retry_shoot_frame(sid: str, frame_index: int, body: ShootRetryBody, ba
         if aug_parts and not frame.prompt_positive:
             pos = ", ".join(aug_parts) + ", " + pos
         body_disp = DispatchBody(
+            **shoot.dispatch_settings,
+            reference_image=shoot.reference_image,
+            reference_source_render_id=shoot.source_render_id,
+            parent_render_id=shoot.source_render_id,
+            edit_instruction=frame.edit_instruction,
             character_id=shoot.character_id,
             dna=per_dna,
             subjects=per_subjects,
