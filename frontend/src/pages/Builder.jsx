@@ -6,6 +6,7 @@ import { catalogSections, usePromptCatalog } from "@/lib/promptCatalog";
 import { useAssistantResearch, updateAssistantResearch } from '@/lib/assistantResearch';
 import VideoModeLinks from "@/components/VideoModeLinks";
 import RandomSceneControls from "@/components/RandomSceneControls";
+import PromptFormatControl from "@/components/PromptFormatControl";
 import { randomSceneSubjects } from "@/lib/randomScenes";
 import { IMAGE_TOOL_KINDS } from "@/components/HomeImageTools";
 import QwenReferenceControls from "@/components/QwenReferenceControls";
@@ -204,6 +205,13 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
   const [raunch, setRaunch] = useState(false);
   const [promptLanguage, setPromptLanguage] = useState("editorial");
   const [promptOverride, setPromptOverride] = useState("");
+  const [promptFormat, setPromptFormat] = useState(() => localStorage.getItem('ultra-prompt-format') === 'compact' ? 'compact' : 'detailed');
+  const changePromptFormat = value => {
+    setPromptFormat(value);
+    localStorage.setItem('ultra-prompt-format', value);
+    setPromptOverride('');
+    setNegativePromptOverride('');
+  };
   const [plainLanguage, setPlainLanguage] = useState("");
   const [negativePromptOverride, setNegativePromptOverride] = useState("");
   const [improvingPrompt, setImprovingPrompt] = useState(false);
@@ -1056,6 +1064,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
         ? { ...activeDna, identity: { ...(activeDna.identity || {}), name: "" } }
         : activeDna;
       return compileModelPrompts({
+        promptFormat,
         promptCatalog,
         promptStyle,
         workflowKind: activeWorkflow?.kind,
@@ -1078,7 +1087,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
       activeFieldLocks, locks,
       promptStyle, activeWorkflow?.kind, activeWorkflow?.name, raunch,
       effectiveEditInstruction, repairInstruction, repairTargets, videoInstruction, preserveUnmentioned,
-      isEnhanceWorkflow, promptCatalog,
+      isEnhanceWorkflow, promptCatalog, promptFormat,
     ]
   );
   const { positive, negative } = compiledPrompt;
@@ -3310,6 +3319,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
                 <div><span className="text-zinc-500">Model</span><div className="font-semibold">{activeWorkflow?.name || "Select a model"}</div></div>
                 <div><span className="text-zinc-500">Output</span><div className="font-semibold">{qualityTier} · {activeRecipeFamily === "image" ? `${renderCount} image${renderCount === 1 ? "" : "s"}` : activeRecipeFamily}</div></div>
               </div>
+              <PromptFormatControl value={promptFormat} onChange={changePromptFormat} meta={compiledPrompt} />
               <details className="rounded-xl border hairline bg-black/20 p-3">
                 <summary className="cursor-pointer text-xs font-semibold text-zinc-300">Prompt preview</summary>
                 <div className="mt-2 max-h-44 overflow-y-auto text-xs leading-relaxed text-zinc-400">{finalPositive || "Choose the subject and scene to build a prompt."}</div>
@@ -3489,7 +3499,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
             {plainLanguage.trim() && <p className="text-xs text-zinc-400">Workflow translation: {translatedPlainLanguage.text || "Describe motion for image-to-video; the source image supplies appearance."}</p>}
             {plainLanguage.trim() && !["qwen_edit", "wan_i2v"].includes(activeCompiler) && resolveReferenceNotes(plainLanguage, activeDna, subjects) !== plainLanguage.trim() && <p className="text-xs text-amber-300">Current controls replace labeled reference notes for body orientation, camera angle, pose, framing and expression in the submitted prompt. Your original notes remain saved here.</p>}
           </div>
-          {isVideoWorkflow || isVariationWorkflow ? <details data-mobile-tools="prompts" className="pane p-4" data-testid={isVideoWorkflow ? "video-motion-preview" : "variation-prompt-preview"}><summary className="cursor-pointer text-xs text-zinc-300">{isVideoWorkflow ? "Motion prompt sent to ComfyUI" : "Variation prompt sent to ComfyUI"}</summary><p className="mt-3 whitespace-pre-wrap text-xs text-zinc-400">{finalPositive}</p></details> : <div className="mobile-tools-panel" data-mobile-tools="prompts"><PromptPreview
+          {isVideoWorkflow || isVariationWorkflow ? <details data-mobile-tools="prompts" className="pane p-4" data-testid={isVideoWorkflow ? "video-motion-preview" : "variation-prompt-preview"}><summary className="cursor-pointer text-xs text-zinc-300">{isVideoWorkflow ? "Motion prompt sent to ComfyUI" : "Variation prompt sent to ComfyUI"}</summary><p className="mt-3 whitespace-pre-wrap text-xs text-zinc-400">{finalPositive}</p></details> : <div className="mobile-tools-panel" data-mobile-tools="prompts">{!isImageFirst && <PromptFormatControl value={promptFormat} onChange={changePromptFormat} meta={compiledPrompt} />}<PromptPreview
             aiProvider={aiProvider}
             positive={finalPositive}
             negative={finalNegative}

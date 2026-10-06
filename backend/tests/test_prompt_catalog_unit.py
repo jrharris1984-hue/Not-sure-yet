@@ -40,7 +40,7 @@ class PromptCatalogTests(unittest.TestCase):
 
 
 class PromptLibraryAssistantTests(unittest.IsolatedAsyncioTestCase):
-    async def run_assistant(self, response):
+    async def run_assistant(self, response, compact=False):
         import ast
         import json
         from unittest.mock import AsyncMock
@@ -52,12 +52,19 @@ class PromptLibraryAssistantTests(unittest.IsolatedAsyncioTestCase):
         exec(compile(ast.Module(body=[node],type_ignores=[]),'<assistant-test>','exec'),namespace)
         class Body:
             def model_dump_json(self):return '{"label":"Morning mist","keywords":"gentle mist"}'
-        return await namespace['ai_prompt_library'](Body()),chat
+        body=Body(); body.compact=compact
+        return await namespace['ai_prompt_library'](body),chat
     async def test_returns_reviewable_phrase_and_instructs_model_to_preserve_selection(self):
         result,chat=await self.run_assistant({'keywords':'gentle morning mist'})
         self.assertEqual(result,{'keywords':'gentle morning mist'})
         self.assertIn('not a whole scene',chat.call_args.args[0])
         self.assertTrue(chat.call_args.kwargs['response_format_json'])
+    async def test_compact_assistance_preserves_attributes_and_limits_length(self):
+        result,chat=await self.run_assistant({'keywords':'morning mist'}, compact=True)
+        self.assertEqual(result,{'keywords':'morning mist'})
+        self.assertIn('retain every distinct',chat.call_args.args[0])
+        with self.assertRaises(ValueError):await self.run_assistant({'keywords':'x'*501}, compact=True)
+
     async def test_rejects_malformed_empty_or_oversized_output(self):
         for response in [[],{}, {'keywords':''},{'keywords':['mist']},{'keywords':'x'*1501}]:
             with self.assertRaises(ValueError):await self.run_assistant(response)
@@ -110,3 +117,20 @@ class BuilderWorkflowVisibilitySettingsTests(unittest.IsolatedAsyncioTestCase):
             with self.assertRaises(ValueError):
                 await handler({'builder_hidden_workflow_ids':hidden})
             update.assert_not_awaited()
+
+class CompactCatalogTests(unittest.TestCase):
+    def test_short_wording_survives_save_and_roundtrip(self):
+        library = PromptCatalogTests().library()
+        option = library['sections'][0]['fields'][0]['options'][0]
+        option.update(short='left window light', short_tags='window_light, from_left')
+        result = validate_prompt_catalog(library)
+        self.assertEqual(result, library)
+        self.assertEqual(validate_prompt_catalog(result), result)
+
+    def test_rejects_invalid_short_wording(self):
+        for field in ['short', 'short_tags']:
+            for value in [None, 12, 'x' * 501]:
+                library = PromptCatalogTests().library()
+                library['sections'][0]['fields'][0]['options'][0][field] = value
+                with self.assertRaises(ValueError):
+                    validate_prompt_catalog(library)
