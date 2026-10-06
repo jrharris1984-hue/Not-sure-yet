@@ -52,7 +52,8 @@ function buildField(base, saved) {
 export const catalogSelection = (dna, section, field) => dna?._catalogSelections?.[section]?.[field] ?? dna?.[section]?.[field];
 
 // Preset prose must not reintroduce traits owned by independent controls.
-function physiqueKeywords(keywords, field, physique = {}) {
+function physiqueKeywords(keywords, field, dna = {}) {
+  const physique = dna.physique || {};
   const controls = [
     ['height', /\b(?:petite|tall|short|statuesque|towering|height|stature)\b/i],
     ['hips', /\bhips?\b|waist-to-hip/i, 'hip_scale'],
@@ -61,10 +62,23 @@ function physiqueKeywords(keywords, field, physique = {}) {
     ['thighs', /\bthighs?\b/i, 'thigh_scale'],
     ['legs', /\blegs?\b|inseam|limbs/i],
     ['body_type', /\b(?:athletic|muscular|fitness|petite) build\b|fitness physique/i],
+    ['bust', /\b(?:breasts?|bust|boobs?|tits?)\b/i, 'bust_scale'],
+    ['butt', /\b(?:butt(?:ocks)?|glutes?|booty|ass)\b/i, 'butt_scale'],
   ];
-  return keywords.split(',').map(clause => clause.trim()).filter(clause => clause && !controls.some(([key, pattern, slider]) =>
-    field !== key && (physique[key] || slider && Number(physique[slider]) > 0) && pattern.test(clause)
-  )).join(', ');
+  const family = key => ['bust', 'bust_shape', 'implant_volume'].includes(key) ? 'bust'
+    : ['butt', 'glute_shape'].includes(key) ? 'butt' : key;
+  return keywords.split(',').map(clause => clause.trim()
+    .replace(/\b(?:female|male)\s+/gi, '')
+    .replace(/\b(?:woman|man)\b/gi, 'person')
+  ).filter(clause => {
+    if (!clause) return false;
+    if (dna.skin?.freckles === 'none' && /freckl/i.test(clause)) return false;
+    if (field === 'body_type' && physique.muscularity != null && physique.muscularity !== ''
+        && Number.isFinite(Number(physique.muscularity)) && Number(physique.muscularity) <= 30
+        && /\bmuscl|\bmuscular|\bbodybuilder|\bripped|\bdefined abs|\btoned|\bgym-built/i.test(clause)) return false;
+    return !controls.some(([key, pattern, slider]) => family(field) !== family(key)
+      && (physique[key] || slider && Number(physique[slider]) > 0) && pattern.test(clause));
+  }).join(', ');
 }
 
 export function catalogDna(dna = {}, config = catalog, preserveSelections = false) {
@@ -78,8 +92,10 @@ export function catalogDna(dna = {}, config = catalog, preserveSelections = fals
       const translate = value => {
         const option = field.options?.find(item => item.value === value);
         const keywords = option?.keywords.trim();
-        const phrase = section.key === 'physique' && keywords ? physiqueKeywords(keywords, field.key, dna.physique) : keywords;
-        return option ? phrase || (String(value).startsWith('custom_') ? option.label : value) : String(value || '').startsWith('custom_') ? '' : value;
+        const phrase = section.key === 'physique' && keywords ? physiqueKeywords(keywords, field.key, dna) : keywords;
+        // A supplied override filtered down to nothing must stay inactive,
+        // rather than falling back to the label that caused the conflict.
+        return option ? keywords ? phrase : (String(value).startsWith('custom_') ? option.label : value) : String(value || '').startsWith('custom_') ? '' : value;
       };
       const value = dna[section.key][field.key];
       if (value !== undefined && ['chips','chips_multi','pose_chips'].includes(field.type)) result[section.key][field.key] = Array.isArray(value) ? value.map(translate).filter(Boolean) : translate(value);
