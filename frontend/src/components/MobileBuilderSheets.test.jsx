@@ -71,7 +71,6 @@ test('detail drag tracks movement, returns on cancellation, and animates dismiss
 test('switching categories preserves the expanded sheet height', () => {
   const onSection = jest.fn(); paint({ onSection });
   const sheet = container.querySelector('[data-testid="primary-creation-sheet"]');
-  act(() => sheet.querySelector('.sheet-handle').click());
   expect(sheet.className).toContain('sheet-expanded');
   click('Scenario'); expect(onSection).toHaveBeenCalledWith('scenario');
   paint({ onSection, section: sections[1] });

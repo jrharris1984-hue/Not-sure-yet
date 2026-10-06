@@ -1,3 +1,4 @@
+import { initializeStudioTheme } from "@/lib/studioThemes";
 import { WebPromptResearchOptions, PromptResearchNotes } from '@/components/WebPromptResearch';
 import { useAssistantResearch } from '@/lib/assistantResearch';
 import { useEffect, useRef } from "react";
@@ -33,6 +34,7 @@ function ComfyStatus() {
 
 export default function AppShell({ children }) {
   const loc = useLocation();
+  useEffect(() => initializeStudioTheme(), []);
   const research = useAssistantResearch();
   const isBuilder = loc.pathname.startsWith("/character");
   const mainRef = useRef(null);

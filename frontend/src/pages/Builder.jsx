@@ -1,3 +1,4 @@
+import { confirmPermanentDelete } from "@/lib/permanentDeleteConfirmation";
 import { applyScenarioSelection } from "@/lib/scenarioSelection";
 import { catalogSections, usePromptCatalog } from "@/lib/promptCatalog";
 import { useAssistantResearch, updateAssistantResearch } from '@/lib/assistantResearch';
@@ -116,7 +117,11 @@ async function waitForQueuedRender(queueId, onUpdate) {
 
 export default function Builder({ studio = "standard", imageToolId = "" }) {
   const promptCatalog = usePromptCatalog();
-  const SECTIONS = useMemo(() => catalogSections(BASE_SECTIONS, promptCatalog), [promptCatalog]);
+  const SECTIONS = useMemo(() => {
+    const sections = catalogSections(BASE_SECTIONS, promptCatalog);
+    const scenario = sections.find(section => section.key === "scenario");
+    return scenario ? [scenario, ...sections.filter(section => section.key !== "scenario")] : sections;
+  }, [promptCatalog]);
   const { id, section: sectionParam } = useParams();
   const isNew = !id;
   const studioProfile = STUDIO_PROFILES[studio];
@@ -3786,7 +3791,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
                     </button>
                     <button type="button"
                       onClick={async () => {
-                        if (!window.confirm("Permanently delete this render and its output files from your hard drive? This cannot be undone.")) return;
+                        if (!confirmPermanentDelete("Permanently delete this render and its output files from your hard drive? This cannot be undone.")) return;
                         try {
                           const renderId = activeRender.render_id || activeRender.id;
                           await endpoints.deleteRender(renderId);
