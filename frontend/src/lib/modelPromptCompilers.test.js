@@ -133,7 +133,7 @@ describe("model-specific prompt compilers", () => {
     dna.camera = { ...dna.camera, lens: "85mm", angle: "eye-level" };
     const result = compileModelPrompts({ promptStyle: "krea2", dna });
     const subjectAt = result.positive.indexOf("38-year-old adult woman");
-    const poseAt = result.positive.indexOf("standing hip out");
+    const poseAt = result.positive.indexOf("standing with hip pushed out");
     const cameraAt = result.positive.indexOf("85mm lens");
     const styleAt = result.positive.indexOf("Photorealistic editorial photograph");
     expect(subjectAt).toBeGreaterThanOrEqual(0);

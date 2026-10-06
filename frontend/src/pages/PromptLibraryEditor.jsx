@@ -1,3 +1,4 @@
+import BulkChoiceEditor from '@/components/BulkChoiceEditor';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { endpoints } from '@/lib/api';
@@ -110,6 +111,8 @@ export default function PromptLibraryEditor() {
               {promptPreview?.value===option.value && <details open className="rounded-lg border hairline p-3"><summary className="text-sm text-cyan-200">Compiled prompt preview</summary><p className="my-2 text-xs text-zinc-400">Uses a default character and your draft library. Other selections and model-specific priorities can change the final wording.</p><textarea aria-label="Compiled positive preview" className={fieldClass} rows={5} readOnly value={promptPreview.positive}/>{promptPreview.negative && <textarea aria-label="Compiled negative preview" className={fieldClass} rows={3} readOnly value={promptPreview.negative}/>}</details>}
               <div className="flex gap-2"><button className={buttonClass} disabled={!option.label.trim()} onClick={() => assist(option)}>Improve keywords with {provider}</button><button className={buttonClass} onClick={() => changeField({...selectedField,options:selectedField.options.filter(item => item.value!==option.value)})}>Remove choice</button></div>
             </div>)}
+            <BulkChoiceEditor key={`${sectionKey}-${fieldKey}`} field={selectedField} getKeywords={defaultKeywords}
+              onApply={options => {changeField({...selectedField,options});setFilter('');setMessage('Batch applied to draft. Save library to use these changes.');}} />
             <button className={buttonClass} onClick={() => {const value=newCatalogKey();changeField({...selectedField,options:[...selectedField.options,{value,label:'New choice',keywords:'',group:''}]});setOptionKey(value);setBrowseLevel('choice');setFilter('');}}>Add choice</button>
           </> : <p className="text-xs text-zinc-400">This built-in control keeps its existing behavior and range. You can rename it here.</p>}
         </div>}
