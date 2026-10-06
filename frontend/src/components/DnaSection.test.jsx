@@ -100,3 +100,24 @@ test('full-set mode disables separate garments and Custom reactivates saved choi
     expect(container.querySelector('[data-testid="chip-wardrobe-outfit_set_color-tab-Classic"]').closest('fieldset').disabled).toBe(true);
   } finally { act(() => root.unmount()); container.remove(); }
 });
+
+test('full set lingerie is optional and unavailable coverage choices disappear', () => {
+  global.IS_REACT_ACT_ENVIRONMENT = true;
+  const container=document.createElement('div');document.body.appendChild(container);
+  const root=createRoot(container);
+  const section=SECTIONS.find(s=>s.key==='wardrobe');
+  let value={outfit_mode:'full',outfit_set:'tailored pantsuit',set_lingerie_mode:'matching',set_lingerie:'saved layer',exposure_mode:'lingerie showing'};
+  const paint=()=>root.render(<DnaSection section={{...section,fields:section.fields.filter(f=>['set_lingerie_mode','set_lingerie','exposure_mode'].includes(f.key))}} value={value} onChange={next=>{value=next;paint();}}/>);
+  try {
+    act(paint);
+    expect(container.querySelector('[data-testid="chip-wardrobe-exposure_mode-lingerie-only"]')).not.toBeNull();
+    act(()=>container.querySelector('[data-testid="chip-wardrobe-set_lingerie_mode-none"]').click());
+    expect(value.exposure_mode).toBe('use selected outfit');
+    expect(value.set_lingerie).toBe('saved layer');
+    expect(container.querySelector('[data-testid="chip-wardrobe-exposure_mode-lingerie-only"]')).toBeNull();
+    expect(container.querySelector('[data-testid="chip-wardrobe-exposure_mode-lingerie-showing"]')).toBeNull();
+    expect(container.textContent).toContain('Choose Include lingerie');
+    act(()=>container.querySelector('[data-testid="chip-wardrobe-set_lingerie_mode-matching"]').click());
+    expect(container.querySelector('[data-testid="chip-wardrobe-exposure_mode-lingerie-only"]')).not.toBeNull();
+  } finally {act(()=>root.unmount());container.remove();}
+});
