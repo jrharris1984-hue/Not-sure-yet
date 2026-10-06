@@ -5,7 +5,7 @@ import { applyPhotographicGuidance } from "./photographicGuidance";
 import { resolveBuilderControls, sliderPromptSignature } from "./builderControlResolution";
 import { footVisibility } from './footVisibility';
 import { resolvePhysiqueControls, bustShapePrompt, photographicPrompt } from "./physiqueControls";
-import { preserveGeneralSelections } from "./selectionFidelity";
+import { preserveGeneralSelections, subjectPromptText } from "./selectionFidelity";
 import { applyCastAppearance, castAppearancePrompt } from "./castAppearance";
 import { photographyPosePrompt } from "@/lib/photographyPoses";
 import { gluteSizePrompt, gluteShapePrompt } from "@/lib/gluteControls";
@@ -42,16 +42,6 @@ const clean = (value) => String(value || "").replace(/\s+/g, " ").trim();
 const compactWords = (value, limit) => {
   const words = clean(value).split(" ").filter(Boolean);
   return words.length <= limit ? words.join(" ") : words.slice(0, limit).join(" ");
-};
-
-const dedupeClauses = (value) => {
-  const seen = new Set();
-  return clean(value).split(/,\s*/).filter((part) => {
-    const key = part.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
-    if (!key || seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  }).join(", ");
 };
 
 const basePrompts = ({ dna, subjects, isMulti, raunch }) => (
@@ -1200,7 +1190,7 @@ export function compileModelPrompts(options = {}) {
   const supportingFootDetails = [];
   const controls = resolvedSubjects.map((subject, index) => {
     const d = subject.dna;
-    const values = sliderPromptSignature(d);
+    const values = sliderPromptSignature(d, subjectPromptText(protectedResult.positive, subject.label || String.fromCharCode(65 + index), isMulti));
     const footDetails = Object.entries(d.feet || {}).filter(([key, value]) =>
       key !== 'composition_mode' && !['framing', 'sole_presentation', 'foot_pose', 'foot_act'].includes(key)
       && (Array.isArray(value) ? value.length : value)
