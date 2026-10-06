@@ -747,8 +747,7 @@ export default function Gallery() {
 
             {/* Image column */}
             <GalleryCarousel ref={carousel} current={lightbox}
-              previous={displayedOutput.length > 1 && lightboxIndex >= 0 ? displayedOutput[(lightboxIndex - 1 + displayedOutput.length) % displayedOutput.length] : null}
-              next={displayedOutput.length > 1 && lightboxIndex >= 0 ? displayedOutput[(lightboxIndex + 1) % displayedOutput.length] : null}
+              items={displayedOutput}
               onNavigate={commitAdjacent} outputUrl={primaryOutput} isVideo={isVideoUrl} />
 
             {/* Meta column */}
