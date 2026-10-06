@@ -1,4 +1,5 @@
 from ollama_compiler import validate_ollama_prompt
+from shoot_progress import refresh_shoot_progress
 from wardrobe_catalog_upgrade import upgrade_wardrobe_catalog
 from downloaded_models import resolve_downloaded_models, patch_ltx_video
 from prompt_catalog import validate_prompt_catalog
@@ -3505,7 +3506,6 @@ async def _run_shoot_background(shoot_id: str):
     await db.shoots.update_one({"id": shoot_id}, {"$set": {"status": "running", "updated_at": now_iso()}})
 
     total = len(shoot.frames)
-    any_failed = False
     for i, frame in enumerate(shoot.frames):
         frame_dict = frame.model_dump()
         original_subjects = char.get("subjects") or []
@@ -3554,11 +3554,8 @@ async def _run_shoot_background(shoot_id: str):
             status = r_doc.get("status", "failed")
             frame.render_id = r_doc.get("id")
             frame.status = status
-            if status in ("failed", "offline"):
-                any_failed = True
         except Exception as e:
             frame.status = "failed"
-            any_failed = True
             logger.warning(f"shoot frame {i} dispatch error: {e}")
 
         # Update the shoot with progress after each frame
@@ -3566,17 +3563,19 @@ async def _run_shoot_background(shoot_id: str):
             {"id": shoot_id},
             {"$set": {
                 "frames": [f.model_dump() for f in shoot.frames],
-                "progress": (i + 1) / total if total else 1.0,
+                "progress": sum(f.status in {"done", "failed", "offline", "cancelled", "rejected"} for f in shoot.frames) / total if total else 1.0,
                 "updated_at": now_iso(),
             }},
         )
         # Small pacing gap so ComfyUI can queue cleanly
         await asyncio.sleep(0.5)
 
-    final_status = "done" if not any_failed else "failed"
+    # Submission completion is not image completion; read endpoints reconcile
+    # the shoot against the latest render results while ComfyUI drains its queue.
+    final_status = "failed" if all(f.status in {"failed", "offline", "cancelled", "rejected"} for f in shoot.frames) else "running"
     await db.shoots.update_one(
         {"id": shoot_id},
-        {"$set": {"status": final_status, "progress": 1.0, "updated_at": now_iso()}},
+        {"$set": {"status": final_status, "updated_at": now_iso()}},
     )
 
 
@@ -3643,11 +3642,11 @@ async def list_shoots(character_id: Optional[str] = None, limit: int = 100):
         query["character_id"] = character_id
     docs = await db.shoots.find(query, {"_id": 0}).sort("created_at", -1).to_list(limit)
     render_ids = [f.get("render_id") for shoot in docs for f in shoot.get("frames", []) if f.get("render_id")]
-    renders = await db.renders.find({"id": {"$in": render_ids}}, {"_id": 0, "id": 1, "output_files": 1, "output_variants": 1}).to_list(len(render_ids)) if render_ids else []
+    renders = await db.renders.find({"id": {"$in": render_ids}}, {"_id": 0, "id": 1, "status": 1, "output_files": 1, "output_variants": 1}).to_list(len(render_ids)) if render_ids else []
     by_id = {render["id"]: render for render in renders}
     for shoot in docs:
         frames = shoot.get("frames") or []
-        shoot["rendered_count"] = sum(bool((by_id.get(frame.get("render_id")) or {}).get("output_files")) for frame in frames)
+        refresh_shoot_progress(shoot, [by_id.get(frame.get("render_id")) for frame in frames])
         preferred = shoot.get("cover_frame_index")
         order = ([preferred] if isinstance(preferred, int) and 0 <= preferred < len(frames) else []) + list(range(len(frames)))
         for index in order:
@@ -3692,7 +3691,7 @@ async def get_shoot(sid: str):
     by_id = {r["id"]: r for r in renders}
     # Keep one render slot for every frame, including pending frames without a render ID.
     doc["renders"] = [by_id.get(frame.get("render_id")) for frame in doc.get("frames", [])]
-    doc["rendered_count"] = sum(bool((render or {}).get("output_files")) for render in doc["renders"])
+    refresh_shoot_progress(doc, doc["renders"])
     return doc
 
 
