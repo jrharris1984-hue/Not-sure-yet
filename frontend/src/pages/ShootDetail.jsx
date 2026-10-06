@@ -194,6 +194,7 @@ export default function ShootDetail() {
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+        <Link to="/queue" className="chip text-xs">View render queue</Link>
         {images.length > 0 && <button type="button" onClick={() => { setSlideDirection(1); setActiveFrame(images[0].index); }}
           data-testid="btn-view-shoot-photos" className="inline-flex items-center gap-2 rounded-lg bg-amber-500 px-3 py-2 text-xs font-semibold text-black">
           <Camera className="h-4 w-4" />View photos ({images.length})
