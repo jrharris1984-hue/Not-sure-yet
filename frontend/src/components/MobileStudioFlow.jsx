@@ -52,7 +52,7 @@ export const SIMPLE_FIELD_KEYS = {
   face: ["eye_shape", "eye_color", "jawline", "lips", "expression"],
   hair: ["style", "length", "color"],
   feet: ["sole_presentation", "toes", "arch", "pedicure", "foot_size", "foot_state", "hosiery", "foot_act", "framing", "foot_pose", "toe_length", "sole_texture", "pedicure_art", "toenail_shape", "foot_accessories", "ground_surface"],
-  wardrobe: ["exposure_mode", "outfit_preset", "outfit_set", "outfit_set_color", "dress_style", "skirt_style", "garment_color", "footwear", "hosiery_type", "hosiery_color", "hosiery_pattern", "hosiery_denier", "heel_type", "heel_color", "heel_height", "nail_color", "glasses_style"],
+  wardrobe: ["exposure_mode", "outfit_preset", "outfit_set", "outfit_set_color", "set_lingerie_mode", "set_lingerie", "dress_style", "skirt_style", "garment_color", "footwear", "hosiery_type", "hosiery_color", "hosiery_pattern", "hosiery_denier", "heel_type", "heel_color", "heel_height", "nail_color", "glasses_style"],
   pose: ["action", "angle", "distance", "body_language", "explicit_level"],
   scene: ["environment", "indoor_outdoor", "era"],
   lighting: ["source", "style", "mood"],

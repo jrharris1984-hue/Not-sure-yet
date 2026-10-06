@@ -227,7 +227,9 @@ export const SECTIONS = [
         { name: "Cultural fashion sets", options: ["Bollywood royal lehenga choli with dupatta, jewelry and embroidered heels", "Indian silk sari with matching blouse, bangles and sandals", "embroidered anarkali with dupatta, earrings and embellished flats", "formal embroidered kaftan with matching jewelry and sandals", "ornate abaya with matching scarf, jewelry and shoes"] },
         ...ADDITIONAL_OUTFIT_GROUPS, LAYERED_OUTFIT_GROUP,
       ] },
-      { key: "set_lingerie", type: "chips", label: "Lingerie underneath", optionLabels: OUTFIT_SET_LABELS, groups: SET_LINGERIE_GROUPS, help: "Leave unset to use the full set’s matching lingerie. Clothing coverage reveals this layer or shows it alone." },
+      { key: "set_lingerie_mode", type: "chips", label: "Underneath layer", options: ["matching", "none"], defaultValue: "matching",
+        optionLabels: { matching: "Include lingerie", none: "No lingerie underneath" }, help: "Optional for complete sets. No lingerie underneath keeps the selected outer outfit and disables lingerie-only coverage. A lingerie set selected as the main outfit stays on." },
+      { key: "set_lingerie", type: "chips", label: "Lingerie underneath", optionLabels: OUTFIT_SET_LABELS, groups: SET_LINGERIE_GROUPS, help: "Available when Include lingerie is selected. Leave unset to use the full set’s matching lingerie; clothing coverage reveals this layer or shows it alone." },
       { key: "outfit_set_color", type: "chips", label: "Set color", groups: [
         { name: "Classic", options: ["black", "white", "ivory", "red", "burgundy", "navy", "gold", "silver"] },
         { name: "Bright", options: ["emerald", "royal blue", "hot pink", "saffron", "turquoise", "purple"] },

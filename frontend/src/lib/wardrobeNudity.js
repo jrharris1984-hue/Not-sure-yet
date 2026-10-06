@@ -5,6 +5,8 @@ export const EXPOSURE_CHOICES = [
 ];
 
 export function wardrobeExposure(wardrobe = {}) {
+  if (wardrobe.set_lingerie_mode === 'none' && (wardrobe.outfit_mode === 'full' || (!wardrobe.outfit_mode && wardrobe.outfit_set))
+      && ['lingerie showing', 'lingerie only'].includes(wardrobe.exposure_mode)) return 'use selected outfit';
   if (EXPOSURE_CHOICES.includes(wardrobe.exposure_mode)) return wardrobe.exposure_mode;
   // Interpret saved recipes without mutating them. New selections override these fields.
   const level = Math.max(0, Math.min(100, Number(wardrobe.nudity_level) || 0));

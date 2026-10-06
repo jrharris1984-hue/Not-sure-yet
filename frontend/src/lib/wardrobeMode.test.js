@@ -1,9 +1,42 @@
 import { ADDITIONAL_OUTFIT_GROUPS, OUTFIT_SET_LABELS } from './completeOutfitSets';
-import { wardrobeMode, wardrobeFieldDisabled, selectWardrobeMode, editWardrobeField } from './wardrobeMode';
+import { wardrobeMode, wardrobeFieldDisabled, selectWardrobeMode, editWardrobeField, resolveWardrobeMode } from './wardrobeMode';
 import { DEFAULT_DNA, SECTIONS, buildPrompts } from './dna';
 import { resolveBuilderControls } from './builderControlResolution';
 import { compileModelPrompts } from './modelPromptCompilers';
 const outfit = ADDITIONAL_OUTFIT_GROUPS[0].options[0];
+const outerSet = 'tailored women’s pantsuit with a matching blouse, handbag and pumps';
+
+test('underneath lingerie can be disabled and restored without losing the saved selection', () => {
+  const original={outfit_mode:'full',outfit_set:outerSet,set_lingerie:'saved lingerie choice',exposure_mode:'lingerie showing'};
+  const disabled=editWardrobeField(original,'set_lingerie_mode','none');
+  expect(disabled.exposure_mode).toBe('use selected outfit');
+  expect(disabled.set_lingerie).toBe('saved lingerie choice');
+  expect(wardrobeFieldDisabled('set_lingerie',disabled)).toBe(true);
+  expect(wardrobeFieldDisabled('set_lingerie_mode',disabled)).toBe(false);
+  expect(editWardrobeField(disabled,'exposure_mode','lingerie only')).toBe(disabled);
+  expect(resolveWardrobeMode(disabled)).toMatchObject({outfit_set:outerSet,set_lingerie:'',underwear:''});
+  const enabled=editWardrobeField(disabled,'set_lingerie_mode','matching');
+  expect(resolveWardrobeMode(enabled).set_lingerie).toBe('saved lingerie choice');
+  expect(wardrobeFieldDisabled('set_lingerie',enabled)).toBe(false);
+  expect(wardrobeFieldDisabled('set_lingerie_mode',{outfit_mode:'custom'})).toBe(true);
+  expect(editWardrobeField({...disabled,outfit_mode:'custom'},'exposure_mode','lingerie only').exposure_mode).toBe('lingerie only');
+  expect(original.exposure_mode).toBe('lingerie showing');
+});
+
+test.each(['chroma','krea2','standard','pony','sdxl','qwen_image','wan_t2v'])('%s keeps the outer set when an imported recipe disables its lingerie layer', promptStyle => {
+  const dna={...DEFAULT_DNA,wardrobe:{outfit_mode:'full',outfit_set:outerSet,set_lingerie_mode:'none',set_lingerie:'stored lace lingerie',exposure_mode:'lingerie only'}};
+  const result=compileModelPrompts({promptStyle,dna});
+  expect(result.positive).toContain('pantsuit');
+  expect(result.positive).not.toMatch(/matching satin bra|stored lace lingerie|lingerie only|reveal lingerie/);
+  expect(dna.wardrobe.set_lingerie).toBe('stored lace lingerie');
+});
+
+test('disabling the extra layer preserves a lingerie set worn as the main outfit', () => {
+  const value={outfit_mode:'full',outfit_set:outfit,set_lingerie_mode:'none',exposure_mode:'use selected outfit'};
+  expect(resolveWardrobeMode(value).outfit_set).toBe(outfit);
+  const uniform={outfit_set:'French maid dress with apron, matching lingerie, stockings and heels',set_lingerie_mode:'none'};
+  expect(resolveWardrobeMode(uniform).outfit_set).toBe('French maid dress with apron, stockings and heels');
+});
 test('adds 75 unique complete sets including 60 decade and modern lingerie sets', () => {
   const options = ADDITIONAL_OUTFIT_GROUPS.flatMap(group => group.options);
   expect(options).toHaveLength(75); expect(new Set(options).size).toBe(75);
