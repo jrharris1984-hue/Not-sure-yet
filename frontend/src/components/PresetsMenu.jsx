@@ -1,3 +1,4 @@
+import { CHARACTER_TYPE_PRESETS, CHARACTER_TYPE_GROUPS, applyCharacterTypePreset } from '@/lib/characterTypePresets';
 import { WebPromptResearchOptions } from '@/components/WebPromptResearch';
 import { useState, useMemo } from "react";
 import { createPortal } from "react-dom";
@@ -34,7 +35,8 @@ export default function PresetsMenu({ onApply, currentDna, sectionLocks = {}, fi
     window.dispatchEvent(new CustomEvent("ultra-studio:overflow-close"));
   };
   const [q, setQ] = useState("");
-  const [category, setCategory] = useState("stars");
+  const [typeGroup, setTypeGroup] = useState("All");
+  const [category, setCategory] = useState("types");
   const [description, setDescription] = useState("");
   const [draft, setDraft] = useState(null);
   const [heritageMode, setHeritageMode] = useState("complete");
@@ -50,7 +52,7 @@ export default function PresetsMenu({ onApply, currentDna, sectionLocks = {}, fi
     enabled: open,
   });
 
-  const source = category === "heritage"
+  const source = category === "types" ? CHARACTER_TYPE_PRESETS : category === "heritage"
     ? HERITAGE_PRESETS
     : category === "storybook"
       ? STORYBOOK_PRESETS
@@ -88,11 +90,12 @@ export default function PresetsMenu({ onApply, currentDna, sectionLocks = {}, fi
 
   const filtered = useMemo(() => {
     const query = q.trim().toLowerCase();
-    if (!query) return source;
-    return source.filter(
+    const grouped = category === "types" && typeGroup !== "All" ? source.filter(p => p.group === typeGroup) : source;
+    if (!query) return grouped;
+    return grouped.filter(
       (p) => p.name.toLowerCase().includes(query) || (p.tags || []).some((t) => t.toLowerCase().includes(query))
     );
-  }, [q, source]);
+  }, [q, source, category, typeGroup]);
 
   const apply = (preset, requestedMode) => {
     const isHeritage = category === "heritage" || requestedMode === "variation";
@@ -112,6 +115,8 @@ export default function PresetsMenu({ onApply, currentDna, sectionLocks = {}, fi
         { density: heritageDensity }
       );
     }
+
+    if (category === "types") next = applyCharacterTypePreset(currentDna, preset);
 
     onApply(next, isHeritage ? { type: "heritage", cast: heritageCast } : { type: "preset" });
     if (isHeritage) {
@@ -157,8 +162,9 @@ export default function PresetsMenu({ onApply, currentDna, sectionLocks = {}, fi
                 <X className="h-4 w-4" />
               </button>
             </div>
-            <div className="px-3 pt-3 grid grid-cols-4 gap-1.5 shrink-0" role="tablist" aria-label="Preset categories">
+            <div className="px-3 pt-3 flex gap-1.5 overflow-x-auto shrink-0" role="tablist" aria-label="Preset categories">
               {[
+                ["types", "Character types"],
                 ["stars", "Styles"],
                 ["heritage", "Heritage"],
                 ["storybook", "Storybook"],
@@ -166,11 +172,15 @@ export default function PresetsMenu({ onApply, currentDna, sectionLocks = {}, fi
               ].map(([key, label]) => (
                 <button key={key} type="button" role="tab" aria-selected={category === key}
                   onClick={() => { setCategory(key); setQ(""); }}
-                  className={`min-w-0 rounded-lg border px-1.5 py-2 text-[11px] sm:text-xs font-semibold truncate ${category === key ? "border-rose-400 bg-rose-500/15 text-rose-200" : "hairline text-zinc-400"}`}>
+                  className={`shrink-0 rounded-lg border px-3 py-2 text-[11px] sm:text-xs font-semibold truncate ${category === key ? "border-rose-400 bg-rose-500/15 text-rose-200" : "hairline text-zinc-400"}`}>
                   {label}
                 </button>
               ))}
             </div>
+            {category === "types" && <div className="px-3 pt-3 space-y-2">
+              <div className="flex gap-2 flex-wrap" aria-label="Character type groups">{CHARACTER_TYPE_GROUPS.map(group => <button key={group} type="button" className={`chip ${typeGroup === group ? 'active' : ''}`} aria-pressed={typeGroup === group} onClick={() => setTypeGroup(group)}>{group}</button>)}</div>
+              <p className="text-xs text-zinc-400">Adult, editable starting points. Keeps heritage, cast and unrelated selections. Cosmetic looks use realistic human skin.</p>
+            </div>}
             {category === "heritage" && (
               <div className="px-3 py-3 border-b hairline bg-amber-500/[0.04] space-y-2" data-testid="heritage-generation-options">
                 <div>
@@ -285,6 +295,7 @@ export default function PresetsMenu({ onApply, currentDna, sectionLocks = {}, fi
                   <button onClick={() => apply(p)} data-testid={`preset-${p.name.replace(/\s+/g, "-")}`}
                     className="w-full text-left p-3 pr-10 rounded-lg hover:bg-rose-500/5">
                     <div className="font-display font-bold text-sm">{p.name}</div>
+                    {p.description && <p className="mt-1 text-xs text-zinc-400">{p.description}</p>}
                     <div className="mt-1.5 flex flex-wrap gap-1">
                       {(p.tags || []).map((t) => (
                         <span key={t} className="text-[10px] font-mono uppercase tracking-widest text-rose-300/90 bg-rose-500/10 border border-rose-500/30 rounded-full px-1.5 py-0.5">{t}</span>
