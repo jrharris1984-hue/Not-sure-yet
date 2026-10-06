@@ -1,4 +1,5 @@
 import { gluteShapePrompt } from './gluteControls';
+import { catalogSelection } from './promptCatalog';
 
 export const BUST_SHAPES = {
   natural: 'natural breast contour with realistic weight',
@@ -31,9 +32,10 @@ export function resolvePhysiqueControls(dna = {}) {
     adjustments.push('Used detailed physique controls instead of overlapping proportions notes.');
   }
   const waist = Number(ph.waist_scale || 0), hips = Number(ph.hip_scale || 0);
-  if ((['hourglass', 'pear', 'bombshell'].includes(ph.body_type) && (waist >= 60 || (hips > 0 && hips <= 30)))
-      || (ph.body_type === 'apple' && waist > 0 && waist <= 40)
-      || (ph.body_type === 'amazonian' && ['petite', 'short'].includes(ph.height))) {
+  const bodyType = catalogSelection(resolved, 'physique', 'body_type');
+  if ((['hourglass', 'pear', 'bombshell'].includes(bodyType) && (waist >= 60 || (hips > 0 && hips <= 30)))
+      || (bodyType === 'apple' && waist > 0 && waist <= 40)
+      || (bodyType === 'amazonian' && ['petite', 'short'].includes(ph.height))) {
     adjustments.push(`Removed the ${ph.body_type} preset because it conflicts with the selected regional proportions.`);
     ph.body_type = '';
   }
