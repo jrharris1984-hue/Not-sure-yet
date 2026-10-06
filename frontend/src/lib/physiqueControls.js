@@ -27,6 +27,13 @@ export function resolvePhysiqueControls(dna = {}) {
   if (Number(ph.implant_volume) > 0) {
     ph.bust = ''; ph.bust_scale = 0; ph.bust_shape = '';
   }
+  // Imported size choices sometimes include an augmentation specification.
+  // A separately selected natural contour owns that choice.
+  const naturalContour = /\bnatural\b|\bunaugmented\b/i.test(ph.bust_shape || '');
+  if (naturalContour && /\bimplants?\b|\baugmented\b|\bfake\b|\bbolt-ons?\b/i.test(ph.bust || '')) {
+    ph.bust = '';
+    adjustments.push('The selected natural contour overrides augmentation wording bundled into the size preset.');
+  }
   if (detailed && ph.proportions) {
     ph.proportions = '';
     adjustments.push('Used detailed physique controls instead of overlapping proportions notes.');
