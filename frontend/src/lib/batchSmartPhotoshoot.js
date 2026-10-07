@@ -263,6 +263,102 @@ export const SMART_PHOTOSHOOT_PRESETS = Object.fromEntries(
   )
 );
 
+const escapeRegex = value => String(value || "").replace(/[.*+?^\${}()|[\]\\]/g, "\\export const SMART_PHOTOSHOOT_PRESETS = Object.fromEntries(
+  SMART_SHOOT_CATEGORIES.flatMap(category =>
+    category.presets.map(preset => [preset.key, { ...preset, category: category.key, categoryLabel: category.label }])
+  )
+);
+");
+const matcherFromText = value => {
+  const parts = String(value || "").split("|").map(part => part.trim()).filter(Boolean);
+  return parts.length ? new RegExp(parts.map(escapeRegex).join("|"), "i") : null;
+};
+
+export const CUSTOM_POSE_GROUP_OPTIONS = [
+  ["", "Any compatible pose"],
+  ["portrait standing|portrait", "Standing / portrait"],
+  ["portrait seated|seated", "Seated"],
+  ["relaxed leaning", "Leaning"],
+  ["natural movement|movement", "Movement"],
+  ["interaction|candid", "Interaction / candid"],
+  ["angles|composition", "Angles / composition"],
+];
+
+export const CUSTOM_CAMERA_OPTIONS = [
+  ["", "Any compatible camera"],
+  ["front", "Front"],
+  ["3/4", "Three-quarter"],
+  ["profile", "Profile"],
+  ["eye-level", "Eye-level"],
+  ["low angle", "Low angle"],
+  ["high angle", "High angle"],
+  ["over-shoulder", "Over shoulder"],
+];
+
+export const CUSTOM_FRAMING_OPTIONS = ["", "portrait", "waist-up", "thigh-up", "knees-up", "full body", "wide shot", "detail shot"];
+export const CUSTOM_EXPRESSION_OPTIONS = ["", ...EXPRESSIONS];
+
+export function normalizeCustomPhotoshootPreset(preset = {}) {
+  return {
+    key: String(preset.key || "").trim(),
+    label: String(preset.label || "Custom Photoshoot").trim(),
+    category: String(preset.category || "Custom").trim() || "Custom",
+    categoryLabel: String(preset.category || "Custom").trim() || "Custom",
+    description: String(preset.description || "").trim(),
+    custom: true,
+    sequence: (Array.isArray(preset.sequence) ? preset.sequence : []).map(item => ({
+      title: String(item.title || "Shot").trim() || "Shot",
+      poseGroup: matcherFromText(item.pose_group),
+      camera: matcherFromText(item.camera_match),
+      framing: String(item.framing || "").trim(),
+      expression: String(item.expression || "").trim(),
+      raw: {
+        title: String(item.title || "Shot").trim() || "Shot",
+        pose_group: String(item.pose_group || "").trim(),
+        camera_match: String(item.camera_match || "").trim(),
+        framing: String(item.framing || "").trim(),
+        expression: String(item.expression || "").trim(),
+      },
+    })),
+  };
+}
+
+export function photoshootCatalog(customPresets = []) {
+  const custom = (Array.isArray(customPresets) ? customPresets : [])
+    .map(normalizeCustomPhotoshootPreset)
+    .filter(preset => preset.key && preset.sequence.length);
+  const customByCategory = new Map();
+  custom.forEach(preset => {
+    const label = preset.categoryLabel || "Custom";
+    if (!customByCategory.has(label)) customByCategory.set(label, []);
+    customByCategory.get(label).push(preset);
+  });
+  const categories = SMART_SHOOT_CATEGORIES.map(category => ({
+    ...category,
+    presets: category.presets.map(preset => ({ ...preset, category: category.key, categoryLabel: category.label })),
+  }));
+  for (const [label, presets] of customByCategory.entries()) {
+    categories.push({
+      key: `custom-${label.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`,
+      label: `My Shoots · ${label}`,
+      custom: true,
+      presets,
+    });
+  }
+  return {
+    categories,
+    presets: {
+      ...SMART_PHOTOSHOOT_PRESETS,
+      ...Object.fromEntries(custom.map(preset => [preset.key, preset])),
+    },
+  };
+}
+
+export function resolvePhotoshootPreset(key, customPresets = []) {
+  const catalog = photoshootCatalog(customPresets);
+  return catalog.presets[key] || SMART_PHOTOSHOOT_PRESETS.editorial;
+}
+
 function eligibleSharedGroups(count, promptCatalog) {
   return sharedPoseGroups(count, promptCatalog).filter(group => {
     const label = group.label || "";
@@ -312,8 +408,9 @@ export function buildSmartPhotoshootPlan({
   preset = "editorial",
   seed = 0,
   options = {},
+  customPresets = [],
 } = {}) {
-  const definition = SMART_PHOTOSHOOT_PRESETS[preset] || SMART_PHOTOSHOOT_PRESETS.editorial;
+  const definition = resolvePhotoshootPreset(preset, customPresets);
   const groups = poseGroupsFor(subjects.length || 1, promptCatalog);
   const usedPoses = new Set();
   const usedCameras = new Set();
@@ -344,6 +441,7 @@ export function smartPhotoshootVariation({
   options = {},
   preset = "editorial",
   plan,
+  customPresets = [],
 } = {}) {
   if (!subjects.length) return { subjects, changed: false, plan: {} };
 
@@ -354,6 +452,7 @@ export function smartPhotoshootVariation({
     preset,
     seed,
     options,
+    customPresets,
   })[index];
 
   let nextSubjects = subjects;
