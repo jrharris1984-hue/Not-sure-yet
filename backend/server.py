@@ -422,8 +422,16 @@ async def _ollama_model(settings: Settings, vision: bool) -> str:
         models = [item.get("name", "") for item in response.json().get("models", [])]
     except (httpx.HTTPError, ValueError) as exc:
         raise HTTPException(502, f"Ollama is unreachable at {settings.ollama_url}: {exc}") from exc
-    prefixes = ("qwen3-vl", "qwen2.5vl", "llava") if vision else ("dolphin3", "dolphin", "qwen3-vl:8b-instruct", "qwen3", "llama")
-    selected = next((name for prefix in prefixes for name in models if name.lower().startswith(prefix)), "")
+    if vision:
+        prefixes = ("qwen3-vl", "qwen2.5vl", "llava")
+        candidates = models
+    else:
+        # Keep vision-only models out of text auto-detection. Prefer the smaller
+        # Llama3 Gradient assistant so routine prompt work stays off Qwen3-VL.
+        prefixes = ("llama3-gradient", "dolphin3", "dolphin", "qwen3", "llama")
+        vision_prefixes = ("qwen3-vl", "qwen2.5vl", "llava")
+        candidates = [name for name in models if not name.lower().startswith(vision_prefixes)]
+    selected = next((name for prefix in prefixes for name in candidates if name.lower().startswith(prefix)), "")
     if not selected:
         raise HTTPException(400, f"No {'vision' if vision else 'text'} model found in Ollama. Select an installed model in Settings.")
     return selected
