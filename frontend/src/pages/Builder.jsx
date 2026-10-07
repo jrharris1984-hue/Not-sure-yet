@@ -41,6 +41,7 @@ import {
 } from "@/lib/dna";
 import { compileModelPrompts, resolvePromptCompiler } from "@/lib/modelPromptCompilers";
 import { batchSeed } from "@/lib/batchSeeds";
+import { batchPoseVariation } from "@/lib/batchPoseVariation";
 import { resolveReferenceNotes, translatePlainLanguage } from "@/lib/plainLanguagePrompt";
 import { analyzePromptQuality } from "@/lib/promptQuality";
 import MobileBuilderSheets from "@/components/MobileBuilderSheets";
@@ -1204,6 +1205,75 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
     onError: (e) => toast.error(e?.response?.data?.detail || "Save failed"),
   });
 
+  const compileBatchPosePrompts = (batchSubjects) => {
+    const batchActiveSubject = batchSubjects.find(subject => subject.id === activeSubjectId) || batchSubjects[0];
+    const batchActiveDna = batchActiveSubject?.dna || activeDna;
+    const promptSubjects = batchSubjects.map((subject) => subject?.likeness?.enabled
+      ? { ...subject, dna: { ...subject.dna, identity: { ...(subject.dna?.identity || {}), name: "" } } }
+      : subject
+    );
+    const promptDna = batchActiveSubject?.likeness?.enabled
+      ? { ...batchActiveDna, identity: { ...(batchActiveDna.identity || {}), name: "" } }
+      : batchActiveDna;
+    const batchCompiled = compileModelPrompts({
+      promptFormat: promptFormat === "ollama" ? "compact" : promptFormat,
+      promptCatalog,
+      promptStyle,
+      workflowKind: activeWorkflow?.kind,
+      workflowName: activeWorkflow?.name,
+      dna: promptDna,
+      subjects: promptSubjects,
+      isMulti: batchSubjects.length > 1,
+      raunch,
+      fieldLocks: batchActiveSubject?.field_locks || {},
+      sectionLocks: locks,
+      editInstruction: effectiveEditInstruction,
+      videoInstruction,
+      preserveUnmentioned,
+    });
+    const batchTranslated = translatePlainLanguage(
+      !["qwen_edit", "wan_i2v"].includes(activeCompiler)
+        ? resolveReferenceNotes(plainLanguage, batchActiveDna, batchSubjects)
+        : plainLanguage,
+      activeCompiler
+    );
+    const batchHasAuthoritativeChromaBodyScale = activeCompiler === "chroma" && [
+      batchActiveDna?.physique?.bust_scale,
+      batchActiveDna?.physique?.butt_scale,
+      batchActiveDna?.physique?.hip_scale,
+      batchActiveDna?.physique?.thigh_scale,
+      batchActiveDna?.physique?.waist_scale,
+      batchActiveDna?.physique?.implant_volume,
+    ].some((value) => Number(value) > 0);
+    const batchUserText = batchHasAuthoritativeChromaBodyScale
+      ? String(batchTranslated.text || "")
+          .split(/\n+/)
+          .filter((line) => !/^\s*(appearance|build|proportions|framing|composition)\s*:/i.test(line))
+          .join("\n")
+          .trim()
+      : batchTranslated.text;
+    const batchLikenessPrompt = likenessTriggerText(batchSubjects);
+    const batchGeneratedPositive = [
+      languageLead,
+      acceptsLikenessPrompt && batchLikenessPrompt,
+      batchCompiled.positive,
+      batchUserText,
+    ].filter(Boolean).join(", ");
+    const batchPhotoPrompts = applyPhotographicGuidance({
+      positive: batchGeneratedPositive,
+      negative: negativePromptOverride || batchCompiled.negative,
+      negativeStrategy: batchCompiled.negativeStrategy,
+      enabled: !["qwen_edit", "wan_i2v"].includes(activeCompiler),
+    });
+    return {
+      positive: activeLoraTriggers.reduce(
+        (text, trigger) => text.toLowerCase().includes(trigger.toLowerCase()) ? text : `${trigger}, ${text}`,
+        batchPhotoPrompts.positive
+      ),
+      negative: batchPhotoPrompts.negative,
+    };
+  };
+
   const doDispatch = async () => {
     if (ollamaCompiled.pending) {toast.error('Wait for Ollama compilation or switch to Compact.');return;}
     if (!workflowId) {
@@ -1408,13 +1478,26 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
       const queuedRenders = [];
       for (let imageIndex = 0; imageIndex < requestedCount; imageIndex += 1) {
         const uniqueSeed = batchSeed(baseSeed, imageIndex, batchSeedMode);
+        const poseVariation = requestedCount > 1 && batchSeedMode === "pose"
+          ? batchPoseVariation({
+              subjects,
+              sections: SECTIONS,
+              promptCatalog,
+              index: imageIndex,
+              seed: baseSeed,
+            })
+          : { subjects, pose: null };
+        const dispatchSubjects = poseVariation.subjects;
+        const batchPrompts = poseVariation.pose
+          ? compileBatchPosePrompts(dispatchSubjects)
+          : { positive: finalPositive, negative: finalNegative };
         let r;
         try {
           r = await endpoints.dispatchRender({
         character_id: isNew ? undefined : id,
         // Send primary subject DNA (backward compat) + all subjects for future backend use.
-        dna: subjects[0]?.dna || {},
-        subjects: subjects.map((s) => ({
+        dna: dispatchSubjects[0]?.dna || {},
+        subjects: dispatchSubjects.map((s) => ({
           label: s.label,
           dna: s.dna,
           field_locks: s.field_locks || {},
@@ -1423,8 +1506,8 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
         locks,
         prompt_language: promptLanguage,
         quality_tier: qualityTier,
-        prompt_positive: editMode === "body_adjust" && isVariationWorkflow ? bodyAdjustInstruction : finalPositive,
-        prompt_negative: finalNegative,
+        prompt_positive: editMode === "body_adjust" && isVariationWorkflow ? bodyAdjustInstruction : batchPrompts.positive,
+        prompt_negative: batchPrompts.negative,
         workflow_id: workflowId,
         lora_overrides: isVideoWorkflow || isQwenReferenceWorkflow ? {} : effectiveLoraOverrides,
         krea_style: "none",
@@ -2675,10 +2758,11 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
             </select>
           )}
           {!isImageFirst && activeRecipeFamily === "image" && renderCount > 1 && <select value={batchSeedMode}
-            onChange={(event) => setBatchSeedMode(event.target.value)} title="Explore uses widely spaced seeds; Nearby uses consecutive seeds. Both keep your selected prompt."
+            onChange={(event) => setBatchSeedMode(event.target.value)} title="New seeds keeps the same pose; Nearby uses consecutive seeds; New seed + different pose recompiles each image with a different compatible pose."
             className="hidden md:block bg-elevated border border-hairline rounded-lg px-3 py-2 text-sm text-zinc-100">
-            <option value="explore">Explore different seeds</option>
+            <option value="explore">New seeds only</option>
             <option value="nearby">Nearby seeds</option>
+            <option value="pose">New seed + different pose</option>
           </select>}
           <button
             onClick={doDispatch}
@@ -2869,8 +2953,9 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
             Batch variety
             <select value={batchSeedMode} onChange={(event) => setBatchSeedMode(event.target.value)}
               className="bg-elevated border border-hairline rounded-lg px-2 py-2 text-xs text-zinc-100">
-              <option value="explore">Explore different seeds</option>
+              <option value="explore">New seeds only</option>
               <option value="nearby">Nearby seeds</option>
+              <option value="pose">New seed + different pose</option>
             </select>
           </label>}
           {activeRecipeFamily === "image" && !isKrea2 && !isVariationWorkflow && (
