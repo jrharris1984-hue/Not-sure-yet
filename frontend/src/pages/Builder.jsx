@@ -2773,8 +2773,6 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
             <option value="explore">New seeds only</option>
             <option value="nearby">Nearby seeds</option>
             <option value="pose">New seed + different pose</option>
-              <option value="camera">New seed + different camera</option>
-              <option value="pose_camera">New seed + pose + camera</option>
             <option value="camera">New seed + different camera</option>
             <option value="pose_camera">New seed + pose + camera</option>
           </select>}
