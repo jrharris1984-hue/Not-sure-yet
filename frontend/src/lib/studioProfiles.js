@@ -2,7 +2,21 @@
 // Profiles only define specialty controls and presets; navigation lives in createJourney.js.
 
 export const STUDIO_PROFILES = {
+  standard: {
+    title: "Standard",
+    shortTitle: "Standard",
+    description: "Full character and scene creation with no specialty focus.",
+    specialtySection: "",
+    focusStage: "",
+    simpleSections: [],
+    fieldGroups: [],
+    presets: [],
+  },
   feet: {
+    shortTitle: "Feet",
+    specialtySection: "feet",
+    focusStage: "character",
+    simpleSections: ["physique", "face", "hair", "skin", "feet"],
     title: "Foot Studio",
     description: "Build a character, choose foot styling, then compose a foot-focused scene.",
     fieldGroups: [
@@ -29,6 +43,10 @@ export const STUDIO_PROFILES = {
     ],
   },
   watersports: {
+    shortTitle: "Watersports",
+    specialtySection: "watersports",
+    focusStage: "scene",
+    simpleSections: ["pose", "watersports", "scene", "lighting"],
     title: "Watersports Studio",
     description: "Build a character and set the source, stream, wetness, wardrobe and location.",
     fieldGroups: [
@@ -59,4 +77,15 @@ export function applyStudioPreset(dna, preset) {
   return Object.fromEntries(Object.entries(dna).map(([section, value]) => [
     section, preset.changes[section] ? { ...value, ...preset.changes[section] } : value,
   ]));
+}
+
+
+export const STUDIO_MODE_ORDER = ["standard", "feet", "watersports"];
+
+export function normalizeStudioMode(mode = "standard") {
+  return STUDIO_PROFILES[mode] ? mode : "standard";
+}
+
+export function studioProfile(mode = "standard") {
+  return STUDIO_PROFILES[normalizeStudioMode(mode)];
 }
