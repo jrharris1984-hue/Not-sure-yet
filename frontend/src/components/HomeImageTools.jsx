@@ -12,13 +12,13 @@ export function imageToolGroups(workflows = []) {
   ].map(group => ({ ...group, workflows: available.filter(workflow => group.kinds.includes(workflow.kind)) }));
 }
 
-export default function HomeImageTools({ workflows, loading, error }) {
+export default function HomeImageTools({ workflows, loading, error, showCreateShortcuts = true, onWorkflow }) {
   return <section className="space-y-3" data-testid="home-image-tools">
-    <div className="pane p-4 space-y-3"><h2 className="font-display text-xl font-bold">Create from a prompt</h2>
+    {showCreateShortcuts && <div className="pane p-4 space-y-3"><h2 className="font-display text-xl font-bold">Create from a prompt</h2>
       <p className="text-sm text-zinc-400">Free-form prompts with optional AI help. No character setup required.</p>
       <Link to="/research" className="block text-sm text-cyan-300 underline">Research models & prompting with AI</Link>
       <div className="grid gap-2 sm:grid-cols-3">{[['image', 'Text to image'], ['video', 'Image to video'], ['text-video', 'Text to video']].map(([mode, label]) => <Link key={mode} to={`/create/${mode}`} className="rounded-lg border border-cyan-400/30 px-3 py-3 text-cyan-200 hover:bg-cyan-500/10">{label} <ArrowUpRight className="inline h-4 w-4"/></Link>)}</div>
-    </div>
+    </div>}
     <div><h2 className="font-display text-xl font-bold">Image & video tools</h2>
       <p className="mt-1 text-sm text-zinc-400">Choose an image tool or a video workflow. Text-to-video needs no starting image.</p></div>
     {error ? <p className="text-sm text-amber-200">Image tools could not load. Try refreshing, or check <Link to="/settings" className="underline">Settings</Link>.</p>
@@ -26,7 +26,10 @@ export default function HomeImageTools({ workflows, loading, error }) {
       : <div className="grid gap-3 lg:grid-cols-3">{imageToolGroups(workflows).map(group => <div key={group.id} className="pane p-4 space-y-3">
         <div className="flex items-center gap-2 text-cyan-200"><group.icon className="h-5 w-5"/><h3 className="font-semibold">{group.title}</h3></div>
         <p className="text-xs leading-relaxed text-zinc-400">{group.description}</p>
-        <div className="space-y-2">{group.workflows.length ? group.workflows.map(workflow => <Link key={workflow.id} to={`/image-tools/${encodeURIComponent(workflow.id)}`}
+        <div className="space-y-2">{group.workflows.length ? group.workflows.map(workflow => onWorkflow ? <button key={workflow.id} type="button" onClick={() => onWorkflow(workflow)}
+          className="flex w-full items-center justify-between gap-2 rounded-lg border hairline bg-white/[.02] px-3 py-2.5 text-left text-sm text-zinc-200 hover:border-cyan-400/40 hover:bg-cyan-500/5">
+          <span className="min-w-0 break-words">{workflow.name}</span><ArrowUpRight className="h-4 w-4 shrink-0 text-cyan-300"/>
+        </button> : <Link key={workflow.id} to={`/image-tools/${encodeURIComponent(workflow.id)}`}
           className="flex items-center justify-between gap-2 rounded-lg border hairline bg-white/[.02] px-3 py-2.5 text-sm text-zinc-200 hover:border-cyan-400/40 hover:bg-cyan-500/5">
           <span className="min-w-0 break-words">{workflow.name}</span><ArrowUpRight className="h-4 w-4 shrink-0 text-cyan-300"/>
         </Link>) : <p className="text-xs text-zinc-500">No workflow configured. <Link to="/settings" className="text-cyan-300 underline">Add or refresh workflows</Link>.</p>}</div>
