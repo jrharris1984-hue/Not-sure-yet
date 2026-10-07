@@ -42,6 +42,7 @@ import {
 import { compileModelPrompts, resolvePromptCompiler } from "@/lib/modelPromptCompilers";
 import { batchSeed } from "@/lib/batchSeeds";
 import { batchPoseVariation } from "@/lib/batchPoseVariation";
+import { batchCameraVariation } from "@/lib/batchCameraVariation";
 import { resolveReferenceNotes, translatePlainLanguage } from "@/lib/plainLanguagePrompt";
 import { analyzePromptQuality } from "@/lib/promptQuality";
 import MobileBuilderSheets from "@/components/MobileBuilderSheets";
@@ -1205,7 +1206,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
     onError: (e) => toast.error(e?.response?.data?.detail || "Save failed"),
   });
 
-  const compileBatchPosePrompts = (batchSubjects) => {
+  const compileBatchVariationPrompts = (batchSubjects) => {
     const batchActiveSubject = batchSubjects.find(subject => subject.id === activeSubjectId) || batchSubjects[0];
     const batchActiveDna = batchActiveSubject?.dna || activeDna;
     const promptSubjects = batchSubjects.map((subject) => subject?.likeness?.enabled
@@ -1478,7 +1479,9 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
       const queuedRenders = [];
       for (let imageIndex = 0; imageIndex < requestedCount; imageIndex += 1) {
         const uniqueSeed = batchSeed(baseSeed, imageIndex, batchSeedMode);
-        const poseVariation = requestedCount > 1 && batchSeedMode === "pose"
+        const usePoseVariation = requestedCount > 1 && ["pose", "pose_camera"].includes(batchSeedMode);
+        const useCameraVariation = requestedCount > 1 && ["camera", "pose_camera"].includes(batchSeedMode);
+        const poseVariation = usePoseVariation
           ? batchPoseVariation({
               subjects,
               sections: SECTIONS,
@@ -1487,9 +1490,16 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
               seed: baseSeed,
             })
           : { subjects, pose: null };
-        const dispatchSubjects = poseVariation.subjects;
-        const batchPrompts = poseVariation.pose
-          ? compileBatchPosePrompts(dispatchSubjects)
+        const cameraVariation = useCameraVariation
+          ? batchCameraVariation({
+              subjects: poseVariation.subjects,
+              index: imageIndex,
+              seed: baseSeed + 7919,
+            })
+          : { subjects: poseVariation.subjects, camera: null };
+        const dispatchSubjects = cameraVariation.subjects;
+        const batchPrompts = poseVariation.pose || cameraVariation.camera
+          ? compileBatchVariationPrompts(dispatchSubjects)
           : { positive: finalPositive, negative: finalNegative };
         let r;
         try {
@@ -2758,11 +2768,15 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
             </select>
           )}
           {!isImageFirst && activeRecipeFamily === "image" && renderCount > 1 && <select value={batchSeedMode}
-            onChange={(event) => setBatchSeedMode(event.target.value)} title="New seeds keeps the same pose; Nearby uses consecutive seeds; New seed + different pose recompiles each image with a different compatible pose."
+            onChange={(event) => setBatchSeedMode(event.target.value)} title="New seeds keeps the same composition; Nearby uses consecutive seeds; pose and camera modes recompile each image with controlled variations while preserving the rest of the setup."
             className="hidden md:block bg-elevated border border-hairline rounded-lg px-3 py-2 text-sm text-zinc-100">
             <option value="explore">New seeds only</option>
             <option value="nearby">Nearby seeds</option>
             <option value="pose">New seed + different pose</option>
+              <option value="camera">New seed + different camera</option>
+              <option value="pose_camera">New seed + pose + camera</option>
+            <option value="camera">New seed + different camera</option>
+            <option value="pose_camera">New seed + pose + camera</option>
           </select>}
           <button
             onClick={doDispatch}
