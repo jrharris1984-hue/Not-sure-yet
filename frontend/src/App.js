@@ -18,6 +18,7 @@ import Shoots from "@/pages/Shoots";
 import ShootSetup from "@/pages/ShootSetup";
 import ShootDetail from "@/pages/ShootDetail";
 import Tools from "@/pages/Tools";
+import CreateHub from "@/pages/CreateHub";
 import { normalizeStudioMode } from "@/lib/studioProfiles";
 
 function LegacyStudioRedirect() {
@@ -42,6 +43,7 @@ function App() {
           <Routes>
             <Route path="/" element={<Library />} />
             <Route path="/research" element={<div className="mx-auto max-w-4xl p-6"><AIResearchPanel open /></div>} />
+            <Route path="/create" element={<CreateHub />} />
             <Route path="/create/image" element={<FreeformCreate key="image" mode="image" />} />
             <Route path="/create/video" element={<FreeformCreate key="video" mode="video" />} />
             <Route path="/create/text-video" element={<FreeformCreate key="text_video" mode="text_video" />} />

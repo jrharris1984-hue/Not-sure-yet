@@ -14,10 +14,12 @@ export const STUDIO_NAV = [
 ];
 
 export function StudioNavLinks({ compact = false, returnTo }) {
+  const location = useLocation();
+  const aliasActive = (item) => item.to === "/tools" && location.pathname.startsWith("/image-tools/");
   return STUDIO_NAV.map((item) => <NavLink key={item.to} to={item.to} end={item.to === "/"}
     state={item.to === "/gallery" && returnTo ? { returnTo } : undefined}
     data-testid={compact ? `${item.testId}-tablet` : item.testId}
-    className={({ isActive }) => `studio-nav-link flex shrink-0 items-center gap-2 rounded-xl px-3 py-2.5 text-sm ${isActive ? "studio-nav-link-active" : "text-zinc-400"}`}>
+    className={({ isActive }) => `studio-nav-link flex shrink-0 items-center gap-2 rounded-xl px-3 py-2.5 text-sm ${isActive || aliasActive(item) ? "studio-nav-link-active" : "text-zinc-400"}`}>
     <item.icon className="h-4 w-4" />{item.label}
   </NavLink>);
 }
@@ -32,13 +34,13 @@ export default function MobileStudioNavigation({ returnTo }) {
   const itemClass = (active) => `studio-mobile-link flex min-h-16 flex-col items-center justify-center gap-1 text-[11px] ${active ? "text-cyan-200 studio-mobile-link-active" : "text-zinc-400"}`;
   const navItem = (item) => <NavLink key={item.to} to={item.to} end={item.to === "/"}
     state={item.to === "/gallery" && returnTo ? { returnTo } : undefined}
-    data-testid={`${item.testId}-mobile`} className={({ isActive }) => itemClass(isActive)}>
+    data-testid={`${item.testId}-mobile`} className={({ isActive }) => itemClass(isActive || (item.to === "/tools" && location.pathname.startsWith("/image-tools/")))}>
     <item.icon className="h-5 w-5" />{item.label}
   </NavLink>;
   return <nav aria-label="Mobile studio navigation" className="mobile-bottom-nav glass md:hidden fixed bottom-0 inset-x-0 z-40 border-t border-white/10">
     <div className="grid grid-cols-5">
       {navItem(primary[0])}
-      <Link to="/character/new" data-testid="btn-new-character-mobile" className={`${itemClass(location.pathname.startsWith("/character"))} text-lime-300`}>
+      <Link to="/create" data-testid="btn-new-character-mobile" className={`${itemClass(location.pathname === "/create" || location.pathname.startsWith("/create/") || location.pathname.startsWith("/character"))} text-lime-300`}>
         <Plus className="h-5 w-5" />Create
       </Link>
       {primary.slice(1).map(navItem)}

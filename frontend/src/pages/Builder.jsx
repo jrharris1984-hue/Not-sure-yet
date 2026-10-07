@@ -25,7 +25,7 @@ import { useBuilderSessionState } from "@/hooks/useBuilderSessionState";
 import { useEffect, useMemo, useRef } from "react";
 import { useParams, useNavigate, useLocation, Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Save, Shuffle, Download, Upload, Loader2, Play, ChevronLeft, ChevronRight, Camera, Sparkles, ChevronDown, ImagePlus, X, RotateCcw, SlidersHorizontal, ShieldCheck, AlertTriangle, Pencil, Film, Trash2, ScanFace } from "lucide-react";
+import { Save, Shuffle, Download, Upload, Loader2, Play, ChevronLeft, ChevronRight, Camera, Sparkles, ChevronDown, ImagePlus, X, RotateCcw, SlidersHorizontal, ShieldCheck, AlertTriangle, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { endpoints } from "@/lib/api";
 import { mediaUrl } from "@/lib/media";
@@ -313,9 +313,12 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
     const requestedMode = location.state?.referenceMode;
     // Body Adjust is a Chroma img2img operation. Keep Qwen reserved for normal
     // image edits and route Gallery Body Adjust through the proven variation graph.
+    const selectedImageTool = imageToolId
+      ? workflows.find((workflow) => workflow.id === imageToolId && IMAGE_TOOL_KINDS.includes(workflow.kind))
+      : null;
     const target = requestedMode === "body_adjust"
       ? workflows.find((workflow) => workflow.kind === "variation" && workflow.prompt_style === "chroma")
-      : workflows.find((workflow) => workflow.kind === requestedKind);
+      : selectedImageTool || workflows.find((workflow) => workflow.kind === requestedKind);
     if (!target) {
       const label = requestedKind === "video" ? "image-to-video" : requestedKind === "face" ? "face-preserve" : "image-edit";
       toast.error(`No ${label} workflow is configured. Add one in Settings first.`);
@@ -2603,18 +2606,12 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
         </div>
       )}
       {/* Header */}
-      <div data-mobile-tools="none" className={`${isImageFirst ? "!hidden" : ""} hidden md:flex items-center gap-2 rounded-xl border border-cyan-400/20 bg-black/40 p-2 text-xs`} aria-label="Builder shortcuts">
-        <span className="px-2 font-mono uppercase tracking-wider text-cyan-300">Studio</span>
-        {!desktopQuickMode && [["studio-model", "01 · Model"], ["studio-sections", "02 · Character"], ["studio-render", "03 · Render"]].map(([target, label]) => (
-          <button key={target} type="button" onClick={() => document.getElementById(target)?.scrollIntoView({ behavior: "smooth", block: "start" })}
-            className="rounded-lg border hairline px-3 py-2 text-zinc-300 transition-colors hover:border-amber-400/50 hover:bg-amber-500/10 hover:text-amber-200">
-            {label}
-          </button>
-        ))}
-        <span className="ml-auto hidden xl:inline pr-2 text-zinc-500">{desktopQuickMode ? "Design your subject, compose the scene, then generate." : "All controls are available below."}</span>
+      <div data-mobile-tools="none" className={`${isImageFirst ? "!hidden" : ""} hidden md:flex items-center gap-2 rounded-xl border border-cyan-400/20 bg-black/40 p-2 text-xs`} aria-label="Builder view">
+        <span className="px-2 font-mono uppercase tracking-wider text-cyan-300">Create</span>
+        <span className="ml-auto hidden xl:inline pr-2 text-zinc-500">{desktopQuickMode ? "Simple view keeps the five creation stages focused." : "Advanced view exposes every section and tuning control."}</span>
         <button type="button" onClick={() => { setDesktopQuickMode((value) => !value); setQuickReview(false); }}
           data-testid="btn-desktop-studio-mode" className="ml-auto rounded-lg border border-cyan-400/40 px-3 py-2 font-semibold text-cyan-200 hover:bg-cyan-400/10">
-          {desktopQuickMode ? "Full Studio · all options" : "Quick Create"}
+          {desktopQuickMode ? "Advanced view · all options" : "Simple view"}
         </button>
       </div>
       <div data-mobile-tools="none" id="studio-model" className="pane scroll-mt-24 p-2.5 sm:p-4 flex flex-col gap-2.5 sm:gap-3">
@@ -2641,7 +2638,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
               setWorkflowId(nextWorkflowId);
               setLoraOverrides({});
             }}
-            className={`${isImageFirst || mobileStudioStep === "start" || mobileStudioStep === "create" ? "block" : "hidden md:block"} bg-elevated border border-hairline rounded-lg px-3 py-2 text-sm text-zinc-100 w-full sm:w-auto sm:min-w-[200px]`}
+            className={`${isImageFirst || mobileStudioStep === "start" || mobileStudioStep === "create" ? "block" : "hidden"} ${desktopQuickMode && !isImageFirst ? "md:hidden" : "md:block"} bg-elevated border border-hairline rounded-lg px-3 py-2 text-sm text-zinc-100 w-full sm:w-auto sm:min-w-[200px]`}
           >
             {selectableWorkflows.length === 0 && <option value="">No visible workflows — choose workflows in Settings</option>}
             {selectableWorkflows.filter((w) => !["sdxl", "sdxl_dmd2"].includes(w.prompt_style) && !w.name.startsWith("Pony · Ultra Realistic")).map((w) => (
@@ -2803,6 +2800,8 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
         readyToRender={!isQwenReferenceWorkflow || qwenEditVariant !== "pose" || !!poseReferenceImage?.name}
         uploading={referenceUploading || (isQwenReferenceWorkflow && poseReferenceUploading)} busy={dispatching} onUpload={uploadReference} onRemove={clearReference} onRender={doDispatch}
         renderCount={renderCount} onRenderCount={setRenderCount}>{imageSourceControls}</ImageSourceFlow></div>}
+
+      {!isImageFirst && mobileStudioStep === "start" && <div data-mobile-tools="none"><StudioModePicker value={studioMode} onChange={changeStudioMode} disabled={dispatching} /></div>}
 
       {!isImageFirst && <div className="mobile-tools-panel" data-mobile-tools="none"><MobileStudioFlow
         steps={studioSteps}
@@ -3148,8 +3147,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
           </section>
         )}
         <div data-mobile-tools="none" id="studio-sections" className={`${isImageFirst ? "!hidden" : ""} ${mobileStudioStep === "create" ? "hidden md:block" : "block"} ${editMode === "body_adjust" ? "hidden" : ""} scroll-mt-24 space-y-4`}>
-      <StudioModePicker value={studioMode} onChange={changeStudioMode} disabled={dispatching} />
-      {studioProfile.specialtySection && studioProfile.presets.length > 0 && <section className="pane border-cyan-400/25 p-3 sm:p-4" data-testid={`studio-${studioMode}-presets`}>
+      {studioProfile.specialtySection && activeSection === studioProfile.specialtySection && studioProfile.presets.length > 0 && <section className="pane border-cyan-400/25 p-3 sm:p-4" data-testid={`studio-${studioMode}-presets`}>
         <div>
           <div className="section-label">{studioProfile.shortTitle} focus · Presets</div>
           <p className="mt-1 text-xs text-zinc-400">Optional starting points inside the same Create flow. Every setting remains editable.</p>
@@ -3639,7 +3637,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
                       <img key={i} src={mediaUrl(u)} alt="render" className="rounded-md border hairline w-full h-auto" />
                     ))}
                   </div>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  <div className="grid grid-cols-2 gap-2">
                     <button type="button"
                       onClick={() => downloadRenderImage(activeRender.output_files[0], `render-${activeRender.id}.png`)}
                       className="rounded-lg border hairline px-3 py-2 text-sm font-semibold text-zinc-200 hover:bg-white/5 flex items-center justify-center gap-2"
@@ -3647,50 +3645,16 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
                       <Download className="h-4 w-4" /> Download
                     </button>
                     <button type="button"
-                      onClick={async () => {
-                        try {
-                          const reference = await endpoints.prepareRenderReference(activeRender.render_id || activeRender.id);
-                          setReferenceImage(reference);
-                          setSourceRenderId(activeRender.render_id || activeRender.id);
-                          setReferencePreview(activeRender.output_files[0]);
-                          setEditMode("standard");
-                          toast.success("Image loaded for editing");
-                        } catch (e) {
-                          toast.error(e?.response?.data?.detail || "Could not load image for editing");
-                        }
-                      }}
-                      className="rounded-lg border hairline px-3 py-2 text-sm font-semibold text-zinc-200 hover:bg-white/5 flex items-center justify-center gap-2">
-                      <Pencil className="h-4 w-4" /> Edit
+                      onClick={() => nav(`/tools?render=${encodeURIComponent(activeRender.render_id || activeRender.id)}`)}
+                      className="rounded-lg border border-cyan-500/40 bg-cyan-500/10 px-3 py-2 text-sm font-semibold text-cyan-100 hover:bg-cyan-500/20"
+                      data-testid="btn-tools-finished-render">
+                      Continue in Tools
                     </button>
                     <button type="button"
-                      onClick={async () => {
-                        try {
-                          const reference = await endpoints.prepareRenderReference(activeRender.render_id || activeRender.id);
-                          setReferenceImage(reference);
-                          setSourceRenderId(activeRender.render_id || activeRender.id);
-                          setReferencePreview(activeRender.output_files[0]);
-                          toast.success("Image loaded for animation");
-                        } catch (e) {
-                          toast.error(e?.response?.data?.detail || "Could not load image for animation");
-                        }
-                      }}
-                      className="rounded-lg border hairline px-3 py-2 text-sm font-semibold text-zinc-200 hover:bg-white/5 flex items-center justify-center gap-2">
-                      <Film className="h-4 w-4" /> Animate
-                    </button>
-                    <button type="button"
-                      onClick={async () => {
-                        try {
-                          const reference = await endpoints.prepareRenderReference(activeRender.render_id || activeRender.id);
-                          setReferenceImage(reference);
-                          setSourceRenderId(activeRender.render_id || activeRender.id);
-                          setReferencePreview(activeRender.output_files[0]);
-                          toast.success("Using selected image as reference");
-                        } catch (e) {
-                          toast.error(e?.response?.data?.detail || "Could not use image as reference");
-                        }
-                      }}
-                      className="rounded-lg border hairline px-3 py-2 text-sm font-semibold text-zinc-200 hover:bg-white/5 flex items-center justify-center gap-2">
-                      <ScanFace className="h-4 w-4" /> Reference
+                      onClick={() => nav(`/gallery?render=${encodeURIComponent(activeRender.render_id || activeRender.id)}&returnTo=${encodeURIComponent(location.pathname)}`)}
+                      className="rounded-lg bg-emerald-500 px-3 py-2 text-sm font-semibold text-zinc-950 hover:bg-emerald-400"
+                      data-testid="btn-view-finished-render">
+                      View in Gallery
                     </button>
                     <button type="button"
                       onClick={async () => {
@@ -3708,12 +3672,6 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
                       }}
                       className="rounded-lg border border-red-500/30 px-3 py-2 text-sm font-semibold text-red-300 hover:bg-red-500/10 flex items-center justify-center gap-2">
                       <Trash2 className="h-4 w-4" /> Delete
-                    </button>
-                    <button type="button"
-                      onClick={() => nav(`/gallery?render=${encodeURIComponent(activeRender.render_id || activeRender.id)}&returnTo=${encodeURIComponent(location.pathname)}`)}
-                      className="rounded-lg bg-emerald-500 px-3 py-2 text-sm font-semibold text-zinc-950 hover:bg-emerald-400"
-                      data-testid="btn-view-finished-render">
-                      View in Gallery
                     </button>
                   </div>
                 </div>

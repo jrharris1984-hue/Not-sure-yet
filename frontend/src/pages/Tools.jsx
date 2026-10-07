@@ -10,6 +10,7 @@ import { Images, Wrench } from "lucide-react";
 import { toast } from "sonner";
 
 const primaryOutput = render => render?.output_variants?.enhanced?.[0] || render?.output_files?.[0] || "";
+const isVideoOutput = (url = "") => /\.(webm|mp4|mov)(?:[?&]|$)/i.test(decodeURIComponent(url));
 
 export default function Tools() {
   const nav = useNavigate();
@@ -25,6 +26,9 @@ export default function Tools() {
     enabled: !!renderId,
   });
   const source = renderId ? renders.find(render => render.id === renderId) : null;
+  const postGenerationWorkflows = workflows.filter((workflow) => workflow.kind !== "text_video");
+  const sourceUrl = source ? mediaUrl(primaryOutput(source)) : "";
+  const sourceIsVideo = isVideoOutput(sourceUrl);
 
   const reuse = useMutation({
     mutationFn: async ({ render, targetKind, referenceMode, instruction }) => {
@@ -58,6 +62,27 @@ export default function Tools() {
 
   const sourceBusy = reuse.isPending || body.isPending;
 
+  const launchWorkflow = async (workflow) => {
+    if (!source || sourceIsVideo || workflow.kind === "text_video") {
+      nav(`/image-tools/${encodeURIComponent(workflow.id)}`);
+      return;
+    }
+    try {
+      const previewUrl = sourceUrl;
+      const reference = await endpoints.prepareRenderReference(source.id, previewUrl);
+      nav(`/image-tools/${encodeURIComponent(workflow.id)}`, {
+        state: {
+          galleryReference: reference,
+          previewUrl,
+          targetKind: workflow.kind,
+          sourceRenderId: source.id,
+        },
+      });
+    } catch (error) {
+      toast.error(error?.response?.data?.detail || "Could not prepare this source image for the selected workflow");
+    }
+  };
+
   return <div className="mx-auto max-w-[1200px] px-4 sm:px-6 py-6 sm:py-10 space-y-6" data-testid="tools-page">
     <header className="flex flex-wrap items-end justify-between gap-4">
       <div>
@@ -83,17 +108,21 @@ export default function Tools() {
           <p className="mt-1 truncate text-xs text-zinc-400">{source.workflow_name || source.workflow_type || "Gallery render"}</p>
         </div>
         <div className="grid min-h-64 place-items-center bg-black/25">
-          <img src={mediaUrl(primaryOutput(source))} alt="Selected Gallery source" className="max-h-[440px] w-full object-contain" />
+          {sourceIsVideo
+            ? <video src={sourceUrl} controls playsInline className="max-h-[440px] w-full object-contain" />
+            : <img src={sourceUrl} alt="Selected Gallery source" className="max-h-[440px] w-full object-contain" />}
         </div>
       </div>
-      <PostGenerationActions
+      {sourceIsVideo ? <div className="pane p-4 text-sm text-zinc-400">
+        This is a video result. Still-image edit, pose, reference, and body tools need an image source. You can review or download the video in Gallery, or start another workflow below.
+      </div> : <PostGenerationActions
         busy={sourceBusy}
         onEdit={() => reuse.mutate({ render: source, targetKind: "edit" })}
         onPose={() => reuse.mutate({ render: source, targetKind: "edit", referenceMode: "new_pose" })}
         onAnimate={() => reuse.mutate({ render: source, targetKind: "video" })}
         onReference={() => reuse.mutate({ render: source, targetKind: "face", referenceMode: "keep_character" })}
         onBody={() => body.mutate(source)}
-      />
+      />}
     </section>}
 
     <section className="space-y-3">
@@ -101,10 +130,10 @@ export default function Tools() {
         <Wrench className="h-5 w-5 text-cyan-300" />
         <div>
           <h2 className="font-display text-xl font-bold">All workflows</h2>
-          <p className="text-xs text-zinc-400">Choose a workflow directly when you do not need a Gallery source selected above.</p>
+          <p className="text-xs text-zinc-400">Choose a workflow directly. When a still image is selected above, compatible workflows keep that source attached.</p>
         </div>
       </div>
-      <HomeImageTools workflows={workflows} loading={workflowsLoading} error={workflowsError} />
+      <HomeImageTools workflows={postGenerationWorkflows} loading={workflowsLoading} error={workflowsError} showCreateShortcuts={false} showHeading={false} onWorkflow={source && !sourceIsVideo ? launchWorkflow : undefined} />
     </section>
   </div>;
 }
