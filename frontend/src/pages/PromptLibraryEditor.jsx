@@ -11,7 +11,7 @@ const buttonClass='rounded-lg border hairline px-3 py-2 text-sm text-cyan-200 di
 const LIBRARY_SECTIONS = promptLibrarySections(SECTIONS);
 export default function PromptLibraryEditor() {
   const [draft,setDraft]=useState({sections:[]}), [saved,setSaved]=useState({sections:[]});
-  const [sectionKey,setSectionKey]=useState(LIBRARY_LIBRARY_SECTIONS[0].key), [fieldKey,setFieldKey]=useState(LIBRARY_LIBRARY_SECTIONS[0].fields[0].key);
+  const [sectionKey,setSectionKey]=useState(LIBRARY_SECTIONS[0].key), [fieldKey,setFieldKey]=useState(LIBRARY_SECTIONS[0].fields[0].key);
   const [loaded,setLoaded]=useState(false);
   const [loading,setLoading]=useState(true), [busy,setBusy]=useState(false), [error,setError]=useState(''), [message,setMessage]=useState('');
   const [filter,setFilter]=useState('');
