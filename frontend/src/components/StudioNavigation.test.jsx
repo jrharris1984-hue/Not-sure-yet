@@ -28,11 +28,12 @@ test("mobile keeps primary actions visible and moves secondary destinations into
   render();
   expect(container.querySelectorAll("a").length).toBe(4);
   expect(document.querySelector('[data-testid="nav-settings-mobile"]')).toBeNull();
-  expect(document.querySelector('[data-testid="nav-tools-mobile"]')).toBeNull();
+  expect(document.querySelector('[data-testid="nav-queue-mobile"]')).toBeNull();
+  expect(container.querySelector('[data-testid="nav-tools-mobile"]')).not.toBeNull();
   act(() => container.querySelector('[data-testid="nav-more-mobile"]').click());
   expect(document.querySelector('[role="dialog"]')).not.toBeNull();
   expect(document.querySelector('[data-testid="nav-settings-mobile"]')).not.toBeNull();
-  expect(document.querySelector('[data-testid="nav-tools-mobile"]')).not.toBeNull();
+  expect(document.querySelector('[data-testid="nav-queue-mobile"]')).not.toBeNull();
   act(() => document.querySelector('[data-testid="nav-settings-mobile"]').click());
   expect(mockNavigate).toHaveBeenCalledWith("/settings", undefined);
   expect(document.querySelector('[role="dialog"]')).toBeNull();
