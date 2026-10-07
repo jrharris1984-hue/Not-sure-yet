@@ -335,6 +335,13 @@ async def get_settings() -> Settings:
         catalog = upgrade_wardrobe_catalog(doc.get("prompt_catalog"))
         await db.settings.update_one({"id": "singleton", "$or": [{"wardrobe_catalog_version": {"$exists": False}}, {"wardrobe_catalog_version": {"$lt": 1}}]}, {"$set": {"prompt_catalog": catalog, "wardrobe_catalog_version": 1}})
         doc = await db.settings.find_one({"id": "singleton"}, {"_id": 0})
+    # Older installs could save Qwen3-VL as the general text assistant. Clear
+    # that legacy pairing so text auto-detection can choose a lightweight
+    # text model while Qwen3-VL remains dedicated to image review.
+    saved_text_model = str(doc.get("ollama_text_model") or "")
+    if saved_text_model.lower().startswith(("qwen3-vl", "qwen2.5vl", "llava")):
+        await db.settings.update_one({"id": "singleton"}, {"$set": {"ollama_text_model": ""}})
+        doc["ollama_text_model"] = ""
     return Settings(**doc)
 
 
@@ -413,8 +420,11 @@ async def openrouter_chat(system: str, user: str, response_format_json: bool = F
 
 async def _ollama_model(settings: Settings, vision: bool) -> str:
     explicit = settings.ollama_vision_model if vision else settings.ollama_text_model
+    vision_prefixes = ("qwen3-vl", "qwen2.5vl", "llava")
     if explicit:
-        return explicit
+        # Do not use a saved vision-only model for routine text assistance.
+        if vision or not explicit.lower().startswith(vision_prefixes):
+            return explicit
     try:
         async with httpx.AsyncClient(timeout=8.0) as hc:
             response = await hc.get(f"{settings.ollama_url.rstrip('/')}/api/tags")
@@ -429,7 +439,6 @@ async def _ollama_model(settings: Settings, vision: bool) -> str:
         # Keep vision-only models out of text auto-detection. Prefer the smaller
         # Llama3 Gradient assistant so routine prompt work stays off Qwen3-VL.
         prefixes = ("llama3-gradient", "dolphin3", "dolphin", "qwen3", "llama")
-        vision_prefixes = ("qwen3-vl", "qwen2.5vl", "llava")
         candidates = [name for name in models if not name.lower().startswith(vision_prefixes)]
     selected = next((name for prefix in prefixes for name in candidates if name.lower().startswith(prefix)), "")
     if not selected:
