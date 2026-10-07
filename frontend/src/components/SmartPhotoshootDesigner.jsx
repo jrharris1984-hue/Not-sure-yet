@@ -22,6 +22,8 @@ const slug = value => String(value || "")
   .replace(/^_+|_+$/g, "")
   .slice(0, 50);
 
+const matcherText = matcher => String(matcher?.source || "").replace(/\\\//g, "/");
+
 function toEditablePreset(source, customPresets) {
   if (source === "__blank__") {
     return {
@@ -40,8 +42,8 @@ function toEditablePreset(source, customPresets) {
     description: resolved.description || "",
     sequence: (resolved.sequence || []).map(item => item.raw ? { ...item.raw } : ({
       title: item.title || "Shot",
-      pose_group: item.poseGroup?.source || "",
-      camera_match: item.camera?.source || "",
+      pose_group: matcherText(item.poseGroup),
+      camera_match: matcherText(item.camera),
       framing: item.framing || "",
       expression: item.expression || "",
     })),
