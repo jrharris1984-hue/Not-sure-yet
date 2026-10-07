@@ -20,3 +20,17 @@ test('home shortcuts navigate to individual tools and explain empty groups',()=>
   expect(container.querySelectorAll('a[href="/settings"]')).toHaveLength(3);
   act(()=>root.unmount());
 });
+
+test('embedded workflow lists can hide create shortcuts and hand selection back to a source-aware parent',()=>{
+  global.IS_REACT_ACT_ENVIRONMENT=true;
+  const container=document.createElement('div'),root=createRoot(container),onWorkflow=jest.fn();
+  act(()=>root.render(<HomeImageTools workflows={workflows} showCreateShortcuts={false} showHeading={false} onWorkflow={onWorkflow}/>));
+  expect(container.querySelector('a[href="/create/image"]')).toBeNull();
+  expect(container.textContent).not.toContain('Image & video tools');
+  const poseButton=Array.from(container.querySelectorAll('button')).find(button=>button.textContent.includes('AnyPose'));
+  act(()=>poseButton.click());
+  expect(onWorkflow).toHaveBeenCalledWith(expect.objectContaining({id:'pose',kind:'edit'}));
+  act(()=>root.unmount());
+  container.remove();
+});
+
