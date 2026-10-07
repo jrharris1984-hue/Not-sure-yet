@@ -50,3 +50,11 @@ test("desktop links keep all destinations and root is selected only at the root"
   expect(container.querySelector('[data-testid="nav-gallery"]').getAttribute("aria-current")).toBe("page");
   expect(container.querySelector('[data-testid="nav-tools"]')).not.toBeNull();
 });
+
+test("mobile Create opens the unified creation hub", () => {
+  mockPath = "/gallery";
+  render();
+  act(() => container.querySelector('[data-testid="btn-new-character-mobile"]').click());
+  expect(mockNavigate).toHaveBeenCalledWith("/create", undefined);
+});
+
