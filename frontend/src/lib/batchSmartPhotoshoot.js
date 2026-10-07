@@ -263,12 +263,7 @@ export const SMART_PHOTOSHOOT_PRESETS = Object.fromEntries(
   )
 );
 
-const escapeRegex = value => String(value || "").replace(/[.*+?^\${}()|[\]\\]/g, "\\export const SMART_PHOTOSHOOT_PRESETS = Object.fromEntries(
-  SMART_SHOOT_CATEGORIES.flatMap(category =>
-    category.presets.map(preset => [preset.key, { ...preset, category: category.key, categoryLabel: category.label }])
-  )
-);
-");
+const escapeRegex = value => String(value || "").replace(/[.*+?^\${}()|[\]\\]/g, "\\$&");
 const matcherFromText = value => {
   const parts = String(value || "").split("|").map(part => part.trim()).filter(Boolean);
   return parts.length ? new RegExp(parts.map(escapeRegex).join("|"), "i") : null;
