@@ -10,6 +10,15 @@ const defaults = { sections, section: sections[0], subjects: [{ id: 'a', label: 
   renderControls: field => <button type="button">Edit {field}</button>, outputControls: <div>Workflow settings</div>, imageCount: 2, canGenerate: true };
 const paint = props => act(() => root.render(<MobileBuilderSheets {...defaults} {...props} />));
 const click = text => act(() => Array.from(container.querySelectorAll('button')).find(button => button.textContent === text).click());
+test('two-person poses are reachable in a nested panel and disappear for one person', () => {
+  const section={key:'pose',title:'Pose & framing',fields:[]};
+  paint({section,subjects:[{id:'a',label:'A'},{id:'b',label:'B'}],castPoseControls:<button>Back to back</button>});
+  click('Poses for 2 peopleShared poses & composition');
+  expect(container.querySelector('[role="dialog"]').textContent).toContain('Back to back');
+  paint({section,subjects:[{id:'a',label:'A'}],castPoseControls:null});
+  expect(container.querySelector('[role="dialog"]')).toBeNull();
+  expect(container.textContent).not.toContain('Shared poses & composition');
+});
 test('opens a scoped detail sheet and returns to the unchanged category selection', () => {
   paint(); click('Colorblack');
   expect(container.querySelector('[role="dialog"]').textContent).toContain('Edit color');

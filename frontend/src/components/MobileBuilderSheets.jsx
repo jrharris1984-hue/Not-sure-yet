@@ -55,7 +55,7 @@ function Handle({ label, onStart, onDrag, onEnd, onClick }) {
 }
 
 export default function MobileBuilderSheets({ sections, section, onSection, subjects, activeId, onSubject,
-  onPeople, presetsControl, values, renderControls, preview, livePreview, renderStatus, renderError, outputControls,
+  onPeople, presetsControl, values, renderControls, preview, livePreview, renderStatus, renderError, outputControls, castPoseControls,
   onSave, onReset, saving, onGenerate, generating, canGenerate, issues = [], imageCount, onTools, selectedItems = [] }) {
   const [height, setHeight] = useState("expanded");
   const [detail, setDetail] = useState(null);
@@ -77,6 +77,7 @@ export default function MobileBuilderSheets({ sections, section, onSection, subj
     return () => clearTimeout(timer);
   }, [closing]);
   useEffect(() => { setDetail(null); setClosing(false); setDetailOffset(0); }, [section.key]);
+  useEffect(() => { if (detail === "cast-poses" && subjects.length < 2) setDetail(null); }, [detail, subjects.length]);
   useEffect(() => {
     if (!detail) return;
     const previous = document.activeElement;
@@ -85,7 +86,7 @@ export default function MobileBuilderSheets({ sections, section, onSection, subj
   }, [detail]);
   const close = () => { setDetailDragging(false); setClosing(true); };
   const open = key => { setDetailInteracted(false); setClosing(false); setDetailOffset(0); setDetail(key); };
-  const label = detail === "selected" ? "Selected options" : detail === "output" ? "Generation settings" : section.fields.find(field => field.key === detail)?.label || section.title;
+  const label = detail === "selected" ? "Selected options" : detail === "output" ? "Generation settings" : detail === "cast-poses" ? `Poses for ${subjects.length} people` : section.fields.find(field => field.key === detail)?.label || section.title;
   return <section className="mobile-sheet-builder md:hidden" data-testid="mobile-sheet-builder" style={personStyle(subjects.findIndex(person => person.id === activeId))}>
     <div className="sheet-workspace">
       <header className="flex items-center justify-between gap-2">
@@ -124,6 +125,10 @@ export default function MobileBuilderSheets({ sections, section, onSection, subj
         <div className="sheet-field-scroll">
           <div className="flex justify-between items-center mb-3"><h2 className="font-semibold">{section.title}</h2><div className="flex gap-2"><button type="button" className="text-xs text-cyan-200" onClick={() => open("selected")}>Selected · {selectedItems.length}</button><button type="button" className="text-xs text-cyan-200" onClick={() => open("all")}>All controls</button></div></div>
           <div className="grid grid-cols-2 gap-2">
+            {section.key === "pose" && subjects.length > 1 && castPoseControls && <button type="button" className="sheet-field-card" onClick={() => open("cast-poses")}>
+              <span className="block text-sm font-semibold">Poses for {subjects.length} people</span>
+              <span className="block text-xs text-zinc-400 mt-1">Shared poses & composition</span>
+            </button>}
             {section.fields.map(field => <button key={field.key} type="button" disabled={section.key === "wardrobe" && wardrobeFieldDisabled(field.key, values)} className={`sheet-field-card disabled:opacity-40 ${Array.isArray(values[field.key]) ? values[field.key].length ? "has-selection" : "" : values[field.key] ? "has-selection" : ""}`} onClick={() => open(field.key)}>
               <span className="block text-sm font-semibold">{field.label}</span>
               <span className="block text-xs text-zinc-400 mt-1 truncate">{section.key === "wardrobe" && field.key === "outfit_mode" ? wardrobeMode(values) === "full" ? "Full set" : "Custom" : section.key === "wardrobe" && wardrobeFieldDisabled(field.key, values) ? "Switch outfit mode to edit" : Array.isArray(values[field.key]) ? values[field.key].join(", ") || "Choose" : String(values[field.key] ?? "Choose") || "Choose"}</span>
@@ -158,7 +163,7 @@ export default function MobileBuilderSheets({ sections, section, onSection, subj
           <div className="sheet-detail-scroll">{detail === "selected" ? <div className="space-y-2">
             {selectedItems.length ? selectedItems.map(item => <button type="button" key={`${item.section}-${item.field}`} className="studio-selected-option w-full rounded-xl border p-3 text-left"
               onClick={() => { onSection(item.section); close(); }}><span className="block text-xs text-zinc-400">{item.category} · {item.label}</span><span className="block text-sm mt-1">{item.value}</span></button>) : <p className="text-sm text-zinc-400">Choose a few options to review them here.</p>}
-          </div> : detail === "output" ? outputControls : renderControls(detail)}</div>
+          </div> : detail === "output" ? outputControls : detail === "cast-poses" ? castPoseControls : renderControls(detail)}</div>
         </section>
       </>}
     </div>
