@@ -373,7 +373,8 @@ async def openrouter_chat(system: str, user: str, response_format_json: bool = F
     Falls back to Settings.openrouter_api_key if a legacy key is stored there and no
     VENICE_API_KEY is present, but by default reads from env."""
     s = await get_settings()
-    system, user = await enrich_assistant_request(system, user, retrieve_prompt_sources)
+    if s.ai_provider == "ollama":
+        system, user = await enrich_assistant_request(system, user, retrieve_prompt_sources)
     if s.ai_provider == "ollama":
         model = await _ollama_model(s, vision=False)
         payload = {"model": model, "stream": False, "messages": [
@@ -4222,7 +4223,7 @@ async def retrieve_research_sources(query):
         if response.status_code in (401, 403):
             raise HTTPException(400, 'Ollama rejected the web search key. Check it in Settings.')
         if response.status_code == 429:
-            raise HTTPException(429, 'Ollama web search reached its rate or usage limit. Try later, or turn off web research to refine locally.')
+            raise HTTPException(429, 'Ollama web search reached its rate or usage limit. Try again later.')
         if response.status_code >= 400:
             raise HTTPException(502, 'Web search is unavailable. Try again later.')
         sources = research_sources(response.json())
@@ -4234,6 +4235,8 @@ async def retrieve_research_sources(query):
 
 
 async def retrieve_prompt_sources(prompt, workflow, style, focus=''):
+    if not await research_key():
+        return []
     sources = await retrieve_research_sources(prompt_research_query(workflow, style))
     if not focus.strip():
         plan = extract_json(await openrouter_chat(
@@ -4599,17 +4602,12 @@ async def ai_improve_generated_prompt(body: ImproveGeneratedPromptBody):
         f"WORKFLOW: {workflow}\nPROMPT STYLE: {style}\n\n"
         f"CURRENT POSITIVE:\n{positive}\n\nCURRENT NEGATIVE:\n{body.negative.strip()}"
     )
-    sources = []
-    if body.use_web_research:
-        sources = await retrieve_prompt_sources(positive, workflow, style, body.research_focus)
-        system, user = prompt_research_messages(system, user, sources)
     result = extract_json(await openrouter_chat(system, user, response_format_json=True))
     improved_positive = str(result.get("positive") or "").strip()
     improved_negative = str(result.get("negative") or body.negative).strip()
     if not improved_positive:
         raise HTTPException(502, "Venice did not return an improved prompt")
-    return {"positive": improved_positive, "negative": improved_negative,
-            **(prompt_research_metadata(result, sources) if body.use_web_research else {})}
+    return {"positive": improved_positive, "negative": improved_negative}
 
 
 @api.post("/ai/video-prompt")
@@ -4632,15 +4630,6 @@ async def ai_video_prompt(body: VideoPromptBody):
             "Avoid scene cuts, sudden transformations, new people, or invented wardrobe changes. "
             "Return only the finished motion prompt with no heading or explanation."
         )
-    if body.use_web_research:
-        sources = await retrieve_prompt_sources(body.instruction, 'WAN 2.2', 'image-to-video' if body.mode == 'image' else 'text-to-video', body.research_focus)
-        system += ' Return JSON with positive (the motion prompt) and negative (empty unless needed).'
-        system, user = prompt_research_messages(system, body.instruction, sources)
-        result = extract_json(await openrouter_chat(system, user, response_format_json=True))
-        prompt = str(result.get('positive') or '').strip()
-        if not prompt:
-            raise HTTPException(502, 'The assistant returned an empty video prompt. Try again.')
-        return {'prompt': prompt, **prompt_research_metadata(result, sources)}
     prompt = await openrouter_chat(system, body.instruction, response_format_json=False)
     return {"prompt": prompt.strip()}
 
