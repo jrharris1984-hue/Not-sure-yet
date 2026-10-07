@@ -3,9 +3,9 @@ import { useState, useMemo, useEffect } from "react";
 import { toast } from "sonner";
 import { analyzePromptQuality, estimatePromptTokens } from "@/lib/promptQuality";
 import { requirementPresent } from "@/lib/promptPriority";
-import { WebPromptResearchOptions, PromptResearchNotes } from './WebPromptResearch';
+import { WebPromptResearchOptions } from './WebPromptResearch';
 
-export default function PromptPreview({ positive, negative, dna, workflow, context, compilerMeta, recipe, selectedLora, secondaryLora, imageCount = 1, optimized, improving, onImprove, onOptimize, onRestore, onApplyPrompts, aiProvider = "AI", researchEnabled = false, onResearchEnabled, researchFocus = '', onResearchFocus, aiSuggestion, onSuggestionChange, onApplySuggestion, onDiscardSuggestion, suggestionStale }) {
+export default function PromptPreview({ positive, negative, dna, workflow, context, compilerMeta, recipe, selectedLora, secondaryLora, imageCount = 1, optimized, improving, onImprove, onOptimize, onRestore, onApplyPrompts, aiProvider = "AI", aiSuggestion, onSuggestionChange, onApplySuggestion, onDiscardSuggestion, suggestionStale }) {
   const [copied, setCopied] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -95,14 +95,13 @@ export default function PromptPreview({ positive, negative, dna, workflow, conte
         </div>
         <div className="mt-2 text-[10px] text-zinc-500">{expanded ? "Hide full prompts" : "Show and edit full prompts"}</div>
       </button>
-        {onResearchEnabled && <WebPromptResearchOptions enabled={researchEnabled} onEnabled={onResearchEnabled} focus={researchFocus} onFocus={onResearchFocus} disabled={improving}/>}
+        <WebPromptResearchOptions disabled={improving}/>
       {aiSuggestion && <section aria-label="AI prompt suggestion" className="space-y-3 rounded-lg border border-cyan-400/30 p-3">
         <h3 className="text-sm font-semibold">Review AI prompt suggestion</h3>
         {suggestionStale && <p className="text-xs text-amber-200">The prompt or workflow changed after this suggestion was requested. Request a new suggestion before applying.</p>}
         {!!suggestionMissing.length && <p className="text-xs text-amber-200">Review these requirements: {suggestionMissing.map(item => item.label || item.text || item.id).join(', ')}. They may be missing from the suggestion; wording checks are approximate.</p>}
         <label className="block text-xs">Suggested positive prompt<textarea aria-label="AI suggested positive prompt" rows={6} value={aiSuggestion.positive} disabled={improving} onChange={event => onSuggestionChange({...aiSuggestion,positive:event.target.value})} className="mt-1 w-full rounded-lg border hairline bg-elevated p-2"/></label>
         <label className="block text-xs">Suggested negative prompt<textarea aria-label="AI suggested negative prompt" rows={2} value={aiSuggestion.negative} disabled={improving} onChange={event => onSuggestionChange({...aiSuggestion,negative:event.target.value})} className="mt-1 w-full rounded-lg border hairline bg-elevated p-2"/></label>
-        <PromptResearchNotes result={aiSuggestion}/>
         <div className="flex gap-3 text-xs"><button type="button" disabled={improving || suggestionStale || !aiSuggestion.positive.trim()} onClick={onApplySuggestion} className="text-cyan-200">Apply AI suggestion</button><button type="button" disabled={improving} onClick={onDiscardSuggestion}>Discard AI suggestion</button></div>
       </section>}
       <details className="rounded-lg border hairline bg-black/20 p-3 text-xs text-zinc-400" data-testid="prompt-length-review">
