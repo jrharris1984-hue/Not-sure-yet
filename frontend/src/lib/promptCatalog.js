@@ -1,4 +1,70 @@
 import { useSyncExternalStore } from 'react';
+
+export const SHARED_POSE_SECTION = {
+  key: 'shared_poses',
+  title: 'Shared Poses',
+  fields: [
+    {
+      key: 'two_people',
+      label: '2 people',
+      type: 'pose_chips',
+      groups: [
+        {name:'Portrait',options:['side by side','shoulder to shoulder','formal portrait pose','casual candid pose','looking at camera together','mirrored pose','staggered standing']},
+        {name:'Interaction',options:['facing each other','looking at each other','close conversational pose','leaning together','embracing','hugging from behind','holding hands','arm in arm']},
+        {name:'Movement',options:['walking together','walking arm in arm','dancing together','one behind the other']},
+        {name:'Seated & mixed levels',options:['seated together','seated side by side','seated facing each other','one seated and one standing']},
+        {name:'Angles',options:['back to back','over-the-shoulder pairing']},
+      ],
+    },
+    {
+      key: 'group',
+      label: '3–4 people',
+      type: 'pose_chips',
+      groups: [
+        {name:'Group composition',options:['group portrait','staggered lineup','semicircle','standing at different depths']},
+        {name:'Interaction',options:['walking together','seated group','hands joined','casual candid group']},
+      ],
+    },
+  ],
+};
+
+export function promptLibrarySections(base = []) {
+  const scenario = base.find(section => section.key === 'scenario');
+  const identity = base.find(section => section.key === 'identity');
+  const rest = base.filter(section => !['scenario','identity','shared_poses'].includes(section.key));
+  const poseIndex = rest.findIndex(section => section.key === 'pose');
+  const ordered = [scenario, identity, ...rest].filter(Boolean);
+  const insertAt = poseIndex >= 0 ? ordered.findIndex(section => section.key === 'pose') + 1 : ordered.length;
+  ordered.splice(insertAt, 0, SHARED_POSE_SECTION);
+  return ordered;
+}
+
+export function sharedPoseGroups(count = 2, config = catalog) {
+  const section = catalogSections([SHARED_POSE_SECTION], config)[0];
+  const field = section.fields.find(item => item.key === (count === 2 ? 'two_people' : 'group'));
+  if (!field) return [];
+  const options = new Map((field.options || []).map(value => [value, {
+    value,
+    label: field.optionLabels?.[value] || value,
+  }]));
+  const savedSection = config.sections?.find(item => item.key === SHARED_POSE_SECTION.key);
+  const savedField = savedSection?.fields?.find(item => item.key === field.key);
+  const savedOptions = new Map((savedField?.options || []).map(option => [option.value, option]));
+  const groups = field.groups?.length ? field.groups : [{name:'Choices',options:field.options || []}];
+  return groups.map(group => ({
+    label: group.name,
+    poses: group.options.map(value => {
+      const display = options.get(value) || { value, label:value };
+      const saved = savedOptions.get(value);
+      return {
+        value,
+        label: saved?.label || display.label,
+        prompt: saved?.keywords?.trim() || value,
+      };
+    }),
+  }));
+}
+
 let catalog = {sections:[]};
 const listeners = new Set();
 export const getPromptCatalog = () => catalog;
