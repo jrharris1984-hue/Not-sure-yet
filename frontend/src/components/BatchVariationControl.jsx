@@ -37,6 +37,7 @@ export default function BatchVariationControl({
     [key]: checked,
   });
   const [designerOpen, setDesignerOpen] = useState(false);
+  const [designerSource, setDesignerSource] = useState(smartPreset);
   const catalog = photoshootCatalog(customPresets);
   const activePreset = resolvePhotoshootPreset(smartPreset, customPresets);
 
@@ -88,10 +89,16 @@ export default function BatchVariationControl({
               <span className="font-semibold text-zinc-200">{activePreset.label}</span>
               <span className="ml-1">{activePreset.description}</span>
             </div>
-            <button type="button" onClick={() => setDesignerOpen(true)}
-              className="shrink-0 rounded-md border border-cyan-500/30 bg-cyan-500/10 px-2 py-1 text-[10px] font-semibold text-cyan-200">
-              {activePreset.custom ? "Edit" : "Customize"}
-            </button>
+            <div className="flex shrink-0 gap-1">
+              <button type="button" onClick={() => { setDesignerSource("__blank__"); setDesignerOpen(true); }}
+                className="rounded-md border hairline px-2 py-1 text-[10px] font-semibold text-zinc-300 hover:bg-white/5">
+                New
+              </button>
+              <button type="button" onClick={() => { setDesignerSource(smartPreset); setDesignerOpen(true); }}
+                className="rounded-md border border-cyan-500/30 bg-cyan-500/10 px-2 py-1 text-[10px] font-semibold text-cyan-200">
+                {activePreset.custom ? "Edit" : "Customize"}
+              </button>
+            </div>
           </div>
 
           <div className="mt-3 grid grid-cols-2 gap-2">
@@ -135,7 +142,7 @@ export default function BatchVariationControl({
       <SmartPhotoshootDesigner
         open={designerOpen}
         onClose={() => setDesignerOpen(false)}
-        sourcePreset={smartPreset}
+        sourcePreset={designerSource}
         customPresets={customPresets}
         onSave={async (preset) => {
           await onSavePreset?.(preset);
