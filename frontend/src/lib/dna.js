@@ -435,7 +435,7 @@ export const SECTIONS = [
       { key: "container", type: "chips", label: "Container / context", options: ["toilet", "tub", "shower", "outdoors", "in panties", "in jeans", "on bed", "into glass", "into cup", "through funnel", "public"] },
       { key: "wetness", type: "chips_multi", label: "Wetness (pick many)", options: [
         "dry", "damp", "soaked panties", "soaked jeans", "dripping thighs", "puddle at feet", "running down legs", "wet floor",
-      ]},
+      ], exclusiveGroups: [["dry", "damp", "soaked panties", "soaked jeans", "dripping thighs", "puddle at feet", "running down legs", "wet floor"]] },
       { key: "desperation", type: "chips", label: "Desperation", options: ["none", "calm", "needy", "holding it", "about to burst", "losing control", "humiliated"] },
       { key: "aftermath", type: "chips_multi", label: "Aftermath (pick many)", options: [
         "glistening skin", "wet hair", "wet clothes", "matted fur", "standing in puddle", "smeared mascara", "post-piss glow",
@@ -732,8 +732,12 @@ export function randomizeDna(current = {}, locks = {}, fieldLocks = {}, options 
   const out = { ...current };
   SECTIONS.forEach((s) => {
     if (locks[s.key]) return;
-    // Keep optional foot styling opt-in during whole-character randomization.
-    if (s.key === "feet") { out.feet = { ...(current.feet || {}) }; return; }
+    // Keep specialty fluid/foot styling opt-in during whole-character randomization.
+    // Their dedicated studios and Wet Dream randomizer are the explicit entry points.
+    if (s.key === "feet" || s.key === "watersports") {
+      out[s.key] = { ...(current[s.key] || {}) };
+      return;
+    }
     out[s.key] = randomizeSection(s.key, current[s.key] || {}, fieldLocks?.[s.key] || {}, options);
   });
   return out;
@@ -967,7 +971,7 @@ export function subjectLabel(index) {
 
 export function selfStreamContinuityCue(watersports = {}) {
   if (watersports.source !== "self" || watersports.phase !== "in progress") return "";
-  return `one continuous stream from the same adult subject to ${watersports.self_aim || "a visible landing point"}, following gravity, with a subtle highlight at the landing point; no detached or duplicate stream`;
+  return "stream originates from the same adult subject and remains physically connected from source to landing point; no detached or duplicate stream";
 }
 
 // Build positive/negative prompts from DNA — Venice-style structured formula:

@@ -35,14 +35,17 @@ describe("protected randomization", () => {
     Object.entries(protectedFeet).forEach(([key, value]) => expect(feet[key]).toEqual(value));
   });
 
-  test("whole-character randomize preserves the same fields", () => {
+  test("whole-character randomize preserves the same fields and never injects Watersports", () => {
+    const watersports = { ...DEFAULT_DNA.watersports, source: "none", phase: "before" };
     const result = randomizeDna({
       intimate: protectedIntimate,
       feet: protectedFeet,
+      watersports,
       scenario: { explicit_level: 0, kink_level: 0 },
     });
     Object.entries(protectedIntimate).forEach(([key, value]) => expect(result.intimate[key]).toEqual(value));
     Object.entries(protectedFeet).forEach(([key, value]) => expect(result.feet[key]).toEqual(value));
+    expect(result.watersports).toEqual(watersports);
     expect(result.scenario.explicit_level).toBe(0);
     expect(result.scenario.kink_level).toBe(0);
   });
@@ -120,6 +123,7 @@ test('whole-character random uses simple poses, bounded scales and opt-in foot s
     expect(result.physique.implant_volume % 50).toBe(0);
     expect(result.physique.butt_scale).toBeLessThanOrEqual(100);
     expect(result.feet).toEqual(DEFAULT_DNA.feet);
+    expect(result.watersports).toEqual(DEFAULT_DNA.watersports);
     if(/bun|chignon|ponytail|updo|braid|locs|twists/i.test(result.hair.style)) expect(['pixie','short bob']).not.toContain(result.hair.length);
   }
 });
