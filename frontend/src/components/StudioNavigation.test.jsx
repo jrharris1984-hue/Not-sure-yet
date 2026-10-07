@@ -28,9 +28,11 @@ test("mobile keeps primary actions visible and moves secondary destinations into
   render();
   expect(container.querySelectorAll("a").length).toBe(4);
   expect(document.querySelector('[data-testid="nav-settings-mobile"]')).toBeNull();
+  expect(document.querySelector('[data-testid="nav-tools-mobile"]')).toBeNull();
   act(() => container.querySelector('[data-testid="nav-more-mobile"]').click());
   expect(document.querySelector('[role="dialog"]')).not.toBeNull();
   expect(document.querySelector('[data-testid="nav-settings-mobile"]')).not.toBeNull();
+  expect(document.querySelector('[data-testid="nav-tools-mobile"]')).not.toBeNull();
   act(() => document.querySelector('[data-testid="nav-settings-mobile"]').click());
   expect(mockNavigate).toHaveBeenCalledWith("/settings", undefined);
   expect(document.querySelector('[role="dialog"]')).toBeNull();
@@ -42,7 +44,8 @@ test("Gallery navigation retains the return path to an unsaved editor", () => {
 });
 test("desktop links keep all destinations and root is selected only at the root", () => {
   render(<StudioNavLinks returnTo="/character/new" />);
-  expect(container.querySelectorAll("a").length).toBe(6);
+  expect(container.querySelectorAll("a").length).toBe(7);
   expect(container.querySelector('[data-testid="nav-library"]').getAttribute("aria-current")).toBeNull();
   expect(container.querySelector('[data-testid="nav-gallery"]').getAttribute("aria-current")).toBe("page");
+  expect(container.querySelector('[data-testid="nav-tools"]')).not.toBeNull();
 });
