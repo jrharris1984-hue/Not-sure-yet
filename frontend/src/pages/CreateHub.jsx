@@ -1,4 +1,4 @@
-import { ArrowRight, Film, Image as ImageIcon, UserRound } from "lucide-react";
+import { ArrowRight, Film, Image as ImageIcon, Sparkles, UserRound } from "lucide-react";
 import { Link } from "react-router-dom";
 
 const choices = [
@@ -35,6 +35,7 @@ export default function CreateHub() {
       <div className="section-label">Create</div>
       <h1 className="mt-1 font-display text-3xl sm:text-4xl font-extrabold">What do you want to make?</h1>
       <p className="mt-2 max-w-2xl text-sm text-zinc-400">Start new work here. Use Tools later when you want to edit, vary, enhance, reference, or animate an existing result.</p>
+      <Link to="/research" className="mt-3 inline-flex items-center gap-1.5 text-sm text-cyan-300 hover:underline"><Sparkles className="h-4 w-4" /> Research models & prompting with AI</Link>
     </header>
     <div className="grid gap-3 sm:grid-cols-2">
       {choices.map((choice) => <Link key={choice.to} to={choice.to}
