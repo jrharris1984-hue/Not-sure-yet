@@ -224,12 +224,17 @@ export default function Settings() {
         <div className="flex items-center gap-2">
           <Server className="h-4 w-4 text-amber-400" />
           <div className="section-label">ComfyUI</div>
-          {health && (
-            <span className={`ml-auto inline-flex items-center gap-1 text-xs font-mono ${health.online ? "text-emerald-300" : "text-red-400"}`}>
-              {health.online ? <CheckCircle2 className="h-3.5 w-3.5" /> : <XCircle className="h-3.5 w-3.5" />}
-              {health.online ? "online" : "offline"}
-            </span>
-          )}
+          {health && (() => {
+            const state = health.state || (health.online ? "connected" : "unreachable");
+            const ok = ["connected", "busy", "slow"].includes(state);
+            const label = state === "busy" ? "rendering" : state === "slow" ? "slow" : ok ? "online" : "offline";
+            return (
+              <span className={`ml-auto inline-flex items-center gap-1 text-xs font-mono ${ok ? "text-emerald-300" : "text-red-400"}`}>
+                {ok ? <CheckCircle2 className="h-3.5 w-3.5" /> : <XCircle className="h-3.5 w-3.5" />}
+                {label}
+              </span>
+            );
+          })()}
         </div>
         <label className="block space-y-1">
           <span className="text-xs uppercase tracking-widest text-zinc-500 font-mono">Server URL</span>
