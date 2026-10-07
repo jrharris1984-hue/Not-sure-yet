@@ -1104,6 +1104,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
     ]
   );
   const ollamaCompiled = useOllamaPrompt(compiledPrompt.positive, promptFormat === 'ollama' && compiledPrompt.profile === 'compact-narrative-v1', {workflowName:activeWorkflow?.name,promptStyle:activeCompiler});
+  const ollamaRenderPending = ollamaCompiled.pending;
   const positive = ollamaCompiled.positive;
   const { negative } = compiledPrompt;
   const promptFormatMeta = {...compiledPrompt,promptWords:positive.trim().split(/\s+/).filter(Boolean).length};
@@ -2847,14 +2848,21 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
           </select>}
           <button
             onClick={doDispatch}
-            disabled={dispatching || !workflowId || kreaRenderBlocked || ((isImageFirst || activeRecipeFamily === "edit") && !referenceImage?.name) || (poseAssistEnabled && !isVariationWorkflow && (!poseAssistAvailable || !poseReferenceImage?.name || (poseAssistStatus && !poseAssistStatus.ready)))}
+            disabled={dispatching || ollamaRenderPending || !workflowId || kreaRenderBlocked || ((isImageFirst || activeRecipeFamily === "edit") && !referenceImage?.name) || (poseAssistEnabled && !isVariationWorkflow && (!poseAssistAvailable || !poseReferenceImage?.name || (poseAssistStatus && !poseAssistStatus.ready)))}
             data-testid="btn-dispatch-comfyui-render"
-            className={`${isImageFirst ? "!hidden" : ""} hidden md:inline-flex items-center gap-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black text-sm font-semibold px-3 py-2 disabled:opacity-40`}
+            className={`${isImageFirst ? "!hidden" : ""} hidden md:inline-flex items-center gap-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black text-sm font-semibold px-3 py-2 disabled:cursor-not-allowed disabled:bg-zinc-600 disabled:text-zinc-300 disabled:opacity-70`}
           >
-            {dispatching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />} {poseAssistEnabled && !isVariationWorkflow ? "Pose Assist" : "Render"}
+            {dispatching || ollamaRenderPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
+            {ollamaRenderPending ? "Waiting for Ollama…" : poseAssistEnabled && !isVariationWorkflow ? "Pose Assist" : dispatching ? "Rendering…" : "Render"}
           </button>
 
         </div>
+        {ollamaRenderPending && !isImageFirst && (
+          <div className="hidden md:flex items-center gap-2 text-[11px] text-zinc-400" data-testid="desktop-ollama-render-wait">
+            <Loader2 className="h-3.5 w-3.5 animate-spin text-cyan-300" />
+            Ollama is finishing the prompt. Render will unlock automatically when it is ready.
+          </div>
+        )}
         </div>
         <div className={isImageFirst ? "hidden" : mobileStudioStep === "start" ? "block" : "hidden md:block"}>
           <TagInput value={tags} onChange={setTags} placeholder="tag this character (mood, ethnicity, persona)…" testId="builder-tags" />
@@ -3357,10 +3365,16 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
                 <div className="mt-2 max-h-44 overflow-y-auto text-xs leading-relaxed text-zinc-400">{finalPositive || "Choose the subject and scene to build a prompt."}</div>
               </details>
               {mobileCreateIssues.length > 0 && <div className="text-xs text-rose-300">{mobileCreateIssues.join(" ")}</div>}
-              <button type="button" onClick={doDispatch} disabled={dispatching || !workflowId || mobileCreateIssues.length > 0}
-                className="rounded-lg bg-amber-500 px-5 py-3 text-sm font-bold text-black disabled:opacity-40">
-                {dispatching ? "Rendering…" : "Generate images"}
+              <button type="button" onClick={doDispatch} disabled={dispatching || ollamaRenderPending || !workflowId || mobileCreateIssues.length > 0}
+                className="rounded-lg bg-amber-500 px-5 py-3 text-sm font-bold text-black disabled:cursor-not-allowed disabled:bg-zinc-600 disabled:text-zinc-300 disabled:opacity-70">
+                {ollamaRenderPending ? "Waiting for Ollama…" : dispatching ? "Rendering…" : "Generate images"}
               </button>
+              {ollamaRenderPending && (
+                <p className="flex items-center gap-2 text-xs text-zinc-400" data-testid="desktop-quick-ollama-wait">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin text-cyan-300" />
+                  Ollama is finishing the prompt. Generation will unlock automatically.
+                </p>
+              )}
               {activeRender && (
                 <div className="border-t hairline pt-4" data-testid="quick-create-result">
                   <div className="section-label">Latest render · {activeRender.status}</div>
