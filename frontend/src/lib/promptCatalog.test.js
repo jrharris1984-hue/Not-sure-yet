@@ -1,5 +1,5 @@
 import {SECTIONS, DEFAULT_DNA} from './dna';
-import {catalogSections, catalogDna, customCatalogPrompt, setPromptCatalog, editableSection, applyCatalogRules, validateCatalogDraft} from './promptCatalog';
+import {catalogSections, catalogDna, customCatalogPrompt, setPromptCatalog, editableSection, applyCatalogRules, validateCatalogDraft, promptLibrarySections, sharedPoseGroups} from './promptCatalog';
 import {compileModelPrompts} from './modelPromptCompilers';
 const custom={key:'custom_atmosphere',title:'Atmosphere',fields:[{key:'custom_weather',label:'Weather details',type:'chips_multi',options:[{value:'custom_mist',label:'Morning mist',keywords:'a thin layer of morning mist over the ground',group:'Outdoors'}]}]};
 afterEach(() => setPromptCatalog({sections:[]}));
@@ -71,4 +71,20 @@ test('saved rules reach Qwen compiled and freeform dispatch prompts, while disab
   const payload=freeformPayload({mode:'image',workflow:{id:'q',kind:'image',prompt_style:'qwen_image'},prompt:'Portrait photograph'});
   expect(payload.prompt_positive).toBe('Portrait photograph; subtle natural texture');
   expect(payload.prompt_negative).toBe('blur');
+});
+
+
+test('Prompt Library ordering starts with Scenario then Identity and adds Shared Poses after Pose', () => {
+  const sections=promptLibrarySections(SECTIONS);
+  expect(sections.slice(0,2).map(section=>section.key)).toEqual(['scenario','identity']);
+  expect(sections.findIndex(section=>section.key==='shared_poses')).toBe(sections.findIndex(section=>section.key==='pose')+1);
+});
+
+test('shared pose metadata is editable without becoming a character DNA section', () => {
+  const config={sections:[{key:'shared_poses',title:'Shared Poses',fields:[{key:'two_people',label:'2 people',type:'pose_chips',options:[
+    {value:'side by side',label:'Editorial Pair',keywords:'close editorial pairing',group:'Custom'},
+  ]}]}]};
+  const groups=sharedPoseGroups(2,config);
+  expect(groups[0]).toMatchObject({label:'Custom',poses:[{value:'side by side',label:'Editorial Pair',prompt:'close editorial pairing'}]});
+  expect(catalogSections(SECTIONS,config).some(section=>section.key==='shared_poses')).toBe(false);
 });

@@ -1,39 +1,12 @@
 import {useEffect, useMemo, useState} from 'react';
-
-const TWO_PERSON_POSE_GROUPS = [
-  {label:'Portrait', poses:[
-    'side by side','shoulder to shoulder','formal portrait pose','casual candid pose',
-    'looking at camera together','mirrored pose','staggered standing',
-  ]},
-  {label:'Interaction', poses:[
-    'facing each other','looking at each other','close conversational pose','leaning together',
-    'embracing','hugging from behind','holding hands','arm in arm',
-  ]},
-  {label:'Movement', poses:[
-    'walking together','walking arm in arm','dancing together','one behind the other',
-  ]},
-  {label:'Seated & mixed levels', poses:[
-    'seated together','seated side by side','seated facing each other','one seated and one standing',
-  ]},
-  {label:'Angles', poses:[
-    'back to back','over-the-shoulder pairing',
-  ]},
-];
-
-const GROUP_POSE_GROUPS = [
-  {label:'Group composition', poses:[
-    'group portrait','staggered lineup','semicircle','standing at different depths',
-  ]},
-  {label:'Interaction', poses:[
-    'walking together','seated group','hands joined','casual candid group',
-  ]},
-];
+import {sharedPoseGroups, usePromptCatalog} from '@/lib/promptCatalog';
 
 const clean = value => String(value || '').replace(/\s+/g, ' ').trim();
 
 export default function CastPoseOptions({count, value, onSelect}) {
-  const groups = count === 2 ? TWO_PERSON_POSE_GROUPS : GROUP_POSE_GROUPS;
-  const presetSet = useMemo(() => new Set(groups.flatMap(group => group.poses)), [groups]);
+  const promptCatalog = usePromptCatalog();
+  const groups = useMemo(() => sharedPoseGroups(count, promptCatalog), [count, promptCatalog]);
+  const presetSet = useMemo(() => new Set(groups.flatMap(group => group.poses.flatMap(pose => [pose.value, pose.prompt]))), [groups]);
   const selectedIsCustom = !!clean(value) && !presetSet.has(clean(value));
   const [customPose, setCustomPose] = useState(selectedIsCustom ? clean(value) : '');
 
@@ -56,8 +29,11 @@ export default function CastPoseOptions({count, value, onSelect}) {
       {groups.map(group => <section key={group.label} aria-label={group.label}>
         <div className="mb-1.5 text-[10px] font-mono uppercase tracking-widest text-emerald-300/80">{group.label}</div>
         <div className="grid grid-cols-2 gap-2">
-          {group.poses.map(pose => <button key={pose} type="button" aria-pressed={value === pose} onClick={() => onSelect(pose)}
-            className={`sheet-field-card rounded-lg border px-3 py-2 text-xs capitalize ${value === pose ? 'has-selection border-amber-400 text-amber-200' : 'hairline text-zinc-300'}`}>{pose}</button>)}
+          {group.poses.map(pose => {
+            const selected = value === pose.value || value === pose.prompt;
+            return <button key={pose.value} type="button" aria-pressed={selected} onClick={() => onSelect(pose.prompt)}
+              className={`sheet-field-card rounded-lg border px-3 py-2 text-xs capitalize ${selected ? 'has-selection border-amber-400 text-amber-200' : 'hairline text-zinc-300'}`}>{pose.label}</button>;
+          })}
         </div>
       </section>)}
     </div>
