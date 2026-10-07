@@ -168,8 +168,8 @@ export default function MobileBuilderSheets({ sections, section, onSection, subj
       </>}
     </div>
     <footer className="sheet-generation-dock">
-      <div className="flex gap-2"><button type="button" className="chip" onClick={() => open("output")}>Settings</button>
-        <button type="button" className="chip" onClick={onTools}>More tools</button>
+      <div className="flex gap-2"><button type="button" className="chip" onClick={() => open("output")}>Generation</button>
+        <button type="button" className="chip" onClick={onTools}>Advanced</button>
         <button type="button" className="sheet-generate-button flex-1 rounded-xl bg-emerald-400 text-black py-3 text-sm font-bold disabled:opacity-40" disabled={!canGenerate || generating} onClick={onGenerate}>{generating ? "Queuing…" : `Generate (${imageCount})`}</button></div>
       {issues.length > 0 && <p className="text-xs text-amber-200 mt-1">{issues.join(" ")}</p>}
     </footer>

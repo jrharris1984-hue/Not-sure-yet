@@ -156,3 +156,9 @@ test('unclassified installed LoRA can be assigned its documented family; saved t
   await act(async () => button('Generate').click());
   expect(endpoints.dispatchRender.mock.calls[0][0].selected_loras[0]).toMatchObject({name,triggers:['portrait style','soft daylight']});
 });
+
+test('prompt-only creation returns to the unified Create hub', async () => {
+  await act(async () => root.render(<FreeformCreate/>));
+  expect(container.querySelector('a[href="/create"]').textContent).toContain('Create');
+});
+

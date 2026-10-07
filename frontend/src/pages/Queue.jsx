@@ -138,7 +138,7 @@ export default function Queue() {
         <div className="pane py-20 text-center">
           <Clock3 className="mx-auto h-8 w-8 text-zinc-600" />
           <h2 className="mt-3 font-display text-xl font-bold">The queue is empty</h2>
-          <p className="mt-1 text-sm text-zinc-500">Render from the Character Builder and the job will appear here.</p>
+          <p className="mt-1 text-sm text-zinc-500">Start a render from Create or Tools and the job will appear here.</p>
         </div>
       ) : (
         <div className="space-y-7">

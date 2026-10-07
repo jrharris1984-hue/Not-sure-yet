@@ -37,6 +37,10 @@ export default function AppShell({ children }) {
   useEffect(() => initializeStudioTheme(), []);
   const research = useAssistantResearch();
   const isBuilder = loc.pathname.startsWith("/character");
+  const isImageTool = loc.pathname.startsWith("/image-tools/");
+  const isCreateWorkspace = isBuilder || isImageTool || loc.pathname === "/create" || loc.pathname.startsWith("/create/");
+  const galleryReturnTo = isBuilder || isImageTool ? loc.pathname : undefined;
+  const showResearchWorkspace = loc.pathname === "/research";
   const mainRef = useRef(null);
   const pageGroup = loc.pathname.split("/")[1] || "library";
   useEffect(() => {
@@ -63,13 +67,13 @@ export default function AppShell({ children }) {
             </span>
           </Link>
           <nav className="hidden xl:flex items-center gap-1 rounded-2xl border hairline bg-black/25 p-1" aria-label="Studio navigation">
-            <StudioNavLinks returnTo={isBuilder ? loc.pathname : undefined} />
+            <StudioNavLinks returnTo={galleryReturnTo} />
           </nav>
           <div className="flex items-center gap-2">
             <ComfyStatus />
-            {!isBuilder && (
+            {!isCreateWorkspace && (
               <Link
-                to="/character/new"
+                to="/create"
                 data-testid="btn-new-character"
                 className="hidden sm:inline-flex items-center gap-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-black text-sm font-semibold px-3 py-2 transition-colors"
               >
@@ -79,15 +83,21 @@ export default function AppShell({ children }) {
           </div>
         </div>
         <nav className="hidden md:flex xl:hidden gap-1 overflow-x-auto scroll-fade border-t border-white/5 px-6 py-1.5" aria-label="Tablet studio navigation">
-          <StudioNavLinks compact returnTo={isBuilder ? loc.pathname : undefined} />
+          <StudioNavLinks compact returnTo={galleryReturnTo} />
         </nav>
       </header>
 
       <NowRenderingStrip />
-      <main id="studio-main" ref={mainRef} tabIndex={-1} className="studio-main flex-1 min-w-0"><div className="mx-auto max-w-4xl px-4 pt-3"><WebPromptResearchOptions/>{research.result && <details className="mt-2 text-xs"><summary className="cursor-pointer text-cyan-300">Latest AI research sources</summary><PromptResearchNotes result={research.result}/></details>}</div>{children}</main>
+      <main id="studio-main" ref={mainRef} tabIndex={-1} className="studio-main flex-1 min-w-0">
+        {showResearchWorkspace && <div className="mx-auto max-w-4xl px-4 pt-3">
+          <WebPromptResearchOptions/>
+          {research.result && <details className="mt-2 text-xs"><summary className="cursor-pointer text-cyan-300">Latest AI research sources</summary><PromptResearchNotes result={research.result}/></details>}
+        </div>}
+        {children}
+      </main>
       <PwaInstallPrompt />
 
-      <MobileStudioNavigation returnTo={isBuilder ? loc.pathname : undefined} />
+      <MobileStudioNavigation returnTo={galleryReturnTo} />
       <div className="mobile-bottom-spacer h-16 md:h-0" />
     </div>
   );

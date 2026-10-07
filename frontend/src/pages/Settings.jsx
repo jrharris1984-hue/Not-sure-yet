@@ -216,11 +216,22 @@ export default function Settings() {
         <h1 className="font-display font-extrabold text-3xl sm:text-4xl mt-1">Studio configuration</h1>
       </div>
 
-      <AppearanceSettings />
+      <nav className="pane flex gap-2 overflow-x-auto p-2 scroll-fade" aria-label="Settings sections" data-testid="settings-section-nav">
+        {[
+          ["appearance", "Appearance"],
+          ["prompts", "Prompt library"],
+          ["comfyui", "ComfyUI"],
+          ["media-library", "Media Library"],
+          ["workflows", "Workflows"],
+          ["ai-assist", "AI Assist"],
+        ].map(([id, label]) => <a key={id} href={`#${id}`} className="chip shrink-0">{label}</a>)}
+      </nav>
 
-      <Link to="/settings/prompts" className="pane block p-5 text-cyan-200">Edit Prompt Library →<span className="mt-1 block text-xs text-zinc-400">Customize categories, selection labels and prompt keywords without coding.</span></Link>
+      <div id="appearance" className="scroll-mt-24"><AppearanceSettings /></div>
 
-      <section className="pane p-5 space-y-4">
+      <Link id="prompts" to="/settings/prompts" className="pane block scroll-mt-24 p-5 text-cyan-200">Edit Prompt Library →<span className="mt-1 block text-xs text-zinc-400">Customize categories, selection labels and prompt keywords without coding.</span></Link>
+
+      <section id="comfyui" className="pane scroll-mt-24 p-5 space-y-4">
         <div className="flex items-center gap-2">
           <Server className="h-4 w-4 text-amber-400" />
           <div className="section-label">ComfyUI</div>
@@ -256,7 +267,7 @@ export default function Settings() {
         </div>
       </section>
 
-      <section className="pane p-5 space-y-4" data-testid="media-library-connection">
+      <section id="media-library" className="pane scroll-mt-24 p-5 space-y-4" data-testid="media-library-connection">
         <div className="section-label">Media Library connection</div>
         <label className="block space-y-1">
           <span className="text-xs text-zinc-400 font-mono">Media server URL</span>
@@ -274,7 +285,7 @@ export default function Settings() {
         {mediaHealth.data?.error && <p className="text-xs text-amber-200 break-words">{mediaHealth.data.error}</p>}
       </section>
 
-      <section className="pane p-5 space-y-4">
+      <section id="workflows" className="pane scroll-mt-24 p-5 space-y-4">
         <div className="flex items-center gap-2 flex-wrap">
           <div className="section-label">Workflow library</div>
           <span className="text-xs text-zinc-500 font-mono">{catalog.primary.length} standalone workflow{catalog.primary.length === 1 ? "" : "s"}</span>
@@ -339,7 +350,7 @@ export default function Settings() {
         </div>
       </section>
 
-      <section className="pane p-5 space-y-4">
+      <section id="ai-assist" className="pane scroll-mt-24 p-5 space-y-4">
         <div className="flex items-center gap-2">
           <KeyRound className="h-4 w-4 text-amber-400" />
           <div className="section-label">AI Assist</div>

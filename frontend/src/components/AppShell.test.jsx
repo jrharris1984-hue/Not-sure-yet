@@ -41,3 +41,16 @@ test("health loading and failed checks are distinct from an offline result", () 
   mockHealth = { data: { online: false } }; render();
   expect(container.querySelector('[data-testid="comfyui-ws-status-badge"]').textContent).toContain("offline");
 });
+
+test("header Create opens the creation hub outside Builder", () => {
+  mockPath = "/gallery";
+  render();
+  expect(container.querySelector('[data-testid="btn-new-character"]').getAttribute("href")).toBe("/create");
+});
+
+test("header does not offer another Create button inside an image-tool workspace", () => {
+  mockPath = "/image-tools/repair";
+  render();
+  expect(container.querySelector('[data-testid="btn-new-character"]')).toBeNull();
+});
+

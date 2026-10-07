@@ -37,12 +37,12 @@ test('exposes scenario, people, subject switching and generation without changin
   expect(onSubject).toHaveBeenCalledWith('a'); expect(onGenerate).toHaveBeenCalledTimes(1);
   expect(container.textContent).toContain('1 person');
 });
-test('settings, Escape dismissal, and More tools remain reachable', () => {
-  const onTools = jest.fn(); paint({ onTools }); click('Settings');
+test('generation settings, Escape dismissal, and Advanced remain reachable', () => {
+  const onTools = jest.fn(); paint({ onTools }); click('Generation');
   expect(container.querySelector('[role="dialog"]').textContent).toContain('Workflow settings');
   act(() => container.querySelector('[role="dialog"]').dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })));
   act(() => jest.advanceTimersByTime(320));
-  expect(container.querySelector('[role="dialog"]')).toBeNull(); click('More tools'); expect(onTools).toHaveBeenCalledTimes(1);
+  expect(container.querySelector('[role="dialog"]')).toBeNull(); click('Advanced'); expect(onTools).toHaveBeenCalledTimes(1);
 });
 test('category changes close stale detail controls and generation respects readiness', () => {
   paint(); click('Colorblack'); paint({ section: sections[1], canGenerate: false });
