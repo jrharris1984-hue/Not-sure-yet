@@ -263,7 +263,8 @@ export const SMART_PHOTOSHOOT_PRESETS = Object.fromEntries(
   )
 );
 
-const escapeRegex = value => String(value || "").replace(/[.*+?^\${}()|[\]\\]/g, "\\$&");
+const REGEX_SPECIALS = new Set(["\\", "^", "$", ".", "|", "?", "*", "+", "(", ")", "[", "]", "{", "}"]);
+const escapeRegex = value => [...String(value || "")].map(char => REGEX_SPECIALS.has(char) ? `\\${char}` : char).join("");
 const matcherFromText = value => {
   const parts = String(value || "").split("|").map(part => part.trim()).filter(Boolean);
   return parts.length ? new RegExp(parts.map(escapeRegex).join("|"), "i") : null;
