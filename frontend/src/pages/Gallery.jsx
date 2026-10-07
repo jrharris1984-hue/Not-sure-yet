@@ -10,7 +10,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { API_BASE, endpoints } from "@/lib/api";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
-import { X, Download, Copy, ExternalLink, Trash2, CheckSquare, RotateCcw, Shuffle, Pencil, Film, Loader2, Info, ChevronLeft, ChevronRight, PersonStanding, BookOpen, FolderPlus, Columns2, ScanFace, SlidersHorizontal } from "lucide-react";
+import { X, Download, Copy, ExternalLink, Trash2, CheckSquare, RotateCcw, Shuffle, Loader2, Info, ChevronLeft, ChevronRight, BookOpen, FolderPlus, Columns2, SlidersHorizontal } from "lucide-react";
 import { toast } from "sonner";
 
 async function downloadImage(url, filename) {
