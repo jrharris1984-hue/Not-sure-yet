@@ -2,7 +2,7 @@ import {act} from 'react';
 import {createRoot} from 'react-dom/client';
 import PromptLibraryEditor from './PromptLibraryEditor';
 import {endpoints} from '@/lib/api';
-import {getPromptCatalog,setPromptCatalog,editableSection} from '@/lib/promptCatalog';
+import {getPromptCatalog,setPromptCatalog,editableSection,promptLibrarySections} from '@/lib/promptCatalog';
 import {SECTIONS} from '@/lib/dna';
 import {expandPrompt} from '@/lib/promptMap';
 jest.mock('react-router-dom',() => ({Link:({to,children,...props}) => <a href={to} {...props}>{children}</a>}),{virtual:true});
@@ -170,4 +170,25 @@ test('Ollama compact suggestions require review and apply only to compact wordin
   act(() => button('Apply compact wording').click());
   expect(container.querySelector('[aria-label^="Compact wording custom_"]').value).toBe('morning mist');
   expect(container.querySelector('[aria-label^="Keywords custom_"]').value).toBe('gentle morning mist');
+});
+
+
+test('Prompt Library puts Scenario before Identity and exposes Shared Poses for two-person editing', async() => {
+  await act(async() => root.render(<PromptLibraryEditor/>));
+  const categoryButtons=[...container.querySelector('aside').querySelectorAll('button')].filter(button => button.textContent !== 'Add category');
+  expect(categoryButtons[0].textContent).toBe('Scenario');
+  expect(categoryButtons[1].textContent).toBe('Identity');
+  expect(button('Shared Poses')).toBeDefined();
+  act(() => button('Shared Poses').click());
+  expect(button('📁 2 people')).toBeDefined();
+  act(() => button('📁 2 people').click());
+  expect(container.textContent).toContain('Portrait');
+  expect(container.textContent).toContain('side by side');
+});
+
+test('Prompt Library section helper keeps Shared Poses out of the DNA schema order while adding it to the editor', () => {
+  const sections=promptLibrarySections(SECTIONS);
+  expect(sections[0].key).toBe('scenario');
+  expect(sections[1].key).toBe('identity');
+  expect(sections.find(section => section.key==='shared_poses')).toBeDefined();
 });
