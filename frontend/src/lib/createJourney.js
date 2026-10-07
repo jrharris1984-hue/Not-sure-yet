@@ -1,3 +1,5 @@
+import { studioProfile } from "@/lib/studioProfiles";
+
 const stage = (id, title, detail, categories, simpleSections) => ({
   id,
   key: id,
@@ -39,21 +41,14 @@ const cloneStages = () => BASE_CREATE_STAGES.map((item) => ({
 
 export function createStagesForStudio(studio = "standard") {
   const stages = cloneStages();
-  const appearance = stages.find((item) => item.id === "character");
-  const scene = stages.find((item) => item.id === "scene");
+  const profile = studioProfile(studio);
+  if (!profile.focusStage || !profile.simpleSections?.length) return stages;
 
-  if (studio === "feet") {
-    appearance.simpleSections = ["physique", "face", "hair", "skin", "feet"];
-    appearance.detail = "Build the subject, then refine foot appearance and presentation";
-    appearance.hint = appearance.detail;
-  }
-
-  if (studio === "watersports") {
-    scene.simpleSections = ["pose", "watersports", "scene", "lighting"];
-    scene.detail = "Set the pose, specialty scene details, location and lighting";
-    scene.hint = scene.detail;
-  }
-
+  const focused = stages.find((item) => item.id === profile.focusStage);
+  if (!focused) return stages;
+  focused.simpleSections = [...profile.simpleSections];
+  focused.detail = profile.description;
+  focused.hint = profile.description;
   return stages;
 }
 

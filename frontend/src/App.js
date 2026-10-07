@@ -18,10 +18,13 @@ import Shoots from "@/pages/Shoots";
 import ShootSetup from "@/pages/ShootSetup";
 import ShootDetail from "@/pages/ShootDetail";
 import Tools from "@/pages/Tools";
+import { normalizeStudioMode } from "@/lib/studioProfiles";
 
 function LegacyStudioRedirect() {
-  const { id, section } = useParams();
-  const destination = id ? `/character/${id}${section ? `/s/${section}` : ""}` : `/character/new${section ? `/s/${section}` : ""}`;
+  const { studio, id, section } = useParams();
+  const mode = normalizeStudioMode(studio);
+  const path = id ? `/character/${id}${section ? `/s/${section}` : ""}` : `/character/new${section ? `/s/${section}` : ""}`;
+  const destination = mode === "standard" ? path : `${path}?mode=${encodeURIComponent(mode)}`;
   return <Navigate to={destination} replace />;
 }
 
