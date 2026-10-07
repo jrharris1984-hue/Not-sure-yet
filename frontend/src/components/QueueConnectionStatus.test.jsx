@@ -28,3 +28,17 @@ test("connection checks are explicit and blocked while checking", () => {
   render({ checking: true, onReconnect });
   expect(container.querySelector("button").disabled).toBe(true);
 });
+
+
+test("busy rendering is not presented as offline", () => {
+  render({ health: { online: true, state: "busy", active_jobs: 1, url: "http://server:8188" } });
+  expect(container.textContent).toContain("ComfyUI rendering");
+  expect(container.textContent).toContain("1 active job");
+  expect(container.textContent).not.toContain("ComfyUI unreachable");
+});
+
+test("slow response remains connected instead of offline", () => {
+  render({ health: { online: true, state: "slow", last_response_at: "2026-10-07T16:00:00+00:00" } });
+  expect(container.textContent).toContain("responding slowly");
+  expect(container.textContent).not.toContain("ComfyUI unreachable");
+});

@@ -4,6 +4,7 @@ import { resolveAgeSkin } from './ageAppearance';
 import { resolveWardrobeMode } from "./wardrobeMode";
 import { wardrobeNudity } from "./wardrobeNudity";
 import { footVisibility } from './footVisibility';
+import { CONCEALED_ANATOMY_FIELDS, hasCoveringOuterOutfit } from './coveredOutfitDetails';
 // Resolve shared visual controls on a copy. Saved selections remain editable.
 const list = value => Array.isArray(value) ? value : value ? [value] : [];
 const lower = value => String(value || '').toLowerCase();
@@ -139,6 +140,19 @@ export function resolveBuilderControls(source = {}) {
     }
   }
   if (w.heel_type) omit('wardrobe', 'footwear', 'The selected heel type overrides the general footwear choice.');
+  if (hasCoveringOuterOutfit(dna) && dna.intimate) {
+    for (const field of CONCEALED_ANATOMY_FIELDS) {
+      omit('intimate', field, 'Hidden by the selected covering outfit. This detail is omitted from the prompt; your selection stays saved.');
+    }
+    // A face piercing may remain visible; do not discard it with the
+    // details hidden under a covering outer outfit.
+    const piercings = list(dna.intimate.piercings);
+    const visible = piercings.filter(value => !/\b(?:nipple|navel|labia|clit|genital)\b/i.test(value));
+    if (visible.length !== piercings.length) {
+      dna.intimate.piercings = Array.isArray(dna.intimate.piercings) ? visible : visible[0] || '';
+      notes.push({section:'intimate',field:'piercings',text:'Piercings hidden by the covering outfit are omitted from the prompt; visible piercing selections stay active.'});
+    }
+  }
   if (w.hosiery_type) omit('feet', 'hosiery', 'Wardrobe hosiery controls coverage; the Feet hosiery fallback is inactive.');
   const footwear = lower(w.heel_type || w.footwear);
   const visibility = footVisibility(w, f);
