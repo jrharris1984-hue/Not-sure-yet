@@ -43,7 +43,7 @@ import { compileModelPrompts, resolvePromptCompiler } from "@/lib/modelPromptCom
 import { batchSeed } from "@/lib/batchSeeds";
 import { batchPoseVariation } from "@/lib/batchPoseVariation";
 import { batchCameraVariation } from "@/lib/batchCameraVariation";
-import { smartPhotoshootVariation } from "@/lib/batchSmartPhotoshoot";
+import { buildSmartPhotoshootPlan, smartPhotoshootVariation } from "@/lib/batchSmartPhotoshoot";
 import BatchVariationControl from "@/components/BatchVariationControl";
 import { resolveReferenceNotes, translatePlainLanguage } from "@/lib/plainLanguagePrompt";
 import { analyzePromptQuality } from "@/lib/promptQuality";
@@ -152,6 +152,8 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
     framing: true,
     expression: false,
   });
+  const [smartBatchPreset, setSmartBatchPreset] = useState("editorial");
+  const [smartPlanSeed, setSmartPlanSeed] = useState(1);
   const activeIdx = Math.max(0, SECTIONS.findIndex((s) => s.key === sectionParam));
   const activeSection = SECTIONS[activeIdx].key;
   const basePath = isNew ? "/character/new" : `/character/${id}`;
@@ -463,6 +465,16 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
   const isLtxVideo = promptStyle === "ltx_t2v";
   const isKrea2 = activeCompiler === "krea2" && !isKrea2Aio;
   const activeRecipeFamily = recipeFamily(activeCompiler);
+  const smartPhotoshootPlan = useMemo(() => batchSeedMode === "smart" && renderCount > 1
+    ? buildSmartPhotoshootPlan({
+        count: renderCount,
+        subjects,
+        promptCatalog,
+        preset: smartBatchPreset,
+        seed: smartPlanSeed,
+        options: smartBatchOptions,
+      })
+    : [], [batchSeedMode, renderCount, subjects, promptCatalog, smartBatchPreset, smartPlanSeed, smartBatchOptions]);
   const renderSettings = isKrea2Aio
     ? { ...chromaSettings, steps: 12, cfg: 1, sampler: "euler_ancestral", scheduler: "beta" }
     : isKrea2
@@ -1274,10 +1286,20 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
       negativeStrategy: batchCompiled.negativeStrategy,
       enabled: !["qwen_edit", "wan_i2v"].includes(activeCompiler),
     });
+    const variationDirective = [
+      batchActiveDna?.pose?.action,
+      batchActiveDna?.pose?.angle,
+      batchActiveDna?.pose?.distance,
+      batchActiveDna?.camera?.angle ? `${batchActiveDna.camera.angle} camera angle` : "",
+      batchActiveDna?.face?.expression ? `${batchActiveDna.face.expression} expression` : "",
+    ].filter(Boolean).join(", ");
+    const positiveBase = promptOverride?.trim()
+      ? [promptOverride.trim(), variationDirective].filter(Boolean).join(", ")
+      : batchPhotoPrompts.positive;
     return {
       positive: activeLoraTriggers.reduce(
         (text, trigger) => text.toLowerCase().includes(trigger.toLowerCase()) ? text : `${trigger}, ${text}`,
-        batchPhotoPrompts.positive
+        positiveBase
       ),
       negative: batchPhotoPrompts.negative,
     };
@@ -1490,10 +1512,11 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
         const smartVariation = requestedCount > 1 && batchSeedMode === "smart"
           ? smartPhotoshootVariation({
               subjects,
-              sections: SECTIONS,
               promptCatalog,
               index: imageIndex,
-              seed: baseSeed,
+              seed: smartPlanSeed,
+              preset: smartBatchPreset,
+              plan: smartPhotoshootPlan,
               options: smartBatchOptions,
             })
           : null;
@@ -2796,6 +2819,10 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
               onChange={setBatchSeedMode}
               smartOptions={smartBatchOptions}
               onSmartOptionsChange={setSmartBatchOptions}
+              smartPreset={smartBatchPreset}
+              onSmartPresetChange={setSmartBatchPreset}
+              smartPlan={smartPhotoshootPlan}
+              onRegeneratePlan={() => setSmartPlanSeed(seed => seed + 1)}
               compact
             />
           </div>}
@@ -2991,6 +3018,10 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
               onChange={setBatchSeedMode}
               smartOptions={smartBatchOptions}
               onSmartOptionsChange={setSmartBatchOptions}
+              smartPreset={smartBatchPreset}
+              onSmartPresetChange={setSmartBatchPreset}
+              smartPlan={smartPhotoshootPlan}
+              onRegeneratePlan={() => setSmartPlanSeed(seed => seed + 1)}
             />
           </section>}
           {activeRecipeFamily === "image" && !isKrea2 && !isVariationWorkflow && (
