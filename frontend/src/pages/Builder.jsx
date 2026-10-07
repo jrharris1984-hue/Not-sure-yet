@@ -18,6 +18,7 @@ import VariationInstruction from "@/components/VariationInstruction";
 import { resolveBuilderControls } from "@/lib/builderControlResolution";
 import CreationOutputControls from "@/components/CreationOutputControls";
 import CreateJourney from "@/components/CreateJourney";
+import StudioModePicker from "@/components/StudioModePicker";
 import { createStagesForStudio } from "@/lib/createJourney";
 import { useCreateShellState } from "@/hooks/useCreateShellState";
 import { useBuilderSessionState } from "@/hooks/useBuilderSessionState";
@@ -70,7 +71,7 @@ import { getRenderRecipe, recipeFamily } from "@/lib/renderRecipes";
 import { useCompiledPromptReset } from "@/lib/useCompiledPromptReset";
 import { builderCatalogWorkflows } from "@/lib/workflowCatalog";
 import { readBuilderDraft, writeBuilderDraft, clearBuilderDraft } from "@/lib/builderDraft";
-import { STUDIO_PROFILES, applyStudioPreset } from "@/lib/studioProfiles";
+import { STUDIO_PROFILES, applyStudioPreset, normalizeStudioMode } from "@/lib/studioProfiles";
 import { buildSameCharacterPoseInstruction, DEFAULT_POSE_LOCKS, SAME_CHARACTER_POSES } from "@/lib/sameCharacterPose";
 import { DEFAULT_REFERENCE_STRENGTHS, REFERENCE_RECIPES, preservationStrengthInstruction, referenceStudioSummary } from "@/lib/referenceStudio";
 import { Flame } from "lucide-react";
@@ -129,11 +130,13 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
   }, [promptCatalog]);
   const { id, section: sectionParam } = useParams();
   const isNew = !id;
-  const studioProfile = STUDIO_PROFILES[studio];
-  const studioSteps = useMemo(() => createStagesForStudio(studio), [studio]);
-  const draftId = imageToolId ? `image-tool:${imageToolId}` : isNew && studioProfile ? `studio:${studio}` : (id || null);
   const nav = useNavigate();
   const location = useLocation();
+  const requestedStudioMode = new URLSearchParams(location.search).get("mode");
+  const studioMode = normalizeStudioMode(requestedStudioMode || studio);
+  const studioProfile = STUDIO_PROFILES[studioMode];
+  const studioSteps = useMemo(() => createStagesForStudio(studioMode), [studioMode]);
+  const draftId = imageToolId ? `image-tool:${imageToolId}` : (id || null);
   const qc = useQueryClient();
   const galleryImportApplied = useRef(false);
   const imageToolApplied = useRef(false);
@@ -141,9 +144,19 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
   const draftHydrated = useRef(false);
   const activeIdx = Math.max(0, SECTIONS.findIndex((s) => s.key === sectionParam));
   const activeSection = SECTIONS[activeIdx].key;
-  const basePath = studioProfile ? (isNew ? `/studio/${studio}` : `/studio/${studio}/${id}`) : (isNew ? "/character/new" : `/character/${id}`);
-  const sectionUrl = (key) => `${basePath}/s/${key}`;
+  const basePath = isNew ? "/character/new" : `/character/${id}`;
+  const studioSearch = studioMode === "standard" ? "" : `?mode=${encodeURIComponent(studioMode)}`;
+  const sectionUrl = (key) => `${basePath}/s/${key}${studioSearch}`;
   const goSection = (key) => nav(sectionUrl(key));
+  const changeStudioMode = (nextMode) => {
+    const normalized = normalizeStudioMode(nextMode);
+    const params = new URLSearchParams(location.search);
+    if (normalized === "standard") params.delete("mode");
+    else params.set("mode", normalized);
+    setSpecialtyTab(0);
+    setQuickReview(false);
+    nav({ pathname: location.pathname, search: params.toString() ? `?${params.toString()}` : "" }, { replace: true });
+  };
 
   const {
     mobileStudioStep, setMobileStudioStep,
@@ -189,7 +202,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
     installingPoseAssist, setInstallingPoseAssist, galleryRecipeMode, setGalleryRecipeMode,
     enhancingVideo, setEnhancingVideo, analyzingVideoImage, setAnalyzingVideoImage,
     videoImageAnalysis, setVideoImageAnalysis, chromaSettings, setChromaSettings, restoreDraft,
-  } = useBuilderSessionState({ studio, queryClient: qc });
+  } = useBuilderSessionState({ studio: studioMode, queryClient: qc });
 
   useEffect(() => {
     if (!isNew || draftHydrated.current) return;
@@ -2418,7 +2431,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
   const renderDnaControls = (sheetField = null) => (
 <DnaSection
             key={`${activeSubjectId}-${activeSection}`}
-            section={!sheetField && studioProfile && activeSection === studio
+            section={!sheetField && studioProfile.specialtySection && activeSection === studioProfile.specialtySection
               ? { ...SECTIONS[activeIdx], fields: SECTIONS[activeIdx].fields.filter((field) => field.key === "composition_mode" || studioProfile.fieldGroups[specialtyTab]?.keys.includes(field.key)) }
               : activeSection === "scenario" ? { ...SECTIONS[activeIdx], fields: SECTIONS[activeIdx].fields.filter(field => {
                 if (!["cast_age_mode", "cast_age_gap", "cast_resemblance"].includes(field.key)) return true;
@@ -2793,7 +2806,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
 
       {!isImageFirst && <div className="mobile-tools-panel" data-mobile-tools="none"><MobileStudioFlow
         steps={studioSteps}
-        title={studioProfile?.title || "Studio flow"}
+        title="Create"
         currentStep={mobileStudioStep}
         activeSection={activeSection}
         locks={locks}
@@ -2808,7 +2821,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
         }}
       /></div>}
 
-      {!isImageFirst && !desktopQuickMode && <nav data-mobile-tools="none" className={`hidden md:grid ${studioProfile ? "grid-cols-5" : "grid-cols-3"} gap-2`} aria-label="Creation steps" data-testid="desktop-creation-steps">
+      {!isImageFirst && !desktopQuickMode && <nav data-mobile-tools="none" className="hidden md:grid grid-cols-5 gap-2" aria-label="Creation steps" data-testid="desktop-creation-steps">
         {studioSteps.map((step, index) => {
           const selected = step.id === mobileStudioStep;
           return <button key={step.id} type="button" onClick={() => openMobileStudioStep(step.id)}
@@ -3135,17 +3148,15 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
           </section>
         )}
         <div data-mobile-tools="none" id="studio-sections" className={`${isImageFirst ? "!hidden" : ""} ${mobileStudioStep === "create" ? "hidden md:block" : "block"} ${editMode === "body_adjust" ? "hidden" : ""} scroll-mt-24 space-y-4`}>
-      {studioProfile && <section className="pane border-cyan-400/25 p-3 sm:p-4" data-testid={`studio-${studio}-presets`}>
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div>
-            <div className="section-label">{studioProfile.title} · Scene presets</div>
-            <p className="mt-1 text-xs text-zinc-400">Choose a starting composition, then edit every detail in the steps below.</p>
-          </div>
-          <Link to="/studios" className="text-xs text-cyan-300 hover:underline">Other studios</Link>
+      <StudioModePicker value={studioMode} onChange={changeStudioMode} disabled={dispatching} />
+      {studioProfile.specialtySection && studioProfile.presets.length > 0 && <section className="pane border-cyan-400/25 p-3 sm:p-4" data-testid={`studio-${studioMode}-presets`}>
+        <div>
+          <div className="section-label">{studioProfile.shortTitle} focus · Presets</div>
+          <p className="mt-1 text-xs text-zinc-400">Optional starting points inside the same Create flow. Every setting remains editable.</p>
         </div>
         <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
           {studioProfile.presets.map((preset) => <button key={preset.name} type="button"
-            onClick={() => { setActiveDna(applyStudioPreset(activeDna, preset)); setQuickReview(false); goSection(studio === "feet" ? "feet" : "watersports"); }}
+            onClick={() => { setActiveDna(applyStudioPreset(activeDna, preset)); setQuickReview(false); goSection(studioProfile.specialtySection); }}
             className="rounded-xl border hairline bg-black/25 px-3 py-3 text-left transition-colors hover:border-cyan-400/60 focus-visible:border-cyan-400">
             <span className="block text-xs font-semibold text-cyan-100">{preset.name}</span>
             <span className="mt-1 block text-[11px] text-zinc-400">{preset.description}</span>
@@ -3308,7 +3319,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
           )}
           {activeSection === "pose" && <CastPoseOptions count={expectedCount} value={activeDna.pose?.action}
             onSelect={pose => setSection("pose", { ...activeDna.pose, action: pose, distance: "wide shot" })} />}
-          {studioProfile && activeSection === studio && <div className="flex gap-2 overflow-x-auto pb-1" role="tablist" aria-label={`${studioProfile.title} controls`} data-testid="specialty-field-groups">
+          {studioProfile.specialtySection && activeSection === studioProfile.specialtySection && <div className="flex gap-2 overflow-x-auto pb-1" role="tablist" aria-label={`${studioProfile.title} controls`} data-testid="specialty-field-groups">
             {studioProfile.fieldGroups.map((group, index) => <button key={group.label} type="button" role="tab"
               aria-selected={specialtyTab === index} onClick={() => setSpecialtyTab(index)}
               className={`shrink-0 rounded-lg border px-3 py-2 text-xs font-semibold ${specialtyTab === index ? "border-amber-400 bg-amber-500/10 text-amber-100" : "hairline text-zinc-400"}`}>
