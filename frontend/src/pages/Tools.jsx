@@ -129,10 +129,10 @@ export default function Tools() {
         <Wrench className="h-5 w-5 text-cyan-300" />
         <div>
           <h2 className="font-display text-xl font-bold">All workflows</h2>
-          <p className="text-xs text-zinc-400">Choose a workflow directly when you do not need a Gallery source selected above.</p>
+          <p className="text-xs text-zinc-400">Choose a workflow directly. When a still image is selected above, compatible workflows keep that source attached.</p>
         </div>
       </div>
-      <HomeImageTools workflows={workflows} loading={workflowsLoading} error={workflowsError} showCreateShortcuts={false} onWorkflow={source && !sourceIsVideo ? launchWorkflow : undefined} />
+      <HomeImageTools workflows={workflows} loading={workflowsLoading} error={workflowsError} showCreateShortcuts={false} showHeading={false} onWorkflow={source && !sourceIsVideo ? launchWorkflow : undefined} />
     </section>
   </div>;
 }
