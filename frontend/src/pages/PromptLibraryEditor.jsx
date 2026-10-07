@@ -5,12 +5,13 @@ import { endpoints } from '@/lib/api';
 import { expandPrompt } from '@/lib/promptMap';
 import { compileModelPrompts } from '@/lib/modelPromptCompilers';
 import { SECTIONS, DEFAULT_DNA } from '@/lib/dna';
-import { editableSection, catalogSections, newCatalogKey, setPromptCatalog, validateCatalogDraft } from '@/lib/promptCatalog';
+import { editableSection, catalogSections, newCatalogKey, promptLibrarySections, setPromptCatalog, validateCatalogDraft } from '@/lib/promptCatalog';
 const fieldClass='w-full rounded-lg border hairline bg-elevated px-3 py-2 text-sm';
 const buttonClass='rounded-lg border hairline px-3 py-2 text-sm text-cyan-200 disabled:opacity-40';
+const LIBRARY_SECTIONS = promptLibrarySections(SECTIONS);
 export default function PromptLibraryEditor() {
   const [draft,setDraft]=useState({sections:[]}), [saved,setSaved]=useState({sections:[]});
-  const [sectionKey,setSectionKey]=useState(SECTIONS[0].key), [fieldKey,setFieldKey]=useState(SECTIONS[0].fields[0].key);
+  const [sectionKey,setSectionKey]=useState(LIBRARY_LIBRARY_SECTIONS[0].key), [fieldKey,setFieldKey]=useState(LIBRARY_LIBRARY_SECTIONS[0].fields[0].key);
   const [loaded,setLoaded]=useState(false);
   const [loading,setLoading]=useState(true), [busy,setBusy]=useState(false), [error,setError]=useState(''), [message,setMessage]=useState('');
   const [filter,setFilter]=useState('');
@@ -24,11 +25,11 @@ export default function PromptLibraryEditor() {
     const config=settings.prompt_catalog || {sections:[]};setDraft(config);setSaved(config);setLoaded(true);
     setProvider(settings.ai_provider==='ollama'?'Ollama':'AI');
   }).catch(() => live && setError('Could not load the saved prompt library. Reload before editing.')).finally(() => live && setLoading(false));return () => {live=false;};},[]);
-  const sections=catalogSections(SECTIONS,draft);
-  const section=draft.sections.find(item => item.key===sectionKey) || editableSection(SECTIONS.find(item => item.key===sectionKey) || sections[0]);
+  const sections=catalogSections(LIBRARY_SECTIONS,draft);
+  const section=draft.sections.find(item => item.key===sectionKey) || editableSection(LIBRARY_SECTIONS.find(item => item.key===sectionKey) || sections[0]);
   const selectedField=section.fields.find(item => item.key===fieldKey);
   const currentOption=selectedField?.options.find(option => option.value===optionKey) || selectedField?.options[0];
-  const defaultKeywords=option => option.value.startsWith('custom_') ? option.label : expandPrompt(sectionKey,fieldKey,option.value);
+  const defaultKeywords=option => option.value.startsWith('custom_') ? option.label : sectionKey==='shared_poses' ? option.value : expandPrompt(sectionKey,fieldKey,option.value);
   const dirty=JSON.stringify(draft)!==JSON.stringify(saved);
   const changeSection = next => {setDraft(current => ({...current,sections:[...current.sections.filter(item => item.key!==next.key),next]}));setMessage('');setSuggestion(null);setPromptPreview(null);};
   const changeField = next => changeSection({...section,fields:section.fields.map(item => item.key===next.key?next:item)});
@@ -51,7 +52,7 @@ export default function PromptLibraryEditor() {
   const restore = async event => {const file=event.target.files?.[0];event.target.value='';if(!file)return;
     try {if(file.size>500000)throw new Error('Backup is too large.');const config=validateCatalogDraft(JSON.parse(await file.text()));
       if(!Array.isArray(config.sections) || config.sections.some(section => !section?.key || !section?.title || !Array.isArray(section.fields) || section.fields.some(field => !field?.key || !field?.label || !Array.isArray(field.options))))throw new Error('Choose a valid prompt library backup.');
-      setDraft(config);setSectionKey(config.sections[0]?.key || SECTIONS[0].key);setFieldKey(config.sections[0]?.fields[0]?.key || SECTIONS[0].fields[0].key);setMessage('Backup loaded for review. Save to apply it.');setSuggestion(null);
+      setDraft(config);setSectionKey(config.sections[0]?.key || LIBRARY_SECTIONS[0].key);setFieldKey(config.sections[0]?.fields[0]?.key || LIBRARY_SECTIONS[0].fields[0].key);setMessage('Backup loaded for review. Save to apply it.');setSuggestion(null);
     }catch(err){setError(err.message || 'Could not read the backup.');}
   };
   if(loading)return <p className="p-6">Loading prompt library…</p>;
@@ -69,10 +70,10 @@ export default function PromptLibraryEditor() {
     </nav>
     <div className="flex flex-wrap gap-2">
       <button className={buttonClass} disabled={busy || !dirty} onClick={save}>Save library</button>
-      <button className={buttonClass} disabled={busy || !dirty} onClick={() => {setDraft(saved);chooseSection(SECTIONS[0].key);setMessage('Unsaved edits discarded.');setSuggestion(null);}}>Discard edits</button>
+      <button className={buttonClass} disabled={busy || !dirty} onClick={() => {setDraft(saved);chooseSection(LIBRARY_SECTIONS[0].key);setMessage('Unsaved edits discarded.');setSuggestion(null);}}>Discard edits</button>
       <button className={buttonClass} disabled={busy} onClick={backup}>Download backup</button>
       <label className={buttonClass}>Restore backup<input aria-label="Restore backup" type="file" accept="application/json,.json" disabled={busy} onChange={restore} className="hidden"/></label>
-      <button className={buttonClass} disabled={busy} onClick={() => {setDraft({sections:[]});setSectionKey(SECTIONS[0].key);setFieldKey(SECTIONS[0].fields[0].key);setMessage('Default library staged. Save to apply this reset.');setSuggestion(null);}}>Restore defaults</button>
+      <button className={buttonClass} disabled={busy} onClick={() => {setDraft({sections:[]});setSectionKey(LIBRARY_SECTIONS[0].key);setFieldKey(LIBRARY_SECTIONS[0].fields[0].key);setMessage('Default library staged. Save to apply this reset.');setSuggestion(null);}}>Restore defaults</button>
       <span className="self-center text-xs text-zinc-500">{dirty?'Unsaved changes':'Saved library'}</span>
     </div>
     <fieldset disabled={busy} className="grid gap-5 md:grid-cols-[240px_1fr]">
@@ -82,7 +83,7 @@ export default function PromptLibraryEditor() {
       </aside>
       <section className={`pane space-y-4 p-4 ${browseLevel==='categories'?'hidden md:block':'block'}`}>
         <label className="block">Category name<input aria-label="Category name" className={fieldClass} value={section.title} onChange={event => changeSection({...section,title:event.target.value})}/></label>
-        {section.key.startsWith('custom_') && <button className={buttonClass} onClick={() => {setDraft({...draft,sections:draft.sections.filter(item => item.key!==sectionKey)});setSectionKey(SECTIONS[0].key);setFieldKey(SECTIONS[0].fields[0].key);}}>Remove category</button>}
+        {section.key.startsWith('custom_') && <button className={buttonClass} onClick={() => {setDraft({...draft,sections:draft.sections.filter(item => item.key!==sectionKey)});setSectionKey(LIBRARY_SECTIONS[0].key);setFieldKey(LIBRARY_SECTIONS[0].fields[0].key);}}>Remove category</button>}
         <div className={`grid grid-cols-2 gap-2 ${['choices','choice'].includes(browseLevel)?'hidden md:grid':'grid'}`}>{section.fields.map(item => <button key={item.key} aria-pressed={item.key===fieldKey} className={buttonClass} onClick={() => {setFieldKey(item.key);setOptionKey('');setSuggestion(null);setPromptPreview(null);setFilter('');setBrowseLevel('choices');}}>📁 {item.label}</button>)}</div>
         <button className={buttonClass} onClick={() => {const key=newCatalogKey();changeSection({...section,fields:[...section.fields,{key,label:'New subcategory',type:'chips',options:[]}]});setFieldKey(key);setOptionKey('');setBrowseLevel('choices');}}>Add subcategory</button>
         {selectedField && <div className={`space-y-3 border-t hairline pt-4 ${browseLevel==='subcategories'?'hidden md:block':'block'}`}>
