@@ -61,7 +61,7 @@ test("clear self scene keeps one visible source and landing point in both compil
     STUDIO_PROFILES.watersports.presets.find((preset) => preset.name === "Clear self stream"));
   for (const prompt of [buildPrompts(dna).positive, buildKrea2Prompts({ dna }).positive]) {
     expect(prompt).toContain("nearly colorless transparent");
-    expect(prompt).toContain("one continuous stream from the same adult subject");
+    expect(prompt).toContain("stream originates from the same adult subject");
     expect(prompt).toContain("onto floor near feet");
   }
 });

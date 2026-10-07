@@ -201,3 +201,72 @@ test('coverage included in a complete outfit hides bare-sole details even withou
   dna.feet = { composition_mode: 'feet focus', sole_texture: 'smooth soles', sole_presentation: 'soles up', pedicure: 'painted red', foot_state: ['bare'] };
   expect(resolveBuilderControls(dna).dna.feet).toMatchObject({ sole_texture: '', sole_presentation: '', pedicure: '', foot_state: [] });
 });
+
+test('watersports phase removes instructions that belong to a different moment', () => {
+  const dna = base();
+  dna.watersports = {
+    source: 'self', phase: 'before', stream: 'steady stream', direction: ['on floor'],
+    wetness: ['wet floor'], aftermath: ['wet clothes'], liquid_visibility: 'spreading puddle',
+    self_aim: 'onto floor near feet', flow_appearance: 'single continuous gravity-driven stream',
+    highlight: 'soft side-lit highlights', garment_detail: 'wet jeans', container: 'toilet',
+  };
+  const resolved = resolveBuilderControls(dna);
+  expect(resolved.dna.watersports).toMatchObject({
+    source: 'self', phase: 'before', container: 'toilet', stream: '', direction: [], wetness: [],
+    aftermath: [], liquid_visibility: '', self_aim: '', flow_appearance: '', highlight: '', garment_detail: '',
+  });
+  expect(resolved.notes.some(note => note.section === 'watersports' && note.text.includes('Before phase'))).toBe(true);
+
+  dna.watersports = {
+    source: 'self', phase: 'afterward', stream: 'gush', direction: ['on floor'],
+    self_aim: 'onto floor near feet', flow_appearance: 'thin gentle stream',
+    highlight: 'small specular highlights', self_action: 'self urination',
+    wetness: ['damp'], aftermath: ['wet clothes'],
+  };
+  const afterward = resolveBuilderControls(dna).dna.watersports;
+  expect(afterward).toMatchObject({
+    stream: '', direction: [], self_aim: '', flow_appearance: '', highlight: '', self_action: '',
+    wetness: ['damp'], aftermath: ['wet clothes'],
+  });
+});
+
+test('watersports and feet share one surface and one composition authority', () => {
+  const dna = base();
+  dna.pose = { action: 'standing', distance: 'full body', focus: 'feet', angle: 'front' };
+  dna.feet = { composition_mode: 'feet focus', framing: 'sole close-up', ground_surface: 'warm sand' };
+  dna.watersports = { source: 'self', phase: 'afterward', surface: 'white tile', camera_view: 'wide environmental view' };
+  const resolved = resolveBuilderControls(dna);
+  expect(resolved.dna.feet.ground_surface).toBe('');
+  expect(resolved.dna.watersports.camera_view).toBe('');
+  expect(resolved.dna.pose.focus).toBe('feet');
+  expect(resolved.dna.pose.distance).toBe('detail shot');
+  expect(resolved.notes.some(note => note.text.includes('shared floor/ground'))).toBe(true);
+  expect(resolved.notes.some(note => note.text.includes('Feet focus controls the crop'))).toBe(true);
+});
+
+test('watersports camera and stance replace competing general pose instructions', () => {
+  const dna = base();
+  dna.pose = { action: 'sitting on edge', distance: 'full body', focus: 'full frame', angle: 'front' };
+  dna.camera = { angle: 'eye-level' };
+  dna.watersports = {
+    source: 'self', phase: 'in progress', stance: 'standing upright',
+    camera_view: 'floor-level detail', wetness: ['dry', 'wet floor'], stream: 'steady stream',
+  };
+  const resolved = resolveBuilderControls(dna).dna;
+  expect(resolved.pose.action).toBe('');
+  expect(resolved.pose.distance).toBe('detail shot');
+  expect(resolved.camera.angle).toBe('low');
+  expect(resolved.watersports.wetness).toEqual(['wet floor']);
+});
+
+test('turning Watersports source off suppresses saved specialty details in every compiler', () => {
+  const dna = base();
+  dna.watersports = { source: 'none', stream: 'gush', wetness: ['wet floor'], camera_view: 'floor-level detail' };
+  const resolved = resolveBuilderControls(dna).dna;
+  expect(resolved.watersports).toMatchObject({ source: 'none', stream: '', wetness: [], camera_view: '' });
+  for (const promptStyle of families) {
+    const { positive } = compileModelPrompts({ dna, promptStyle });
+    expect(positive).not.toMatch(/gush|wet floor|floor-level detail/i);
+  }
+});
+
