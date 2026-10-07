@@ -15,8 +15,8 @@ const stage = (id, title, detail, categories, simpleSections) => ({
 
 const BASE_CREATE_STAGES = [
   stage("start", "People", "Choose the cast and who you are creating", [
-    { key: "people", title: "People", sections: ["identity", "scenario"] },
-  ], ["identity", "scenario"]),
+    { key: "people", title: "People", sections: ["scenario", "identity"] },
+  ], ["scenario", "identity"]),
   stage("character", "Appearance", "Shape the body, face, hair and personal details", [
     { key: "body", title: "Body", sections: ["physique", "feet", "intimate"] },
     { key: "appearance", title: "Face & hair", sections: ["face", "hair", "skin"] },
