@@ -2,7 +2,7 @@ import { act } from "react";
 import { createRoot } from "react-dom/client";
 import CreateJourney from "./CreateJourney";
 import CreationOutputControls from "./CreationOutputControls";
-import { CREATE_STAGES, CREATE_MOBILE_STEPS } from "@/lib/createJourney";
+import { CREATE_STAGES, CREATE_MOBILE_STEPS, createStagesForStudio } from "@/lib/createJourney";
 import { SECTIONS } from "@/lib/dna";
 import { mobileStudioStepForSection } from "./MobileStudioFlow";
 
@@ -22,27 +22,39 @@ const changeSelect = (label, value) => act(() => {
   node.dispatchEvent(new Event("change", { bubbles: true }));
 });
 
-test("three stages cover every DNA section once on desktop and mobile", () => {
+test("one five-stage journey covers every DNA section once on desktop and mobile", () => {
   const sections = CREATE_STAGES.flatMap((stage) => stage.sections);
-  expect(CREATE_STAGES.map((stage) => stage.title)).toEqual(["Design", "Compose", "Generate"]);
+  expect(CREATE_STAGES.map((stage) => stage.title)).toEqual(["People", "Appearance", "Wardrobe", "Pose & Scene", "Create"]);
   expect(sections.slice().sort()).toEqual(SECTIONS.map((section) => section.key).sort());
   expect(new Set(sections).size).toBe(sections.length);
-  expect(mobileStudioStepForSection("physique", CREATE_MOBILE_STEPS)).toBe("start");
+  expect(CREATE_MOBILE_STEPS).toBe(CREATE_STAGES);
+  expect(mobileStudioStepForSection("identity", CREATE_MOBILE_STEPS)).toBe("start");
+  expect(mobileStudioStepForSection("physique", CREATE_MOBILE_STEPS)).toBe("character");
+  expect(mobileStudioStepForSection("wardrobe", CREATE_MOBILE_STEPS)).toBe("wardrobe");
   expect(mobileStudioStepForSection("camera", CREATE_MOBILE_STEPS)).toBe("scene");
+});
+
+test("specialty studios keep the shared stage IDs and only surface their focus in Simple mode", () => {
+  const feet = createStagesForStudio("feet");
+  const watersports = createStagesForStudio("watersports");
+  expect(feet.map((stage) => stage.id)).toEqual(CREATE_STAGES.map((stage) => stage.id));
+  expect(watersports.map((stage) => stage.id)).toEqual(CREATE_STAGES.map((stage) => stage.id));
+  expect(feet.find((stage) => stage.id === "character").simpleSections).toContain("feet");
+  expect(watersports.find((stage) => stage.id === "scene").simpleSections).toContain("watersports");
 });
 
 test("category selection opens its controls and follows the active section on return", () => {
   const onSection = jest.fn(), onStage = jest.fn();
   const props = { stages: CREATE_STAGES, index: 0, activeSection: "identity", sections: SECTIONS, onSection, onStage };
   render(<CreateJourney {...props} />);
-  act(() => button("Body").click());
-  expect(onSection).toHaveBeenCalledWith("physique");
-  expect(button("Body").getAttribute("aria-expanded")).toBe("true");
-  render(<CreateJourney {...props} activeSection="hair" />);
-  expect(button("Appearance").getAttribute("aria-expanded")).toBe("true");
+  act(() => button("People").click());
+  expect(onSection).toHaveBeenCalledWith("identity");
+  expect(button("People").getAttribute("aria-expanded")).toBe("true");
+  render(<CreateJourney {...props} index={1} activeSection="hair" />);
+  expect(button("Face & hair").getAttribute("aria-expanded")).toBe("true");
   expect(button("Body").getAttribute("aria-expanded")).toBe("false");
-  act(() => button("Compose").click());
-  expect(onStage).toHaveBeenCalledWith(1);
+  act(() => button("Pose & Scene").click());
+  expect(onStage).toHaveBeenCalledWith(3);
 });
 
 const outputProps = () => ({ workflows: [{ id: "a", name: "Model A" }, { id: "b", name: "Model B" }],
