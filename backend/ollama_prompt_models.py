@@ -8,6 +8,7 @@ GEMMA_PROMPT_MODELS = frozenset(name.casefold() for name in (
 
 
 LLAMA_PROMPT_MODELS = frozenset(name.casefold() for name in (
+    "llama3-gradient:8b-instruct-1048k-q4_K_M",
     "ultra-neuraldaredevil:8b",
     "ultra-dark-champion:18.4b",
     "hf.co/QuantFactory/NeuralDaredevil-8B-abliterated-GGUF:Q4_K_M",
