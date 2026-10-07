@@ -175,7 +175,7 @@ export default function Library() {
         <div className="pane p-10 text-center">
           <div className="section-label mb-2">Empty stage</div>
           <h3 className="font-display text-xl">Casting call · no models yet</h3>
-          <p className="text-sm text-zinc-400 mt-1">Describe your fantasy in words and let AI fill the DNA, or hand-build every trait — pussy, curves, wardrobe, pose — from scratch.</p>
+          <p className="text-sm text-zinc-400 mt-1">Describe a character in words and let AI fill the DNA, or hand-build the appearance, wardrobe, pose, and scene from scratch.</p>
           <Link
             to="/character/new"
             data-testid="btn-empty-new"
