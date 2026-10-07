@@ -37,6 +37,9 @@ export default function AppShell({ children }) {
   useEffect(() => initializeStudioTheme(), []);
   const research = useAssistantResearch();
   const isBuilder = loc.pathname.startsWith("/character");
+  const isImageTool = loc.pathname.startsWith("/image-tools/");
+  const isCreateWorkspace = isBuilder || isImageTool || loc.pathname === "/create" || loc.pathname.startsWith("/create/");
+  const galleryReturnTo = isBuilder || isImageTool ? loc.pathname : undefined;
   const showResearchWorkspace = loc.pathname === "/research" || loc.pathname.startsWith("/create/");
   const mainRef = useRef(null);
   const pageGroup = loc.pathname.split("/")[1] || "library";
@@ -64,11 +67,11 @@ export default function AppShell({ children }) {
             </span>
           </Link>
           <nav className="hidden xl:flex items-center gap-1 rounded-2xl border hairline bg-black/25 p-1" aria-label="Studio navigation">
-            <StudioNavLinks returnTo={isBuilder ? loc.pathname : undefined} />
+            <StudioNavLinks returnTo={galleryReturnTo} />
           </nav>
           <div className="flex items-center gap-2">
             <ComfyStatus />
-            {!isBuilder && (
+            {!isCreateWorkspace && (
               <Link
                 to="/create"
                 data-testid="btn-new-character"
@@ -80,7 +83,7 @@ export default function AppShell({ children }) {
           </div>
         </div>
         <nav className="hidden md:flex xl:hidden gap-1 overflow-x-auto scroll-fade border-t border-white/5 px-6 py-1.5" aria-label="Tablet studio navigation">
-          <StudioNavLinks compact returnTo={isBuilder ? loc.pathname : undefined} />
+          <StudioNavLinks compact returnTo={galleryReturnTo} />
         </nav>
       </header>
 
@@ -94,7 +97,7 @@ export default function AppShell({ children }) {
       </main>
       <PwaInstallPrompt />
 
-      <MobileStudioNavigation returnTo={isBuilder ? loc.pathname : undefined} />
+      <MobileStudioNavigation returnTo={galleryReturnTo} />
       <div className="mobile-bottom-spacer h-16 md:h-0" />
     </div>
   );
