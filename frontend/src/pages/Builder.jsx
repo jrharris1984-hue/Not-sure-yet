@@ -1098,7 +1098,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
       isEnhanceWorkflow, promptCatalog, promptFormat,
     ]
   );
-  const ollamaCompiled = useOllamaPrompt(compiledPrompt.positive, promptFormat === 'ollama' && compiledPrompt.profile === 'compact-narrative-v1', {workflowName:activeWorkflow?.name,promptStyle:activeCompiler});
+  const ollamaCompiled = useOllamaPrompt(compiledPrompt.positive, settings?.ai_provider === 'ollama' && promptFormat === 'ollama' && compiledPrompt.profile === 'compact-narrative-v1', {workflowName:activeWorkflow?.name,promptStyle:activeCompiler});
   const ollamaRenderPending = ollamaCompiled.pending;
   const positive = ollamaCompiled.positive;
   const { negative } = compiledPrompt;
@@ -2717,7 +2717,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
           {activeRecipeFamily === "image" && !isVariationWorkflow && <section className="pane p-3 mt-3 space-y-3" aria-label="Prompt compiler">
             <h3 className="section-label">Prompt compiler</h3>
             <WebPromptResearchOptions disabled={improvingPrompt} />
-            <PromptFormatControl value={promptFormat} onChange={changePromptFormat} meta={promptFormatMeta} status={promptFormat === 'ollama' ? ollamaCompiled.reason : ''} />
+            <PromptFormatControl value={promptFormat} onChange={changePromptFormat} meta={promptFormatMeta} status={settings?.ai_provider === 'ollama' && promptFormat === 'ollama' ? ollamaCompiled.reason : ''} />
           </section>}</>}
         onTools={() => { setMobileToolsGroup("overview"); setMobileSheets(false); setMobileStudioMode("advanced"); setMobileStudioStep("create"); window.scrollTo({ top: 0, behavior: "auto" }); }}
       /> : <button data-mobile-tools="none" type="button" className="md:hidden chip" onClick={() => setMobileSheets(true)}>Back to bottom sheets</button>)}

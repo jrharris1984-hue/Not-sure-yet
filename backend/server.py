@@ -4469,6 +4469,9 @@ class OllamaCompileBody(BaseModel):
 @api.post("/ai/compile-ollama")
 async def ai_compile_ollama(body: OllamaCompileBody):
     settings = await get_settings()
+    if settings.ai_provider != "ollama":
+        return {"positive": body.positive, "accepted": False,
+                "reason": "Venice is selected; local Ollama compilation was skipped."}
     model = await _ollama_model(settings, vision=False)
     payload = {"model":model, "stream":False, "format":"json", "think":False,
         "options":{"temperature":0.1},
