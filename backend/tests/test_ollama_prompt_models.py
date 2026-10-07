@@ -8,7 +8,7 @@ import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from assistant_research import enrich_assistant_request
-from ollama_prompt_models import configure_prompt_request, GEMMA_PROMPT_MODELS, LLAMA_PROMPT_MODELS
+from ollama_prompt_models import configure_prompt_request, FAST_PROMPT_MODELS, GEMMA_PROMPT_MODELS, LLAMA_PROMPT_MODELS
 
 
 class PromptModelTests(unittest.TestCase):
@@ -65,8 +65,21 @@ class PromptModelTests(unittest.TestCase):
                     self.assertEqual(payload.get("format"), "json" if as_json else None)
                     self.assertEqual(payload["options"]["temperature"], .2 if as_json else .7)
 
-    def test_llama_aliases_and_sources_use_smaller_context_and_unload(self):
-        for model in LLAMA_PROMPT_MODELS:
+    def test_gradient_stays_warm_with_shorter_responses(self):
+        for model in FAST_PROMPT_MODELS:
+            for as_json in (False, True):
+                with self.subTest(model=model, as_json=as_json):
+                    seen = self.call_route(model, as_json)
+                    self.assertEqual(seen["timeout"], 300)
+                    payload = seen["payload"]
+                    self.assertEqual(payload["model"], model)
+                    self.assertEqual(payload["options"]["num_ctx"], 4096)
+                    self.assertEqual(payload["options"]["num_predict"], 600)
+                    self.assertEqual(payload["keep_alive"], "10m")
+                    self.assertEqual(payload.get("format"), "json" if as_json else None)
+
+    def test_other_llama_aliases_use_smaller_context_and_unload(self):
+        for model in LLAMA_PROMPT_MODELS - FAST_PROMPT_MODELS:
             for as_json in (False, True):
                 with self.subTest(model=model, as_json=as_json):
                     seen = self.call_route(model, as_json)
