@@ -47,9 +47,10 @@ test("category selection opens its controls and follows the active section on re
   const onSection = jest.fn(), onStage = jest.fn();
   const props = { stages: CREATE_STAGES, index: 0, activeSection: "identity", sections: SECTIONS, onSection, onStage };
   render(<CreateJourney {...props} />);
-  act(() => button("People").click());
+  const peopleCategory = Array.from(container.querySelectorAll('button[aria-expanded]')).find((node) => node.textContent === "People");
+  act(() => peopleCategory.click());
   expect(onSection).toHaveBeenCalledWith("identity");
-  expect(button("People").getAttribute("aria-expanded")).toBe("true");
+  expect(peopleCategory.getAttribute("aria-expanded")).toBe("true");
   render(<CreateJourney {...props} index={1} activeSection="hair" />);
   expect(button("Face & hair").getAttribute("aria-expanded")).toBe("true");
   expect(button("Body").getAttribute("aria-expanded")).toBe("false");
