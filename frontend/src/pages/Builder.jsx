@@ -313,9 +313,12 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
     const requestedMode = location.state?.referenceMode;
     // Body Adjust is a Chroma img2img operation. Keep Qwen reserved for normal
     // image edits and route Gallery Body Adjust through the proven variation graph.
+    const selectedImageTool = imageToolId
+      ? workflows.find((workflow) => workflow.id === imageToolId && IMAGE_TOOL_KINDS.includes(workflow.kind))
+      : null;
     const target = requestedMode === "body_adjust"
       ? workflows.find((workflow) => workflow.kind === "variation" && workflow.prompt_style === "chroma")
-      : workflows.find((workflow) => workflow.kind === requestedKind);
+      : selectedImageTool || workflows.find((workflow) => workflow.kind === requestedKind);
     if (!target) {
       const label = requestedKind === "video" ? "image-to-video" : requestedKind === "face" ? "face-preserve" : "image-edit";
       toast.error(`No ${label} workflow is configured. Add one in Settings first.`);
@@ -2641,7 +2644,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
               setWorkflowId(nextWorkflowId);
               setLoraOverrides({});
             }}
-            className={`${isImageFirst || mobileStudioStep === "start" || mobileStudioStep === "create" ? "block" : "hidden md:block"} bg-elevated border border-hairline rounded-lg px-3 py-2 text-sm text-zinc-100 w-full sm:w-auto sm:min-w-[200px]`}
+            className={`${isImageFirst || mobileStudioStep === "start" || mobileStudioStep === "create" ? "block" : "hidden"} ${desktopQuickMode && !isImageFirst ? "md:hidden" : "md:block"} bg-elevated border border-hairline rounded-lg px-3 py-2 text-sm text-zinc-100 w-full sm:w-auto sm:min-w-[200px]`}
           >
             {selectableWorkflows.length === 0 && <option value="">No visible workflows — choose workflows in Settings</option>}
             {selectableWorkflows.filter((w) => !["sdxl", "sdxl_dmd2"].includes(w.prompt_style) && !w.name.startsWith("Pony · Ultra Realistic")).map((w) => (
@@ -2803,6 +2806,8 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
         readyToRender={!isQwenReferenceWorkflow || qwenEditVariant !== "pose" || !!poseReferenceImage?.name}
         uploading={referenceUploading || (isQwenReferenceWorkflow && poseReferenceUploading)} busy={dispatching} onUpload={uploadReference} onRemove={clearReference} onRender={doDispatch}
         renderCount={renderCount} onRenderCount={setRenderCount}>{imageSourceControls}</ImageSourceFlow></div>}
+
+      {!isImageFirst && mobileStudioStep === "start" && <div data-mobile-tools="none"><StudioModePicker value={studioMode} onChange={changeStudioMode} disabled={dispatching} /></div>}
 
       {!isImageFirst && <div className="mobile-tools-panel" data-mobile-tools="none"><MobileStudioFlow
         steps={studioSteps}
@@ -3148,8 +3153,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
           </section>
         )}
         <div data-mobile-tools="none" id="studio-sections" className={`${isImageFirst ? "!hidden" : ""} ${mobileStudioStep === "create" ? "hidden md:block" : "block"} ${editMode === "body_adjust" ? "hidden" : ""} scroll-mt-24 space-y-4`}>
-      <StudioModePicker value={studioMode} onChange={changeStudioMode} disabled={dispatching} />
-      {studioProfile.specialtySection && studioProfile.presets.length > 0 && <section className="pane border-cyan-400/25 p-3 sm:p-4" data-testid={`studio-${studioMode}-presets`}>
+      {studioProfile.specialtySection && activeSection === studioProfile.specialtySection && studioProfile.presets.length > 0 && <section className="pane border-cyan-400/25 p-3 sm:p-4" data-testid={`studio-${studioMode}-presets`}>
         <div>
           <div className="section-label">{studioProfile.shortTitle} focus · Presets</div>
           <p className="mt-1 text-xs text-zinc-400">Optional starting points inside the same Create flow. Every setting remains editable.</p>
@@ -3639,7 +3643,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
                       <img key={i} src={mediaUrl(u)} alt="render" className="rounded-md border hairline w-full h-auto" />
                     ))}
                   </div>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  <div className="grid grid-cols-2 gap-2">
                     <button type="button"
                       onClick={() => downloadRenderImage(activeRender.output_files[0], `render-${activeRender.id}.png`)}
                       className="rounded-lg border hairline px-3 py-2 text-sm font-semibold text-zinc-200 hover:bg-white/5 flex items-center justify-center gap-2"
@@ -3647,50 +3651,16 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
                       <Download className="h-4 w-4" /> Download
                     </button>
                     <button type="button"
-                      onClick={async () => {
-                        try {
-                          const reference = await endpoints.prepareRenderReference(activeRender.render_id || activeRender.id);
-                          setReferenceImage(reference);
-                          setSourceRenderId(activeRender.render_id || activeRender.id);
-                          setReferencePreview(activeRender.output_files[0]);
-                          setEditMode("standard");
-                          toast.success("Image loaded for editing");
-                        } catch (e) {
-                          toast.error(e?.response?.data?.detail || "Could not load image for editing");
-                        }
-                      }}
-                      className="rounded-lg border hairline px-3 py-2 text-sm font-semibold text-zinc-200 hover:bg-white/5 flex items-center justify-center gap-2">
-                      <Pencil className="h-4 w-4" /> Edit
+                      onClick={() => nav(`/tools?render=${encodeURIComponent(activeRender.render_id || activeRender.id)}`)}
+                      className="rounded-lg border border-cyan-500/40 bg-cyan-500/10 px-3 py-2 text-sm font-semibold text-cyan-100 hover:bg-cyan-500/20"
+                      data-testid="btn-tools-finished-render">
+                      Continue in Tools
                     </button>
                     <button type="button"
-                      onClick={async () => {
-                        try {
-                          const reference = await endpoints.prepareRenderReference(activeRender.render_id || activeRender.id);
-                          setReferenceImage(reference);
-                          setSourceRenderId(activeRender.render_id || activeRender.id);
-                          setReferencePreview(activeRender.output_files[0]);
-                          toast.success("Image loaded for animation");
-                        } catch (e) {
-                          toast.error(e?.response?.data?.detail || "Could not load image for animation");
-                        }
-                      }}
-                      className="rounded-lg border hairline px-3 py-2 text-sm font-semibold text-zinc-200 hover:bg-white/5 flex items-center justify-center gap-2">
-                      <Film className="h-4 w-4" /> Animate
-                    </button>
-                    <button type="button"
-                      onClick={async () => {
-                        try {
-                          const reference = await endpoints.prepareRenderReference(activeRender.render_id || activeRender.id);
-                          setReferenceImage(reference);
-                          setSourceRenderId(activeRender.render_id || activeRender.id);
-                          setReferencePreview(activeRender.output_files[0]);
-                          toast.success("Using selected image as reference");
-                        } catch (e) {
-                          toast.error(e?.response?.data?.detail || "Could not use image as reference");
-                        }
-                      }}
-                      className="rounded-lg border hairline px-3 py-2 text-sm font-semibold text-zinc-200 hover:bg-white/5 flex items-center justify-center gap-2">
-                      <ScanFace className="h-4 w-4" /> Reference
+                      onClick={() => nav(`/gallery?render=${encodeURIComponent(activeRender.render_id || activeRender.id)}&returnTo=${encodeURIComponent(location.pathname)}`)}
+                      className="rounded-lg bg-emerald-500 px-3 py-2 text-sm font-semibold text-zinc-950 hover:bg-emerald-400"
+                      data-testid="btn-view-finished-render">
+                      View in Gallery
                     </button>
                     <button type="button"
                       onClick={async () => {
@@ -3708,12 +3678,6 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
                       }}
                       className="rounded-lg border border-red-500/30 px-3 py-2 text-sm font-semibold text-red-300 hover:bg-red-500/10 flex items-center justify-center gap-2">
                       <Trash2 className="h-4 w-4" /> Delete
-                    </button>
-                    <button type="button"
-                      onClick={() => nav(`/gallery?render=${encodeURIComponent(activeRender.render_id || activeRender.id)}&returnTo=${encodeURIComponent(location.pathname)}`)}
-                      className="rounded-lg bg-emerald-500 px-3 py-2 text-sm font-semibold text-zinc-950 hover:bg-emerald-400"
-                      data-testid="btn-view-finished-render">
-                      View in Gallery
                     </button>
                   </div>
                 </div>
