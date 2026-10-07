@@ -21,7 +21,8 @@ class AssistantResearchMiddleware:
     async def __call__(self, scope, receive, send):
         if scope['type'] != 'http':
             return await self.app(scope, receive, send)
-        enabled = scope.get('method') == 'POST' and researchable_path(scope.get('path', ''))
+        headers = dict(scope.get('headers', []))
+        enabled = scope.get('method') == 'POST' and researchable_path(scope.get('path', '')) and headers.get(b'x-ultra-web-research') == b'1'
         state = {'focus': '', 'task': scope.get('path', '').rsplit('/', 1)[-1],
                  'sources': None, 'retrieving': False} if enabled else None
         token = assistant_research_scope.set(state)
