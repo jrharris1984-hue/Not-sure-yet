@@ -1,5 +1,5 @@
 import axios from "axios";
-import { getAssistantResearch, updateAssistantResearch, researchableRequest } from "./assistantResearch";
+import { getAssistantResearch, researchableRequest } from "./assistantResearch";
 
 const configuredBackend = (process.env.REACT_APP_BACKEND_URL || "").replace(/\/$/, "");
 const browserOrigin = typeof window !== "undefined" ? window.location.origin : "";
@@ -30,24 +30,10 @@ export const api = axios.create({
 
 api.interceptors.request.use(config => {
   const research = getAssistantResearch();
-  if (research.enabled && config.method === 'post' && researchableRequest(config.url) && !config.data?.use_web_research) {
+  if (research.enabled && config.method === 'post' && researchableRequest(config.url)) {
     config.headers['X-Ultra-Web-Research'] = '1';
-    config.headers['X-Ultra-Research-Focus'] = encodeURIComponent(research.focus.slice(0, 200));
-    updateAssistantResearch({result:null});
   }
   return config;
-});
-api.interceptors.response.use(response => {
-  const encoded = response.headers['x-ultra-research-result'];
-  if (encoded) {
-    try {
-      const result = JSON.parse(atob(encoded));
-      updateAssistantResearch({result});
-    } catch { /* A malformed research header does not replace a usable assistant response. */ }
-  } else if (response.data?.sources && researchableRequest(response.config.url)) {
-    updateAssistantResearch({result:response.data});
-  }
-  return response;
 });
 
 export const endpoints = {

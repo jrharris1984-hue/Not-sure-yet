@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from 'react';
 
-let state = { enabled: false, focus: '', result: null };
+let state = { enabled: false, result: null };
 const listeners = new Set();
 export const getAssistantResearch = () => state;
 export function updateAssistantResearch(patch) {

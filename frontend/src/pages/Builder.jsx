@@ -1,11 +1,10 @@
 import CastPoseOptions from "@/components/CastPoseOptions";
-import { WebPromptResearchOptions, PromptResearchNotes } from "@/components/WebPromptResearch";
+import { WebPromptResearchOptions } from "@/components/WebPromptResearch";
 import { builderSectionLayout, builderSectionValue, builderSectionChange } from "@/lib/builderSectionLayout";
 import MobileToolsNavigation from "@/components/MobileToolsNavigation";
 import { confirmPermanentDelete } from "@/lib/permanentDeleteConfirmation";
 import { applyScenarioSelection } from "@/lib/scenarioSelection";
 import { catalogSections, usePromptCatalog } from "@/lib/promptCatalog";
-import { useAssistantResearch, updateAssistantResearch } from '@/lib/assistantResearch';
 import VideoModeLinks from "@/components/VideoModeLinks";
 import RandomSceneControls from "@/components/RandomSceneControls";
 import {useOllamaPrompt} from "@/lib/useOllamaPrompt";
@@ -14,7 +13,6 @@ import { randomSceneSubjects } from "@/lib/randomScenes";
 import { IMAGE_TOOL_KINDS } from "@/components/HomeImageTools";
 import QwenReferenceControls from "@/components/QwenReferenceControls";
 import { QWEN_CAMERA_DEFAULTS, qwenReferenceInstruction } from "@/lib/qwenReferenceEdit";
-import AIResearchPanel from '@/components/AIResearchPanel';
 import { applyPhotographicGuidance } from "@/lib/photographicGuidance";
 import VariationInstruction from "@/components/VariationInstruction";
 import { resolveBuilderControls } from "@/lib/builderControlResolution";
@@ -222,9 +220,6 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
   const [plainLanguage, setPlainLanguage] = useState("");
   const [negativePromptOverride, setNegativePromptOverride] = useState("");
   const [improvingPrompt, setImprovingPrompt] = useState(false);
-  const {enabled:usePromptResearch,focus:promptResearchFocus,result:promptResearchResult}=useAssistantResearch();
-  const setUsePromptResearch=value=>updateAssistantResearch({enabled:value,result:null});
-  const setPromptResearchFocus=value=>updateAssistantResearch({focus:value,result:null});
   const [aiPromptSuggestion,setAiPromptSuggestion]=useState(null);
   const [dispatching, setDispatching] = useState(false);
   const [activeRender, setActiveRender] = useState(null);
@@ -1315,7 +1310,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
         finalNegative,
         activeCompiler,
         activeWorkflow?.name || "", false,
-        usePromptResearch ? {use_web_research:true,research_focus:promptResearchFocus} : {}
+        {}
       );
       setAiPromptSuggestion({...result,positive:result.positive || finalPositive,negative:result.negative ?? finalNegative,
         originalPositive:finalPositive,originalNegative:finalNegative,workflowId:activeWorkflow?.id});
@@ -2722,7 +2717,6 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
           {activeRecipeFamily === "image" && !isVariationWorkflow && <section className="pane p-3 mt-3 space-y-3" aria-label="Prompt compiler">
             <h3 className="section-label">Prompt compiler</h3>
             <WebPromptResearchOptions disabled={improvingPrompt} />
-            {promptResearchResult?.sources?.length > 0 && <details className="text-xs"><summary className="cursor-pointer text-cyan-300">Latest research sources</summary><PromptResearchNotes result={promptResearchResult}/></details>}
             <PromptFormatControl value={promptFormat} onChange={changePromptFormat} meta={promptFormatMeta} status={promptFormat === 'ollama' ? ollamaCompiled.reason : ''} />
           </section>}</>}
         onTools={() => { setMobileToolsGroup("overview"); setMobileSheets(false); setMobileStudioMode("advanced"); setMobileStudioStep("create"); window.scrollTo({ top: 0, behavior: "auto" }); }}
@@ -2966,7 +2960,6 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
         readyToRender={!isQwenReferenceWorkflow || qwenEditVariant !== "pose" || !!poseReferenceImage?.name}
         uploading={referenceUploading || (isQwenReferenceWorkflow && poseReferenceUploading)} busy={dispatching} onUpload={uploadReference} onRemove={clearReference} onRender={doDispatch}
         renderCount={renderCount} onRenderCount={setRenderCount}>{imageSourceControls}</ImageSourceFlow></div>}
-      <div className="mobile-tools-panel" data-mobile-tools="prompts"><AIResearchPanel context={finalPositive} /></div>
 
       {!isImageFirst && <div className="mobile-tools-panel" data-mobile-tools="none"><MobileStudioFlow
         steps={studioSteps}
@@ -3028,7 +3021,6 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
           {activeRecipeFamily === "image" && !isVariationWorkflow && <section data-mobile-tools="none" className="md:hidden pane p-3 space-y-3" aria-label="Prompt compiler">
             <h3 className="section-label">Prompt compiler</h3>
             <WebPromptResearchOptions disabled={improvingPrompt} />
-            {promptResearchResult?.sources?.length > 0 && <details className="text-xs"><summary className="cursor-pointer text-cyan-300">Latest research sources</summary><PromptResearchNotes result={promptResearchResult}/></details>}
             <PromptFormatControl value={promptFormat} onChange={changePromptFormat} meta={promptFormatMeta} status={promptFormat === 'ollama' ? ollamaCompiled.reason : ''} />
           </section>}
           {activeRecipeFamily === "image" && renderCount > 1 && <label data-mobile-tools="none" className="md:hidden pane p-3 flex items-center justify-between gap-3 text-xs text-zinc-200">
@@ -3551,7 +3543,6 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
             optimized={!!promptOverride}
             improving={improvingPrompt}
             onImprove={improveCompiledPrompt}
-            researchEnabled={usePromptResearch} onResearchEnabled={setUsePromptResearch} researchFocus={promptResearchFocus} onResearchFocus={setPromptResearchFocus}
             aiSuggestion={aiPromptSuggestion} onSuggestionChange={setAiPromptSuggestion} onDiscardSuggestion={() => setAiPromptSuggestion(null)}
             suggestionStale={!!aiPromptSuggestion && (aiPromptSuggestion.originalPositive !== finalPositive || aiPromptSuggestion.originalNegative !== finalNegative || aiPromptSuggestion.workflowId !== activeWorkflow?.id)}
             onApplySuggestion={() => {setPromptOverride(aiPromptSuggestion.positive);setNegativePromptOverride(aiPromptSuggestion.negative);setAiPromptSuggestion(null);}}

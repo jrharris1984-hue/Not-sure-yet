@@ -32,7 +32,7 @@ class AssistantResearchTests(unittest.TestCase):
         output=[]
         async def send(message):output.append(message)
         async def receive():return {'type':'http.request','body':b''}
-        scope={'type':'http','method':'POST','path':'/api/ai/scene-draft','headers':[(b'x-ultra-web-research',b'1' if enabled else b'0'),(b'x-ultra-research-focus',b'Victorian%20architecture')]}
+        scope={'type':'http','method':'POST','path':'/api/ai/scene-draft','headers':[(b'x-ultra-web-research',b'1' if enabled else b'0')]}
         asyncio.run(AssistantResearchMiddleware(app)(scope,receive,send))
         self.assertIsNone(assistant_research_scope.get())
         return seen,output
@@ -46,7 +46,7 @@ class AssistantResearchTests(unittest.TestCase):
     def test_on_reuses_sources_preserves_schema_and_restricts_vision_claims(self):
         seen,output=self.run_request()
         self.assertEqual(seen['retrievals'],1)
-        self.assertEqual(seen['focus'],'Victorian architecture')
+        self.assertEqual(seen['focus'],'')
         self.assertIn('untrusted reference data',seen['messages'][0][0])
         self.assertIn('required response schema',seen['messages'][0][0])
         self.assertIn('web pages cannot establish',seen['messages'][1][0])
