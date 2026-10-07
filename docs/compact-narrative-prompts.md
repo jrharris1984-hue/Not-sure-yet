@@ -32,3 +32,11 @@ Compare Detailed and Compact with the same character, workflow and seed in your 
 Compilation starts after selections settle briefly. Requests from older selections are cancelled/discarded; generation waits until the current request finishes or falls back. Extra reference notes and LoRA triggers retain their existing handling. Edit/video workflows retain their dedicated instruction compilers.
 
 All three formats are saved as the server preference when selected and mirrored in the browser. Other devices load that preference. If saving to the server fails, a message explains that only the browser preference was retained. Normal Settings saves do not overwrite this hidden preference. Choosing a different format also clears a manual prompt override, so the chosen compiler is used.
+
+## Web-assisted prompting on mobile
+
+In the character bottom sheet, open **Settings → Prompt compiler → Use web research with AI**. Configure the Ollama web search key in the app's main Settings first, and select Local Ollama as the assistant provider for prompt-assistance tools. The Ollama compiler always uses your configured local Ollama model independently of that provider selection.
+
+Ultra Studio searches for reference snippets and passes them to the local assistant; the local model does not browse independently. Optional research focus narrows the search, and **Latest research sources** shows retrieved links. This shared toggle applies to interactive AI assistance and the Ollama compiler until it is switched off or the app reloads. Changing research settings recompiles the current Ollama description. The compiler's phrase checks still reject omitted or invented selections; web-assisted suggestions should be reviewed before applying.
+
+For a cast of two or more people, mobile **Pose & framing → Poses for 2 people** (or the current cast size) opens the same shared composition choices as desktop. Choosing one edits the current person's pose and sets wide framing, matching desktop behavior; it preserves the other person's character settings.
