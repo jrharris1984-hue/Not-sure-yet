@@ -80,3 +80,24 @@ test.each(['chroma', 'krea2', 'standard', 'wan_t2v'])('%s reveals the same match
   const nude = compileModelPrompts({ promptStyle, dna: { ...dna, wardrobe: { ...dna.wardrobe, exposure_mode: 'nude' } } }).positive;
   expect(nude).toContain('fully nude'); expect(nude).not.toMatch(/pantsuit|matching satin bra/);
 });
+test.each(['chroma', 'krea2', 'standard'])('%s compact prompts resolve pantsuit and visible garter-stockings into separate garments', promptStyle => {
+  const dna = {
+    ...DEFAULT_DNA,
+    wardrobe: {
+      outfit_mode: 'full',
+      outfit_set: outerSet,
+      outfit_set_color: 'ivory',
+      set_lingerie_mode: 'matching',
+      set_lingerie: 'satin balconette bra and matching high-waisted briefs with garter belt, stockings and pumps',
+      exposure_mode: 'lingerie showing',
+    },
+  };
+  const positive = compileModelPrompts({ promptStyle, dna, promptFormat: 'compact' }).positive;
+  expect(positive).toContain('tailored blazer worn open over the selected lingerie');
+  expect(positive).toContain('no blouse, no trousers or pants');
+  expect(positive).toContain('stockings ending clearly at the upper thighs');
+  expect(positive).toContain('visible bare skin between the stocking tops and the briefs');
+  expect(positive).not.toContain('tailored women’s pantsuit');
+  expect(positive.match(/satin balconette bra and matching high-waisted briefs with garter belt, stockings and pumps/g) || []).toHaveLength(1);
+});
+
