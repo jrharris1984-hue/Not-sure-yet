@@ -1478,7 +1478,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
       const queuedRenders = [];
       for (let imageIndex = 0; imageIndex < requestedCount; imageIndex += 1) {
         const uniqueSeed = batchSeed(baseSeed, imageIndex, batchSeedMode);
-        const poseVariation = batchSeedMode === "pose"
+        const poseVariation = requestedCount > 1 && batchSeedMode === "pose"
           ? batchPoseVariation({
               subjects,
               sections: SECTIONS,
@@ -2758,7 +2758,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
             </select>
           )}
           {!isImageFirst && activeRecipeFamily === "image" && renderCount > 1 && <select value={batchSeedMode}
-            onChange={(event) => setBatchSeedMode(event.target.value)} title="Explore uses widely spaced seeds; Nearby uses consecutive seeds. Both keep your selected prompt."
+            onChange={(event) => setBatchSeedMode(event.target.value)} title="New seeds keeps the same pose; Nearby uses consecutive seeds; New seed + different pose recompiles each image with a different compatible pose."
             className="hidden md:block bg-elevated border border-hairline rounded-lg px-3 py-2 text-sm text-zinc-100">
             <option value="explore">New seeds only</option>
             <option value="nearby">Nearby seeds</option>
