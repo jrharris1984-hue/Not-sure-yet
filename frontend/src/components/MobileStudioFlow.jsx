@@ -1,49 +1,9 @@
 import { useState } from "react";
 import { ChevronRight, Search, SlidersHorizontal, Sparkles, X } from "lucide-react";
 import { PHASES } from "@/lib/dna";
+import { CREATE_MOBILE_STEPS } from "@/lib/createJourney";
 
-export const MOBILE_STUDIO_STEPS = [
-  {
-    id: "start",
-    label: "Start",
-    shortLabel: "Start",
-    hint: "People, scenario & age",
-    sections: ["identity", "scenario"],
-    simpleSections: ["identity"],
-  },
-  {
-    id: "character",
-    label: "Character",
-    shortLabel: "Character",
-    hint: "Body, face, hair & wardrobe",
-    sections: ["physique", "face", "hair", "skin", "intimate", "feet", "wardrobe"],
-    simpleSections: ["physique", "wardrobe", "face", "hair", "feet", "intimate"],
-  },
-  {
-    id: "scene",
-    label: "Scene",
-    shortLabel: "Scene",
-    hint: "Pose, camera & atmosphere",
-    sections: ["pose", "scene", "lighting", "camera", "style"],
-    simpleSections: ["pose", "scene", "lighting"],
-  },
-  {
-    id: "fine-tune",
-    label: "Fine Tune",
-    shortLabel: "Fine tune",
-    hint: "Specialized controls",
-    sections: ["kink", "watersports"],
-    simpleSections: ["watersports"],
-  },
-  {
-    id: "create",
-    label: "Create",
-    shortLabel: "Create",
-    hint: "Review & render",
-    sections: [],
-    simpleSections: [],
-  },
-];
+export const MOBILE_STUDIO_STEPS = CREATE_MOBILE_STEPS;
 
 export const SIMPLE_FIELD_KEYS = {
   identity: ["gender", "age", "ethnicity", "archetype", "name"],

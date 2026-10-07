@@ -1,8 +1,5 @@
-// Focused studios share the render engine and DNA schema, while keeping their
-// own guided steps and local draft. Presets only modify the listed fields.
-const step = (id, label, hint, sections, simpleSections = sections) => ({
-  id, label, shortLabel: label, hint, sections, simpleSections,
-});
+// Focused studios share the render engine, DNA schema and unified Create journey.
+// Profiles only define specialty controls and presets; navigation lives in createJourney.js.
 
 export const STUDIO_PROFILES = {
   feet: {
@@ -13,13 +10,6 @@ export const STUDIO_PROFILES = {
       { label: "Shape", keys: ["arch", "toe_length", "foot_size", "sole_texture", "toes"] },
       { label: "Styling", keys: ["pedicure", "pedicure_art", "toenail_shape", "hosiery", "foot_accessories", "foot_state"] },
       { label: "Interaction", keys: ["foot_act"] },
-    ],
-    steps: [
-      step("start", "People", "Cast, scenario & age", ["identity", "scenario"], ["identity"]),
-      step("character", "Character", "Body & appearance", ["physique", "face", "hair", "skin"], ["physique", "face", "hair"]),
-      step("focus", "Feet", "Details & presentation", ["feet"], ["feet"]),
-      step("scene", "Scene", "Shoes, pose & camera", ["wardrobe", "pose", "scene", "lighting", "camera", "style"], ["wardrobe", "pose", "scene"]),
-      step("create", "Create", "Review & render", []),
     ],
     presets: [
       { name: "Barefoot portrait", description: "Bare feet in a full-length frame", changes: { feet: { framing: "full body", foot_state: ["bare"] }, wardrobe: { footwear: "barefoot" }, pose: { focus: "feet", distance: "full body" } } },
@@ -45,13 +35,6 @@ export const STUDIO_PROFILES = {
       { label: "Setup", keys: ["source", "self_action", "container", "phase", "stance", "camera_view"] },
       { label: "Flow", keys: ["direction", "self_aim", "stream", "desperation", "flow_appearance"] },
       { label: "Visual detail", keys: ["urine_color", "highlight", "wetness", "aftermath", "garment_detail", "liquid_visibility", "surface", "scene_props", "scene_notes"] },
-    ],
-    steps: [
-      step("start", "People", "Cast, scenario & age", ["identity", "scenario"], ["identity"]),
-      step("character", "Character", "Body & appearance", ["physique", "face", "hair", "skin"], ["physique", "face", "hair"]),
-      step("focus", "Water", "Scene-specific details", ["watersports"], ["watersports"]),
-      step("scene", "Scene", "Wardrobe, pose & setting", ["wardrobe", "pose", "scene", "lighting", "camera", "style"], ["wardrobe", "pose", "scene"]),
-      step("create", "Create", "Review & render", []),
     ],
     presets: [
       { name: "Private bathroom", description: "Toilet setting, full figure", changes: { watersports: { source: "self", container: "toilet", stream: "steady stream", desperation: "calm" }, scene: { indoor_outdoor: "indoor", background: "private bathroom" }, pose: { distance: "full body" } } },
