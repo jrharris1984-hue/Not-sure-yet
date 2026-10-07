@@ -276,8 +276,8 @@ export default function ShootDetail() {
                   {status}
                 </span>
               </div>
-              <div className="text-[10px] font-mono text-zinc-400 truncate" title={f.pose_action}>
-                {f.pose_action || "—"}
+              <div className="text-[10px] font-mono text-zinc-400 truncate" title={f.shot_label || f.pose_action}>
+                {f.shot_label || f.pose_action || "—"}
               </div>
               {r?.alignment_review && <div className="text-[10px] text-cyan-200" title={r.alignment_review.summary || ""}>
                 {r.alignment_review.matched?.length || 0} matched · {r.alignment_review.missing?.length || 0} missing

@@ -11,6 +11,8 @@ import { API_BASE, endpoints } from "@/lib/api";
 import { SECTIONS } from "@/lib/dna";
 import { POSE_PACKS, samplePoses, cycleOutfits } from "@/lib/posePacks";
 import ShootPlanner from "@/components/ShootPlanner";
+import LifestyleShotSets from "@/components/LifestyleShotSets";
+import { lifestyleSetShots, lifestyleFrameControls } from "@/lib/lifestyleShotSets";
 import { plannedFrameControls } from "@/lib/shootPlanner";
 import LoraPanel from "@/components/LoraPanel";
 import { likenessOverrides, likenessTriggerText } from "@/components/LikenessLoraPanel";
@@ -77,12 +79,14 @@ export default function ShootSetup() {
   const availableWorkflows = identityMode === "reference" ? referenceWorkflows : workflows.filter(w => ["image", "pony"].includes(w.kind));
   const [aiFrames, setAiFrames] = useState(null);
   const [manualCount, setCount] = useState(8);
+  const [orderedSetsEnabled, setOrderedSetsEnabled] = useState(false);
+  const [orderedShots, setOrderedShots] = useState(() => lifestyleSetShots("views"));
   const [sequenceEnabled, setSequenceEnabled] = useState(false);
   const [coverageStages, setCoverageStages] = useState(DEFAULT_CLOTHING_STAGES);
   const [shotsPerStage, setShotsPerStage] = useState(4);
   const [sequenceSet, setSequenceSet] = useState('');
   const coverageFrames = useMemo(() => clothingSequence(coverageStages, shotsPerStage, sequenceSet), [coverageStages, shotsPerStage, sequenceSet]);
-  const count = sequenceEnabled ? coverageFrames.length : manualCount;
+  const count = orderedSetsEnabled ? orderedShots.length : sequenceEnabled ? coverageFrames.length : manualCount;
   const [workflowId, setWorkflowId] = useState("");
   const [poseMode, setPoseMode] = useState("pack"); // random | pack | manual
   const [packKey, setPackKey] = useState("editorial");
@@ -114,17 +118,17 @@ export default function ShootSetup() {
 
   // Preview: compute what each frame will be
   const previewFrames = useMemo(() => {
-    const poses = samplePoses({ mode: poseMode, packKey, manualPoses, count, allPoses: ALL_POSES });
+    const poses = orderedSetsEnabled ? orderedShots.map(shot => lifestyleFrameControls(shot).pose_action) : samplePoses({ mode: poseMode, packKey, manualPoses, count, allPoses: ALL_POSES });
     const outs = cycleOutfits(outfits.map((o) => ({ outfit_preset: o })), count);
     return poses.map((sampledPose, i) => {
-      const planned = aiFrames ? plannedFrameControls(aiFrames[i], lockScenario) : null;
+      const planned = orderedSetsEnabled ? lifestyleFrameControls(orderedShots[i]) : aiFrames ? plannedFrameControls(aiFrames[i], lockScenario) : null;
       const p = planned ? planned.pose_action : sampledPose;
-      const scene_direction = shotScript.length ? shotScript[i % shotScript.length] : "";
+      const scene_direction = [planned?.scene_direction, shotScript.length ? shotScript[i % shotScript.length] : ""].filter(Boolean).join(" ");
       const outfit_overrides = sequenceEnabled ? coverageFrames[i] : planned ? planned.outfit_overrides : outs[i] || {};
       const face_overrides = planned ? planned.face_overrides : expressions.length ? { expression: expressions[i % expressions.length] } : {};
       const savedDna = character?.subjects?.[0]?.dna || character?.dna || {};
       const baseDna = { ...savedDna, scene: { ...savedDna.scene, ...setControls.scene }, lighting: { ...savedDna.lighting, ...setControls.lighting }, camera: { ...savedDna.camera, ...setControls.camera } };
-      const planControls = { wardrobeOverrides: outfit_overrides, poseOverrides: planned?.pose_overrides, lightingOverrides: { ...setControls.lighting, ...planned?.lighting_overrides }, sceneOverrides: { ...setControls.scene, ...planned?.scene_overrides }, lockScenario };
+      const planControls = { wardrobeOverrides: outfit_overrides, poseOverrides: planned?.pose_overrides, cameraOverrides: planned?.camera_overrides, lightingOverrides: { ...setControls.lighting, ...planned?.lighting_overrides }, sceneOverrides: { ...setControls.scene, ...planned?.scene_overrides }, lockScenario };
       const frameDna = shootFrameDna(baseDna, { poseAction: p, outfitPreset: outfit_overrides.outfit_preset, faceOverrides: face_overrides, ...planControls });
       const subjects = (character?.subjects || []).map((subject, index) =>
         ({ ...subject, dna: index === 0 ? frameDna : shootFrameDna({ ...subject.dna, scene: { ...subject.dna?.scene, ...setControls.scene }, lighting: { ...subject.dna?.lighting, ...setControls.lighting }, camera: { ...subject.dna?.camera, ...setControls.camera } }, {
@@ -143,6 +147,8 @@ export default function ShootSetup() {
         sectionLocks: character?.locks || {},
       }) : null;
       return {
+        shot_label: planned?.shot_label || "",
+        camera_overrides: planned?.camera_overrides || {},
         control_notes: resolveBuilderControls(frameDna).notes.map(note => note.text),
         pose_overrides: planned?.pose_overrides || {},
         lighting_overrides: planned?.lighting_overrides || {},
@@ -166,7 +172,7 @@ export default function ShootSetup() {
 
       };
     });
-  }, [sequenceEnabled, coverageFrames, poseMode, packKey, manualPoses, count, outfits, expressions, shotScript, character, shootWorkflow, aiFrames, lockScenario, setControls, identityMode, settings?.builder_prompt_format]);
+  }, [orderedSetsEnabled, orderedShots, sequenceEnabled, coverageFrames, poseMode, packKey, manualPoses, count, outfits, expressions, shotScript, character, shootWorkflow, aiFrames, lockScenario, setControls, identityMode, settings?.builder_prompt_format]);
 
   const create = useMutation({
     mutationFn: async () => {
@@ -180,7 +186,7 @@ export default function ShootSetup() {
         source_render_id: identityMode === "reference" ? shootContext?.render_id : null,
         set_overrides: setControls,
         dispatch_settings: identityMode === "text" && workflowId === shootContext?.recipe?.workflow_id ? shootContext.recipe : {},
-        pose_mode: poseMode,
+        pose_mode: orderedSetsEnabled ? "ordered_sets" : poseMode,
         pose_pack: poseMode === "pack" ? packKey : "",
         seed_mode: seedMode,
         base_seed: baseSeed === "" ? null : Number(baseSeed),
@@ -275,7 +281,7 @@ export default function ShootSetup() {
                   type="range"
                   min={4}
                   max={40}
-                  disabled={sequenceEnabled}
+                  disabled={sequenceEnabled || orderedSetsEnabled}
                   step={1}
                   value={count}
                   onChange={(e) => setCount(Number(e.target.value))}
@@ -288,12 +294,21 @@ export default function ShootSetup() {
             </div>
           </section>
 
-          <div hidden={shootStep !== "shots"}>{!sequenceEnabled && count <= 20 && <ShootPlanner characterId={characterId} workflow={shootWorkflow} count={count} lockScenario={lockScenario}
+          <div hidden={shootStep !== "shots"} className="space-y-4">
+          <section className="pane p-4 space-y-3" aria-label="Shot planning mode">
+            <div className="section-label">Shot planning</div>
+            <div className="flex flex-wrap gap-2">
+              <button type="button" className={`chip ${!orderedSetsEnabled ? 'active' : ''}`} aria-pressed={!orderedSetsEnabled} onClick={() => { setOrderedSetsEnabled(false); setAiFrames(null); }}>Pose rotation / AI</button>
+              <button type="button" className={`chip ${orderedSetsEnabled ? 'active' : ''}`} aria-pressed={orderedSetsEnabled} onClick={() => { setOrderedSetsEnabled(true); setSequenceEnabled(false); setAiFrames(null); }}>Ordered shot sets</button>
+            </div>
+          </section>
+          {orderedSetsEnabled && <LifestyleShotSets shots={orderedShots} onChange={setOrderedShots} />}
+          {!orderedSetsEnabled && !sequenceEnabled && count <= 20 && <ShootPlanner characterId={characterId} workflow={shootWorkflow} count={count} lockScenario={lockScenario}
             appliedFrames={aiFrames} onApply={setAiFrames} />}
           {aiFrames && <div className="pane p-4 text-sm text-cyan-200">AI shot plan applied. Pose, outfit and expression rotations below are replaced by the shot cards.
             <button type="button" className="chip ml-2" onClick={() => setAiFrames(null)}>Return to manual rotation</button></div>}</div>
           {/* Pose source */}
-          <fieldset disabled={!!aiFrames} className="pane p-4 sm:p-6 space-y-4 disabled:opacity-40" data-testid="shoot-pose-panel" hidden={shootStep !== "shots"}>
+          <fieldset disabled={!!aiFrames || orderedSetsEnabled} className="pane p-4 sm:p-6 space-y-4 disabled:opacity-40" data-testid="shoot-pose-panel" hidden={shootStep !== "shots" || orderedSetsEnabled}>
             {shotScript.length > 0 && <div className="rounded-lg border border-cyan-400/30 bg-cyan-400/5 p-3 text-xs text-cyan-100" data-testid="shoot-scenario-script">
               <strong>Scenario shot script · {pairing}</strong>
               <p className="mt-1 text-zinc-300">Each frame follows a portrait direction for the selected relationship. Character appearance and the shared location stay consistent.</p>
@@ -354,7 +369,7 @@ export default function ShootSetup() {
             )}
           </fieldset>
 
-          <section className="pane p-4 sm:p-6 space-y-4" data-testid="shoot-clothing-sequence" hidden={shootStep !== "wardrobe"}>
+          <section className="pane p-4 sm:p-6 space-y-4" data-testid="shoot-clothing-sequence" hidden={shootStep !== "wardrobe" || orderedSetsEnabled}>
             <label className="flex items-center gap-3 text-sm font-semibold"><input type="checkbox" checked={sequenceEnabled} onChange={event => { setSequenceEnabled(event.target.checked); setAiFrames(null); }} data-testid="enable-clothing-sequence" />Ordered clothing coverage sequence</label>
             <p className="text-xs text-zinc-400">Repeat each selected coverage stage before moving to the next. Uses the saved outfit and matching lingerie, or choose a complete set below.</p>
             {sequenceEnabled && <>
@@ -365,8 +380,9 @@ export default function ShootSetup() {
               <p className="text-xs text-zinc-500">Stages run in coverage order. Poses and expressions can still vary. Outfit rotation and AI shot planning resume when this sequence is turned off.</p>
             </>}
           </section>
+          {orderedSetsEnabled && shootStep === 'wardrobe' && <section className="pane p-4 text-sm text-zinc-300">Each ordered set has its own outfit. Edit those choices in Shot list; wardrobe rotation is paused.<button type="button" className="chip mt-3" onClick={() => goShootStep('shots')}>Edit shot sets</button></section>}
           {/* Outfits */}
-          <fieldset disabled={!!aiFrames || sequenceEnabled} className="pane p-4 sm:p-6 space-y-4 disabled:opacity-40" data-testid="shoot-outfit-panel" hidden={shootStep !== "wardrobe"}>
+          <fieldset disabled={!!aiFrames || sequenceEnabled || orderedSetsEnabled} className="pane p-4 sm:p-6 space-y-4 disabled:opacity-40" data-testid="shoot-outfit-panel" hidden={shootStep !== "wardrobe" || orderedSetsEnabled}>
             <div className="flex items-center justify-between">
               <div>
                 <div className="section-label">Outfit rotation</div>
@@ -451,7 +467,7 @@ export default function ShootSetup() {
             </div>
           </section>
 
-          <fieldset disabled={!!aiFrames} className="pane p-4 sm:p-6 space-y-4" data-testid="shoot-expression-panel" hidden={shootStep !== "shots"}>
+          <fieldset disabled={!!aiFrames || orderedSetsEnabled} className="pane p-4 sm:p-6 space-y-4" data-testid="shoot-expression-panel" hidden={shootStep !== "shots" || orderedSetsEnabled}>
             <div className="flex items-center justify-between gap-3">
               <div>
                 <div className="section-label">Expression rotation</div>
@@ -490,13 +506,15 @@ export default function ShootSetup() {
                 >
                   <span className="text-zinc-500 w-6">#{i + 1}</span>
                   <div className="flex-1 min-w-0">
+                    <div className="text-cyan-200 truncate">{f.shot_label}</div>
                     <div className="text-zinc-200 truncate">{f.pose_action || <span className="text-zinc-500 italic">no pose</span>}</div>
                     {f.outfit_overrides?.outfit_preset && (
                       <div className="text-amber-300/80 truncate">{f.outfit_overrides.outfit_preset}</div>
                     )}
                     {f.outfit_overrides?.exposure_mode && <div className="text-amber-300 text-xs">{f.outfit_overrides.exposure_mode}</div>}
                     {f.face_overrides?.expression && <div className="text-cyan-300/80 truncate">{f.face_overrides.expression}</div>}
-                    {[...Object.values(f.pose_overrides || {}), ...Object.values(f.lighting_overrides || {}), ...Object.values(f.scene_overrides || {})].filter(Boolean).map((value, index) => <div key={index} className="text-zinc-400 break-words">{value}</div>)}
+                    {[...Object.values(f.camera_overrides || {}), ...Object.values(f.pose_overrides || {}), ...Object.values(f.lighting_overrides || {}), ...Object.values(f.scene_overrides || {})].filter(Boolean).map((value, index) => <div key={index} className="text-zinc-400 break-words">{value}</div>)}
+                    {f.scene_direction && <p className="text-zinc-400 break-words">{f.scene_direction}</p>}
                     {f.control_notes?.map(note => <p key={note} className="text-amber-200 mt-1">{note}</p>)}
                     {f.prompt_positive && <details className="mt-1 text-zinc-400">
                       <summary className="cursor-pointer text-cyan-200">View frame prompt</summary>

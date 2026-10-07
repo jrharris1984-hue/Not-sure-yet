@@ -5,6 +5,7 @@ SHOT_FIELDS = {
     "pose_action": ("pose", "action"),
     "framing": ("pose", "distance"),
     "view": ("pose", "angle"),
+    "camera_height": ("camera", "angle"),
     "expression": ("face", "expression"),
     "outfit_preset": ("wardrobe", "outfit_preset"),
     "outfit_color": ("wardrobe", "garment_color"),
@@ -44,10 +45,12 @@ def validate_shot_plan(result, count, catalog, lock_scenario):
 
 def apply_shot_controls(dna, frame, lock_scenario):
     out = json.loads(json.dumps(dna or {}))
-    for section in ("pose", "lighting", "scene"):
+    for section in ("pose", "lighting", "scene", "camera"):
         if section == "scene" and lock_scenario:
             continue
         allowed = {field for sec, field in SHOT_FIELDS.values() if sec == section}
+        if section == "pose":
+            allowed.update({"hands", "focus", "body_language"})
         for key, value in (frame.get(f"{section}_overrides") or {}).items():
             if key in allowed and isinstance(value, str):
                 out.setdefault(section, {})[key] = value

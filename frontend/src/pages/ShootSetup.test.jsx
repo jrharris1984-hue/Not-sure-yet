@@ -67,6 +67,56 @@ jest.mock('@/components/LoraPanel', () => ({ workflow, dna }) => {
   return <div data-testid="planner-routing">{workflowFamily(workflow)} | {dna?.wardrobe?.outfit_preset} | {health.warnings.join(' ')}</div>;
 });
 
+test('ordered shot sets preserve edits and queue the reviewed order without rendering during editing', async () => {
+  global.IS_REACT_ACT_ENVIRONMENT = true;
+  const create = jest.spyOn(endpoints, 'createShoot').mockImplementation(async body => body);
+  const container = document.createElement('div'), root = createRoot(container);
+  const select = (label, value) => act(() => {
+    const node = container.querySelector(`[aria-label="${label}"]`);
+    node.value = value; node.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+  const tab = label => [...container.querySelectorAll('nav[aria-label="Shoot setup sections"] button')].find(button => button.textContent.includes(label));
+  try {
+    act(() => root.render(<ShootSetup />));
+    act(() => tab('Shot list').click());
+    act(() => [...container.querySelectorAll('button')].find(button => button.textContent === 'Ordered shot sets').click());
+    expect(container.querySelector('[data-testid="shoot-count-value"]').textContent).toBe('4');
+    select('Shot set', 'couch');
+    select('New set outfit', 'tailored pantsuit');
+    act(() => [...container.querySelectorAll('button')].find(button => button.textContent === 'Add 3 shots').click());
+    select('Shot 5 Camera height', 'low');
+    act(() => container.querySelector('[aria-label="Move shot 5 up"]').click());
+    act(() => tab('Wardrobe').click());
+    expect(container.querySelector('[data-testid="shoot-clothing-sequence"]').hidden).toBe(true);
+    act(() => tab('Shot list').click());
+    expect(container.querySelector('[aria-label="Shot 4 Camera height"]').value).toBe('low');
+    expect(create).not.toHaveBeenCalled();
+    const body = await mockMutation.mutationFn();
+    expect(body.count).toBe(7);
+    expect(body.pose_mode).toBe('ordered_sets');
+    expect(body.frames[3].camera_overrides.angle).toBe('low');
+    expect(body.frames[3].scene_direction).toContain('couch');
+    expect(body.frames[3].prompt_positive).toContain('couch');
+    expect(body.frames[3].outfit_overrides.outfit_preset).toBe('tailored pantsuit');
+    expect(body.frames[4].pose_overrides.angle).toBe('back');
+    expect(body.frames.every(frame => frame.shot_label)).toBe(true);
+    act(() => [...container.querySelectorAll('button')].find(button => button.textContent === 'Pose rotation / AI').click());
+    expect(container.querySelector('[data-testid="shoot-count-value"]').textContent).toBe('8');
+  } finally { act(() => root.unmount()); create.mockRestore(); }
+});
+
+test('an empty ordered shot list cannot be queued', () => {
+  global.IS_REACT_ACT_ENVIRONMENT = true;
+  const container = document.createElement('div'), root = createRoot(container);
+  try {
+    act(() => root.render(<ShootSetup />));
+    act(() => [...container.querySelectorAll('button')].find(button => button.textContent === 'Ordered shot sets').click());
+    for (let i = 0; i < 4; i++) act(() => container.querySelector('[aria-label="Remove shot 1"]').click());
+    expect(container.querySelector('[data-testid="btn-start-shoot"]').disabled).toBe(true);
+    expect(container.querySelector('[data-testid="shoot-count-value"]').textContent).toBe('0');
+  } finally { act(() => root.unmount()); }
+});
+
 test('photoshoot passes selected workflow metadata and character selections into compatibility checks', () => {
   global.IS_REACT_ACT_ENVIRONMENT = true;
   const container = document.createElement('div');

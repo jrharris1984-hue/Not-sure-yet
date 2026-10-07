@@ -3439,9 +3439,11 @@ class ShootFrame(BaseModel):
     index: int
     pose_action: str = ""
     scene_direction: str = ""
+    shot_label: str = ""
     outfit_overrides: Dict[str, Any] = Field(default_factory=dict)  # partial wardrobe overrides
     face_overrides: Dict[str, Any] = Field(default_factory=dict)
     pose_overrides: Dict[str, Any] = Field(default_factory=dict)
+    camera_overrides: Dict[str, Any] = Field(default_factory=dict)
     lighting_overrides: Dict[str, Any] = Field(default_factory=dict)
     scene_overrides: Dict[str, Any] = Field(default_factory=dict)
     prompt_positive: str = ""
@@ -3669,6 +3671,8 @@ async def create_shoot(body: ShootCreateBody, background_tasks: BackgroundTasks)
             index=i,
             pose_action=str(f.get("pose_action") or ""),
             scene_direction=str(f.get("scene_direction") or ""),
+            shot_label=str(f.get("shot_label") or "")[:200],
+            camera_overrides=f.get("camera_overrides") or {},
             outfit_overrides=f.get("outfit_overrides") or {},
             face_overrides=f.get("face_overrides") or {},
             pose_overrides=f.get("pose_overrides") or {},
@@ -3939,7 +3943,7 @@ async def ai_shoot_plan(body: ShootPlanBody):
         "Prefer varied poses, expressions and framing when planning a new shoot. "
         "When revising current_frames, preserve every unmentioned setting. "
         "Return ONLY compact JSON {\"frames\":[{...}]} in the supplied shot_numbers order, with no commentary. "
-        "Fields: pose_action, framing, view, expression, outfit_preset, outfit_color, lighting_source, "
+        "Fields: pose_action, framing, view, camera_height, expression, outfit_preset, outfit_color, lighting_source, "
         "lighting_temperature, environment, background. Background is a short description; "
         "all other fields must match the catalog. Omit unchanged fields to keep the reply short."
     )
