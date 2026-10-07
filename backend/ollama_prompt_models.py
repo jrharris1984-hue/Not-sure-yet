@@ -7,6 +7,11 @@ GEMMA_PROMPT_MODELS = frozenset(name.casefold() for name in (
 ))
 
 
+FAST_PROMPT_MODELS = frozenset(name.casefold() for name in (
+    "llama3-gradient:8b-instruct-1048k-q4_K_M",
+))
+
+
 LLAMA_PROMPT_MODELS = frozenset(name.casefold() for name in (
     "llama3-gradient:8b-instruct-1048k-q4_K_M",
     "ultra-neuraldaredevil:8b",
@@ -17,12 +22,17 @@ LLAMA_PROMPT_MODELS = frozenset(name.casefold() for name in (
 
 
 def configure_prompt_request(model, payload):
-    """Bound context, allow RAM offload time, and release memory for ComfyUI."""
-    if model.casefold() in LLAMA_PROMPT_MODELS:
+    """Tune local prompt-assistant requests for responsiveness and memory use."""
+    normalized = model.casefold()
+    if normalized in FAST_PROMPT_MODELS:
+        payload["options"].update(num_ctx=4096, num_predict=600)
+        payload["keep_alive"] = "10m"
+        return 300.0
+    if normalized in LLAMA_PROMPT_MODELS:
         payload["options"].update(num_ctx=4096, num_predict=1400)
         payload["keep_alive"] = 0
         return 600.0
-    if model.casefold() not in GEMMA_PROMPT_MODELS:
+    if normalized not in GEMMA_PROMPT_MODELS:
         return 180.0
     payload["options"].update(num_ctx=8192, num_predict=1400)
     payload["keep_alive"] = 0
