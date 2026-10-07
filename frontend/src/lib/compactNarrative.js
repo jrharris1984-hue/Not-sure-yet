@@ -14,6 +14,42 @@ const SKIP = new Set(['identity.age', 'identity.gender', 'wardrobe.outfit_mode',
   'wardrobe.nudity_level', 'wardrobe.nudity_outfit', 'wardrobe.exposure_mode', 'wardrobe.set_lingerie', 'feet.composition_mode',
   'scenario.cast_size', 'scenario.cast_age_mode', 'scenario.cast_age_gap', 'scenario.cast_resemblance',
   'scenario.kink_level', 'style.anatomy_mode']);
+const LOWER_BODY_OUTER = /\b(?:pantsuit|trousers|pants|leggings|jeans|slacks)\b/i;
+const STOCKING_LINGERIE = /\b(?:garter|garters|stockings|thigh[- ]highs?|hold-up stockings)\b/i;
+
+function visibleStockingWardrobe(dna, index, section) {
+  const wardrobe = dna.wardrobe || {};
+  const exposure = wardrobeNudity(wardrobe);
+  let pieces = section(dna, 'wardrobe', index);
+  const lingerie = clean(wardrobe.set_lingerie || wardrobe.underwear);
+  const direction = clean(exposure.direction);
+
+  // In full-set mode the matching lingerie can be emitted once as a wardrobe
+  // field and again inside the exposure instruction. Keep one authoritative copy.
+  if (lingerie && direction.toLowerCase().includes(lingerie.toLowerCase())) {
+    pieces = pieces.filter(piece => clean(piece).toLowerCase() !== lingerie.toLowerCase());
+  }
+
+  const outer = clean(wardrobe.outfit_set);
+  const needsVisibleStockingBoundary = exposure.mode === 'lingerie showing'
+    && LOWER_BODY_OUTER.test(outer)
+    && STOCKING_LINGERIE.test(lingerie);
+
+  if (!needsVisibleStockingBoundary) return join([...pieces, direction]);
+
+  // Trousers and visible garter stockings compete for the same leg area and
+  // image models often fuse them into a pants/stocking hybrid. Preserve the
+  // upper tailoring but explicitly remove the lower garment and define where
+  // the stockings end.
+  pieces = pieces.filter(piece => !LOWER_BODY_OUTER.test(clean(piece)));
+  const tailoredUpper = /(?:blazer|suit|pantsuit)/i.test(outer)
+    ? 'tailored blazer worn open over the selected lingerie, no blouse, no trousers or pants'
+    : 'selected outer layer worn open over the selected lingerie, no trousers, pants, leggings, jeans, or slacks';
+
+  const boundary = 'separate thigh-high stockings ending clearly at the upper thighs, visible bare skin between the stocking tops and the briefs, stockings are hosiery only and do not continue into pants or tights';
+  return join([tailoredUpper, ...pieces, direction, boundary]);
+}
+
 const CONTEXT = {
   physique: { height:'height', body_type:'build', shoulders:'shoulders', legs:'legs', proportions:'proportions' },
   face: { eye_shape:'eyes', eye_color:'eyes', jawline:'jawline', nose:'nose', lips:'lips', expression:'expression' },
@@ -76,7 +112,7 @@ export function buildCompactNarrative(subjects, catalog = {sections:[]}, compile
     const age = Number(dna.identity?.age);
     const identity = join([age ? `${age}-year-old adult ${person}` : `adult ${person}`, ageAppearancePrompt(age), ...section(dna, 'identity', index)]);
     const appearance = join(['physique', 'face', 'hair', 'skin'].flatMap(key => section(dna, key, index)));
-    const wardrobe = join([...section(dna, 'wardrobe', index), wardrobeNudity(dna.wardrobe).direction]);
+    const wardrobe = visibleStockingWardrobe(dna, index, section);
     const pose = join(section(dna, 'pose', index));
     const otherKeys = Object.keys(dna).filter(key => !key.startsWith('_') && !SHARED.has(key) && !['identity','physique','face','hair','skin','wardrobe','pose'].includes(key));
     const other = join(otherKeys.flatMap(key => section(dna, key, index)));
