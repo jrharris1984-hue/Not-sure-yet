@@ -4,12 +4,13 @@ import StudioLoading from "@/components/StudioLoading";
 import GalleryBrowseControls from "@/components/GalleryBrowseControls";
 import { browseGallery, galleryIsVideo, galleryModel, galleryRefreshInterval } from "@/lib/galleryBrowse";
 import ImageRecoveryPanel from "@/components/ImageRecoveryPanel";
+import PostGenerationActions from "@/components/PostGenerationActions";
 import { loadBodyCreationRecipe } from "@/lib/bodyCreationRecipe";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { API_BASE, endpoints } from "@/lib/api";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
-import { X, Download, Copy, ExternalLink, Trash2, CheckSquare, RotateCcw, Shuffle, Pencil, Film, Loader2, Info, ChevronLeft, ChevronRight, PersonStanding, BookOpen, FolderPlus, Columns2, ScanFace, SlidersHorizontal } from "lucide-react";
+import { X, Download, Copy, ExternalLink, Trash2, CheckSquare, RotateCcw, Shuffle, Loader2, Info, ChevronLeft, ChevronRight, BookOpen, FolderPlus, Columns2, SlidersHorizontal } from "lucide-react";
 import { toast } from "sonner";
 
 async function downloadImage(url, filename) {
@@ -1017,26 +1018,16 @@ export default function Gallery() {
                         onClick={() => { setSelected([lightbox.parent_render_id, lightbox.id]); setCompareOpen(true); }}
                         className="w-full rounded-lg border hairline px-3 py-2 text-xs font-semibold text-cyan-100"
                         data-testid="btn-compare-with-source">Compare with source</button>}
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                      <button type="button" onClick={() => openBodyCreation.mutate(lightbox)} disabled={openBodyCreation.isPending}
-                        data-testid="btn-lightbox-body-adjust" title="Load the original creation setup and change its body sliders before generating a new image"
-                        className="inline-flex min-w-0 flex-col items-center justify-center gap-1 rounded-lg border border-amber-500/30 bg-amber-500/5 text-amber-100 hover:bg-amber-500/10 text-xs font-semibold px-2 py-2.5 disabled:opacity-40">
-                        <SlidersHorizontal className="h-4 w-4" /> Change body setup
-                      </button>
-                      <button type="button" onClick={() => reuseAsReference.mutate({ render: lightbox, targetKind: "edit" })} disabled={reuseAsReference.isPending}
-                        data-testid="btn-lightbox-edit-again" className="inline-flex min-w-0 flex-col items-center justify-center gap-1 rounded-lg border border-cyan-500/30 bg-cyan-500/5 text-cyan-100 hover:bg-cyan-500/10 text-xs font-semibold px-2 py-2.5 disabled:opacity-40">
-                        <Pencil className="h-4 w-4" /> Edit image
-                      </button>
-                      <button type="button" onClick={() => reuseAsReference.mutate({ render: lightbox, targetKind: "video" })} disabled={reuseAsReference.isPending}
-                        data-testid="btn-lightbox-animate" className="inline-flex min-w-0 flex-col items-center justify-center gap-1 rounded-lg border border-emerald-500/30 bg-emerald-500/5 text-emerald-100 hover:bg-emerald-500/10 text-xs font-semibold px-2 py-2.5 disabled:opacity-40">
-                        <Film className="h-4 w-4" /> Animate
-                      </button>
-                      <button type="button" onClick={() => reuseAsReference.mutate({ render: lightbox, targetKind: "face", referenceMode: "keep_character" })} disabled={reuseAsReference.isPending}
-                        data-testid="btn-lightbox-reference" title="Use this image as the face reference and restore its character selections"
-                        className="inline-flex min-w-0 flex-col items-center justify-center gap-1 rounded-lg border border-rose-500/30 bg-rose-500/5 text-rose-100 hover:bg-rose-500/10 text-xs font-semibold px-2 py-2.5 disabled:opacity-40">
-                        <ScanFace className="h-4 w-4" /> Face reference
-                      </button>
-                    </div>
+                    <PostGenerationActions
+                      compact
+                      busy={reuseAsReference.isPending || openBodyCreation.isPending}
+                      onBody={() => openBodyCreation.mutate(lightbox)}
+                      onEdit={() => reuseAsReference.mutate({ render: lightbox, targetKind: "edit" })}
+                      onPose={() => reuseAsReference.mutate({ render: lightbox, targetKind: "edit", referenceMode: "new_pose" })}
+                      onAnimate={() => reuseAsReference.mutate({ render: lightbox, targetKind: "video" })}
+                      onReference={() => reuseAsReference.mutate({ render: lightbox, targetKind: "face", referenceMode: "keep_character" })}
+                      onTools={() => nav(`/tools?render=${encodeURIComponent(lightbox.id)}`)}
+                    />
 
                   </div>
                 )}
@@ -1045,12 +1036,6 @@ export default function Gallery() {
                 <details className="rounded-lg border hairline bg-black/15 p-3" data-testid="gallery-render-details">
                   <summary className="cursor-pointer text-xs font-semibold text-zinc-300">Prompt & advanced actions</summary>
                   <div className="space-y-2 pt-3">
-                    {!isVideoUrl(primaryOutput(lightbox)) && (
-                      <button type="button" onClick={() => reuseAsReference.mutate({ render: lightbox, targetKind: "edit", referenceMode: "new_pose" })} disabled={reuseAsReference.isPending}
-                        data-testid="btn-lightbox-new-pose" className="w-full inline-flex items-center justify-center gap-2 rounded-lg border border-cyan-500/40 bg-cyan-500/10 px-3 py-2 text-sm text-cyan-100 disabled:opacity-40">
-                        <PersonStanding className="h-4 w-4" /> New pose from this image
-                      </button>
-                    )}
                     {lightbox.prompt_positive && <div className="text-[11px] font-mono text-zinc-300 bg-elevated border hairline rounded-md p-2 max-h-32 overflow-y-auto whitespace-pre-wrap">{lightbox.prompt_positive}</div>}
                     {originalOutput(lightbox) && originalOutput(lightbox) !== primaryOutput(lightbox) && (
                       <button onClick={() => downloadImage(originalOutput(lightbox), `${lightbox.workflow_name || "render"}-${lightbox.id.slice(0, 8)}-original.png`)} data-testid="btn-lightbox-download-original" className="w-full rounded-lg border hairline px-3 py-2 text-sm">

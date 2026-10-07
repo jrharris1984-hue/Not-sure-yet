@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, NavLink, useLocation } from "react-router-dom";
-import { Library, Image as ImageIcon, Settings2, Plus, Camera, ListOrdered, Database, MoreHorizontal } from "lucide-react";
+import { Library, Image as ImageIcon, Settings2, Plus, Camera, ListOrdered, Database, MoreHorizontal, Wrench } from "lucide-react";
 import { Sheet, SheetTrigger, SheetContent, SheetTitle, SheetDescription, SheetClose } from "@/components/ui/sheet";
 
 export const STUDIO_NAV = [
@@ -8,6 +8,7 @@ export const STUDIO_NAV = [
   { to: "/media", label: "Media", icon: Database, testId: "nav-media" },
   { to: "/shoots", label: "Shoots", icon: Camera, testId: "nav-shoots" },
   { to: "/gallery", label: "Gallery", icon: ImageIcon, testId: "nav-gallery" },
+  { to: "/tools", label: "Tools", icon: Wrench, testId: "nav-tools" },
   { to: "/queue", label: "Queue", icon: ListOrdered, testId: "nav-queue" },
   { to: "/settings", label: "Settings", icon: Settings2, testId: "nav-settings" },
 ];
@@ -25,9 +26,9 @@ export default function MobileStudioNavigation({ returnTo }) {
   const location = useLocation();
   const [open, setOpen] = useState(false);
   useEffect(() => { setOpen(false); }, [location.pathname]);
-  const secondary = STUDIO_NAV.filter((item) => ["/media", "/shoots", "/settings"].includes(item.to));
+  const secondary = STUDIO_NAV.filter((item) => ["/media", "/shoots", "/queue", "/settings"].includes(item.to));
   const secondaryActive = secondary.some((item) => location.pathname.startsWith(item.to)) || location.pathname.startsWith("/shoot/");
-  const primary = STUDIO_NAV.filter((item) => ["/", "/gallery", "/queue"].includes(item.to));
+  const primary = STUDIO_NAV.filter((item) => ["/", "/gallery", "/tools"].includes(item.to));
   const itemClass = (active) => `studio-mobile-link flex min-h-16 flex-col items-center justify-center gap-1 text-[11px] ${active ? "text-cyan-200 studio-mobile-link-active" : "text-zinc-400"}`;
   const navItem = (item) => <NavLink key={item.to} to={item.to} end={item.to === "/"}
     state={item.to === "/gallery" && returnTo ? { returnTo } : undefined}
@@ -47,7 +48,7 @@ export default function MobileStudioNavigation({ returnTo }) {
         </button></SheetTrigger>
         <SheetContent side="bottom" className="studio-more-sheet rounded-t-3xl px-5 pt-6 pb-8">
           <SheetTitle>Studio pages</SheetTitle>
-          <SheetDescription className="mt-1">Your media, photo shoots, and studio settings.</SheetDescription>
+          <SheetDescription className="mt-1">Your media, photo shoots, render queue, and studio settings.</SheetDescription>
           <div className="mt-5 grid gap-2">
             {secondary.map((item) => <SheetClose key={item.to} asChild><Link to={item.to} data-testid={`${item.testId}-mobile`}
               className="flex min-h-14 items-center gap-3 rounded-xl border hairline bg-elevated px-4 py-3 text-sm text-zinc-200">
