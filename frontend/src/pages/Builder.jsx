@@ -21,7 +21,7 @@ import CreateJourney from "@/components/CreateJourney";
 import { createStagesForStudio } from "@/lib/createJourney";
 import { useCreateShellState } from "@/hooks/useCreateShellState";
 import { useBuilderSessionState } from "@/hooks/useBuilderSessionState";
-import { useEffect, useMemo, useState, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { useParams, useNavigate, useLocation, Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Save, Shuffle, Download, Upload, Loader2, Play, ChevronLeft, ChevronRight, Camera, Sparkles, ChevronDown, ImagePlus, X, RotateCcw, SlidersHorizontal, ShieldCheck, AlertTriangle, Pencil, Film, Trash2, ScanFace } from "lucide-react";
@@ -56,7 +56,6 @@ import DnaAtAGlance from "@/components/DnaAtAGlance";
 import MobileStudioFlow, {
   SIMPLE_FIELD_KEYS,
   mobileStudioStepForSection,
-  mobileStudioSectionsForStep,
 } from "@/components/MobileStudioFlow";
 import MobileCreateReview from "@/components/MobileCreateReview";
 import PromptAlignmentCard from "@/components/PromptAlignmentCard";
