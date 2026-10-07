@@ -51,7 +51,8 @@ class ShootContinuityTests(unittest.IsolatedAsyncioTestCase):
                              renders=SimpleNamespace(find_one=AsyncMock(return_value={"output_files": ["photo.png"]})),
                              shoots=SimpleNamespace(insert_one=AsyncMock()))
         prepare = AsyncMock(return_value={"name": "input-photo.png"})
-        body = SimpleNamespace(count=2, frames=[{"edit_instruction": "Keep same face; stand"}, {"edit_instruction": "Keep same face; sit"}],
+        body = SimpleNamespace(count=2, frames=[{"edit_instruction": "Keep same face; stand", "shot_label": "Standing · Front",
+            "camera_overrides": {"angle": "low"}}, {"edit_instruction": "Keep same face; sit"}],
             character_id="c", source_render_id="photo", workflow_id="edit", dispatch_settings={"steps":4,"selected_lora_name":"old"},
             set_overrides={"scene":{"environment":"studio"}}, base_seed=42, seed_mode="same", name="Shoot", lora_overrides={},
             pose_mode="pack", pose_pack="editorial", lock_scenario=True)
@@ -66,3 +67,5 @@ class ShootContinuityTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(saved["dispatch_settings"], {})
         self.assertEqual([frame.seed for frame in saved["frames"]], [42, 42])
         self.assertEqual(saved["frames"][1].edit_instruction, "Keep same face; sit")
+        self.assertEqual(saved["frames"][0].shot_label, "Standing · Front")
+        self.assertEqual(saved["frames"][0].camera_overrides, {"angle": "low"})
