@@ -1,4 +1,6 @@
-import { SMART_SHOOT_CATEGORIES, SMART_PHOTOSHOOT_PRESETS } from "@/lib/batchSmartPhotoshoot";
+import { useState } from "react";
+import { photoshootCatalog, resolvePhotoshootPreset } from "@/lib/batchSmartPhotoshoot";
+import SmartPhotoshootDesigner from "@/components/SmartPhotoshootDesigner";
 
 const MODES = [
   ["explore", "New seeds only"],
@@ -25,13 +27,18 @@ export default function BatchVariationControl({
   onSmartPresetChange,
   smartPlan = [],
   onRegeneratePlan,
+  customPresets = [],
+  onSavePreset,
+  onDeletePreset,
   compact = false,
 }) {
   const updateSmart = (key, checked) => onSmartOptionsChange({
     ...smartOptions,
     [key]: checked,
   });
-  const activePreset = SMART_PHOTOSHOOT_PRESETS[smartPreset] || SMART_PHOTOSHOOT_PRESETS.editorial;
+  const [designerOpen, setDesignerOpen] = useState(false);
+  const catalog = photoshootCatalog(customPresets);
+  const activePreset = resolvePhotoshootPreset(smartPreset, customPresets);
 
   return (
     <div className={compact ? "relative" : "space-y-2"} data-testid="batch-variation-control">
@@ -66,7 +73,7 @@ export default function BatchVariationControl({
               className="mt-1 w-full rounded-lg border hairline bg-elevated px-2 py-2 text-xs normal-case tracking-normal text-zinc-100"
               aria-label="Smart photoshoot style"
             >
-              {SMART_SHOOT_CATEGORIES.map(category => (
+              {catalog.categories.map(category => (
                 <optgroup key={category.key} label={category.label}>
                   {category.presets.map(preset => (
                     <option key={preset.key} value={preset.key}>{preset.label}</option>
@@ -76,9 +83,15 @@ export default function BatchVariationControl({
             </select>
           </label>
 
-          <div className="mt-2 rounded-lg border hairline bg-white/[0.02] px-2.5 py-2 text-[11px] text-zinc-400">
-            <span className="font-semibold text-zinc-200">{activePreset.label}</span>
-            <span className="ml-1">{activePreset.description}</span>
+          <div className="mt-2 flex items-start gap-2 rounded-lg border hairline bg-white/[0.02] px-2.5 py-2 text-[11px] text-zinc-400">
+            <div className="min-w-0 flex-1">
+              <span className="font-semibold text-zinc-200">{activePreset.label}</span>
+              <span className="ml-1">{activePreset.description}</span>
+            </div>
+            <button type="button" onClick={() => setDesignerOpen(true)}
+              className="shrink-0 rounded-md border border-cyan-500/30 bg-cyan-500/10 px-2 py-1 text-[10px] font-semibold text-cyan-200">
+              {activePreset.custom ? "Edit" : "Customize"}
+            </button>
           </div>
 
           <div className="mt-3 grid grid-cols-2 gap-2">
@@ -118,6 +131,22 @@ export default function BatchVariationControl({
           </div>
         </div>
       )}
+
+      <SmartPhotoshootDesigner
+        open={designerOpen}
+        onClose={() => setDesignerOpen(false)}
+        sourcePreset={smartPreset}
+        customPresets={customPresets}
+        onSave={async (preset) => {
+          await onSavePreset?.(preset);
+          onSmartPresetChange?.(preset.key);
+        }}
+        onDelete={async (key) => {
+          await onDeletePreset?.(key);
+          onSmartPresetChange?.("editorial");
+          setDesignerOpen(false);
+        }}
+      />
     </div>
   );
 }
