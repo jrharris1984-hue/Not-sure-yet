@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { ChevronRight, Search, SlidersHorizontal, Sparkles, X } from "lucide-react";
 import { PHASES } from "@/lib/dna";
-import { CREATE_MOBILE_STEPS } from "@/lib/createJourney";
+import { CREATE_MOBILE_STEPS, createStepForSection, createSectionsForStep } from "@/lib/createJourney";
 
 export const MOBILE_STUDIO_STEPS = CREATE_MOBILE_STEPS;
 
@@ -19,15 +19,8 @@ export const SIMPLE_FIELD_KEYS = {
   scenario: ["cast_size", "cast_type", "roleplay", "extra_acts"],
 };
 
-export function mobileStudioStepForSection(sectionKey, steps = MOBILE_STUDIO_STEPS) {
-  return steps.find((step) => step.sections.includes(sectionKey))?.id || "start";
-}
-
-export function mobileStudioSectionsForStep(stepId, mode = "simple", steps = MOBILE_STUDIO_STEPS) {
-  const step = steps.find((item) => item.id === stepId);
-  if (!step) return [];
-  return mode === "advanced" ? step.sections : (step.simpleSections || step.sections);
-}
+export const mobileStudioStepForSection = createStepForSection;
+export const mobileStudioSectionsForStep = createSectionsForStep;
 
 export default function MobileStudioFlow({
   steps = MOBILE_STUDIO_STEPS,
