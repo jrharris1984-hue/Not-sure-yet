@@ -38,7 +38,7 @@ export default function MobileStudioNavigation({ returnTo }) {
   return <nav aria-label="Mobile studio navigation" className="mobile-bottom-nav glass md:hidden fixed bottom-0 inset-x-0 z-40 border-t border-white/10">
     <div className="grid grid-cols-5">
       {navItem(primary[0])}
-      <Link to="/character/new" data-testid="btn-new-character-mobile" className={`${itemClass(location.pathname.startsWith("/character"))} text-lime-300`}>
+      <Link to="/create" data-testid="btn-new-character-mobile" className={`${itemClass(location.pathname === "/create" || location.pathname.startsWith("/create/") || location.pathname.startsWith("/character"))} text-lime-300`}>
         <Plus className="h-5 w-5" />Create
       </Link>
       {primary.slice(1).map(navItem)}
