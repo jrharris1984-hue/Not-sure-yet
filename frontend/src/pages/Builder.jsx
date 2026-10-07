@@ -18,7 +18,7 @@ import VariationInstruction from "@/components/VariationInstruction";
 import { resolveBuilderControls } from "@/lib/builderControlResolution";
 import CreationOutputControls from "@/components/CreationOutputControls";
 import CreateJourney from "@/components/CreateJourney";
-import { CREATE_STAGES, CREATE_MOBILE_STEPS } from "@/lib/createJourney";
+import { createStagesForStudio } from "@/lib/createJourney";
 import { useEffect, useMemo, useState, useRef } from "react";
 import { useParams, useNavigate, useLocation, Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -129,7 +129,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
   const { id, section: sectionParam } = useParams();
   const isNew = !id;
   const studioProfile = STUDIO_PROFILES[studio];
-  const studioSteps = studioProfile?.steps || CREATE_MOBILE_STEPS;
+  const studioSteps = useMemo(() => createStagesForStudio(studio), [studio]);
   const draftId = imageToolId ? `image-tool:${imageToolId}` : isNew && studioProfile ? `studio:${studio}` : (id || null);
   const nav = useNavigate();
   const location = useLocation();
@@ -2122,7 +2122,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
     && batchIsFinished
     && (!poseAssistEnabled || poseAssistStage === "done");
 
-  const quickStages = CREATE_STAGES;
+  const quickStages = studioSteps;
   const quickStageIndex = quickReview ? quickStages.length - 1 : Math.max(0, quickStages.findIndex((stage) => stage.sections.includes(activeSection)));
   const openCreateSection = (key) => {
     setQuickReview(false);

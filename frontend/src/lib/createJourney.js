@@ -1,22 +1,63 @@
-export const CREATE_STAGES = [
-  { key: "identity", title: "Design", detail: "Choose your subject", categories: [
-    { key: "identity", title: "People", sections: ["identity", "scenario"] },
-    { key: "physique", title: "Body", sections: ["physique", "feet", "intimate"] },
-    { key: "face", title: "Appearance", sections: ["face", "hair", "skin"] },
-    { key: "wardrobe", title: "Wardrobe", sections: ["wardrobe"] },
-  ] },
-  { key: "pose", title: "Compose", detail: "Arrange the photograph", categories: [
-    { key: "pose", title: "Pose & framing", sections: ["pose", "camera"] },
-    { key: "scene", title: "Scene", sections: ["scene"] },
-    { key: "lighting", title: "Lighting & style", sections: ["lighting", "style"] },
-    { key: "kink", title: "Scene details", sections: ["kink", "watersports"] },
-  ] },
-  { key: "review", title: "Generate", detail: "Review and create", categories: [] },
-].map((stage) => ({ ...stage, sections: stage.categories.flatMap((category) => category.sections) }));
+const stage = (id, title, detail, categories, simpleSections) => ({
+  id,
+  key: id,
+  label: title,
+  shortLabel: title,
+  title,
+  detail,
+  hint: detail,
+  categories,
+  sections: categories.flatMap((category) => category.sections),
+  simpleSections,
+});
 
-// Keep the existing mobile step IDs for route and draft compatibility.
-export const CREATE_MOBILE_STEPS = CREATE_STAGES.map((stage, index) => ({
-  id: ["start", "scene", "create"][index], label: stage.title,
-  shortLabel: stage.title, hint: stage.detail,
-  sections: stage.sections, simpleSections: stage.sections,
+const BASE_CREATE_STAGES = [
+  stage("start", "People", "Choose the cast and who you are creating", [
+    { key: "people", title: "People", sections: ["identity", "scenario"] },
+  ], ["identity", "scenario"]),
+  stage("character", "Appearance", "Shape the body, face, hair and personal details", [
+    { key: "body", title: "Body", sections: ["physique", "feet", "intimate"] },
+    { key: "appearance", title: "Face & hair", sections: ["face", "hair", "skin"] },
+  ], ["physique", "face", "hair", "skin"]),
+  stage("wardrobe", "Wardrobe", "Dress and style the subject", [
+    { key: "wardrobe", title: "Wardrobe", sections: ["wardrobe"] },
+  ], ["wardrobe"]),
+  stage("scene", "Pose & Scene", "Compose the photograph and specialty scene details", [
+    { key: "pose", title: "Pose & framing", sections: ["pose", "camera"] },
+    { key: "scene", title: "Scene & light", sections: ["scene", "lighting", "style"] },
+    { key: "specialty", title: "Specialty", sections: ["kink", "watersports"] },
+  ], ["pose", "scene", "lighting"]),
+  stage("create", "Create", "Review generation settings and render", [], []),
+];
+
+const cloneStages = () => BASE_CREATE_STAGES.map((item) => ({
+  ...item,
+  categories: item.categories.map((category) => ({ ...category, sections: [...category.sections] })),
+  sections: [...item.sections],
+  simpleSections: [...item.simpleSections],
 }));
+
+export function createStagesForStudio(studio = "standard") {
+  const stages = cloneStages();
+  const appearance = stages.find((item) => item.id === "character");
+  const scene = stages.find((item) => item.id === "scene");
+
+  if (studio === "feet") {
+    appearance.simpleSections = ["physique", "face", "hair", "skin", "feet"];
+    appearance.detail = "Build the subject, then refine foot appearance and presentation";
+    appearance.hint = appearance.detail;
+  }
+
+  if (studio === "watersports") {
+    scene.simpleSections = ["pose", "watersports", "scene", "lighting"];
+    scene.detail = "Set the pose, specialty scene details, location and lighting";
+    scene.hint = scene.detail;
+  }
+
+  return stages;
+}
+
+export const CREATE_STAGES = createStagesForStudio("standard");
+
+// Backward-compatible export: mobile and desktop now consume the same stage objects.
+export const CREATE_MOBILE_STEPS = CREATE_STAGES;

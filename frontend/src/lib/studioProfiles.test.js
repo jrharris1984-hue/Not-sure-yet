@@ -1,14 +1,18 @@
 import { STUDIO_PROFILES, applyStudioPreset } from "./studioProfiles";
 import { mobileStudioStepForSection, mobileStudioSectionsForStep } from "../components/MobileStudioFlow";
+import { createStagesForStudio } from "./createJourney";
 import { DEFAULT_DNA, SECTIONS, buildPrompts } from "./dna";
 import { buildKrea2Prompts } from "./modelPromptCompilers";
 import { buildPromptPriorityPlan } from "./promptPriority";
 
-test("each studio keeps its specialty controls in a dedicated guided step", () => {
-  expect(mobileStudioStepForSection("feet", STUDIO_PROFILES.feet.steps)).toBe("focus");
-  expect(mobileStudioSectionsForStep("focus", "simple", STUDIO_PROFILES.feet.steps)).toEqual(["feet"]);
-  expect(mobileStudioStepForSection("watersports", STUDIO_PROFILES.watersports.steps)).toBe("focus");
-  expect(mobileStudioSectionsForStep("focus", "simple", STUDIO_PROFILES.watersports.steps)).toEqual(["watersports"]);
+test("each studio uses the shared journey while surfacing its specialty in Simple mode", () => {
+  const feetStages = createStagesForStudio("feet");
+  const watersportsStages = createStagesForStudio("watersports");
+  expect(mobileStudioStepForSection("feet", feetStages)).toBe("character");
+  expect(mobileStudioSectionsForStep("character", "simple", feetStages)).toContain("feet");
+  expect(mobileStudioStepForSection("watersports", watersportsStages)).toBe("scene");
+  expect(mobileStudioSectionsForStep("scene", "simple", watersportsStages)).toContain("watersports");
+  expect(feetStages.map(stage => stage.id)).toEqual(watersportsStages.map(stage => stage.id));
 });
 
 test("focused tabs cover every specialty field", () => {
