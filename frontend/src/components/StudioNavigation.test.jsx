@@ -58,3 +58,11 @@ test("mobile Create opens the unified creation hub", () => {
   expect(mockNavigate).toHaveBeenCalledWith("/create", undefined);
 });
 
+test("image-tool routes keep Tools highlighted", () => {
+  mockPath = "/image-tools/repair";
+  render(<StudioNavLinks />);
+  expect(container.querySelector('[data-testid="nav-tools"]').className).toContain("studio-nav-link-active");
+  render(<MobileStudioNavigation />);
+  expect(container.querySelector('[data-testid="nav-tools-mobile"]').className).toContain("studio-mobile-link-active");
+});
+
