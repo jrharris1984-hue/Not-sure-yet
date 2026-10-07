@@ -17,6 +17,7 @@ test("Create hub keeps new-work paths together and separate from post-generation
     expect(container.querySelector(`a[href="${path}"]`)).not.toBeNull();
   }
   expect(container.textContent).toContain("Start new work here");
+  expect(container.querySelector('a[href="/research"]')).not.toBeNull();
   expect(container.querySelector('a[href="/tools"]')).toBeNull();
 
   act(() => root.unmount());
