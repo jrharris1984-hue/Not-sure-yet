@@ -61,3 +61,14 @@ export const CREATE_STAGES = createStagesForStudio("standard");
 
 // Backward-compatible export: mobile and desktop now consume the same stage objects.
 export const CREATE_MOBILE_STEPS = CREATE_STAGES;
+
+
+export function createStepForSection(sectionKey, steps = CREATE_STAGES) {
+  return steps.find((step) => step.sections.includes(sectionKey))?.id || "start";
+}
+
+export function createSectionsForStep(stepId, mode = "simple", steps = CREATE_STAGES) {
+  const step = steps.find((item) => item.id === stepId);
+  if (!step) return [];
+  return mode === "advanced" ? step.sections : (step.simpleSections || step.sections);
+}
