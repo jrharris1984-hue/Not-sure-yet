@@ -23,6 +23,15 @@ const slug = value => String(value || "")
   .slice(0, 50);
 
 function toEditablePreset(source, customPresets) {
+  if (source === "__blank__") {
+    return {
+      key: "",
+      label: "My Photoshoot",
+      category: "Custom",
+      description: "",
+      sequence: [{ ...EMPTY_SHOT }],
+    };
+  }
   const resolved = resolvePhotoshootPreset(source, customPresets);
   return {
     key: resolved.custom ? resolved.key : "",
