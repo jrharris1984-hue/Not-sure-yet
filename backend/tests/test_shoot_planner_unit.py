@@ -13,6 +13,34 @@ CATALOG = {"pose_action": ["walking", "seated"], "framing": ["full body"],
            "environment": ["beach"], "lighting_temperature": ["warm"]}
 
 class PlannerTests(unittest.TestCase):
+    def test_shot_schema_serializes_reviewed_label_and_camera(self):
+        from pydantic import BaseModel, ConfigDict, Field
+        from typing import Any, Dict, Optional
+        tree = ast.parse((Path(__file__).resolve().parents[1] / 'server.py').read_text())
+        node = next(node for node in tree.body if isinstance(node, ast.ClassDef) and node.name == 'ShootFrame')
+        namespace = {"BaseModel": BaseModel, "ConfigDict": ConfigDict, "Field": Field,
+                     "Any": Any, "Dict": Dict, "Optional": Optional}
+        exec(compile(ast.Module(body=[node], type_ignores=[]), 'ShootFrame', 'exec'), namespace)
+        data = namespace['ShootFrame'](index=0, shot_label='Standing · Side',
+                                      camera_overrides={"angle": "low"}).model_dump()
+        self.assertEqual(data['shot_label'], 'Standing · Side')
+        self.assertEqual(data['camera_overrides'], {"angle": "low"})
+
+    def test_camera_and_pose_overrides_keep_reviewed_views_and_clear_saved_conflicts(self):
+        dna = {"identity": {"age": 72}, "camera": {"angle": "high", "lens": "50mm"},
+               "pose": {"angle": "front", "focus": "face", "hands": "on hips"},
+               "scene": {"environment": "studio"}}
+        frame = {"camera_overrides": {"angle": "low", "unexpected": "ignored"},
+                 "pose_overrides": {"angle": "back", "focus": "full frame", "hands": "", "body_language": "relaxed"}}
+        out = apply_shot_controls(dna, frame, True)
+        self.assertEqual(out["camera"], {"angle": "low", "lens": "50mm"})
+        self.assertEqual(out["pose"]["angle"], "back")
+        self.assertEqual(out["pose"]["hands"], "")
+        self.assertEqual(out["pose"]["focus"], "full frame")
+        self.assertEqual(out["scene"], dna["scene"])
+        self.assertEqual(out["identity"], dna["identity"])
+        self.assertEqual(dna["pose"]["hands"], "on hips")
+
     def test_catalog_validation_and_locked_location(self):
         plan = validate_shot_plan({"frames": [{"pose_action": "walking", "environment": "beach",
                                                "identity": {"age": 20}}]}, 1, CATALOG, True)

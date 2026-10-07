@@ -4,6 +4,7 @@ export const SHOT_CONTROLS = [
   ['pose_action', 'Pose', 'pose', 'action'],
   ['framing', 'Framing', 'pose', 'distance'],
   ['view', 'View', 'pose', 'angle'],
+  ['camera_height', 'Camera height', 'camera', 'angle'],
   ['expression', 'Expression', 'face', 'expression'],
   ['outfit_preset', 'Outfit', 'wardrobe', 'outfit_preset'],
   ['outfit_color', 'Outfit color', 'wardrobe', 'garment_color'],
@@ -19,7 +20,7 @@ export const SHOT_CATALOG = Object.fromEntries(SHOT_CONTROLS.map(([key, , sectio
 
 export function plannedFrameControls(shot = {}, lockScenario = true) {
   const frame = { pose_action: shot.pose_action || '', outfit_overrides: {}, face_overrides: {},
-    pose_overrides: {}, lighting_overrides: {}, scene_overrides: {} };
+    pose_overrides: {}, camera_overrides: {}, lighting_overrides: {}, scene_overrides: {} };
   SHOT_CONTROLS.forEach(([key, , section, field]) => {
     const value = shot[key];
     if (!value || (section === 'scene' && lockScenario)) return;
