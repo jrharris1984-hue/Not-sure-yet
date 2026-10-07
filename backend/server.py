@@ -61,6 +61,11 @@ api = APIRouter(prefix="/api")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
 logger = logging.getLogger("studio")
 
+# Keep a short-lived record of the last confirmed ComfyUI response. Heavy
+# generations can make /system_stats miss a health-check timeout even while
+# ComfyUI is actively rendering.
+comfy_health_state = {"last_response_at": None, "last_success_monotonic": None, "response_ms": None}
+
 
 # ============================================================
 # Models
@@ -742,12 +747,58 @@ async def seed_workflows():
 @api.get("/comfyui/health")
 async def comfyui_health():
     s = await get_settings()
+    active_jobs = await db.render_queue.count_documents({"status": {"$in": ["dispatching", "running"]}})
+    loop = asyncio.get_running_loop()
+    started = loop.time()
     try:
         async with httpx.AsyncClient(timeout=4.0) as hc:
             r = await hc.get(f"{s.comfyui_url.rstrip('/')}/system_stats")
-        return {"online": r.status_code == 200, "url": s.comfyui_url, "status": r.status_code}
+        r.raise_for_status()
+        response_ms = round((loop.time() - started) * 1000)
+        confirmed_at = now_iso()
+        comfy_health_state.update({
+            "last_response_at": confirmed_at,
+            "last_success_monotonic": loop.time(),
+            "response_ms": response_ms,
+        })
+        state = "busy" if active_jobs else ("slow" if response_ms >= 2500 else "connected")
+        return {
+            "online": True,
+            "state": state,
+            "busy": bool(active_jobs),
+            "active_jobs": active_jobs,
+            "url": s.comfyui_url,
+            "status": r.status_code,
+            "response_ms": response_ms,
+            "last_response_at": confirmed_at,
+        }
     except Exception as e:
-        return {"online": False, "url": s.comfyui_url, "error": str(e)}
+        last_success = comfy_health_state.get("last_success_monotonic")
+        recent_response = last_success is not None and (loop.time() - last_success) <= 30
+        # An active Ultra Studio render or a very recent confirmed response means
+        # a missed /system_stats deadline is more likely load than disconnection.
+        if active_jobs or recent_response:
+            return {
+                "online": True,
+                "state": "busy" if active_jobs else "slow",
+                "busy": bool(active_jobs),
+                "active_jobs": active_jobs,
+                "url": s.comfyui_url,
+                "response_ms": comfy_health_state.get("response_ms"),
+                "last_response_at": comfy_health_state.get("last_response_at"),
+                "warning": "ComfyUI is slow to answer health checks while work is active." if active_jobs
+                           else "ComfyUI recently responded but this health check timed out.",
+                "error": str(e),
+            }
+        return {
+            "online": False,
+            "state": "unreachable",
+            "busy": False,
+            "active_jobs": 0,
+            "url": s.comfyui_url,
+            "last_response_at": comfy_health_state.get("last_response_at"),
+            "error": str(e),
+        }
 
 
 @api.get("/comfyui/media")
