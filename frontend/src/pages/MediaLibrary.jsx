@@ -148,13 +148,13 @@ export default function MediaLibrary() {
               <Meta label="Mirror reflection" value={selectedItem.mirror_reflection}/>
               <Meta label="Action / interaction" value={selectedItem.interaction}/>
               <Meta label="People count" value={detectedPeople.personCount ?? "Not provided by analyzer"}/>
-              <label className="block text-xs text-zinc-400">People to set up in Studio
+              <label className="block text-xs text-zinc-400">People to set up in Create
                 <select value={personCount} onChange={e=>setPersonCount(e.target.value)} className="mt-1 w-full rounded-lg bg-elevated border hairline px-3 py-2 text-sm text-zinc-200">
                   <option value="auto">{detectedPeople.personCount === null ? "Unknown — start with 1 person" : `Detected: ${detectedPeople.personCount} people`}</option>
                   {[1,2,3,4].map(count=><option key={count} value={count}>{count} {count===1?"person":"people"}</option>)}
                 </select>
               </label>
-              {detectedPeople.personCount > 4 && <p className="text-xs text-amber-200">Studio supports up to 4 people. Review the imported cast before rendering.</p>}
+              {detectedPeople.personCount > 4 && <p className="text-xs text-amber-200">Create supports up to 4 people. Review the imported cast before rendering.</p>}
               {detectedPeople.personCount === 0 && <p className="text-xs text-amber-200">No people detected. Choose a count if you want to create a subject setup.</p>}
               {detail.isError && <p className="text-xs text-amber-200">Detailed analysis could not be loaded. Showing available gallery metadata.</p>}
               <Meta label="Description" value={selectedItem.search_description || selectedItem.subject_description}/>
@@ -167,9 +167,9 @@ export default function MediaLibrary() {
               <Meta label="Lighting" value={selectedItem.lighting}/>
               <Meta label="Environment" value={selectedItem.environment || selectedItem.background}/>
               <Meta label="Style" value={selectedItem.photographic_style}/>
-              <label className="flex items-center gap-2 text-xs text-zinc-300"><input type="checkbox" checked={includeDetailTags} onChange={e => setIncludeDetailTags(e.target.checked)} />Include image detail tags in Studio prompts</label>
+              <label className="flex items-center gap-2 text-xs text-zinc-300"><input type="checkbox" checked={includeDetailTags} onChange={e => setIncludeDetailTags(e.target.checked)} />Include image detail tags in Create prompts</label>
               <Meta label="Tags" value={[...(selectedItem.general_tags||[]), ...(selectedItem.adult_content_tags||[])]}/>
-              {(selectedItem.analysis_status === "complete" || selectedItem.correction_review) && <button onClick={()=>loadInStudio(selectedItem)} disabled={correctionDirty || detail.isFetching || (personCount === "auto" && detectedPeople.personCount === 0)} className="w-full disabled:opacity-40 rounded-lg bg-amber-500 hover:bg-amber-400 text-black font-semibold px-4 py-3 transition-colors">Use in Studio</button>}
+              {(selectedItem.analysis_status === "complete" || selectedItem.correction_review) && <button onClick={()=>loadInStudio(selectedItem)} disabled={correctionDirty || detail.isFetching || (personCount === "auto" && detectedPeople.personCount === 0)} className="w-full disabled:opacity-40 rounded-lg bg-amber-500 hover:bg-amber-400 text-black font-semibold px-4 py-3 transition-colors">Use in Create</button>}
               {selectedItem.analysis_status !== "complete" && <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-200">Qwen analysis is not complete for this item yet. The metadata panel will fill in automatically after analysis.</div>}
             </div>
           </div>
