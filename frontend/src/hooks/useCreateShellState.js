@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
-import { mobileStudioSectionsForStep, mobileStudioStepForSection } from "@/components/MobileStudioFlow";
+import { createSectionsForStep, createStepForSection } from "@/lib/createJourney";
 
 export function useCreateShellState({ activeSection, studioSteps, nav, sectionUrl }) {
-  const [mobileStudioStep, setMobileStudioStep] = useState(() => mobileStudioStepForSection(activeSection, studioSteps));
+  const [mobileStudioStep, setMobileStudioStep] = useState(() => createStepForSection(activeSection, studioSteps));
   const [mobileStudioMode, setMobileStudioMode] = useState("simple");
   const [mobileSheets, setMobileSheets] = useState(true);
   const [mobileToolsGroup, setMobileToolsGroup] = useState("overview");
@@ -26,7 +26,7 @@ export function useCreateShellState({ activeSection, studioSteps, nav, sectionUr
 
   useEffect(() => {
     if (mobileStudioStep === "create") return;
-    setMobileStudioStep(mobileStudioStepForSection(activeSection, studioSteps));
+    setMobileStudioStep(createStepForSection(activeSection, studioSteps));
   }, [activeSection, mobileStudioStep, studioSteps]);
 
   const activeMobileStudioIndex = Math.max(0, studioSteps.findIndex((step) => step.id === mobileStudioStep));
@@ -35,7 +35,7 @@ export function useCreateShellState({ activeSection, studioSteps, nav, sectionUr
     const step = studioSteps.find((item) => item.id === stepId);
     if (!step) return;
     setMobileStudioStep(stepId);
-    const visibleSections = mobileStudioSectionsForStep(stepId, mobileStudioMode, studioSteps);
+    const visibleSections = createSectionsForStep(stepId, mobileStudioMode, studioSteps);
     if (visibleSections.length && !visibleSections.includes(activeSection)) nav(sectionUrl(visibleSections[0]));
     window.requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "smooth" }));
   };
@@ -48,7 +48,7 @@ export function useCreateShellState({ activeSection, studioSteps, nav, sectionUr
   const changeMobileStudioMode = (nextMode) => {
     setMobileStudioMode(nextMode);
     if (nextMode !== "simple") return;
-    const visibleSections = mobileStudioSectionsForStep(mobileStudioStep, "simple", studioSteps);
+    const visibleSections = createSectionsForStep(mobileStudioStep, "simple", studioSteps);
     if (visibleSections.length && !visibleSections.includes(activeSection)) nav(sectionUrl(visibleSections[0]));
   };
 
