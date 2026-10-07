@@ -2606,18 +2606,12 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
         </div>
       )}
       {/* Header */}
-      <div data-mobile-tools="none" className={`${isImageFirst ? "!hidden" : ""} hidden md:flex items-center gap-2 rounded-xl border border-cyan-400/20 bg-black/40 p-2 text-xs`} aria-label="Builder shortcuts">
-        <span className="px-2 font-mono uppercase tracking-wider text-cyan-300">Studio</span>
-        {!desktopQuickMode && [["studio-model", "01 · Model"], ["studio-sections", "02 · Character"], ["studio-render", "03 · Render"]].map(([target, label]) => (
-          <button key={target} type="button" onClick={() => document.getElementById(target)?.scrollIntoView({ behavior: "smooth", block: "start" })}
-            className="rounded-lg border hairline px-3 py-2 text-zinc-300 transition-colors hover:border-amber-400/50 hover:bg-amber-500/10 hover:text-amber-200">
-            {label}
-          </button>
-        ))}
-        <span className="ml-auto hidden xl:inline pr-2 text-zinc-500">{desktopQuickMode ? "Design your subject, compose the scene, then generate." : "All controls are available below."}</span>
+      <div data-mobile-tools="none" className={`${isImageFirst ? "!hidden" : ""} hidden md:flex items-center gap-2 rounded-xl border border-cyan-400/20 bg-black/40 p-2 text-xs`} aria-label="Builder view">
+        <span className="px-2 font-mono uppercase tracking-wider text-cyan-300">Create</span>
+        <span className="ml-auto hidden xl:inline pr-2 text-zinc-500">{desktopQuickMode ? "Simple view keeps the five creation stages focused." : "Advanced view exposes every section and tuning control."}</span>
         <button type="button" onClick={() => { setDesktopQuickMode((value) => !value); setQuickReview(false); }}
           data-testid="btn-desktop-studio-mode" className="ml-auto rounded-lg border border-cyan-400/40 px-3 py-2 font-semibold text-cyan-200 hover:bg-cyan-400/10">
-          {desktopQuickMode ? "Full Studio · all options" : "Quick Create"}
+          {desktopQuickMode ? "Advanced view · all options" : "Simple view"}
         </button>
       </div>
       <div data-mobile-tools="none" id="studio-model" className="pane scroll-mt-24 p-2.5 sm:p-4 flex flex-col gap-2.5 sm:gap-3">
