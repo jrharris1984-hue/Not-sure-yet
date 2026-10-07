@@ -22,7 +22,7 @@ import StudioModePicker from "@/components/StudioModePicker";
 import { createStagesForStudio } from "@/lib/createJourney";
 import { useCreateShellState } from "@/hooks/useCreateShellState";
 import { useBuilderSessionState } from "@/hooks/useBuilderSessionState";
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useNavigate, useLocation, Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Save, Shuffle, Download, Upload, Loader2, Play, ChevronLeft, ChevronRight, Camera, Sparkles, ChevronDown, ImagePlus, X, RotateCcw, SlidersHorizontal, ShieldCheck, AlertTriangle, Trash2 } from "lucide-react";
@@ -43,6 +43,8 @@ import { compileModelPrompts, resolvePromptCompiler } from "@/lib/modelPromptCom
 import { batchSeed } from "@/lib/batchSeeds";
 import { batchPoseVariation } from "@/lib/batchPoseVariation";
 import { batchCameraVariation } from "@/lib/batchCameraVariation";
+import { smartPhotoshootVariation } from "@/lib/batchSmartPhotoshoot";
+import BatchVariationControl from "@/components/BatchVariationControl";
 import { resolveReferenceNotes, translatePlainLanguage } from "@/lib/plainLanguagePrompt";
 import { analyzePromptQuality } from "@/lib/promptQuality";
 import MobileBuilderSheets from "@/components/MobileBuilderSheets";
@@ -144,6 +146,12 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
   const imageToolApplied = useRef(false);
   const mediaLibraryImportApplied = useRef(false);
   const draftHydrated = useRef(false);
+  const [smartBatchOptions, setSmartBatchOptions] = useState({
+    pose: true,
+    camera: true,
+    framing: true,
+    expression: false,
+  });
   const activeIdx = Math.max(0, SECTIONS.findIndex((s) => s.key === sectionParam));
   const activeSection = SECTIONS[activeIdx].key;
   const basePath = isNew ? "/character/new" : `/character/${id}`;
@@ -1479,26 +1487,41 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
       const queuedRenders = [];
       for (let imageIndex = 0; imageIndex < requestedCount; imageIndex += 1) {
         const uniqueSeed = batchSeed(baseSeed, imageIndex, batchSeedMode);
-        const usePoseVariation = requestedCount > 1 && ["pose", "pose_camera"].includes(batchSeedMode);
-        const useCameraVariation = requestedCount > 1 && ["camera", "pose_camera"].includes(batchSeedMode);
-        const poseVariation = usePoseVariation
-          ? batchPoseVariation({
+        const smartVariation = requestedCount > 1 && batchSeedMode === "smart"
+          ? smartPhotoshootVariation({
               subjects,
               sections: SECTIONS,
               promptCatalog,
               index: imageIndex,
               seed: baseSeed,
+              options: smartBatchOptions,
             })
-          : { subjects, pose: null };
-        const cameraVariation = useCameraVariation
-          ? batchCameraVariation({
-              subjects: poseVariation.subjects,
-              index: imageIndex,
-              seed: baseSeed + 7919,
-            })
-          : { subjects: poseVariation.subjects, camera: null };
-        const dispatchSubjects = cameraVariation.subjects;
-        const batchPrompts = poseVariation.pose || cameraVariation.camera
+          : null;
+        const usePoseVariation = requestedCount > 1 && ["pose", "pose_camera"].includes(batchSeedMode);
+        const useCameraVariation = requestedCount > 1 && ["camera", "pose_camera"].includes(batchSeedMode);
+        const poseVariation = smartVariation
+          ? { subjects: smartVariation.subjects, pose: smartVariation.plan.pose || null }
+          : usePoseVariation
+            ? batchPoseVariation({
+                subjects,
+                sections: SECTIONS,
+                promptCatalog,
+                index: imageIndex,
+                seed: baseSeed,
+              })
+            : { subjects, pose: null };
+        const cameraVariation = smartVariation
+          ? { subjects: smartVariation.subjects, camera: smartVariation.plan.camera || null }
+          : useCameraVariation
+            ? batchCameraVariation({
+                subjects: poseVariation.subjects,
+                index: imageIndex,
+                seed: baseSeed + 7919,
+              })
+            : { subjects: poseVariation.subjects, camera: null };
+        const dispatchSubjects = smartVariation?.subjects || cameraVariation.subjects;
+        const hasBatchVariation = !!smartVariation?.changed || !!poseVariation.pose || !!cameraVariation.camera;
+        const batchPrompts = hasBatchVariation
           ? compileBatchVariationPrompts(dispatchSubjects)
           : { positive: finalPositive, negative: finalNegative };
         let r;
@@ -2767,15 +2790,15 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
               ))}
             </select>
           )}
-          {!isImageFirst && activeRecipeFamily === "image" && renderCount > 1 && <select value={batchSeedMode}
-            onChange={(event) => setBatchSeedMode(event.target.value)} title="New seeds keeps the same composition; Nearby uses consecutive seeds; pose and camera modes recompile each image with controlled variations while preserving the rest of the setup."
-            className="hidden md:block bg-elevated border border-hairline rounded-lg px-3 py-2 text-sm text-zinc-100">
-            <option value="explore">New seeds only</option>
-            <option value="nearby">Nearby seeds</option>
-            <option value="pose">New seed + different pose</option>
-            <option value="camera">New seed + different camera</option>
-            <option value="pose_camera">New seed + pose + camera</option>
-          </select>}
+          {!isImageFirst && activeRecipeFamily === "image" && renderCount > 1 && <div className="hidden md:block">
+            <BatchVariationControl
+              value={batchSeedMode}
+              onChange={setBatchSeedMode}
+              smartOptions={smartBatchOptions}
+              onSmartOptionsChange={setSmartBatchOptions}
+              compact
+            />
+          </div>}
           <button
             onClick={doDispatch}
             disabled={dispatching || ollamaRenderPending || !workflowId || kreaRenderBlocked || ((isImageFirst || activeRecipeFamily === "edit") && !referenceImage?.name) || (poseAssistEnabled && !isVariationWorkflow && (!poseAssistAvailable || !poseReferenceImage?.name || (poseAssistStatus && !poseAssistStatus.ready)))}
@@ -2961,17 +2984,15 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
             <WebPromptResearchOptions disabled={improvingPrompt} />
             <PromptFormatControl value={promptFormat} onChange={changePromptFormat} meta={promptFormatMeta} status={promptFormat === 'ollama' ? ollamaCompiled.reason : ''} />
           </section>}
-          {activeRecipeFamily === "image" && renderCount > 1 && <label data-mobile-tools="none" className="md:hidden pane p-3 flex items-center justify-between gap-3 text-xs text-zinc-200">
-            Batch variety
-            <select value={batchSeedMode} onChange={(event) => setBatchSeedMode(event.target.value)}
-              className="bg-elevated border border-hairline rounded-lg px-2 py-2 text-xs text-zinc-100">
-              <option value="explore">New seeds only</option>
-              <option value="nearby">Nearby seeds</option>
-              <option value="pose">New seed + different pose</option>
-              <option value="camera">New seed + different camera</option>
-              <option value="pose_camera">New seed + pose + camera</option>
-            </select>
-          </label>}
+          {activeRecipeFamily === "image" && renderCount > 1 && <section data-mobile-tools="none" className="md:hidden pane p-3 space-y-2">
+            <div className="text-xs font-semibold text-zinc-200">Batch variety</div>
+            <BatchVariationControl
+              value={batchSeedMode}
+              onChange={setBatchSeedMode}
+              smartOptions={smartBatchOptions}
+              onSmartOptionsChange={setSmartBatchOptions}
+            />
+          </section>}
           {activeRecipeFamily === "image" && !isKrea2 && !isVariationWorkflow && (
             <div data-mobile-tools="references" className="md:hidden">
               <PoseAssistPanel
