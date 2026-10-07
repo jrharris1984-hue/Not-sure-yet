@@ -1,4 +1,3 @@
-import HomeImageTools from "@/components/HomeImageTools";
 import StudioLoading from "@/components/StudioLoading";
 import { Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -25,7 +24,6 @@ export default function Library() {
   const [tagsExpanded, setTagsExpanded] = useState(false);
   const [imageCharacter, setImageCharacter] = useState(null);
   const qc = useQueryClient();
-  const { data: workflows = [], isLoading: workflowsLoading, isError: workflowsError } = useQuery({ queryKey: ["workflows"], queryFn: endpoints.listWorkflows });
   const { data: chars = [], isLoading } = useQuery({
     queryKey: ["characters", q, onlyFav, activeTags],
     queryFn: () => endpoints.listCharacters({
@@ -90,7 +88,6 @@ export default function Library() {
         </Link>
       </div>
 
-      <HomeImageTools workflows={workflows} loading={workflowsLoading} error={workflowsError} />
 
       <div className="pane p-3 flex flex-col sm:flex-row gap-2">
         <div className="relative flex-1">

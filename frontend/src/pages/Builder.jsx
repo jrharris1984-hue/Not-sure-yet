@@ -2906,6 +2906,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
           onAnimate={() => reuseFinishedRender("video")}
           onBackCharacter={returnToCharacterFromResult}
           onGallery={() => nav(`/gallery?render=${encodeURIComponent(activeRender.render_id || activeRender.id)}&returnTo=${encodeURIComponent(location.pathname)}`)}
+          onTools={() => nav(`/tools?render=${encodeURIComponent(activeRender.render_id || activeRender.id)}`)}
           onDownload={(url) => downloadRenderImage(
             url,
             `render-${activeRender.render_id || activeRender.id}.${/\.(webm|mp4|mov)(?:[?&]|$)/i.test(decodeURIComponent(url)) ? "webm" : "png"}`
