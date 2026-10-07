@@ -1196,7 +1196,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
       toast.success("Saved");
       qc.invalidateQueries({ queryKey: ["characters"] });
       qc.invalidateQueries({ queryKey: ["character-tags"] });
-      if (isNew && c?.id) nav(`${studioProfile ? `/studio/${studio}` : "/character"}/${c.id}/s/${activeSection}`, { replace: true });
+      if (isNew && c?.id) nav(`/character/${c.id}/s/${activeSection}${studioSearch}`, { replace: true });
     },
     onError: (e) => toast.error(e?.response?.data?.detail || "Save failed"),
   });
@@ -1863,24 +1863,24 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
         activeDna.hair?.style,
         activeDna.wardrobe?.outfit_preset
       );
+      if (studioProfile.specialtySection === "feet") {
+        values.push(activeDna.feet?.framing, activeDna.feet?.pedicure);
+      }
     } else if (mobileStudioStep === "scene") {
       values.push(
         activeDna.pose?.action,
         activeDna.scene?.environment,
         activeDna.lighting?.mood || activeDna.lighting?.style
       );
-    } else if (mobileStudioStep === "fine-tune") {
-      values.push(activeDna.scenario?.cast_size, activeDna.scenario?.roleplay);
-      if ((activeDna.scenario?.explicit_level || 0) > 0) values.push(`explicit ${activeDna.scenario.explicit_level}%`);
-    } else if (mobileStudioStep === "focus") {
-      values.push(studio === "feet" ? activeDna.feet?.framing : activeDna.watersports?.container);
-      values.push(studio === "feet" ? activeDna.feet?.pedicure : activeDna.watersports?.stream);
+      if (studioProfile.specialtySection === "watersports") {
+        values.push(activeDna.watersports?.container, activeDna.watersports?.phase);
+      }
     } else if (mobileStudioStep === "create") {
       values.push(activeWorkflow?.name, qualityTier);
       if (activeRecipeFamily === "image") values.push(`${renderCount} image${renderCount === 1 ? "" : "s"}`);
     }
     return values.filter((value) => value && value !== "none").slice(0, 4).join(" · ");
-  }, [activeDna, activeRecipeFamily, activeWorkflow?.name, mobileStudioStep, qualityTier, renderCount, studio]);
+  }, [activeDna, activeRecipeFamily, activeWorkflow?.name, mobileStudioStep, qualityTier, renderCount, studioProfile.specialtySection]);
 
   const mobileCreateSummaries = useMemo(() => {
     const compact = (...values) => values.filter((value) => value && value !== "none").slice(0, 4).join(" · ");
