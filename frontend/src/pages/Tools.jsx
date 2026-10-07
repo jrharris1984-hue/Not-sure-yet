@@ -26,6 +26,7 @@ export default function Tools() {
     enabled: !!renderId,
   });
   const source = renderId ? renders.find(render => render.id === renderId) : null;
+  const postGenerationWorkflows = workflows.filter((workflow) => workflow.kind !== "text_video");
   const sourceUrl = source ? mediaUrl(primaryOutput(source)) : "";
   const sourceIsVideo = isVideoOutput(sourceUrl);
 
@@ -132,7 +133,7 @@ export default function Tools() {
           <p className="text-xs text-zinc-400">Choose a workflow directly. When a still image is selected above, compatible workflows keep that source attached.</p>
         </div>
       </div>
-      <HomeImageTools workflows={workflows} loading={workflowsLoading} error={workflowsError} showCreateShortcuts={false} showHeading={false} onWorkflow={source && !sourceIsVideo ? launchWorkflow : undefined} />
+      <HomeImageTools workflows={postGenerationWorkflows} loading={workflowsLoading} error={workflowsError} showCreateShortcuts={false} showHeading={false} onWorkflow={source && !sourceIsVideo ? launchWorkflow : undefined} />
     </section>
   </div>;
 }
