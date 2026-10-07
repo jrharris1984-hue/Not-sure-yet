@@ -6,6 +6,7 @@ import {
   Pencil,
   Shuffle,
   UserRound,
+  Wrench,
 } from "lucide-react";
 
 const renderId = (render) => render?.render_id || render?.id;
@@ -22,6 +23,7 @@ export default function MobileRenderResult({
   onAnimate,
   onBackCharacter,
   onGallery,
+  onTools,
   onDownload,
   busy = "",
 }) {
@@ -143,7 +145,7 @@ export default function MobileRenderResult({
           </button>}
         </div>
 
-        <div className="grid grid-cols-3 gap-2">
+        <div className={`grid ${onTools ? "grid-cols-4" : "grid-cols-3"} gap-2`}>
           <button type="button" onClick={onBackCharacter} disabled={!!busy}
             className="inline-flex items-center justify-center gap-1 rounded-lg border hairline px-2 py-2.5 text-[10px] font-semibold text-zinc-300 disabled:opacity-40"
             data-testid="btn-mobile-result-character">
@@ -154,6 +156,11 @@ export default function MobileRenderResult({
             data-testid="btn-mobile-result-gallery">
             <Images className="h-3.5 w-3.5" /> Gallery
           </button>
+          {onTools && <button type="button" onClick={onTools} disabled={!!busy}
+            className="inline-flex items-center justify-center gap-1 rounded-lg border border-cyan-500/30 bg-cyan-500/5 px-2 py-2.5 text-[10px] font-semibold text-cyan-100 disabled:opacity-40"
+            data-testid="btn-mobile-result-tools">
+            <Wrench className="h-3.5 w-3.5" /> Tools
+          </button>}
           <button type="button" onClick={() => onDownload(output)} disabled={!!busy}
             className="inline-flex items-center justify-center gap-1 rounded-lg border hairline px-2 py-2.5 text-[10px] font-semibold text-zinc-300 disabled:opacity-40"
             data-testid="btn-mobile-result-download">
