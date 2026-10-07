@@ -37,6 +37,7 @@ export default function AppShell({ children }) {
   useEffect(() => initializeStudioTheme(), []);
   const research = useAssistantResearch();
   const isBuilder = loc.pathname.startsWith("/character");
+  const showResearchWorkspace = loc.pathname === "/research" || loc.pathname.startsWith("/create/");
   const mainRef = useRef(null);
   const pageGroup = loc.pathname.split("/")[1] || "library";
   useEffect(() => {
@@ -84,7 +85,13 @@ export default function AppShell({ children }) {
       </header>
 
       <NowRenderingStrip />
-      <main id="studio-main" ref={mainRef} tabIndex={-1} className="studio-main flex-1 min-w-0"><div className="mx-auto max-w-4xl px-4 pt-3"><WebPromptResearchOptions/>{research.result && <details className="mt-2 text-xs"><summary className="cursor-pointer text-cyan-300">Latest AI research sources</summary><PromptResearchNotes result={research.result}/></details>}</div>{children}</main>
+      <main id="studio-main" ref={mainRef} tabIndex={-1} className="studio-main flex-1 min-w-0">
+        {showResearchWorkspace && <div className="mx-auto max-w-4xl px-4 pt-3">
+          <WebPromptResearchOptions/>
+          {research.result && <details className="mt-2 text-xs"><summary className="cursor-pointer text-cyan-300">Latest AI research sources</summary><PromptResearchNotes result={research.result}/></details>}
+        </div>}
+        {children}
+      </main>
       <PwaInstallPrompt />
 
       <MobileStudioNavigation returnTo={isBuilder ? loc.pathname : undefined} />
