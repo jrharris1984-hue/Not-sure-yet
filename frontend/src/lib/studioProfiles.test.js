@@ -1,9 +1,17 @@
-import { STUDIO_PROFILES, applyStudioPreset } from "./studioProfiles";
+import { STUDIO_PROFILES, STUDIO_MODE_ORDER, applyStudioPreset, normalizeStudioMode, studioProfile } from "./studioProfiles";
 import { mobileStudioStepForSection, mobileStudioSectionsForStep } from "../components/MobileStudioFlow";
 import { createStagesForStudio } from "./createJourney";
 import { DEFAULT_DNA, SECTIONS, buildPrompts } from "./dna";
 import { buildKrea2Prompts } from "./modelPromptCompilers";
 import { buildPromptPriorityPlan } from "./promptPriority";
+
+test("studio mode registry always includes Standard and safely normalizes unknown modes", () => {
+  expect(STUDIO_MODE_ORDER).toEqual(["standard", "feet", "watersports"]);
+  expect(normalizeStudioMode("feet")).toBe("feet");
+  expect(normalizeStudioMode("missing-mode")).toBe("standard");
+  expect(studioProfile("missing-mode")).toBe(STUDIO_PROFILES.standard);
+  expect(STUDIO_PROFILES.standard.specialtySection).toBe("");
+});
 
 test("each studio uses the shared journey while surfacing its specialty in Simple mode", () => {
   const feetStages = createStagesForStudio("feet");
@@ -16,8 +24,8 @@ test("each studio uses the shared journey while surfacing its specialty in Simpl
 });
 
 test("focused tabs cover every specialty field", () => {
-  for (const [key, profile] of Object.entries(STUDIO_PROFILES)) {
-    const allFields = SECTIONS.find((section) => section.key === key).fields.map((field) => field.key);
+  for (const profile of Object.values(STUDIO_PROFILES).filter((item) => item.specialtySection)) {
+    const allFields = SECTIONS.find((section) => section.key === profile.specialtySection).fields.map((field) => field.key);
     const grouped = profile.fieldGroups.flatMap((group) => group.keys);
     expect(new Set(grouped).size).toBe(grouped.length);
     expect(grouped.sort()).toEqual(allFields.sort());
