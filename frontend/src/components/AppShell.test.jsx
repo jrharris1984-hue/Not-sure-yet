@@ -48,3 +48,9 @@ test("header Create opens the creation hub outside Builder", () => {
   expect(container.querySelector('[data-testid="btn-new-character"]').getAttribute("href")).toBe("/create");
 });
 
+test("header does not offer another Create button inside an image-tool workspace", () => {
+  mockPath = "/image-tools/repair";
+  render();
+  expect(container.querySelector('[data-testid="btn-new-character"]')).toBeNull();
+});
+
