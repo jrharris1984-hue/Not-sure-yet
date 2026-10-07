@@ -1,12 +1,14 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { DEFAULT_DNA, makeSubject } from "@/lib/dna";
 import { QWEN_CAMERA_DEFAULTS } from "@/lib/qwenReferenceEdit";
 import { DEFAULT_POSE_LOCKS } from "@/lib/sameCharacterPose";
 import { DEFAULT_REFERENCE_STRENGTHS } from "@/lib/referenceStudio";
+import { endpoints } from "@/lib/api";
+import { toast } from "sonner";
 
 const DEFAULT_VARIATION_PROMPT = "Same adult subject and same photograph. Preserve facial identity, body proportions, pose, outfit, background, camera angle, and lighting. Make only a slight natural variation in expression and small details.";
 
-export function useBuilderSessionState({ studio = "standard" } = {}) {
+export function useBuilderSessionState({ studio = "standard", queryClient } = {}) {
   const [editorHydrated, setEditorHydrated] = useState(false);
   const [mediaImportSummary, setMediaImportSummary] = useState(null);
   const [name, setName] = useState("Untitled");
@@ -25,6 +27,22 @@ export function useBuilderSessionState({ studio = "standard" } = {}) {
   const [raunch, setRaunch] = useState(false);
   const [promptLanguage, setPromptLanguage] = useState("editorial");
   const [promptOverride, setPromptOverride] = useState("");
+  const [promptFormat, setPromptFormat] = useState(() => ['compact','ollama'].includes(localStorage.getItem('ultra-prompt-format')) ? localStorage.getItem('ultra-prompt-format') : 'detailed');
+  const promptFormatTouched = useRef(false);
+  const changePromptFormat = async value => {
+    promptFormatTouched.current = true;
+    setPromptFormat(value);
+    localStorage.setItem('ultra-prompt-format', value);
+    setPromptOverride('');
+    setNegativePromptOverride('');
+    try {
+      const saved = await endpoints.updateSettings({ builder_prompt_format: value });
+      queryClient?.setQueryData(['settings'], saved);
+    } catch {
+      toast.error('Format saved in this browser; server preference could not be saved.');
+    }
+  };
+
   const [plainLanguage, setPlainLanguage] = useState("");
   const [negativePromptOverride, setNegativePromptOverride] = useState("");
   const [improvingPrompt, setImprovingPrompt] = useState(false);
@@ -163,6 +181,7 @@ export function useBuilderSessionState({ studio = "standard" } = {}) {
     name, setName, subjects, setSubjects, activeSubjectId, setActiveSubjectId,
     locks, setLocks, collapsed, setCollapsed, tags, setTags, raunch, setRaunch,
     promptLanguage, setPromptLanguage, promptOverride, setPromptOverride,
+    promptFormat, setPromptFormat, promptFormatTouched, changePromptFormat,
     plainLanguage, setPlainLanguage, negativePromptOverride, setNegativePromptOverride,
     improvingPrompt, setImprovingPrompt, aiPromptSuggestion, setAiPromptSuggestion,
     dispatching, setDispatching, activeRender, setActiveRender, renderCount, setRenderCount,
