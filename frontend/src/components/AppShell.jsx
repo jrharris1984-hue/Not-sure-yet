@@ -70,7 +70,7 @@ export default function AppShell({ children }) {
             <ComfyStatus />
             {!isBuilder && (
               <Link
-                to="/character/new"
+                to="/create"
                 data-testid="btn-new-character"
                 className="hidden sm:inline-flex items-center gap-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-black text-sm font-semibold px-3 py-2 transition-colors"
               >
