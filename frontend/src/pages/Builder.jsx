@@ -1,3 +1,5 @@
+import CastPoseOptions from "@/components/CastPoseOptions";
+import { WebPromptResearchOptions, PromptResearchNotes } from "@/components/WebPromptResearch";
 import { builderSectionLayout, builderSectionValue, builderSectionChange } from "@/lib/builderSectionLayout";
 import MobileToolsNavigation from "@/components/MobileToolsNavigation";
 import { confirmPermanentDelete } from "@/lib/permanentDeleteConfirmation";
@@ -220,7 +222,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
   const [plainLanguage, setPlainLanguage] = useState("");
   const [negativePromptOverride, setNegativePromptOverride] = useState("");
   const [improvingPrompt, setImprovingPrompt] = useState(false);
-  const {enabled:usePromptResearch,focus:promptResearchFocus}=useAssistantResearch();
+  const {enabled:usePromptResearch,focus:promptResearchFocus,result:promptResearchResult}=useAssistantResearch();
   const setUsePromptResearch=value=>updateAssistantResearch({enabled:value,result:null});
   const setPromptResearchFocus=value=>updateAssistantResearch({focus:value,result:null});
   const [aiPromptSuggestion,setAiPromptSuggestion]=useState(null);
@@ -1101,7 +1103,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
       isEnhanceWorkflow, promptCatalog, promptFormat,
     ]
   );
-  const ollamaCompiled = useOllamaPrompt(compiledPrompt.positive, promptFormat === 'ollama' && compiledPrompt.profile === 'compact-narrative-v1');
+  const ollamaCompiled = useOllamaPrompt(compiledPrompt.positive, promptFormat === 'ollama' && compiledPrompt.profile === 'compact-narrative-v1', {workflowName:activeWorkflow?.name,promptStyle:activeCompiler});
   const positive = ollamaCompiled.positive;
   const { negative } = compiledPrompt;
   const promptFormatMeta = {...compiledPrompt,promptWords:positive.trim().split(/\s+/).filter(Boolean).length};
@@ -2699,6 +2701,8 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
         presetsControl={characterPresets}
         values={builderSectionValue(activeSection, activeDna, primaryDna)}
         renderControls={renderDnaControls}
+        castPoseControls={<CastPoseOptions count={subjects.length} value={activeDna.pose?.action}
+          onSelect={pose => setSection("pose", { ...activeDna.pose, action: pose, distance: "wide shot" })} />}
         preview={activeRender?.output_files?.[0] || referencePreview}
         renderStatus={activeRender?.status} renderError={activeRender?.error}
         livePreview={activeRender && ["queued", "running"].includes(activeRender.status)
@@ -2716,6 +2720,8 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
           fixedSampling={isKrea2 || isKrea2Aio || activeCompiler === "flux2_klein"} busy={dispatching} />
           {activeRecipeFamily === "image" && !isVariationWorkflow && <section className="pane p-3 mt-3 space-y-3" aria-label="Prompt compiler">
             <h3 className="section-label">Prompt compiler</h3>
+            <WebPromptResearchOptions disabled={improvingPrompt} />
+            {promptResearchResult?.sources?.length > 0 && <details className="text-xs"><summary className="cursor-pointer text-cyan-300">Latest research sources</summary><PromptResearchNotes result={promptResearchResult}/></details>}
             <PromptFormatControl value={promptFormat} onChange={changePromptFormat} meta={promptFormatMeta} status={promptFormat === 'ollama' ? ollamaCompiled.reason : ''} />
           </section>}</>}
         onTools={() => { setMobileToolsGroup("overview"); setMobileSheets(false); setMobileStudioMode("advanced"); setMobileStudioStep("create"); window.scrollTo({ top: 0, behavior: "auto" }); }}
@@ -3013,6 +3019,8 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
           /></div>
           {activeRecipeFamily === "image" && !isVariationWorkflow && <section data-mobile-tools="none" className="md:hidden pane p-3 space-y-3" aria-label="Prompt compiler">
             <h3 className="section-label">Prompt compiler</h3>
+            <WebPromptResearchOptions disabled={improvingPrompt} />
+            {promptResearchResult?.sources?.length > 0 && <details className="text-xs"><summary className="cursor-pointer text-cyan-300">Latest research sources</summary><PromptResearchNotes result={promptResearchResult}/></details>}
             <PromptFormatControl value={promptFormat} onChange={changePromptFormat} meta={promptFormatMeta} status={promptFormat === 'ollama' ? ollamaCompiled.reason : ''} />
           </section>}
           {activeRecipeFamily === "image" && renderCount > 1 && <label data-mobile-tools="none" className="md:hidden pane p-3 flex items-center justify-between gap-3 text-xs text-zinc-200">
@@ -3461,17 +3469,8 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
             /></div>
             </>
           )}
-          {activeSection === "pose" && expectedCount > 1 && <div className="pane p-3" data-testid="cast-aware-poses">
-            <div className="section-label">Poses for {expectedCount} people</div>
-            <p className="mt-1 text-xs text-zinc-400">Choose a shared composition; each person keeps separate character settings.</p>
-            <div className="mt-2 flex flex-wrap gap-2">
-              {(expectedCount === 2
-                ? ["side by side", "back to back", "facing each other", "walking together", "seated together", "embracing", "dancing together"]
-                : ["group portrait", "staggered lineup", "semicircle", "walking together", "seated group", "standing at different depths", "hands joined"]
-              ).map((pose) => <button key={pose} type="button" onClick={() => setSection("pose", { ...activeDna.pose, action: pose, distance: "wide shot" })}
-                className={`rounded-lg border px-3 py-2 text-xs capitalize ${activeDna.pose?.action === pose ? "border-amber-400 text-amber-200" : "hairline text-zinc-300"}`}>{pose}</button>)}
-            </div>
-          </div>}
+          {activeSection === "pose" && <CastPoseOptions count={expectedCount} value={activeDna.pose?.action}
+            onSelect={pose => setSection("pose", { ...activeDna.pose, action: pose, distance: "wide shot" })} />}
           {studioProfile && activeSection === studio && <div className="flex gap-2 overflow-x-auto pb-1" role="tablist" aria-label={`${studioProfile.title} controls`} data-testid="specialty-field-groups">
             {studioProfile.fieldGroups.map((group, index) => <button key={group.label} type="button" role="tab"
               aria-selected={specialtyTab === index} onClick={() => setSpecialtyTab(index)}

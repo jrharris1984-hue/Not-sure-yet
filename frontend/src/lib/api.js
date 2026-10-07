@@ -127,7 +127,7 @@ export const endpoints = {
   reorderWorkflows: (order) => api.post("/workflows/reorder", { order }).then((r) => r.data),
   workflowLoras: (id) => api.get(`/workflows/${id}/loras`).then((r) => r.data),
   comfyLoras: () => api.get("/comfyui/loras").then((r) => r.data),
-  aiCompileOllama: (positive, signal) => api.post("/ai/compile-ollama", {positive}, {signal, timeout:130000}).then(r => r.data),
+  aiCompileOllama: (positive, signal, context = {}) => api.post("/ai/compile-ollama", {positive, workflow_name:context.workflowName || "", prompt_style:context.promptStyle || ""}, {signal, timeout:130000}).then(r => r.data),
   aiPromptLibrary: (body) => api.post("/ai/prompt-library", body, {timeout:600000}).then(r => r.data),
   aiFreeform: (text) => api.post("/ai/freeform", { text }).then((r) => r.data),
   aiShootPlan: (body) => api.post("/ai/shoot-plan", body, { timeout: 600000 }).then((r) => r.data),
