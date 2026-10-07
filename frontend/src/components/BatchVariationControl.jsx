@@ -1,3 +1,5 @@
+import { SMART_SHOOT_CATEGORIES, SMART_PHOTOSHOOT_PRESETS } from "@/lib/batchSmartPhotoshoot";
+
 const MODES = [
   ["explore", "New seeds only"],
   ["nearby", "Nearby seeds"],
@@ -19,12 +21,17 @@ export default function BatchVariationControl({
   onChange,
   smartOptions,
   onSmartOptionsChange,
+  smartPreset = "editorial",
+  onSmartPresetChange,
+  smartPlan = [],
+  onRegeneratePlan,
   compact = false,
 }) {
   const updateSmart = (key, checked) => onSmartOptionsChange({
     ...smartOptions,
     [key]: checked,
   });
+  const activePreset = SMART_PHOTOSHOOT_PRESETS[smartPreset] || SMART_PHOTOSHOOT_PRESETS.editorial;
 
   return (
     <div className={compact ? "relative" : "space-y-2"} data-testid="batch-variation-control">
@@ -42,15 +49,39 @@ export default function BatchVariationControl({
 
       {value === "smart" && (
         <div className={compact
-          ? "absolute right-0 top-full z-30 mt-2 w-72 rounded-xl border hairline bg-zinc-950 p-3 shadow-2xl"
+          ? "absolute right-0 top-full z-30 mt-2 w-[34rem] max-w-[90vw] rounded-xl border hairline bg-zinc-950 p-3 shadow-2xl"
           : "rounded-lg border hairline bg-black/20 p-3"}
           data-testid="smart-photoshoot-options"
         >
-          <div className="text-[10px] font-mono uppercase tracking-widest text-cyan-300">Smart photoshoot</div>
+          <div className="text-[10px] font-mono uppercase tracking-widest text-cyan-300">Smart photoshoot director</div>
           <p className="mt-1 text-[11px] leading-relaxed text-zinc-500">
-            Character, wardrobe, scene, lighting, model and LoRAs stay fixed. Choose what the photoshoot may vary.
+            Pick a type of shoot, then Ultra Studio builds a deliberate shot list instead of randomizing every image independently.
           </p>
-          <div className="mt-2 grid grid-cols-2 gap-2">
+
+          <label className="mt-3 block text-[10px] font-mono uppercase tracking-widest text-zinc-400">
+            Shoot style
+            <select
+              value={smartPreset}
+              onChange={(event) => onSmartPresetChange?.(event.target.value)}
+              className="mt-1 w-full rounded-lg border hairline bg-elevated px-2 py-2 text-xs normal-case tracking-normal text-zinc-100"
+              aria-label="Smart photoshoot style"
+            >
+              {SMART_SHOOT_CATEGORIES.map(category => (
+                <optgroup key={category.key} label={category.label}>
+                  {category.presets.map(preset => (
+                    <option key={preset.key} value={preset.key}>{preset.label}</option>
+                  ))}
+                </optgroup>
+              ))}
+            </select>
+          </label>
+
+          <div className="mt-2 rounded-lg border hairline bg-white/[0.02] px-2.5 py-2 text-[11px] text-zinc-400">
+            <span className="font-semibold text-zinc-200">{activePreset.label}</span>
+            <span className="ml-1">{activePreset.description}</span>
+          </div>
+
+          <div className="mt-3 grid grid-cols-2 gap-2">
             {SMART_FIELDS.map(([key, label]) => (
               <label key={key} className="flex items-center gap-2 rounded-lg border hairline bg-white/[0.02] px-2 py-2 text-[11px] text-zinc-300">
                 <input
@@ -61,6 +92,29 @@ export default function BatchVariationControl({
                 {label}
               </label>
             ))}
+          </div>
+
+          <div className="mt-3 flex items-center justify-between gap-2">
+            <div className="text-[10px] font-mono uppercase tracking-widest text-zinc-400">Planned shots</div>
+            <button type="button" onClick={onRegeneratePlan}
+              className="rounded-md border hairline px-2 py-1 text-[10px] font-semibold text-cyan-200 hover:bg-white/5">
+              New plan
+            </button>
+          </div>
+
+          <div className="mt-2 max-h-56 space-y-1 overflow-y-auto pr-1" data-testid="smart-photoshoot-plan">
+            {smartPlan.map((item, index) => (
+              <div key={`${index}-${item.title}`} className="grid grid-cols-[1.5rem_1fr] gap-2 rounded-md border hairline bg-black/20 px-2 py-1.5 text-[10px]">
+                <span className="font-mono text-cyan-300">{String(index + 1).padStart(2, "0")}</span>
+                <div className="min-w-0">
+                  <div className="font-semibold text-zinc-200">{item.title}</div>
+                  <div className="truncate text-zinc-500">
+                    {[item.framing, item.pose?.label, item.camera?.label, item.expression].filter(Boolean).join(" · ")}
+                  </div>
+                </div>
+              </div>
+            ))}
+            {!smartPlan.length && <div className="text-[11px] text-zinc-500">Choose at least one variation control to build a shot plan.</div>}
           </div>
         </div>
       )}
