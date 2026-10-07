@@ -79,3 +79,18 @@ test("workflow visibility is a settings draft until saved and can be restored wi
   expect(container.querySelector('[data-testid="workflow-row-base"]')).not.toBeNull();
   act(() => root.unmount());
 });
+
+test("Settings exposes a compact navigator for the major configuration areas", () => {
+  global.IS_REACT_ACT_ENVIRONMENT = true;
+  const container = document.createElement("div");
+  const root = createRoot(container);
+  act(() => root.render(<Settings />));
+  const nav = container.querySelector('[data-testid="settings-section-nav"]');
+  expect(nav).not.toBeNull();
+  for (const id of ["appearance", "prompts", "comfyui", "media-library", "workflows", "ai-assist"]) {
+    expect(nav.querySelector(`a[href="#${id}"]`)).not.toBeNull();
+    expect(container.querySelector(`#${id}`)).not.toBeNull();
+  }
+  act(() => root.unmount());
+});
+
