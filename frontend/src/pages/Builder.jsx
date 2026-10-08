@@ -290,6 +290,24 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
     refetchInterval: kreaStatusEnabled ? 15000 : false,
   });
   const { data: settings } = useQuery({ queryKey: ["settings"], queryFn: endpoints.settings });
+  const customPhotoshootPresets = settings?.custom_photoshoot_presets || [];
+
+  const saveCustomPhotoshootPreset = async (preset) => {
+    const next = [
+      ...customPhotoshootPresets.filter(item => item.key !== preset.key),
+      preset,
+    ];
+    const updated = await endpoints.updateSettings({ custom_photoshoot_presets: next });
+    qc.setQueryData(["settings"], updated);
+    toast.success("Photoshoot preset saved");
+  };
+
+  const deleteCustomPhotoshootPreset = async (key) => {
+    const next = customPhotoshootPresets.filter(item => item.key !== key);
+    const updated = await endpoints.updateSettings({ custom_photoshoot_presets: next });
+    qc.setQueryData(["settings"], updated);
+    toast.success("Photoshoot preset deleted");
+  };
   useEffect(()=>{
     if(!promptFormatTouched.current && ['detailed','compact','ollama'].includes(settings?.builder_prompt_format)) {
       setPromptFormat(settings.builder_prompt_format);
@@ -473,8 +491,9 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
         preset: smartBatchPreset,
         seed: smartPlanSeed,
         options: smartBatchOptions,
+        customPresets: customPhotoshootPresets,
       })
-    : [], [batchSeedMode, renderCount, subjects, promptCatalog, smartBatchPreset, smartPlanSeed, smartBatchOptions]);
+    : [], [batchSeedMode, renderCount, subjects, promptCatalog, smartBatchPreset, smartPlanSeed, smartBatchOptions, customPhotoshootPresets]);
   const renderSettings = isKrea2Aio
     ? { ...chromaSettings, steps: 12, cfg: 1, sampler: "euler_ancestral", scheduler: "beta" }
     : isKrea2
@@ -1518,6 +1537,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
               preset: smartBatchPreset,
               plan: smartPhotoshootPlan,
               options: smartBatchOptions,
+              customPresets: customPhotoshootPresets,
             })
           : null;
         const usePoseVariation = requestedCount > 1 && ["pose", "pose_camera"].includes(batchSeedMode);
@@ -2823,6 +2843,9 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
               onSmartPresetChange={setSmartBatchPreset}
               smartPlan={smartPhotoshootPlan}
               onRegeneratePlan={() => setSmartPlanSeed(seed => seed + 1)}
+              customPresets={customPhotoshootPresets}
+              onSavePreset={saveCustomPhotoshootPreset}
+              onDeletePreset={deleteCustomPhotoshootPreset}
               compact
             />
           </div>}
@@ -3022,6 +3045,9 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
               onSmartPresetChange={setSmartBatchPreset}
               smartPlan={smartPhotoshootPlan}
               onRegeneratePlan={() => setSmartPlanSeed(seed => seed + 1)}
+              customPresets={customPhotoshootPresets}
+              onSavePreset={saveCustomPhotoshootPreset}
+              onDeletePreset={deleteCustomPhotoshootPreset}
             />
           </section>}
           {activeRecipeFamily === "image" && !isKrea2 && !isVariationWorkflow && (

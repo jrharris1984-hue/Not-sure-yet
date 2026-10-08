@@ -162,6 +162,7 @@ class Settings(BaseModel):
     ollama_text_model: str = ""
     ollama_vision_model: str = ""
     prompt_catalog: Dict[str, Any] = Field(default_factory=lambda: {"sections": []})
+    custom_photoshoot_presets: List[Dict[str, Any]] = Field(default_factory=list)
     wardrobe_catalog_version: int = 1
     workflows: List[WorkflowTemplate] = Field(default_factory=list)
     default_workflow_id: str = ""
@@ -587,6 +588,59 @@ async def update_settings(body: Dict[str, Any] = Body(...)):
             current["prompt_catalog"] = validate_prompt_catalog(body["prompt_catalog"])
         except ValueError as exc:
             raise HTTPException(400, str(exc))
+    if "custom_photoshoot_presets" in body:
+        presets = body["custom_photoshoot_presets"]
+        if not isinstance(presets, list) or len(presets) > 100:
+            raise HTTPException(400, "Custom photoshoot presets must be a list with at most 100 presets.")
+        cleaned = []
+        seen = set()
+        allowed_framings = {"close-up", "portrait", "waist-up", "thigh-up", "knees-up", "full body", "wide shot", "detail shot", ""}
+        allowed_expressions = {"neutral", "smirk", "smile", "serious", "sultry", "laughing", ""}
+        for preset in presets:
+            if not isinstance(preset, dict):
+                raise HTTPException(400, "Each custom photoshoot preset must be an object.")
+            key = str(preset.get("key") or "").strip()
+            label = str(preset.get("label") or "").strip()
+            category = str(preset.get("category") or "Custom").strip()
+            description = str(preset.get("description") or "").strip()
+            sequence = preset.get("sequence")
+            if not key or len(key) > 80 or not re.fullmatch(r"[a-z0-9_-]+", key):
+                raise HTTPException(400, "Custom photoshoot keys may use lowercase letters, numbers, hyphens and underscores.")
+            if key in seen:
+                raise HTTPException(400, f"Duplicate custom photoshoot key: {key}")
+            if not label or len(label) > 120 or len(category) > 80 or len(description) > 500:
+                raise HTTPException(400, "Custom photoshoot preset text is too long or missing a label.")
+            if not isinstance(sequence, list) or not 1 <= len(sequence) <= 20:
+                raise HTTPException(400, "Each custom photoshoot preset needs 1 to 20 shots.")
+            shots = []
+            for shot in sequence:
+                if not isinstance(shot, dict):
+                    raise HTTPException(400, "Each custom photoshoot shot must be an object.")
+                title = str(shot.get("title") or "").strip()
+                pose_group = str(shot.get("pose_group") or "").strip()
+                camera_match = str(shot.get("camera_match") or "").strip()
+                framing = str(shot.get("framing") or "").strip()
+                expression = str(shot.get("expression") or "").strip()
+                if not title or len(title) > 100 or len(pose_group) > 160 or len(camera_match) > 160:
+                    raise HTTPException(400, "Custom photoshoot shot text is invalid.")
+                if framing not in allowed_framings or expression not in allowed_expressions:
+                    raise HTTPException(400, "Custom photoshoot framing or expression is not supported.")
+                shots.append({
+                    "title": title,
+                    "pose_group": pose_group,
+                    "camera_match": camera_match,
+                    "framing": framing,
+                    "expression": expression,
+                })
+            seen.add(key)
+            cleaned.append({
+                "key": key,
+                "label": label,
+                "category": category or "Custom",
+                "description": description,
+                "sequence": shots,
+            })
+        current["custom_photoshoot_presets"] = cleaned
     if "builder_hidden_workflow_ids" in body:
         hidden = body["builder_hidden_workflow_ids"]
         if not isinstance(hidden, list) or len(hidden) > 2000 or any(not isinstance(value, str) or not value.strip() or len(value) > 200 for value in hidden):
