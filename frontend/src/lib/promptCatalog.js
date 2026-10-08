@@ -118,7 +118,7 @@ function buildField(base, saved) {
 export const catalogSelection = (dna, section, field) => dna?._catalogSelections?.[section]?.[field] ?? dna?.[section]?.[field];
 
 // Preset prose must not reintroduce traits owned by independent controls.
-function physiqueKeywords(keywords, field, dna = {}) {
+export function physiqueKeywords(keywords, field, dna = {}) {
   const physique = dna.physique || {};
   const controls = [
     ['height', /\b(?:petite|tall|short|statuesque|towering|height|stature)\b/i],
