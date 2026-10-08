@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { photoshootCatalog, resolvePhotoshootPreset, SMART_VARIATION_STRENGTHS } from "@/lib/batchSmartPhotoshoot";
 import SmartPhotoshootDesigner from "@/components/SmartPhotoshootDesigner";
 
@@ -39,9 +39,11 @@ export default function BatchVariationControl({
     [key]: checked,
   });
   const [designerOpen, setDesignerOpen] = useState(false);
+  const [mobilePlanOpen, setMobilePlanOpen] = useState(true);
   const [designerSource, setDesignerSource] = useState(smartPreset);
   const catalog = photoshootCatalog(customPresets);
   const activePreset = resolvePhotoshootPreset(smartPreset, customPresets);
+  const planSummary = useMemo(() => smartPlan.map(item => item.title).filter(Boolean).join(" · "), [smartPlan]);
 
   return (
     <div className={compact ? "relative" : "space-y-2"} data-testid="batch-variation-control">
@@ -60,7 +62,7 @@ export default function BatchVariationControl({
       {value === "smart" && (
         <div className={compact
           ? "absolute right-0 top-full z-30 mt-2 w-[34rem] max-w-[90vw] rounded-xl border hairline bg-zinc-950 p-3 shadow-2xl"
-          : "rounded-lg border hairline bg-black/20 p-3"}
+          : "rounded-2xl border hairline bg-black/20 p-3 sm:p-4"}
           data-testid="smart-photoshoot-options"
         >
           <div className="text-[10px] font-mono uppercase tracking-widest text-cyan-300">Smart photoshoot director</div>
@@ -73,7 +75,7 @@ export default function BatchVariationControl({
             <select
               value={smartPreset}
               onChange={(event) => onSmartPresetChange?.(event.target.value)}
-              className="mt-1 w-full rounded-lg border hairline bg-elevated px-2 py-2 text-xs normal-case tracking-normal text-zinc-100"
+              className="mt-1 min-h-11 w-full rounded-xl border hairline bg-elevated px-3 py-2 text-sm normal-case tracking-normal text-zinc-100 sm:min-h-0 sm:rounded-lg sm:px-2 sm:text-xs"
               aria-label="Smart photoshoot style"
             >
               {catalog.categories.map(category => (
@@ -86,18 +88,18 @@ export default function BatchVariationControl({
             </select>
           </label>
 
-          <div className="mt-2 flex items-start gap-2 rounded-lg border hairline bg-white/[0.02] px-2.5 py-2 text-[11px] text-zinc-400">
+          <div className="mt-2 flex flex-col gap-2 rounded-xl border hairline bg-white/[0.02] px-3 py-3 text-[12px] text-zinc-400 sm:flex-row sm:items-start sm:rounded-lg sm:px-2.5 sm:py-2 sm:text-[11px]">
             <div className="min-w-0 flex-1">
               <span className="font-semibold text-zinc-200">{activePreset.label}</span>
               <span className="ml-1">{activePreset.description}</span>
             </div>
-            <div className="flex shrink-0 gap-1">
+            <div className="grid shrink-0 grid-cols-2 gap-2 sm:flex sm:gap-1">
               <button type="button" onClick={() => { setDesignerSource("__blank__"); setDesignerOpen(true); }}
-                className="rounded-md border hairline px-2 py-1 text-[10px] font-semibold text-zinc-300 hover:bg-white/5">
+                className="min-h-11 rounded-lg border hairline px-3 py-2 text-xs font-semibold text-zinc-300 hover:bg-white/5 sm:min-h-0 sm:rounded-md sm:px-2 sm:py-1 sm:text-[10px]">
                 New
               </button>
               <button type="button" onClick={() => { setDesignerSource(smartPreset); setDesignerOpen(true); }}
-                className="rounded-md border border-cyan-500/30 bg-cyan-500/10 px-2 py-1 text-[10px] font-semibold text-cyan-200">
+                className="min-h-11 rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-3 py-2 text-xs font-semibold text-cyan-200 sm:min-h-0 sm:rounded-md sm:px-2 sm:py-1 sm:text-[10px]">
                 {activePreset.custom ? "Edit" : "Customize"}
               </button>
             </div>
@@ -108,7 +110,7 @@ export default function BatchVariationControl({
             <select
               value={smartStrength}
               onChange={(event) => onSmartStrengthChange?.(event.target.value)}
-              className="mt-1 w-full rounded-lg border hairline bg-elevated px-2 py-2 text-xs normal-case tracking-normal text-zinc-100"
+              className="mt-1 min-h-11 w-full rounded-xl border hairline bg-elevated px-3 py-2 text-sm normal-case tracking-normal text-zinc-100 sm:min-h-0 sm:rounded-lg sm:px-2 sm:text-xs"
               aria-label="Smart photoshoot variation strength"
             >
               {SMART_VARIATION_STRENGTHS.map(([value, label]) => (
@@ -119,7 +121,7 @@ export default function BatchVariationControl({
 
           <div className="mt-3 grid grid-cols-2 gap-2">
             {SMART_FIELDS.map(([key, label]) => (
-              <label key={key} className="flex items-center gap-2 rounded-lg border hairline bg-white/[0.02] px-2 py-2 text-[11px] text-zinc-300">
+              <label key={key} className="flex min-h-11 items-center gap-2 rounded-xl border hairline bg-white/[0.02] px-3 py-2 text-xs text-zinc-300 sm:min-h-0 sm:rounded-lg sm:px-2 sm:text-[11px]">
                 <input
                   type="checkbox"
                   checked={!!smartOptions[key]}
@@ -131,20 +133,30 @@ export default function BatchVariationControl({
           </div>
 
           <div className="mt-3 flex items-center justify-between gap-2">
-            <div className="text-[10px] font-mono uppercase tracking-widest text-zinc-400">Planned shots</div>
+            <button type="button"
+              onClick={() => setMobilePlanOpen(open => !open)}
+              className="min-h-11 flex-1 rounded-lg border hairline px-3 py-2 text-left text-xs font-semibold text-zinc-300 sm:pointer-events-none sm:min-h-0 sm:border-0 sm:px-0 sm:py-0 sm:text-[10px] sm:font-mono sm:uppercase sm:tracking-widest sm:text-zinc-400"
+              aria-expanded={mobilePlanOpen}>
+              <span className="sm:hidden">{mobilePlanOpen ? "Hide" : "Show"} planned shots ({smartPlan.length})</span>
+              <span className="hidden sm:inline">Planned shots</span>
+            </button>
             <button type="button" onClick={onRegeneratePlan}
-              className="rounded-md border hairline px-2 py-1 text-[10px] font-semibold text-cyan-200 hover:bg-white/5">
+              className="min-h-11 rounded-lg border hairline px-3 py-2 text-xs font-semibold text-cyan-200 hover:bg-white/5 sm:min-h-0 sm:rounded-md sm:px-2 sm:py-1 sm:text-[10px]">
               New plan
             </button>
           </div>
 
-          <div className="mt-2 max-h-56 space-y-1 overflow-y-auto pr-1" data-testid="smart-photoshoot-plan">
+          {!mobilePlanOpen && !!planSummary && (
+            <div className="mt-2 truncate text-[11px] text-zinc-500 sm:hidden">{planSummary}</div>
+          )}
+
+          <div className={`mt-2 max-h-72 space-y-2 overflow-y-auto overscroll-contain pr-1 sm:max-h-56 sm:space-y-1 ${mobilePlanOpen ? "" : "hidden sm:block"}`} data-testid="smart-photoshoot-plan">
             {smartPlan.map((item, index) => (
-              <div key={`${index}-${item.title}`} className="grid grid-cols-[1.5rem_1fr] gap-2 rounded-md border hairline bg-black/20 px-2 py-1.5 text-[10px]">
+              <div key={`${index}-${item.title}`} className="grid grid-cols-[2rem_1fr] gap-2 rounded-xl border hairline bg-black/20 px-3 py-2.5 text-[11px] sm:grid-cols-[1.5rem_1fr] sm:rounded-md sm:px-2 sm:py-1.5 sm:text-[10px]">
                 <span className="font-mono text-cyan-300">{String(index + 1).padStart(2, "0")}</span>
                 <div className="min-w-0">
                   <div className="font-semibold text-zinc-200">{item.title}</div>
-                  <div className="truncate text-zinc-500">
+                  <div className="whitespace-normal break-words text-zinc-500 sm:truncate">
                     {[item.framing, item.pose?.label, item.camera?.label, item.expression].filter(Boolean).join(" · ")}
                   </div>
                 </div>
