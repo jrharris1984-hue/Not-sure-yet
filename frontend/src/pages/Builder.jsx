@@ -173,7 +173,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
 
   const {
     mobileStudioStep, setMobileStudioStep,
-    mobileStudioMode, mobileSheets, setMobileSheets,
+    mobileStudioMode, setMobileStudioMode, mobileSheets, setMobileSheets,
     mobileToolsGroup, setMobileToolsGroup, sheetViewport,
     desktopQuickMode, setDesktopQuickMode, specialtyTab, setSpecialtyTab,
     quickReview, setQuickReview, activeMobileStudioIndex,
