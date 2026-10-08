@@ -1,3 +1,4 @@
+import SmartPhotoshootLibrary from "@/components/SmartPhotoshootLibrary";
 import CharacterPreviewEntry from "@/components/CharacterPreviewEntry";
 import StudioLoading from "@/components/StudioLoading";
 import { Link } from "react-router-dom";
@@ -91,6 +92,7 @@ export default function Library() {
 
 
       <CharacterPreviewEntry />
+      <SmartPhotoshootLibrary />
 
       <div className="pane p-3 flex flex-col sm:flex-row gap-2">
         <div className="relative flex-1">

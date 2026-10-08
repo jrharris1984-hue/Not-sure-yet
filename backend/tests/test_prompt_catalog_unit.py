@@ -82,7 +82,7 @@ class PromptCatalogSettingsTests(unittest.IsolatedAsyncioTestCase):
             def __init__(self,**doc):self.doc=doc
             def model_dump(self):return self.doc.copy()
         update=AsyncMock()
-        namespace={'Dict':Dict,'Any':Any,'Body':lambda *args,**kwargs:None,'get_settings':AsyncMock(return_value=Settings(comfyui_url='http://comfy:8188',ollama_text_model='my-model',prompt_catalog={'sections':[]})),
+        namespace={'re': __import__('re'), 'Dict':Dict,'Any':Any,'Body':lambda *args,**kwargs:None,'get_settings':AsyncMock(return_value=Settings(comfyui_url='http://comfy:8188',ollama_text_model='my-model',prompt_catalog={'sections':[]})),
                    'Settings':Settings,'db':SimpleNamespace(settings=SimpleNamespace(update_one=update)),
                    'validate_prompt_catalog':validate_prompt_catalog,'HTTPException':lambda status,detail:ValueError(detail),'now_iso':lambda:'now'}
         exec(compile(ast.Module(body=[node],type_ignores=[]),'<settings-test>','exec'),namespace)
@@ -153,3 +153,39 @@ class BuilderPromptFormatSettingsTests(unittest.IsolatedAsyncioTestCase):
         handler,update=await self.setup_update()
         await handler({'builder_prompt_format':None})
         self.assertNotIn('builder_prompt_format',update.call_args.args[1]['$set'])
+
+
+class SavedPhotoshootPlanSettingsTests(unittest.IsolatedAsyncioTestCase):
+    setup_update = PromptCatalogSettingsTests.setup_update
+
+    def preset(self, **extra):
+        return {'key': 'custom_saved', 'label': 'Saved shoot', 'category': 'Saved plans', 'sequence': [dict(title='Hero', framing='full body', expression='smile', **extra)]}
+
+    async def test_exact_plan_survives_settings_roundtrip(self):
+        handler, update = await self.setup_update()
+        preset = self.preset(pose_prompt='standing with arms folded', pose_label='Folded arms', camera_pose_angle='profile', camera_angle='low')
+        result = await handler({'custom_photoshoot_presets': [preset]})
+        shot = result.doc['custom_photoshoot_presets'][0]['sequence'][0]
+        self.assertEqual(shot['pose_prompt'], 'standing with arms folded')
+        self.assertEqual(shot['pose_label'], 'Folded arms')
+        self.assertEqual(shot['camera_pose_angle'], 'profile')
+        self.assertEqual(shot['camera_angle'], 'low')
+        self.assertEqual(result.doc['comfyui_url'], 'http://comfy:8188')
+        update.assert_awaited_once()
+
+    async def test_empty_captured_fields_stay_distinct_from_automatic_families(self):
+        handler, _ = await self.setup_update()
+        result = await handler({'custom_photoshoot_presets': [self.preset(pose_prompt='', camera_pose_angle='', camera_angle='')]})
+        shot = result.doc['custom_photoshoot_presets'][0]['sequence'][0]
+        self.assertIn('pose_prompt', shot)
+        self.assertIn('camera_pose_angle', shot)
+        handler, _ = await self.setup_update()
+        result = await handler({'custom_photoshoot_presets': [self.preset()]})
+        self.assertNotIn('pose_prompt', result.doc['custom_photoshoot_presets'][0]['sequence'][0])
+
+    async def test_invalid_captured_values_never_write_settings(self):
+        for extra in [dict(pose_prompt='x' * 2001), dict(camera_pose_angle='bad', camera_angle='low'), dict(camera_pose_angle='front', camera_angle='')]:
+            handler, update = await self.setup_update()
+            with self.assertRaises(ValueError):
+                await handler({'custom_photoshoot_presets': [self.preset(**extra)]})
+            update.assert_not_awaited()

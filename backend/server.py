@@ -625,7 +625,23 @@ async def update_settings(body: Dict[str, Any] = Body(...)):
                     raise HTTPException(400, "Custom photoshoot shot text is invalid.")
                 if framing not in allowed_framings or expression not in allowed_expressions:
                     raise HTTPException(400, "Custom photoshoot framing or expression is not supported.")
+                exact = {}
+                if "pose_prompt" in shot:
+                    pose_prompt = str(shot.get("pose_prompt") or "").strip()
+                    pose_label = str(shot.get("pose_label") or "").strip()
+                    if len(pose_prompt) > 2000 or len(pose_label) > 2000:
+                        raise HTTPException(400, "Saved photoshoot pose text is too long.")
+                    exact.update(pose_prompt=pose_prompt, pose_label=pose_label)
+                if "camera_pose_angle" in shot:
+                    pose_angle = str(shot.get("camera_pose_angle") or "").strip()
+                    camera_angle = str(shot.get("camera_angle") or "").strip()
+                    if pose_angle not in {"", "front", "3/4", "profile", "over-shoulder"} or camera_angle not in {"", "eye-level", "low", "high"}:
+                        raise HTTPException(400, "Saved photoshoot camera is not supported.")
+                    if bool(pose_angle) != bool(camera_angle):
+                        raise HTTPException(400, "Saved photoshoot camera needs both angles.")
+                    exact.update(camera_pose_angle=pose_angle, camera_angle=camera_angle)
                 shots.append({
+                    **exact,
                     "title": title,
                     "pose_group": pose_group,
                     "camera_match": camera_match,
