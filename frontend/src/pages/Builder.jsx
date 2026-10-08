@@ -180,6 +180,16 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
     openMobileStudioStep, moveMobileStudioStep, changeMobileStudioMode,
   } = useCreateShellState({ activeSection, studioSteps, nav, sectionUrl });
 
+  const openMobileAdvancedStudio = (group = "overview") => {
+    setMobileStudioMode("advanced");
+    setMobileStudioStep("create");
+    if (sheetViewport) {
+      setMobileToolsGroup(group);
+      setMobileSheets(false);
+    }
+    window.requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "auto" }));
+  };
+
   const {
     editorHydrated, setEditorHydrated, mediaImportSummary, setMediaImportSummary,
     name, setName, subjects, setSubjects, activeSubjectId, setActiveSubjectId,
@@ -2627,7 +2637,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
             focusedField={sheetField}
             collapsed={sheetField ? false : !!collapsed[activeSection]}
             simpleFieldKeys={SIMPLE_FIELD_KEYS[activeSection] || []}
-            onRequestAdvanced={() => setMobileStudioMode("advanced")}
+            onRequestAdvanced={() => openMobileAdvancedStudio("overview")}
           />
   );
 
@@ -2767,7 +2777,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
             <WebPromptResearchOptions disabled={improvingPrompt} />
             <PromptFormatControl value={promptFormat} onChange={changePromptFormat} meta={promptFormatMeta} status={settings?.ai_provider === 'ollama' && promptFormat === 'ollama' ? ollamaCompiled.reason : ''} />
           </section>}</>}
-        onTools={() => { setMobileToolsGroup("overview"); setMobileSheets(false); setMobileStudioMode("advanced"); setMobileStudioStep("create"); window.scrollTo({ top: 0, behavior: "auto" }); }}
+        onTools={() => openMobileAdvancedStudio("overview")}
       /> : <button data-mobile-tools="none" type="button" className="md:hidden chip" onClick={() => setMobileSheets(true)}>Back to bottom sheets</button>)}
       {galleryRecipeMode === "current" && (
         <div data-mobile-tools="none" className="pane border border-cyan-500/30 bg-cyan-500/[0.06] px-3 py-2.5 text-xs text-cyan-100" data-testid="current-compiler-rebuild-banner">
@@ -3072,7 +3082,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
             summaries={mobileCreateSummaries}
             issues={mobileCreateIssues}
             mode={mobileStudioMode}
-            onRequestAdvanced={() => setMobileStudioMode("advanced")}
+            onRequestAdvanced={() => openMobileAdvancedStudio("overview")}
           /></div>
           {activeRecipeFamily === "image" && !isVariationWorkflow && <section data-mobile-tools="none" className="md:hidden pane p-3 space-y-3" aria-label="Prompt compiler">
             <h3 className="section-label">Prompt compiler</h3>
