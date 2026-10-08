@@ -2,6 +2,8 @@ import {
   SMART_SHOOT_CATEGORIES,
   SMART_PHOTOSHOOT_PRESETS,
   buildSmartPhotoshootPlan,
+  photoshootCatalog,
+  resolvePhotoshootPreset,
   smartPhotoshootVariation,
 } from "./batchSmartPhotoshoot";
 
@@ -122,4 +124,49 @@ test("shared smart plans reject explicit or specialty groups even when the label
   });
 
   expect(plan.map(item => item.pose?.label)).not.toContain("Blocked pose");
+});
+
+
+test("custom photoshoot presets are merged into their own shoot categories", () => {
+  const customPresets = [{
+    key: "custom_my_glamour",
+    label: "My Glamour Set",
+    category: "Glamour",
+    description: "My saved sequence",
+    sequence: [
+      { title: "My Hero", pose_group: "portrait standing|portrait", camera_match: "3/4", framing: "full body", expression: "sultry" },
+      { title: "My Seated", pose_group: "portrait seated|seated", camera_match: "eye-level", framing: "thigh-up", expression: "smirk" },
+    ],
+  }];
+  const catalog = photoshootCatalog(customPresets);
+  const customCategory = catalog.categories.find(category => category.label === "My Shoots · Glamour");
+
+  expect(customCategory).toBeTruthy();
+  expect(customCategory.presets[0].label).toBe("My Glamour Set");
+  expect(resolvePhotoshootPreset("custom_my_glamour", customPresets).custom).toBe(true);
+});
+
+test("custom photoshoot shot sequence drives the generated plan", () => {
+  const customPresets = [{
+    key: "custom_two_shot",
+    label: "Two Shot Test",
+    category: "Custom",
+    description: "",
+    sequence: [
+      { title: "Custom Hero", pose_group: "portrait standing|portrait", camera_match: "front", framing: "full body", expression: "neutral" },
+      { title: "Custom Portrait", pose_group: "portrait seated|seated", camera_match: "3/4", framing: "waist-up", expression: "smile" },
+    ],
+  }];
+  const plan = buildSmartPhotoshootPlan({
+    count: 2,
+    subjects: [baseSubject()],
+    preset: "custom_two_shot",
+    customPresets,
+    seed: 3,
+    options: { pose: true, camera: true, framing: true, expression: true },
+  });
+
+  expect(plan.map(item => item.title)).toEqual(["Custom Hero", "Custom Portrait"]);
+  expect(plan.map(item => item.framing)).toEqual(["full body", "waist-up"]);
+  expect(plan.map(item => item.expression)).toEqual(["neutral", "smile"]);
 });
