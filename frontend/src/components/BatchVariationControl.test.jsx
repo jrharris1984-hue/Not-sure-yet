@@ -42,3 +42,22 @@ test("mobile Smart Photoshoot keeps primary controls and planned shots accessibl
 
   act(() => root.unmount());
 });
+
+
+test("shot controls call the shared planner and kept shots cannot be redone", () => {
+  global.IS_REACT_ACT_ENVIRONMENT = true;
+  const container = document.createElement("div");
+  const root = createRoot(container);
+  const onToggleKeepShot = jest.fn();
+  const onRegenerateShot = jest.fn();
+  const nextProps = { ...props, onToggleKeepShot, onRegenerateShot };
+  act(() => root.render(<BatchVariationControl {...nextProps} />));
+  act(() => container.querySelector('[aria-label="Keep shot 1"]').click());
+  expect(onToggleKeepShot).toHaveBeenCalledWith(0);
+  act(() => container.querySelector('[aria-label="Redo shot 2"]').click());
+  expect(onRegenerateShot).toHaveBeenCalledWith(1);
+  act(() => root.render(<BatchVariationControl {...nextProps} smartPlan={[{ ...props.smartPlan[0], kept: true }]} />));
+  expect(container.querySelector('[aria-label="Release shot 1"]').getAttribute("aria-pressed")).toBe("true");
+  expect(container.querySelector('[aria-label="Redo shot 1"]').disabled).toBe(true);
+  act(() => root.unmount());
+});

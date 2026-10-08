@@ -518,6 +518,31 @@ export function buildSmartPhotoshootPlan({
   });
 }
 
+// Reserve preserved shots first so replacement choices cannot duplicate them.
+// If a style has exhausted its compatible choices, retain the previous field.
+export function regenerateSmartPhotoshootPlan({ plan = [], index = null, ...config } = {}) {
+  const definition = resolvePhotoshootPreset(config.preset, config.customPresets);
+  const groups = poseGroupsFor(config.subjects?.length || 1, config.promptCatalog);
+  const options = config.options || {};
+  const replace = (shot, position) => !shot.kept && (index === null || position === index);
+  const preserved = plan.filter((shot, position) => !replace(shot, position));
+  const usedPoses = new Set(preserved.map(shot => normalize(shot.pose?.value)).filter(Boolean));
+  const usedCameras = new Set(preserved.map(shot => shot.camera?.label).filter(Boolean));
+
+  return plan.map((shot, position) => {
+    if (!replace(shot, position)) return shot;
+    const shotDef = definition.sequence[position % definition.sequence.length];
+    const seed = (config.seed || 0) + position * 104729;
+    const pose = options.pose === false ? null : choosePose(groups, shotDef,
+      new Set([...usedPoses, normalize(shot.pose?.value)]), seed, config.strength) || shot.pose;
+    const camera = options.camera === false ? null : chooseCamera(shotDef,
+      new Set([...usedCameras, shot.camera?.label]), seed, config.strength) || shot.camera;
+    if (pose) usedPoses.add(normalize(pose.value));
+    if (camera) usedCameras.add(camera.label);
+    return { ...shot, pose, camera };
+  });
+}
+
 export function smartPhotoshootVariation({
   subjects = [],
   promptCatalog,

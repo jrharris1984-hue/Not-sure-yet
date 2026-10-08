@@ -27,6 +27,8 @@ export default function BatchVariationControl({
   onSmartPresetChange,
   smartPlan = [],
   onRegeneratePlan,
+  onToggleKeepShot,
+  onRegenerateShot,
   smartStrength = "balanced",
   onSmartStrengthChange,
   customPresets = [],
@@ -150,6 +152,10 @@ export default function BatchVariationControl({
             <div className="mt-2 truncate text-[11px] text-zinc-500 sm:hidden">{planSummary}</div>
           )}
 
+          {onToggleKeepShot && <p className="mt-2 text-[11px] leading-relaxed text-zinc-500">
+            Keep favorite shots when creating a new plan, or redo one shot. Changing shoot settings clears kept shots.
+          </p>}
+
           <div className={`mt-2 max-h-72 space-y-2 overflow-y-auto overscroll-contain pr-1 sm:max-h-56 sm:space-y-1 ${mobilePlanOpen ? "" : "hidden sm:block"}`} data-testid="smart-photoshoot-plan">
             {smartPlan.map((item, index) => (
               <div key={`${index}-${item.title}`} className="grid grid-cols-[2rem_1fr] gap-2 rounded-xl border hairline bg-black/20 px-3 py-2.5 text-[11px] sm:grid-cols-[1.5rem_1fr] sm:rounded-md sm:px-2 sm:py-1.5 sm:text-[10px]">
@@ -159,6 +165,20 @@ export default function BatchVariationControl({
                   <div className="whitespace-normal break-words text-zinc-500 sm:truncate">
                     {[item.framing, item.pose?.label, item.camera?.label, item.expression].filter(Boolean).join(" · ")}
                   </div>
+                  {onToggleKeepShot && onRegenerateShot && (
+                    <div className="mt-2 flex gap-2">
+                      <button type="button" aria-label={`${item.kept ? "Release" : "Keep"} shot ${index + 1}`}
+                        aria-pressed={!!item.kept} onClick={() => onToggleKeepShot(index)}
+                        className={`min-h-11 rounded-lg border px-3 py-2 text-xs sm:min-h-0 sm:py-1 ${item.kept ? "border-cyan-500/40 bg-cyan-500/10 text-cyan-200" : "hairline text-zinc-300 hover:bg-white/5"}`}>
+                        {item.kept ? "Kept" : "Keep"}
+                      </button>
+                      <button type="button" aria-label={`Redo shot ${index + 1}`} disabled={!!item.kept}
+                        onClick={() => onRegenerateShot(index)}
+                        className="min-h-11 rounded-lg border hairline px-3 py-2 text-xs text-zinc-300 hover:bg-white/5 disabled:opacity-40 sm:min-h-0 sm:py-1">
+                        Redo
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
