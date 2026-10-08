@@ -153,6 +153,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
     expression: false,
   });
   const [smartBatchPreset, setSmartBatchPreset] = useState("editorial");
+  const [smartBatchStrength, setSmartBatchStrength] = useState("balanced");
   const [smartPlanSeed, setSmartPlanSeed] = useState(1);
   const activeIdx = Math.max(0, SECTIONS.findIndex((s) => s.key === sectionParam));
   const activeSection = SECTIONS[activeIdx].key;
@@ -492,8 +493,9 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
         seed: smartPlanSeed,
         options: smartBatchOptions,
         customPresets: customPhotoshootPresets,
+        strength: smartBatchStrength,
       })
-    : [], [batchSeedMode, renderCount, subjects, promptCatalog, smartBatchPreset, smartPlanSeed, smartBatchOptions, customPhotoshootPresets]);
+    : [], [batchSeedMode, renderCount, subjects, promptCatalog, smartBatchPreset, smartBatchStrength, smartPlanSeed, smartBatchOptions, customPhotoshootPresets]);
   const renderSettings = isKrea2Aio
     ? { ...chromaSettings, steps: 12, cfg: 1, sampler: "euler_ancestral", scheduler: "beta" }
     : isKrea2
@@ -1538,6 +1540,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
               plan: smartPhotoshootPlan,
               options: smartBatchOptions,
               customPresets: customPhotoshootPresets,
+              strength: smartBatchStrength,
             })
           : null;
         const usePoseVariation = requestedCount > 1 && ["pose", "pose_camera"].includes(batchSeedMode);
@@ -2843,6 +2846,8 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
               onSmartPresetChange={setSmartBatchPreset}
               smartPlan={smartPhotoshootPlan}
               onRegeneratePlan={() => setSmartPlanSeed(seed => seed + 1)}
+              smartStrength={smartBatchStrength}
+              onSmartStrengthChange={setSmartBatchStrength}
               customPresets={customPhotoshootPresets}
               onSavePreset={saveCustomPhotoshootPreset}
               onDeletePreset={deleteCustomPhotoshootPreset}
@@ -3045,6 +3050,8 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
               onSmartPresetChange={setSmartBatchPreset}
               smartPlan={smartPhotoshootPlan}
               onRegeneratePlan={() => setSmartPlanSeed(seed => seed + 1)}
+              smartStrength={smartBatchStrength}
+              onSmartStrengthChange={setSmartBatchStrength}
               customPresets={customPhotoshootPresets}
               onSavePreset={saveCustomPhotoshootPreset}
               onDeletePreset={deleteCustomPhotoshootPreset}

@@ -170,3 +170,55 @@ test("custom photoshoot shot sequence drives the generated plan", () => {
   expect(plan.map(item => item.framing)).toEqual(["full body", "waist-up"]);
   expect(plan.map(item => item.expression)).toEqual(["neutral", "smile"]);
 });
+
+
+test("glamour category includes boudoir, pin-up and decade-inspired shoots", () => {
+  const glamour = SMART_SHOOT_CATEGORIES.find(category => category.key === "glamour");
+  const keys = glamour.presets.map(preset => preset.key);
+  expect(keys).toEqual(expect.arrayContaining([
+    "boudoir",
+    "pinup",
+    "old_hollywood",
+    "fifties_pinup",
+    "eighties_glamour",
+  ]));
+});
+
+test("subtle strength preserves selected framing and conservative camera choices", () => {
+  const subject = baseSubject();
+  subject.dna.pose.distance = "waist-up";
+  const plan = buildSmartPhotoshootPlan({
+    count: 4,
+    subjects: [subject],
+    preset: "editorial",
+    seed: 11,
+    strength: "subtle",
+    options: { pose: true, camera: true, framing: true, expression: false },
+  });
+
+  expect(plan.every(item => item.framing === "waist-up")).toBe(true);
+  expect(plan.filter(item => item.camera).every(item => item.camera.cameraAngle === "eye-level")).toBe(true);
+});
+
+test("bold strength can draw beyond a shot's preferred pose family", () => {
+  const balanced = buildSmartPhotoshootPlan({
+    count: 1,
+    subjects: [baseSubject()],
+    preset: "headshot",
+    seed: 19,
+    strength: "balanced",
+    options: { pose: true, camera: true, framing: true, expression: false },
+  });
+  const bold = buildSmartPhotoshootPlan({
+    count: 1,
+    subjects: [baseSubject()],
+    preset: "headshot",
+    seed: 19,
+    strength: "bold",
+    options: { pose: true, camera: true, framing: true, expression: false },
+  });
+
+  expect(balanced[0].pose).toBeTruthy();
+  expect(bold[0].pose).toBeTruthy();
+  expect(bold[0].camera).toBeTruthy();
+});

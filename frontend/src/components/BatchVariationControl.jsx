@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { photoshootCatalog, resolvePhotoshootPreset } from "@/lib/batchSmartPhotoshoot";
+import { photoshootCatalog, resolvePhotoshootPreset, SMART_VARIATION_STRENGTHS } from "@/lib/batchSmartPhotoshoot";
 import SmartPhotoshootDesigner from "@/components/SmartPhotoshootDesigner";
 
 const MODES = [
@@ -27,6 +27,8 @@ export default function BatchVariationControl({
   onSmartPresetChange,
   smartPlan = [],
   onRegeneratePlan,
+  smartStrength = "balanced",
+  onSmartStrengthChange,
   customPresets = [],
   onSavePreset,
   onDeletePreset,
@@ -100,6 +102,20 @@ export default function BatchVariationControl({
               </button>
             </div>
           </div>
+
+          <label className="mt-3 block text-[10px] font-mono uppercase tracking-widest text-zinc-400">
+            Variation strength
+            <select
+              value={smartStrength}
+              onChange={(event) => onSmartStrengthChange?.(event.target.value)}
+              className="mt-1 w-full rounded-lg border hairline bg-elevated px-2 py-2 text-xs normal-case tracking-normal text-zinc-100"
+              aria-label="Smart photoshoot variation strength"
+            >
+              {SMART_VARIATION_STRENGTHS.map(([value, label]) => (
+                <option key={value} value={value}>{label}</option>
+              ))}
+            </select>
+          </label>
 
           <div className="mt-3 grid grid-cols-2 gap-2">
             {SMART_FIELDS.map(([key, label]) => (
