@@ -2,7 +2,7 @@ import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import useCharacterPreview from './useCharacterPreview';
 import { endpoints } from '@/lib/api';
-import { CHARACTER_PREVIEW_JOB_KEY } from '@/lib/characterPreview';
+import { CHARACTER_PREVIEW_JOB_KEY, CHARACTER_CAPTURE_JOB_KEY } from '@/lib/characterPreview';
 
 jest.mock('@/lib/api', () => ({ endpoints: { dispatchRender: jest.fn(), pollRender: jest.fn() } }));
 let root, preview;
@@ -78,4 +78,31 @@ test('dispatch errors and completed jobs without an image remain retryable', asy
   await act(async () => preview.update({}));
   expect(preview.error).toContain('without an image');
   expect(preview.busy).toBe(false);
+});
+
+
+test('capture resumes independently while preview keeps its completed image and provenance', async () => {
+  const previewPayload = { seed: 15, hidden_from_gallery: true };
+  sessionStorage.setItem(CHARACTER_PREVIEW_JOB_KEY, JSON.stringify({ render: { id: 'preview', status: 'done', output_files: ['/preview.png'] }, image: '/preview.png', imageKey: 'preview-key', requestKey: 'preview-key', imageRender: { id: 'preview', status: 'done' }, imagePayload: previewPayload }));
+  sessionStorage.setItem(CHARACTER_CAPTURE_JOB_KEY, JSON.stringify({ render: { id: 'capture', status: 'queued' }, requestKey: 'capture-key', submittedPayload: { seed: 15, hidden_from_gallery: false } }));
+  let capture;
+  function Pair() { preview = useCharacterPreview('preview-key'); capture = useCharacterPreview('capture-key', CHARACTER_CAPTURE_JOB_KEY, 'Capture'); return null; }
+  act(() => root.render(<Pair />));
+  expect(preview.busy).toBe(false); expect(capture.busy).toBe(true);
+  endpoints.pollRender.mockResolvedValue({ id: 'capture', status: 'done', output_files: ['/capture.png'] });
+  await advance();
+  expect(preview.image).toBe('/preview.png'); expect(preview.imageRender.id).toBe('preview');
+  expect(preview.imagePayload).toEqual(previewPayload);
+  expect(capture.image).toBe('/capture.png'); expect(capture.imagePayload.seed).toBe(15);
+  expect(capture.stale).toBe(false);
+  expect(JSON.parse(sessionStorage.getItem(CHARACTER_CAPTURE_JOB_KEY)).imageRender.id).toBe('capture');
+  expect(endpoints.dispatchRender).not.toHaveBeenCalled();
+});
+
+test('an explicit request key records the seed actually submitted during an unlocked update', async () => {
+  endpoints.dispatchRender.mockResolvedValue({ id: 'preview', status: 'done', output_files: ['/image.png'] });
+  act(() => root.render(<Harness requestKey="old-seed" />));
+  await act(async () => preview.update({ seed: 777 }, 'new-seed'));
+  act(() => root.render(<Harness requestKey="new-seed" />));
+  expect(preview.stale).toBe(false); expect(preview.imagePayload.seed).toBe(777);
 });
