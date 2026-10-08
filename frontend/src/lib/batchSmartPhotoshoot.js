@@ -362,8 +362,21 @@ export const CUSTOM_CAMERA_OPTIONS = [
   ["over-shoulder", "Over shoulder"],
 ];
 
-export const CUSTOM_FRAMING_OPTIONS = ["", "portrait", "waist-up", "thigh-up", "knees-up", "full body", "wide shot", "detail shot"];
+export const CUSTOM_FRAMING_OPTIONS = ["", "close-up", "portrait", "waist-up", "thigh-up", "knees-up", "full body", "wide shot", "detail shot"];
 export const CUSTOM_EXPRESSION_OPTIONS = ["", ...EXPRESSIONS];
+
+// Snapshot the actual planned choices rather than re-randomizing a saved shoot.
+export function photoshootPresetFromPlan(plan, label) {
+  return {
+    key: '', label: `${label || 'My Photoshoot'} plan`, category: 'Saved plans', description: '',
+    sequence: plan.map(item => ({
+      title: item.title || 'Shot', pose_group: '', camera_match: '',
+      framing: item.framing || '', expression: item.expression || '',
+      pose_prompt: item.pose?.value || '', pose_label: item.pose?.label || '',
+      camera_pose_angle: item.camera?.poseAngle || '', camera_angle: item.camera?.cameraAngle || '',
+    })),
+  };
+}
 
 export function normalizeCustomPhotoshootPreset(preset = {}) {
   return {
@@ -380,6 +393,8 @@ export function normalizeCustomPhotoshootPreset(preset = {}) {
       framing: String(item.framing || "").trim(),
       expression: String(item.expression || "").trim(),
       raw: {
+        ...(Object.hasOwn(item, 'pose_prompt') ? { pose_prompt: String(item.pose_prompt || '').trim(), pose_label: String(item.pose_label || '').trim() } : {}),
+        ...(Object.hasOwn(item, 'camera_pose_angle') ? { camera_pose_angle: String(item.camera_pose_angle || '').trim(), camera_angle: String(item.camera_angle || '').trim() } : {}),
         title: String(item.title || "Shot").trim() || "Shot",
         pose_group: String(item.pose_group || "").trim(),
         camera_match: String(item.camera_match || "").trim(),
@@ -450,6 +465,8 @@ function poseGroupsFor(count, promptCatalog) {
 }
 
 function choosePose(groups, shotDef, used, seed, strength = "balanced") {
+  if (Object.hasOwn(shotDef?.raw || {}, 'pose_prompt')) return shotDef.raw.pose_prompt
+    ? { value: shotDef.raw.pose_prompt, label: shotDef.raw.pose_label || shotDef.raw.pose_prompt } : null;
   const matched = groups.filter(group => !shotDef?.poseGroup || shotDef.poseGroup.test(group.label || ""));
   const source = strength === "bold"
     ? groups
@@ -467,6 +484,9 @@ function choosePose(groups, shotDef, used, seed, strength = "balanced") {
 }
 
 function chooseCamera(shotDef, used, seed, strength = "balanced") {
+  if (Object.hasOwn(shotDef?.raw || {}, 'camera_pose_angle')) return shotDef.raw.camera_pose_angle
+    ? { poseAngle: shotDef.raw.camera_pose_angle, cameraAngle: shotDef.raw.camera_angle,
+        label: `${shotDef.raw.camera_pose_angle} · ${shotDef.raw.camera_angle}` } : null;
   const conservative = CAMERA_VARIATIONS.filter(item =>
     item.cameraAngle === "eye-level" && ["front", "3/4", "profile"].includes(item.poseAngle)
   );
@@ -510,7 +530,7 @@ export function buildSmartPhotoshootPlan({
       camera,
       framing: options.framing === false
         ? null
-        : strength === "subtle"
+        : strength === "subtle" && !shotDef.raw
           ? (subjects[0]?.dna?.pose?.distance || shotDef.framing)
           : shotDef.framing,
       expression: options.expression === true ? shotDef.expression : null,

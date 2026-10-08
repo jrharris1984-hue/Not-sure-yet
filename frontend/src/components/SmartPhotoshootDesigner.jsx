@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import PhotoshootBulkEditor, { patchPhotoshootShot } from "@/components/PhotoshootBulkEditor";
 import {
   CUSTOM_CAMERA_OPTIONS,
   CUSTOM_EXPRESSION_OPTIONS,
@@ -54,16 +55,26 @@ export default function SmartPhotoshootDesigner({
   open,
   onClose,
   sourcePreset,
+  initialPreset = null,
   customPresets = [],
   onSave,
   onDelete,
 }) {
   const [draft, setDraft] = useState(() => toEditablePreset(sourcePreset, customPresets));
   const [saving, setSaving] = useState(false);
+  const [selected, setSelected] = useState([]);
+  const loaded = useRef(null);
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    if (open) setDraft(toEditablePreset(sourcePreset, customPresets));
-  }, [open, sourcePreset, customPresets]);
+    if (!open) { loaded.current = null; return; }
+    if (loaded.current?.source === sourcePreset && loaded.current?.initial === initialPreset) return;
+    loaded.current = { source: sourcePreset, initial: initialPreset };
+    if (open) {
+      setDraft(initialPreset ? { ...initialPreset, sequence: initialPreset.sequence.map(shot => ({ ...shot })) } : toEditablePreset(sourcePreset, customPresets));
+      setSelected([]); setError('');
+    }
+  }, [open, sourcePreset, customPresets, initialPreset]);
 
   const isExistingCustom = useMemo(
     () => !!draft.key && customPresets.some(item => item.key === draft.key),
@@ -75,11 +86,12 @@ export default function SmartPhotoshootDesigner({
   const updateShot = (index, patch) => {
     setDraft(current => ({
       ...current,
-      sequence: current.sequence.map((shot, shotIndex) => shotIndex === index ? { ...shot, ...patch } : shot),
+      sequence: current.sequence.map((shot, shotIndex) => shotIndex === index ? patchPhotoshootShot(shot, patch) : shot),
     }));
   };
 
   const moveShot = (index, direction) => {
+    setSelected([]);
     setDraft(current => {
       const next = [...current.sequence];
       const target = index + direction;
@@ -91,7 +103,7 @@ export default function SmartPhotoshootDesigner({
 
   const save = async () => {
     if (!draft.label.trim() || !draft.sequence.length) return;
-    setSaving(true);
+    setSaving(true); setError('');
     try {
       const key = draft.key || `custom_${slug(draft.label) || "photoshoot"}_${Date.now()}`;
       await onSave?.({
@@ -101,6 +113,8 @@ export default function SmartPhotoshootDesigner({
         category: draft.category.trim() || "Custom",
         description: draft.description.trim(),
         sequence: draft.sequence.map(shot => ({
+          ...(Object.hasOwn(shot, "pose_prompt") ? { pose_prompt: shot.pose_prompt, pose_label: shot.pose_label || shot.pose_prompt } : {}),
+          ...(Object.hasOwn(shot, "camera_pose_angle") ? { camera_pose_angle: shot.camera_pose_angle, camera_angle: shot.camera_angle } : {}),
           title: shot.title.trim() || "Shot",
           pose_group: shot.pose_group || "",
           camera_match: shot.camera_match || "",
@@ -109,6 +123,8 @@ export default function SmartPhotoshootDesigner({
         })),
       });
       onClose?.();
+    } catch (err) {
+      setError(err?.response?.data?.detail || 'Could not save this shoot. Please try again.');
     } finally {
       setSaving(false);
     }
@@ -121,7 +137,7 @@ export default function SmartPhotoshootDesigner({
         <div className="sticky top-0 z-10 flex items-start justify-between gap-4 border-b hairline bg-zinc-950/95 p-4 backdrop-blur-xl">
           <div>
             <div className="text-sm font-semibold text-zinc-100">{isExistingCustom ? "Edit photoshoot preset" : "Create photoshoot preset"}</div>
-            <div className="mt-1 text-xs text-zinc-500">Duplicate a built-in shoot or build your own shot-by-shot sequence.</div>
+            <div className="mt-1 text-xs text-zinc-500">Select several shots to apply shared edits, then save the complete sequence.</div>
           </div>
           <button type="button" onClick={onClose} className="min-h-11 rounded-xl border hairline px-4 py-2 text-sm font-semibold text-zinc-300 md:min-h-0 md:rounded-lg md:px-3 md:py-1.5 md:text-xs">Close</button>
         </div>
@@ -155,15 +171,21 @@ export default function SmartPhotoshootDesigner({
             </button>
           </div>
 
+          <PhotoshootBulkEditor selected={selected} count={draft.sequence.length} onSelect={setSelected}
+            onApply={patch => setDraft(current => ({ ...current, sequence: current.sequence.map((shot, index) => selected.includes(index) ? patchPhotoshootShot(shot, patch) : shot) }))} />
           <div className="mt-3 space-y-2">
             {draft.sequence.map((shot, index) => (
               <div key={index} className="rounded-2xl border hairline bg-white/[0.02] p-3 md:rounded-xl">
                 <div className="flex items-center justify-between gap-2">
-                  <span className="font-mono text-xs text-cyan-300">{String(index + 1).padStart(2, "0")}</span>
+                  <label className="flex min-h-11 items-center gap-2 font-mono text-xs text-cyan-300">
+                    <input type="checkbox" aria-label={`Select shot ${index + 1}`} checked={selected.includes(index)}
+                      onChange={e => setSelected(current => e.target.checked ? [...current, index] : current.filter(item => item !== index))} />
+                    {String(index + 1).padStart(2, "0")}
+                  </label>
                   <div className="flex gap-1">
                     <button type="button" onClick={() => moveShot(index, -1)} disabled={index === 0} className="min-h-10 rounded-lg border hairline px-3 py-2 text-xs text-zinc-300 disabled:opacity-30 md:min-h-0 md:rounded md:px-2 md:py-1 md:text-[10px]">Up</button>
                     <button type="button" onClick={() => moveShot(index, 1)} disabled={index === draft.sequence.length - 1} className="min-h-10 rounded-lg border hairline px-3 py-2 text-xs text-zinc-300 disabled:opacity-30 md:min-h-0 md:rounded md:px-2 md:py-1 md:text-[10px]">Down</button>
-                    <button type="button" onClick={() => setDraft(current => ({ ...current, sequence: current.sequence.filter((_, i) => i !== index) }))}
+                    <button type="button" onClick={() => { setSelected([]); setDraft(current => ({ ...current, sequence: current.sequence.filter((_, i) => i !== index) })); }}
                       disabled={draft.sequence.length <= 1}
                       className="min-h-10 rounded-lg border border-red-500/30 px-3 py-2 text-xs text-red-300 disabled:opacity-30 md:min-h-0 md:rounded md:px-2 md:py-1 md:text-[10px]">Remove</button>
                   </div>
@@ -177,6 +199,7 @@ export default function SmartPhotoshootDesigner({
                   <label className="text-[10px] text-zinc-500">Pose family
                     <select value={shot.pose_group} onChange={e => updateShot(index, { pose_group: e.target.value })}
                       className="mt-1 min-h-11 w-full rounded-xl border hairline bg-elevated px-3 py-2 text-sm text-zinc-100 md:min-h-0 md:rounded-md md:px-2 md:text-xs">
+                      {shot.pose_group && !CUSTOM_POSE_GROUP_OPTIONS.some(([value]) => value === shot.pose_group) && <option value={shot.pose_group}>Current: {shot.pose_group}</option>}
                       {CUSTOM_POSE_GROUP_OPTIONS.map(([value, label]) => <option key={value || "any"} value={value}>{label}</option>)}
                     </select>
                   </label>
@@ -187,8 +210,11 @@ export default function SmartPhotoshootDesigner({
                     </select>
                   </label>
                   <label className="text-[10px] text-zinc-500">Camera
-                    <select value={shot.camera_match} onChange={e => updateShot(index, { camera_match: e.target.value })}
+                    {shot.camera_pose_angle && <span className="block text-cyan-200">Saved: {shot.camera_pose_angle} · {shot.camera_angle}</span>}
+                    <select value={Object.hasOwn(shot, "camera_pose_angle") ? "__saved__" : shot.camera_match} onChange={e => updateShot(index, { camera_match: e.target.value })}
                       className="mt-1 min-h-11 w-full rounded-xl border hairline bg-elevated px-3 py-2 text-sm text-zinc-100 md:min-h-0 md:rounded-md md:px-2 md:text-xs">
+                      {Object.hasOwn(shot, "camera_pose_angle") && <option value="__saved__">{shot.camera_pose_angle ? `Saved: ${shot.camera_pose_angle} · ${shot.camera_angle}` : "Keep character camera"}</option>}
+                      {shot.camera_match && !CUSTOM_CAMERA_OPTIONS.some(([value]) => value === shot.camera_match) && <option value={shot.camera_match}>Current: {shot.camera_match}</option>}
                       {CUSTOM_CAMERA_OPTIONS.map(([value, label]) => <option key={value || "any"} value={value}>{label}</option>)}
                     </select>
                   </label>
@@ -199,6 +225,13 @@ export default function SmartPhotoshootDesigner({
                     </select>
                   </label>
                 </div>
+                <label className="mt-3 block text-xs text-zinc-400">Exact pose prompt
+                  <textarea aria-label={`Exact pose prompt for shot ${index + 1}`} value={shot.pose_prompt || ''}
+                    placeholder="Use the pose family above, or enter an exact pose"
+                    onChange={e => updateShot(index, { pose_prompt: e.target.value, pose_label: e.target.value })}
+                    className="mt-1 min-h-16 w-full rounded-lg border hairline bg-elevated p-2 text-sm text-zinc-100" />
+                  {Object.hasOwn(shot, 'pose_prompt') && <button type="button" className="mt-1 min-h-11 text-cyan-200" onClick={() => updateShot(index, { pose_group: shot.pose_group })}>Use pose family instead</button>}
+                </label>
               </div>
             ))}
           </div>
@@ -206,7 +239,13 @@ export default function SmartPhotoshootDesigner({
 
         <div className="sticky bottom-0 z-10 flex items-center justify-between gap-3 border-t hairline bg-zinc-950/95 p-3 pb-[calc(.75rem+env(safe-area-inset-bottom,0px))] backdrop-blur-xl md:p-4">
           <div>
-            {isExistingCustom && <button type="button" onClick={() => onDelete?.(draft.key)}
+            {error && <p role="alert" className="text-xs text-red-300">{error}</p>}
+            {isExistingCustom && <button type="button" disabled={saving} onClick={async () => {
+              setSaving(true); setError('');
+              try { await onDelete?.(draft.key); onClose?.(); }
+              catch (err) { setError(err?.response?.data?.detail || 'Could not delete this shoot. Please try again.'); }
+              finally { setSaving(false); }
+            }}
               className="min-h-11 rounded-xl border border-red-500/30 px-3 py-2 text-xs font-semibold text-red-300 md:min-h-0 md:rounded-lg">Delete preset</button>}
           </div>
           <button type="button" onClick={save} disabled={saving || !draft.label.trim() || !draft.sequence.length}

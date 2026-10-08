@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
-import { photoshootCatalog, resolvePhotoshootPreset, SMART_VARIATION_STRENGTHS } from "@/lib/batchSmartPhotoshoot";
+import { Link } from "react-router-dom";
+import { photoshootPresetFromPlan, photoshootCatalog, resolvePhotoshootPreset, SMART_VARIATION_STRENGTHS } from "@/lib/batchSmartPhotoshoot";
 import SmartPhotoshootDesigner from "@/components/SmartPhotoshootDesigner";
 
 const MODES = [
@@ -43,6 +44,7 @@ export default function BatchVariationControl({
   const [designerOpen, setDesignerOpen] = useState(false);
   const [mobilePlanOpen, setMobilePlanOpen] = useState(true);
   const [designerSource, setDesignerSource] = useState(smartPreset);
+  const [planDraft, setPlanDraft] = useState(null);
   const catalog = photoshootCatalog(customPresets);
   const activePreset = resolvePhotoshootPreset(smartPreset, customPresets);
   const planSummary = useMemo(() => smartPlan.map(item => item.title).filter(Boolean).join(" · "), [smartPlan]);
@@ -96,11 +98,11 @@ export default function BatchVariationControl({
               <span className="ml-1">{activePreset.description}</span>
             </div>
             <div className="grid shrink-0 grid-cols-2 gap-2 sm:flex sm:gap-1">
-              <button type="button" onClick={() => { setDesignerSource("__blank__"); setDesignerOpen(true); }}
+              <button type="button" onClick={() => { setPlanDraft(null); setDesignerSource("__blank__"); setDesignerOpen(true); }}
                 className="min-h-11 rounded-lg border hairline px-3 py-2 text-xs font-semibold text-zinc-300 hover:bg-white/5 sm:min-h-0 sm:rounded-md sm:px-2 sm:py-1 sm:text-[10px]">
                 New
               </button>
-              <button type="button" onClick={() => { setDesignerSource(smartPreset); setDesignerOpen(true); }}
+              <button type="button" onClick={() => { setPlanDraft(null); setDesignerSource(smartPreset); setDesignerOpen(true); }}
                 className="min-h-11 rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-3 py-2 text-xs font-semibold text-cyan-200 sm:min-h-0 sm:rounded-md sm:px-2 sm:py-1 sm:text-[10px]">
                 {activePreset.custom ? "Edit" : "Customize"}
               </button>
@@ -148,6 +150,15 @@ export default function BatchVariationControl({
             </button>
           </div>
 
+          <div className="mt-2 flex flex-wrap gap-2">
+            <button type="button" disabled={!smartPlan.length || !onSavePreset}
+              onClick={() => { setPlanDraft(photoshootPresetFromPlan(smartPlan, activePreset.label)); setDesignerSource('__blank__'); setDesignerOpen(true); }}
+              className="min-h-11 rounded-lg border border-cyan-500/30 px-3 py-2 text-xs text-cyan-200 disabled:opacity-40">
+              Save plan to Library
+            </button>
+            <Link to="/#smart-photoshoot-library" className="min-h-11 rounded-lg border hairline px-3 py-2 text-xs text-zinc-300">Open shoot Library</Link>
+          </div>
+
           {!mobilePlanOpen && !!planSummary && (
             <div className="mt-2 truncate text-[11px] text-zinc-500 sm:hidden">{planSummary}</div>
           )}
@@ -191,6 +202,7 @@ export default function BatchVariationControl({
         open={designerOpen}
         onClose={() => setDesignerOpen(false)}
         sourcePreset={designerSource}
+        initialPreset={planDraft}
         customPresets={customPresets}
         onSave={async (preset) => {
           await onSavePreset?.(preset);

@@ -1,13 +1,26 @@
 import { mediaUrl } from '@/lib/media';
 
-export default function CharacterPreviewPanel({ preview, onUpdate, disabled, reason, width, height }) {
+export default function CharacterPreviewPanel({ preview, onUpdate, disabled, reason, width, height, seed, seedLocked = true, onSeedChange, onToggleSeedLock, onNewSeed, controlsDisabled }) {
   return <section className="pane overflow-hidden" aria-label="Character preview" data-testid="character-preview-panel">
     <div className="border-b hairline p-4">
       <div className="flex items-center justify-between gap-3">
         <h2 className="font-display text-lg font-bold">Character preview</h2>
         <span className="text-xs text-cyan-300">Test lab</span>
       </div>
-      <p className="mt-1 text-xs leading-relaxed text-zinc-400">Update after changing the character. Each preview uses your GPU and the same seed for comparison.</p>
+      <p className="mt-1 text-xs leading-relaxed text-zinc-400">Update after changing the character. Each preview uses your GPU. Lock the seed to compare character changes.</p>
+      {onSeedChange && <div className="mt-3 space-y-2">
+        <label className="block text-xs text-zinc-300">Seed
+          <input aria-label="Preview seed" type="number" min="0" max="2147483646" step="1" value={seed} disabled={controlsDisabled}
+            onChange={event => onSeedChange(event.target.value)} className="mt-1 min-h-11 w-full rounded-lg border hairline bg-elevated px-3 text-sm" />
+        </label>
+        <div className="flex flex-wrap items-center gap-3">
+          <label className="flex min-h-11 items-center gap-2 text-xs text-zinc-300">
+            <input aria-label="Lock preview seed" type="checkbox" checked={seedLocked} onChange={onToggleSeedLock} disabled={controlsDisabled} />Lock seed
+          </label>
+          <button type="button" onClick={onNewSeed} disabled={controlsDisabled} className="min-h-11 rounded-lg border hairline px-3 text-xs text-zinc-300 disabled:opacity-40">New seed</button>
+        </div>
+        <p className="text-[11px] text-zinc-500">{seedLocked ? 'Updates reuse this seed.' : 'Each preview update chooses a new seed. Capture reuses the displayed preview seed.'}</p>
+      </div>}
       <button type="button" onClick={onUpdate} disabled={disabled || preview.busy}
         className="mt-3 min-h-11 w-full rounded-xl bg-cyan-400 px-4 py-3 text-sm font-semibold text-black disabled:opacity-40">
         {preview.busy ? 'Preview in progress…' : 'Update Preview'}

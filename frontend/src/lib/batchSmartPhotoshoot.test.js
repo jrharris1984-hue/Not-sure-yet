@@ -4,6 +4,7 @@ import {
   buildSmartPhotoshootPlan,
   regenerateSmartPhotoshootPlan,
   photoshootCatalog,
+  photoshootPresetFromPlan,
   resolvePhotoshootPreset,
   smartPhotoshootVariation,
 } from "./batchSmartPhotoshoot";
@@ -257,4 +258,30 @@ test("kept redo and exhausted compatible choices retain the reviewed shot", () =
   const unlocked = [{ ...original[0], kept: false }];
   const next = regenerateSmartPhotoshootPlan({ plan: unlocked, subjects: [baseSubject(), baseSubject()], promptCatalog: { sections: [{ key: "shared_poses", fields: [{ key: "two_people", options: [{ value: "side by side", label: "Side by side", group: "Portrait" }] }] }] } });
   expect(next[0].pose).toBe(unlocked[0].pose);
+});
+
+
+test('saved planned shots retain exact choices across seeds and reach rendering', () => {
+  const config = { count: 6, subjects: [baseSubject()], options: { expression: true }, strength: 'balanced' };
+  const original = buildSmartPhotoshootPlan({ ...config, seed: 7 });
+  const saved = { ...photoshootPresetFromPlan(original, 'Editorial'), key: 'custom_saved' };
+  const restored = buildSmartPhotoshootPlan({ ...config, preset: saved.key, customPresets: [saved], seed: 99, strength: 'subtle' });
+  original.forEach((shot, index) => {
+    expect(restored[index].pose).toEqual(shot.pose);
+    expect(restored[index].camera).toMatchObject({ poseAngle: shot.camera.poseAngle, cameraAngle: shot.camera.cameraAngle });
+    expect(restored[index].framing).toBe(shot.framing);
+    expect(restored[index].expression).toBe(shot.expression);
+  });
+  const applied = smartPhotoshootVariation({ ...config, plan: restored, index: 0 }).subjects[0].dna;
+  expect(applied.pose.action).toBe(original[0].pose.value);
+  expect(applied.camera.angle).toBe(original[0].camera.cameraAngle);
+  expect(applied.face.expression).toBe(original[0].expression);
+});
+
+test('saved shots with disabled variation fields do not invent pose or camera choices', () => {
+  const saved = { ...photoshootPresetFromPlan([{ title: 'Unchanged', pose: null, camera: null, framing: null, expression: null }], 'Quiet'), key: 'custom_quiet' };
+  const restored = buildSmartPhotoshootPlan({ count: 1, preset: saved.key, customPresets: [saved] });
+  expect(restored[0].pose).toBeNull(); expect(restored[0].camera).toBeNull();
+  const original = [baseSubject()];
+  expect(smartPhotoshootVariation({ subjects: original, plan: restored }).subjects).toBe(original);
 });
