@@ -184,6 +184,32 @@ export const SMART_SHOOT_CATEGORIES = [
         ],
       },
       {
+        key: "fifties_pinup",
+        label: "1950s Pin-Up",
+        description: "Bright mid-century pin-up styling with playful poster poses, seated glamour and cheerful full-body coverage.",
+        sequence: [
+          shot("Poster hero", /portrait standing|portrait/i, "full body", /front|3\/4/i, "smile"),
+          shot("Waist-up charm", /portrait standing|portrait/i, "waist-up", /3\/4|eye-level/i, "smirk"),
+          shot("Seated pin-up", /portrait seated|seated/i, "thigh-up", /eye-level/i, "smile"),
+          shot("Playful lean", /relaxed leaning|candid|interaction/i, "full body", /3\/4/i, "laughing"),
+          shot("Profile poster", /portrait standing|angles/i, "full body", /profile/i, "smile"),
+          shot("Calendar finale", /portrait standing|portrait|composition/i, "full body", /front|low angle/i, "smirk"),
+        ],
+      },
+      {
+        key: "eighties_glamour",
+        label: "1980s Glamour",
+        description: "Bold retro glamour with stronger angles, confident posing and high-energy campaign-style coverage.",
+        sequence: [
+          shot("Power hero", /portrait standing|portrait/i, "full body", /low angle|front/i, "serious"),
+          shot("Studio close-up", /portrait standing|portrait seated|portrait/i, "waist-up", /3\/4/i, "smirk"),
+          shot("Power lean", /relaxed leaning|portrait/i, "thigh-up", /3\/4|low angle/i, "serious"),
+          shot("Seated glamour", /portrait seated|seated/i, "thigh-up", /eye-level/i, "sultry"),
+          shot("Profile campaign", /portrait standing|angles/i, "full body", /profile|high angle/i, "neutral"),
+          shot("Neon-era finale", /portrait standing|movement|portrait/i, "full body", /front|3\/4/i, "smile"),
+        ],
+      },
+      {
         key: "beauty",
         label: "Beauty Campaign",
         description: "Closer beauty-focused coverage with subtle pose and expression variation.",
