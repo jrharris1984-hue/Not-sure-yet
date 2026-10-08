@@ -7,6 +7,12 @@ const SMART_SHARED_GROUP = /portrait|interaction|movement|seated|angle|compositi
 const BLOCKED_SHARED_GROUP = /explicit|specialty|sex|fetish|kink|adult|nsfw/i;
 const normalize = value => String(value || "").replace(/\s+/g, " ").trim();
 
+export const SMART_VARIATION_STRENGTHS = [
+  ["subtle", "Subtle"],
+  ["balanced", "Balanced"],
+  ["bold", "Bold"],
+];
+
 const shot = (title, poseGroup, framing, camera, expression) => ({
   title, poseGroup, framing, camera, expression,
 });
@@ -123,7 +129,7 @@ export const SMART_SHOOT_CATEGORIES = [
   },
   {
     key: "glamour",
-    label: "Glamour",
+    label: "Glamour & Boudoir",
     presets: [
       {
         key: "glamour",
@@ -136,6 +142,71 @@ export const SMART_SHOOT_CATEGORIES = [
           shot("Seated", /portrait seated|seated/i, "thigh-up", /eye-level/i, "neutral"),
           shot("Low-angle", /portrait standing|portrait/i, "full body", /low angle/i, "serious"),
           shot("Finale", /portrait standing|portrait/i, "full body", /front|3\/4/i, "sultry"),
+        ],
+      },
+      {
+        key: "boudoir",
+        label: "Boudoir",
+        description: "Soft, intimate editorial coverage with elegant seated, reclining and close portrait direction.",
+        sequence: [
+          shot("Boudoir hero", /portrait standing|relaxed leaning|portrait/i, "full body", /3\/4|eye-level/i, "sultry"),
+          shot("Soft portrait", /portrait standing|portrait seated|portrait/i, "waist-up", /3\/4|front/i, "smirk"),
+          shot("Seated intimate", /portrait seated|seated/i, "thigh-up", /eye-level/i, "sultry"),
+          shot("Reclined mood", /relaxed leaning|portrait seated|portrait/i, "full body", /3\/4|high angle/i, "neutral"),
+          shot("Over-shoulder", /angles|portrait standing|portrait/i, "thigh-up", /over-shoulder|3\/4/i, "sultry"),
+          shot("Boudoir finale", /portrait standing|relaxed leaning|portrait/i, "full body", /front|3\/4/i, "smirk"),
+        ],
+      },
+      {
+        key: "pinup",
+        label: "Classic Pin-Up",
+        description: "Playful retro-inspired poses with confident full-body coverage and expressive portrait beats.",
+        sequence: [
+          shot("Pin-up hero", /portrait standing|portrait/i, "full body", /front|3\/4/i, "smile"),
+          shot("Playful quarter turn", /portrait standing|angles|portrait/i, "full body", /3\/4/i, "smirk"),
+          shot("Seated pin-up", /portrait seated|seated/i, "thigh-up", /eye-level/i, "smile"),
+          shot("Candid tease", /interaction|candid|relaxed leaning/i, "waist-up", /3\/4|eye-level/i, "laughing"),
+          shot("Profile pose", /portrait standing|angles/i, "full body", /profile/i, "smile"),
+          shot("Poster finale", /portrait standing|portrait|composition/i, "full body", /front|low angle/i, "smirk"),
+        ],
+      },
+      {
+        key: "old_hollywood",
+        label: "Old Hollywood",
+        description: "Elegant vintage glamour with dramatic portraits, poised seated shots and cinematic hero framing.",
+        sequence: [
+          shot("Hollywood hero", /portrait standing|portrait/i, "full body", /3\/4|low angle/i, "serious"),
+          shot("Close glamour", /portrait standing|portrait seated|portrait/i, "portrait", /3\/4|front/i, "neutral"),
+          shot("Poised seated", /portrait seated|seated/i, "thigh-up", /eye-level/i, "serious"),
+          shot("Profile light", /portrait standing|angles/i, "waist-up", /profile/i, "neutral"),
+          shot("High-drama alternate", /portrait standing|portrait/i, "full body", /high angle|3\/4/i, "serious"),
+          shot("Silver-screen finale", /portrait standing|portrait/i, "full body", /front|3\/4/i, "smile"),
+        ],
+      },
+      {
+        key: "fifties_pinup",
+        label: "1950s Pin-Up",
+        description: "Bright mid-century pin-up styling with playful poster poses, seated glamour and cheerful full-body coverage.",
+        sequence: [
+          shot("Poster hero", /portrait standing|portrait/i, "full body", /front|3\/4/i, "smile"),
+          shot("Waist-up charm", /portrait standing|portrait/i, "waist-up", /3\/4|eye-level/i, "smirk"),
+          shot("Seated pin-up", /portrait seated|seated/i, "thigh-up", /eye-level/i, "smile"),
+          shot("Playful lean", /relaxed leaning|candid|interaction/i, "full body", /3\/4/i, "laughing"),
+          shot("Profile poster", /portrait standing|angles/i, "full body", /profile/i, "smile"),
+          shot("Calendar finale", /portrait standing|portrait|composition/i, "full body", /front|low angle/i, "smirk"),
+        ],
+      },
+      {
+        key: "eighties_glamour",
+        label: "1980s Glamour",
+        description: "Bold retro glamour with stronger angles, confident posing and high-energy campaign-style coverage.",
+        sequence: [
+          shot("Power hero", /portrait standing|portrait/i, "full body", /low angle|front/i, "serious"),
+          shot("Studio close-up", /portrait standing|portrait seated|portrait/i, "waist-up", /3\/4/i, "smirk"),
+          shot("Power lean", /relaxed leaning|portrait/i, "thigh-up", /3\/4|low angle/i, "serious"),
+          shot("Seated glamour", /portrait seated|seated/i, "thigh-up", /eye-level/i, "sultry"),
+          shot("Profile campaign", /portrait standing|angles/i, "full body", /profile|high angle/i, "neutral"),
+          shot("Neon-era finale", /portrait standing|movement|portrait/i, "full body", /front|3\/4/i, "smile"),
         ],
       },
       {
@@ -378,9 +449,14 @@ function poseGroupsFor(count, promptCatalog) {
     : soloPoseGroups();
 }
 
-function choosePose(groups, shotDef, used, seed) {
+function choosePose(groups, shotDef, used, seed, strength = "balanced") {
   const matched = groups.filter(group => !shotDef?.poseGroup || shotDef.poseGroup.test(group.label || ""));
-  const pool = (matched.length ? matched : groups).flatMap(group => group.poses || [])
+  const source = strength === "bold"
+    ? groups
+    : matched.length
+      ? matched
+      : groups;
+  const pool = source.flatMap(group => group.poses || [])
     .map(pose => ({
       value: normalize(pose.prompt || pose.value),
       label: pose.label || pose.value,
@@ -390,9 +466,17 @@ function choosePose(groups, shotDef, used, seed) {
   return pool[Math.abs(Math.trunc(seed || 0)) % pool.length];
 }
 
-function chooseCamera(shotDef, used, seed) {
+function chooseCamera(shotDef, used, seed, strength = "balanced") {
+  const conservative = CAMERA_VARIATIONS.filter(item =>
+    item.cameraAngle === "eye-level" && ["front", "3/4", "profile"].includes(item.poseAngle)
+  );
   const matched = CAMERA_VARIATIONS.filter(item => !shotDef?.camera || shotDef.camera.test(item.label || ""));
-  const pool = (matched.length ? matched : CAMERA_VARIATIONS).filter(item => !used.has(item.label));
+  const source = strength === "subtle"
+    ? (matched.filter(item => conservative.includes(item)).length ? matched.filter(item => conservative.includes(item)) : conservative)
+    : strength === "bold"
+      ? CAMERA_VARIATIONS
+      : (matched.length ? matched : CAMERA_VARIATIONS);
+  const pool = source.filter(item => !used.has(item.label));
   if (!pool.length) return null;
   return pool[Math.abs(Math.trunc(seed || 0)) % pool.length];
 }
@@ -405,6 +489,7 @@ export function buildSmartPhotoshootPlan({
   seed = 0,
   options = {},
   customPresets = [],
+  strength = "balanced",
 } = {}) {
   const definition = resolvePhotoshootPreset(preset, customPresets);
   const groups = poseGroupsFor(subjects.length || 1, promptCatalog);
@@ -413,9 +498,9 @@ export function buildSmartPhotoshootPlan({
 
   return Array.from({ length: count }, (_, index) => {
     const shotDef = definition.sequence[index % definition.sequence.length];
-    const pose = options.pose === false ? null : choosePose(groups, shotDef, usedPoses, seed + index * 104729);
+    const pose = options.pose === false ? null : choosePose(groups, shotDef, usedPoses, seed + index * 104729, strength);
     if (pose) usedPoses.add(normalize(pose.value));
-    const camera = options.camera === false ? null : chooseCamera(shotDef, usedCameras, seed + index * 7919);
+    const camera = options.camera === false ? null : chooseCamera(shotDef, usedCameras, seed + index * 7919, strength);
     if (camera) usedCameras.add(camera.label);
 
     return {
@@ -423,7 +508,11 @@ export function buildSmartPhotoshootPlan({
       title: shotDef.title,
       pose,
       camera,
-      framing: options.framing === false ? null : shotDef.framing,
+      framing: options.framing === false
+        ? null
+        : strength === "subtle"
+          ? (subjects[0]?.dna?.pose?.distance || shotDef.framing)
+          : shotDef.framing,
       expression: options.expression === true ? shotDef.expression : null,
     };
   });
@@ -438,6 +527,7 @@ export function smartPhotoshootVariation({
   preset = "editorial",
   plan,
   customPresets = [],
+  strength = "balanced",
 } = {}) {
   if (!subjects.length) return { subjects, changed: false, plan: {} };
 
@@ -449,6 +539,7 @@ export function smartPhotoshootVariation({
     seed,
     options,
     customPresets,
+    strength,
   })[index];
 
   let nextSubjects = subjects;
