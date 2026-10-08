@@ -7,6 +7,12 @@ const SMART_SHARED_GROUP = /portrait|interaction|movement|seated|angle|compositi
 const BLOCKED_SHARED_GROUP = /explicit|specialty|sex|fetish|kink|adult|nsfw/i;
 const normalize = value => String(value || "").replace(/\s+/g, " ").trim();
 
+export const SMART_VARIATION_STRENGTHS = [
+  ["subtle", "Subtle"],
+  ["balanced", "Balanced"],
+  ["bold", "Bold"],
+];
+
 const shot = (title, poseGroup, framing, camera, expression) => ({
   title, poseGroup, framing, camera, expression,
 });
@@ -378,9 +384,14 @@ function poseGroupsFor(count, promptCatalog) {
     : soloPoseGroups();
 }
 
-function choosePose(groups, shotDef, used, seed) {
+function choosePose(groups, shotDef, used, seed, strength = "balanced") {
   const matched = groups.filter(group => !shotDef?.poseGroup || shotDef.poseGroup.test(group.label || ""));
-  const pool = (matched.length ? matched : groups).flatMap(group => group.poses || [])
+  const source = strength === "bold"
+    ? groups
+    : matched.length
+      ? matched
+      : groups;
+  const pool = source.flatMap(group => group.poses || [])
     .map(pose => ({
       value: normalize(pose.prompt || pose.value),
       label: pose.label || pose.value,
@@ -390,9 +401,17 @@ function choosePose(groups, shotDef, used, seed) {
   return pool[Math.abs(Math.trunc(seed || 0)) % pool.length];
 }
 
-function chooseCamera(shotDef, used, seed) {
+function chooseCamera(shotDef, used, seed, strength = "balanced") {
+  const conservative = CAMERA_VARIATIONS.filter(item =>
+    item.cameraAngle === "eye-level" && ["front", "3/4", "profile"].includes(item.poseAngle)
+  );
   const matched = CAMERA_VARIATIONS.filter(item => !shotDef?.camera || shotDef.camera.test(item.label || ""));
-  const pool = (matched.length ? matched : CAMERA_VARIATIONS).filter(item => !used.has(item.label));
+  const source = strength === "subtle"
+    ? (matched.filter(item => conservative.includes(item)).length ? matched.filter(item => conservative.includes(item)) : conservative)
+    : strength === "bold"
+      ? CAMERA_VARIATIONS
+      : (matched.length ? matched : CAMERA_VARIATIONS);
+  const pool = source.filter(item => !used.has(item.label));
   if (!pool.length) return null;
   return pool[Math.abs(Math.trunc(seed || 0)) % pool.length];
 }
@@ -405,6 +424,7 @@ export function buildSmartPhotoshootPlan({
   seed = 0,
   options = {},
   customPresets = [],
+  strength = "balanced",
 } = {}) {
   const definition = resolvePhotoshootPreset(preset, customPresets);
   const groups = poseGroupsFor(subjects.length || 1, promptCatalog);
@@ -413,9 +433,9 @@ export function buildSmartPhotoshootPlan({
 
   return Array.from({ length: count }, (_, index) => {
     const shotDef = definition.sequence[index % definition.sequence.length];
-    const pose = options.pose === false ? null : choosePose(groups, shotDef, usedPoses, seed + index * 104729);
+    const pose = options.pose === false ? null : choosePose(groups, shotDef, usedPoses, seed + index * 104729, strength);
     if (pose) usedPoses.add(normalize(pose.value));
-    const camera = options.camera === false ? null : chooseCamera(shotDef, usedCameras, seed + index * 7919);
+    const camera = options.camera === false ? null : chooseCamera(shotDef, usedCameras, seed + index * 7919, strength);
     if (camera) usedCameras.add(camera.label);
 
     return {
@@ -423,7 +443,11 @@ export function buildSmartPhotoshootPlan({
       title: shotDef.title,
       pose,
       camera,
-      framing: options.framing === false ? null : shotDef.framing,
+      framing: options.framing === false
+        ? null
+        : strength === "subtle"
+          ? (subjects[0]?.dna?.pose?.distance || shotDef.framing)
+          : shotDef.framing,
       expression: options.expression === true ? shotDef.expression : null,
     };
   });
@@ -438,6 +462,7 @@ export function smartPhotoshootVariation({
   preset = "editorial",
   plan,
   customPresets = [],
+  strength = "balanced",
 } = {}) {
   if (!subjects.length) return { subjects, changed: false, plan: {} };
 
@@ -449,6 +474,7 @@ export function smartPhotoshootVariation({
     seed,
     options,
     customPresets,
+    strength,
   })[index];
 
   let nextSubjects = subjects;
