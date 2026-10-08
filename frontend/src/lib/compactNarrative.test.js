@@ -95,3 +95,19 @@ test('a legacy duo recipe retains its requested count without explicit cast obje
   const dna=portrait();dna.scenario.cast_size='duo';
   expect(compileModelPrompts({dna,promptStyle:'qwen_rapid',promptFormat:'compact'}).positive).toContain('exactly 2 adult people');
 });
+
+
+test('compact physique wording uses the shared keyword resolver', () => {
+  const dna = portrait();
+  dna.physique.shoulders = 'custom_shoulders';
+  dna.physique.height = 'average';
+  const promptCatalog = { sections: [{ key: 'physique', title: 'Physique', fields: [{
+    key: 'shoulders', label: 'Shoulders', type: 'chips', options: [{
+      value: 'custom_shoulders', label: 'Broad shoulders', keywords: 'broad shoulders',
+      short: 'tall stature, broad shoulders',
+    }],
+  }] }] };
+  const result = compileModelPrompts({ dna, promptCatalog, promptStyle: 'qwen_rapid', promptFormat: 'compact' });
+  expect(result.positive).toContain('broad shoulders');
+  expect(result.positive).not.toContain('tall stature');
+});

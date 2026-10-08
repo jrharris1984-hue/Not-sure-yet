@@ -1,3 +1,4 @@
+import CharacterPreviewEntry from "@/components/CharacterPreviewEntry";
 import StudioLoading from "@/components/StudioLoading";
 import { Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -88,6 +89,8 @@ export default function Library() {
         </Link>
       </div>
 
+
+      <CharacterPreviewEntry />
 
       <div className="pane p-3 flex flex-col sm:flex-row gap-2">
         <div className="relative flex-1">

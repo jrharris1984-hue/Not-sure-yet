@@ -125,3 +125,23 @@ test('Scenario places character presets beside the person controls and other cat
   paint({ section: sections[0], presetsControl });
   expect([...container.querySelectorAll('button')].some(button => button.textContent === 'Character presets')).toBe(false);
 });
+
+
+test('bust card shows the active preset, slider or implant value without duplicate zero cards', () => {
+  const section = { key: 'physique', title: 'Physique', fields: [
+    { key: 'bust', label: 'Bust size', optionLabels: { custom_bust: 'Full bust' } },
+    { key: 'bust_scale', label: 'Bust size' },
+    { key: 'implant_volume', label: 'Implant visual size' },
+    { key: 'bust_shape', label: 'Bust shape' },
+  ] };
+  paint({ section, values: { bust: 'custom_bust', bust_scale: 0, implant_volume: 0 } });
+  expect(container.querySelectorAll('.sheet-field-card')).toHaveLength(2);
+  expect(container.textContent).toContain('Preset · Full bust');
+  click('Bust sizePreset · Full bust');
+  expect(container.querySelector('[role="dialog"]').textContent).toContain('Edit bust');
+  paint({ section, values: { bust: 'small', bust_scale: 85, implant_volume: 0 } });
+  expect(container.textContent).toContain('Size slider · 85');
+  paint({ section, values: { bust: 'small', bust_scale: 85, implant_volume: 1500 } });
+  expect(container.textContent).toContain('Implant size · 1500 cc');
+  expect(container.querySelectorAll('.sheet-field-card')).toHaveLength(2);
+});

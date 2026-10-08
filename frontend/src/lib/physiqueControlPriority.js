@@ -7,6 +7,16 @@ const sizes = {
 };
 
 export const SIZE_CONTROL_PAIRS = sizes;
+export function sizeControlSummary(key, physique = {}, labels = {}) {
+  const preset = Object.keys(sizes).find(name => name === key || sizes[name][0] === key || (name === 'bust' && key === 'implant_volume'));
+  if (!preset) return null;
+  const mode = sizeControlMode(preset, physique);
+  if (mode === 'implant') return `Implant size · ${physique.implant_volume} cc`;
+  if (mode === 'slider') return `Size slider · ${physique[sizes[preset][0]] ?? 0}`;
+  const selected = physique[preset];
+  return selected ? `Preset · ${labels[selected] || selected}` : 'Choose size';
+}
+
 export function sizeControlMode(preset, physique = {}) {
   if (preset === 'bust' && Number(physique.implant_volume) > 0) return 'implant';
   return Number(physique[sizes[preset]?.[0]]) > 0 ? 'slider' : physique[`${preset}_control_mode`] === 'slider' ? 'slider' : 'preset';

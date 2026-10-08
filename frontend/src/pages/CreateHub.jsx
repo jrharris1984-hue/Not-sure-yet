@@ -1,3 +1,4 @@
+import CharacterPreviewEntry from "@/components/CharacterPreviewEntry";
 import { ArrowRight, Film, Image as ImageIcon, Sparkles, UserRound } from "lucide-react";
 import { Link } from "react-router-dom";
 
@@ -48,5 +49,6 @@ export default function CreateHub() {
         <span className="mt-4 inline-flex items-center gap-1 text-xs font-semibold text-zinc-200">Start <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" /></span>
       </Link>)}
     </div>
+    <CharacterPreviewEntry />
   </div>;
 }
