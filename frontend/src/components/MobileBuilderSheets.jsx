@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { clamp, sheetSnap, motionDuration } from "@/lib/dragMotion";
 import { UserRound, ScanFace, Scissors, Shirt, PersonStanding, Users, Palette, Sun, Camera, MapPin, Sparkles, Layers, Footprints, Droplets } from "lucide-react";
 import { mediaUrl } from "@/lib/media";
+import { SIZE_CONTROL_PAIRS, sizeControlSummary } from "@/lib/physiqueControlPriority";
 
 const CATEGORY_ICONS = { identity: UserRound, physique: PersonStanding, face: ScanFace, hair: Scissors,
   wardrobe: Shirt, scenario: Users, skin: Palette, lighting: Sun, camera: Camera, scene: MapPin,
@@ -129,10 +130,16 @@ export default function MobileBuilderSheets({ sections, section, onSection, subj
               <span className="block text-sm font-semibold">Poses for {subjects.length} people</span>
               <span className="block text-xs text-zinc-400 mt-1">Shared poses & composition</span>
             </button>}
-            {section.fields.map(field => <button key={field.key} type="button" disabled={section.key === "wardrobe" && wardrobeFieldDisabled(field.key, values)} className={`sheet-field-card disabled:opacity-40 ${Array.isArray(values[field.key]) ? values[field.key].length ? "has-selection" : "" : values[field.key] ? "has-selection" : ""}`} onClick={() => open(field.key)}>
+            {section.fields.filter(field => section.key !== 'physique' || !Object.entries(SIZE_CONTROL_PAIRS).some(([preset, [slider]]) =>
+              (field.key === slider || (preset === 'bust' && field.key === 'implant_volume')) && section.fields.some(item => item.key === preset)))
+              .map(field => {
+                const sizeSummary = section.key === 'physique' ? sizeControlSummary(field.key, values, field.optionLabels) : null;
+                const hasSelection = sizeSummary ? sizeSummary !== 'Choose size'
+                  : Array.isArray(values[field.key]) ? !!values[field.key].length : !!values[field.key];
+                return <button key={field.key} type="button" disabled={section.key === "wardrobe" && wardrobeFieldDisabled(field.key, values)} className={`sheet-field-card disabled:opacity-40 ${hasSelection ? "has-selection" : ""}`} onClick={() => open(field.key)}>
               <span className="block text-sm font-semibold">{field.label}</span>
-              <span className="block text-xs text-zinc-400 mt-1 truncate">{section.key === "wardrobe" && field.key === "outfit_mode" ? wardrobeMode(values) === "full" ? "Full set" : "Custom" : section.key === "wardrobe" && wardrobeFieldDisabled(field.key, values) ? "Switch outfit mode to edit" : Array.isArray(values[field.key]) ? values[field.key].join(", ") || "Choose" : String(values[field.key] ?? "Choose") || "Choose"}</span>
-            </button>)}
+              <span className="block text-xs text-zinc-400 mt-1 truncate">{sizeSummary || (section.key === "wardrobe" && field.key === "outfit_mode" ? wardrobeMode(values) === "full" ? "Full set" : "Custom" : section.key === "wardrobe" && wardrobeFieldDisabled(field.key, values) ? "Switch outfit mode to edit" : Array.isArray(values[field.key]) ? values[field.key].join(", ") || "Choose" : String(values[field.key] ?? "Choose") || "Choose")}</span>
+            </button>; })}
           </div>
         </div>
       </div>

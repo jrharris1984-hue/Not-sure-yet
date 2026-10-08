@@ -1,4 +1,4 @@
-import { physiqueControlStatus, selectSizeControl, sizeControlMode } from "./physiqueControlPriority";
+import { physiqueControlStatus, selectSizeControl, sizeControlMode, sizeControlSummary } from "./physiqueControlPriority";
 import { compileModelPrompts } from "./modelPromptCompilers";
 import { DEFAULT_DNA } from "./dna";
 
@@ -40,4 +40,13 @@ test('bust mode switches deactivate both competing size sources without mutating
   const preset = selectSizeControl('bust', 'preset', implant);
   expect(preset.bust_scale).toBe(0); expect(preset.implant_volume).toBe(0); expect(preset.bust).toBe('small');
   expect(saved.implant_volume).toBe(1500);
+});
+
+
+test.each(['bust', 'butt', 'hips', 'thighs', 'waist'])('%s summary shows its active size source', preset => {
+  const values = selectSizeControl(preset, 'preset', { [preset]: 'large' });
+  expect(sizeControlSummary(preset, values)).toBe('Preset · large');
+  const sliderValues = selectSizeControl(preset, 'slider', values);
+  expect(sizeControlSummary(preset, sliderValues)).toBe('Size slider · 50');
+  expect(sizeControlSummary(preset, {})).toBe('Choose size');
 });
