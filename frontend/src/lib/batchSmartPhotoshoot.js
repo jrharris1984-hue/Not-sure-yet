@@ -129,7 +129,7 @@ export const SMART_SHOOT_CATEGORIES = [
   },
   {
     key: "glamour",
-    label: "Glamour",
+    label: "Glamour & Boudoir",
     presets: [
       {
         key: "glamour",
@@ -142,6 +142,45 @@ export const SMART_SHOOT_CATEGORIES = [
           shot("Seated", /portrait seated|seated/i, "thigh-up", /eye-level/i, "neutral"),
           shot("Low-angle", /portrait standing|portrait/i, "full body", /low angle/i, "serious"),
           shot("Finale", /portrait standing|portrait/i, "full body", /front|3\/4/i, "sultry"),
+        ],
+      },
+      {
+        key: "boudoir",
+        label: "Boudoir",
+        description: "Soft, intimate editorial coverage with elegant seated, reclining and close portrait direction.",
+        sequence: [
+          shot("Boudoir hero", /portrait standing|relaxed leaning|portrait/i, "full body", /3\/4|eye-level/i, "sultry"),
+          shot("Soft portrait", /portrait standing|portrait seated|portrait/i, "waist-up", /3\/4|front/i, "smirk"),
+          shot("Seated intimate", /portrait seated|seated/i, "thigh-up", /eye-level/i, "sultry"),
+          shot("Reclined mood", /relaxed leaning|portrait seated|portrait/i, "full body", /3\/4|high angle/i, "neutral"),
+          shot("Over-shoulder", /angles|portrait standing|portrait/i, "thigh-up", /over-shoulder|3\/4/i, "sultry"),
+          shot("Boudoir finale", /portrait standing|relaxed leaning|portrait/i, "full body", /front|3\/4/i, "smirk"),
+        ],
+      },
+      {
+        key: "pinup",
+        label: "Classic Pin-Up",
+        description: "Playful retro-inspired poses with confident full-body coverage and expressive portrait beats.",
+        sequence: [
+          shot("Pin-up hero", /portrait standing|portrait/i, "full body", /front|3\/4/i, "smile"),
+          shot("Playful quarter turn", /portrait standing|angles|portrait/i, "full body", /3\/4/i, "smirk"),
+          shot("Seated pin-up", /portrait seated|seated/i, "thigh-up", /eye-level/i, "smile"),
+          shot("Candid tease", /interaction|candid|relaxed leaning/i, "waist-up", /3\/4|eye-level/i, "laughing"),
+          shot("Profile pose", /portrait standing|angles/i, "full body", /profile/i, "smile"),
+          shot("Poster finale", /portrait standing|portrait|composition/i, "full body", /front|low angle/i, "smirk"),
+        ],
+      },
+      {
+        key: "old_hollywood",
+        label: "Old Hollywood",
+        description: "Elegant vintage glamour with dramatic portraits, poised seated shots and cinematic hero framing.",
+        sequence: [
+          shot("Hollywood hero", /portrait standing|portrait/i, "full body", /3\/4|low angle/i, "serious"),
+          shot("Close glamour", /portrait standing|portrait seated|portrait/i, "portrait", /3\/4|front/i, "neutral"),
+          shot("Poised seated", /portrait seated|seated/i, "thigh-up", /eye-level/i, "serious"),
+          shot("Profile light", /portrait standing|angles/i, "waist-up", /profile/i, "neutral"),
+          shot("High-drama alternate", /portrait standing|portrait/i, "full body", /high angle|3\/4/i, "serious"),
+          shot("Silver-screen finale", /portrait standing|portrait/i, "full body", /front|3\/4/i, "smile"),
         ],
       },
       {
