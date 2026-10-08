@@ -2,6 +2,7 @@ import {
   SMART_SHOOT_CATEGORIES,
   SMART_PHOTOSHOOT_PRESETS,
   buildSmartPhotoshootPlan,
+  regenerateSmartPhotoshootPlan,
   photoshootCatalog,
   resolvePhotoshootPreset,
   smartPhotoshootVariation,
@@ -26,7 +27,7 @@ test("shoot styles are organized into separate categories", () => {
     "Portrait",
     "Fashion & Editorial",
     "Lifestyle",
-    "Glamour",
+    "Glamour & Boudoir",
     "Cinematic",
     "Professional",
     "Fitness & Movement",
@@ -221,4 +222,39 @@ test("bold strength can draw beyond a shot's preferred pose family", () => {
   expect(balanced[0].pose).toBeTruthy();
   expect(bold[0].pose).toBeTruthy();
   expect(bold[0].camera).toBeTruthy();
+});
+
+
+test("new plans preserve kept shots and avoid their pose/camera choices", () => {
+  const config = { count: 6, subjects: [baseSubject()], preset: "editorial", strength: "bold", options: { expression: true } };
+  const original = buildSmartPhotoshootPlan({ ...config, seed: 1 });
+  original[0] = { ...original[0], kept: true };
+  const next = regenerateSmartPhotoshootPlan({ ...config, plan: original, seed: 2 });
+  expect(next[0]).toBe(original[0]);
+  expect(next.map(shot => shot.title)).toEqual(original.map(shot => shot.title));
+  expect(next.some((shot, index) => index > 0 && shot.pose?.value !== original[index].pose?.value)).toBe(true);
+  next.slice(1).forEach(shot => {
+    if (shot.pose) expect(shot.pose.value).not.toBe(next[0].pose.value);
+    if (shot.camera) expect(shot.camera.label).not.toBe(next[0].camera.label);
+  });
+});
+
+test("redo changes one shot only and the render variation applies that reviewed shot", () => {
+  const config = { count: 6, subjects: [baseSubject()], preset: "editorial", strength: "bold", options: {} };
+  const original = buildSmartPhotoshootPlan({ ...config, seed: 1 });
+  const next = regenerateSmartPhotoshootPlan({ ...config, plan: original, seed: 9, index: 2 });
+  original.forEach((shot, index) => { if (index !== 2) expect(next[index]).toBe(shot); });
+  expect(next[2].pose.value).not.toBe(original[2].pose.value);
+  const applied = smartPhotoshootVariation({ ...config, plan: next, index: 2 });
+  expect(applied.subjects[0].dna.pose.action).toBe(next[2].pose.value);
+  expect(applied.subjects[0].dna.wardrobe).toEqual(config.subjects[0].dna.wardrobe);
+  expect(applied.subjects[0].dna.scene).toEqual(config.subjects[0].dna.scene);
+});
+
+test("kept redo and exhausted compatible choices retain the reviewed shot", () => {
+  const original = [{ index: 0, title: "Hero", kept: true, pose: { value: "side by side", label: "Side by side" } }];
+  expect(regenerateSmartPhotoshootPlan({ plan: original, index: 0 })[0]).toBe(original[0]);
+  const unlocked = [{ ...original[0], kept: false }];
+  const next = regenerateSmartPhotoshootPlan({ plan: unlocked, subjects: [baseSubject(), baseSubject()], promptCatalog: { sections: [{ key: "shared_poses", fields: [{ key: "two_people", options: [{ value: "side by side", label: "Side by side", group: "Portrait" }] }] }] } });
+  expect(next[0].pose).toBe(unlocked[0].pose);
 });
