@@ -180,6 +180,16 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
     openMobileStudioStep, moveMobileStudioStep, changeMobileStudioMode,
   } = useCreateShellState({ activeSection, studioSteps, nav, sectionUrl });
 
+  const openMobileAdvancedStudio = (group = "overview") => {
+    setMobileStudioMode("advanced");
+    setMobileStudioStep("create");
+    if (sheetViewport) {
+      setMobileToolsGroup(group);
+      setMobileSheets(false);
+    }
+    window.requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "auto" }));
+  };
+
   const {
     editorHydrated, setEditorHydrated, mediaImportSummary, setMediaImportSummary,
     name, setName, subjects, setSubjects, activeSubjectId, setActiveSubjectId,
@@ -2685,6 +2695,26 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
             onCount={setRenderCount} countLocked={poseAssistEnabled && !isVariationWorkflow}
             settings={renderSettings} onSettings={setChromaSettings} family={activeRecipeFamily}
             fixedSampling={isKrea2 || isKrea2Aio || activeCompiler === "flux2_klein"} busy={dispatching} />
+          {activeRecipeFamily === "image" && renderCount > 1 && (
+            <div className="rounded-xl border hairline bg-black/15 p-3" data-testid="mobile-generation-batch-variety">
+              <div className="mb-2 text-xs font-semibold text-zinc-200">Batch variety</div>
+              <BatchVariationControl
+              value={batchSeedMode}
+              onChange={setBatchSeedMode}
+              smartOptions={smartBatchOptions}
+              onSmartOptionsChange={setSmartBatchOptions}
+              smartPreset={smartBatchPreset}
+              onSmartPresetChange={setSmartBatchPreset}
+              smartPlan={smartPhotoshootPlan}
+              onRegeneratePlan={() => setSmartPlanSeed(seed => seed + 1)}
+              smartStrength={smartBatchStrength}
+              onSmartStrengthChange={setSmartBatchStrength}
+              customPresets={customPhotoshootPresets}
+              onSavePreset={saveCustomPhotoshootPreset}
+              onDeletePreset={deleteCustomPhotoshootPreset}
+            />
+            </div>
+          )}
           <button type="button" className="w-full rounded-xl bg-emerald-400 text-black py-3 font-bold disabled:opacity-40"
             onClick={doDispatch} disabled={dispatching || !workflowId || mobileCreateIssues.length > 0}>{dispatching ? "Queuing…" : "Generate"}</button>
           {mobileCreateIssues.length > 0 && <p className="text-xs text-amber-200">{mobileCreateIssues.join(" ")}</p>}
@@ -2722,12 +2752,32 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
           countLocked={poseAssistEnabled && !isVariationWorkflow}
           settings={renderSettings} onSettings={setChromaSettings}
           fixedSampling={isKrea2 || isKrea2Aio || activeCompiler === "flux2_klein"} busy={dispatching} />
+          {activeRecipeFamily === "image" && renderCount > 1 && (
+            <section className="pane p-3 mt-3 space-y-2" data-testid="mobile-sheet-batch-variety">
+              <div className="text-xs font-semibold text-zinc-200">Batch variety</div>
+              <BatchVariationControl
+              value={batchSeedMode}
+              onChange={setBatchSeedMode}
+              smartOptions={smartBatchOptions}
+              onSmartOptionsChange={setSmartBatchOptions}
+              smartPreset={smartBatchPreset}
+              onSmartPresetChange={setSmartBatchPreset}
+              smartPlan={smartPhotoshootPlan}
+              onRegeneratePlan={() => setSmartPlanSeed(seed => seed + 1)}
+              smartStrength={smartBatchStrength}
+              onSmartStrengthChange={setSmartBatchStrength}
+              customPresets={customPhotoshootPresets}
+              onSavePreset={saveCustomPhotoshootPreset}
+              onDeletePreset={deleteCustomPhotoshootPreset}
+            />
+            </section>
+          )}
           {activeRecipeFamily === "image" && !isVariationWorkflow && <section className="pane p-3 mt-3 space-y-3" aria-label="Prompt compiler">
             <h3 className="section-label">Prompt compiler</h3>
             <WebPromptResearchOptions disabled={improvingPrompt} />
             <PromptFormatControl value={promptFormat} onChange={changePromptFormat} meta={promptFormatMeta} status={settings?.ai_provider === 'ollama' && promptFormat === 'ollama' ? ollamaCompiled.reason : ''} />
           </section>}</>}
-        onTools={() => { setMobileToolsGroup("overview"); setMobileSheets(false); setMobileStudioMode("advanced"); setMobileStudioStep("create"); window.scrollTo({ top: 0, behavior: "auto" }); }}
+        onTools={() => openMobileAdvancedStudio("overview")}
       /> : <button data-mobile-tools="none" type="button" className="md:hidden chip" onClick={() => setMobileSheets(true)}>Back to bottom sheets</button>)}
       {galleryRecipeMode === "current" && (
         <div data-mobile-tools="none" className="pane border border-cyan-500/30 bg-cyan-500/[0.06] px-3 py-2.5 text-xs text-cyan-100" data-testid="current-compiler-rebuild-banner">
@@ -3032,7 +3082,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
             summaries={mobileCreateSummaries}
             issues={mobileCreateIssues}
             mode={mobileStudioMode}
-            onRequestAdvanced={() => setMobileStudioMode("advanced")}
+            onRequestAdvanced={() => openMobileAdvancedStudio("overview")}
           /></div>
           {activeRecipeFamily === "image" && !isVariationWorkflow && <section data-mobile-tools="none" className="md:hidden pane p-3 space-y-3" aria-label="Prompt compiler">
             <h3 className="section-label">Prompt compiler</h3>
