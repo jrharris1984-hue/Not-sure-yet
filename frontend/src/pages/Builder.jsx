@@ -43,7 +43,8 @@ import { compileModelPrompts, resolvePromptCompiler } from "@/lib/modelPromptCom
 import { batchSeed } from "@/lib/batchSeeds";
 import { batchPoseVariation } from "@/lib/batchPoseVariation";
 import { batchCameraVariation } from "@/lib/batchCameraVariation";
-import { buildSmartPhotoshootPlan, smartPhotoshootVariation } from "@/lib/batchSmartPhotoshoot";
+import { smartPhotoshootVariation } from "@/lib/batchSmartPhotoshoot";
+import useSmartPhotoshootPlan from "@/hooks/useSmartPhotoshootPlan";
 import BatchVariationControl from "@/components/BatchVariationControl";
 import { resolveReferenceNotes, translatePlainLanguage } from "@/lib/plainLanguagePrompt";
 import { analyzePromptQuality } from "@/lib/promptQuality";
@@ -154,7 +155,6 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
   });
   const [smartBatchPreset, setSmartBatchPreset] = useState("editorial");
   const [smartBatchStrength, setSmartBatchStrength] = useState("balanced");
-  const [smartPlanSeed, setSmartPlanSeed] = useState(1);
   const activeIdx = Math.max(0, SECTIONS.findIndex((s) => s.key === sectionParam));
   const activeSection = SECTIONS[activeIdx].key;
   const basePath = isNew ? "/character/new" : `/character/${id}`;
@@ -301,7 +301,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
     refetchInterval: kreaStatusEnabled ? 15000 : false,
   });
   const { data: settings } = useQuery({ queryKey: ["settings"], queryFn: endpoints.settings });
-  const customPhotoshootPresets = settings?.custom_photoshoot_presets || [];
+  const customPhotoshootPresets = useMemo(() => settings?.custom_photoshoot_presets || [], [settings?.custom_photoshoot_presets]);
 
   const saveCustomPhotoshootPreset = async (preset) => {
     const next = [
@@ -494,18 +494,16 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
   const isLtxVideo = promptStyle === "ltx_t2v";
   const isKrea2 = activeCompiler === "krea2" && !isKrea2Aio;
   const activeRecipeFamily = recipeFamily(activeCompiler);
-  const smartPhotoshootPlan = useMemo(() => batchSeedMode === "smart" && renderCount > 1
-    ? buildSmartPhotoshootPlan({
-        count: renderCount,
-        subjects,
-        promptCatalog,
-        preset: smartBatchPreset,
-        seed: smartPlanSeed,
-        options: smartBatchOptions,
-        customPresets: customPhotoshootPresets,
-        strength: smartBatchStrength,
-      })
-    : [], [batchSeedMode, renderCount, subjects, promptCatalog, smartBatchPreset, smartBatchStrength, smartPlanSeed, smartBatchOptions, customPhotoshootPresets]);
+  const { plan: smartPhotoshootPlan, toggleKeep: toggleKeepSmartShot, regenerate: regenerateSmartPlan } = useSmartPhotoshootPlan({
+    enabled: batchSeedMode === "smart" && renderCount > 1,
+    count: renderCount,
+    subjects,
+    promptCatalog,
+    preset: smartBatchPreset,
+    options: smartBatchOptions,
+    customPresets: customPhotoshootPresets,
+    strength: smartBatchStrength,
+  });
   const renderSettings = isKrea2Aio
     ? { ...chromaSettings, steps: 12, cfg: 1, sampler: "euler_ancestral", scheduler: "beta" }
     : isKrea2
@@ -1545,7 +1543,6 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
               subjects,
               promptCatalog,
               index: imageIndex,
-              seed: smartPlanSeed,
               preset: smartBatchPreset,
               plan: smartPhotoshootPlan,
               options: smartBatchOptions,
@@ -2706,7 +2703,9 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
               smartPreset={smartBatchPreset}
               onSmartPresetChange={setSmartBatchPreset}
               smartPlan={smartPhotoshootPlan}
-              onRegeneratePlan={() => setSmartPlanSeed(seed => seed + 1)}
+              onRegeneratePlan={() => regenerateSmartPlan()}
+              onToggleKeepShot={toggleKeepSmartShot}
+              onRegenerateShot={regenerateSmartPlan}
               smartStrength={smartBatchStrength}
               onSmartStrengthChange={setSmartBatchStrength}
               customPresets={customPhotoshootPresets}
@@ -2763,7 +2762,9 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
               smartPreset={smartBatchPreset}
               onSmartPresetChange={setSmartBatchPreset}
               smartPlan={smartPhotoshootPlan}
-              onRegeneratePlan={() => setSmartPlanSeed(seed => seed + 1)}
+              onRegeneratePlan={() => regenerateSmartPlan()}
+              onToggleKeepShot={toggleKeepSmartShot}
+              onRegenerateShot={regenerateSmartPlan}
               smartStrength={smartBatchStrength}
               onSmartStrengthChange={setSmartBatchStrength}
               customPresets={customPhotoshootPresets}
@@ -2895,7 +2896,9 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
               smartPreset={smartBatchPreset}
               onSmartPresetChange={setSmartBatchPreset}
               smartPlan={smartPhotoshootPlan}
-              onRegeneratePlan={() => setSmartPlanSeed(seed => seed + 1)}
+              onRegeneratePlan={() => regenerateSmartPlan()}
+              onToggleKeepShot={toggleKeepSmartShot}
+              onRegenerateShot={regenerateSmartPlan}
               smartStrength={smartBatchStrength}
               onSmartStrengthChange={setSmartBatchStrength}
               customPresets={customPhotoshootPresets}
@@ -3099,7 +3102,9 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
               smartPreset={smartBatchPreset}
               onSmartPresetChange={setSmartBatchPreset}
               smartPlan={smartPhotoshootPlan}
-              onRegeneratePlan={() => setSmartPlanSeed(seed => seed + 1)}
+              onRegeneratePlan={() => regenerateSmartPlan()}
+              onToggleKeepShot={toggleKeepSmartShot}
+              onRegenerateShot={regenerateSmartPlan}
               smartStrength={smartBatchStrength}
               onSmartStrengthChange={setSmartBatchStrength}
               customPresets={customPhotoshootPresets}
