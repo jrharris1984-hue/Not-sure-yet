@@ -2685,6 +2685,26 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
             onCount={setRenderCount} countLocked={poseAssistEnabled && !isVariationWorkflow}
             settings={renderSettings} onSettings={setChromaSettings} family={activeRecipeFamily}
             fixedSampling={isKrea2 || isKrea2Aio || activeCompiler === "flux2_klein"} busy={dispatching} />
+          {activeRecipeFamily === "image" && renderCount > 1 && (
+            <div className="rounded-xl border hairline bg-black/15 p-3" data-testid="mobile-generation-batch-variety">
+              <div className="mb-2 text-xs font-semibold text-zinc-200">Batch variety</div>
+              <BatchVariationControl
+              value={batchSeedMode}
+              onChange={setBatchSeedMode}
+              smartOptions={smartBatchOptions}
+              onSmartOptionsChange={setSmartBatchOptions}
+              smartPreset={smartBatchPreset}
+              onSmartPresetChange={setSmartBatchPreset}
+              smartPlan={smartPhotoshootPlan}
+              onRegeneratePlan={() => setSmartPlanSeed(seed => seed + 1)}
+              smartStrength={smartBatchStrength}
+              onSmartStrengthChange={setSmartBatchStrength}
+              customPresets={customPhotoshootPresets}
+              onSavePreset={saveCustomPhotoshootPreset}
+              onDeletePreset={deleteCustomPhotoshootPreset}
+            />
+            </div>
+          )}
           <button type="button" className="w-full rounded-xl bg-emerald-400 text-black py-3 font-bold disabled:opacity-40"
             onClick={doDispatch} disabled={dispatching || !workflowId || mobileCreateIssues.length > 0}>{dispatching ? "Queuing…" : "Generate"}</button>
           {mobileCreateIssues.length > 0 && <p className="text-xs text-amber-200">{mobileCreateIssues.join(" ")}</p>}
@@ -2722,6 +2742,26 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
           countLocked={poseAssistEnabled && !isVariationWorkflow}
           settings={renderSettings} onSettings={setChromaSettings}
           fixedSampling={isKrea2 || isKrea2Aio || activeCompiler === "flux2_klein"} busy={dispatching} />
+          {activeRecipeFamily === "image" && renderCount > 1 && (
+            <section className="pane p-3 mt-3 space-y-2" data-testid="mobile-sheet-batch-variety">
+              <div className="text-xs font-semibold text-zinc-200">Batch variety</div>
+              <BatchVariationControl
+              value={batchSeedMode}
+              onChange={setBatchSeedMode}
+              smartOptions={smartBatchOptions}
+              onSmartOptionsChange={setSmartBatchOptions}
+              smartPreset={smartBatchPreset}
+              onSmartPresetChange={setSmartBatchPreset}
+              smartPlan={smartPhotoshootPlan}
+              onRegeneratePlan={() => setSmartPlanSeed(seed => seed + 1)}
+              smartStrength={smartBatchStrength}
+              onSmartStrengthChange={setSmartBatchStrength}
+              customPresets={customPhotoshootPresets}
+              onSavePreset={saveCustomPhotoshootPreset}
+              onDeletePreset={deleteCustomPhotoshootPreset}
+            />
+            </section>
+          )}
           {activeRecipeFamily === "image" && !isVariationWorkflow && <section className="pane p-3 mt-3 space-y-3" aria-label="Prompt compiler">
             <h3 className="section-label">Prompt compiler</h3>
             <WebPromptResearchOptions disabled={improvingPrompt} />
