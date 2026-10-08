@@ -106,7 +106,7 @@ export default function DnaSection({
           </div>
         </button>
         <div className="flex items-center gap-1">
-          <button
+          {onSuggest && <button
             type="button"
             title="AI suggest"
             onClick={onSuggest}
@@ -114,7 +114,7 @@ export default function DnaSection({
             className={`${simpleMode ? "hidden md:grid" : "grid"} h-8 w-8 sm:h-9 sm:w-9 place-items-center rounded-lg border hairline text-amber-300 hover:bg-amber-500/10`}
           >
             <Wand2 className="h-4 w-4" />
-          </button>
+          </button>}
           <button
             type="button"
             title="Randomize section"
