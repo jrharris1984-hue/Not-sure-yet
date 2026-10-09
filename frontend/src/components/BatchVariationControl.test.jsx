@@ -6,6 +6,43 @@ jest.mock('react-router-dom', () => ({ Link: ({ to, children, ...rest }) => <a h
 
 jest.mock('@/lib/media', () => ({ mediaUrl: url => url }));
 
+test('clicking a completed thumbnail opens a viewer without dismissing the desktop director', () => {
+  global.IS_REACT_ACT_ENVIRONMENT = true;
+  const container = document.createElement('div'); document.body.appendChild(container); const root = createRoot(container);
+  const shootRun = { label: 'Editorial', shots: [{ title: 'Hero' }], requests: [{ id: 'r', status: 'done', output_files: ['hero.png'] }], queuing: false };
+  act(() => root.render(<BatchVariationControl {...props} compact shootRun={shootRun} />));
+  act(() => container.querySelector('[aria-label="View photoshoot shot 1"]').click());
+  const dialog = document.querySelector('[data-smart-shoot-viewer]'); expect(dialog).toBeTruthy();
+  act(() => dialog.dispatchEvent(new Event('pointerdown', { bubbles: true })));
+  expect(container.querySelector('[data-testid="smart-photoshoot-options"]')).toBeTruthy();
+  act(() => dialog.querySelector('button').click());
+  expect(document.querySelector('[data-smart-shoot-viewer]')).toBeNull();
+  expect(container.querySelector('[data-testid="smart-photoshoot-options"]')).toBeTruthy();
+  act(() => root.unmount()); container.remove();
+});
+
+test.each([false, true])('director closes and reopens without changing the selected shoot (compact=%s)', compact => {
+  global.IS_REACT_ACT_ENVIRONMENT = true;
+  const container = document.createElement('div'); document.body.appendChild(container);
+  const root = createRoot(container); const onChange = jest.fn(); const onSmartPresetChange = jest.fn();
+  act(() => root.render(<BatchVariationControl {...props} compact={compact} onChange={onChange} onSmartPresetChange={onSmartPresetChange} />));
+  act(() => container.querySelector('[aria-label="Close Smart Photoshoot director"]').click());
+  expect(container.querySelector('[data-testid="smart-photoshoot-options"]')).toBeNull();
+  expect(container.querySelector('[aria-label="Batch variety"]').value).toBe('smart');
+  const reopen = [...container.querySelectorAll('button')].find(button => button.textContent.startsWith('Open director'));
+  expect(document.activeElement).toBe(reopen);
+  act(() => reopen.click());
+  expect(container.querySelector('[aria-label="Smart photoshoot style"]').value).toBe('editorial');
+  const panel = container.querySelector('[data-testid="smart-photoshoot-options"]');
+  act(() => panel.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })));
+  expect(container.querySelector('[data-testid="smart-photoshoot-options"]')).toBeNull();
+  act(() => reopen.click());
+  act(() => document.body.dispatchEvent(new Event('pointerdown', { bubbles: true })));
+  expect(!!container.querySelector('[data-testid="smart-photoshoot-options"]')).toBe(!compact);
+  expect(onChange).not.toHaveBeenCalled(); expect(onSmartPresetChange).not.toHaveBeenCalled();
+  act(() => root.unmount()); container.remove();
+});
+
 const props = {
   value: "smart",
   onChange: jest.fn(),
@@ -60,7 +97,7 @@ test("mobile Smart Photoshoot keeps primary controls and planned shots accessibl
   expect(container.textContent).toContain("Hero");
   expect(container.textContent).toContain("Portrait");
 
-  const toggle = container.querySelector('[aria-expanded="true"]');
+  const toggle = [...container.querySelectorAll('button')].find(button => button.textContent.includes('planned shots'));
   expect(toggle).toBeTruthy();
   act(() => toggle.click());
   expect(toggle.getAttribute("aria-expanded")).toBe("false");

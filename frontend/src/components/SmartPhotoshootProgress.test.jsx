@@ -22,6 +22,10 @@ test('queue feedback becomes live progress, keeps shot association, and opens co
   expect(container.querySelector('progress').value).toBe(1);
   act(() => container.querySelector('[aria-label="View photoshoot shot 1"]').click());
   expect(onSelectRender).toHaveBeenCalledWith(completed);
+  expect(document.querySelector('[data-testid="smart-shoot-full-image"]').getAttribute('src')).toBe('hero.png');
+  const dialog = document.querySelector('[data-smart-shoot-viewer]');
+  act(() => dialog.querySelector('button').click());
+  expect(document.querySelector('[data-testid="smart-shoot-full-image"]')).toBeNull();
   expect(photoshootRunPending(submitted, renders)).toBe(true);
   renders[1] = { id: 'b', status: 'done' };
   act(() => root.render(<SmartPhotoshootProgress run={submitted} renders={renders} />));
