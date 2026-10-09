@@ -3,6 +3,11 @@
 Adult XXX character generator that dispatches to your local ComfyUI.
 FastAPI + React + MongoDB. Character data and renders are stored locally; optional AI Assist sends prompts to OpenRouter.
 
+Windows desktop packaging is in progress. See [the desktop milestones and data
+migration instructions](docs/windows-desktop.md). The current application still
+uses MongoDB; the first desktop milestone adds portable data paths and a verified
+SQLite migration snapshot utility.
+
 ---
 
 ## Quickest start — Docker (one command)
