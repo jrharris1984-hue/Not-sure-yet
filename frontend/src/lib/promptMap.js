@@ -147,6 +147,8 @@ export const PROMPT_MAP = {
       "serious": "intense serious expression, focused",
       "sultry": "sultry seductive expression, half-lidded bedroom eyes, parted lips, come-hither gaze",
       "laughing": "genuine laugh, joyful expression",
+      "smoldering": "smoldering expression, intense steady gaze",
+      "playful": "playful expression, bright eyes, teasing smile",
     },
   },
 
@@ -1099,6 +1101,9 @@ export const PROMPT_MAP = {
   },
 
   camera: {
+    angle: {
+      "foot level": "camera positioned at foot level near the ground, looking upward",
+    },
     lens: {
       "24mm": "24mm wide angle lens",
       "35mm": "35mm lens, natural perspective",
