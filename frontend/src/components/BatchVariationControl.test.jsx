@@ -4,6 +4,8 @@ import BatchVariationControl from "./BatchVariationControl";
 
 jest.mock('react-router-dom', () => ({ Link: ({ to, children, ...rest }) => <a href={to} {...rest}>{children}</a> }), { virtual: true });
 
+jest.mock('@/lib/media', () => ({ mediaUrl: url => url }));
+
 const props = {
   value: "smart",
   onChange: jest.fn(),
@@ -22,6 +24,27 @@ const props = {
   onSavePreset: jest.fn(),
   onDeletePreset: jest.fn(),
 };
+
+test('selection summary reacts to controls, direct generate uses shared dispatch, and pending shoots cannot be repeated', () => {
+  global.IS_REACT_ACT_ENVIRONMENT = true;
+  const container = document.createElement('div'); const root = createRoot(container);
+  const onGenerate = jest.fn();
+  act(() => root.render(<BatchVariationControl {...props} onGenerate={onGenerate} />));
+  expect(container.querySelector('[data-testid="smart-shoot-ready"]').textContent).toContain('Selected: Editorial · 2 images · balanced');
+  const generate = () => [...container.querySelectorAll('button')].find(button => button.textContent.includes('Generate photoshoot'));
+  act(() => generate().click()); expect(onGenerate).toHaveBeenCalledTimes(1);
+  act(() => root.render(<BatchVariationControl {...props} onGenerate={onGenerate} smartOptions={{ expression: true }} smartStrength="subtle" />));
+  expect(container.querySelector('[data-testid="smart-shoot-ready"]').textContent).toContain('Vary: Expression');
+  expect(container.querySelector('[data-testid="smart-shoot-ready"]').textContent).toContain('subtle');
+  act(() => root.render(<BatchVariationControl {...props} onGenerate={onGenerate} generateBlockedReason="Choose a workflow." />));
+  expect(generate().disabled).toBe(true); expect(container.textContent).toContain('Choose a workflow.');
+  const shootRun = { label: 'Earlier shoot', shots: [{ title: 'Original submitted shot' }], requests: [{ id: 'r', status: 'queued' }], queuing: false };
+  act(() => root.render(<BatchVariationControl {...props} onGenerate={onGenerate} shootRun={shootRun} />));
+  expect(container.textContent).toContain('Original submitted shot');
+  const pending = [...container.querySelectorAll('button')].find(button => button.textContent === 'Photoshoot in progress…');
+  expect(pending.disabled).toBe(true);
+  act(() => root.unmount());
+});
 
 test("mobile Smart Photoshoot keeps primary controls and planned shots accessible", () => {
   global.IS_REACT_ACT_ENVIRONMENT = true;
