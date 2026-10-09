@@ -41,6 +41,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Desktop runtime tests failed' }
           & ./desktop/.venv/Scripts/python.exe -m unittest discover -s backend/tests -p test_sqlite_storage_unit.py -v
           if ($LASTEXITCODE -ne 0) { throw 'SQLite tests failed' }
+          & ./desktop/.venv/Scripts/python.exe -m unittest discover -s backend/tests -p test_desktop_data_unit.py -v
+          if ($LASTEXITCODE -ne 0) { throw 'Data path and snapshot tests failed' }
       - name: Smoke-test the frozen app twice from another working directory
         shell: pwsh
         run: |

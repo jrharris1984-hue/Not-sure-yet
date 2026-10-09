@@ -18,11 +18,11 @@ class StoragePathTests(unittest.TestCase):
     def test_docker_defaults_keep_the_existing_render_volume(self):
         with tempfile.TemporaryDirectory() as root:
             paths = resolve_storage_paths(root, environ={})
-            self.assertEqual(paths.renders_dir, Path(root) / 'renders')
+            self.assertEqual(paths.renders_dir, Path(root).resolve() / 'renders')
 
     def test_windows_desktop_data_is_outside_installation_and_survives_reinitialization(self):
         with tempfile.TemporaryDirectory() as root:
-            root = Path(root)
+            root = Path(root).resolve()
             env = {'ULTRA_STUDIO_DESKTOP': '1', 'LOCALAPPDATA': str(root / 'user data')}
             paths = resolve_storage_paths(root / 'Program Files', environ=env, platform='win32')
             self.assertEqual(paths.data_dir, root / 'user data' / 'UltraStudio')
@@ -37,9 +37,9 @@ class StoragePathTests(unittest.TestCase):
     def test_explicit_data_folder_and_missing_windows_environment(self):
         with tempfile.TemporaryDirectory() as root:
             paths = resolve_storage_paths('/resources', environ={'ULTRA_STUDIO_DATA_DIR': root})
-            self.assertEqual(paths.data_dir, Path(root))
+            self.assertEqual(paths.data_dir, Path(root).resolve())
             paths = resolve_storage_paths('/resources', environ={'ULTRA_STUDIO_DESKTOP': '1'}, platform='win32', home=root)
-            self.assertEqual(paths.data_dir, Path(root) / 'AppData' / 'Local' / 'UltraStudio')
+            self.assertEqual(paths.data_dir, Path(root).resolve() / 'AppData' / 'Local' / 'UltraStudio')
         with self.assertRaises(ValueError):
             resolve_storage_paths('/resources', environ={'ULTRA_STUDIO_DATA_DIR': 'relative'})
 
