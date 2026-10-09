@@ -39,6 +39,7 @@ from queue_reliability import submit_render, interrupted_submission_patch
 from ollama_prompt_models import configure_prompt_request
 from media_corrections import normalize_values, clean_tags, overlay_item
 from shoot_planner import validate_shot_plan, apply_shot_controls
+from storage_paths import resolve_storage_paths
 
 import httpx
 import websockets as ws_client
@@ -46,7 +47,8 @@ import websockets as ws_client
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / ".env")
 
-RENDERS_DIR = ROOT_DIR / "renders"
+STORAGE_PATHS = resolve_storage_paths(ROOT_DIR)
+RENDERS_DIR = STORAGE_PATHS.renders_dir
 RENDERS_DIR.mkdir(parents=True, exist_ok=True)
 COMFYUI_OUTPUT_DIR = Path(os.environ.get("COMFYUI_OUTPUT_DIR", "/comfyui-output"))
 
