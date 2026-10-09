@@ -410,14 +410,16 @@ export function photoshootCatalog(customPresets = []) {
     .map(normalizeCustomPhotoshootPreset)
     .filter(preset => preset.key && preset.sequence.length);
   const customByCategory = new Map();
-  custom.forEach(preset => {
+  const overrides = Object.fromEntries(custom.map(preset => [preset.key, preset]));
+  const builtinCategories = Object.fromEntries(SMART_SHOOT_CATEGORIES.flatMap(category => category.presets.map(preset => [preset.key, category.label])));
+  custom.filter(preset => !Object.hasOwn(SMART_PHOTOSHOOT_PRESETS, preset.key) || preset.categoryLabel !== builtinCategories[preset.key]).forEach(preset => {
     const label = preset.categoryLabel || "Custom";
     if (!customByCategory.has(label)) customByCategory.set(label, []);
     customByCategory.get(label).push(preset);
   });
   const categories = SMART_SHOOT_CATEGORIES.map(category => ({
     ...category,
-    presets: category.presets.map(preset => ({ ...preset, category: category.key, categoryLabel: category.label })),
+    presets: category.presets.filter(preset => !overrides[preset.key] || overrides[preset.key].categoryLabel === category.label).map(preset => overrides[preset.key] || ({ ...preset, category: category.key, categoryLabel: category.label })),
   }));
   for (const [label, presets] of customByCategory.entries()) {
     categories.push({
@@ -430,15 +432,14 @@ export function photoshootCatalog(customPresets = []) {
   return {
     categories,
     presets: {
-      ...SMART_PHOTOSHOOT_PRESETS,
-      ...Object.fromEntries(custom.map(preset => [preset.key, preset])),
+      ...Object.fromEntries(categories.flatMap(category => category.presets).map(preset => [preset.key, preset])),
     },
   };
 }
 
 export function resolvePhotoshootPreset(key, customPresets = []) {
   const catalog = photoshootCatalog(customPresets);
-  return catalog.presets[key] || SMART_PHOTOSHOOT_PRESETS.editorial;
+  return Object.hasOwn(catalog.presets, key) ? catalog.presets[key] : SMART_PHOTOSHOOT_PRESETS.editorial;
 }
 
 function eligibleSharedGroups(count, promptCatalog) {

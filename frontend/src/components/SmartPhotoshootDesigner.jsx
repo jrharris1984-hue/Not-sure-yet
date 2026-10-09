@@ -6,6 +6,7 @@ import {
   CUSTOM_FRAMING_OPTIONS,
   CUSTOM_POSE_GROUP_OPTIONS,
   resolvePhotoshootPreset,
+  SMART_PHOTOSHOOT_PRESETS,
 } from "@/lib/batchSmartPhotoshoot";
 
 const EMPTY_SHOT = {
@@ -81,6 +82,8 @@ export default function SmartPhotoshootDesigner({
     [draft.key, customPresets]
   );
 
+  const isBuiltIn = Object.hasOwn(SMART_PHOTOSHOOT_PRESETS, draft.key);
+
   if (!open) return null;
 
   const updateShot = (index, patch) => {
@@ -136,7 +139,7 @@ export default function SmartPhotoshootDesigner({
       <div className="flex h-[94dvh] w-full flex-col overflow-hidden rounded-t-3xl border hairline bg-zinc-950 shadow-2xl md:max-h-[92vh] md:max-w-5xl md:rounded-2xl">
         <div className="sticky top-0 z-10 flex items-start justify-between gap-4 border-b hairline bg-zinc-950/95 p-4 backdrop-blur-xl">
           <div>
-            <div className="text-sm font-semibold text-zinc-100">{isExistingCustom ? "Edit photoshoot preset" : "Create photoshoot preset"}</div>
+            <div className="text-sm font-semibold text-zinc-100">{isBuiltIn ? "Edit built-in photoshoot" : isExistingCustom ? "Edit photoshoot preset" : "Create photoshoot preset"}</div>
             <div className="mt-1 text-xs text-zinc-500">Select several shots to apply shared edits, then save the complete sequence.</div>
           </div>
           <button type="button" onClick={onClose} className="min-h-11 rounded-xl border hairline px-4 py-2 text-sm font-semibold text-zinc-300 md:min-h-0 md:rounded-lg md:px-3 md:py-1.5 md:text-xs">Close</button>
@@ -246,11 +249,11 @@ export default function SmartPhotoshootDesigner({
               catch (err) { setError(err?.response?.data?.detail || 'Could not delete this shoot. Please try again.'); }
               finally { setSaving(false); }
             }}
-              className="min-h-11 rounded-xl border border-red-500/30 px-3 py-2 text-xs font-semibold text-red-300 md:min-h-0 md:rounded-lg">Delete preset</button>}
+              className="min-h-11 rounded-xl border border-red-500/30 px-3 py-2 text-xs font-semibold text-red-300 md:min-h-0 md:rounded-lg">{isBuiltIn ? "Restore built-in style" : "Delete preset"}</button>}
           </div>
           <button type="button" onClick={save} disabled={saving || !draft.label.trim() || !draft.sequence.length}
             className="min-h-11 rounded-xl bg-emerald-500 px-5 py-2 text-sm font-bold text-black disabled:opacity-40 md:min-h-0 md:rounded-lg md:px-4 md:text-xs">
-            {saving ? "Saving…" : isExistingCustom ? "Save changes" : "Save custom preset"}
+            {saving ? "Saving…" : isBuiltIn ? "Save built-in edits" : isExistingCustom ? "Save changes" : "Save custom preset"}
           </button>
         </div>
       </div>

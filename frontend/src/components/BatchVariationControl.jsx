@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { photoshootPresetFromPlan, photoshootCatalog, resolvePhotoshootPreset, SMART_VARIATION_STRENGTHS } from "@/lib/batchSmartPhotoshoot";
+import { photoshootPresetFromPlan, photoshootCatalog, resolvePhotoshootPreset, SMART_PHOTOSHOOT_PRESETS, SMART_VARIATION_STRENGTHS } from "@/lib/batchSmartPhotoshoot";
 import SmartPhotoshootDesigner from "@/components/SmartPhotoshootDesigner";
 
 const MODES = [
@@ -210,7 +210,7 @@ export default function BatchVariationControl({
         }}
         onDelete={async (key) => {
           await onDeletePreset?.(key);
-          onSmartPresetChange?.("editorial");
+          onSmartPresetChange?.(Object.hasOwn(SMART_PHOTOSHOOT_PRESETS, key) ? key : "editorial");
           setDesignerOpen(false);
         }}
       />
