@@ -1,0 +1,65 @@
+name: Windows desktop preview
+
+on:
+  pull_request:
+    paths:
+      - 'desktop/**'
+      - 'scripts/build-windows-desktop.ps1'
+      - 'backend/tests/test_desktop_runtime_unit.py'
+      - '.github/workflows/windows-desktop.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Enable pinned Yarn through Corepack
+        run: npm install --global corepack@0.34.0
+      - name: Build the portable app
+        shell: pwsh
+        run: ./scripts/build-windows-desktop.ps1
+      - name: Test desktop runtime and SQLite behavior
+        shell: pwsh
+        run: |
+          $env:PYTHONPATH = "$env:GITHUB_WORKSPACE/backend;$env:GITHUB_WORKSPACE/desktop"
+          & ./desktop/.venv/Scripts/python.exe -m unittest discover -s backend/tests -p test_desktop_runtime_unit.py -v
+          if ($LASTEXITCODE -ne 0) { throw 'Desktop runtime tests failed' }
+          & ./desktop/.venv/Scripts/python.exe -m unittest discover -s backend/tests -p test_sqlite_storage_unit.py -v
+          if ($LASTEXITCODE -ne 0) { throw 'SQLite tests failed' }
+      - name: Smoke-test the frozen app twice from another working directory
+        shell: pwsh
+        run: |
+          $env:ULTRA_STUDIO_DATA_DIR = Join-Path $env:RUNNER_TEMP 'UltraStudioSmoke'
+          $app = Join-Path $env:GITHUB_WORKSPACE 'desktop/dist/UltraStudio/UltraStudio.exe'
+          Push-Location $env:RUNNER_TEMP
+          try {
+            1..2 | ForEach-Object {
+              $process = Start-Process -FilePath $app -ArgumentList '--smoke-test' -PassThru
+              if (-not $process.WaitForExit(60000)) { $process.Kill(); throw 'Frozen app smoke test timed out' }
+              if ($process.ExitCode -ne 0) { throw "Frozen app smoke test failed: $($process.ExitCode)" }
+            }
+          } finally { Pop-Location }
+      - name: Preserve startup logs if a build check fails
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Windows-desktop-test-logs
+          path: ${{ runner.temp }}/UltraStudioSmoke/logs
+          if-no-files-found: ignore
+      - name: Upload portable preview
+        uses: actions/upload-artifact@v4
+        with:
+          name: UltraStudio-Windows-x64-preview
+          path: desktop/dist/UltraStudio/
+          retention-days: 14
