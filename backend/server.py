@@ -159,7 +159,7 @@ class Settings(BaseModel):
     openrouter_api_key: str = ""
     openrouter_model: str = "cognitivecomputations/dolphin-mixtral-8x7b"
     ai_provider: str = "venice"  # venice | ollama
-    ollama_url: str = "http://host.docker.internal:11434"
+    ollama_url: str = Field(default_factory=lambda: "http://localhost:11434" if os.environ.get("ULTRA_STUDIO_DESKTOP") == "1" else "http://host.docker.internal:11434")
     ollama_text_model: str = ""
     ollama_vision_model: str = ""
     prompt_catalog: Dict[str, Any] = Field(default_factory=lambda: {"sections": []})
