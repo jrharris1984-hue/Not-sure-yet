@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { photoshootPresetFromPlan, photoshootCatalog, resolvePhotoshootPreset, SMART_PHOTOSHOOT_PRESETS, SMART_VARIATION_STRENGTHS } from "@/lib/batchSmartPhotoshoot";
 import SmartPhotoshootDesigner from "@/components/SmartPhotoshootDesigner";
@@ -49,6 +49,20 @@ export default function BatchVariationControl({
     [key]: checked,
   });
   const [designerOpen, setDesignerOpen] = useState(false);
+  const [directorOpen, setDirectorOpen] = useState(true);
+  const directorId = useId();
+  const controlRef = useRef(null);
+  const toggleRef = useRef(null);
+  const closeDirector = () => { setDirectorOpen(false); toggleRef.current?.focus(); };
+  useEffect(() => {
+    if (!compact || !directorOpen || value !== 'smart' || designerOpen) return;
+    const dismiss = event => {
+      if (document.querySelector('[data-smart-shoot-viewer]')) return;
+      if (!controlRef.current?.contains(event.target)) setDirectorOpen(false);
+    };
+    document.addEventListener('pointerdown', dismiss);
+    return () => document.removeEventListener('pointerdown', dismiss);
+  }, [compact, directorOpen, value, designerOpen]);
   const [mobilePlanOpen, setMobilePlanOpen] = useState(true);
   const [designerSource, setDesignerSource] = useState(smartPreset);
   const [planDraft, setPlanDraft] = useState(null);
@@ -57,10 +71,10 @@ export default function BatchVariationControl({
   const planSummary = useMemo(() => smartPlan.map(item => item.title).filter(Boolean).join(" · "), [smartPlan]);
 
   return (
-    <div className={compact ? "relative" : "space-y-2"} data-testid="batch-variation-control">
+    <div ref={controlRef} className={compact ? "relative" : "space-y-2"} data-testid="batch-variation-control">
       <select
         value={value}
-        onChange={(event) => onChange(event.target.value)}
+        onChange={(event) => { if (event.target.value === 'smart') setDirectorOpen(true); onChange(event.target.value); }}
         aria-label="Batch variety"
         title="Choose how multi-image batches vary while keeping the character and scene coherent."
         className={compact
@@ -70,13 +84,24 @@ export default function BatchVariationControl({
         {MODES.map(([mode, label]) => <option key={mode} value={mode}>{label}</option>)}
       </select>
 
-      {value === "smart" && (
+      {value === 'smart' && <button ref={toggleRef} type="button" aria-expanded={directorOpen} aria-controls={directorId}
+        onClick={() => setDirectorOpen(open => !open)} className="min-h-11 rounded-lg border border-cyan-500/30 px-3 py-2 text-xs text-cyan-200">
+        {directorOpen ? 'Hide director' : `Open director · ${activePreset.label} · ${smartPlan.length} shots`}
+      </button>}
+
+      {value === "smart" && directorOpen && (
         <div className={compact
           ? "absolute right-0 top-full z-30 mt-2 max-h-[85dvh] w-[34rem] max-w-[90vw] overflow-y-auto rounded-xl border hairline bg-zinc-950 p-3 shadow-2xl"
           : "rounded-2xl border hairline bg-black/20 p-3 sm:p-4"}
           data-testid="smart-photoshoot-options"
+          id={directorId}
+          onKeyDown={event => { if (event.key === 'Escape' && !event.target.closest('[role="dialog"]')) { event.stopPropagation(); closeDirector(); } }}
         >
-          <div className="text-[10px] font-mono uppercase tracking-widest text-cyan-300">Smart photoshoot director</div>
+          <div className="sticky top-0 z-10 flex items-center justify-between gap-3 rounded-lg bg-zinc-950 py-2">
+            <div className="text-[10px] font-mono uppercase tracking-widest text-cyan-300">Smart photoshoot director</div>
+            <button type="button" onClick={closeDirector} aria-label="Close Smart Photoshoot director"
+              className="min-h-11 rounded-lg border hairline px-3 py-2 text-xs font-semibold text-zinc-200">Close</button>
+          </div>
           <p className="mt-1 text-[11px] leading-relaxed text-zinc-500">
             Pick a type of shoot, then Ultra Studio builds a deliberate shot list instead of randomizing every image independently.
           </p>
