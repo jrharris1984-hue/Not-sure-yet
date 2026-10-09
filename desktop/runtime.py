@@ -20,6 +20,9 @@ from storage_paths import resolve_storage_paths
 class DesktopFiles(StaticFiles):
     """Serve React history routes without masking missing APIs or assets."""
     async def get_response(self, path, scope):
+        # Starlette normalizes URL paths with os.path, yielding backslashes on
+        # Windows. Routing guards must compare URL separators on every OS.
+        path = path.replace('\\', '/')
         if path == 'api' or path.startswith('api/'):
             raise HTTPException(404, 'Not found')
         try:

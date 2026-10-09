@@ -52,6 +52,15 @@ class DesktopStaticTests(unittest.TestCase):
                 self.assertNotEqual(response.text, '<html>desktop</html>')
             self.assertEqual(client.post('/library').status_code, 405)
 
+    def test_windows_normalized_paths_keep_api_and_asset_404s(self):
+        # Exercise Windows-style Starlette paths even on a Linux test runner.
+        with patch.object(DesktopFiles, 'get_path', side_effect=lambda scope: scope['path'].lstrip('/').replace('/', '\\')):
+            with TestClient(self.app) as client:
+                self.assertEqual(client.get('/api/missing').status_code, 404)
+                self.assertEqual(client.get('/static/missing').status_code, 404)
+                self.assertEqual(client.get('/static/app.js').text, 'window.desktop=true')
+                self.assertEqual(client.get('/characters/123').text, '<html>desktop</html>')
+
     def test_head_history_route_has_no_response_body(self):
         with TestClient(self.app) as client:
             response = client.head('/library')
@@ -130,7 +139,7 @@ class DesktopLifecycleTests(unittest.TestCase):
                 paths = prepare_environment()
                 self.assertEqual(os.environ['ULTRA_STUDIO_STORAGE'], 'sqlite')
                 self.assertTrue(paths.logs_dir.is_dir())
-                self.assertEqual(paths.database_path, Path(directory) / 'ultra-studio.sqlite3')
+                self.assertEqual(paths.database_path, Path(directory).resolve() / 'ultra-studio.sqlite3')
             with patch.object(sys, 'frozen', True, create=True), patch.object(sys, '_MEIPASS', directory, create=True):
                 self.assertEqual(resource_frontend(), Path(directory) / 'frontend')
 
@@ -161,6 +170,9 @@ from urllib.request import urlopen, Request
 sys.path.insert(0, sys.argv[1])
 import main
 main.ensure_webview2=lambda:None
+def fail_on_dialog(message):
+    raise AssertionError(message)
+main.show_error=fail_on_dialog
 root=Path(sys.argv[2])/'interface'
 root.mkdir(exist_ok=True)
 (root/'index.html').write_text('<html>Desktop test</html>')
@@ -171,7 +183,7 @@ def create_window(title,url,**kwargs):
 def start(**kwargs):
     assert kwargs['gui']=='edgechromium'
     assert kwargs['private_mode'] is False
-    assert kwargs['storage_path'].startswith(sys.argv[2])
+    assert Path(kwargs['storage_path']).parent==Path(sys.argv[2]).resolve()
     with urlopen(record['url']+'/library') as response:
         assert b'Desktop test' in response.read()
     with urlopen(record['url']+'/api/settings') as response:
@@ -205,7 +217,7 @@ else:
                 result = subprocess.run([sys.executable, '-c', script, str(desktop), directory], env=env,
                                         cwd=directory, capture_output=True, text=True, timeout=30)
                 self.assertEqual(result.returncode, 0, result.stderr)
-            self.assertTrue((Path(directory) / 'ultra-studio.sqlite3').is_file())
+            self.assertTrue((Path(directory).resolve() / 'ultra-studio.sqlite3').is_file())
             self.assertTrue((Path(directory) / 'logs' / 'desktop.log').is_file())
 
 
