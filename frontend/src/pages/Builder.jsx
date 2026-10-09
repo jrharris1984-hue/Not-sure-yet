@@ -43,7 +43,8 @@ import { compileModelPrompts, resolvePromptCompiler } from "@/lib/modelPromptCom
 import { batchSeed } from "@/lib/batchSeeds";
 import { batchPoseVariation } from "@/lib/batchPoseVariation";
 import { batchCameraVariation } from "@/lib/batchCameraVariation";
-import { smartPhotoshootVariation } from "@/lib/batchSmartPhotoshoot";
+import { photoshootRunPending } from "@/components/SmartPhotoshootProgress";
+import { resolvePhotoshootPreset, smartPhotoshootVariation } from "@/lib/batchSmartPhotoshoot";
 import useSmartPhotoshootPlan from "@/hooks/useSmartPhotoshootPlan";
 import BatchVariationControl from "@/components/BatchVariationControl";
 import { resolveReferenceNotes, translatePlainLanguage } from "@/lib/plainLanguagePrompt";
@@ -479,6 +480,10 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
   const isEnhanceWorkflow = activeWorkflow?.kind === "enhance";
   const isVariationWorkflow = activeWorkflow?.kind === "variation";
   const isImageFirst = isVariationWorkflow || isEditWorkflow || isEnhanceWorkflow || activeWorkflow?.kind === "video";
+  const [smartShootRun, setSmartShootRun] = useState(null);
+  const smartShootRenders = [...batchRenders, activeRender].filter(Boolean);
+  const smartShootPending = photoshootRunPending(smartShootRun, smartShootRenders);
+
   useEffect(() => {
     if (isImageFirst) setPoseAssistEnabled(false);
   }, [isImageFirst, workflowId]);
@@ -1335,6 +1340,11 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
   };
 
   const doDispatch = async () => {
+    if (dispatching) return;
+    if (batchSeedMode === "smart" && smartShootPending) {
+      toast.info("Your photoshoot is still in progress. Follow each shot in the director.");
+      return;
+    }
     if (ollamaCompiled.pending) {toast.error('Wait for Ollama compilation or switch to Compact.');return;}
     if (!workflowId) {
       toast.error("Pick a workflow first (Settings → Workflow library)");
@@ -1529,6 +1539,11 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
       return;
     }
 
+    const isSmartShoot = activeRecipeFamily === "image" && renderCount > 1 && batchSeedMode === "smart";
+    setSmartShootRun(isSmartShoot ? {
+      label: resolvePhotoshootPreset(smartBatchPreset, customPhotoshootPresets).label,
+      shots: smartPhotoshootPlan.map(shot => ({ ...shot })), requests: [], queuing: true, error: '',
+    } : null);
     setDispatching(true);
     try {
       const requestedCount = activeRecipeFamily === "image" ? renderCount : 1;
@@ -1646,11 +1661,13 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
       
           });
         } catch (error) {
+          if (isSmartShoot) setSmartShootRun(current => ({ ...current, error: `${queuedRenders.length} shots submitted. Could not queue shot ${imageIndex + 1}: ${error?.response?.data?.detail || error.message || 'Dispatch failed'}` }));
           if (!queuedRenders.length) throw error;
           toast.error(`${queuedRenders.length} of ${requestedCount} images queued. The next request failed: ${error?.response?.data?.detail || error.message}`);
           break;
         }
         queuedRenders.push(r);
+        if (isSmartShoot) setSmartShootRun(current => ({ ...current, requests: [...queuedRenders] }));
         setBatchRenders([...queuedRenders]);
       }
       const latestRender = queuedRenders[queuedRenders.length - 1];
@@ -1663,13 +1680,16 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
           ? `Added to queue${latestRender.queue_position ? ` · position #${latestRender.queue_position}` : ""}`
           : `Render ${latestRender.status}`));
     } catch (e) {
+      if (isSmartShoot) setSmartShootRun(current => ({ ...current, error: current?.error || e?.response?.data?.detail || e.message || 'Dispatch failed' }));
       toast.error(e?.response?.data?.detail || "Dispatch failed");
     } finally {
+      if (isSmartShoot) setSmartShootRun(current => ({ ...current, queuing: false }));
       setDispatching(false);
     }
   };
 
   const clearFinishedRenderSession = () => {
+    setSmartShootRun(null);
     setActiveRender(null);
     setBatchRenders([]);
     setSelectedBatchRenderId(null);
@@ -2703,6 +2723,12 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
               smartPreset={smartBatchPreset}
               onSmartPresetChange={setSmartBatchPreset}
               smartPlan={smartPhotoshootPlan}
+              onGenerate={doDispatch}
+              generating={dispatching}
+              generateBlockedReason={poseAssistEnabled && !isVariationWorkflow ? 'Turn off Pose Assist to generate a multi-shot photoshoot.' : mobileCreateIssues.join(' ')}
+              shootRun={smartShootRun}
+              shootRenders={smartShootRenders}
+              onSelectRender={render => { setSelectedBatchRenderId(render.id); setActiveRender(render); }}
               onRegeneratePlan={() => regenerateSmartPlan()}
               onToggleKeepShot={toggleKeepSmartShot}
               onRegenerateShot={regenerateSmartPlan}
@@ -2762,6 +2788,12 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
               smartPreset={smartBatchPreset}
               onSmartPresetChange={setSmartBatchPreset}
               smartPlan={smartPhotoshootPlan}
+              onGenerate={doDispatch}
+              generating={dispatching}
+              generateBlockedReason={poseAssistEnabled && !isVariationWorkflow ? 'Turn off Pose Assist to generate a multi-shot photoshoot.' : mobileCreateIssues.join(' ')}
+              shootRun={smartShootRun}
+              shootRenders={smartShootRenders}
+              onSelectRender={render => { setSelectedBatchRenderId(render.id); setActiveRender(render); }}
               onRegeneratePlan={() => regenerateSmartPlan()}
               onToggleKeepShot={toggleKeepSmartShot}
               onRegenerateShot={regenerateSmartPlan}
@@ -2896,6 +2928,12 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
               smartPreset={smartBatchPreset}
               onSmartPresetChange={setSmartBatchPreset}
               smartPlan={smartPhotoshootPlan}
+              onGenerate={doDispatch}
+              generating={dispatching}
+              generateBlockedReason={poseAssistEnabled && !isVariationWorkflow ? 'Turn off Pose Assist to generate a multi-shot photoshoot.' : mobileCreateIssues.join(' ')}
+              shootRun={smartShootRun}
+              shootRenders={smartShootRenders}
+              onSelectRender={render => { setSelectedBatchRenderId(render.id); setActiveRender(render); }}
               onRegeneratePlan={() => regenerateSmartPlan()}
               onToggleKeepShot={toggleKeepSmartShot}
               onRegenerateShot={regenerateSmartPlan}
@@ -3102,6 +3140,12 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
               smartPreset={smartBatchPreset}
               onSmartPresetChange={setSmartBatchPreset}
               smartPlan={smartPhotoshootPlan}
+              onGenerate={doDispatch}
+              generating={dispatching}
+              generateBlockedReason={poseAssistEnabled && !isVariationWorkflow ? 'Turn off Pose Assist to generate a multi-shot photoshoot.' : mobileCreateIssues.join(' ')}
+              shootRun={smartShootRun}
+              shootRenders={smartShootRenders}
+              onSelectRender={render => { setSelectedBatchRenderId(render.id); setActiveRender(render); }}
               onRegeneratePlan={() => regenerateSmartPlan()}
               onToggleKeepShot={toggleKeepSmartShot}
               onRegenerateShot={regenerateSmartPlan}

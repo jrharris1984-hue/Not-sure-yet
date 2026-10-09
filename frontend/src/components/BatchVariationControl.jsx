@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { photoshootPresetFromPlan, photoshootCatalog, resolvePhotoshootPreset, SMART_PHOTOSHOOT_PRESETS, SMART_VARIATION_STRENGTHS } from "@/lib/batchSmartPhotoshoot";
 import SmartPhotoshootDesigner from "@/components/SmartPhotoshootDesigner";
+import SmartPhotoshootProgress, { photoshootRunPending } from './SmartPhotoshootProgress';
 
 const MODES = [
   ["explore", "New seeds only"],
@@ -36,6 +37,12 @@ export default function BatchVariationControl({
   onSavePreset,
   onDeletePreset,
   compact = false,
+  onGenerate,
+  generateBlockedReason = '',
+  generating = false,
+  shootRun = null,
+  shootRenders = [],
+  onSelectRender,
 }) {
   const updateSmart = (key, checked) => onSmartOptionsChange({
     ...smartOptions,
@@ -65,7 +72,7 @@ export default function BatchVariationControl({
 
       {value === "smart" && (
         <div className={compact
-          ? "absolute right-0 top-full z-30 mt-2 w-[34rem] max-w-[90vw] rounded-xl border hairline bg-zinc-950 p-3 shadow-2xl"
+          ? "absolute right-0 top-full z-30 mt-2 max-h-[85dvh] w-[34rem] max-w-[90vw] overflow-y-auto rounded-xl border hairline bg-zinc-950 p-3 shadow-2xl"
           : "rounded-2xl border hairline bg-black/20 p-3 sm:p-4"}
           data-testid="smart-photoshoot-options"
         >
@@ -73,6 +80,19 @@ export default function BatchVariationControl({
           <p className="mt-1 text-[11px] leading-relaxed text-zinc-500">
             Pick a type of shoot, then Ultra Studio builds a deliberate shot list instead of randomizing every image independently.
           </p>
+
+          <div className="mt-3 rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-3" data-testid="smart-shoot-ready">
+            <div role="status" aria-live="polite" className="text-xs font-semibold text-emerald-200">Selected: {activePreset.label} · {smartPlan.length} images · {smartStrength}</div>
+            <p className="mt-1 text-xs text-zinc-300">Vary: {SMART_FIELDS.filter(([key]) => smartOptions[key]).map(([, label]) => label).join(', ') || 'Seeds only'}.</p>
+            <p className="mt-1 text-[11px] text-zinc-400">Your selections update the planned shots below. Generate submits one image per shot with a different seed.</p>
+            {onGenerate && <button type="button" onClick={onGenerate}
+              disabled={generating || !!generateBlockedReason || !smartPlan.length || photoshootRunPending(shootRun, shootRenders)}
+              className="mt-3 min-h-11 w-full rounded-lg bg-emerald-400 px-3 py-2 text-sm font-bold text-black disabled:opacity-40">
+              {generating ? 'Adding shots to queue…' : photoshootRunPending(shootRun, shootRenders) ? 'Photoshoot in progress…' : `Generate photoshoot · ${smartPlan.length} images`}
+            </button>}
+            {generateBlockedReason && <p className="mt-2 text-xs text-amber-200">{generateBlockedReason}</p>}
+          </div>
+          <SmartPhotoshootProgress run={shootRun} renders={shootRenders} onSelectRender={onSelectRender} />
 
           <label className="mt-3 block text-[10px] font-mono uppercase tracking-widest text-zinc-400">
             Shoot style
