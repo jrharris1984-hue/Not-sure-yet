@@ -1,4 +1,6 @@
 import { mediaUrl } from '@/lib/media';
+import { useState } from 'react';
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 
 const TERMINAL = new Set(['done', 'failed', 'offline', 'cancelled']);
 export function photoshootRunRows(run, renders = []) {
@@ -15,6 +17,7 @@ export function photoshootRunPending(run, renders) {
 }
 
 export default function SmartPhotoshootProgress({ run, renders, onSelectRender }) {
+  const [preview, setPreview] = useState(null);
   if (!run) return null;
   const rows = photoshootRunRows(run, renders);
   const done = rows.filter(row => row.status === 'done').length;
@@ -30,7 +33,7 @@ export default function SmartPhotoshootProgress({ run, renders, onSelectRender }
     <p className="mt-2 text-[11px] text-zinc-400">These are the shots submitted for this shoot. Queued shots wait for ComfyUI.</p>
     <div className="mt-2 max-h-64 space-y-2 overflow-y-auto">
       {rows.map((row, index) => <div key={index} className="flex items-start gap-2 rounded-lg border hairline p-2 text-xs">
-        {row.render?.output_files?.[0] && <button type="button" onClick={() => onSelectRender?.(row.render)} aria-label={`View photoshoot shot ${index + 1}`} className="shrink-0">
+        {row.render?.output_files?.[0] && <button type="button" onClick={() => { setPreview({ render: row.render, title: `Shot ${index + 1}: ${row.title}` }); onSelectRender?.(row.render); }} aria-label={`View photoshoot shot ${index + 1}`} className="shrink-0">
           <img src={mediaUrl(row.render.output_files[0])} alt={`Shot ${index + 1}: ${row.title}`} className="h-16 w-12 rounded object-cover" />
         </button>}
         <div className="min-w-0 flex-1"><div className="font-semibold text-zinc-200">{index + 1}. {row.title}</div>
@@ -40,5 +43,12 @@ export default function SmartPhotoshootProgress({ run, renders, onSelectRender }
         <span className={`shrink-0 rounded px-2 py-1 ${row.status === 'done' ? 'bg-emerald-500/15 text-emerald-200' : TERMINAL.has(row.status) || row.status === 'Not queued' ? 'text-rose-300' : 'animate-pulse bg-cyan-500/10 text-cyan-200'}`}>{row.status}</span>
       </div>)}
     </div>
+    <Dialog open={!!preview} onOpenChange={open => { if (!open) setPreview(null); }}>
+      <DialogContent data-smart-shoot-viewer="true" className="max-w-5xl bg-zinc-950 p-4">
+        <DialogTitle className="pr-12 text-sm text-zinc-100">{preview?.title}</DialogTitle>
+        <DialogDescription className="sr-only">Full image from the selected photoshoot shot.</DialogDescription>
+        {preview && <img src={mediaUrl(preview.render.output_files[0])} alt={preview.title} className="max-h-[75dvh] w-full object-contain" data-testid="smart-shoot-full-image" />}
+      </DialogContent>
+    </Dialog>
   </section>;
 }
