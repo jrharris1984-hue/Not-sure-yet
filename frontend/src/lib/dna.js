@@ -66,7 +66,7 @@ export const SECTIONS = [
       { key: "jawline", type: "chips", label: "Jawline", options: ["soft", "defined", "angular", "square", "heart-shaped"] },
       { key: "nose", type: "chips", label: "Nose", options: ["button", "straight", "roman", "aquiline", "upturned"] },
       { key: "lips", type: "chips", label: "Lips", options: ["thin", "medium", "full", "pouty", "bow-shaped"] },
-      { key: "expression", type: "chips", label: "Expression", options: ["neutral", "smirk", "smile", "serious", "sultry", "laughing"] },
+      { key: "expression", type: "chips", label: "Expression", options: ["neutral", "smirk", "smile", "serious", "sultry", "laughing", "smoldering", "playful"] },
     ],
   },
   {
@@ -486,7 +486,7 @@ export const SECTIONS = [
     fields: [
       { key: "lens", type: "chips", label: "Lens", options: ["24mm", "35mm", "50mm", "85mm", "135mm", "macro"] },
       { key: "aperture", type: "chips", label: "Aperture", options: ["f/1.4", "f/1.8", "f/2.8", "f/4", "f/8"] },
-      { key: "angle", type: "chips", label: "Angle", options: ["eye-level", "low", "high", "dutch", "birds-eye"] },
+      { key: "angle", type: "chips", label: "Angle", options: ["eye-level", "low", "high", "foot level", "dutch", "birds-eye"] },
       { key: "aspect_ratio", type: "chips", label: "Aspect ratio", options: ["1:1", "4:5", "3:2", "16:9", "9:16", "2.35:1"] },
     ],
   },
@@ -1116,7 +1116,7 @@ function _veniceSharedBlock(dna = {}, opts = {}, subjectCount = 1) {
   const camStr = join([
     cam.lens && `shot on ${exp("camera", "lens")}`,
     exp("camera", "aperture"),
-    cam.angle && `${cam.angle} camera angle`,
+    cam.angle && (cam.angle === "foot level" ? exp("camera", "angle") : `${cam.angle} camera angle`),
     cam.aspect_ratio && `${cam.aspect_ratio} aspect ratio`,
   ]);
   const styleStr = join([

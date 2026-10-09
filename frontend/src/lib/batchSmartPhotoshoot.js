@@ -2,7 +2,13 @@ import { CAMERA_VARIATIONS } from "@/lib/batchCameraVariation";
 import { sharedPoseGroups } from "@/lib/promptCatalog";
 import { PHOTOGRAPHY_POSE_GROUPS, photographyPosePrompt } from "@/lib/photographyPoses";
 
-const EXPRESSIONS = ["neutral", "smirk", "smile", "serious", "sultry", "laughing"];
+const EXPRESSIONS = ["neutral", "smirk", "smile", "serious", "sultry", "laughing", "smoldering", "playful"];
+
+// Keep extra shoot camera heights out of the general batch camera rotation.
+const SMART_CAMERA_VARIATIONS = [...CAMERA_VARIATIONS,
+  { poseAngle: "front", cameraAngle: "foot level", label: "front · foot level" },
+  { poseAngle: "3/4", cameraAngle: "foot level", label: "3/4 · foot level" },
+];
 const SMART_SHARED_GROUP = /portrait|interaction|movement|seated|angle|composition|candid/i;
 const BLOCKED_SHARED_GROUP = /explicit|specialty|sex|fetish|kink|adult|nsfw/i;
 const normalize = value => String(value || "").replace(/\s+/g, " ").trim();
@@ -358,6 +364,7 @@ export const CUSTOM_CAMERA_OPTIONS = [
   ["profile", "Profile"],
   ["eye-level", "Eye-level"],
   ["low angle", "Low angle"],
+  ["foot level", "Foot level"],
   ["high angle", "High angle"],
   ["over-shoulder", "Over shoulder"],
 ];
@@ -488,15 +495,15 @@ function chooseCamera(shotDef, used, seed, strength = "balanced") {
   if (Object.hasOwn(shotDef?.raw || {}, 'camera_pose_angle')) return shotDef.raw.camera_pose_angle
     ? { poseAngle: shotDef.raw.camera_pose_angle, cameraAngle: shotDef.raw.camera_angle,
         label: `${shotDef.raw.camera_pose_angle} · ${shotDef.raw.camera_angle}` } : null;
-  const conservative = CAMERA_VARIATIONS.filter(item =>
+  const conservative = SMART_CAMERA_VARIATIONS.filter(item =>
     item.cameraAngle === "eye-level" && ["front", "3/4", "profile"].includes(item.poseAngle)
   );
-  const matched = CAMERA_VARIATIONS.filter(item => !shotDef?.camera || shotDef.camera.test(item.label || ""));
+  const matched = SMART_CAMERA_VARIATIONS.filter(item => !shotDef?.camera || shotDef.camera.test(item.label || ""));
   const source = strength === "subtle"
     ? (matched.filter(item => conservative.includes(item)).length ? matched.filter(item => conservative.includes(item)) : conservative)
     : strength === "bold"
-      ? CAMERA_VARIATIONS
-      : (matched.length ? matched : CAMERA_VARIATIONS);
+      ? SMART_CAMERA_VARIATIONS
+      : (matched.length ? matched : SMART_CAMERA_VARIATIONS);
   const pool = source.filter(item => !used.has(item.label));
   if (!pool.length) return null;
   return pool[Math.abs(Math.trunc(seed || 0)) % pool.length];
