@@ -158,6 +158,18 @@ class BuilderPromptFormatSettingsTests(unittest.IsolatedAsyncioTestCase):
 class SavedPhotoshootPlanSettingsTests(unittest.IsolatedAsyncioTestCase):
     setup_update = PromptCatalogSettingsTests.setup_update
 
+    async def test_new_expressions_and_foot_level_camera_persist(self):
+        for expression in ['smoldering', 'playful']:
+            handler, update = await self.setup_update()
+            preset = self.preset(camera_match='foot level', camera_pose_angle='front', camera_angle='foot level')
+            preset['sequence'][0]['expression'] = expression
+            result = await handler({'custom_photoshoot_presets': [preset]})
+            shot = result.doc['custom_photoshoot_presets'][0]['sequence'][0]
+            self.assertEqual(shot['expression'], expression)
+            self.assertEqual(shot['camera_match'], 'foot level')
+            self.assertEqual(shot['camera_angle'], 'foot level')
+            update.assert_awaited_once()
+
     def preset(self, **extra):
         return {'key': 'custom_saved', 'label': 'Saved shoot', 'category': 'Saved plans', 'sequence': [dict(title='Hero', framing='full body', expression='smile', **extra)]}
 

@@ -595,7 +595,7 @@ async def update_settings(body: Dict[str, Any] = Body(...)):
         cleaned = []
         seen = set()
         allowed_framings = {"close-up", "portrait", "waist-up", "thigh-up", "knees-up", "full body", "wide shot", "detail shot", ""}
-        allowed_expressions = {"neutral", "smirk", "smile", "serious", "sultry", "laughing", ""}
+        allowed_expressions = {"neutral", "smirk", "smile", "serious", "sultry", "laughing", "smoldering", "playful", ""}
         for preset in presets:
             if not isinstance(preset, dict):
                 raise HTTPException(400, "Each custom photoshoot preset must be an object.")
@@ -635,7 +635,7 @@ async def update_settings(body: Dict[str, Any] = Body(...)):
                 if "camera_pose_angle" in shot:
                     pose_angle = str(shot.get("camera_pose_angle") or "").strip()
                     camera_angle = str(shot.get("camera_angle") or "").strip()
-                    if pose_angle not in {"", "front", "3/4", "profile", "over-shoulder"} or camera_angle not in {"", "eye-level", "low", "high"}:
+                    if pose_angle not in {"", "front", "3/4", "profile", "over-shoulder"} or camera_angle not in {"", "eye-level", "low", "high", "foot level"}:
                         raise HTTPException(400, "Saved photoshoot camera is not supported.")
                     if bool(pose_angle) != bool(camera_angle):
                         raise HTTPException(400, "Saved photoshoot camera needs both angles.")

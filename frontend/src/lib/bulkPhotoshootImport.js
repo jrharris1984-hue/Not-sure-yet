@@ -75,7 +75,7 @@ export function parsePhotoshootImport(source) {
       if (Object.hasOwn(shot, 'camera_pose_angle')) {
         clean.camera_pose_angle = text(shot.camera_pose_angle, `${place} saved pose angle`, 30);
         clean.camera_angle = text(shot.camera_angle, `${place} saved camera angle`, 30);
-        if (!['', 'front', '3/4', 'profile', 'over-shoulder'].includes(clean.camera_pose_angle) || !['', 'eye-level', 'low', 'high'].includes(clean.camera_angle) || !!clean.camera_pose_angle !== !!clean.camera_angle) throw new Error(`${place} saved camera needs a supported pose angle and camera angle together.`);
+        if (!['', 'front', '3/4', 'profile', 'over-shoulder'].includes(clean.camera_pose_angle) || !['', 'eye-level', 'low', 'high', 'foot level'].includes(clean.camera_angle) || !!clean.camera_pose_angle !== !!clean.camera_angle) throw new Error(`${place} saved camera needs a supported pose angle and camera angle together.`);
       }
       return clean;
     });
