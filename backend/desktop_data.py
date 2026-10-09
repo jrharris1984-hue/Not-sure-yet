@@ -1,7 +1,7 @@
 """Export MongoDB documents into a portable SQLite migration snapshot.
 
-The application still runs on MongoDB. This utility stages data for the future
-desktop database and never changes the source database or an existing file.
+Export is read-only. Import explicitly creates a new live SQLite database;
+neither operation changes the source database or overwrites an existing file.
 """
 import argparse
 from datetime import datetime, timezone
@@ -97,6 +97,57 @@ def inspect_snapshot(path):
         connection.close()
 
 
+def import_snapshot(source, destination):
+    """Validate a consistent snapshot copy, then publish a new live database."""
+    from sqlite_storage import FORMAT, VERSION, SQLiteDatabase
+    import asyncio
+    destination = Path(destination).resolve()
+    if destination.exists():
+        raise FileExistsError('Choose a new database filename; existing files are never overwritten.')
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(prefix='ultra-import-', dir=destination.parent) as temporary:
+        staged = Path(temporary) / 'database.sqlite3'
+        original = sqlite3.connect(Path(source).resolve().as_uri() + '?mode=ro', uri=True)
+        copied = sqlite3.connect(staged)
+        try:
+            original.backup(copied)
+        finally:
+            copied.close()
+            original.close()
+        result = inspect_snapshot(staged)
+        connection = sqlite3.connect(staged)
+        try:
+            with connection:
+                connection.execute('ALTER TABLE documents ADD COLUMN app_id TEXT')
+                # Preserve the original BSON payload verbatim; index only string application IDs.
+                for name, key, payload in connection.execute('SELECT collection_name, document_key, document_json FROM documents'):
+                    identifier = json_util.loads(payload).get('id')
+                    if isinstance(identifier, str):
+                        connection.execute('UPDATE documents SET app_id=? WHERE collection_name=? AND document_key=?', (identifier, name, key))
+                connection.executemany('UPDATE metadata SET value=? WHERE key=?', [(json.dumps(FORMAT), 'format'), (json.dumps(VERSION), 'schema_version')])
+        finally:
+            connection.close()
+        database = SQLiteDatabase(staged)
+        try:
+            # Catch conflicts before publication, rather than at application startup.
+            asyncio.run(database.media_corrections.create_index([('source', 1), ('media_id', 1)], unique=True))
+        finally:
+            database.close()
+        created = False
+        try:
+            with destination.open('xb') as output, staged.open('rb') as input_file:
+                created = True
+                while chunk := input_file.read(1024 * 1024):
+                    output.write(chunk)
+                output.flush()
+                os.fsync(output.fileno())
+        except BaseException:
+            if created:
+                destination.unlink(missing_ok=True)
+            raise
+    return {**result, 'path': str(destination), 'format': FORMAT}
+
+
 def export_mongo(mongo_url, database_name, destination):
     # Delay the driver import so inspect needs no running MongoDB service.
     from pymongo import MongoClient
@@ -123,9 +174,17 @@ def main(argv=None):
     export.add_argument('--output', required=True, type=Path)
     inspect = commands.add_parser('inspect', help='Validate a snapshot and print collection counts only.')
     inspect.add_argument('snapshot', type=Path)
+    importer = commands.add_parser('import', help='Import a snapshot into a NEW live SQLite database. Stop the application first.')
+    importer.add_argument('snapshot', type=Path)
+    importer.add_argument('--output', required=True, type=Path)
     args = parser.parse_args(argv)
     try:
-        result = export_mongo(args.mongo_url, args.database, args.output) if args.command == 'export' else inspect_snapshot(args.snapshot)
+        if args.command == 'export':
+            result = export_mongo(args.mongo_url, args.database, args.output)
+        elif args.command == 'import':
+            result = import_snapshot(args.snapshot, args.output)
+        else:
+            result = inspect_snapshot(args.snapshot)
     except (FileExistsError, ValueError) as error:
         parser.exit(1, f'{error}\n')
     except Exception:

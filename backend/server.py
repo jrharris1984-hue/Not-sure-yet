@@ -14,7 +14,6 @@ from fastapi import FastAPI, APIRouter, HTTPException, Body, BackgroundTasks, We
 from fastapi.responses import FileResponse, JSONResponse, Response
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
-from motor.motor_asyncio import AsyncIOMotorClient
 import os
 import logging
 import uuid
@@ -40,6 +39,7 @@ from ollama_prompt_models import configure_prompt_request
 from media_corrections import normalize_values, clean_tags, overlay_item
 from shoot_planner import validate_shot_plan, apply_shot_controls
 from storage_paths import resolve_storage_paths
+from storage_backend import open_storage
 
 import httpx
 import websockets as ws_client
@@ -52,9 +52,8 @@ RENDERS_DIR = STORAGE_PATHS.renders_dir
 RENDERS_DIR.mkdir(parents=True, exist_ok=True)
 COMFYUI_OUTPUT_DIR = Path(os.environ.get("COMFYUI_OUTPUT_DIR", "/comfyui-output"))
 
-mongo_url = os.environ["MONGO_URL"]
-client = AsyncIOMotorClient(mongo_url)
-db = client[os.environ["DB_NAME"]]
+STORAGE_PROVIDER = os.environ.get("ULTRA_STUDIO_STORAGE", "mongo").strip().lower()
+client, db = open_storage(STORAGE_PATHS)
 ollama_vision_gate = asyncio.Semaphore(1)
 
 app = FastAPI(title="Ultra Studio DNA Builder")
@@ -554,9 +553,9 @@ async def root():
 async def health():
     try:
         await db.command("ping")
-        return {"ok": True, "mongo": True}
+        return {"ok": True, "mongo": STORAGE_PROVIDER == "mongo", "storage": STORAGE_PROVIDER}
     except Exception as e:
-        return JSONResponse(status_code=503, content={"ok": False, "mongo": False, "error": str(e)})
+        return JSONResponse(status_code=503, content={"ok": False, "mongo": False, "storage": STORAGE_PROVIDER, "error": str(e)})
 
 
 # ============================================================
