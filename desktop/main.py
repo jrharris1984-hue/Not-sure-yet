@@ -12,6 +12,24 @@ if not getattr(sys, 'frozen', False):
 from runtime import BackendRuntime, InstanceLock, configure_logging, desktop_app, prepare_environment, resource_frontend, verify_runtime
 
 
+def ensure_webview2():
+    """Reject the legacy IE renderer on Windows instead of showing a blank UI."""
+    if sys.platform != 'win32':
+        return
+    import winreg
+    runtime_key = r'SOFTWARE\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}'
+    for hive in (winreg.HKEY_CURRENT_USER, winreg.HKEY_LOCAL_MACHINE):
+        for view in (winreg.KEY_WOW64_32KEY, winreg.KEY_WOW64_64KEY):
+            try:
+                with winreg.OpenKey(hive, runtime_key, 0, winreg.KEY_READ | view) as key:
+                    version, _ = winreg.QueryValueEx(key, 'pv')
+                if int(str(version).split('.')[0]) >= 86:
+                    return
+            except (OSError, ValueError):
+                pass
+    raise RuntimeError('Microsoft Edge WebView2 Runtime is required to open Ultra Studio. Install it from https://developer.microsoft.com/microsoft-edge/webview2/ and try again.')
+
+
 def show_error(message):
     if sys.platform == 'win32':
         import ctypes
@@ -37,6 +55,7 @@ def main(argv=None):
                 if args.smoke_test:
                     verify_runtime(url)
                 else:
+                    ensure_webview2()
                     import webview
                     webview.settings['ALLOW_DOWNLOADS'] = True
                     webview.settings['ALLOW_FILE_URLS'] = False

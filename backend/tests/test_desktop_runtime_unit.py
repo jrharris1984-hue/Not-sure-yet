@@ -10,6 +10,8 @@ import sys
 import tempfile
 import time
 import unittest
+from types import SimpleNamespace
+from contextlib import nullcontext
 from unittest.mock import patch
 from urllib.request import urlopen
 
@@ -132,6 +134,18 @@ class DesktopLifecycleTests(unittest.TestCase):
             with patch.object(sys, 'frozen', True, create=True), patch.object(sys, '_MEIPASS', directory, create=True):
                 self.assertEqual(resource_frontend(), Path(directory) / 'frontend')
 
+    def test_missing_webview2_is_reported_before_using_legacy_renderer(self):
+        import main
+        registry = SimpleNamespace(HKEY_CURRENT_USER=1, HKEY_LOCAL_MACHINE=2,
+                                   KEY_WOW64_32KEY=32, KEY_WOW64_64KEY=64, KEY_READ=8,
+                                   OpenKey=lambda *args: nullcontext('key'),
+                                   QueryValueEx=lambda *args: ('0.0.0.0', 1))
+        with patch.dict(sys.modules, {'winreg': registry}), patch.object(sys, 'platform', 'win32'):
+            with self.assertRaisesRegex(RuntimeError, 'WebView2 Runtime'):
+                main.ensure_webview2()
+            registry.QueryValueEx = lambda *args: ('130.0.0.0', 1)
+            main.ensure_webview2()
+
     def test_real_desktop_shell_with_stub_window_and_restart_persistence(self):
         # Exercise the real entry point/API/shutdown in fresh processes. Only the
         # platform GUI is replaced; Windows rendering is a manual preview check.
@@ -146,6 +160,7 @@ from pathlib import Path
 from urllib.request import urlopen, Request
 sys.path.insert(0, sys.argv[1])
 import main
+main.ensure_webview2=lambda:None
 root=Path(sys.argv[2])/'interface'
 root.mkdir(exist_ok=True)
 (root/'index.html').write_text('<html>Desktop test</html>')
