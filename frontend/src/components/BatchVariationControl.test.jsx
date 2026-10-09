@@ -80,3 +80,15 @@ test('save current plan opens an editable snapshot and saves the actual choices'
   expect(onSavePreset.mock.calls[0][0].sequence[0]).toMatchObject({ pose_prompt: 'standing with arms folded', camera_pose_angle: 'profile', camera_angle: 'low', framing: 'full body' });
   act(() => root.unmount());
 });
+
+test('restoring a built-in style keeps that style selected in the director', async () => {
+  global.IS_REACT_ACT_ENVIRONMENT = true;
+  const container = document.createElement('div'); const root = createRoot(container);
+  const onSmartPresetChange = jest.fn();
+  const customPresets = [{ key: 'boudoir', label: 'Edited boudoir', category: 'Glamour', sequence: [{ title: 'Hero', framing: 'full body' }] }];
+  act(() => root.render(<BatchVariationControl {...props} smartPreset="boudoir" customPresets={customPresets} onSmartPresetChange={onSmartPresetChange} />));
+  act(() => [...container.querySelectorAll('button')].find(button => button.textContent === 'Edit').click());
+  await act(async () => [...container.querySelectorAll('button')].find(button => button.textContent === 'Restore built-in style').click());
+  expect(onSmartPresetChange).toHaveBeenCalledWith('boudoir');
+  act(() => root.unmount());
+});

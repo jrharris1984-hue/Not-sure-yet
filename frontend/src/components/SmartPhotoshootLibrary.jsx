@@ -1,3 +1,5 @@
+import PhotoshootImport from '@/components/PhotoshootImport';
+import { mergePhotoshootImport, photoshootPresetForExport } from '@/lib/bulkPhotoshootImport';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { endpoints } from '@/lib/api';
@@ -19,6 +21,15 @@ export default function SmartPhotoshootLibrary() {
   const presets = useMemo(() => settings?.custom_photoshoot_presets || [], [settings?.custom_photoshoot_presets]);
   const catalog = useMemo(() => photoshootCatalog(presets), [presets]);
   const [source, setSource] = useState(null);
+  const editorPreset = useMemo(() => source && source !== '__blank__' && Object.hasOwn(catalog.presets, source) ? photoshootPresetForExport(catalog.presets[source]) : null, [source, catalog]);
+  const download = scope => {
+    const entries = scope === 'saved' ? presets : catalog.categories.flatMap(category => category.presets);
+    const blob = new Blob([JSON.stringify(entries.map(photoshootPresetForExport), null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a'); anchor.href = url; anchor.download = `ultra-studio-smart-photoshoots-${scope}.json`;
+    document.body.appendChild(anchor); anchor.click(); anchor.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
   const [search, setSearch] = useState('');
   const [scope, setScope] = useState('saved');
   const save = async preset => {
@@ -26,6 +37,15 @@ export default function SmartPhotoshootLibrary() {
     const updated = await endpoints.updateSettings({ custom_photoshoot_presets: [...(latest.custom_photoshoot_presets || []).filter(item => item.key !== preset.key), preset] });
     qc.setQueryData(['settings'], updated);
     toast.success('Photoshoot saved to Library');
+  };
+  const importShoots = async (imported, mode) => {
+    const latest = await endpoints.settings();
+    const result = mergePhotoshootImport(latest.custom_photoshoot_presets || [], imported, mode);
+    if (result.added.length || result.updated.length) {
+      const updated = await endpoints.updateSettings({ custom_photoshoot_presets: result.presets });
+      qc.setQueryData(['settings'], updated); setScope('saved'); setSearch('');
+    }
+    return result;
   };
   const remove = async key => {
     const latest = await endpoints.settings();
@@ -48,6 +68,11 @@ export default function SmartPhotoshootLibrary() {
         </select>
         <button type="button" disabled={isLoading || !!error} onClick={() => setSource('__blank__')} className="min-h-11 rounded-lg bg-cyan-400 px-4 text-sm font-bold text-black disabled:opacity-40">New shoot</button>
       </div>
+      <div className="mt-3 flex flex-wrap gap-2">
+        <button type="button" disabled={isLoading || !!error} onClick={() => download('all')} className="min-h-11 rounded-lg border hairline px-3 text-xs text-cyan-200 disabled:opacity-40">Download all shoots JSON</button>
+        <button type="button" disabled={isLoading || !!error || !presets.length} onClick={() => download('saved')} className="min-h-11 rounded-lg border hairline px-3 text-xs text-cyan-200 disabled:opacity-40">Download saved shoots JSON</button>
+      </div>
+      <PhotoshootImport presets={presets} onSave={importShoots} disabled={isLoading || !!error} />
       {isLoading ? <p className="mt-3 text-sm text-zinc-400">Loading shoots…</p> : error ? <p role="alert" className="mt-3 text-sm text-red-300">Could not load your shoots. Refresh to try again.</p> : <>
         {!visible.length && <p className="mt-3 text-sm text-zinc-400">No matching saved shoots. Save a planned shoot or choose All shoot styles to customize a built-in style.</p>}
         <div className="mt-3 max-h-[32rem] space-y-4 overflow-y-auto overscroll-contain">
@@ -57,13 +82,13 @@ export default function SmartPhotoshootLibrary() {
               {category.presets.map(preset => <button key={preset.key} type="button" onClick={() => setSource(preset.key)}
                 className="min-h-20 rounded-xl border hairline p-3 text-left hover:border-cyan-500/40">
                 <span className="block text-sm font-semibold text-zinc-100">{preset.label}</span>
-                <span className="mt-1 block text-xs text-zinc-400">{preset.sequence.length} shots · {preset.custom ? 'Edit shots' : 'Customize a copy'}</span>
+                <span className="mt-1 block text-xs text-zinc-400">{preset.sequence.length} shots · {preset.custom ? 'Edit shots' : 'Edit built-in style'}</span>
               </button>)}
             </div>
           </div>)}
         </div>
       </>}
     </details>
-    <SmartPhotoshootDesigner open={source !== null} sourcePreset={source || '__blank__'} customPresets={presets} onClose={() => setSource(null)} onSave={save} onDelete={remove} />
+    <SmartPhotoshootDesigner open={source !== null} sourcePreset={source || '__blank__'} customPresets={presets} initialPreset={editorPreset} onClose={() => setSource(null)} onSave={save} onDelete={remove} />
   </section>;
 }
