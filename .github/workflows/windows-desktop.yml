@@ -30,9 +30,13 @@ jobs:
           node-version: '22'
       - name: Enable pinned Yarn through Corepack
         run: npm install --global --force corepack@0.34.0
-      - name: Build the portable app
+      - name: Install desktop build dependencies
         shell: pwsh
-        run: ./scripts/build-windows-desktop.ps1
+        run: |
+          python -m venv desktop/.venv
+          if ($LASTEXITCODE -ne 0) { throw 'Could not create build environment' }
+          & ./desktop/.venv/Scripts/python.exe -m pip install -r desktop/build-requirements.txt
+          if ($LASTEXITCODE -ne 0) { throw 'Could not install build dependencies' }
       - name: Test desktop runtime and SQLite behavior
         shell: pwsh
         run: |
@@ -43,6 +47,9 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'SQLite tests failed' }
           & ./desktop/.venv/Scripts/python.exe -m unittest discover -s backend/tests -p test_desktop_data_unit.py -v
           if ($LASTEXITCODE -ne 0) { throw 'Data path and snapshot tests failed' }
+      - name: Build the portable app
+        shell: pwsh
+        run: ./scripts/build-windows-desktop.ps1
       - name: Smoke-test the frozen app twice from another working directory
         shell: pwsh
         run: |
