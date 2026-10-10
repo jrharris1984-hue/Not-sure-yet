@@ -244,6 +244,13 @@ export function resolveBuilderControls(source = {}) {
       notes.push({ section: 'wardrobe', field: 'exposure_mode', text: 'Partial nudity keeps plain briefs on when no garment is selected. Choose a garment to customize the remaining coverage.' });
     }
   }
+  if (exposure.removeUpper || exposure.removeLower) {
+    const fields = exposure.removeUpper ? ['top', 'dress_style', 'outfit_set', 'outfit_preset', 'state']
+      : ['bottom', 'skirt_style', 'dress_style', 'underwear', 'outfit_set', 'outfit_preset', 'state'];
+    for (const field of fields) omit('wardrobe', field, 'The custom coverage behavior replaces this garment. Other separate garment selections remain active.');
+    if (exposure.removeUpper && ![w.bottom, w.skirt_style, w.underwear].some(value=>value && value!=='none')) w.bottom='lower clothing';
+    if (exposure.removeLower && !w.top) w.top='upper clothing';
+  }
   if (exposure.suppressClothing) {
     for (const field of ['outfit_set', 'outfit_set_color', 'outfit_preset', 'dress_style', 'skirt_style', 'top', 'bottom', 'underwear', 'material', 'garment_color', 'garment_pattern', 'palette', 'fit', 'state']) {
       omit('wardrobe', field, 'Clothing coverage overrides this garment detail. Your selection stays saved; choose Use selected outfit or Open or shifted outfit to include it.');

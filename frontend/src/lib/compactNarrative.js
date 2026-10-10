@@ -23,7 +23,7 @@ function visibleStockingWardrobe(dna, index, section, tagged) {
   let pieces = section(dna, 'wardrobe', index);
   const lingerie = clean(wardrobe.set_lingerie || wardrobe.underwear);
   const override = wardrobe._exposurePrompt;
-  const compact = override?.mode === exposure.mode && (tagged && override.short_tags || override.short);
+  const compact = override?.mode === (exposure.selection || exposure.mode) && (tagged && override.short_tags || override.short);
   const direction = clean(compact ? exposure.direction.replace(override.text, compact) : exposure.direction);
 
   // In full-set mode the matching lingerie can be emitted once as a wardrobe

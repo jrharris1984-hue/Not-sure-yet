@@ -32,6 +32,23 @@ class PromptCatalogTests(unittest.TestCase):
         value=self.library();value['sections'][0]['fields'][0]['options'][0]['keywords']='<script>example</script>'
         self.assertEqual(validate_prompt_catalog(value),value)
 
+    def test_custom_coverage_behavior_survives_save_and_invalid_metadata_is_rejected(self):
+        value={'sections':[{'key':'wardrobe','title':'Wardrobe','fields':[{'key':'exposure_mode','label':'Coverage','type':'chips','options':[{'value':'custom_wrap','label':'Fabric wrap','keywords':'soft fabric wrap','group':'','coverage_mode':'replace outfit'}]}]}]}
+        self.assertEqual(validate_prompt_catalog(value),value)
+        option=value['sections'][0]['fields'][0]['options'][0]
+        for invalid in ['unknown', [], None]:
+            option['coverage_mode']=invalid
+            with self.assertRaises(ValueError):validate_prompt_catalog(value)
+
+    def test_larger_prompt_libraries_are_supported_with_a_bounded_size(self):
+        value=self.library()
+        field=value['sections'][0]['fields'][0]
+        field['options']=[{'value':f'custom_choice_{i}','label':f'Choice {i}','keywords':'x'*1000,'group':''} for i in range(100)]
+        value['sections'][0]['fields']=[{**copy.deepcopy(field),'key':f'custom_field_{i}'} for i in range(6)]
+        self.assertEqual(len(validate_prompt_catalog(value)['sections'][0]['fields']),6)
+        value['sections'][0]['fields']=[{**copy.deepcopy(field),'key':f'custom_field_{i}'} for i in range(12)]
+        with self.assertRaisesRegex(ValueError,'too large'):validate_prompt_catalog(value)
+
     def test_rules_preserve_user_wording_scope_and_disabled_state(self):
         value=self.library();value['rules']=[{'key':'custom_rule','label':'Avoid haze','text':'clear air without haze','kind':'positive','scope':'image','enabled':False}]
         self.assertEqual(validate_prompt_catalog(value),value)
