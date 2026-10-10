@@ -11,18 +11,20 @@ const join = values => [...new Set(values.filter(Boolean).map(clean))].join(', '
 const title = key => key.replace(/^custom_/, '').replace(/_/g, ' ');
 const SHARED = new Set(['scenario', 'scene', 'lighting', 'camera', 'style']);
 const SKIP = new Set(['identity.age', 'identity.gender', 'wardrobe.outfit_mode', 'wardrobe.set_lingerie_mode',
-  'wardrobe.nudity_level', 'wardrobe.nudity_outfit', 'wardrobe.exposure_mode', 'wardrobe.set_lingerie', 'feet.composition_mode',
+  'wardrobe._exposurePrompt', 'wardrobe.nudity_level', 'wardrobe.nudity_outfit', 'wardrobe.exposure_mode', 'wardrobe.set_lingerie', 'feet.composition_mode',
   'scenario.cast_size', 'scenario.cast_age_mode', 'scenario.cast_age_gap', 'scenario.cast_resemblance',
   'scenario.kink_level', 'style.anatomy_mode']);
 const LOWER_BODY_OUTER = /\b(?:pantsuit|trousers|pants|leggings|jeans|slacks)\b/i;
 const STOCKING_LINGERIE = /\b(?:garter|garters|stockings|thigh[- ]highs?|hold-up stockings)\b/i;
 
-function visibleStockingWardrobe(dna, index, section) {
+function visibleStockingWardrobe(dna, index, section, tagged) {
   const wardrobe = dna.wardrobe || {};
   const exposure = wardrobeNudity(wardrobe);
   let pieces = section(dna, 'wardrobe', index);
   const lingerie = clean(wardrobe.set_lingerie || wardrobe.underwear);
-  const direction = clean(exposure.direction);
+  const override = wardrobe._exposurePrompt;
+  const compact = override?.mode === exposure.mode && (tagged && override.short_tags || override.short);
+  const direction = clean(compact ? exposure.direction.replace(override.text, compact) : exposure.direction);
 
   // In full-set mode the matching lingerie can be emitted once as a wardrobe
   // field and again inside the exposure instruction. Keep one authoritative copy.
@@ -112,7 +114,7 @@ export function buildCompactNarrative(subjects, catalog = {sections:[]}, compile
     const age = Number(dna.identity?.age);
     const identity = join([age ? `${age}-year-old adult ${person}` : `adult ${person}`, ageAppearancePrompt(age), ...section(dna, 'identity', index)]);
     const appearance = join(['physique', 'face', 'hair', 'skin'].flatMap(key => section(dna, key, index)));
-    const wardrobe = visibleStockingWardrobe(dna, index, section);
+    const wardrobe = visibleStockingWardrobe(dna, index, section, tagged);
     const pose = join(section(dna, 'pose', index));
     const otherKeys = Object.keys(dna).filter(key => !key.startsWith('_') && !SHARED.has(key) && !['identity','physique','face','hair','skin','wardrobe','pose'].includes(key));
     const other = join(otherKeys.flatMap(key => section(dna, key, index)));

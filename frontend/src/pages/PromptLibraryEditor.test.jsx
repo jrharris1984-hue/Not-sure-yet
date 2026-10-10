@@ -192,3 +192,20 @@ test('Prompt Library section helper keeps Shared Poses out of the DNA schema ord
   expect(sections[1].key).toBe('identity');
   expect(sections.find(section => section.key==='shared_poses')).toBeDefined();
 });
+
+
+test('older saved wardrobe exposes coverage, previews edits and saves them', async () => {
+  endpoints.settings.mockResolvedValue({prompt_catalog:{sections:[{key:'wardrobe',title:'Wardrobe',fields:[{key:'outfit_set',label:'Complete set',type:'chips',options:[]}]}]}});
+  await act(async()=>root.render(<PromptLibraryEditor/>));
+  act(()=>button('Wardrobe').click());
+  act(()=>button('📁 Clothing coverage').click());
+  const input=container.querySelector('[aria-label="Keywords use selected outfit"]');
+  expect(input.value).toBe('');
+  act(()=>[...container.querySelector('[aria-label="Choice folders"]').querySelectorAll('button')].find(item=>item.textContent.startsWith('revealing outfit')).click());
+  expect(container.querySelector('[aria-label="Keywords revealing outfit"]').value).toBe('revealing clothing with some skin visible');
+  await enter(container.querySelector('[aria-label="Keywords revealing outfit"]'),'custom draped clothing with bare shoulders');
+  act(()=>button('Preview compiled prompt').click());
+  expect(container.querySelector('[aria-label="Compiled positive preview"]').value).toContain('custom draped clothing with bare shoulders');
+  await act(async()=>button('Save library').click());
+  expect(getPromptCatalog().sections[0].fields.find(field=>field.key==='exposure_mode').options.find(option=>option.value==='revealing outfit').keywords).toBe('custom draped clothing with bare shoulders');
+});
