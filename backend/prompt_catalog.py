@@ -5,7 +5,7 @@ import re
 def validate_prompt_catalog(value):
     if not isinstance(value, dict) or not isinstance(value.get('sections'), list):
         raise ValueError('Prompt library must contain a list of categories.')
-    if len(json.dumps(value)) > 500_000 or len(value['sections']) > 60:
+    if len(json.dumps(value)) > 1_000_000 or len(value['sections']) > 60:
         raise ValueError('Prompt library is too large.')
     def text(item, key, maximum, empty=False):
         v = item.get(key, '')
@@ -42,6 +42,11 @@ def validate_prompt_catalog(value):
                 if oid in option_keys: raise ValueError('Duplicate choice.')
                 option_keys.add(oid)
                 clean_options.append({'value':oid,'label':text(option,'label',200),'keywords':text(option,'keywords',1500,True),'group':text(option,'group',200,True)})
+                if 'coverage_mode' in option:
+                    modes = {'use selected outfit', 'slightly revealing', 'revealing outfit', 'lingerie showing', 'lingerie only', 'open or shifted outfit', 'partially nude', 'nude', 'replace outfit', 'topless', 'bottomless'}
+                    if sid != 'wardrobe' or fid != 'exposure_mode' or not isinstance(option['coverage_mode'], str) or option['coverage_mode'] not in modes:
+                        raise ValueError('Invalid clothing coverage behavior.')
+                    clean_options[-1]['coverage_mode'] = option['coverage_mode']
                 for compact_key in ('short', 'short_tags'):
                     if compact_key in option:
                         clean_options[-1][compact_key] = text(option,compact_key,500,True)

@@ -1,5 +1,6 @@
+import {coverageBehavior} from './wardrobeNudity';
 import { matchingSetLingerie } from "./completeOutfitSets";
-export const FULL_SET_ALLOWED_FIELDS = new Set(['outfit_mode', 'outfit_set', 'outfit_set_color', 'set_lingerie_mode', 'set_lingerie', 'exposure_mode', 'nail_color', 'nail_shape']);
+export const FULL_SET_ALLOWED_FIELDS = new Set(['outfit_mode', 'outfit_set', 'outfit_set_color', 'set_lingerie_mode', 'set_lingerie', 'exposure_mode', '_exposurePrompt', 'nail_color', 'nail_shape']);
 export const wardrobeMode = (value = {}) => ['full', 'custom'].includes(value.outfit_mode)
   ? value.outfit_mode : value.outfit_set ? 'full' : 'custom';
 export const wardrobeFieldDisabled = (field, value = {}) => wardrobeMode(value) === 'full'
@@ -12,9 +13,9 @@ export function editWardrobeField(value, field, selected) {
   if (field === 'outfit_mode') return selectWardrobeMode(value, selected || 'custom');
   if (field === 'outfit_set') return { ...selectWardrobeMode(value, 'full'), outfit_set: selected };
   if (wardrobeFieldDisabled(field, value)) return value;
-  if (field === 'exposure_mode' && wardrobeMode(value) === 'full' && value.set_lingerie_mode === 'none' && ['lingerie showing', 'lingerie only'].includes(selected)) return value;
+  if (field === 'exposure_mode' && wardrobeMode(value) === 'full' && value.set_lingerie_mode === 'none' && ['lingerie showing', 'lingerie only'].includes(coverageBehavior({...value, exposure_mode:selected, _exposurePrompt:undefined}))) return value;
   if (field === 'set_lingerie_mode') return { ...value, outfit_mode:'full', set_lingerie_mode:selected,
-    ...(selected === 'none' && ['lingerie showing', 'lingerie only'].includes(value.exposure_mode) ? {exposure_mode:'use selected outfit'} : {}) };
+    ...(selected === 'none' && ['lingerie showing', 'lingerie only'].includes(coverageBehavior(value)) ? {exposure_mode:'use selected outfit'} : {}) };
   return { ...value, [field]: selected };
 }
 // Resolve explicit modes on a copy: retain old recipes' legacy priorities until
@@ -32,14 +33,14 @@ export function resolveWardrobeMode(value = {}) {
     resolved.underwear = '';
     // Keep the outer outfit when an imported recipe asks to reveal a layer
     // that the user explicitly disabled. Do not invent replacement garments.
-    if (['lingerie showing', 'lingerie only'].includes(value.exposure_mode)) resolved.exposure_mode = 'use selected outfit';
+    if (['lingerie showing', 'lingerie only'].includes(coverageBehavior(value))) resolved.exposure_mode = 'use selected outfit';
     if (/dress|uniform|gown|pantsuit|suit|blazer/i.test(resolved.outfit_set || '')) {
       resolved.outfit_set = String(resolved.outfit_set).replace(/,?\s*(?:with\s+)?matching lingerie\s*,?/gi, ',').replace(/,\s*,/g, ',').replace(/,\s*$/, '').trim();
     }
     return resolved;
   }
   resolved.set_lingerie = value.set_lingerie || matchingSetLingerie(value.outfit_set);
-  if (value.exposure_mode === 'lingerie showing') resolved.underwear = resolved.set_lingerie;
-  if (value.exposure_mode === 'lingerie only') { resolved.outfit_set = resolved.set_lingerie; resolved.underwear = ''; }
+  if (coverageBehavior(value) === 'lingerie showing') resolved.underwear = resolved.set_lingerie;
+  if (coverageBehavior(value) === 'lingerie only') { resolved.outfit_set = resolved.set_lingerie; resolved.underwear = ''; }
   return resolved;
 }

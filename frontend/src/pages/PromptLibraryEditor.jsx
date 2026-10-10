@@ -1,3 +1,4 @@
+import {COVERAGE_BEHAVIORS} from '@/lib/wardrobeNudity';
 import BulkChoiceEditor from '@/components/BulkChoiceEditor';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -5,7 +6,7 @@ import { endpoints } from '@/lib/api';
 import { expandPrompt } from '@/lib/promptMap';
 import { compileModelPrompts } from '@/lib/modelPromptCompilers';
 import { SECTIONS, DEFAULT_DNA } from '@/lib/dna';
-import { editableSection, editableLibrarySection, exportPromptLibrary, catalogSections, newCatalogKey, promptLibrarySections, setPromptCatalog, validateCatalogDraft } from '@/lib/promptCatalog';
+import { PROMPT_LIBRARY_FILE_LIMIT, parsePromptLibraryBackup, editableSection, editableLibrarySection, exportPromptLibrary, catalogSections, newCatalogKey, promptLibrarySections, setPromptCatalog, validateCatalogDraft } from '@/lib/promptCatalog';
 const fieldClass='w-full rounded-lg border hairline bg-elevated px-3 py-2 text-sm';
 const buttonClass='rounded-lg border hairline px-3 py-2 text-sm text-cyan-200 disabled:opacity-40';
 const LIBRARY_SECTIONS = promptLibrarySections(SECTIONS);
@@ -51,7 +52,7 @@ export default function PromptLibraryEditor() {
   };
   const backup = () => {const blob=new Blob([JSON.stringify(exportPromptLibrary(LIBRARY_SECTIONS,draft),null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const link=document.createElement('a');link.href=url;link.download='ultra-studio-prompt-library.json';link.click();URL.revokeObjectURL(url);};
   const restore = async event => {const file=event.target.files?.[0];event.target.value='';if(!file)return;
-    try {if(file.size>500000)throw new Error('Backup is too large.');const config=validateCatalogDraft(JSON.parse(await file.text()));
+    try {if(file.size>PROMPT_LIBRARY_FILE_LIMIT)throw new Error('Backup is too large (maximum 2 MB).');const config=parsePromptLibraryBackup(await file.text(),file.size);
       if(!Array.isArray(config.sections) || config.sections.some(section => !section?.key || !section?.title || !Array.isArray(section.fields) || section.fields.some(field => !field?.key || !field?.label || !Array.isArray(field.options))))throw new Error('Choose a valid prompt library backup.');
       setDraft(config);setSectionKey(config.sections[0]?.key || LIBRARY_SECTIONS[0].key);setFieldKey(config.sections[0]?.fields[0]?.key || LIBRARY_SECTIONS[0].fields[0].key);setMessage('Backup loaded for review. Save to apply it.');setSuggestion(null);
     }catch(err){setError(err.message || 'Could not read the backup.');}
@@ -102,6 +103,7 @@ export default function PromptLibraryEditor() {
               <label className="block">Display name<input aria-label={`Display name ${option.value}`} className={fieldClass} value={option.label} onChange={event => changeOption(option.value,{label:event.target.value})}/></label>
               <label className="block">Group<input aria-label={`Group ${option.value}`} className={fieldClass} value={option.group || ''} onChange={event => changeOption(option.value,{group:event.target.value})}/></label>
               <label className="block">Prompt keywords<textarea aria-label={`Keywords ${option.value}`} className={fieldClass} rows={2} value={option.keywords || defaultKeywords(option)} onChange={event => changeOption(option.value,{keywords:event.target.value})}/></label>
+              {sectionKey==='wardrobe' && fieldKey==='exposure_mode' && option.value.startsWith('custom_') && <label className="block">Coverage behavior<select aria-label={`Coverage behavior ${option.value}`} className={fieldClass} value={option.coverage_mode || 'use selected outfit'} onChange={event=>changeOption(option.value,{coverage_mode:event.target.value})}>{COVERAGE_BEHAVIORS.map(mode=><option key={mode} value={mode}>{mode}</option>)}</select><span className="block text-xs text-zinc-400">Controls which selected garments stay active. Keywords describe the desired look. Replace outfit uses your wording in place of the selected outfit; topless and bottomless replace the corresponding garment fields. Use Custom outfit mode to preserve specific remaining garments when removing only a top or bottom.</span></label>}
               <label className="block">Compact wording<textarea aria-label={`Compact wording ${option.value}`} className={fieldClass} rows={2} maxLength={500} placeholder="Optional concise description that retains every detail" value={option.short || ''} onChange={event => changeOption(option.value,{short:event.target.value})}/></label>
               <label className="block">Compact tags for SDXL / Pony<textarea aria-label={`Compact tags ${option.value}`} className={fieldClass} rows={2} maxLength={500} placeholder="Optional; otherwise uses compact wording" value={option.short_tags || ''} onChange={event => changeOption(option.value,{short_tags:event.target.value})}/></label>
               <p className="text-xs text-zinc-400">Blank compact wording preserves custom keywords. Save the library to apply changes.</p>

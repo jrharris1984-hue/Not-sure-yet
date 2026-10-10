@@ -1,6 +1,13 @@
 import { useSyncExternalStore } from 'react';
 import { expandPrompt } from './promptMap';
-import { wardrobeExposure } from './wardrobeNudity';
+import { withCoveragePrompt, COVERAGE_BEHAVIORS } from './wardrobeNudity';
+import {setCoverageCatalog} from './coverageCatalog';
+
+export const PROMPT_LIBRARY_FILE_LIMIT = 2000000;
+export function parsePromptLibraryBackup(text, bytes) {
+  if (bytes > PROMPT_LIBRARY_FILE_LIMIT) throw new Error('Backup is too large (maximum 2 MB).');
+  return validateCatalogDraft(JSON.parse(text));
+}
 
 export const SHARED_POSE_SECTION = {
   key: 'shared_poses',
@@ -72,6 +79,7 @@ const listeners = new Set();
 export const getPromptCatalog = () => catalog;
 export function setPromptCatalog(value) {
   catalog = value && Array.isArray(value.sections) ? value : {sections:[]};
+  setCoverageCatalog(catalog);
   listeners.forEach(fn => fn());
 }
 export function usePromptCatalog() {
@@ -183,9 +191,7 @@ export function catalogDna(dna = {}, config = catalog, preserveSelections = fals
       };
       const value = dna[section.key][field.key];
       if (section.key === 'wardrobe' && field.key === 'exposure_mode') {
-        const mode = wardrobeExposure(dna.wardrobe);
-        const option = field.options?.find(item => item.value === mode);
-        if (option) result.wardrobe._exposurePrompt = {mode, text:option.keywords?.trim() || expandPrompt('wardrobe', 'exposure_mode', mode), short:option.short?.trim(), short_tags:option.short_tags?.trim()};
+        result.wardrobe = withCoveragePrompt(result.wardrobe, config);
         continue;
       }
       if (value !== undefined && ['chips','chips_multi','pose_chips'].includes(field.type)) result[section.key][field.key] = Array.isArray(value) ? value.map(translate).filter(Boolean) : translate(value);
@@ -219,13 +225,13 @@ export function validateCatalogDraft(value) {
   const validText=(text,empty=false,max=200) => typeof text==='string' && text.length<=max && (empty || !!text.trim());
   const validKey=key => validText(key,false,64) && /^[a-z][a-z0-9_]*$/.test(key) && !['constructor','prototype','__proto__'].includes(key);
   const unique=values => new Set(values).size===values.length;
-  if(!value || !Array.isArray(value.sections) || value.sections.length>60 || JSON.stringify(value).length>500000)throw new Error('Choose a valid prompt library (maximum 60 categories).');
+  if(!value || !Array.isArray(value.sections) || value.sections.length>60 || JSON.stringify(value).length>1000000)throw new Error('Choose a valid prompt library (maximum 60 categories).');
   if(!unique(value.sections.map(section => section?.key)))throw new Error('Category identifiers must be unique.');
   for(const section of value.sections) {
     if(!validKey(section?.key) || !validText(section.title) || !Array.isArray(section.fields) || section.fields.length>80 || !unique(section.fields.map(field => field?.key)))throw new Error('Enter valid category and subcategory names.');
     for(const field of section.fields) {
       if(!validKey(field?.key) || !validText(field.label) || !['chips','chips_multi','pose_chips','slider','text'].includes(field.type) || !Array.isArray(field.options) || field.options.length>300 || !unique(field.options.map(option => option?.value)))throw new Error('Invalid subcategory or duplicate choices.');
-      if(field.options.some(option => !validText(option?.value) || !validText(option.label) || !validText(option.keywords,true,1500) || !validText(option.group || '',true) || !validText(option.short === undefined ? '' : option.short,true,500) || !validText(option.short_tags === undefined ? '' : option.short_tags,true,500)))throw new Error('Enter valid choice names, groups and keywords; compact wording allows 500 characters.');
+      if(field.options.some(option => !validText(option?.value) || !validText(option.label) || !validText(option.keywords,true,1500) || !validText(option.group || '',true) || !validText(option.short === undefined ? '' : option.short,true,500) || !validText(option.short_tags === undefined ? '' : option.short_tags,true,500) || (option.coverage_mode !== undefined && (section.key!=='wardrobe' || field.key!=='exposure_mode' || !COVERAGE_BEHAVIORS.includes(option.coverage_mode)))))throw new Error('Enter valid choice names, groups and keywords; compact wording allows 500 characters.');
     }
   }
   const rules=value.rules || [];

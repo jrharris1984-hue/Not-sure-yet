@@ -30,3 +30,15 @@ Apply a manual prompt that omits the hair description: its row should switch
 to Not detected. Choose a size preset and increase its matching size slider:
 the preset should become Inactive while the slider stays active. Restore the
 generated prompt before rendering if you want the original selections used.
+
+
+Custom Clothing coverage choices can define a **Coverage behavior** in the
+Prompt Library editor. This determines whether selected garments remain,
+open, or are replaced; the keywords and compact wording describe the look.
+Topless and bottomless preserve separate remaining garment controls. For an
+exact remaining garment, choose Custom outfit mode instead of a combined full
+set. When a full set cannot be split, the compiler uses a generic remaining
+upper or lower garment and reports the combined outfit as inactive.
+
+Backups accept up to 2 MB of file data and 1 million serialized characters of
+catalog data. Coverage behavior metadata survives saving and downloading.
