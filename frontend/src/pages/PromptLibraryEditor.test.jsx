@@ -199,15 +199,14 @@ test('older saved wardrobe exposes coverage, previews edits and saves them', asy
   await act(async()=>root.render(<PromptLibraryEditor/>));
   act(()=>button('Wardrobe').click());
   act(()=>button('📁 Clothing coverage').click());
-  const input=container.querySelector('[aria-label="Keywords use selected outfit"]');
-  expect(input.value).toBe('');
-  act(()=>[...container.querySelector('[aria-label="Choice folders"]').querySelectorAll('button')].find(item=>item.textContent.startsWith('revealing outfit')).click());
-  expect(container.querySelector('[aria-label="Keywords revealing outfit"]').value).toBe('revealing clothing with some skin visible');
-  await enter(container.querySelector('[aria-label="Keywords revealing outfit"]'),'custom draped clothing with bare shoulders');
+  const input=container.querySelector('[aria-label="Keywords custom_coverage_topless"]');
+  expect(input.value).toBe('top removed, bare breasts, bottoms still on');
+  act(()=>[...container.querySelector('[aria-label="Choice folders"]').querySelectorAll('button')].find(item=>item.textContent.startsWith('unbuttoned')).click());
+  await enter(container.querySelector('[aria-label="Keywords custom_coverage_unbuttoned"]'),'custom draped clothing with bare shoulders');
   act(()=>button('Preview compiled prompt').click());
   expect(container.querySelector('[aria-label="Compiled positive preview"]').value).toContain('custom draped clothing with bare shoulders');
   await act(async()=>button('Save library').click());
-  expect(getPromptCatalog().sections[0].fields.find(field=>field.key==='exposure_mode').options.find(option=>option.value==='revealing outfit').keywords).toBe('custom draped clothing with bare shoulders');
+  expect(getPromptCatalog().sections[0].fields.find(field=>field.key==='exposure_mode').options.find(option=>option.value==='custom_coverage_unbuttoned').keywords).toBe('custom draped clothing with bare shoulders');
 });
 
 test('custom coverage behavior can be edited and survives saving the library', async()=>{
@@ -219,4 +218,19 @@ test('custom coverage behavior can be edited and survives saving the library', a
   act(()=>{select.value='replace outfit';select.dispatchEvent(new Event('change',{bubbles:true}));});
   await act(async()=>button('Save library').click());
   expect(getPromptCatalog().sections[0].fields.find(field=>field.key==='exposure_mode').options[0].coverage_mode).toBe('replace outfit');
+});
+
+test('simple coverage reset replaces only coverage and saves exactly 22 choices',async()=>{
+ const other={key:'outfit_set',label:'My outfits',type:'chips',options:[{value:'custom_suit',label:'Suit',keywords:'blue suit',group:''}]};
+ endpoints.settings.mockResolvedValue({prompt_catalog:{sections:[{key:'wardrobe',title:'My wardrobe',fields:[other,{key:'exposure_mode',label:'Coverage',type:'chips',options:[{value:'custom_old',label:'unbuttoned shirt',keywords:'old words',group:''},{value:'custom_extra',label:'Extra',keywords:'extra words',group:''}]}]}]}});
+ await act(async()=>root.render(<PromptLibraryEditor/>));
+ act(()=>button('My wardrobe').click());act(()=>button('📁 Coverage').click());
+ act(()=>button('Use simple coverage list').click());
+ await act(async()=>button('Save library').click());
+ const section=getPromptCatalog().sections[0];
+ expect(section.fields.find(field=>field.key==='outfit_set')).toEqual(other);
+ const coverage=section.fields.find(field=>field.key==='exposure_mode');
+ expect(coverage.options).toHaveLength(22);
+ expect(coverage.options.find(option=>option.label==='unbuttoned').value).toBe('custom_old');
+ expect(coverage.options.some(option=>option.value==='custom_extra')).toBe(false);
 });

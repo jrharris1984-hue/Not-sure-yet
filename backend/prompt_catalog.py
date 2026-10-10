@@ -43,7 +43,7 @@ def validate_prompt_catalog(value):
                 option_keys.add(oid)
                 clean_options.append({'value':oid,'label':text(option,'label',200),'keywords':text(option,'keywords',1500,True),'group':text(option,'group',200,True)})
                 if 'coverage_mode' in option:
-                    modes = {'use selected outfit', 'slightly revealing', 'revealing outfit', 'lingerie showing', 'lingerie only', 'open or shifted outfit', 'partially nude', 'nude', 'replace outfit', 'topless', 'bottomless'}
+                    modes = {'use selected outfit', 'slightly revealing', 'revealing outfit', 'lingerie showing', 'lingerie only', 'open or shifted outfit', 'partially nude', 'nude', 'replace outfit', 'topless', 'bottomless', 'topless and barefoot', 'hosiery only', 'heels only', 'jewelry only'}
                     if sid != 'wardrobe' or fid != 'exposure_mode' or not isinstance(option['coverage_mode'], str) or option['coverage_mode'] not in modes:
                         raise ValueError('Invalid clothing coverage behavior.')
                     clean_options[-1]['coverage_mode'] = option['coverage_mode']

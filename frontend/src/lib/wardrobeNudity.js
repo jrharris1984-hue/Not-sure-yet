@@ -5,7 +5,7 @@ export const EXPOSURE_CHOICES = [
   "open or shifted outfit", "partially nude", "nude",
 ];
 
-export const COVERAGE_BEHAVIORS = [...EXPOSURE_CHOICES, 'replace outfit', 'topless', 'bottomless'];
+export const COVERAGE_BEHAVIORS = [...EXPOSURE_CHOICES, 'replace outfit', 'topless', 'bottomless', 'topless and barefoot', 'hosiery only', 'heels only', 'jewelry only'];
 
 export function withCoveragePrompt(wardrobe = {}, config) {
   const option = coverageOption(wardrobe.exposure_mode, config);
@@ -55,9 +55,10 @@ export function wardrobeNudity(wardrobe = {}) {
   return {
     mode, selection, direction: direction + (["lingerie showing", "lingerie only"].includes(mode) && wardrobe.underwear && wardrobe.underwear !== "none" ? `, ${wardrobe.underwear}` : ""),
     level: { "use selected outfit": 0, "slightly revealing": 15, "revealing outfit": 40,
-      "lingerie showing": 35, "lingerie only": 50, "open or shifted outfit": 60, "partially nude": 60, nude: 100, "replace outfit":40, topless:60, bottomless:60 }[mode],
-    suppressClothing: ["nude", "replace outfit"].includes(mode),
-    removeUpper: mode === "topless", removeLower: mode === "bottomless",
+      "lingerie showing": 35, "lingerie only": 50, "open or shifted outfit": 60, "partially nude": 60, nude: 100, "replace outfit":40, topless:60, bottomless:60,
+      'topless and barefoot':60, 'hosiery only':100, 'heels only':100, 'jewelry only':100 }[mode],
+    suppressClothing: ["nude", "replace outfit", 'hosiery only', 'heels only', 'jewelry only'].includes(mode),
+    removeUpper: ["topless", 'topless and barefoot'].includes(mode), removeLower: mode === "bottomless",
     keepLingerie: mode === "open or shifted outfit",
   };
 }

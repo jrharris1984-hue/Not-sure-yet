@@ -1,4 +1,5 @@
 import {COVERAGE_BEHAVIORS} from '@/lib/wardrobeNudity';
+import {simpleCoverageOptions} from '@/lib/simpleCoverage';
 import BulkChoiceEditor from '@/components/BulkChoiceEditor';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -94,6 +95,7 @@ export default function PromptLibraryEditor() {
           {selectedField.key.startsWith('custom_') && <><label className="block">Selection mode<select aria-label="Selection mode" className={fieldClass} value={selectedField.type} onChange={event => changeField({...selectedField,type:event.target.value})}><option value="chips">Choose one</option><option value="chips_multi">Choose multiple</option></select></label>
             <button className={buttonClass} onClick={() => {changeSection({...section,fields:section.fields.filter(item => item.key!==fieldKey)});setFieldKey('');}}>Remove subcategory</button></>}
           {['chips','chips_multi','pose_chips'].includes(selectedField.type) ? <>
+            {sectionKey==='wardrobe' && fieldKey==='exposure_mode' && <button className={buttonClass} disabled={busy} onClick={()=>{changeField({...selectedField,options:simpleCoverageOptions(selectedField.options)});setOptionKey('');setFilter('');setBrowseLevel('choices');setSuggestion(null);setPromptPreview(null);setMessage('The 22 simple coverage choices are staged. Save library to apply. Other categories are unchanged.');}}>Use simple coverage list</button>}
             <p className="text-xs text-zinc-400">Blank keywords keep the original prompt mapping. For new choices, blank keywords use the display name. Group names create tabs within this subcategory.</p>
             <input aria-label="Find a choice" className={fieldClass} placeholder="Find a choice by name, group or keywords…" value={filter} onChange={event => setFilter(event.target.value)}/>
             <div className={`grid max-h-64 grid-cols-2 gap-2 overflow-y-auto ${browseLevel==='choice'?'hidden md:grid':'grid'}`} aria-label="Choice folders">

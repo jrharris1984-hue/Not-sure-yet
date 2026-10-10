@@ -95,7 +95,7 @@ test('older libraries retain edits and expose newly shipped controls', () => {
   const base=SECTIONS.find(section=>section.key==='wardrobe');
   const saved={key:'wardrobe',title:'My outfits',fields:[{key:'outfit_set',label:'My sets',type:'chips',options:[]}]};
   const result=editableLibrarySection(base,saved);
-  expect(result.fields.find(field=>field.key==='exposure_mode').options).toHaveLength(8);
+  expect(result.fields.find(field=>field.key==='exposure_mode').options).toHaveLength(22);
   expect(result.fields.find(field=>field.key==='outfit_set').options).toEqual([]);
   expect(result.title).toBe('My outfits');
 });
@@ -104,15 +104,16 @@ test('full backup includes built-in wording without turning defaults into overri
   const full=exportPromptLibrary(promptLibrarySections(SECTIONS),{sections:[]});
   validateCatalogDraft(full);
   expect(JSON.stringify(full).length).toBeLessThan(500000);
-  const option=full.sections.find(section=>section.key==='wardrobe').fields.find(field=>field.key==='exposure_mode').options.find(option=>option.value==='revealing outfit');
-  expect(option.base_keywords).toBe('revealing clothing with some skin visible');
-  expect(option.keywords).toBe('');
-  const dna={...DEFAULT_DNA,wardrobe:{exposure_mode:'revealing outfit',top:'blouse'}};
+  const option=full.sections.find(section=>section.key==='wardrobe').fields.find(field=>field.key==='exposure_mode').options[0];
+  expect(option.label).toBe('topless');
+  expect(option.keywords).toBe('top removed, bare breasts, bottoms still on');
+  const dna={...DEFAULT_DNA,wardrobe:{exposure_mode:option.value,top:'blouse',bottom:'jeans'}};
   expect(compileModelPrompts({dna,promptStyle:'qwen_image',promptCatalog:full}).positive).toBe(compileModelPrompts({dna,promptStyle:'qwen_image',promptCatalog:{sections:[]}}).positive);
 });
 test.each(['qwen_image','chroma','zimage','pony','sdxl','wan_t2v'])('%s applies coverage wording without changing coverage behavior', promptStyle => {
   const base=SECTIONS.find(section=>section.key==='wardrobe');
   const wardrobe=editableSection(base);
+  wardrobe.fields.find(field=>field.key==='exposure_mode').options.push({value:'revealing outfit',label:'Legacy revealing outfit',keywords:'',group:''});
   wardrobe.fields.find(field=>field.key==='exposure_mode').options.find(option=>option.value==='revealing outfit').keywords='custom draped clothing with bare shoulders';
   const config={sections:[wardrobe]};
   const dna={...DEFAULT_DNA,wardrobe:{exposure_mode:'revealing outfit',top:'blouse'}};
@@ -126,6 +127,7 @@ test.each(['qwen_image','chroma','zimage','pony','sdxl','wan_t2v'])('%s applies 
 
 test.each(['qwen_image','pony'])('%s uses compact coverage wording when requested', promptStyle => {
   const wardrobe=editableSection(SECTIONS.find(section=>section.key==='wardrobe'));
+  wardrobe.fields.find(field=>field.key==='exposure_mode').options.push({value:'revealing outfit',label:'Legacy revealing outfit',keywords:'',group:''});
   wardrobe.fields.find(field=>field.key==='exposure_mode').options.find(option=>option.value==='revealing outfit').short='draped outfit, bare shoulders';
   const positive=compileModelPrompts({dna:{...DEFAULT_DNA,wardrobe:{exposure_mode:'revealing outfit'}},promptStyle,promptFormat:'compact',promptCatalog:{sections:[wardrobe]}}).positive;
   expect(positive).toContain('draped outfit, bare shoulders');

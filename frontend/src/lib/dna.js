@@ -1,3 +1,4 @@
+import {SIMPLE_COVERAGE_OPTIONS} from './simpleCoverage';
 import { catalogSelection } from './promptCatalog';
 import { ageAppearancePrompt, resolveAgeSkin } from './ageAppearance';
 import { HERITAGE_GROUPS, HERITAGE_LABELS, HERITAGE_PROFILES, heritageLabel } from "./heritageProfiles";
@@ -9,7 +10,7 @@ import { GLUTE_SIZE_MAX, gluteSizePrompt } from "@/lib/gluteControls";
 // DNA schema + prompt builder + randomizer
 import { expandPrompt } from "@/lib/promptMap";
 import { implantVisualPrompt } from "@/lib/implantVisualScale";
-import { wardrobeNudity, EXPOSURE_CHOICES } from "@/lib/wardrobeNudity";
+import { wardrobeNudity } from "@/lib/wardrobeNudity";
 
 export const SECTIONS = [
   {
@@ -208,8 +209,8 @@ export const SECTIONS = [
     title: "Wardrobe",
     fields: [
       { key: "outfit_mode", type: "chips", label: "Outfit mode", options: ["full", "custom"], optionLabels: { full: "Full set", custom: "Custom" }, help: "Full set uses one coordinated outfit. Custom enables separate clothing, hosiery, shoes and accessories." },
-      { key: "exposure_mode", type: "chips", label: "Clothing coverage", options: EXPOSURE_CHOICES,
-        help: "Progress from your selected outfit to lingerie showing underneath, lingerie only, open or shifted clothing, partial nudity, and nudity. Lingerie only replaces outer clothing. Partial nudity keeps some selected clothing on (plain briefs if none is selected); Nude removes garments. Accessories and hosiery remain available." },
+      { key: "exposure_mode", type: "chips", label: "Clothing coverage", options: SIMPLE_COVERAGE_OPTIONS.map(option=>option.value), optionLabels: Object.fromEntries(SIMPLE_COVERAGE_OPTIONS.map(option=>[option.value,option.label])),
+        help: "Choose how clothing is worn or removed. Topless and bottomless keep the opposite garments; barefoot and only choices remove conflicting footwear, hosiery or accessories. Clear the choice to follow your selected outfit." },
       { key: "outfit_preset", type: "chips", label: "Outfit preset", groups: [
         { name: "Bare", options: ["nude", "topless", "bottomless", "just panties", "just a shirt", "boyfriend's shirt"] },
         { name: "Lingerie", options: ["boudoir lingerie", "sheer negligee", "silk robe open", "lace lingerie set", "satin slip", "corset and garters", "sheer bodysuit"] },
