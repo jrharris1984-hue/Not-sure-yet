@@ -5,7 +5,7 @@ import { endpoints } from '@/lib/api';
 import { expandPrompt } from '@/lib/promptMap';
 import { compileModelPrompts } from '@/lib/modelPromptCompilers';
 import { SECTIONS, DEFAULT_DNA } from '@/lib/dna';
-import { editableSection, catalogSections, newCatalogKey, promptLibrarySections, setPromptCatalog, validateCatalogDraft } from '@/lib/promptCatalog';
+import { editableSection, editableLibrarySection, exportPromptLibrary, catalogSections, newCatalogKey, promptLibrarySections, setPromptCatalog, validateCatalogDraft } from '@/lib/promptCatalog';
 const fieldClass='w-full rounded-lg border hairline bg-elevated px-3 py-2 text-sm';
 const buttonClass='rounded-lg border hairline px-3 py-2 text-sm text-cyan-200 disabled:opacity-40';
 const LIBRARY_SECTIONS = promptLibrarySections(SECTIONS);
@@ -15,6 +15,7 @@ export default function PromptLibraryEditor() {
   const [loaded,setLoaded]=useState(false);
   const [loading,setLoading]=useState(true), [busy,setBusy]=useState(false), [error,setError]=useState(''), [message,setMessage]=useState('');
   const [filter,setFilter]=useState('');
+  const [controlSearch,setControlSearch]=useState('');
   const [browseLevel,setBrowseLevel]=useState('categories');
   const [optionKey,setOptionKey]=useState('');
   const [previewStyle,setPreviewStyle]=useState('qwen_image');
@@ -26,7 +27,7 @@ export default function PromptLibraryEditor() {
     setProvider(settings.ai_provider==='ollama'?'Ollama':'AI');
   }).catch(() => live && setError('Could not load the saved prompt library. Reload before editing.')).finally(() => live && setLoading(false));return () => {live=false;};},[]);
   const sections=catalogSections(LIBRARY_SECTIONS,draft);
-  const section=draft.sections.find(item => item.key===sectionKey) || editableSection(LIBRARY_SECTIONS.find(item => item.key===sectionKey) || sections[0]);
+  const section=editableLibrarySection(LIBRARY_SECTIONS.find(item => item.key===sectionKey), draft.sections.find(item => item.key===sectionKey)) || editableSection(sections[0]);
   const selectedField=section.fields.find(item => item.key===fieldKey);
   const currentOption=selectedField?.options.find(option => option.value===optionKey) || selectedField?.options[0];
   const defaultKeywords=option => option.value.startsWith('custom_') ? option.label : sectionKey==='shared_poses' ? option.value : expandPrompt(sectionKey,fieldKey,option.value);
@@ -34,7 +35,7 @@ export default function PromptLibraryEditor() {
   const changeSection = next => {setDraft(current => ({...current,sections:[...current.sections.filter(item => item.key!==next.key),next]}));setMessage('');setSuggestion(null);setPromptPreview(null);};
   const changeField = next => changeSection({...section,fields:section.fields.map(item => item.key===next.key?next:item)});
   const changeOption = (value,patch) => changeField({...selectedField,options:selectedField.options.map(item => item.value===value?{...item,...patch}:item)});
-  const chooseSection = key => {setBrowseLevel('subcategories');setOptionKey('');setPromptPreview(null);setFilter('');setSectionKey(key);setFieldKey((draft.sections.find(item => item.key===key) || sections.find(item => item.key===key))?.fields[0]?.key || '');setSuggestion(null);};
+  const chooseSection = key => {setBrowseLevel('subcategories');setOptionKey('');setPromptPreview(null);setFilter('');setSectionKey(key);setFieldKey(editableLibrarySection(LIBRARY_SECTIONS.find(item => item.key===key), draft.sections.find(item => item.key===key))?.fields[0]?.key || '');setSuggestion(null);};
   const save = async () => {
     setBusy(true);setError('');
     try {validateCatalogDraft(draft);const result=await endpoints.updateSettings({prompt_catalog:draft});const config=result.prompt_catalog;setDraft(config);setSaved(config);setPromptCatalog(config);setMessage('Prompt library saved. New renders use these changes.');}
@@ -48,7 +49,7 @@ export default function PromptLibraryEditor() {
       setSuggestion({value:option.value,label:option.label,keywords:result.keywords,target});
     }catch(err){setError(err.response?.data?.detail || err.message || 'The assistant is unavailable.');}finally{setBusy(false);}
   };
-  const backup = () => {const blob=new Blob([JSON.stringify(draft,null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const link=document.createElement('a');link.href=url;link.download='ultra-studio-prompt-library.json';link.click();URL.revokeObjectURL(url);};
+  const backup = () => {const blob=new Blob([JSON.stringify(exportPromptLibrary(LIBRARY_SECTIONS,draft),null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const link=document.createElement('a');link.href=url;link.download='ultra-studio-prompt-library.json';link.click();URL.revokeObjectURL(url);};
   const restore = async event => {const file=event.target.files?.[0];event.target.value='';if(!file)return;
     try {if(file.size>500000)throw new Error('Backup is too large.');const config=validateCatalogDraft(JSON.parse(await file.text()));
       if(!Array.isArray(config.sections) || config.sections.some(section => !section?.key || !section?.title || !Array.isArray(section.fields) || section.fields.some(field => !field?.key || !field?.label || !Array.isArray(field.options))))throw new Error('Choose a valid prompt library backup.');
@@ -59,7 +60,7 @@ export default function PromptLibraryEditor() {
   if(!loaded)return <div className="p-6"><p role="alert">{error}</p><Link to="/settings">Return to Settings</Link></div>;
   return <div className="mx-auto max-w-6xl space-y-5 p-4 sm:p-6">
     <Link to="/settings" className="text-sm text-cyan-200">← Settings</Link>
-    <header><h1 className="font-display text-3xl font-bold">Prompt Library editor</h1><p className="mt-2 text-zinc-400">Edit categories and choices without coding. Display names appear in the builder; keywords describe what you want the image model to produce.</p></header>
+    <header><h1 className="font-display text-3xl font-bold">Prompt Library editor</h1><p className="mt-2 text-zinc-400">Edit categories and choices without coding. Display names appear in the builder; keywords describe what you want the image model to produce. Wardrobe → Clothing coverage lets you edit coverage instructions. Preview compiled prompt to review a selection before saving; Studio’s final prompt preview shows the full request sent to ComfyUI. Download backup includes built-in choices and original wording in base_keywords; edit keywords to override it. Numeric sliders retain their generated behavior.</p></header>
     {error && <p role="alert" className="text-red-200">{error}</p>}{message && <p role="status" className="text-emerald-200">{message}</p>}
     <nav aria-label="Prompt library folders" className="flex flex-wrap items-center gap-2 text-sm">
       <button className={buttonClass} onClick={() => {setBrowseLevel('categories');setPromptPreview(null);}}>Categories</button>
@@ -78,7 +79,8 @@ export default function PromptLibraryEditor() {
     </div>
     <fieldset disabled={busy} className="grid gap-5 md:grid-cols-[240px_1fr]">
       <aside className={`pane space-y-3 p-4 ${browseLevel==='categories'?'block':'hidden md:block'}`}><h2 className="font-semibold">Categories</h2>
-        <div className="max-h-96 space-y-1 overflow-y-auto">{sections.map(item => <button className={`block w-full rounded-lg px-3 py-2 text-left text-sm ${sectionKey===item.key?'bg-cyan-400/15 text-cyan-200':'text-zinc-400'}`} key={item.key} aria-pressed={sectionKey===item.key} onClick={() => chooseSection(item.key)}>{item.title}</button>)}</div>
+        <input aria-label="Find a prompt control" className={fieldClass} placeholder="Find a control, e.g. coverage…" value={controlSearch} onChange={event=>setControlSearch(event.target.value)}/>
+        <div className="max-h-96 space-y-1 overflow-y-auto">{sections.filter(item=>`${item.title} ${item.fields.map(field=>field.label).join(' ')}`.toLowerCase().includes(controlSearch.toLowerCase())).map(item => <button className={`block w-full rounded-lg px-3 py-2 text-left text-sm ${sectionKey===item.key?'bg-cyan-400/15 text-cyan-200':'text-zinc-400'}`} key={item.key} aria-pressed={sectionKey===item.key} onClick={() => chooseSection(item.key)}>{item.title}</button>)}</div>
         <button className={buttonClass} onClick={() => {const key=newCatalogKey();changeSection({key,title:'New category',fields:[]});setSectionKey(key);setFieldKey('');setBrowseLevel('subcategories');}}>Add category</button>
       </aside>
       <section className={`pane space-y-4 p-4 ${browseLevel==='categories'?'hidden md:block':'block'}`}>
