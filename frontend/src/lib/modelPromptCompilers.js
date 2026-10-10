@@ -16,7 +16,7 @@ import { SECTIONS, buildPrompts, buildMultiVenicePrompts, buildChromaPrompts, bu
 import { buildPonyPrompts, buildMultiPonyPrompts } from "@/lib/ponyPrompts";
 import { buildPromptPriorityPlan, emptyPromptPriorityPlan, prioritizePrompt, requirementPresent } from "@/lib/promptPriority";
 import { implantVisualPrompt } from "@/lib/implantVisualScale";
-import { wardrobeNudity } from "@/lib/wardrobeNudity";
+import { wardrobeNudity, withCoveragePrompt } from "@/lib/wardrobeNudity";
 
 const ZIMAGE_NEGATIVE = [
   "low quality, blurry, out of focus, jpeg artifacts, oversharpened",
@@ -1163,9 +1163,9 @@ function compileModelPromptsRaw({
 // selected ages and resemblance cannot be lost to a later word-budget trim.
 export function compileModelPrompts(options = {}) {
   const auditSources = options.subjects?.length > 1 ? options.subjects : [{dna:options.dna || options.subjects?.[0]?.dna || {}}];
-  const outfitDna = dna => ({ ...dna, wardrobe: resolveWardrobeMode(dna?.wardrobe || {}) });
-  options = { ...options, dna: outfitDna(options.dna || {}), subjects: options.subjects?.map(subject => ({ ...subject, dna: outfitDna(subject.dna || {}) })) };
   const promptCatalog = options.promptCatalog || getPromptCatalog();
+  const outfitDna = dna => ({ ...dna, wardrobe: resolveWardrobeMode(withCoveragePrompt(dna?.wardrobe || {}, promptCatalog)) });
+  options = { ...options, dna: outfitDna(options.dna || {}), subjects: options.subjects?.map(subject => ({ ...subject, dna: outfitDna(subject.dna || {}) })) };
   const originalSubjects = options.subjects?.length > 1 ? options.subjects : [{dna:options.dna || options.subjects?.[0]?.dna || {}}];
   const customKeywords = originalSubjects.map((subject,index) => {
     const phrase=customCatalogPrompt(subject.dna, promptCatalog);

@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Shuffle, RotateCcw, Lock, LockOpen, Wand2, ChevronDown } from "lucide-react";
 import PoseIcon from "@/components/PoseIcon";
 import GroupedChips from "@/components/GroupedChips";
-import { wardrobeExposure } from "@/lib/wardrobeNudity";
+import { wardrobeExposure, coverageBehavior } from "@/lib/wardrobeNudity";
 import { normalizeMultiSelection } from "@/lib/dna";
 import { physiqueControlStatus, SIZE_CONTROL_PAIRS, sizeControlMode, selectSizeControl } from "@/lib/physiqueControlPriority";
 
@@ -162,7 +162,7 @@ export default function DnaSection({
           const outfitDisabled = section.key === "wardrobe" && wardrobeFieldDisabled(f.key, value);
           const visibleChoice = option => !(section.key === 'wardrobe' && f.key === 'exposure_mode'
             && wardrobeMode(value) === 'full' && value.set_lingerie_mode === 'none'
-            && ['lingerie showing', 'lingerie only'].includes(option));
+            && ['lingerie showing', 'lingerie only'].includes(coverageBehavior({exposure_mode:option})));
           if (focusedField && focusedField !== "all") {
             const family = Object.entries(SIZE_CONTROL_PAIRS).find(([key, [slider]]) => [key, slider, ...(key === "bust" ? ["implant_volume", "bust_shape"] : [])].includes(focusedField));
             const keys = family ? [family[0], family[1][0], ...(family[0] === "bust" ? ["implant_volume", "bust_shape"] : [])] : [focusedField];

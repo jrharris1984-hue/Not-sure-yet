@@ -209,3 +209,14 @@ test('older saved wardrobe exposes coverage, previews edits and saves them', asy
   await act(async()=>button('Save library').click());
   expect(getPromptCatalog().sections[0].fields.find(field=>field.key==='exposure_mode').options.find(option=>option.value==='revealing outfit').keywords).toBe('custom draped clothing with bare shoulders');
 });
+
+test('custom coverage behavior can be edited and survives saving the library', async()=>{
+  endpoints.settings.mockResolvedValue({prompt_catalog:{sections:[{key:'wardrobe',title:'Wardrobe',fields:[{key:'exposure_mode',label:'Clothing coverage',type:'chips',options:[{value:'custom_wrap',label:'Fabric wrap',keywords:'soft fabric wrap',group:'',coverage_mode:'use selected outfit'}]}]}]}});
+  await act(async()=>root.render(<PromptLibraryEditor/>));
+  act(()=>button('Wardrobe').click());act(()=>button('📁 Clothing coverage').click());
+  const select=container.querySelector('[aria-label="Coverage behavior custom_wrap"]');
+  expect(select.value).toBe('use selected outfit');
+  act(()=>{select.value='replace outfit';select.dispatchEvent(new Event('change',{bubbles:true}));});
+  await act(async()=>button('Save library').click());
+  expect(getPromptCatalog().sections[0].fields.find(field=>field.key==='exposure_mode').options[0].coverage_mode).toBe('replace outfit');
+});
