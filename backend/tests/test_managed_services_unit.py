@@ -126,6 +126,17 @@ class ServiceTests(unittest.TestCase):
             services.install_comfy(self.paths, lambda text: None, threading.Event())
         self.assertEqual((self.root / 'user.txt').read_text(), 'keep')
 
+    def test_archive_symlinks_are_rejected_before_extraction(self):
+        package = MagicMock()
+        package.files = [type('Member', (), {'filename': 'ComfyUI/link', 'is_symlink': True})()]
+        with patch.object(services, 'download', return_value=self.paths.data_dir / 'archive.7z'), patch('py7zr.SevenZipFile') as archive, patch.object(services.shutil, 'disk_usage', return_value=type('Disk', (), {'free': 100 * 1024**3})()):
+            archive.return_value.__enter__.return_value = package
+            with self.assertRaisesRegex(RuntimeError, 'symbolic link'):
+                services.install_comfy(self.paths, lambda text: None, threading.Event(), model=False)
+        package.extractall.assert_not_called()
+        self.assertFalse(self.root.exists())
+        self.assertFalse((self.paths.services_dir / 'comfyui-extracting').exists())
+
     def test_port_conflict_never_attaches_or_kills_an_external_service(self):
         self.root.mkdir()
         (self.root / '.ultra-studio-managed.json').write_text('{}')

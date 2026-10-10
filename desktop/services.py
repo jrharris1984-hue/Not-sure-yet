@@ -145,9 +145,11 @@ def install_comfy(paths, progress, cancel, model=True, model_directory=''):
             import py7zr
             progress('Extracting ComfyUI and its private Python runtime…')
             with py7zr.SevenZipFile(archive, 'r') as package:
-                for item in package.list():
+                # FileInfo from list() omits symlink attributes in py7zr 1.0.
+                # Read the actual archive records before extraction instead.
+                for item in package.files:
                     validate_member(item.filename)
-                    if getattr(item, 'is_symlink', False):
+                    if item.is_symlink:
                         raise RuntimeError('The service archive contains a symbolic link.')
                 package.extractall(stage)
             check_cancel(cancel)
