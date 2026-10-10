@@ -42,3 +42,17 @@ upper or lower garment and reports the combined outfit as inactive.
 
 Backups accept up to 2 MB of file data and 1 million serialized characters of
 catalog data. Coverage behavior metadata survives saving and downloading.
+
+Clothing Coverage now defaults to the 22 simple choices from topless through
+nothing but jewelry. Existing edited coverage lists remain until replaced:
+Settings → Edit Prompt Library → Wardrobe → Clothing coverage → Use simple
+coverage list → Save library. This replaces only that field's choices and keeps
+matching saved IDs, including renamed choices such as unbuttoned shirt.
+
+Topless/bottomless remove the corresponding garment fields; topless and barefoot
+also removes shoes/hosiery. Hosiery only, heels only and jewelry only remove
+conflicting garment/accessory selections from the compiled request while leaving
+the saved recipe intact. Custom outfit mode gives precise control over the
+remaining top or bottom; complete sets may use generic remaining garments.
+Legacy coverage choices and saved libraries still compile with their existing
+behavior. Clearing the selection follows the selected outfit.

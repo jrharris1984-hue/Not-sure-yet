@@ -1,3 +1,4 @@
+import {SIMPLE_COVERAGE_OPTIONS} from './simpleCoverage';
 import { wardrobeExposure, wardrobeNudity, EXPOSURE_CHOICES } from './wardrobeNudity';
 import { compileModelPrompts } from './modelPromptCompilers';
 import { resolveBuilderControls } from './builderControlResolution';
@@ -51,7 +52,7 @@ test('open outfit respects garment priority and explains a missing outfit', () =
 test('named control replaces the slider and stays protected from randomize', () => {
   const fields = SECTIONS.find(section => section.key === 'wardrobe').fields;
   expect(fields.some(field => ['nudity_level', 'nudity_outfit'].includes(field.key))).toBe(false);
-  expect(fields.find(field => field.key === 'exposure_mode').options).toEqual(EXPOSURE_CHOICES);
+  expect(fields.find(field => field.key === 'exposure_mode').options).toEqual(SIMPLE_COVERAGE_OPTIONS.map(option=>option.value));
   expect(randomizeSection('wardrobe', { exposure_mode: 'revealing outfit' }).exposure_mode).toBe('revealing outfit');
 });
 

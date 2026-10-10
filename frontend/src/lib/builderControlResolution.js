@@ -248,6 +248,7 @@ export function resolveBuilderControls(source = {}) {
     const fields = exposure.removeUpper ? ['top', 'dress_style', 'outfit_set', 'outfit_preset', 'state']
       : ['bottom', 'skirt_style', 'dress_style', 'underwear', 'outfit_set', 'outfit_preset', 'state'];
     for (const field of fields) omit('wardrobe', field, 'The custom coverage behavior replaces this garment. Other separate garment selections remain active.');
+    if (exposure.removeUpper && /\bbra\b|bralette|lingerie set/i.test(w.underwear || '')) w.underwear = 'lower underwear';
     if (exposure.removeUpper && ![w.bottom, w.skirt_style, w.underwear].some(value=>value && value!=='none')) w.bottom='lower clothing';
     if (exposure.removeLower && !w.top) w.top='upper clothing';
   }
@@ -260,6 +261,32 @@ export function resolveBuilderControls(source = {}) {
       notes.push({ section: 'wardrobe', field: 'exposure_mode', text: 'Choose an outfit preset, complete set, or individual garment for Open or shifted outfit.' });
     }
     omit('wardrobe', 'state', 'Open or shifted outfit controls garment position instead of the separate clothing-state choice.');
+  }
+  if (exposure.mode === 'topless and barefoot' || ['hosiery only', 'jewelry only'].includes(exposure.mode)) {
+    for (const field of ['footwear', 'heel_type', 'heel_color', 'heel_height', 'heel_finish']) omit('wardrobe', field, 'The coverage choice removes footwear.');
+  }
+  if (['topless and barefoot', 'heels only', 'jewelry only'].includes(exposure.mode)) {
+    for (const field of ['hosiery_type', 'hosiery_color', 'hosiery_pattern', 'hosiery_denier']) omit('wardrobe', field, 'The coverage choice removes hosiery.');
+    omit('feet', 'hosiery', 'The coverage choice removes hosiery.');
+    if (exposure.mode === 'topless and barefoot') omit('feet', 'foot_state', 'Barefoot coverage replaces the separate foot-state choice.');
+  }
+  if (['hosiery only', 'heels only', 'jewelry only'].includes(exposure.mode)) {
+    omit('feet', 'foot_state', 'The coverage choice controls foot coverage.');
+    omit('wardrobe', 'glasses_style', 'The coverage choice limits remaining accessories.');
+    omit('wardrobe', 'glasses_color', 'The coverage choice limits remaining accessories.');
+    if (exposure.mode === 'jewelry only') {
+      const jewelry = list(w.accessories).filter(item=>/jewel|chain|necklace|choker|earring|\bring\b|bracelet|anklet/i.test(item));
+      w.accessories = jewelry;
+      const footJewelry = list(f.foot_accessories).filter(item=>/jewel|chain|\bring\b|anklet/i.test(item));
+      f.foot_accessories = footJewelry;
+    } else {
+      omit('wardrobe', 'accessories', 'The coverage choice removes other accessories.');
+      omit('feet', 'foot_accessories', 'The coverage choice removes other accessories.');
+    }
+    if (exposure.mode === 'heels only' && !w.heel_type) {
+      omit('wardrobe', 'footwear', 'Heels only replaces the general footwear choice.');
+      w.heel_type = 'high heels';
+    }
   }
   if (w.outfit_set) {
     let set = w.outfit_set;

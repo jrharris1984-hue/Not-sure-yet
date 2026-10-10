@@ -2,6 +2,7 @@ import { useSyncExternalStore } from 'react';
 import { expandPrompt } from './promptMap';
 import { withCoveragePrompt, COVERAGE_BEHAVIORS } from './wardrobeNudity';
 import {setCoverageCatalog} from './coverageCatalog';
+import {SIMPLE_COVERAGE_OPTIONS} from './simpleCoverage';
 
 export const PROMPT_LIBRARY_FILE_LIMIT = 2000000;
 export function parsePromptLibraryBackup(text, bytes) {
@@ -89,7 +90,7 @@ export const newCatalogKey = () => `custom_${(globalThis.crypto?.randomUUID?.() 
 export function editableSection(section) {
   return {key:section.key,title:section.title,fields:section.fields.map(field => ({
     key:field.key,label:field.label,type:field.type,
-    options:(field.groups ? field.groups.flatMap(group => group.options.map(value => ({value,label:field.optionLabels?.[value] || value,keywords:'',group:group.name}))) : (field.options || []).map(value => ({value,label:field.optionLabels?.[value] || value,keywords:'',group:''}))),
+    options:section.key==='wardrobe' && field.key==='exposure_mode' ? SIMPLE_COVERAGE_OPTIONS.map(option=>({...option})) : (field.groups ? field.groups.flatMap(group => group.options.map(value => ({value,label:field.optionLabels?.[value] || value,keywords:'',group:group.name}))) : (field.options || []).map(value => ({value,label:field.optionLabels?.[value] || value,keywords:'',group:''}))),
   }))};
 }
 // Include newly shipped controls without replacing edits or removed choices.
