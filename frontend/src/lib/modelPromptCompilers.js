@@ -1,8 +1,9 @@
+import { buildSelectionManifest } from './selectionPromptAudit';
 import { heritagePrompt } from "./heritageProfiles";
 import { ageAppearancePrompt } from './ageAppearance';
 import { buildCompactNarrative } from './compactNarrative';
 import { resolveWardrobeMode } from "./wardrobeMode";
-import { catalogDna, catalogSelection, customCatalogPrompt, getPromptCatalog, applyCatalogRules } from "./promptCatalog";
+import { catalogSections, catalogDna, catalogSelection, customCatalogPrompt, getPromptCatalog, applyCatalogRules } from "./promptCatalog";
 import { applyPhotographicGuidance } from "./photographicGuidance";
 import { resolveBuilderControls, sliderPromptSignature } from "./builderControlResolution";
 import { footVisibility } from './footVisibility';
@@ -11,7 +12,7 @@ import { preserveGeneralSelections, subjectPromptText } from "./selectionFidelit
 import { applyCastAppearance, castAppearancePrompt } from "./castAppearance";
 import { photographyPosePrompt } from "@/lib/photographyPoses";
 import { gluteSizePrompt, gluteShapePrompt } from "@/lib/gluteControls";
-import { buildPrompts, buildMultiVenicePrompts, buildChromaPrompts, buildMultiChromaPrompts, selfStreamContinuityCue } from "@/lib/dna";
+import { SECTIONS, buildPrompts, buildMultiVenicePrompts, buildChromaPrompts, buildMultiChromaPrompts, selfStreamContinuityCue } from "@/lib/dna";
 import { buildPonyPrompts, buildMultiPonyPrompts } from "@/lib/ponyPrompts";
 import { buildPromptPriorityPlan, emptyPromptPriorityPlan, prioritizePrompt, requirementPresent } from "@/lib/promptPriority";
 import { implantVisualPrompt } from "@/lib/implantVisualScale";
@@ -519,7 +520,7 @@ export function resolveZImageComposition(dna = {}, options = {}) {
     composition,
   ].filter(Boolean).join(", ");
 
-  return { dna: resolved, composition: lead, adjustments, anatomyMode: mode };
+  return { dna: resolved, composition: lead, adjustments, controlNotes:builderGuard.notes, anatomyMode: mode };
 }
 
 
@@ -1161,6 +1162,7 @@ function compileModelPromptsRaw({
 // Apply the same cast contract after each family-specific compiler. Headcount,
 // selected ages and resemblance cannot be lost to a later word-budget trim.
 export function compileModelPrompts(options = {}) {
+  const auditSources = options.subjects?.length > 1 ? options.subjects : [{dna:options.dna || options.subjects?.[0]?.dna || {}}];
   const outfitDna = dna => ({ ...dna, wardrobe: resolveWardrobeMode(dna?.wardrobe || {}) });
   options = { ...options, dna: outfitDna(options.dna || {}), subjects: options.subjects?.map(subject => ({ ...subject, dna: outfitDna(subject.dna || {}) })) };
   const promptCatalog = options.promptCatalog || getPromptCatalog();
@@ -1189,7 +1191,10 @@ export function compileModelPrompts(options = {}) {
   if (direct) return applyCatalogRules(result, options.workflowKind || "edit", promptCatalog);
   const fidelitySubjects = isMulti ? subjects : [{ dna: options.dna || source[0]?.dna || {} }];
   // Preserve resolved selections so the fidelity pass cannot re-add conflicts.
-  const resolvedSubjects = fidelitySubjects.map(subject => ({ ...subject, dna: (compiler === 'chroma' ? resolveChromaComposition : resolveZImageComposition)(subject.dna, { forceMulti: isMulti }).dna }));
+  const resolvedSubjects = fidelitySubjects.map(subject => {
+    const guard = (compiler === 'chroma' ? resolveChromaComposition : resolveZImageComposition)(subject.dna, {forceMulti:isMulti});
+    return {...subject, dna:guard.dna, controlNotes:guard.controlNotes};
+  });
   let protectedResult = preserveGeneralSelections(result, resolvedSubjects);
   const detailed = resolvedSubjects.some(subject => hasDetailedBodyScale(subject.dna));
   protectedResult = {
@@ -1236,7 +1241,9 @@ export function compileModelPrompts(options = {}) {
         promptWords:clean(positive).split(/\s+/).filter(Boolean).length,
         promptBudget:null, droppedClauses:[], omittedClauseCount:0};
     }
-    return applyCatalogRules(prompts, options.workflowKind || 'image', promptCatalog);
+    const final = applyCatalogRules(prompts, options.workflowKind || 'image', promptCatalog);
+    return {...final, selectionManifest:buildSelectionManifest({sources:auditSources, prepared:fidelitySubjects, resolved:resolvedSubjects,
+      sections:catalogSections(SECTIONS, promptCatalog), raunch:options.raunch, compactRequirements:final.compactRequirements})};
   };
   if (!contract) return finalize(protectedResult);
   const positive = `${contract} ${protectedResult.positive}`;

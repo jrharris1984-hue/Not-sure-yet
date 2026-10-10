@@ -1,3 +1,4 @@
+import SelectionPromptAudit from '@/components/SelectionPromptAudit';
 import CastPoseOptions from "@/components/CastPoseOptions";
 import { WebPromptResearchOptions } from "@/components/WebPromptResearch";
 import { builderSectionLayout, builderSectionValue, builderSectionChange } from "@/lib/builderSectionLayout";
@@ -3479,6 +3480,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
                 <summary className="cursor-pointer text-xs font-semibold text-zinc-300">Prompt preview</summary>
                 <div className="mt-2 max-h-44 overflow-y-auto text-xs leading-relaxed text-zinc-400">{finalPositive || "Choose the subject and scene to build a prompt."}</div>
               </details>
+              <SelectionPromptAudit positive={finalPositive} manifest={compiledPrompt.selectionManifest}/>
               {mobileCreateIssues.length > 0 && <div className="text-xs text-rose-300">{mobileCreateIssues.join(" ")}</div>}
               <button type="button" onClick={doDispatch} disabled={dispatching || ollamaRenderPending || !workflowId || mobileCreateIssues.length > 0}
                 className="rounded-lg bg-amber-500 px-5 py-3 text-sm font-bold text-black disabled:cursor-not-allowed disabled:bg-zinc-600 disabled:text-zinc-300 disabled:opacity-70">
