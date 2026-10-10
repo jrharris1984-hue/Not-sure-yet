@@ -1,3 +1,4 @@
+import { EXPOSURE_PROMPTS } from "./wardrobeNudity";
 import { HERITAGE_PROFILES, heritagePrompt } from "./heritageProfiles";
 import { POSE_ACTION_PROMPTS } from "@/lib/photographyPoses";
 // Prompt expansion map: turns each DNA chip / option into a rich prompt phrase
@@ -1192,6 +1193,7 @@ export const RAUNCH_MAP = {
 
 export function expandPrompt(section, field, value, opts = {}) {
   if (!value) return "";
+  if (section === "wardrobe" && field === "exposure_mode") return EXPOSURE_PROMPTS[value] ?? value;
   if (section === "identity" && field === "ethnicity") return heritagePrompt(value, opts.dna);
   if (opts.raunch) {
     const raunch = RAUNCH_MAP?.[section]?.[field]?.[value];

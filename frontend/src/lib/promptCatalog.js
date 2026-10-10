@@ -1,4 +1,6 @@
 import { useSyncExternalStore } from 'react';
+import { expandPrompt } from './promptMap';
+import { wardrobeExposure } from './wardrobeNudity';
 
 export const SHARED_POSE_SECTION = {
   key: 'shared_poses',
@@ -79,8 +81,24 @@ export const newCatalogKey = () => `custom_${(globalThis.crypto?.randomUUID?.() 
 export function editableSection(section) {
   return {key:section.key,title:section.title,fields:section.fields.map(field => ({
     key:field.key,label:field.label,type:field.type,
-    options:(field.groups ? field.groups.flatMap(group => group.options.map(value => ({value,label:value,keywords:'',group:group.name}))) : (field.options || []).map(value => ({value,label:value,keywords:'',group:''}))),
+    options:(field.groups ? field.groups.flatMap(group => group.options.map(value => ({value,label:field.optionLabels?.[value] || value,keywords:'',group:group.name}))) : (field.options || []).map(value => ({value,label:field.optionLabels?.[value] || value,keywords:'',group:''}))),
   }))};
+}
+// Include newly shipped controls without replacing edits or removed choices.
+export function editableLibrarySection(base, saved) {
+  if (!saved) return base ? editableSection(base) : undefined;
+  if (!base) return saved;
+  const defaults = editableSection(base);
+  return {...saved, fields:[...defaults.fields.map(field => saved.fields.find(item => item.key === field.key) || field),
+    ...saved.fields.filter(field => !defaults.fields.some(item => item.key === field.key))]};
+}
+export function exportPromptLibrary(base, config) {
+  return {...config, sections:catalogSections(base, config).map(section => {
+    const editable = editableLibrarySection(base.find(item => item.key === section.key), config.sections.find(item => item.key === section.key)) || editableSection(section);
+    return {...editable, fields:editable.fields.map(field => ({...field, options:field.options.map(option => ({...option,
+      base_keywords:section.key === 'shared_poses' ? option.value : expandPrompt(section.key, field.key, option.value),
+    }))}))};
+  })};
 }
 export function catalogSections(base, config = catalog) {
   const result = base.map(section => {
@@ -164,6 +182,12 @@ export function catalogDna(dna = {}, config = catalog, preserveSelections = fals
         return option ? keywords ? phrase : (String(value).startsWith('custom_') ? option.label : value) : String(value || '').startsWith('custom_') ? '' : value;
       };
       const value = dna[section.key][field.key];
+      if (section.key === 'wardrobe' && field.key === 'exposure_mode') {
+        const mode = wardrobeExposure(dna.wardrobe);
+        const option = field.options?.find(item => item.value === mode);
+        if (option) result.wardrobe._exposurePrompt = {mode, text:option.keywords?.trim() || expandPrompt('wardrobe', 'exposure_mode', mode), short:option.short?.trim(), short_tags:option.short_tags?.trim()};
+        continue;
+      }
       if (value !== undefined && ['chips','chips_multi','pose_chips'].includes(field.type)) result[section.key][field.key] = Array.isArray(value) ? value.map(translate).filter(Boolean) : translate(value);
     }
   }
