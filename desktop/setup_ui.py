@@ -14,8 +14,8 @@ def service_setup(paths, reconfigure=False):
         return service, config
     root = tk.Tk()
     root.title('Ultra Studio setup')
-    root.geometry('700x520')
-    root.minsize(620, 480)
+    root.geometry('740x660')
+    root.minsize(700, 640)
     frame = ttk.Frame(root, padding=24)
     frame.pack(fill='both', expand=True)
     ttk.Label(frame, text='Set up Ultra Studio', font=('Segoe UI', 20)).pack(anchor='w')

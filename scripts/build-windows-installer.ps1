@@ -5,8 +5,11 @@ $repoRoot = Split-Path -Parent $PSScriptRoot
 if ($env:OS -ne 'Windows_NT') { throw 'Build the installer on Windows.' }
 if (-not $SkipAppBuild) { & "$PSScriptRoot/build-windows-desktop.ps1" }
 $compiler = Get-Command ISCC.exe -ErrorAction SilentlyContinue
-$compilerPath = if ($compiler) { $compiler.Source } else { Join-Path ${env:ProgramFiles(x86)} 'Inno Setup 6/ISCC.exe' }
-if (-not (Test-Path $compilerPath)) { throw 'Inno Setup 6 is required only on the build machine.' }
+$compilerPath = if ($compiler) { $compiler.Source } else {
+    Get-ChildItem -Path "${env:ProgramFiles(x86)}/Inno Setup*/ISCC.exe" -ErrorAction SilentlyContinue |
+        Sort-Object FullName -Descending | Select-Object -First 1 -ExpandProperty FullName
+}
+if (-not $compilerPath -or -not (Test-Path $compilerPath)) { throw 'Inno Setup is required only on the build machine.' }
 $bootstrapper = Join-Path $repoRoot 'desktop/build/MicrosoftEdgeWebview2Setup.exe'
 New-Item -ItemType Directory -Force -Path (Split-Path $bootstrapper) | Out-Null
 Invoke-WebRequest -Uri 'https://go.microsoft.com/fwlink/p/?LinkId=2124703' -OutFile $bootstrapper
