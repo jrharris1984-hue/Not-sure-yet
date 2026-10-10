@@ -136,15 +136,168 @@ original MongoDB environment settings. SQLite import/startup never modifies the
 original MongoDB database. New SQLite edits remain in SQLite; switching providers
 does not synchronize changes between them.
 
+## Milestone 3: desktop launcher and portable Windows build
+
+The `desktop/main.py` entry point starts the SQLite backend on loopback, waits
+for storage readiness, and opens the existing React interface in a native window.
+The API and interface share one origin, including WebSocket previews and uploads.
+It normally uses port 8765 and chooses another free port if that port is occupied.
+Closing the window stops this app's API and queue worker; it leaves independently
+started ComfyUI/Ollama services running. Accepted ComfyUI renders can continue
+there; reopening Ultra Studio resumes polling the saved queue.
+
+Desktop storage is always SQLite in `%LOCALAPPDATA%\UltraStudio`, or the absolute
+folder selected with `ULTRA_STUDIO_DATA_DIR`. The desktop launcher selects the
+SQLite filename in that folder rather than using `ULTRA_STUDIO_SQLITE_PATH` from
+an unrelated development environment. One desktop instance can use a data folder
+at a time. The database, uploaded/cached renders, logs, and WebView profile are
+outside the application package and survive replacing the portable app folder.
+Bundled files are read-only resources. No data import happens automatically.
+
+### Download a Windows preview without building locally
+
+The **Windows desktop preview** GitHub Actions workflow runs for launcher pull
+requests and can also be started manually after this workflow is on `main`:
+
+1. Open the repository's **Actions** tab and select **Windows desktop preview**.
+2. Select a successful run. For a new manual build, choose **Run workflow** on
+   `main`, then wait for it to finish.
+3. Download the **UltraStudio-Windows-x64-preview** artifact from that run.
+4. Extract the entire ZIP. Open `UltraStudio.exe`; keep `_internal` beside it.
+
+The package includes Python, backend dependencies, the built interface, and
+workflow JSON templates. Running it does not require Docker, MongoDB, Node.js,
+or an installed Python interpreter. It targets Windows 10/11 x64 with Microsoft
+Edge WebView2 Runtime and .NET Framework 4.6.2 or later. If the window cannot open,
+check `logs/desktop.log` in the data folder; a missing WebView2 Runtime must be
+installed separately in this preview. This is a portable testing build, not a
+signed installer. GPU/model/service setup is not bundled yet.
+
+The workflow compiles on Windows, runs desktop/SQLite tests, and starts the actual
+frozen executable twice with an isolated data folder from another working
+folder. This verifies backend and bundled resources; an actual Windows window
+and GPU render still require manual testing.
+
+### Fresh laptop checklist
+
+A laptop with no ComfyUI/Ollama installed can still test the desktop interface:
+
+- Extract and launch the preview without starting Docker or installing Python.
+- Create a character, edit it, and save it. Visit the library and reopen it.
+- Change a setting, close the window, and reopen the executable. Confirm your
+  character and setting remain saved.
+- Resize the window and navigate between pages. File upload and JSON library
+  import/export should work through the normal app controls.
+- Start a second copy: it should report that the data folder is already in use.
+- Confirm a missing ComfyUI connection appears as unavailable rather than
+  preventing the app from opening. An image job waits for ComfyUI; this preview
+  cannot generate an image without that service and its models.
+
+For image generation, configure a reachable ComfyUI installation in Settings,
+either on this laptop or on your existing PC. New desktop settings default to
+`http://localhost:8188` for ComfyUI and `http://localhost:11434` for Ollama.
+Imported Docker settings retain their old URLs; update those URLs when moving
+to native services. Ollama is optional; AI Assist still needs its selected service.
+Automatic installation of services and models is the next milestone.
+
+The desktop starts with a separate empty library. To import existing data, close
+it first and use the explicit snapshot import from milestone 2. Do not delete the
+original Docker data. Desktop edits do not sync back into MongoDB. Back up the
+complete desktop data folder only after closing the window cleanly.
+
+### Build locally on Windows (developer option)
+
+Building requires Python 3.11 x64 (with the `py` launcher), Node.js 22 with
+Corepack available, and internet access for dependency downloads. Use the
+repository's Windows script from PowerShell:
+
+```powershell
+cd "$env:USERPROFILE\Not-sure-yet"
+./scripts/build-windows-desktop.ps1
+```
+
+It uses a dedicated `desktop/.venv`, builds React with same-origin API URLs, and
+packages the backend/interface with PyInstaller. Output is
+`desktop/dist/UltraStudio/UltraStudio.exe`; distribute that **entire folder**.
+It does not package `.env`, MongoDB data, cached renders, or model folders.
+
+For a source GUI launch after building the interface and installing
+`desktop/requirements.txt` into a Python environment:
+
+```powershell
+python desktop/main.py
+```
+
+For a non-GUI bundle check in a separate new folder:
+
+```powershell
+$env:ULTRA_STUDIO_DATA_DIR = "$env:TEMP\UltraStudioSmoke"
+./desktop/dist/UltraStudio/UltraStudio.exe --smoke-test
+Remove-Item Env:ULTRA_STUDIO_DATA_DIR
+```
+
+Smoke tests start the backend and seed settings, so use an empty data folder.
+Avoid using an imported queue for a build test: queued jobs can resume when the
+backend starts. Rebuilds/upgrades must keep user data outside the portable app.
+
 ## Remaining milestones
 
-1. Bundle the backend and existing interface in a Windows desktop application.
-2. Add first-run service setup: existing or managed ComfyUI, GPU checks, selected
+1. Add first-run service setup: existing or managed ComfyUI, GPU checks, selected
    workflow packs, dependency downloads, model reuse, retry/resume, and readiness
    tests. Start with a tested hardware/workflow combination and expand coverage.
-3. Build and test the installer on Windows, then add signed releases and updates.
+2. Build and test the installer on Windows, then add signed releases and updates.
    Review redistribution terms for the shipped software, custom nodes, and models.
 
 Managed services must have an independent data folder and pinned versions. Use
 existing model directories when selected by the user. App upgrades must preserve
 user data, and removal of large models or renders must be an explicit choice.
+
+## Windows setup preview and managed NVIDIA starter
+
+The Windows build workflow now produces **UltraStudio-Setup.exe** as well as the
+portable archive. It installs the packaged app per-user, adds a setup/repair
+shortcut, and installs Microsoft's signed WebView2 bootstrapper only when the
+runtime is missing. Build with `scripts/build-windows-installer.ps1` on Windows;
+Python/Node/Inno Setup are build-machine requirements, not end-user requirements.
+
+First launch can leave existing services alone or install a private pinned
+ComfyUI v0.39.0 NVIDIA portable runtime (2.0 GB). The driver must already be
+installed. NVIDIA UUIDs select the GPU, preferring RTX 4070 SUPER if present.
+Managed startup binds only loopback port 8188, verifies a CUDA device, and fails
+if another service occupies that port. Studio owns/stops only the child it starts.
+Closing Studio interrupts active managed renders; existing services keep running.
+Use the Start menu setup/repair shortcut to switch modes or retry setup.
+
+The optional starter model is SDXL Base 1.0 (6.9 GB), pinned by repository revision
+and SHA-256, using only built-in nodes. Setup validates nodes/model detection and
+runs a 512px eight-step test render before committing its configuration. It adds
+one named starter workflow and initially selects it. Subsequent launches preserve
+that workflow and the user's chosen default. Existing workflows are not replaced.
+Other workflows listed in Studio are templates and still require their models
+and custom nodes. Automatic Ollama and additional workflow-pack installation
+remain future work; existing Ollama works through Settings.
+
+Allow 30 GB free initially. Downloads are resumed with validated HTTP ranges and
+published only after size/checksum verification. Extraction uses a private staging
+folder; unexpected paths/symlinks are rejected. An existing unmarked service
+folder or modified model file is preserved and reported, not overwritten. Retry
+through setup/repair. Configuration lives in `desktop-services.json`; services in
+`services/comfyui-v0.39.0`; download cache in `services/downloads`; logs in `logs`.
+Application removal preserves this separate data folder, including models.
+
+The optional reuse folder must be a **models** folder with `checkpoints`, `loras`,
+`vae`, etc. as children. Paths are referenced, not copied; preserve those drives
+when resetting Windows. Existing custom nodes are not automatically reused.
+Back up the current Docker database with the migration commands above and copy
+`backend/renders`, ComfyUI `output`, model folders, custom nodes, workflows and
+`extra_model_paths.yaml` to a separate drive before resetting Windows. Test the
+snapshot inspection and open copied images; retain originals until restoration
+and a render have been verified. Prompt-library JSON alone is not a full backup.
+
+The build checks native setup UI/archive dependencies in the frozen app, installs
+it silently into a test directory, runs the installed API/UI smoke check, and
+checks uninstall preserves its database. CI has no GPU and cannot validate actual
+CUDA loading, multi-GPU selection or model rendering; those require a clean
+Windows machine with the target GPU. This is an unsigned preview. Review
+ComfyUI GPL-3.0, SDXL CreativeML Open RAIL++-M and runtime redistribution terms
+before any commercial release. Upgrades do not update ComfyUI/models automatically.

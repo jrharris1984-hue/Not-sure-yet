@@ -1,0 +1,13 @@
+# Minimal desktop runtime; intentionally separate from Docker's broad dev stack.
+fastapi==0.110.1
+starlette==0.37.2
+pydantic==2.13.5
+uvicorn==0.25.0
+httpx==0.28.1
+websockets==16.1
+python-dotenv==1.2.3
+python-multipart==0.0.32
+pillow==12.3.0
+pymongo==4.6.3
+pywebview==6.2.1
+py7zr==1.0.0

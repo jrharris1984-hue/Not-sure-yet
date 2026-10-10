@@ -1,0 +1,117 @@
+name: Windows desktop preview
+
+on:
+  pull_request:
+    paths:
+      - 'desktop/**'
+      - 'scripts/build-windows-desktop.ps1'
+      - 'scripts/build-windows-installer.ps1'
+      - 'backend/tests/test_managed_services_unit.py'
+      - 'backend/tests/test_desktop_runtime_unit.py'
+      - '.github/workflows/windows-desktop.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: windows-desktop-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Enable pinned Yarn through Corepack
+        run: npm install --global --force corepack@0.34.0
+      - name: Install desktop build dependencies
+        shell: pwsh
+        run: |
+          python -m venv desktop/.venv
+          if ($LASTEXITCODE -ne 0) { throw 'Could not create build environment' }
+          & ./desktop/.venv/Scripts/python.exe -m pip install -r desktop/build-requirements.txt
+          if ($LASTEXITCODE -ne 0) { throw 'Could not install build dependencies' }
+      - name: Test desktop runtime and SQLite behavior
+        shell: pwsh
+        run: |
+          $env:PYTHONPATH = "$env:GITHUB_WORKSPACE/backend;$env:GITHUB_WORKSPACE/desktop"
+          & ./desktop/.venv/Scripts/python.exe -m unittest discover -s backend/tests -p test_desktop_runtime_unit.py -v
+          if ($LASTEXITCODE -ne 0) { throw 'Desktop runtime tests failed' }
+          & ./desktop/.venv/Scripts/python.exe -m unittest discover -s backend/tests -p test_managed_services_unit.py -v
+          if ($LASTEXITCODE -ne 0) { throw 'Managed service tests failed' }
+          & ./desktop/.venv/Scripts/python.exe -m unittest discover -s backend/tests -p test_sqlite_storage_unit.py -v
+          if ($LASTEXITCODE -ne 0) { throw 'SQLite tests failed' }
+          & ./desktop/.venv/Scripts/python.exe -m unittest discover -s backend/tests -p test_desktop_data_unit.py -v
+          if ($LASTEXITCODE -ne 0) { throw 'Data path and snapshot tests failed' }
+      - name: Build the portable app
+        shell: pwsh
+        run: ./scripts/build-windows-desktop.ps1
+      - name: Smoke-test the frozen app twice from another working directory
+        shell: pwsh
+        run: |
+          $env:ULTRA_STUDIO_DATA_DIR = Join-Path $env:RUNNER_TEMP 'UltraStudioSmoke'
+          $app = Join-Path $env:GITHUB_WORKSPACE 'desktop/dist/UltraStudio/UltraStudio.exe'
+          Push-Location $env:RUNNER_TEMP
+          try {
+            1..2 | ForEach-Object {
+              $process = Start-Process -FilePath $app -ArgumentList '--smoke-test' -PassThru
+              if (-not $process.WaitForExit(60000)) { $process.Kill(); throw 'Frozen app smoke test timed out' }
+              if ($process.ExitCode -ne 0) { throw "Frozen app smoke test failed: $($process.ExitCode)" }
+            }
+          } finally { Pop-Location }
+      - name: Preserve startup logs if a build check fails
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Windows-desktop-test-logs
+          path: ${{ runner.temp }}/UltraStudioSmoke/logs
+          if-no-files-found: ignore
+      - name: Upload portable preview
+        uses: actions/upload-artifact@v4
+        with:
+          name: UltraStudio-Windows-x64-preview
+          path: desktop/dist/UltraStudio/
+          retention-days: 14
+      - name: Check frozen setup UI and archive runtime
+        shell: pwsh
+        run: |
+          $process = Start-Process -FilePath './desktop/dist/UltraStudio/UltraStudio.exe' -ArgumentList '--setup-smoke-test' -PassThru
+          if (-not $process.WaitForExit(60000)) { $process.Kill(); throw 'Setup runtime test timed out' }
+          if ($process.ExitCode -ne 0) { throw 'Setup runtime test failed' }
+      - name: Install installer compiler
+        shell: pwsh
+        run: |
+          choco install innosetup --no-progress -y
+          if ($LASTEXITCODE -ne 0) { throw 'Inno Setup installation failed' }
+      - name: Build single setup executable
+        shell: pwsh
+        run: ./scripts/build-windows-installer.ps1 -SkipAppBuild
+      - name: Test installation and installed executable
+        shell: pwsh
+        run: |
+          $destination = Join-Path $env:RUNNER_TEMP 'UltraStudioInstalled'
+          $setup = Join-Path $env:GITHUB_WORKSPACE 'desktop/dist/installer/UltraStudio-Setup.exe'
+          $process = Start-Process -FilePath $setup -ArgumentList @('/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', "/DIR=$destination") -PassThru -Wait
+          if ($process.ExitCode -ne 0) { throw "Installer failed: $($process.ExitCode)" }
+          $env:ULTRA_STUDIO_DATA_DIR = Join-Path $env:RUNNER_TEMP 'UltraStudioInstalledData'
+          $process = Start-Process -FilePath (Join-Path $destination 'UltraStudio.exe') -ArgumentList '--smoke-test' -PassThru
+          if (-not $process.WaitForExit(60000)) { $process.Kill(); throw 'Installed smoke test timed out' }
+          if ($process.ExitCode -ne 0) { throw 'Installed smoke test failed' }
+          if (-not (Test-Path (Join-Path $env:ULTRA_STUDIO_DATA_DIR 'ultra-studio.sqlite3'))) { throw 'Installed app did not create its database' }
+          $process = Start-Process -FilePath (Join-Path $destination 'unins000.exe') -ArgumentList @('/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART') -PassThru -Wait
+          if ($process.ExitCode -ne 0) { throw 'Uninstall failed' }
+          if (-not (Test-Path (Join-Path $env:ULTRA_STUDIO_DATA_DIR 'ultra-studio.sqlite3'))) { throw 'Uninstall removed user data' }
+      - name: Upload single setup executable
+        uses: actions/upload-artifact@v4
+        with:
+          name: UltraStudio-Windows-Setup-preview
+          path: desktop/dist/installer/UltraStudio-Setup.exe
+          retention-days: 14
