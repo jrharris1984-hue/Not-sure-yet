@@ -21,9 +21,9 @@ Implemented:
   identities, and counts without printing record contents.
 
 Docker continues using **MongoDB by default**. Migration snapshots are separate
-from live databases and require the explicit import described below. There is
-no Windows installer yet. Existing Docker configuration and its render volume
-retain their defaults.
+from live databases and require the explicit import described below. The setup
+preview is described at the end of this document. Existing Docker configuration
+and its render volume retain their defaults.
 
 ### Prepare a migration snapshot from the current Docker installation
 
@@ -182,7 +182,8 @@ and GPU render still require manual testing.
 
 A laptop with no ComfyUI/Ollama installed can still test the desktop interface:
 
-- Extract and launch the preview without starting Docker or installing Python.
+- Run the setup executable, then choose existing services to test the interface
+  without installing ComfyUI, Docker or Python. Alternatively use the portable app.
 - Create a character, edit it, and save it. Visit the library and reopen it.
 - Change a setting, close the window, and reopen the executable. Confirm your
   character and setting remain saved.
@@ -198,7 +199,8 @@ either on this laptop or on your existing PC. New desktop settings default to
 `http://localhost:8188` for ComfyUI and `http://localhost:11434` for Ollama.
 Imported Docker settings retain their old URLs; update those URLs when moving
 to native services. Ollama is optional; AI Assist still needs its selected service.
-Automatic installation of services and models is the next milestone.
+Managed NVIDIA ComfyUI and the SDXL starter can now be installed through first-run
+setup; automatic Ollama and other workflow packs remain future milestones.
 
 The desktop starts with a separate empty library. To import existing data, close
 it first and use the explicit snapshot import from milestone 2. Do not delete the
@@ -242,11 +244,10 @@ backend starts. Rebuilds/upgrades must keep user data outside the portable app.
 
 ## Remaining milestones
 
-1. Add first-run service setup: existing or managed ComfyUI, GPU checks, selected
-   workflow packs, dependency downloads, model reuse, retry/resume, and readiness
-   tests. Start with a tested hardware/workflow combination and expand coverage.
-2. Build and test the installer on Windows, then add signed releases and updates.
-   Review redistribution terms for the shipped software, custom nodes, and models.
+1. Test the managed NVIDIA starter on clean Windows hardware and expand to more
+   workflow/model/custom-node packs, automatic Ollama setup and other GPU types.
+2. Add signed releases and updates after validating installation/restoration.
+   Review redistribution terms for shipped software, custom nodes and models.
 
 Managed services must have an independent data folder and pinned versions. Use
 existing model directories when selected by the user. App upgrades must preserve
