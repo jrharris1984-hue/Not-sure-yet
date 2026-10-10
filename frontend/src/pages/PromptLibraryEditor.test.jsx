@@ -24,6 +24,44 @@ const setup=async() => {
   await enter(container.querySelector('[aria-label^="Display name custom_"]'),'Morning mist');
   await enter(container.querySelector('[aria-label^="Keywords custom_"]'),'gentle morning mist');
 };
+test('bulk category edits span subcategories and become active only after saving', async() => {
+  await act(async() => root.render(<PromptLibraryEditor/>));
+  act(() => button('Hair').click());act(() => button('Bulk edit category').click());
+  const bulk=container.querySelector('[aria-label="Category bulk editor"]');
+  const fields=editableSection(SECTIONS.find(item => item.key==='hair')).fields.filter(field=>field.options.length);
+  const first=fields[0], second=fields[1];
+  await enter(bulk.querySelector(`[aria-label="Bulk keywords ${first.key} ${first.options[0].value}"]`),'first custom wording');
+  await enter(bulk.querySelector(`[aria-label="Bulk short ${second.key} ${second.options[0].value}"]`),'second compact wording');
+  expect(endpoints.updateSettings).not.toHaveBeenCalled();
+  act(() => button('Apply category to draft').click());
+  expect(getPromptCatalog().sections).toEqual([]);
+  await act(async() => button('Save library').click());
+  const saved=endpoints.updateSettings.mock.calls[0][0].prompt_catalog.sections.find(item=>item.key==='hair');
+  expect(saved.fields.find(item=>item.key===first.key).options[0].keywords).toBe('first custom wording');
+  expect(saved.fields.find(item=>item.key===second.key).options[0].short).toBe('second compact wording');
+});
+test('bulk editor detects concurrent category edits and can close without losing the normal draft', async() => {
+  await setup();act(() => button('Bulk edit category').click());
+  await enter(container.querySelector('[aria-label="Category name"]'),'Renamed atmosphere');
+  expect(button('Apply category to draft').disabled).toBe(true);
+  expect(container.querySelector('[aria-label="Category bulk editor"] [role="alert"]').textContent).toContain('changed');
+  act(() => button('Close bulk editor').click());
+  expect(container.querySelector('[aria-label="Category name"]').value).toBe('Renamed atmosphere');
+});
+test('category JSON edits are validated before loading and preserve unrelated rules', async() => {
+  await setup();act(() => button('Add rule').click());
+  await enter(container.querySelector('[aria-label^="Rule name custom_"]'),'Clear detail');
+  await enter(container.querySelector('[aria-label^="Rule wording custom_"]'),'crisp details');
+  act(() => button('Bulk edit category').click());act(() => button('Edit / paste category JSON').click());
+  const textarea=container.querySelector('[aria-label="Bulk category JSON"]');
+  const batch=JSON.parse(textarea.value);batch.category.fields[0].choices[0].keywords='new morning wording';
+  await enter(textarea,'{}');act(() => button('Load JSON edits').click());
+  expect(container.querySelector('[aria-label="Category bulk editor"] [role="alert"]').textContent).toContain('same category');
+  await enter(textarea,JSON.stringify(batch));act(() => button('Load JSON edits').click());
+  act(() => button('Apply category to draft').click());await act(async()=>button('Save library').click());
+  const saved=getPromptCatalog();expect(saved.sections[0].fields[0].options[0].keywords).toBe('new morning wording');
+  expect(saved.rules[0].text).toBe('crisp details');
+});
 test('creates and saves a category, subcategory and choice only after explicit save; reload preserves it', async() => {
   await setup();
   expect(endpoints.updateSettings).not.toHaveBeenCalled();
