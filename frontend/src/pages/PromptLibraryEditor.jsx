@@ -1,6 +1,7 @@
 import {COVERAGE_BEHAVIORS} from '@/lib/wardrobeNudity';
 import {simpleCoverageOptions} from '@/lib/simpleCoverage';
 import BulkChoiceEditor from '@/components/BulkChoiceEditor';
+import BulkCategoryEditor from '@/components/BulkCategoryEditor';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { endpoints } from '@/lib/api';
@@ -87,6 +88,7 @@ export default function PromptLibraryEditor() {
       </aside>
       <section className={`pane space-y-4 p-4 ${browseLevel==='categories'?'hidden md:block':'block'}`}>
         <label className="block">Category name<input aria-label="Category name" className={fieldClass} value={section.title} onChange={event => changeSection({...section,title:event.target.value})}/></label>
+        <BulkCategoryEditor key={sectionKey} section={section} getKeywords={(field,option) => option.value.startsWith('custom_') ? option.label : sectionKey==='shared_poses' ? option.value : expandPrompt(sectionKey,field.key,option.value)} onApply={next => {changeSection(next);setMessage('Category changes are staged. Save library to apply them.');}}/>
         {section.key.startsWith('custom_') && <button className={buttonClass} onClick={() => {setDraft({...draft,sections:draft.sections.filter(item => item.key!==sectionKey)});setSectionKey(LIBRARY_SECTIONS[0].key);setFieldKey(LIBRARY_SECTIONS[0].fields[0].key);}}>Remove category</button>}
         <div className={`grid grid-cols-2 gap-2 ${['choices','choice'].includes(browseLevel)?'hidden md:grid':'grid'}`}>{section.fields.map(item => <button key={item.key} aria-pressed={item.key===fieldKey} className={buttonClass} onClick={() => {setFieldKey(item.key);setOptionKey('');setSuggestion(null);setPromptPreview(null);setFilter('');setBrowseLevel('choices');}}>📁 {item.label}</button>)}</div>
         <button className={buttonClass} onClick={() => {const key=newCatalogKey();changeSection({...section,fields:[...section.fields,{key,label:'New subcategory',type:'chips',options:[]}]});setFieldKey(key);setOptionKey('');setBrowseLevel('choices');}}>Add subcategory</button>
