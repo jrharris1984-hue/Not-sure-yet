@@ -38,6 +38,26 @@ export function underneathLayer(wardrobe = {}, selected) {
   return { value, text: `underneath clothing: ${value}, worn under the selected outer outfit` };
 }
 
+// Opening outer fastenings does not remove the underwear beneath them.
+export function underneathCoverage(wardrobe = {}, value = underneathLayer(wardrobe)?.value) {
+  if (!value) return '';
+  const parts = [];
+  const ambiguous = /\b(?:transparent|see-through|sheer|crotchless|open[- ]cup|cupless|peephole|cutout|cut-out)\b/i.test(value);
+  if (!ambiguous && /\b(?:bra|bralette)\b/i.test(value)) parts.push('bra cups properly covering the breasts, bra stays in place');
+  if (!ambiguous && /\b(?:briefs|panties|underpants|knickers)\b/i.test(value)) parts.push('briefs remain worn and cover the pelvis');
+  const exposure = wardrobeNudity(wardrobe);
+  const opening = /^(?:custom_coverage_)?(?:unbuttoned|unzipped|undone)$/.test(exposure.selection)
+    || exposure.mode === 'lingerie showing';
+  const trousers = /\b(?:pantsuit|trousers|pants|leggings|jeans|slacks)\b/i.test(wardrobe.outfit_set || '');
+  const removing = /\b(?:remov|sliding|falling|pulled|undress|hiked)\w*/i.test(exposure.direction);
+  if (trousers && !removing) {
+    parts.push('selected trousers remain worn, continuous trouser fabric from waist to ankles');
+    if (opening) parts.push('outer top open to show the bra; trouser waistband and front fastening open only enough to reveal the briefs, trousers stay on the legs');
+    if (/\b(?:stockings|garter|thigh[- ]highs?)\b/i.test(value)) parts.push('stockings and garter belt underneath the trousers, concealed along the legs; hosiery does not replace the trousers');
+  }
+  return parts.join(', ');
+}
+
 function subjectText(positive, label, multi) {
   if (!multi) return positive;
   const markers = [...positive.matchAll(/\bSubject\s+([A-Za-z0-9]+)\b/gi)];
@@ -49,8 +69,13 @@ export function preserveUnderneathLayers(result, subjects = []) {
   const additions = subjects.flatMap((subject, index) => {
     const layer = underneathLayer(subject.dna?.wardrobe, subject.dna?._catalogSelections?.wardrobe?.set_lingerie);
     const label = subject.label || String.fromCharCode(65 + index);
-    if (!layer || subjectText(positive, label, subjects.length > 1).toLowerCase().includes(layer.value.toLowerCase())) return [];
-    return [`${subjects.length > 1 ? `Subject ${label} wardrobe: ` : ''}${layer.text}`];
+    if (!layer) return [];
+    const ownText = subjectText(positive, label, subjects.length > 1);
+    const prefix = subjects.length > 1 ? `Subject ${label} wardrobe: ` : '';
+    const additions = ownText.toLowerCase().includes(layer.value.toLowerCase()) ? [] : [prefix + layer.text];
+    const coverage = underneathCoverage(subject.dna.wardrobe, layer.value);
+    if (coverage && !ownText.includes(coverage)) additions.push(prefix + coverage);
+    return additions;
   });
   return additions.length ? { ...result, positive: [positive, ...additions].filter(Boolean).join('; ') } : result;
 }
