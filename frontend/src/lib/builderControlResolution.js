@@ -6,7 +6,7 @@ import { resolveWardrobeMode } from "./wardrobeMode";
 import {wardrobeStateResolution} from './wardrobeCompatibility';
 import { wardrobeNudity } from "./wardrobeNudity";
 import { footVisibility } from './footVisibility';
-import { CONCEALED_ANATOMY_FIELDS, hasCoveringOuterOutfit } from './coveredOutfitDetails';
+import { concealedAnatomyFields, hasCoveringOuterOutfit } from './coveredOutfitDetails';
 // Resolve shared visual controls on a copy. Saved selections remain editable.
 const list = value => Array.isArray(value) ? value : value ? [value] : [];
 const lower = value => String(value || '').toLowerCase();
@@ -327,14 +327,18 @@ export function resolveBuilderControls(source = {}) {
     }
   }
   if (w.heel_type) omit('wardrobe', 'footwear', 'The selected heel type overrides the general footwear choice.');
-  if (hasCoveringOuterOutfit(dna) && dna.intimate) {
-    for (const field of CONCEALED_ANATOMY_FIELDS) {
+  if (dna.intimate) {
+    const hiddenFields = concealedAnatomyFields(dna);
+    for (const field of hiddenFields) {
       omit('intimate', field, 'Hidden by the selected covering outfit. This detail is omitted from the prompt; your selection stays saved.');
     }
     // A face piercing may remain visible; do not discard it with the
     // details hidden under a covering outer outfit.
     const piercings = list(dna.intimate.piercings);
-    const visible = piercings.filter(value => !/\b(?:nipple|navel|labia|clit|genital)\b/i.test(value));
+    const visible = piercings.filter(value => !(
+      (hiddenFields.includes('nipple_size') && /\bnipple\b/i.test(value))
+      || (hiddenFields.includes('pubic_hair') && /\b(?:labia|clit|genital)\b/i.test(value))
+      || (hasCoveringOuterOutfit(dna) && /\bnavel\b/i.test(value))));
     if (visible.length !== piercings.length) {
       dna.intimate.piercings = Array.isArray(dna.intimate.piercings) ? visible : visible[0] || '';
       notes.push({section:'intimate',field:'piercings',text:'Piercings hidden by the covering outfit are omitted from the prompt; visible piercing selections stay active.'});

@@ -1,4 +1,4 @@
-import { hasCoveringOuterOutfit } from './coveredOutfitDetails';
+import { concealedAnatomyFields, hasCoveringOuterOutfit } from './coveredOutfitDetails';
 import { resolveBuilderControls } from './builderControlResolution';
 import { compileModelPrompts } from './modelPromptCompilers';
 
@@ -46,4 +46,28 @@ test('coverage is resolved independently for each clothed subject', () => {
   expect(positive).toContain('Subject A'); expect(positive).toContain('Subject B');
   expect(positive).toContain('72-year-old');
   expect(positive).not.toMatch(/landing strip|labia|trimmed asshole/i);
+});
+
+test.each(['pants', 'skirt', 'jeans', 'shorts'])('%s hides lower surface details and retains upper visibility and shape', bottom => {
+  const source = { wardrobe: { outfit_mode: 'custom', bottom }, physique: { hips: 'wide', waist: 'narrow' }, intimate: { nipple_size: 'small', pussy: 'custom_surface_detail' } };
+  const before = JSON.stringify(source);
+  const resolved = resolveBuilderControls(source).dna;
+  expect(resolved.intimate.pussy).toBe('');
+  expect(resolved.intimate.nipple_size).toBe('small');
+  expect(resolved.physique).toEqual(source.physique);
+  expect(JSON.stringify(source)).toBe(before);
+});
+test('a covering blouse hides upper surface details independently of lower clothing', () => {
+  const fields = concealedAnatomyFields({ wardrobe: { top: 'cotton blouse' } });
+  expect(fields).toContain('nipple_size'); expect(fields).not.toContain('pubic_hair');
+});
+test.each(['topless', 'bottomless', 'nude'])('explicit %s coverage stays authoritative', exposure_mode => {
+  const fields = concealedAnatomyFields({ wardrobe: { top: 'blouse', bottom: 'pants', exposure_mode: exposure_mode === 'nude' ? 'nude' : `custom_coverage_${exposure_mode}` } });
+  if (exposure_mode === 'topless') expect(fields).not.toContain('nipple_size');
+  if (exposure_mode === 'bottomless') expect(fields).not.toContain('pubic_hair');
+  if (exposure_mode === 'nude') expect(fields).toEqual([]);
+});
+test('transparent and unknown garments do not imply concealment', () => {
+  expect(concealedAnatomyFields({ wardrobe: { top: 'sheer blouse', bottom: 'transparent skirt' } })).toEqual([]);
+  expect(concealedAnatomyFields({ wardrobe: { top: 'custom_unknown' } })).toEqual([]);
 });
