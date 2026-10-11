@@ -9,8 +9,9 @@ export function garmentContext(w = {}) {
     upper:/\b(tops?|shirts?|blouse|bralette|bra|corset|bustier|halter|strapless|sweater|cardigan|jacket|bodysuit|teddy|chemise|babydoll)\b/.test(outfit),
   };
 }
-export function wardrobeStateResolution(w = {}) {
-  const context=garmentContext(w), state=String(w.state || '').toLowerCase();
+export function wardrobeStateResolution(w = {}, controls = w) {
+  const context=garmentContext(controls), rawState=String(controls.state || '').toLowerCase();
+  const state=['unbuttoned','one strap down','riding up'].includes(rawState) ? rawState : String(w.state || '').toLowerCase();
   if (!state) return {};
   if (state==='unbuttoned' && !context.upper && !context.dress) {
     if (context.pants) return {value:'trouser waistband button undone'};

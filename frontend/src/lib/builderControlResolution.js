@@ -1,5 +1,5 @@
 import { POSE_ACTION_PROMPTS } from './photographyPoses';
-import { catalogSelection } from './promptCatalog';
+import { catalogSelection, catalogControl } from './promptCatalog';
 import { resolveAgeSkin } from './ageAppearance';
 import { resolveWardrobeMode } from "./wardrobeMode";
 import {wardrobeStateResolution} from './wardrobeCompatibility';
@@ -10,15 +10,22 @@ import { CONCEALED_ANATOMY_FIELDS, hasCoveringOuterOutfit } from './coveredOutfi
 const list = value => Array.isArray(value) ? value : value ? [value] : [];
 const lower = value => String(value || '').toLowerCase();
 export function resolveBuilderControls(source = {}) {
-  const dna = resolveAgeSkin(JSON.parse(JSON.stringify(source)));
+  const copy=JSON.parse(JSON.stringify(source));
+  const dna = resolveAgeSkin(copy,catalogControl(copy,'skin','texture'));
   dna.kink = {};
   for (const section of ['pose', 'feet', 'wardrobe', 'hair', 'skin', 'scene', 'camera', 'watersports']) dna[section] ||= {};
   const notes = [];
+  const choice = (section, field) => catalogControl(dna,section,field);
+  const controls = section => Object.fromEntries(Object.keys(dna[section] || {}).map(field=>[field,choice(section,field)]));
+  const setChoice = (section,field,value) => {
+    dna[section][field]=value;
+    if (dna._catalogSelections?.[section]) dna._catalogSelections[section][field]=value;
+  };
   if (dna.skin?.texture !== source.skin?.texture && source.skin?.texture) notes.push({section:'skin',field:'texture',text:'The selected age uses age-appropriate skin texture instead of competing smoothing or aging wording.'});
   const omit = (section, field, text) => {
     if (!dna[section][field] || (Array.isArray(dna[section][field]) && !dna[section][field].length)) return;
     dna[section][field] = Array.isArray(dna[section][field]) ? [] : '';
-    if (section==='watersports' && dna._catalogSelections?.[section]) dna._catalogSelections[section][field]=Array.isArray(dna._catalogSelections[section][field])?[]:'';
+    if (dna._catalogSelections?.[section]) dna._catalogSelections[section][field]=Array.isArray(dna._catalogSelections[section][field])?[]:'';
     notes.push({ section, field, text });
   };
   dna.wardrobe = resolveWardrobeMode(dna.wardrobe);
@@ -34,13 +41,13 @@ export function resolveBuilderControls(source = {}) {
     'leaning forearms on railing', 'adjusting jacket lapel', 'kneeling hands floor',
     'all fours', 'hands on knees',
   ]);
-  const customHands = /\b(?:hands?|forearms?|arms?|wrists?|thumbs?)\s+(?:(?:are|resting|placed|raised|bound|folded|loosely|hooked|planted|leaning)\s+)*(?:on|in|at|over|above|behind|against|crossed|bound|folded|up)\b/i.test(p.action || '');
+  const customHands = /\b(?:hands?|forearms?|arms?|wrists?|thumbs?)\s+(?:(?:are|resting|placed|raised|bound|folded|loosely|hooked|planted|leaning)\s+)*(?:on|in|at|over|above|behind|against|crossed|bound|folded|up)\b/i.test([choice('pose','action'),p.action].join(' '));
   if (handsDefined.has(poseKey) || customHands) omit('pose', 'hands', 'The selected pose already defines arm and hand placement. The separate Hand position is inactive for this pose.');
   if (poseKey && p.body_language && lower(POSE_ACTION_PROMPTS[poseKey]).split(/[^a-z-]+/).includes(lower(p.body_language))) {
     omit('pose', 'body_language', 'The selected pose already includes this body language.');
   }
-  if (poseKey === 'reverse view' && p.angle && p.angle !== 'back') {
-    p.angle = 'back';
+  if ((poseKey === 'reverse view' || choice('pose','action')==='reverse view') && p.angle && choice('pose','angle') !== 'back') {
+    setChoice('pose','angle','back');
     notes.push({section:'pose',field:'angle',text:'Reverse view uses the rear camera view instead of a competing body angle.'});
   }
 
@@ -48,23 +55,23 @@ export function resolveBuilderControls(source = {}) {
     if (!w.outfit_set) notes.push({ section: 'wardrobe', field: 'outfit_set', text: 'Choose a complete outfit set or switch to Custom for individual garments.' });
     omit('feet', 'hosiery', 'The full outfit set controls hosiery. Switch Wardrobe to Custom to use separate hosiery.');
   }
-  const croppedAboveFeet = ['waist-up', 'thigh-up', 'knees-up', 'portrait', 'close-up'].includes(p.distance);
-  const focus = f.composition_mode === 'feet focus' || (!f.composition_mode && p.focus === 'feet' && !croppedAboveFeet);
-  if (!focus && p.focus === 'feet' && croppedAboveFeet) {
-    p.focus = 'full frame';
+  const croppedAboveFeet = ['waist-up', 'thigh-up', 'knees-up', 'portrait', 'close-up'].includes(choice('pose','distance'));
+  const focus = choice('feet','composition_mode') === 'feet focus' || (!f.composition_mode && choice('pose','focus') === 'feet' && !croppedAboveFeet);
+  if (!focus && choice('pose','focus') === 'feet' && croppedAboveFeet) {
+    setChoice('pose','focus','full frame');
     notes.push({ section: 'pose', field: 'focus', text: 'This crop excludes feet. Select Feet focus to switch to a foot crop.' });
   }
   if (focus) {
     if (p.focus !== 'feet') notes.push({ section: 'pose', field: 'focus', text: 'Feet focus controls the composition priority. Switch Feet to supporting detail to use the Pose focus.' });
-    p.focus = 'feet';
+    setChoice('pose','focus','feet');
     if (f.framing) {
-      const distance = f.framing === 'full body' ? 'full body' : 'detail shot';
+      const distance = choice('feet','framing') === 'full body' ? 'full body' : 'detail shot';
       if (p.distance !== distance) notes.push({ section: 'pose', field: 'distance', text: `Feet framing (${f.framing}) controls the crop while Feet focus is active.` });
-      p.distance = distance;
+      setChoice('pose','distance',distance);
     }
   } else {
-    if (f.composition_mode === 'supporting detail' && p.focus === 'feet') {
-      p.focus = 'full frame';
+    if (choice('feet','composition_mode') === 'supporting detail' && choice('pose','focus') === 'feet') {
+      setChoice('pose','focus','full frame');
       notes.push({ section: 'pose', field: 'focus', text: 'Feet is set to supporting detail, so the overall frame stays primary.' });
     }
     omit('feet', 'framing', 'Pose & framing controls the crop. Choose Feet focus to use a separate foot crop.');
@@ -324,7 +331,8 @@ export function resolveBuilderControls(source = {}) {
       notes.push({section:'intimate',field:'piercings',text:'Piercings hidden by the covering outfit are omitted from the prompt; visible piercing selections stay active.'});
     }
   }
-  const stateResolution=wardrobeStateResolution(w);
+  const wardrobeChoices=controls('wardrobe');
+  const stateResolution=wardrobeStateResolution(w,wardrobeChoices);
   if (stateResolution.value !== undefined && stateResolution.value !== w.state) {
     if (!stateResolution.value) omit('wardrobe','state',stateResolution.reason);
     else {w.state=stateResolution.value;notes.push({section:'wardrobe',field:'state',text:'The hem adjustment follows the selected garment rather than adding a skirt.'});}
@@ -339,7 +347,7 @@ export function resolveBuilderControls(source = {}) {
   if (w.heel_height==='flat' && /stiletto|platform|kitten|high|heeled|wedge/i.test(w.heel_type || w.footwear || '')) omit('wardrobe','heel_height','The selected heel style overrides a competing flat heel height.');
   if (w.hosiery_type) omit('feet', 'hosiery', 'Wardrobe hosiery controls coverage; the Feet hosiery fallback is inactive.');
   const footwear = lower(w.heel_type || w.footwear);
-  const visibility = footVisibility(w, f);
+  const visibility = footVisibility(controls('wardrobe'), controls('feet'));
   if (visibility.hasHosiery || visibility.hasShoe) {
     const state = list(f.foot_state);
     const keep = state.filter(v => (v !== 'bare' || visibility.bare) && !(visibility.hasHosiery && ['in socks', 'in nylons'].includes(v)));
@@ -368,7 +376,7 @@ export function resolveBuilderControls(source = {}) {
   if (!focus && croppedAboveFeet) for (const field of Object.keys(f)) {
     if (field !== 'composition_mode') omit('feet', field, 'Outside the selected crop. Choose a wider frame or Feet focus to show this detail.');
   }
-  const bodyPose = lower(p.action);
+  const bodyPose = lower(choice('pose','action'));
   const standing = /standing|walking|running|lunging|squatting|crouch/.test(bodyPose);
   const seated = /sitting|seated/.test(bodyPose);
   const stance = lower(f.foot_pose);
@@ -395,20 +403,26 @@ export function resolveBuilderControls(source = {}) {
       notes.push({ section: 'feet', field: 'toes', text: 'The selected foot pose controls toe position.' });
     }
   }
-  if (['from above', 'from below'].includes(p.angle) && ['eye-level', 'low', 'high', 'birds-eye'].includes(dna.camera.angle)) omit('camera', 'angle', 'Pose & framing already controls camera height. The separate Camera height is inactive.');
-  if (/bald|shaved/.test(lower(dna.hair.style))) for (const field of ['length', 'texture', 'bangs']) omit('hair', field, 'The selected shaved/bald hairstyle replaces this hair detail.');
-  if (/bun|chignon|ponytail|updo|braid|locs|twists/i.test(dna.hair.style) && ['pixie', 'short bob'].includes(dna.hair.length)) omit('hair', 'length', 'The selected tied or braided hairstyle replaces the conflicting short haircut.');
-  if (/pixie|buzz|bob/i.test(dna.hair.style) && ['long', 'waist-length'].includes(dna.hair.length)) omit('hair', 'length', 'The selected short hairstyle replaces the conflicting long hair length.');
-  if (Number(dna.skin.glow) > 0 && ['matte', 'dewy', 'oiled', 'sweat-glistening', 'satin skin finish'].includes(dna.skin.texture)) omit('skin', 'texture', 'The Glow slider controls skin finish; the competing finish preset is inactive.');
-  const environment = lower(dna.scene.environment);
-  const indoor = /bedroom|bathroom|studio|office|living room|kitchen/.test(environment);
-  const outdoor = /beach|forest|park|garden|street|desert/.test(environment);
-  if ((indoor && dna.scene.indoor_outdoor === 'outdoor') || (outdoor && dna.scene.indoor_outdoor === 'indoor')) omit('scene', 'indoor_outdoor', 'The selected environment controls whether the scene is indoors or outdoors.');
-  const surface = lower(f.ground_surface);
+  if (['from above', 'from below'].includes(choice('pose','angle')) && ['eye-level', 'low', 'high', 'foot level', 'birds-eye'].includes(choice('camera','angle'))) omit('camera', 'angle', 'Pose & framing already controls camera height. The separate Camera height is inactive.');
+  const hairStyle=lower(choice('hair','style')),hairLength=choice('hair','length');
+  if (/\bbald\b|(?:fully )?shaved head|head (?:fully )?shaved/.test(hairStyle)) for (const field of ['length', 'texture', 'bangs','color']) omit('hair', field, 'The selected bald hairstyle replaces this hair detail.');
+  if (/\bbuzz cut\b/.test(hairStyle)) omit('hair','bangs','A buzz cut has no separate bangs.');
+  if (/\bbuzz cut\b/.test(hairStyle) && hairLength) omit('hair','length','The buzz cut controls hair length.');
+  if (/\bpixie\b/.test(hairStyle) && hairLength && hairLength!=='pixie') omit('hair','length','The pixie haircut replaces the conflicting hair length.');
+  if (/\bbob\b/.test(hairStyle) && hairLength==='pixie') omit('hair','length','The selected bob replaces the conflicting pixie length.');
+  if (/bun|chignon|ponytail|updo|braid|locs|twists/i.test(hairStyle) && ['pixie', 'short bob'].includes(hairLength)) omit('hair', 'length', 'The selected tied or braided hairstyle replaces the conflicting short haircut.');
+  if (/pixie|buzz|bob/i.test(hairStyle) && ['long', 'waist-length'].includes(hairLength)) omit('hair', 'length', 'The selected short hairstyle replaces the conflicting long hair length.');
+  if (Number(dna.skin.glow) > 0 && ['matte', 'dewy', 'oiled', 'sweat-glistening', 'satin skin finish'].includes(choice('skin','texture'))) omit('skin', 'texture', 'The Glow slider controls skin finish; the competing finish preset is inactive.');
+  if (choice('skin','freckles')==='none' && /\bfreckl(?:ed|es)\b/i.test([choice('skin','texture'),dna.skin.texture].join(' '))) omit('skin','texture','The separate Freckles selection overrides freckles bundled into the skin texture.');
+  const environment = lower(choice('scene','environment'));
+  const indoor = /bedroom|bathroom|studio|office|living room|kitchen|warehouse/.test(environment);
+  const outdoor = /beach|forest|park|garden|street|desert|rooftop|alley/.test(environment);
+  if ((indoor && choice('scene','indoor_outdoor') === 'outdoor') || (outdoor && choice('scene','indoor_outdoor') === 'indoor')) omit('scene', 'indoor_outdoor', 'The selected environment controls whether the scene is indoors or outdoors.');
+  const surface = lower(choice('feet','ground_surface'));
   const indoorSurface = ['polished wood floor', 'tile floor', 'soft carpet', 'silk sheets', 'velvet cushion', 'marble floor'].includes(surface);
   const outdoorSurface = ['warm sand', 'wet sand', 'grass'].includes(surface);
-  const inside = indoor || (!outdoor && dna.scene.indoor_outdoor === 'indoor');
-  const outside = outdoor || (!indoor && dna.scene.indoor_outdoor === 'outdoor');
+  const inside = indoor || (!outdoor && choice('scene','indoor_outdoor') === 'indoor');
+  const outside = outdoor || (!indoor && choice('scene','indoor_outdoor') === 'outdoor');
   if ((inside && outdoorSurface) || (outside && indoorSurface)) omit('feet', 'ground_surface', 'The selected scene takes priority over a conflicting indoor/outdoor surface under the feet.');
   return { dna, notes };
 }
