@@ -1,0 +1,124 @@
+"""Real API routes against disposable SQLite; no GPU or external services."""
+import importlib
+import os
+from pathlib import Path
+import sys
+import tempfile
+import unittest
+from unittest.mock import patch
+import httpx
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from sqlite_storage import SQLiteDatabase
+
+class ApplicationQcTests(unittest.IsolatedAsyncioTestCase):
+    @classmethod
+    def setUpClass(cls):
+        import media_library
+        cls.media=media_library
+        cls.providers=(media_library._url_provider, media_library._overlay_provider)
+        cls.bootstrap=tempfile.TemporaryDirectory()
+        with patch.dict(os.environ,{'ULTRA_STUDIO_STORAGE':'sqlite','ULTRA_STUDIO_DATA_DIR':cls.bootstrap.name}):
+            cls.server=importlib.import_module('server')
+        cls.original_db=cls.server.db
+    @classmethod
+    def tearDownClass(cls):
+        cls.media.configure_media_library_url(cls.providers[0])
+        cls.media.configure_media_overlays(cls.providers[1])
+        cls.server.db=cls.original_db
+        cls.server.client.close()
+        cls.bootstrap.cleanup()
+    async def asyncSetUp(self):
+        self.folder=tempfile.TemporaryDirectory()
+        self.db=SQLiteDatabase(Path(self.folder.name)/'qc.sqlite3')
+        self.server.db=self.db
+        self.http=httpx.AsyncClient(transport=httpx.ASGITransport(app=self.server.app),base_url='http://qc')
+    async def asyncTearDown(self):
+        await self.http.aclose()
+        self.db.close()
+        self.folder.cleanup()
+    async def test_character_save_duplicate_and_tags_preserve_selections(self):
+        dna={'identity':{'age':42},'hair':{'color':'silver'},'wardrobe':{'bottom':'jeans'}}
+        response=await self.http.post('/api/characters',json={'name':'QC [A]','dna':dna,'tags':['qc'],'field_locks':{'hair':{'color':True}},'collapsed':{'hair':False}})
+        self.assertEqual(response.status_code,200)
+        character=response.json()
+        duplicate=await self.http.post(f"/api/characters/{character['id']}/duplicate")
+        self.assertEqual(duplicate.status_code,200)
+        self.assertNotEqual(duplicate.json()['id'],character['id'])
+        self.assertEqual(duplicate.json()['dna'],dna)
+        self.assertEqual((await self.http.get('/api/characters/tags')).json(),[{'tag':'qc','count':2}])
+        loaded=(await self.http.get(f"/api/characters/{character['id']}")).json()
+        self.assertEqual(loaded['field_locks'],character['field_locks'])
+        self.assertEqual(loaded['collapsed'],{'hair':False})
+    async def test_search_treats_punctuation_as_literal_text(self):
+        await self.http.post('/api/characters',json={'name':'QC [A]'})
+        await self.http.post('/api/characters',json={'name':'Other'})
+        response=await self.http.get('/api/characters',params={'q':'['})
+        self.assertEqual(response.status_code,200)
+        self.assertEqual([item['name'] for item in response.json()],['QC [A]'])
+    async def test_invalid_settings_do_not_poison_future_requests(self):
+        before=(await self.http.get('/api/settings')).json()
+        response=await self.http.put('/api/settings',json={'ai_provider':'unsupported','comfyui_url':'http://changed'})
+        self.assertEqual(response.status_code,422)
+        after=(await self.http.get('/api/settings')).json()
+        self.assertEqual(after['ai_provider'],before['ai_provider'])
+        self.assertEqual(after['comfyui_url'],before['comfyui_url'])
+    async def test_settings_types_are_validated_before_persistence(self):
+        await self.http.get('/api/settings')
+        for body in ({'ollama_url':{}},{'default_workflow_id':[]},{'image_workflow_json':{}}):
+            with self.subTest(body=body):
+                self.assertEqual((await self.http.put('/api/settings',json=body)).status_code,422)
+                self.assertEqual((await self.http.get('/api/settings')).status_code,200)
+    async def test_negative_list_limits_are_rejected_at_the_route_boundary(self):
+        for path in ('characters','queue','shoots'):
+            with self.subTest(path=path):
+                self.assertEqual((await self.http.get('/api/'+path,params={'limit':-1})).status_code,422)
+    async def test_catalog_validation_is_atomic_with_connection_settings(self):
+        before=(await self.http.get('/api/settings')).json()
+        response=await self.http.put('/api/settings',json={'comfyui_url':'http://changed','prompt_catalog':{'sections':'invalid'}})
+        self.assertEqual(response.status_code,400)
+        self.assertEqual((await self.http.get('/api/settings')).json()['comfyui_url'],before['comfyui_url'])
+    async def test_gallery_pagination_and_bulk_albums_keep_records_independent(self):
+        for index in range(3):
+            await self.db.renders.insert_one({'id':f'r{index}','status':'done','output_files':[f'/image{index}.png'],'created_at':'2026-10-11T12:00:00Z'})
+        page=(await self.http.get('/api/renders',params={'limit':2,'skip':1})).json()
+        self.assertEqual([item['id'] for item in page],['r1','r0'])
+        response=await self.http.post('/api/renders/albums/bulk',json={'ids':['r0','r0','r1'],'album':'QC'})
+        self.assertEqual(response.json()['updated'],2)
+        self.assertIsNone((await self.db.renders.find_one({'id':'r2'})).get('album'))
+    async def test_queued_render_retry_keeps_exact_seed_and_recipe(self):
+        settings=(await self.http.get('/api/settings')).json()
+        workflow=settings['workflows'][0]
+        dna={'identity':{'age':42},'hair':{'color':'silver'}}
+        response=await self.http.post('/api/renders/dispatch',json={'workflow_id':workflow['id'],'prompt_positive':'QC portrait','seed':42,'dna':dna})
+        self.assertEqual(response.status_code,200)
+        job=response.json()
+        self.assertEqual(job['status'],'queued')
+        stored=await self.db.render_queue.find_one({'id':job['id']})
+        self.assertEqual(stored['payload']['dna'],dna)
+        self.assertEqual(stored['payload']['seed'],42)
+        self.assertEqual((await self.http.post(f"/api/queue/{job['id']}/retry")).status_code,409)
+        await self.db.render_queue.update_one({'id':job['id']},{'$set':{'status':'failed','error':'Test failure'}})
+        self.assertEqual((await self.http.post(f"/api/queue/{job['id']}/retry")).json()['status'],'queued')
+        updated=await self.db.render_queue.find_one({'id':job['id']})
+        self.assertEqual(updated['payload'],stored['payload'])
+    async def test_missing_records_return_not_found(self):
+        for path in ('characters/missing','renders/missing','renders/missing/recipe','shoots/missing'):
+            self.assertEqual((await self.http.get('/api/'+path)).status_code,404)
+
+    async def test_missing_selected_workflow_cannot_silently_use_the_default(self):
+        await self.http.get('/api/settings')
+        response=await self.http.post('/api/renders/dispatch',json={'workflow_id':'missing','prompt_positive':'QC portrait'})
+        self.assertEqual(response.status_code,404)
+        self.assertEqual(await self.db.render_queue.count_documents({}),0)
+        with self.assertRaises(self.server.HTTPException) as caught:
+            await self.server._perform_dispatch(self.server.DispatchBody(workflow_id='missing'))
+        self.assertEqual(caught.exception.status_code,404)
+
+    async def test_legacy_dispatch_freezes_the_default_workflow_before_it_can_change(self):
+        settings=(await self.http.get('/api/settings')).json()
+        first=settings['default_workflow_id']
+        response=await self.http.post('/api/renders/dispatch',json={'prompt_positive':'QC portrait'})
+        self.assertEqual(response.status_code,200)
+        await self.http.put('/api/settings',json={'default_workflow_id':settings['workflows'][1]['id']})
+        stored=await self.db.render_queue.find_one({'id':response.json()['id']})
+        self.assertEqual(stored['payload']['workflow_id'],first)

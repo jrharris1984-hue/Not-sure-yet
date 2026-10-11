@@ -77,8 +77,8 @@ test.each([['image', 'image'], ['video', 'image'], ['text_video', 'text']])('%s 
   endpoints.aiImproveGeneratedPrompt.mockResolvedValue(reply);
   endpoints.aiVideoPrompt.mockResolvedValue(reply);
   await act(async () => root.render(<FreeformCreate mode={mode}/>)); await enter('forest');
-  expect(container.querySelector('[aria-label="Use web research"]').checked).toBe(false);
-  act(() => container.querySelector('[aria-label="Use web research"]').click());
+  expect(container.querySelector('[aria-label="Use internet with Ollama"]').checked).toBe(false);
+  act(() => container.querySelector('[aria-label="Use internet with Ollama"]').click());
   await act(async () => button('Refine with Ollama').click());
   const options={use_web_research:true,research_focus:''};
   if(mode==='image') expect(endpoints.aiImproveGeneratedPrompt).toHaveBeenCalledWith('forest','','chroma','Image',true,options);
@@ -162,3 +162,30 @@ test('prompt-only creation returns to the unified Create hub', async () => {
   expect(container.querySelector('a[href="/create"]').textContent).toContain('Create');
 });
 
+
+test('switching creation mode rejects a late suggestion from the previous mode', async () => {
+  let resolve;
+  endpoints.aiImproveGeneratedPrompt.mockReturnValue(new Promise(r=>{resolve=r;}));
+  await act(async () => root.render(<FreeformCreate mode="image"/>)); await enter('forest');
+  act(() => button('Refine with Ollama').click());
+  await act(async () => root.render(<FreeformCreate mode="text_video"/>));
+  await enter('Slow camera pan');
+  await act(async () => resolve({positive:'Old image suggestion',negative:''}));
+  expect(container.querySelector('[aria-label="AI suggestion"]')).toBeNull();
+  expect(container.querySelector('[aria-label="Your prompt"]').value).toBe('Slow camera pan');
+  await act(async () => button('Generate').click());
+  expect(endpoints.dispatchRender.mock.calls[0][0]).toMatchObject({workflow_id:'text_video',video_instruction:'Slow camera pan'});
+});
+test('a late upload cannot leak an object URL into a different creation mode', async () => {
+  let resolve;
+  URL.createObjectURL=jest.fn();
+  endpoints.uploadReferenceImage.mockReturnValue(new Promise(r=>{resolve=r;}));
+  await act(async () => root.render(<FreeformCreate mode="video"/>));
+  const input=container.querySelector('[aria-label="Starting image"]');
+  Object.defineProperty(input,'files',{value:[new File(['image'],'frame.png',{type:'image/png'})]});
+  act(() => input.dispatchEvent(new Event('change',{bubbles:true})));
+  await act(async () => root.render(<FreeformCreate mode="image"/>));
+  await act(async () => resolve({name:'frame.png'}));
+  expect(URL.createObjectURL).not.toHaveBeenCalled();
+  expect(container.querySelector('img[alt="Starting frame"]')).toBeNull();
+});

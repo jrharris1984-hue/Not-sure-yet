@@ -1,3 +1,4 @@
+import { galleryIsVideo as isVideoOutput } from '@/lib/galleryBrowse';
 import HomeImageTools from "@/components/HomeImageTools";
 import PostGenerationActions from "@/components/PostGenerationActions";
 import StudioLoading from "@/components/StudioLoading";
@@ -10,7 +11,6 @@ import { Images, Wrench } from "lucide-react";
 import { toast } from "sonner";
 
 const primaryOutput = render => render?.output_variants?.enhanced?.[0] || render?.output_files?.[0] || "";
-const isVideoOutput = (url = "") => /\.(webm|mp4|mov)(?:[?&]|$)/i.test(decodeURIComponent(url));
 
 export default function Tools() {
   const nav = useNavigate();

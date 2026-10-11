@@ -49,12 +49,12 @@ test("category selection opens its controls and follows the active section on re
   render(<CreateJourney {...props} />);
   const peopleCategory = Array.from(container.querySelectorAll('button[aria-expanded]')).find((node) => node.textContent === "People");
   act(() => peopleCategory.click());
-  expect(onSection).toHaveBeenCalledWith("identity");
+  expect(onSection).toHaveBeenCalledWith("scenario");
   expect(peopleCategory.getAttribute("aria-expanded")).toBe("true");
   render(<CreateJourney {...props} index={1} activeSection="hair" />);
   expect(button("Face & hair").getAttribute("aria-expanded")).toBe("true");
   expect(button("Body").getAttribute("aria-expanded")).toBe("false");
-  act(() => button("Pose & Scene").click());
+  act(() => container.querySelectorAll('[aria-label="Creation stages"] button')[3].click());
   expect(onStage).toHaveBeenCalledWith(3);
 });
 

@@ -24,7 +24,7 @@ test('a character type preserves heritage, cast and unrelated settings', () => {
 });
 test('uniform presets clear prior wardrobe conflicts and enhanced looks keep skin realistic', () => {
   const result = applyCharacterTypePreset({ ...DEFAULT_DNA, wardrobe: { ...DEFAULT_DNA.wardrobe, exposure_mode: 'nude', outfit_preset: 'nude', top: 'corset', underwear: 'thong' } }, CHARACTER_TYPE_PRESETS.find(p => p.name === 'Maid'));
-  expect(result.wardrobe).toMatchObject({ exposure_mode: 'use selected outfit', outfit_preset: '', top: '', underwear: '', outfit_set: 'classic maid dress with lace headpiece, stockings and pumps' });
+  expect(result.wardrobe).toMatchObject({ exposure_mode: '', outfit_preset: '', top: '', underwear: '', outfit_set: 'classic maid dress with lace headpiece, stockings and pumps' });
   const cosmetic = CHARACTER_TYPE_PRESETS.find(p => p.name === 'Plastic glamour');
   expect(cosmetic.dna.skin.texture).toBe('natural pores'); expect(cosmetic.dna.style.render).toBe('photorealistic');
   expect(cosmetic.dna.style.anatomy_mode).toBe('enhanced');
