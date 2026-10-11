@@ -133,7 +133,7 @@ test('save current plan opens an editable snapshot and saves the actual choices'
     pose: { value: 'standing with arms folded', label: 'Folded arms' },
     camera: { poseAngle: 'profile', cameraAngle: 'low', label: 'profile · low' } }];
   act(() => root.render(<BatchVariationControl {...props} smartPlan={smartPlan} onSavePreset={onSavePreset} />));
-  expect(container.querySelector('a').getAttribute('href')).toBe('/#smart-photoshoot-library');
+  expect(container.querySelector('a').getAttribute('href')).toBe('/shoots#smart-photoshoot-library');
   act(() => [...container.querySelectorAll('button')].find(button => button.textContent === 'Save plan to Library').click());
   expect(container.querySelector('[aria-label="Exact pose prompt for shot 1"]').value).toBe('standing with arms folded');
   await act(async () => [...container.querySelectorAll('button')].find(button => button.textContent === 'Save custom preset').click());

@@ -1,4 +1,3 @@
-import SmartPhotoshootLibrary from "@/components/SmartPhotoshootLibrary";
 import CharacterPreviewEntry from "@/components/CharacterPreviewEntry";
 import StudioLoading from "@/components/StudioLoading";
 import { Link } from "react-router-dom";
@@ -92,7 +91,10 @@ export default function Library() {
 
 
       <CharacterPreviewEntry />
-      <SmartPhotoshootLibrary />
+      <Link to="/shoots" className="pane block p-4 hover:border-cyan-500/40" data-testid="smart-photoshoots-entry">
+        <span className="inline-flex items-center gap-2 font-semibold text-cyan-200"><Camera className="h-4 w-4" /> Smart Photoshoots</span>
+        <span className="mt-1 block text-sm text-zinc-400">Plan a shoot, edit your shoot styles, or review saved sessions.</span>
+      </Link>
 
       <div className="pane p-3 flex flex-col sm:flex-row gap-2">
         <div className="relative flex-1">
@@ -217,6 +219,11 @@ export default function Library() {
                     {c.favorite ? <Star className="h-4 w-4 fill-current" /> : <StarOff className="h-4 w-4" />}
                   </button>
                 </div>
+                <Link to={`/gallery?character=${encodeURIComponent(c.id)}&name=${encodeURIComponent(c.name || "Untitled")}`}
+                  data-testid={`btn-character-gallery-${i}`} aria-label={`Open gallery for ${c.name || "Untitled"}`}
+                  className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-cyan-500/40 bg-cyan-500/10 px-3 text-xs font-semibold text-cyan-200 hover:bg-cyan-500/20">
+                  <ImageIcon className="h-4 w-4" /> Gallery
+                </Link>
                 <div className="mt-auto flex items-center gap-1">
                 <button type="button" onClick={() => setImageCharacter(c)} data-testid={`btn-character-image-${i}`}
                   className="h-7 w-7 grid place-items-center rounded-md border hairline text-zinc-300" title="Choose default image" aria-label={`Choose default image for ${c.name || "Untitled"}`}>
@@ -230,10 +237,10 @@ export default function Library() {
                   Open
                 </Link>
                 <Link
-                  to={`/shoot/new/${c.id}`}
+                  to={`/shoots?character=${encodeURIComponent(c.id)}`}
                   data-testid={`btn-shoot-${i}`}
                   className="inline-flex items-center gap-1 rounded-md bg-emerald-500/10 border border-emerald-500/40 text-emerald-200 text-xs font-semibold px-2 py-1.5 hover:bg-emerald-500/20"
-                  title="Photo shoot"
+                  title="Smart Photoshoots"
                 >
                   <Camera className="h-3.5 w-3.5" /> <span className="hidden sm:inline">Shoot</span>
                 </Link>

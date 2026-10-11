@@ -221,3 +221,18 @@ test('fullscreen Delete permanently deletes without a disk checkbox', async () =
     expect(endpoints.deleteRender).toHaveBeenCalledWith('a');
   } finally { confirm.mockRestore(); }
 });
+
+ test("character gallery requests only that character and offers return links", async () => {
+  endpoints.listRenders.mockResolvedValue([{ ...records[0], character_id: "char a" }]);
+  await render("/gallery?character=char%20a&name=Alice");
+  expect(endpoints.listRenders).toHaveBeenCalledWith({ character_id: "char a" });
+  expect(container.textContent).toContain("Alice · Gallery");
+  expect(container.querySelector('a[href="/gallery"]')).not.toBeNull();
+  expect(container.querySelector('a[href="/character/char%20a"]')).not.toBeNull();
+});
+ test("a foreign render deep link cannot open inside a character gallery", async () => {
+  endpoints.listRenders.mockResolvedValue([]);
+  endpoints.getRender.mockResolvedValue({ ...records[0], character_id: "other" });
+  await render("/gallery?character=alice&render=a");
+  expect(container.querySelector('[data-testid="btn-lightbox-open-character"]')).toBeNull();
+});

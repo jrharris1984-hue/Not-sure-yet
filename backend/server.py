@@ -1320,9 +1320,12 @@ def _gallery_visibility_filter() -> Dict[str, Any]:
 
 
 @api.get("/renders")
-async def list_renders(limit: int = 200, skip: int = 0):
+async def list_renders(limit: int = 200, skip: int = 0, character_id: Optional[str] = None):
+    query = _gallery_visibility_filter()
+    if character_id:
+        query["character_id"] = character_id
     return await db.renders.find(
-        _gallery_visibility_filter(),
+        query,
         {"_id": 0},
     ).sort([("created_at", -1), ("id", -1)]).skip(max(0, skip)).to_list(max(1, min(limit, 200)))
 
