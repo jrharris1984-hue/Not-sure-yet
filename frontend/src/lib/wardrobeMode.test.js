@@ -98,6 +98,9 @@ test.each(['chroma', 'krea2', 'standard'])('%s compact prompts resolve pantsuit 
   expect(positive).toContain('stockings ending clearly at the upper thighs');
   expect(positive).toContain('visible bare skin between the stocking tops and the briefs');
   expect(positive).not.toContain('tailored women’s pantsuit');
-  expect(positive.match(/satin balconette bra and matching high-waisted briefs with garter belt, stockings and pumps/g) || []).toHaveLength(1);
+  expect(positive.match(/satin balconette bra and matching high-waisted briefs/g) || []).toHaveLength(1);
+  expect(positive).toContain('garter belt');
+  expect(positive).toContain('pumps');
+  expect(positive).not.toContain('stockings and pumps');
 });
 
