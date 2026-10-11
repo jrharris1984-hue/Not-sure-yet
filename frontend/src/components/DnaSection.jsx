@@ -1,3 +1,4 @@
+import { LEGACY_ANATOMY_FIELDS } from "@/lib/anatomyDetailControls";
 import {useState} from 'react';
 import {wardrobeGroups,wardrobeGroupFor} from '@/lib/wardrobeLayout';
 import { wardrobeMode, wardrobeFieldDisabled, editWardrobeField } from "@/lib/wardrobeMode";
@@ -78,6 +79,7 @@ export default function DnaSection({
   controlNotes = [],
   focusedField = null,
 }) {
+  const [showLegacyAnatomy, setShowLegacyAnatomy] = useState(false);
   const [wardrobeGroup,setWardrobeGroup]=useState('outfit');
   const groups=section.key==='wardrobe'?wardrobeGroups(section.fields):[];
   const activeGroup=focusedField && focusedField!=='all' ? wardrobeGroupFor(focusedField) : groups.some(group=>group.key===wardrobeGroup)?wardrobeGroup:groups[0]?.key;
@@ -175,7 +177,12 @@ export default function DnaSection({
         {section.key==='wardrobe' && groups.length>1 && (!focusedField || focusedField==='all') && <div className="flex flex-wrap gap-2" role="group" aria-label="Wardrobe control groups">
           {groups.map(group=><button type="button" key={group.key} className={`chip ${activeGroup===group.key?'active':''}`} aria-pressed={activeGroup===group.key} onClick={()=>setWardrobeGroup(group.key)}>{group.label}</button>)}
         </div>}
+        {section.key === 'intimate' && <div className="space-y-2 text-xs text-zinc-400">
+          <p>Use the separate size, shape, color and texture controls. Older combined presets supply only details you have not selected here.</p>
+          <button type="button" className="chip" aria-expanded={showLegacyAnatomy} onClick={() => setShowLegacyAnatomy(open => !open)} data-testid="toggle-legacy-anatomy">{showLegacyAnatomy ? 'Hide' : 'Show'} older combined presets{LEGACY_ANATOMY_FIELDS.some(key => value[key]) ? ' · saved choices active' : ''}</button>
+        </div>}
         {section.fields.map((f) => {
+          if (section.key === 'intimate' && LEGACY_ANATOMY_FIELDS.includes(f.key) && !showLegacyAnatomy && focusedField !== f.key) return null;
           if ((section.key === "wardrobe" && f.key === "outfit_mode") || (sourceField && f.key === "source")) return null;
           const outfitDisabled = section.key === "wardrobe" && wardrobeFieldDisabled(f.key, value);
           const visibleChoice = option => !(section.key === 'wardrobe' && f.key === 'exposure_mode'
@@ -195,7 +202,7 @@ export default function DnaSection({
           const fLocked = !!fieldLocks?.[f.key];
           const canLock = f.type === "slider" || f.type === "chips" || f.type === "pose_chips";
           return (
-          <div key={f.key} style={section.key==='wardrobe' && wardrobeGroupFor(f.key)!==activeGroup ? {display:'none'} : undefined} className={`${section.key!=='wardrobe' && simpleMode && simpleFieldKeys.length && !simpleFieldKeys.includes(f.key) && !(isModeHeader && (simpleFieldKeys.includes(SIZE_CONTROL_PAIRS[preset][0]) || (preset === "bust" && simpleFieldKeys.includes("implant_volume")))) ? "hidden md:block" : "block"} space-y-2 ${fLocked ? "opacity-70" : ""}`}>
+          <div key={f.key} style={section.key==='wardrobe' && wardrobeGroupFor(f.key)!==activeGroup ? {display:'none'} : undefined} className={`${section.key!=='wardrobe' && simpleMode && simpleFieldKeys.length && !simpleFieldKeys.includes(f.key) && !(section.key === 'intimate' && showLegacyAnatomy && LEGACY_ANATOMY_FIELDS.includes(f.key)) && !(isModeHeader && (simpleFieldKeys.includes(SIZE_CONTROL_PAIRS[preset][0]) || (preset === "bust" && simpleFieldKeys.includes("implant_volume")))) ? "hidden md:block" : "block"} space-y-2 ${fLocked ? "opacity-70" : ""}`}>
             {isModeHeader && <div className="space-y-2" data-testid={`size-mode-${preset}`}>
               <div className="text-xs font-semibold text-zinc-300">{SIZE_CONTROL_PAIRS[preset][1]} · choose one control</div>
               <div className="flex gap-2" role="group" aria-label={`${SIZE_CONTROL_PAIRS[preset][1]} control`}>

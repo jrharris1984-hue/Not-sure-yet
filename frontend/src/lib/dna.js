@@ -556,7 +556,7 @@ export const HERITAGE_VARIATION_FIELDS = {
   face: null,
   hair: null,
   skin: null,
-  intimate: ["pubic_hair", "pussy", "nipples", "areolas"],
+  intimate: ["pubic_hair", "pussy", "nipple_size", "nipple_shape", "areola_size", "areola_color"],
   wardrobe: ["outfit_preset"],
   pose: null,
 };
