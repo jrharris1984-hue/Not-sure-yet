@@ -83,11 +83,11 @@ export const endpoints = {
   deleteCharacter: (id) => api.delete(`/characters/${id}`).then((r) => r.data),
   duplicateCharacter: (id) => api.post(`/characters/${id}/duplicate`).then((r) => r.data),
   characterRenders: (id) => api.get(`/characters/${id}/renders`).then((r) => r.data),
-  listRenders: async () => {
+  listRenders: async ({ character_id } = {}) => {
     const results = [];
     const pageSize = 200;
     for (let skip = 0; ; skip += pageSize) {
-      const batch = (await api.get("/renders", { params: { limit: pageSize, skip } })).data;
+      const batch = (await api.get("/renders", { params: { limit: pageSize, skip, ...(character_id ? { character_id } : {}) } })).data;
       results.push(...batch);
       if (batch.length < pageSize) return results;
     }

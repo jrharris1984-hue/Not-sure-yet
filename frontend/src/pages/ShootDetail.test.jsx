@@ -6,14 +6,16 @@ import Shoots from "./Shoots";
 import ShootDetail from "./ShootDetail";
 
 jest.mock("@/lib/api", () => ({ API_BASE: "/api", endpoints: {
-  listShoots: jest.fn(), getShoot: jest.fn(),
+  listShoots: jest.fn(), getShoot: jest.fn(), listCharacters: jest.fn(),
 } }));
 jest.mock("sonner", () => ({ toast: { error: jest.fn(), success: jest.fn() } }));
 jest.mock("react-router-dom", () => ({
   useParams: () => ({ shootId: "shoot-a" }),
+  useSearchParams: () => [new URLSearchParams(), jest.fn()],
   Link: ({ to, children, ...props }) => <a href={to} {...props}>{children}</a>,
 }), { virtual: true });
 jest.mock("@/components/LivePreview", () => () => null);
+jest.mock("@/components/SmartPhotoshootLibrary", () => () => null);
 
 const shoot = {
   id: "shoot-a", name: "Studio shoot", status: "done", count: 3, rendered_count: 2,
@@ -26,6 +28,7 @@ beforeEach(() => {
   global.IS_REACT_ACT_ENVIRONMENT = true;
   jest.clearAllMocks();
   endpoints.listShoots.mockResolvedValue([shoot]);
+  endpoints.listCharacters.mockResolvedValue([]);
   endpoints.getShoot.mockResolvedValue(shoot);
   container = document.createElement("div"); document.body.appendChild(container);
   root = createRoot(container);

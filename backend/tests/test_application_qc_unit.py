@@ -85,6 +85,17 @@ class ApplicationQcTests(unittest.IsolatedAsyncioTestCase):
         response=await self.http.post('/api/renders/albums/bulk',json={'ids':['r0','r0','r1'],'album':'QC'})
         self.assertEqual(response.json()['updated'],2)
         self.assertIsNone((await self.db.renders.find_one({'id':'r2'})).get('album'))
+    async def test_character_gallery_filters_before_pagination_and_keeps_video(self):
+        for index in range(5):
+            await self.db.renders.insert_one({'id':f'r{index}', 'character_id':'a' if index % 2 == 0 else 'b',
+                'status':'done','output_files':[f'/image{index}.png'],'created_at':'2026-10-11T12:00:00Z',
+                'workflow_type':'video' if index == 2 else 'image'})
+        await self.db.renders.insert_one({'id':'hidden','character_id':'a','hidden_from_gallery':True,'output_files':['hidden.png']})
+        page=(await self.http.get('/api/renders',params={'character_id':'a','limit':2,'skip':1})).json()
+        self.assertEqual([item['id'] for item in page],['r2','r0'])
+        self.assertEqual(page[0]['workflow_type'],'video')
+        self.assertEqual((await self.http.get('/api/renders',params={'character_id':'missing'})).json(),[])
+
     async def test_queued_render_retry_keeps_exact_seed_and_recipe(self):
         settings=(await self.http.get('/api/settings')).json()
         workflow=settings['workflows'][0]

@@ -105,10 +105,12 @@ export default function Gallery() {
   const location = useLocation();
   const [searchParams] = useSearchParams();
   const requestedRenderId = searchParams.get("render");
+  const characterId = searchParams.get("character");
+  const characterName = searchParams.get("name") || "Character";
   const returnTo = searchParams.get("returnTo") || location.state?.returnTo || "";
   const { data: renders = [], isLoading, isError, error, isFetching, refetch } = useQuery({
-    queryKey: ["renders"],
-    queryFn: endpoints.listRenders,
+    queryKey: characterId ? ["renders", "character", characterId] : ["renders"],
+    queryFn: () => endpoints.listRenders(characterId ? { character_id: characterId } : undefined),
     refetchInterval: (query) => galleryRefreshInterval(query.state.data),
     refetchOnMount: "always",
   });
@@ -144,6 +146,15 @@ export default function Gallery() {
   const [optionsOpen, setOptionsOpen] = useState(false);
   const [page, setPage] = useState(1);
   const [compareOpen, setCompareOpen] = useState(false);
+  useEffect(() => {
+    setLightbox(null);
+    setSelected([]);
+    setSelectionMode(false);
+    setPage(1);
+    setCompareOpen(false);
+    setAlbumFilter("all");
+    setBrowse({ search: "", model: "all", media: "all", sort: "newest" });
+  }, [characterId]);
   const carousel = useRef(null);
   const directOpenApplied = useRef(false);
   const { data: versions = [] } = useQuery({
@@ -383,11 +394,11 @@ export default function Gallery() {
   useEffect(() => {
     if (!requestedRenderId || directOpenApplied.current === requestedRenderId) return;
     const requested = renders.find((render) => render.id === requestedRenderId) || requestedRender;
-    if (requested && primaryOutput(requested)) {
+    if (requested && (!characterId || requested.character_id === characterId) && primaryOutput(requested)) {
       directOpenApplied.current = requestedRenderId;
       setLightbox(requested);
     }
-  }, [requestedRenderId, renders, requestedRender]);
+  }, [requestedRenderId, renders, requestedRender, characterId]);
 
   useEffect(() => {
     if (!lightbox) return undefined;
@@ -424,13 +435,19 @@ export default function Gallery() {
       <div className="flex items-end justify-between gap-4 flex-wrap">
         <div>
           <div className="section-label hidden sm:block">Gallery</div>
-          <h1 className="font-display font-extrabold text-2xl sm:text-4xl sm:mt-1">Renders</h1>
+          <h1 className="font-display font-extrabold text-2xl sm:text-4xl sm:mt-1">{characterId ? `${characterName} · Gallery` : "Renders"}</h1>
           <p className="text-xs sm:text-sm text-zinc-400 mt-1">
             {withOutput.length} finished · {inFlight.length} in flight.
             <span className="hidden sm:inline"> Tap a thumbnail to open.</span>
             {selectionMode && <span className="ml-2 text-amber-200">{selected.length} selected</span>}
           </p>
         </div>
+        {characterId && <div className="flex flex-wrap gap-2" data-testid="character-gallery-navigation">
+          <Link to={`/character/${encodeURIComponent(characterId)}`} className="chip">Open character</Link>
+          <Link to={`/shoots?character=${encodeURIComponent(characterId)}`} className="chip">Smart Photoshoots</Link>
+          <Link to="/gallery" className="chip">All renders</Link>
+          <Link to="/" className="chip">Character Library</Link>
+        </div>}
         <div className="flex items-center gap-2 sm:hidden">
           {selectionMode && <button type="button" onClick={() => { setSelectionMode(false); setSelected([]); }}
             className="rounded-lg border hairline px-3 py-2 text-xs text-zinc-200">Cancel selection</button>}
@@ -457,7 +474,7 @@ export default function Gallery() {
         </div>
         {(withOutput.length > 0 || cancelled.length > 0) && (
           <div className="flex flex-wrap gap-2">
-            {cancelled.length > 0 && (
+            {!characterId && cancelled.length > 0 && (
               <button type="button" onClick={confirmClearCancelled}
                 disabled={clearCancelled.isPending}
                 className="inline-flex items-center gap-2 rounded-lg border border-zinc-600/60 bg-zinc-500/5 px-3 py-2 text-sm text-zinc-300 hover:border-red-500/50 hover:text-red-200 disabled:opacity-40"
@@ -538,11 +555,11 @@ export default function Gallery() {
               className={`rounded-lg border px-3 py-2 ${showQcFlagged ? "border-amber-400/50 bg-amber-400/10 text-amber-100" : "hairline"}`}>
               Show QC-flagged images: {showQcFlagged ? "On" : "Off"}
             </button>
-            <button type="button" disabled={removeQcFlagged.isPending} data-testid="btn-gallery-delete-all-qc"
+            {!characterId && <button type="button" disabled={removeQcFlagged.isPending} data-testid="btn-gallery-delete-all-qc"
               onClick={() => confirmPermanentDelete("Permanently delete ALL QC-flagged renders and their output files from your hard drive? This cannot be undone.") && removeQcFlagged.mutate()}
               className="rounded-lg border border-red-500/40 px-3 py-2 text-red-200 hover:bg-red-500/10 disabled:opacity-40">
               <Trash2 className="mr-1 inline h-3.5 w-3.5" /> Delete all QC-flagged
-            </button>
+            </button>}
           </div>
         )}
 
