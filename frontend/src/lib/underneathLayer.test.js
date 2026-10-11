@@ -76,3 +76,29 @@ test('authored keywords are preserved even when they match a different built-in 
   const result = compileModelPrompts({ dna: source, promptStyle: 'chroma', promptFormat: 'compact', promptCatalog });
   expect(result.positive).toContain(keywords);
 });
+
+const floral = 'floral embroidered bra and matching briefs with garter belt, stockings and strappy heels';
+for (const promptStyle of ['chroma', 'krea2', 'standard', 'sdxl', 'pony']) {
+  test.each(['compact', 'detailed'])(`${promptStyle} %s opens the pantsuit without replacing trousers or displacing underwear`, promptFormat => {
+    const source = dna(); source.wardrobe.set_lingerie = floral; source.wardrobe.exposure_mode = 'custom_coverage_unzipped';
+    source.physique = { hips: 'wide hips', waist: 'narrow waist' };
+    source.intimate = { nipple_size: 'custom_hidden_upper', pussy: 'custom_hidden_lower' };
+    const before = JSON.stringify(source);
+    const result = compileModelPrompts({ dna: source, promptStyle, promptFormat });
+    expect(result.positive).toContain('pantsuit');
+    expect(result.positive).toContain('selected trousers remain worn');
+    expect(result.positive).toContain('front fastening open only enough to reveal the briefs');
+    expect(result.positive).toContain('bra cups properly covering the breasts');
+    expect(result.positive).toContain('hosiery does not replace the trousers');
+    expect(result.positive).not.toMatch(/custom_hidden|no trousers/);
+    expect(result.positive).toContain('wide hips');
+    expect(JSON.stringify(source)).toBe(before);
+  });
+}
+test('slipping off remains removal rather than silently changing to opening', () => {
+  const source = dna(); source.wardrobe.set_lingerie = floral; source.wardrobe.exposure_mode = 'custom_coverage_slipping_off';
+  const result = compileModelPrompts({ dna: source, promptStyle: 'chroma', promptFormat: 'compact' });
+  expect(result.positive).toContain('garment sliding down');
+  expect(result.positive).not.toContain('selected trousers remain worn');
+  expect(result.positive).toContain('bra cups properly covering the breasts');
+});

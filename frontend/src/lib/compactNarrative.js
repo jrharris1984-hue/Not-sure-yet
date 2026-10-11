@@ -1,4 +1,4 @@
-import { underneathLayer } from "./underneathLayer";
+import { underneathLayer, underneathCoverage } from "./underneathLayer";
 import { isPromptMetadata } from "./promptMetadata";
 import { expectedSubjectCount } from './dna';
 import { catalogSelection, physiqueKeywords } from './promptCatalog';
@@ -16,9 +16,6 @@ const SKIP = new Set(['identity.age', 'identity.gender', 'wardrobe.outfit_mode',
   'wardrobe._exposurePrompt', 'wardrobe.nudity_level', 'wardrobe.nudity_outfit', 'wardrobe.exposure_mode', 'wardrobe.set_lingerie', 'feet.composition_mode',
   'scenario.cast_size', 'scenario.cast_age_mode', 'scenario.cast_age_gap', 'scenario.cast_resemblance',
   'scenario.kink_level', 'style.anatomy_mode']);
-const LOWER_BODY_OUTER = /\b(?:pantsuit|trousers|pants|leggings|jeans|slacks)\b/i;
-const STOCKING_LINGERIE = /\b(?:garter|garters|stockings|thigh[- ]highs?|hold-up stockings)\b/i;
-
 function visibleStockingWardrobe(dna, index, section, tagged) {
   const wardrobe = dna.wardrobe || {};
   const exposure = wardrobeNudity(wardrobe);
@@ -34,31 +31,9 @@ function visibleStockingWardrobe(dna, index, section, tagged) {
     pieces = pieces.filter(piece => clean(piece).toLowerCase() !== lingerie.toLowerCase());
   }
 
-  const outer = clean(wardrobe.outfit_set);
-  const needsVisibleStockingBoundary = exposure.mode === 'lingerie showing'
-    && LOWER_BODY_OUTER.test(outer)
-    && STOCKING_LINGERIE.test(lingerie);
-
-  if (!needsVisibleStockingBoundary) {
-    const layer = underneathLayer(wardrobe, dna._catalogSelections?.wardrobe?.set_lingerie);
-    const alreadyIncluded = layer && [...pieces, direction].some(piece => clean(piece).toLowerCase().includes(layer.value.toLowerCase()));
-    return join([...pieces, direction, layer && !alreadyIncluded ? layer.text : '']);
-  }
-
-  // Trousers and visible garter stockings compete for the same leg area and
-  // image models often fuse them into a pants/stocking hybrid. Preserve the
-  // upper tailoring but explicitly remove the lower garment and define where
-  // the stockings end.
-  pieces = pieces.filter(piece => !LOWER_BODY_OUTER.test(clean(piece)));
-  const tailoredUpper = /(?:blazer|suit|pantsuit)/i.test(outer)
-    ? 'tailored blazer worn open over the selected lingerie, no blouse, no trousers or pants'
-    : 'selected outer layer worn open over the selected lingerie, no trousers, pants, leggings, jeans, or slacks';
-
-  const boundary = 'separate thigh-high stockings ending clearly at the upper thighs, visible bare skin between the stocking tops and the briefs, stockings are hosiery only and do not continue into pants or tights';
-  // Replacing the trouser portion must not discard the outer set's shoes
-  // or handbag, or take different shoes from its underneath-layer ensemble.
-  const retainedOuterAccessories = [...new Set(outer.match(/\b(?:pumps|heels|stilettos|boots|sandals|flats|loafers|handbag|clutch)\b/gi) || [])];
-  return join([tailoredUpper, ...pieces, ...retainedOuterAccessories, direction, boundary]);
+  const layer = underneathLayer(wardrobe, dna._catalogSelections?.wardrobe?.set_lingerie);
+  const alreadyIncluded = layer && [...pieces, direction].some(piece => clean(piece).toLowerCase().includes(layer.value.toLowerCase()));
+  return join([...pieces, direction, layer && !alreadyIncluded ? layer.text : '', underneathCoverage(wardrobe, layer?.value)]);
 }
 
 const CONTEXT = {

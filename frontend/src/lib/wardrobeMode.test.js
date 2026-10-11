@@ -93,11 +93,11 @@ test.each(['chroma', 'krea2', 'standard'])('%s compact prompts resolve pantsuit 
     },
   };
   const positive = compileModelPrompts({ promptStyle, dna, promptFormat: 'compact' }).positive;
-  expect(positive).toContain('tailored blazer worn open over the selected lingerie');
-  expect(positive).toContain('no blouse, no trousers or pants');
-  expect(positive).toContain('stockings ending clearly at the upper thighs');
-  expect(positive).toContain('visible bare skin between the stocking tops and the briefs');
-  expect(positive).not.toContain('tailored women’s pantsuit');
+  expect(positive).toContain('tailored women’s pantsuit');
+  expect(positive).toContain('selected trousers remain worn');
+  expect(positive).toContain('hosiery does not replace the trousers');
+  expect(positive).toContain('bra cups properly covering the breasts');
+  expect(positive).not.toContain('no trousers');
   expect(positive.match(/satin balconette bra and matching high-waisted briefs/g) || []).toHaveLength(1);
   expect(positive).toContain('garter belt');
   expect(positive).toContain('pumps');
