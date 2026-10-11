@@ -1,4 +1,5 @@
 import { useBuilderRenderPolling } from '@/hooks/useBuilderRenderPolling';
+import { useBuilderPromptFormatSettings } from '@/hooks/useBuilderPromptFormatSettings';
 import { selectSharedCastPose, editCastPose, sharedCastPose } from '@/lib/castPoseResolution';
 import { galleryIsVideo } from '@/lib/galleryBrowse';
 import SelectionPromptAudit from '@/components/SelectionPromptAudit';
@@ -324,12 +325,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
     qc.setQueryData(["settings"], updated);
     toast.success("Photoshoot preset deleted");
   };
-  useEffect(()=>{
-    if(!promptFormatTouched.current && ['detailed','compact','ollama'].includes(settings?.builder_prompt_format)) {
-      setPromptFormat(settings.builder_prompt_format);
-      localStorage.setItem('ultra-prompt-format',settings.builder_prompt_format);
-    }
-  },[promptFormatTouched, setPromptFormat, settings.builder_prompt_format]);
+  useBuilderPromptFormatSettings(settings, promptFormatTouched, setPromptFormat);
   const selectableWorkflows = useMemo(
     () => builderCatalogWorkflows(workflows, settings?.default_workflow_id, workflowId, imageToolId ? [] : settings?.builder_hidden_workflow_ids, !!galleryRecipeMode || !!location.state?.renderRecipe).filter(workflow => !imageToolId || IMAGE_TOOL_KINDS.includes(workflow.kind)),
     [workflows, settings?.default_workflow_id, settings?.builder_hidden_workflow_ids, workflowId, imageToolId, galleryRecipeMode, location.state?.renderRecipe]
