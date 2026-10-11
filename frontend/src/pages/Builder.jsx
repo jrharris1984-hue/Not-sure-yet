@@ -74,7 +74,7 @@ import ChromaControls from "@/components/ChromaControls";
 import UniversalLoraPicker from "@/components/UniversalLoraPicker";
 import RenderRecipeSelector from "@/components/RenderRecipeSelector";
 import SmartSetupPanel from "@/components/SmartSetupPanel";
-import { getRenderRecipe, recipeFamily } from "@/lib/renderRecipes";
+import { getRenderRecipe, recipeFamily, renderRecipeStyle } from "@/lib/renderRecipes";
 import { useCompiledPromptReset } from "@/lib/useCompiledPromptReset";
 import { builderCatalogWorkflows } from "@/lib/workflowCatalog";
 import { readBuilderDraft, writeBuilderDraft, clearBuilderDraft } from "@/lib/builderDraft";
@@ -498,7 +498,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
   const isGoldenChroma = activeCompiler === "chroma";
   const isKrea2Aio = promptStyle === "krea2_aio";
   const isLtxVideo = promptStyle === "ltx_t2v";
-  const isKrea2 = activeCompiler === "krea2" && !isKrea2Aio;
+  const isKrea2 = activeCompiler === "krea2" && !isKrea2Aio && promptStyle !== "krea2_test";
   const activeRecipeFamily = recipeFamily(activeCompiler);
   const { plan: smartPhotoshootPlan, toggleKeep: toggleKeepSmartShot, regenerate: regenerateSmartPlan } = useSmartPhotoshootPlan({
     enabled: batchSeedMode === "smart" && renderCount > 1,
@@ -521,7 +521,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
   const kreaRenderBlocked = !!kreaBaseBlocked;
 
   const applyQualityTier = (tier) => {
-    const recipe = getRenderRecipe(isKrea2Aio || isLtxVideo ? promptStyle : activeCompiler, tier);
+    const recipe = getRenderRecipe(renderRecipeStyle(promptStyle, activeCompiler), tier);
     setQualityTier(tier);
     if (recipe.family === "image") {
       setChromaSettings((current) => ({
@@ -585,7 +585,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
     const workflow = workflows.find((item) => item.id === recommendation.workflowId);
     if (!workflow) return;
     const compiler = resolvePromptCompiler({ promptStyle: workflow.prompt_style, workflowKind: workflow.kind, workflowName: workflow.name });
-    const recipe = getRenderRecipe(["krea2_aio", "ltx_t2v"].includes(workflow.prompt_style) ? workflow.prompt_style : compiler, recommendation.qualityTier);
+    const recipe = getRenderRecipe(renderRecipeStyle(workflow.prompt_style, compiler), recommendation.qualityTier);
     setWorkflowId(workflow.id);
     setLoraOverrides({});
     setQualityTier(recommendation.qualityTier);
@@ -3625,7 +3625,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
               subjectCount={subjects.length} hasReference={!!referenceImage?.name} onApply={applySmartSetup} />
           </div>
           <div data-mobile-tools-container="references prompts" className={mobileStudioMode === "advanced" || mobileStudioStep === "create" ? "block" : "hidden md:block"}>
-          {activeCompiler === "krea2" && (
+          {isKrea2 && (
             <div data-mobile-tools="references" className="pane p-4 mb-4 space-y-2" data-testid="krea-framing-control">
               <div className="section-label">Krea 2 · magazine framing</div>
               <p className="text-xs text-zinc-400">Choose the crop for every subject. Face priority keeps the face clear within this shot.</p>

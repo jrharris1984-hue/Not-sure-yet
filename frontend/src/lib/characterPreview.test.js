@@ -4,6 +4,13 @@ import { DEFAULT_DNA } from './dna';
 const workflow = { id: 'chroma', kind: 'image', prompt_style: 'chroma', name: 'Golden Chroma' };
 const dna = JSON.parse(JSON.stringify(DEFAULT_DNA));
 
+test('downloaded Krea previews and captures use the selected workflow and beta recipe', () => {
+  for (const capture of [false,true]) {
+    const selected={id:'downloaded-krea',kind:'image',prompt_style:'krea2_test',name:'Renamed model'};
+    expect(characterPreviewPayload({dna,workflow:selected,promptCatalog:{sections:[]},capture})).toMatchObject({workflow_id:'downloaded-krea',steps:8,cfg:1,scheduler:'beta',sampler_name:'euler'});
+  }
+});
+
 test('previews use one small image and fixed seed without changing character data', () => {
   const before = JSON.stringify(dna);
   const payload = characterPreviewPayload({ dna, workflow, promptCatalog: { sections: [] } });

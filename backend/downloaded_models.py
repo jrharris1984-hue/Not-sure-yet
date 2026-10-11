@@ -7,6 +7,39 @@ CHECKPOINTS = {
     'ltx_t2v': ['sulphur2DistilledNVFP4_nvfp4.safetensors', 'sulphur_distil_nvfp4.safetensors'],
 }
 
+SEPARATE_IMAGE_STYLES = {'krea2_test', 'chroma_test'}
+
+
+def resolve_separate_image_models(workflow, info):
+    """Resolve the selected graph's files exactly, including local subfolders."""
+    if not info:
+        return ['ComfyUI connection']
+    missing, patches = [], []
+    folders = {'unet_name': 'diffusion_models', 'clip_name': 'text_encoders', 'vae_name': 'vae'}
+    for node in workflow.values():
+        kind, inputs = node.get('class_type'), node.get('inputs', {})
+        if kind not in info:
+            missing.append('ComfyUI node: ' + str(kind))
+            continue
+        for field, folder in folders.items():
+            if field not in inputs:
+                continue
+            name = str(inputs[field]).replace('\\', '/').split('/')[-1]
+            selected = _select(_options(info, kind, field), [name])
+            if selected is None:
+                missing.append('models/' + folder + ': ' + name)
+            else:
+                patches.append((node, field, selected))
+        if kind == 'CLIPLoader':
+            types = _options(info, kind, 'type')
+            if inputs.get('type') not in types:
+                missing.append('CLIPLoader type: ' + str(inputs.get('type')) + ' (update ComfyUI)')
+    if missing:
+        return list(dict.fromkeys(missing))
+    for node, field, selected in patches:
+        node['inputs'][field] = selected
+    return []
+
 
 def resolve_downloaded_models(workflow, info, style):
     if not info:

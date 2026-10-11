@@ -1,5 +1,5 @@
 import { compileModelPrompts, resolvePromptCompiler } from './modelPromptCompilers';
-import { getRenderRecipe } from './renderRecipes';
+import { getRenderRecipe, renderRecipeStyle } from './renderRecipes';
 import { applyPhotographicGuidance } from './photographicGuidance';
 
 export const CHARACTER_PREVIEW_SEED = 184729;
@@ -53,7 +53,7 @@ export function characterPreviewPayload({ dna, workflow, promptCatalog, lora = {
     workflowKind: workflow.kind, workflowName: workflow.name, promptFormat: 'compact', sectionLocks: locks, fieldLocks });
   const prompts = applyPhotographicGuidance({ ...compiled, enabled: workflow.prompt_style !== 'pony' });
   if (!validPreviewSeed(seed)) throw new Error('Seed must be a whole number from 0 to 2147483646.');
-  const recipeStyle = workflow.prompt_style === 'krea2_aio' ? 'krea2_aio' : resolvePromptCompiler({ promptStyle: workflow.prompt_style, workflowKind: workflow.kind, workflowName: workflow.name });
+  const recipeStyle = renderRecipeStyle(workflow.prompt_style, resolvePromptCompiler({ promptStyle: workflow.prompt_style, workflowKind: workflow.kind, workflowName: workflow.name }));
   const tier = capture ? (qualityTier === 'balanced' ? 'balanced' : 'quality') : 'draft';
   const recipe = getRenderRecipe(recipeStyle, tier);
   const scale = capture ? 1 : Math.min(1, 640 / Math.max(recipe.width, recipe.height));
