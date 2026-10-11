@@ -210,10 +210,12 @@ function chromaLeanSingleSubjectPrompt(dna = {}, primaryGuard = {}, sourceDna = 
   const style = dna.style || {};
 
   const age = Number(id.age || 0);
-  const gender = catalogSelection(dna, "identity", "gender") === "male" ? "man" : "woman";
+  const gender = ({ female: "woman", male: "man", "non-binary": "non-binary person", androgynous: "androgynous person" })[catalogSelection(dna, "identity", "gender")] || "person";
   const subject = [
     age ? `${age}-year-old adult ${gender}` : `adult ${gender}`,
     ageAppearancePrompt(age),
+    id.gender && id.gender !== catalogSelection(dna, "identity", "gender") ? id.gender : "",
+    id.archetype && id.archetype !== "none" ? `${id.archetype} character archetype` : "",
     heritagePrompt(id.ethnicity, dna),
     ph.body_type && `${ph.body_type} build`,
     ph.height && ph.height !== "average" ? `${ph.height} height` : "",
@@ -227,6 +229,8 @@ function chromaLeanSingleSubjectPrompt(dna = {}, primaryGuard = {}, sourceDna = 
     skin.texture && `${skin.texture} skin texture`,
     skin.freckles && skin.freckles !== "none" && `${skin.freckles} freckles`,
     skin.tattoos && skin.tattoos !== "none" && `${skin.tattoos} tattoos`,
+    Number(skin.glow) > 85 ? "high-gloss skin finish with strong reflected highlights"
+      : Number(skin.glow) > 60 ? "dewy glowing skin with a natural sheen" : "",
     hair.bangs && hair.bangs !== "none" && `${hair.bangs} bangs`,
     hair.color && `${hair.color} hair`,
     hair.length && `${hair.length} hair`,
@@ -235,26 +239,31 @@ function chromaLeanSingleSubjectPrompt(dna = {}, primaryGuard = {}, sourceDna = 
   ].filter(Boolean).join(", ");
 
   const nudity = wardrobeNudity(wardrobe);
-  const outfit = [
-    nudity.direction,
-    !nudity.suppressClothing && (wardrobe.outfit_set_color || wardrobe.garment_color),
-    !nudity.suppressClothing && (wardrobe.outfit_set || wardrobe.dress_style || wardrobe.skirt_style || wardrobe.outfit_preset),
-    !nudity.suppressClothing && !wardrobe.outfit_set && !wardrobe.dress_style ? wardrobe.top : "",
-    !nudity.suppressClothing && !wardrobe.outfit_set && !wardrobe.dress_style && !wardrobe.skirt_style ? wardrobe.bottom : "",
-    !nudity.suppressClothing && wardrobe.underwear && wardrobe.underwear !== "none" ? wardrobe.underwear : "",
-    wardrobe.hosiery_color,
-    wardrobe.hosiery_type,
-    wardrobe.hosiery_pattern,
-    wardrobe.heel_color,
-    wardrobe.heel_type,
-    !wardrobe.heel_type && kreaFeetVisible(dna) ? wardrobe.footwear : "",
-  ].filter(value => value && value !== "none").join(" ");
+  // Reuse the resolved wardrobe compiler instead of maintaining a partial
+  // second field list that silently loses fabric, fit and accessory controls.
+  const visibleWardrobe = { ...wardrobe };
+  if (!kreaFeetVisible(dna)) {
+    for (const key of ['footwear', 'heel_type', 'heel_color', 'heel_height', 'heel_finish', 'hosiery_type', 'hosiery_color', 'hosiery_pattern', 'hosiery_denier']) delete visibleWardrobe[key];
+  }
+  const outfitCore = selectedSectionPrompt({ ...dna, wardrobe: visibleWardrobe }, 'outfit', { raunch: false });
+  // A complete outfit already owns its garments. Preserve only separately
+  // resolved styling overrides that the shared full-set formatter omits.
+  const stylingFields = ['footwear', 'heel_type', 'heel_color', 'heel_height', 'heel_finish', 'hosiery_type', 'hosiery_color', 'hosiery_pattern', 'hosiery_denier', 'glasses_style', 'glasses_color', 'accessories'];
+  const setStyling = visibleWardrobe.outfit_set ? selectedSectionPrompt({ ...dna,
+    wardrobe: { outfit_mode: 'custom', ...Object.fromEntries(stylingFields.map(key => [key, visibleWardrobe[key]])) }
+  }, 'outfit', { raunch: false }) : '';
+  const outfit = [outfitCore, setStyling && !outfitCore.includes(setStyling) ? setStyling : ''].filter(Boolean).join(', ');
+  const footComposition = catalogControl(dna, 'pose', 'focus') === 'feet'
+    ? [dna.feet?.sole_presentation, dna.feet?.foot_pose].filter(Boolean).join(', ') : '';
 
   const framing = [
     pose.distance,
     pose.angle,
     photographyPosePrompt(pose.action),
     pose.body_language,
+    pose.focus && pose.focus !== "full frame" ? `composition focus: ${pose.focus}` : "",
+    pose.hands && `hands: ${Array.isArray(pose.hands) ? pose.hands.join(" and ") : pose.hands}`,
+    footComposition,
   ].filter(Boolean).join(", ");
 
   const setting = [
@@ -1259,9 +1268,10 @@ export function compileModelPrompts(options = {}) {
     if (options.promptFormat === 'compact' && photographic) {
       const compact = buildCompactNarrative(resolvedSubjects, promptCatalog, compiler, options.raunch);
       const positive = [contract, compact.positive].filter(Boolean).join(' ');
-      prompts = {...prompts, positive, profile:compact.profile, compactRequirements:compact.requirements,
+      const guided = applyPhotographicGuidance({ ...prompts, positive });
+      prompts = {...prompts, ...guided, profile:compact.profile, compactRequirements:compact.requirements,
         detailedPromptWords:clean(prompts.positive).split(/\s+/).filter(Boolean).length,
-        promptWords:clean(positive).split(/\s+/).filter(Boolean).length,
+        promptWords:clean(guided.positive).split(/\s+/).filter(Boolean).length,
         promptBudget:null, droppedClauses:[], omittedClauseCount:0};
     }
     if (castPose.sharedPose) prompts = {...prompts, positive:`Shared pose for all ${castPose.subjects.length} adults: ${castPose.sharedPose}. ${prompts.positive}`} ;

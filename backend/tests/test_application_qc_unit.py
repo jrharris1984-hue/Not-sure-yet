@@ -112,6 +112,44 @@ class ApplicationQcTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual((await self.http.post(f"/api/queue/{job['id']}/retry")).json()['status'],'queued')
         updated=await self.db.render_queue.find_one({'id':job['id']})
         self.assertEqual(updated['payload'],stored['payload'])
+    async def test_chroma_hd_dispatch_sends_exact_prompts_settings_and_seed(self):
+        import json
+        settings = (await self.http.get('/api/settings')).json()
+        selected = next(workflow for workflow in settings['workflows'] if workflow['name'] == 'Chroma1-HD · Golden T2I')
+        original = json.loads(selected['json_str'])
+        captured = {}
+        class ComfyClient:
+            async def __aenter__(self): return self
+            async def __aexit__(self, *args): pass
+            async def post(self, url, *, json):
+                captured.update(json)
+                return httpx.Response(200, json={'prompt_id':'qc-chroma-job'})
+        body = self.server.DispatchBody(workflow_id=selected['id'], character_id='qc-character',
+            prompt_positive='One adult woman in a navy linen suit, full-length photograph, soft daylight',
+            prompt_negative='blur, extra limbs', width=896, height=1344, steps=30, cfg=4.0,
+            sampler_name='heun', seed=987654321, batch_size=1)
+        with patch.object(self.server.httpx, 'AsyncClient', return_value=ComfyClient()):
+            result = await self.server._perform_dispatch(body)
+        graph = captured['prompt']
+        self.assertEqual(graph['748']['inputs']['text'], body.prompt_positive)
+        self.assertEqual(graph['749']['inputs']['text'], body.prompt_negative)
+        self.assertEqual(graph['718']['inputs']['noise_seed'], 987654321)
+        self.assertEqual(graph['694']['inputs']['cfg'], 4.0)
+        self.assertEqual(graph['700']['inputs']['sampler_name'], 'heun')
+        self.assertEqual(graph['751']['inputs']['steps'], 30)
+        self.assertEqual(graph['737']['inputs']['width'], 896)
+        self.assertEqual(graph['737']['inputs']['height'], 1344)
+        for node in ['731','733','710','741','701']:
+            self.assertEqual(graph[node], original[node])
+        self.assertEqual(graph['751']['inputs']['alpha'], original['751']['inputs']['alpha'])
+        self.assertEqual(graph['751']['inputs']['beta'], original['751']['inputs']['beta'])
+        self.assertEqual(result['mapping'], {'positive':True,'negative':True})
+        self.assertEqual(result['seed_used'], 987654321)
+        self.assertEqual(result['render_recipe']['steps'], 30)
+        self.assertEqual(result['render_recipe']['prompt_positive'], body.prompt_positive)
+        self.assertEqual(result['comfy_prompt_id'], 'qc-chroma-job')
+        self.assertEqual((await self.server.get_settings()).workflows[[item['id'] for item in settings['workflows']].index(selected['id'])].json_str, selected['json_str'])
+
     async def test_missing_records_return_not_found(self):
         for path in ('characters/missing','renders/missing','renders/missing/recipe','shoots/missing'):
             self.assertEqual((await self.http.get('/api/'+path)).status_code,404)

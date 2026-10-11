@@ -1,3 +1,4 @@
+import { isPromptMetadata } from "./promptMetadata";
 import { bustShapePrompt } from "./physiqueControls";
 import { gluteSizePrompt } from "@/lib/gluteControls";
 import { expandPrompt } from "@/lib/promptMap";
@@ -211,6 +212,7 @@ function collectSubjectItems(dna = {}, {
   Object.entries(sections).forEach(([section, fields]) => {
     if (!fields || typeof fields !== "object" || Array.isArray(fields)) return;
     Object.entries(fields).forEach(([field, value]) => {
+      if (isPromptMetadata(section, field)) return;
       if (section === "scenario" && ["cast_age_mode", "cast_age_gap", "cast_resemblance", "kink_level"].includes(field)) return;
       // The fine control replaces its older coarse chip in the compiler.
       const fineControl = { bust: "bust_scale", butt: "butt_scale", hips: "hip_scale", waist: "waist_scale", thighs: "thigh_scale" }[field];
