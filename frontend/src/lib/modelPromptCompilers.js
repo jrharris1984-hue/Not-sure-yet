@@ -1,3 +1,4 @@
+import { normalizeAnatomyDetails } from "./anatomyDetailControls";
 import { resolveCastPoses } from './castPoseResolution';
 import { buildSelectionManifest } from './selectionPromptAudit';
 import { heritagePrompt } from "./heritageProfiles";
@@ -194,6 +195,8 @@ function removeChromaReferenceDuplicates(value, dna = {}) {
 function chromaLeanSingleSubjectPrompt(dna = {}, primaryGuard = {}, sourceDna = dna) {
   const block = buildChromaPrompts(dna, { raunch: false });
   const selectedSceneDetails=selectedSectionPrompt(dna,'watersports',{raunch:false});
+  const anatomyDetails = ['nipple_size', 'nipple_shape', 'areola_size', 'areola_shape', 'areola_color', 'areola_detail']
+    .map(field => dna.intimate?.[field]).filter(Boolean).join(', ');
   const ph = dna.physique || {};
   const id = dna.identity || {};
   const face = dna.face || {};
@@ -281,6 +284,7 @@ function chromaLeanSingleSubjectPrompt(dna = {}, primaryGuard = {}, sourceDna = 
     framing && `composition: ${framing}`,
     chromaBodyPriority(sourceDna),
     subject && `subject: ${subject}`,
+    anatomyDetails && `anatomical appearance: ${anatomyDetails}`,
     outfit && `wardrobe: ${outfit}`,
     selectedSceneDetails && `selected scene details: ${selectedSceneDetails}`,
     setting && `setting: ${setting}`,
@@ -1184,7 +1188,7 @@ export function compileModelPrompts(options = {}) {
     const phrase=customCatalogPrompt(subject.dna, promptCatalog);
     return phrase ? `${originalSubjects.length > 1 ? `Subject ${subject.label || String.fromCharCode(65+index)}: ` : ''}${phrase}` : '';
   }).filter(Boolean).join('; ');
-  options = {...options, dna:catalogDna(options.dna || {}, promptCatalog, true), subjects:options.subjects?.map(subject => ({...subject,dna:catalogDna(subject.dna, promptCatalog, true)}))};
+  options = {...options, dna:catalogDna(normalizeAnatomyDetails(options.dna || {}, promptCatalog), promptCatalog, true), subjects:options.subjects?.map(subject => ({...subject,dna:catalogDna(normalizeAnatomyDetails(subject.dna, promptCatalog), promptCatalog, true)}))};
   if (castPose.notes.some(note => note.field === 'distance')) {
     options = {...options, subjects:options.subjects.map(subject => ({...subject, dna:{...subject.dna,
       pose:{...subject.dna.pose,distance:'wide shot'},

@@ -1,5 +1,6 @@
+import { normalizeAnatomyDetails } from "./anatomyDetailControls";
 import { POSE_ACTION_PROMPTS } from './photographyPoses';
-import { catalogSelection, catalogControl } from './promptCatalog';
+import { catalogSelection, catalogControl, getPromptCatalog } from './promptCatalog';
 import { resolveAgeSkin } from './ageAppearance';
 import { resolveWardrobeMode } from "./wardrobeMode";
 import {wardrobeStateResolution} from './wardrobeCompatibility';
@@ -10,7 +11,7 @@ import { CONCEALED_ANATOMY_FIELDS, hasCoveringOuterOutfit } from './coveredOutfi
 const list = value => Array.isArray(value) ? value : value ? [value] : [];
 const lower = value => String(value || '').toLowerCase();
 export function resolveBuilderControls(source = {}) {
-  const copy=JSON.parse(JSON.stringify(source));
+  const copy=JSON.parse(JSON.stringify(normalizeAnatomyDetails(source, getPromptCatalog())));
   const dna = resolveAgeSkin(copy,catalogControl(copy,'skin','texture'));
   dna.kink = {};
   for (const section of ['pose', 'feet', 'wardrobe', 'hair', 'skin', 'scene', 'camera', 'watersports']) dna[section] ||= {};
@@ -78,21 +79,29 @@ export function resolveBuilderControls(source = {}) {
     omit('feet', 'sole_presentation', 'Sole presentation requires Feet focus; foot appearance stays a supporting detail.');
     if (p.action) omit('feet', 'foot_pose', 'The body pose controls stance. Choose Feet focus to use a separate foot pose.');
   }
-  // Imported or older recipes can contain combinations the current chips prevent.
+  // Resolve stable choice IDs, then keep the corresponding authored phrases.
+  const filterChoices = (field, keep, text) => {
+    const selected = list(choice('feet', field));
+    const emitted = list(f[field]);
+    const next = emitted.filter((_, index) => keep(selected[index]));
+    if (next.length !== emitted.length) {
+      f[field] = next;
+      if (dna._catalogSelections?.feet) dna._catalogSelections.feet[field] = selected.filter(keep);
+      notes.push({ section: 'feet', field, text });
+    }
+  };
   for (const [field, groups] of Object.entries({
     toes: [['toe curl', 'toe spread', 'toe point', 'toe scrunch', 'big toe out', 'wiggling toes', 'toes flexed', 'toes gripping fabric']],
     foot_state: [['bare', 'in nylons', 'in socks'], ['dirty', 'muddy', 'freshly washed']],
+    foot_accessories: [['anklet', 'double anklet'], ['toe ring', 'multiple toe rings']],
   })) {
-    let values = list(f[field]);
     for (const group of groups) {
-      const selected = values.filter(v => group.includes(v));
+      const selected = list(choice('feet', field)).filter(value => group.includes(value));
       if (selected.length > 1) {
         const kept = selected.at(-1);
-        values = values.filter(v => !group.includes(v) || v === kept);
-        notes.push({ section: 'feet', field, text: `Kept ${kept} instead of incompatible saved choices.` });
+        filterChoices(field, value => !group.includes(value) || value === kept, `Kept ${kept} instead of incompatible saved choices.`);
       }
     }
-    if (f[field] !== undefined) f[field] = values;
   }
   // Specialty QC: Watersports controls may coexist with the shared Pose, Scene,
   // Wardrobe and Feet editors, so resolve the overlapping concepts once before
@@ -346,15 +355,35 @@ export function resolveBuilderControls(source = {}) {
   if (!w.glasses_style && !list(w.accessories).some(value=>/glasses/i.test(value))) omit('wardrobe','glasses_color','Glasses color requires selected glasses.');
   if (w.heel_height==='flat' && /stiletto|platform|kitten|high|heeled|wedge/i.test(w.heel_type || w.footwear || '')) omit('wardrobe','heel_height','The selected heel style overrides a competing flat heel height.');
   if (w.hosiery_type) omit('feet', 'hosiery', 'Wardrobe hosiery controls coverage; the Feet hosiery fallback is inactive.');
+  // A saved foot-state covering must participate in visibility checks, even
+  // when no dedicated hosiery field was selected.
+  if (!w.hosiery_type && !f.hosiery) {
+    const covering = list(choice('feet', 'foot_state')).find(value => ['in socks', 'in nylons'].includes(value));
+    if (covering) {
+      setChoice('feet', 'hosiery', covering === 'in socks' ? 'ankle socks' : 'sheer stockings');
+      notes.push({ section: 'feet', field: 'hosiery', text: 'The saved foot-state covering supplies hosiery when no hosiery control is selected.' });
+    }
+  }
+
   const footwear = lower(w.heel_type || w.footwear);
   const visibility = footVisibility(controls('wardrobe'), controls('feet'));
-  if (visibility.hasHosiery || visibility.hasShoe) {
-    const state = list(f.foot_state);
-    const keep = state.filter(v => (v !== 'bare' || visibility.bare) && !(visibility.hasHosiery && ['in socks', 'in nylons'].includes(v)));
-    if (keep.length !== state.length) {
-      f.foot_state = keep;
-      notes.push({ section: 'feet', field: 'foot_state', text: 'Selected footwear and hosiery control coverage instead of the conflicting foot-state choice.' });
-    }
+  if (visibility.hasHosiery || visibility.hasShoe || f.hosiery) {
+    filterChoices('foot_state', value => (value !== 'bare' || visibility.bare)
+      && !['in socks', 'in nylons'].includes(value), 'Selected footwear and hosiery control coverage instead of the conflicting foot-state choice.');
+  }
+  if (list(choice('feet', 'foot_accessories')).some(value => ['toe ring', 'multiple toe rings'].includes(value))) {
+    filterChoices('toes', value => value !== 'toe ring', 'Foot accessories controls toe rings instead of repeating the same accessory in Toe details.');
+  }
+  const presentation = choice('feet', 'sole_presentation');
+  if (['wrinkled soles', 'smooth soles', 'detailed toe pads'].includes(presentation) && f.sole_texture) {
+    omit('feet', 'sole_presentation', 'Sole texture controls surface appearance; use Sole presentation for position.');
+  }
+  if (['dirty soles', 'muddy soles', 'freshly washed'].includes(presentation) && list(choice('feet', 'foot_state')).some(value => ['dirty', 'muddy', 'freshly washed'].includes(value))) {
+    omit('feet', 'sole_presentation', 'Foot state controls cleanliness instead of the older sole-detail preset.');
+  }
+  const nailShape = choice('feet', 'toenail_shape');
+  if (nailShape && ['long nails', 'sharp claws'].includes(choice('feet', 'pedicure'))) {
+    omit('feet', 'pedicure', 'Toenail shape controls nail length instead of the older length-only pedicure preset.');
   }
   if (footwear === 'barefoot' && !visibility.bare) omit('wardrobe', 'footwear', 'Selected hosiery replaces the barefoot description.');
   if (!visibility.toesVisible) {
@@ -372,7 +401,7 @@ export function resolveBuilderControls(source = {}) {
       notes.push({ section: 'feet', field: 'toes', text: 'The main body pose controls toe position; foot accessories remain available.' });
     }
   }
-  if (f.pedicure === 'natural nails') omit('feet', 'pedicure_art', 'Natural nails takes priority over painted nail art.');
+  if (choice('feet', 'pedicure') === 'natural nails') omit('feet', 'pedicure_art', 'Natural nails takes priority over painted nail art.');
   if (!focus && croppedAboveFeet) for (const field of Object.keys(f)) {
     if (field !== 'composition_mode') omit('feet', field, 'Outside the selected crop. Choose a wider frame or Feet focus to show this detail.');
   }

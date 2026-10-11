@@ -154,3 +154,21 @@ test('full set lingerie is optional and unavailable coverage choices disappear',
     expect(container.querySelector('[data-testid="chip-wardrobe-exposure_mode-lingerie-only"]')).not.toBeNull();
   } finally {act(()=>root.unmount());container.remove();}
 });
+
+test('intimate details keep older saved presets accessible without duplicate default controls', () => {
+  global.IS_REACT_ACT_ENVIRONMENT = true;
+  const container = document.createElement('div'), root = createRoot(container);
+  const section = SECTIONS.find(item => item.key === 'intimate');
+  const saved = { nipples: 'small', areolas: 'medium pink', nipple_size: 'large nipple tips' };
+  const change = jest.fn();
+  try {
+    act(() => root.render(<DnaSection section={section} value={saved} onChange={change} simpleMode simpleFieldKeys={["nipple_size", "areola_color"]} />));
+    expect(container.querySelector('[data-testid="chip-intimate-nipples-small"]')).toBeNull();
+    expect(container.textContent).toContain('saved choices active');
+    act(() => container.querySelector('[data-testid="toggle-legacy-anatomy"]').click());
+    expect(container.querySelector('[data-testid="chip-intimate-nipples-small"]').getAttribute('aria-pressed')).toBe('true');
+    expect(container.querySelector('[data-testid="chip-intimate-nipples-small"]').closest('.hidden')).toBeNull();
+    expect(change).not.toHaveBeenCalled();
+    expect(saved.nipples).toBe('small');
+  } finally { act(() => root.unmount()); }
+});
