@@ -144,6 +144,14 @@ function buildField(base, saved) {
 }
 // Stable option values keep saved characters intact when display names change.
 export const catalogSelection = (dna, section, field) => dna?._catalogSelections?.[section]?.[field] ?? dna?.[section]?.[field];
+// Behavior follows stable choices; authored custom choices use their wording.
+// A field removed by render QC must not become active again from its snapshot.
+export const catalogControl = (dna, section, field) => {
+  const value=dna?.[section]?.[field];
+  if (!value || (Array.isArray(value) && !value.length)) return value;
+  const selected=catalogSelection(dna,section,field);
+  return typeof selected==='string' && selected.startsWith('custom_') ? value : selected;
+};
 
 // Preset prose must not reintroduce traits owned by independent controls.
 export function physiqueKeywords(keywords, field, dna = {}) {

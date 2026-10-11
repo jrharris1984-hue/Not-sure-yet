@@ -18,10 +18,10 @@ export function ageAppearancePrompt(value) {
   return '';
 }
 
-export function resolveAgeSkin(dna = {}) {
+export function resolveAgeSkin(dna = {}, selectedTexture = dna.skin?.texture) {
   const texture = ageSkinTexture(dna.identity?.age);
   if (!texture) return dna;
-  const current = String(dna.skin?.texture || '');
+  const current = [dna.skin?.texture,selectedTexture].filter(Boolean).join(' ');
   const older = Number(dna.identity.age) >= 50;
   const competing = older ? /smooth|flawless|poreless|wrinkle[- ]?free|ageless|youthful/i.test(current)
     : Number(dna.identity.age) < 35 && /mature skin|aged skin|deep wrinkles/i.test(current);
