@@ -1,4 +1,9 @@
 const IMAGE_RECIPES = {
+  chroma_flash: {
+    draft: { width: 768, height: 768, steps: 8, cfg: 1, batchSize: 1, sampler: "heun", note: "Clyb Uncanny Flash v19 test · Heun / beta starting recipe" },
+    balanced: { width: 1024, height: 1024, steps: 8, cfg: 1, batchSize: 1, sampler: "heun", note: "Clyb Uncanny Flash v19 comparison baseline · adjust for results" },
+    quality: { width: 1024, height: 1536, steps: 8, cfg: 1, batchSize: 1, sampler: "heun", note: "Larger Clyb Uncanny Flash v19 test · higher memory use" },
+  },
   chroma_turbo: {
     draft: { width: 768, height: 768, steps: 12, cfg: 1, batchSize: 1, sampler: "heun", note: "DanrisiMix Ultra test · requires Sigmoid Offset scheduler node" },
     balanced: { width: 1024, height: 1024, steps: 12, cfg: 1, batchSize: 1, sampler: "heun", note: "DanrisiMix Ultra · Heun / Sigmoid Offset creator baseline" },
@@ -117,7 +122,7 @@ export function getRenderRecipe(compiler = "standard", tier = "balanced") {
 }
 
 export function renderRecipeStyle(promptStyle, compiler) {
-  return ['krea2_aio', 'krea2_test', 'chroma_test', 'chroma_turbo', 'ltx_t2v'].includes(promptStyle) ? promptStyle : compiler;
+  return ['krea2_aio', 'krea2_test', 'chroma_test', 'chroma_turbo', 'chroma_flash', 'ltx_t2v'].includes(promptStyle) ? promptStyle : compiler;
 }
 
 export function recipeSummary(recipe = {}) {

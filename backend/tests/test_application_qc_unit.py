@@ -147,3 +147,25 @@ class ApplicationQcTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result['status'], 'failed')
         self.assertIn('ComfyUI node: SigmoidOffsetScheduler', result['error'])
         self.assertIn('https://github.com/silveroxides/ComfyUI_SigmoidOffsetScheduler', result['error'])
+
+    async def test_unlocked_and_clyb_refresh_adds_exact_models_and_keeps_existing_ids(self):
+        import json
+        before = (await self.http.get('/api/settings')).json()
+        names = {'Chroma · Unlocked v50': 'chroma-unlocked-v50.safetensors',
+                 'Chroma · Clyb Uncanny 2K Flash v19': 'ClybUncannyChroma1-2K-Flash-v19.safetensors'}
+        for workflow in before['workflows']:
+            if workflow['name'] in names:
+                self.assertEqual((await self.http.delete('/api/workflows/' + workflow['id'])).status_code, 200)
+        refreshed = await self.http.post('/api/workflows/seed')
+        self.assertEqual(refreshed.json()['added'], 2)
+        current = (await self.http.get('/api/settings')).json()
+        self.assertEqual(current['default_workflow_id'], before['default_workflow_id'])
+        kept = {w['name']: w['id'] for w in current['workflows'] if w['name'] not in names}
+        self.assertEqual(kept, {w['name']: w['id'] for w in before['workflows'] if w['name'] not in names})
+        for workflow in current['workflows']:
+            if workflow['name'] in names:
+                graph = json.loads(workflow['json_str'])
+                self.assertEqual(graph['731']['inputs']['unet_name'], names[workflow['name']])
+                self.assertEqual(workflow['positive_node_id'], '748')
+                self.assertEqual(workflow['negative_node_id'], '749')
+        self.assertEqual((await self.http.post('/api/workflows/seed')).json()['added'], 0)

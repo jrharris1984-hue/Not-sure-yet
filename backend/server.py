@@ -250,6 +250,8 @@ SEED_WORKFLOWS = [
     {"file": "krea2_stkreal.json", "name": "Krea 2 · ST-KREAL 2.91 FP8", "kind": "image", "prompt_style": "krea2_test"},
     {"file": "chroma_gonzalomo.json", "name": "Chroma · GonzaLomo v3 FP8", "kind": "image", "prompt_style": "chroma_test"},
     {"file": "chroma_danrisimix_ultra.json", "name": "Chroma · DanrisiMix Ultra INT8 Turbo", "kind": "image", "prompt_style": "chroma_turbo"},
+    {"file": "chroma_unlocked_v50.json", "name": "Chroma · Unlocked v50", "kind": "image", "prompt_style": "chroma_test"},
+    {"file": "chroma_clyb_uncanny_flash_v19.json", "name": "Chroma · Clyb Uncanny 2K Flash v19", "kind": "image", "prompt_style": "chroma_flash"},
     {"file": "krea2_aio.json", "name": "Krea 2 Turbo · AIO v1.0", "kind": "image", "prompt_style": "krea2_aio"},
     {"file": "qwen_remix_edit.json", "name": "Qwen Remix AIO v2 · Image Edit", "kind": "edit", "prompt_style": "qwen_remix"},
     {"file": "sulphur2_t2v.json", "name": "Sulphur 2 Distilled NVFP4 · Text → Video + Audio", "kind": "text_video", "prompt_style": "ltx_t2v"},
