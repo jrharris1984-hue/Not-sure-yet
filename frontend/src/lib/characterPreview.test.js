@@ -4,6 +4,20 @@ import { DEFAULT_DNA } from './dna';
 const workflow = { id: 'chroma', kind: 'image', prompt_style: 'chroma', name: 'Golden Chroma' };
 const dna = JSON.parse(JSON.stringify(DEFAULT_DNA));
 
+test.each([
+  ['unlocked', 'chroma_test', 26, 3.8, 'euler'],
+  ['clyb-flash', 'chroma_flash', 8, 1, 'heun'],
+])('%s preview and capture retain the selected Chroma variant recipe', (id, style, steps, cfg, sampler) => {
+  for (const capture of [false, true]) {
+    const selected = {id, kind:'image', prompt_style:style, name:'Renamed model'};
+    const payload = characterPreviewPayload({dna, workflow:selected, promptCatalog:{sections:[]}, capture});
+    // Preview uses Draft; full captures use Quality.
+    const expectedSteps = id === 'unlocked' ? (capture ? 34 : 18) : steps;
+    const expectedCfg = id === 'unlocked' ? (capture ? 4 : 3.4) : cfg;
+    expect(payload).toMatchObject({workflow_id:id, steps:expectedSteps, cfg:expectedCfg, sampler_name:sampler});
+  }
+});
+
 test('DanrisiMix previews and captures keep the Turbo recipe and selected workflow', () => {
   for (const capture of [false, true]) {
     const selected = {id:'danrisi', kind:'image', prompt_style:'chroma_turbo', name:'Renamed model'};

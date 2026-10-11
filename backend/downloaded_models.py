@@ -7,7 +7,7 @@ CHECKPOINTS = {
     'ltx_t2v': ['sulphur2DistilledNVFP4_nvfp4.safetensors', 'sulphur_distil_nvfp4.safetensors'],
 }
 
-SEPARATE_IMAGE_STYLES = {'krea2_test', 'chroma_test', 'chroma_turbo'}
+SEPARATE_IMAGE_STYLES = {'krea2_test', 'chroma_test', 'chroma_turbo', 'chroma_flash'}
 
 
 def resolve_separate_image_models(workflow, info):

@@ -1,0 +1,207 @@
+{
+  "298": {
+    "inputs": {
+      "samples": [
+        "747",
+        0
+      ],
+      "vae": [
+        "710",
+        0
+      ]
+    },
+    "class_type": "VAEDecode",
+    "_meta": {
+      "title": "VAE Decode"
+    }
+  },
+  "694": {
+    "inputs": {
+      "cfg": 3.8,
+      "model": [
+        "701",
+        0
+      ],
+      "positive": [
+        "748",
+        0
+      ],
+      "negative": [
+        "749",
+        0
+      ]
+    },
+    "class_type": "CFGGuider",
+    "_meta": {
+      "title": "CFG Guider"
+    }
+  },
+  "700": {
+    "inputs": {
+      "sampler_name": "euler"
+    },
+    "class_type": "KSamplerSelect",
+    "_meta": {
+      "title": "KSamplerSelect"
+    }
+  },
+  "701": {
+    "inputs": {
+      "shift": 1,
+      "model": [
+        "731",
+        0
+      ]
+    },
+    "class_type": "ModelSamplingAuraFlow",
+    "_meta": {
+      "title": "Flow Shift"
+    }
+  },
+  "710": {
+    "inputs": {
+      "vae_name": "ae.safetensors"
+    },
+    "class_type": "VAELoader",
+    "_meta": {
+      "title": "Load VAE"
+    }
+  },
+  "718": {
+    "inputs": {
+      "noise_seed": 283036233092683
+    },
+    "class_type": "RandomNoise",
+    "_meta": {
+      "title": "SEED"
+    }
+  },
+  "731": {
+    "inputs": {
+      "unet_name": "chroma-unlocked-v50.safetensors",
+      "weight_dtype": "default"
+    },
+    "class_type": "UNETLoader",
+    "_meta": {
+      "title": "Load Unlocked v50"
+    }
+  },
+  "733": {
+    "inputs": {
+      "clip_name": "t5xxl_fp8_e4m3fn_scaled.safetensors",
+      "type": "chroma",
+      "device": "default"
+    },
+    "class_type": "CLIPLoader",
+    "_meta": {
+      "title": "Load CLIP"
+    }
+  },
+  "737": {
+    "inputs": {
+      "width": 1024,
+      "height": 1024,
+      "batch_size": 1
+    },
+    "class_type": "EmptySD3LatentImage",
+    "_meta": {
+      "title": "EmptySD3LatentImage"
+    }
+  },
+  "740": {
+    "inputs": {
+      "filename_prefix": "UltraStudio_chroma_unlocked_v50",
+      "images": [
+        "298",
+        0
+      ]
+    },
+    "class_type": "SaveImage",
+    "_meta": {
+      "title": "Save Image"
+    }
+  },
+  "741": {
+    "inputs": {
+      "min_padding": 0,
+      "min_length": 0,
+      "clip": [
+        "733",
+        0
+      ]
+    },
+    "class_type": "T5TokenizerOptions",
+    "_meta": {
+      "title": "T5 Tokenizer Options"
+    }
+  },
+  "747": {
+    "inputs": {
+      "noise": [
+        "718",
+        0
+      ],
+      "guider": [
+        "694",
+        0
+      ],
+      "sampler": [
+        "700",
+        0
+      ],
+      "sigmas": [
+        "751",
+        0
+      ],
+      "latent_image": [
+        "737",
+        0
+      ]
+    },
+    "class_type": "SamplerCustomAdvanced",
+    "_meta": {
+      "title": "SamplerCustomAdvanced"
+    }
+  },
+  "748": {
+    "inputs": {
+      "text": "A photograph of a mountain lake in morning light.",
+      "clip": [
+        "741",
+        0
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "CLIP Text Encode (Positive Prompt)"
+    }
+  },
+  "749": {
+    "inputs": {
+      "text": "blurry, low quality, artifacts",
+      "clip": [
+        "741",
+        0
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "CLIP Text Encode (Negative Prompt)"
+    }
+  },
+  "751": {
+    "inputs": {
+      "steps": 26,
+      "alpha": 0.45,
+      "beta": 0.45,
+      "model": [
+        "701",
+        0
+      ]
+    },
+    "class_type": "BetaSamplingScheduler",
+    "_meta": {
+      "title": "BetaSamplingScheduler"
+    }
+  }
+}
