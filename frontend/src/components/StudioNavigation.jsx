@@ -6,7 +6,7 @@ import { Sheet, SheetTrigger, SheetContent, SheetTitle, SheetDescription, SheetC
 export const STUDIO_NAV = [
   { to: "/", label: "Characters", icon: Library, testId: "nav-library" },
   { to: "/media", label: "Media", icon: Database, testId: "nav-media" },
-  { to: "/shoots", label: "Shoots", icon: Camera, testId: "nav-shoots" },
+  { to: "/shoots", label: "Smart Shoots", icon: Camera, testId: "nav-shoots" },
   { to: "/gallery", label: "Gallery", icon: ImageIcon, testId: "nav-gallery" },
   { to: "/tools", label: "Tools", icon: Wrench, testId: "nav-tools" },
   { to: "/queue", label: "Queue", icon: ListOrdered, testId: "nav-queue" },

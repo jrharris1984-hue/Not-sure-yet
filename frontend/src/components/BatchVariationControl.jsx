@@ -201,7 +201,7 @@ export default function BatchVariationControl({
               className="min-h-11 rounded-lg border border-cyan-500/30 px-3 py-2 text-xs text-cyan-200 disabled:opacity-40">
               Save plan to Library
             </button>
-            <Link to="/#smart-photoshoot-library" className="min-h-11 rounded-lg border hairline px-3 py-2 text-xs text-zinc-300">Open shoot Library</Link>
+            <Link to="/shoots#smart-photoshoot-library" className="min-h-11 rounded-lg border hairline px-3 py-2 text-xs text-zinc-300">Open shoot Library</Link>
           </div>
 
           {!mobilePlanOpen && !!planSummary && (

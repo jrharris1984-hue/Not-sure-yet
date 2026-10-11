@@ -483,6 +483,18 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
   const [smartShootRun, setSmartShootRun] = useState(null);
   const smartShootRenders = [...batchRenders, activeRender].filter(Boolean);
   const smartShootPending = photoshootRunPending(smartShootRun, smartShootRenders);
+  const smartShootEntryApplied = useRef("");
+  useEffect(() => {
+    const request = new URLSearchParams(location.search).get("shoot");
+    const entry = `${id || "new"}:${location.key}`;
+    if (request !== "smart" || !editorHydrated || smartShootEntryApplied.current === entry) return;
+    smartShootEntryApplied.current = entry;
+    setBatchSeedMode("smart");
+    setRenderCount(current => Math.max(6, current || 1));
+    setQuickReview(true);
+    setMobileStudioStep("create");
+  }, [id, location.search, location.key, editorHydrated, setBatchSeedMode, setRenderCount, setQuickReview, setMobileStudioStep]);
+
 
   useEffect(() => {
     if (isImageFirst) setPoseAssistEnabled(false);
@@ -2995,7 +3007,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
             </div>
             {!isNew && (
               <div className="mobile-tools-panel" data-mobile-tools="files"><Link
-                to={`/shoot/new/${id}`}
+                to={`/shoots?character=${encodeURIComponent(id)}`}
                 data-testid="btn-open-shoot"
                 className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/40 bg-emerald-500/10 text-emerald-200 text-sm font-semibold px-3 py-2 hover:bg-emerald-500/20"
                 title="Batch photo shoot"
