@@ -12,7 +12,7 @@ import { preserveGeneralSelections, subjectPromptText } from "./selectionFidelit
 import { applyCastAppearance, castAppearancePrompt } from "./castAppearance";
 import { photographyPosePrompt } from "@/lib/photographyPoses";
 import { gluteSizePrompt, gluteShapePrompt } from "@/lib/gluteControls";
-import { SECTIONS, buildPrompts, buildMultiVenicePrompts, buildChromaPrompts, buildMultiChromaPrompts, selfStreamContinuityCue } from "@/lib/dna";
+import { SECTIONS, buildPrompts, buildMultiVenicePrompts, buildChromaPrompts, buildMultiChromaPrompts, selfStreamContinuityCue, selectedSectionPrompt } from "@/lib/dna";
 import { buildPonyPrompts, buildMultiPonyPrompts } from "@/lib/ponyPrompts";
 import { buildPromptPriorityPlan, emptyPromptPriorityPlan, prioritizePrompt, requirementPresent } from "@/lib/promptPriority";
 import { implantVisualPrompt } from "@/lib/implantVisualScale";
@@ -188,6 +188,7 @@ function removeChromaReferenceDuplicates(value, dna = {}) {
 
 function chromaLeanSingleSubjectPrompt(dna = {}, primaryGuard = {}, sourceDna = dna) {
   const block = buildChromaPrompts(dna, { raunch: false });
+  const selectedSceneDetails=selectedSectionPrompt(dna,'watersports',{raunch:false});
   const ph = dna.physique || {};
   const id = dna.identity || {};
   const face = dna.face || {};
@@ -276,6 +277,7 @@ function chromaLeanSingleSubjectPrompt(dna = {}, primaryGuard = {}, sourceDna = 
     chromaBodyPriority(sourceDna),
     subject && `subject: ${subject}`,
     outfit && `wardrobe: ${outfit}`,
+    selectedSceneDetails && `selected scene details: ${selectedSceneDetails}`,
     setting && `setting: ${setting}`,
     look && `visual treatment: ${look}`,
     "coherent anatomy, realistic skin texture, natural perspective",
@@ -753,7 +755,7 @@ function kreaAdultDetailSentence(dna = {}, label = "") {
     ws.self_aim,
     ws.flow_appearance,
     ws.highlight,
-    selfStreamContinuityCue(ws),
+    selfStreamContinuityCue({...ws,source:catalogSelection(dna,"watersports","source"),phase:catalogSelection(dna,"watersports","phase")}),
   ]);
 }
 

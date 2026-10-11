@@ -19,7 +19,7 @@ export function exportCategoryBatch(section, getKeywords) {
 
 // Apply wording by stable identifiers, retaining selection modes, coverage behavior,
 // slider ranges and any metadata that is not part of the editable batch.
-export function importCategoryBatch(text, section) {
+export function importCategoryBatch(text, section, getKeywords) {
   if (text.length > 1000000) throw new Error('Use a category JSON file smaller than 1 MB.');
   const batch = JSON.parse(text);
   if (batch?.format !== 'ultra-studio-category-prompts' || batch.version !== 1 || batch.category?.key !== section.key)
@@ -37,6 +37,8 @@ export function importCategoryBatch(text, section) {
     return {...field, label: incoming.label, options: field.options.map(option => {
       if (!CATEGORY_CHOICE_TYPES.includes(field.type)) return option;
       const edited = incoming.choices.find(item => item.value === option.value);
+      if (getKeywords && edited.default_keywords !== getKeywords(field,option))
+        throw new Error('default_keywords is reference wording. Put prompt edits in keywords instead.');
       const result = {...option};
       CATEGORY_TEXT_FIELDS.forEach(key => {
         if (typeof edited[key] !== 'string') throw new Error('Keep all editable choice fields as text.');

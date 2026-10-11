@@ -962,6 +962,13 @@ export function buildPrompts(dna = {}, opts = {}) {
   return { positive, negative };
 }
 
+// Reuse a compiled section when a compact compiler does not include that
+// section in its main template. The caller passes already-resolved selections.
+export function selectedSectionPrompt(dna = {}, sectionKey, opts = {}) {
+  const phrase=_veniceSubjectBlock(dna,opts)[sectionKey];
+  return typeof phrase==='string' ? phrase : '';
+}
+
 // Multi-subject Venice prompt builder. Each subject contributes its own body/wardrobe/
 // pose/intimate/feet/kink/watersports clause. Shared context (quality, scenario, scene,
 // lighting, camera, style) is taken from the primary subject's DNA.
@@ -1359,7 +1366,7 @@ function _veniceSubjectBlock(dna = {}, opts = {}) {
     ws.self_aim && exp("watersports", "self_aim"),
     ws.flow_appearance && exp("watersports", "flow_appearance"),
     ws.highlight && exp("watersports", "highlight"),
-    selfStreamContinuityCue(ws),
+    selfStreamContinuityCue({...ws,source:catalogSelection(dna,"watersports","source"),phase:catalogSelection(dna,"watersports","phase")}),
   ]);
 
   // Selected Feet and Play controls are compositional requirements, not minor
