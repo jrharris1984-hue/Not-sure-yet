@@ -199,7 +199,7 @@ export default function PresetsMenu({ onApply, currentDna, sectionLocks = {}, fi
                 <div>
                   <div className="text-xs font-display font-bold text-amber-200">How should the heritage preset apply?</div>
                   <p className="mt-0.5 text-[10px] sm:text-[11px] text-zinc-500">
-                    Complete character varies appearance, outfit, pose, and the selected body details. Play, fluids, acts, and Explicit/Kink stay untouched.
+                    Complete character varies appearance, outfit, pose, and the selected body details. Play, fluids, acts, and explicit settings stay untouched.
                   </p>
                 </div>
                 <div className="grid grid-cols-2 gap-2">

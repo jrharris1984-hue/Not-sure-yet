@@ -16,7 +16,8 @@ export function editWardrobeField(value, field, selected) {
   if (field === 'exposure_mode' && wardrobeMode(value) === 'full' && value.set_lingerie_mode === 'none' && ['lingerie showing', 'lingerie only'].includes(coverageBehavior({...value, exposure_mode:selected, _exposurePrompt:undefined}))) return value;
   if (field === 'set_lingerie_mode') return { ...value, outfit_mode:'full', set_lingerie_mode:selected,
     ...(selected === 'none' && ['lingerie showing', 'lingerie only'].includes(coverageBehavior(value)) ? {exposure_mode:'use selected outfit'} : {}) };
-  return { ...value, [field]: selected };
+  const priority = selected && selected !== 'none' ? field==='dress_style' ? 'dress' : field==='skirt_style' ? 'skirt' : ['top','bottom'].includes(field) ? 'separates' : null : null;
+  return { ...value, [field]: selected, ...(priority ? {garment_priority:priority} : {}) };
 }
 // Resolve explicit modes on a copy: retain old recipes' legacy priorities until
 // the user chooses a mode, and retain inactive custom selections for later edits.

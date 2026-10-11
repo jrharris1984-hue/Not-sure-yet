@@ -15,6 +15,16 @@ beforeEach(() => {global.IS_REACT_ACT_ENVIRONMENT=true; jest.clearAllMocks();set
 });
 afterEach(() => act(() => root.unmount()));
 const button=text => [...container.querySelectorAll('button')].find(item => item.textContent===text);
+test('wardrobe library groups retain all subcategory folders and Kink is absent',async()=>{
+  await act(async()=>root.render(<PromptLibraryEditor/>));
+  expect(button('Kink')).toBeUndefined();
+  act(()=>button('Wardrobe').click());
+  const groups=container.querySelector('[aria-label="Wardrobe library groups"]');
+  expect(groups.querySelectorAll('summary')).toHaveLength(7);
+  const fields=editableSection(SECTIONS.find(s=>s.key==='wardrobe')).fields;
+  expect(groups.querySelectorAll('button')).toHaveLength(fields.length);
+  fields.forEach(field=>expect(button(`📁 ${field.label}`)).toBeDefined());
+});
 const enter=async(input,text) => {await act(async() => {Object.getOwnPropertyDescriptor(input.tagName==='TEXTAREA'?HTMLTextAreaElement.prototype:HTMLInputElement.prototype,'value').set.call(input,text);input.dispatchEvent(new Event('input',{bubbles:true}));});};
 const setup=async() => {
   await act(async() => root.render(<PromptLibraryEditor/>));

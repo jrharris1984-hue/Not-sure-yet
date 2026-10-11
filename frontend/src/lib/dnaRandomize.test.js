@@ -73,16 +73,17 @@ describe("Feet and Play prompt priority", () => {
   test("natural-language prompt promotes selected requirements", () => {
     const { positive } = buildPrompts(dna);
     expect(positive).toContain("PRIMARY SCENE ACTION");
-    expect(positive).toContain("PRIMARY PLAY DETAILS");
+    expect(positive).not.toContain("PRIMARY PLAY DETAILS");
     expect(positive).toContain("PRIMARY FEET COMPOSITION");
     expect(positive.indexOf("PRIMARY FEET COMPOSITION")).toBeLessThan(positive.indexOf("35-year-old"));
   });
 
   test("Pony includes every previously omitted feet/play field near the front", () => {
     const { positive } = buildPonyPrompts(dna);
-    ["toe spread", "high arch", "painted red", "oiled", "sole close-up", "ice play"].forEach((value) => {
+    ["toe spread", "high arch", "painted red", "oiled", "sole close-up"].forEach((value) => {
       expect(positive).toContain(value);
     });
+    expect(positive).not.toContain("ice play");
     expect(positive.indexOf("sole licking")).toBeLessThan(positive.indexOf("35-year-old"));
   });
 });

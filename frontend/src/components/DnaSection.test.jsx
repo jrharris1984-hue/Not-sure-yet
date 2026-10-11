@@ -3,7 +3,23 @@ import { createRoot } from 'react-dom/client';
 import DnaSection from './DnaSection';
 import { SECTIONS } from '@/lib/dna';
 
+const legacyWardrobe = () => {const section=SECTIONS.find(s=>s.key==='wardrobe');return {...section,fields:section.fields.map(field=>field.key==='exposure_mode'?{...field,options:[...field.options,'use selected outfit','open or shifted outfit','lingerie only','lingerie showing']}:field)};};
 const originalResizeObserver = global.ResizeObserver;
+test('wardrobe groups keep all controls available and switch the visible panel',()=>{
+  global.IS_REACT_ACT_ENVIRONMENT=true;
+  const container=document.createElement('div'),root=createRoot(container);
+  const section=SECTIONS.find(s=>s.key==='wardrobe');
+  try {
+    act(()=>root.render(<DnaSection section={section} simpleMode simpleFieldKeys={['top']} value={{outfit_mode:'custom'}} onChange={()=>{}}/>));
+    const navigation=container.querySelector('[aria-label="Wardrobe control groups"]');
+    expect(navigation.querySelectorAll('button')).toHaveLength(7);
+    const footwear=container.querySelector('[data-testid="chip-wardrobe-footwear-barefoot"]').closest('[style]');
+    expect(footwear.style.display).toBe('none');
+    act(()=>[...navigation.querySelectorAll('button')].find(b=>b.textContent==='Shoes & heels').click());
+    expect(footwear.style.display).toBe('');
+    expect(container.querySelector('[data-testid="chip-wardrobe-top-corset"]')).not.toBeNull();
+  }finally{act(()=>root.unmount());}
+});
 beforeAll(() => { global.ResizeObserver = class { observe() {} unobserve() {} disconnect() {} }; });
 afterAll(() => { global.ResizeObserver = originalResizeObserver; });
 
@@ -55,7 +71,7 @@ test('named exposure displays legacy state, removes the slider and clears old ov
   global.IS_REACT_ACT_ENVIRONMENT = true;
   const container = document.createElement('div');
   const root = createRoot(container);
-  const section = SECTIONS.find(s => s.key === 'wardrobe');
+  const section = legacyWardrobe();
   const value = { nudity_level: 100, nudity_outfit: 'keep lingerie', outfit_preset: 'playboy bunny' };
   const onChange = jest.fn();
   try {
@@ -105,7 +121,7 @@ test('full set lingerie is optional and unavailable coverage choices disappear',
   global.IS_REACT_ACT_ENVIRONMENT = true;
   const container=document.createElement('div');document.body.appendChild(container);
   const root=createRoot(container);
-  const section=SECTIONS.find(s=>s.key==='wardrobe');
+  const section=legacyWardrobe();
   let value={outfit_mode:'full',outfit_set:'tailored pantsuit',set_lingerie_mode:'matching',set_lingerie:'saved layer',exposure_mode:'lingerie showing'};
   const paint=()=>root.render(<DnaSection section={{...section,fields:section.fields.filter(f=>['set_lingerie_mode','set_lingerie','exposure_mode'].includes(f.key))}} value={value} onChange={next=>{value=next;paint();}}/>);
   try {
