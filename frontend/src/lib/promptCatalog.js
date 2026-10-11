@@ -115,7 +115,7 @@ export function catalogSections(base, config = catalog) {
     if (!saved) return section;
     return {...section,title:saved.title,fields:section.fields.map(field => buildField(field,saved.fields.find(item => item.key === field.key))).concat(saved.fields.filter(field => !section.fields.some(item => item.key === field.key)).map(field => buildField(null,field)))};
   });
-  return result.concat(config.sections.filter(section => section.key !== SHARED_POSE_SECTION.key && !base.some(item => item.key === section.key)).map(section => ({...section,fields:section.fields.map(field => buildField(null,field))}))).map(section => section.key === "scenario"
+  return result.concat(config.sections.filter(section => section.key !== SHARED_POSE_SECTION.key && !base.some(item => item.key === section.key)).map(section => ({...section,fields:section.fields.map(field => buildField(null,field))}))).filter(section=>section.key!=="kink").map(section => section.key === "scenario"
     ? {...section, fields:section.fields.filter(field => field.key !== "kink_level")}
     : section);
 }
@@ -175,10 +175,10 @@ export function physiqueKeywords(keywords, field, dna = {}) {
 }
 
 export function catalogDna(dna = {}, config = catalog, preserveSelections = false) {
-  const result = {...dna};
+  const result = {...dna,kink:{}};
   if (preserveSelections) result._catalogSelections = {};
   for (const section of config.sections) {
-    if (!dna[section.key]) continue;
+    if (section.key==='kink' || !dna[section.key]) continue;
     result[section.key] = {...dna[section.key]};
     if (preserveSelections) result._catalogSelections[section.key] = {...dna[section.key]};
     for (const field of section.fields) {
@@ -203,6 +203,7 @@ export function catalogDna(dna = {}, config = catalog, preserveSelections = fals
 export function customCatalogPrompt(dna = {}, config = catalog) {
   const phrases=[];
   for(const section of config.sections) for(const field of section.fields) {
+    if (section.key==='kink') continue;
     if (!section.key.startsWith('custom_') && !field.key.startsWith('custom_')) continue;
     const selected=dna[section.key]?.[field.key];
     for(const value of (Array.isArray(selected) ? selected : [selected])) {

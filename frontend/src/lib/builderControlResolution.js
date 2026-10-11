@@ -2,6 +2,7 @@ import { POSE_ACTION_PROMPTS } from './photographyPoses';
 import { catalogSelection } from './promptCatalog';
 import { resolveAgeSkin } from './ageAppearance';
 import { resolveWardrobeMode } from "./wardrobeMode";
+import {wardrobeStateResolution} from './wardrobeCompatibility';
 import { wardrobeNudity } from "./wardrobeNudity";
 import { footVisibility } from './footVisibility';
 import { CONCEALED_ANATOMY_FIELDS, hasCoveringOuterOutfit } from './coveredOutfitDetails';
@@ -10,6 +11,7 @@ const list = value => Array.isArray(value) ? value : value ? [value] : [];
 const lower = value => String(value || '').toLowerCase();
 export function resolveBuilderControls(source = {}) {
   const dna = resolveAgeSkin(JSON.parse(JSON.stringify(source)));
+  dna.kink = {};
   for (const section of ['pose', 'feet', 'wardrobe', 'hair', 'skin', 'scene', 'camera', 'watersports']) dna[section] ||= {};
   const notes = [];
   if (dna.skin?.texture !== source.skin?.texture && source.skin?.texture) notes.push({section:'skin',field:'texture',text:'The selected age uses age-appropriate skin texture instead of competing smoothing or aging wording.'});
@@ -208,6 +210,10 @@ export function resolveBuilderControls(source = {}) {
     }
   }
 
+  if (w.garment_priority==='separates' && [w.top,w.bottom].some(value=>value && value!=='none')) {
+    omit('wardrobe','dress_style','Separate garments were selected last, so the saved dress is inactive.');
+    omit('wardrobe','skirt_style','Separate garments were selected last, so the saved skirt is inactive.');
+  } else if (w.garment_priority==='skirt' && w.skirt_style) omit('wardrobe','dress_style','The skirt was selected last, so the saved dress is inactive.');
   if (w.dress_style || w.skirt_style || (w.top && w.top !== 'none') || (w.bottom && w.bottom !== 'none')) {
     omit('wardrobe', 'outfit_set', 'Individual garments override the complete outfit set.');
     omit('wardrobe', 'outfit_preset', 'Individual garments override the outfit preset.');
@@ -311,6 +317,19 @@ export function resolveBuilderControls(source = {}) {
       notes.push({section:'intimate',field:'piercings',text:'Piercings hidden by the covering outfit are omitted from the prompt; visible piercing selections stay active.'});
     }
   }
+  const stateResolution=wardrobeStateResolution(w);
+  if (stateResolution.value !== undefined && stateResolution.value !== w.state) {
+    if (!stateResolution.value) omit('wardrobe','state',stateResolution.reason);
+    else {w.state=stateResolution.value;notes.push({section:'wardrobe',field:'state',text:'The hem adjustment follows the selected garment rather than adding a skirt.'});}
+  }
+  if (!w.hosiery_type && !(f.hosiery && !['bare','none'].includes(f.hosiery)) && ![w.bottom,w.underwear,w.outfit_set].some(value=>/stockings|hosiery|pantyhose|tights|nylons|socks/i.test(value || ''))) {
+    for (const field of ['hosiery_color','hosiery_pattern','hosiery_denier']) omit('wardrobe',field,'Hosiery details require selected stockings, tights or socks.');
+  }
+  if (!w.heel_type && ![w.footwear,w.outfit_set].some(value=>/heels|heeled|pumps|stiletto|wedges/i.test(value || ''))) {
+    for (const field of ['heel_color','heel_height','heel_finish']) omit('wardrobe',field,'Heel details require selected heels or heeled footwear.');
+  }
+  if (!w.glasses_style && !list(w.accessories).some(value=>/glasses/i.test(value))) omit('wardrobe','glasses_color','Glasses color requires selected glasses.');
+  if (w.heel_height==='flat' && /stiletto|platform|kitten|high|heeled|wedge/i.test(w.heel_type || w.footwear || '')) omit('wardrobe','heel_height','The selected heel style overrides a competing flat heel height.');
   if (w.hosiery_type) omit('feet', 'hosiery', 'Wardrobe hosiery controls coverage; the Feet hosiery fallback is inactive.');
   const footwear = lower(w.heel_type || w.footwear);
   const visibility = footVisibility(w, f);

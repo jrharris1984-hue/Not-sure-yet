@@ -1164,7 +1164,7 @@ function compileModelPromptsRaw({
 export function compileModelPrompts(options = {}) {
   const auditSources = options.subjects?.length > 1 ? options.subjects : [{dna:options.dna || options.subjects?.[0]?.dna || {}}];
   const promptCatalog = options.promptCatalog || getPromptCatalog();
-  const outfitDna = dna => ({ ...dna, wardrobe: resolveWardrobeMode(withCoveragePrompt(dna?.wardrobe || {}, promptCatalog)) });
+  const outfitDna = dna => ({ ...dna, kink:{}, wardrobe: resolveWardrobeMode(withCoveragePrompt(dna?.wardrobe || {}, promptCatalog)) });
   options = { ...options, dna: outfitDna(options.dna || {}), subjects: options.subjects?.map(subject => ({ ...subject, dna: outfitDna(subject.dna || {}) })) };
   const originalSubjects = options.subjects?.length > 1 ? options.subjects : [{dna:options.dna || options.subjects?.[0]?.dna || {}}];
   const customKeywords = originalSubjects.map((subject,index) => {

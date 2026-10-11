@@ -485,17 +485,7 @@ function _ponySubjectBlock(dna = {}, opts = {}) {
     feetActive && w("five_toes, toenails, sole, heel, arch, ankle, human_feet, correct_foot_anatomy", 1.3),
   ]);
 
-  const kk = dna.kink || {};
-  const kinkStr = join([
-    tagArr("kink", "restraint", kk.restraint),
-    tagArr("kink", "gag", kk.gag),
-    tagArr("kink", "marks", kk.marks),
-    tagArr("kink", "sensation", kk.sensation),
-    tagArr("kink", "humiliation", kk.humiliation),
-    tagArr("kink", "orgasm_control", kk.orgasm_control),
-    tagArr("kink", "group_kink", kk.group_kink),
-    kk.power_dynamic && kk.power_dynamic !== "none" && exp("kink", "power_dynamic"),
-  ]);
+  const kinkStr = "";
 
   const ws = dna.watersports || {};
   const wsHasAny = ws.source && ws.source !== "none";
