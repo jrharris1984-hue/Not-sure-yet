@@ -3,7 +3,7 @@ import { heritagePrompt } from "./heritageProfiles";
 import { ageAppearancePrompt } from './ageAppearance';
 import { buildCompactNarrative } from './compactNarrative';
 import { resolveWardrobeMode } from "./wardrobeMode";
-import { catalogSections, catalogDna, catalogSelection, customCatalogPrompt, getPromptCatalog, applyCatalogRules } from "./promptCatalog";
+import { catalogSections, catalogDna, catalogSelection, catalogControl, customCatalogPrompt, getPromptCatalog, applyCatalogRules } from "./promptCatalog";
 import { applyPhotographicGuidance } from "./photographicGuidance";
 import { resolveBuilderControls, sliderPromptSignature } from "./builderControlResolution";
 import { footVisibility } from './footVisibility';
@@ -350,14 +350,18 @@ export function resolveZImageComposition(dna = {}, options = {}) {
   const builderGuard = resolveBuilderControls(dna || {});
   const physiqueGuard = resolvePhysiqueControls(builderGuard.dna);
   const resolved = physiqueGuard.dna;
+  const writeControl = (section,field,value) => {
+    resolved[section][field]=value;
+    if (resolved._catalogSelections?.[section]) resolved._catalogSelections[section][field]=value;
+  };
   resolved.pose = { ...(resolved.pose || {}) };
   resolved.feet = { ...(resolved.feet || {}) };
   resolved.hair = { ...(resolved.hair || {}) };
   resolved.physique = { ...(resolved.physique || {}) };
   resolved.style = { ...(resolved.style || {}) };
 
-  const mode = ["natural", "enhanced", "extreme"].includes(lower(resolved.style.anatomy_mode))
-    ? lower(resolved.style.anatomy_mode)
+  const mode = ["natural", "enhanced", "extreme"].includes(lower(catalogControl(resolved, "style", "anatomy_mode")))
+    ? lower(catalogControl(resolved, "style", "anatomy_mode"))
     : "natural";
   const adjustments = [...builderGuard.notes.map(note => note.text), ...physiqueGuard.adjustments];
   const hands = arrayValue(resolved.pose.hands).filter((item) => lower(item) !== "none");
@@ -397,12 +401,12 @@ export function resolveZImageComposition(dna = {}, options = {}) {
   const action = lower(catalogSelection(resolved, 'pose', 'action'));
   const complexLegsUp = ["lying legs up", "on back legs up"].includes(action);
   if (mode !== "extreme" && complexLegsUp) {
-    if (["close-up", "portrait", "waist-up", "detail shot"].includes(lower(resolved.pose.distance))) {
-      resolved.pose.distance = "full body";
+    if (["close-up", "portrait", "waist-up", "detail shot"].includes(lower(catalogControl(resolved, "pose", "distance")))) {
+      writeControl("pose","distance","full body");
       adjustments.push("Changed the tight crop to full-body framing so the raised-leg pose can fit in one coherent frame.");
     }
-    if (["over-shoulder", "pov", "back"].includes(lower(resolved.pose.angle))) {
-      resolved.pose.angle = "3/4";
+    if (["over-shoulder", "pov", "back"].includes(lower(catalogControl(resolved, "pose", "angle")))) {
+      writeControl("pose","angle","3/4");
       adjustments.push("Changed the conflicting rear/POV angle to a three-quarter view for the raised-leg pose.");
     }
     if (arrayValue(resolved.pose.hands).some((item) => ["touching body", "between legs", "gripping something"].includes(lower(item)))) {
@@ -411,21 +415,21 @@ export function resolveZImageComposition(dna = {}, options = {}) {
     }
   }
 
-  const focus = lower(resolved.pose.focus) || "full frame";
-  const distance = lower(resolved.pose.distance);
+  const focus = lower(catalogControl(resolved, "pose", "focus")) || "full frame";
+  const distance = lower(catalogControl(resolved, "pose", "distance"));
   const fullBody = ["full body", "wide shot"].includes(distance);
 
   if (options.forceMulti && mode !== "extreme" && fullBody && focus !== "feet"
-      && ["from below", "pov"].includes(lower(resolved.pose.angle))) {
-    resolved.pose.angle = "3/4";
+      && ["from below", "pov"].includes(lower(catalogControl(resolved, "pose", "angle")))) {
+    writeControl("pose","angle","3/4");
     adjustments.push("Replaced the extreme low/POV angle with a three-quarter view so multiple full bodies remain separate and proportionate.");
   }
 
-  const feetFraming = lower(resolved.feet.framing);
+  const feetFraming = lower(catalogControl(resolved, "feet", "framing"));
   const feetCloseup = ["feet close-up", "sole close-up", "pov under foot", "low angle sole"].includes(feetFraming);
 
-  if (mode !== "extreme" && fullBody && lower(resolved.pose.angle) === "pov") {
-    resolved.pose.angle = "3/4";
+  if (mode !== "extreme" && fullBody && lower(catalogControl(resolved, "pose", "angle")) === "pov") {
+    writeControl("pose","angle","3/4");
     adjustments.push("Replaced first-person POV with a moderate three-quarter angle for coherent full-body anatomy.");
   }
 
@@ -451,13 +455,13 @@ export function resolveZImageComposition(dna = {}, options = {}) {
     if (lower(resolved.physique.bust) === "hyper") resolved.physique.bust = "huge";
     if (lower(resolved.physique.butt) === "hyper") resolved.physique.butt = "huge";
     if (focus !== "feet" && feetCloseup) {
-      resolved.feet.framing = "full body";
+      writeControl("feet","framing","full body");
       adjustments.push("Downgraded the competing foot close-up while preserving enhanced foot details.");
     }
   }
 
   if (fullBody && feetCloseup && focus !== "feet" && resolved.feet.framing) {
-    resolved.feet.framing = "full body";
+    writeControl("feet","framing","full body");
     adjustments.push("Changed the feet close-up to full-body foot visibility.");
   }
 
@@ -605,9 +609,9 @@ function kreaSubjectSentence(dna = {}, label = "") {
 }
 
 function kreaFeetVisible(dna = {}) {
-  const distance = lower(dna.pose?.distance || "full body");
+  const distance = lower(catalogControl(dna, "pose", "distance") || "full body");
   if (["thigh-up", "knees-up", "waist-up", "portrait", "close-up"].includes(distance)) return false;
-  return ["full body", "wide shot"].includes(distance) || lower(dna.pose?.focus) === "feet" || Boolean(dna.feet?.framing);
+  return ["full body", "wide shot"].includes(distance) || lower(catalogControl(dna, "pose", "focus")) === "feet" || Boolean(dna.feet?.framing);
 }
 
 function kreaWardrobeSentence(dna = {}, label = "") {
@@ -645,8 +649,8 @@ function kreaPoseSentence(dna = {}, label = "") {
   const p = dna.pose || {};
   const feet = dna.feet || {};
   const prefix = label ? `Subject ${label} pose and framing: ` : "Pose and framing: ";
-  const framing = lower(p.distance) || "full body";
-  const feetPriority = kreaFeetVisible(dna) && (lower(p.focus) === "feet" || kreaValue(feet.framing));
+  const framing = lower(catalogControl(dna, "pose", "distance")) || "full body";
+  const feetPriority = kreaFeetVisible(dna) && (lower(catalogControl(dna, "pose", "focus")) === "feet" || kreaValue(feet.framing));
   const bodyCrop = ["full body", "wide shot", "knees-up", "thigh-up", "waist-up"].includes(framing);
   const cropDescription = {
     "waist-up": "waist-up", "thigh-up": "head-to-mid-thigh", "knees-up": "head-to-knees",
@@ -655,7 +659,7 @@ function kreaPoseSentence(dna = {}, label = "") {
     photographyPosePrompt(p.action),
     p.body_language && `${p.body_language} body language`,
     p.angle && `${p.angle} view`,
-    p.focus && !(lower(p.focus) === "feet" && !kreaFeetVisible(dna)) && (bodyCrop && lower(p.focus) === "face"
+    p.focus && !(lower(catalogControl(dna, "pose", "focus")) === "feet" && !kreaFeetVisible(dna)) && (bodyCrop && lower(catalogControl(dna, "pose", "focus")) === "face"
       ? `face clearly visible within the ${cropDescription} composition`
       : `${p.focus} composition priority`),
     arrayValue(p.hands).length ? `hands ${arrayValue(p.hands).slice(-1)[0]}` : "",
@@ -675,7 +679,7 @@ function kreaPoseSentence(dna = {}, label = "") {
 }
 
 function kreaFramingSentence(dna = {}) {
-  const framing = lower(dna.pose?.distance) || "full body";
+  const framing = lower(catalogControl(dna, "pose", "distance")) || "full body";
   const reclining = /\b(lying|reclining|on back|on stomach)\b/.test(lower(dna.pose?.action));
   const directions = {
     "full body": "Full-length photograph: show the entire subject from the top of the head to the soles of the feet, with space around the body in the frame.",
@@ -846,7 +850,7 @@ export function buildKrea2Prompts({
   const [imageLead, ...shotDetails] = sharedShot;
   let positive = [
     kreaFramingSentence(primary),
-    extremeBust && ["full body", "wide shot"].includes(lower(primary.pose?.distance || "full body")) && "The complete body and exaggerated upper-body silhouette must remain visible in this composition; use a wide camera view rather than a portrait crop.",
+    extremeBust && ["full body", "wide shot"].includes(lower(catalogControl(primary, "pose", "distance") || "full body")) && "The complete body and exaggerated upper-body silhouette must remain visible in this composition; use a wide camera view rather than a portrait crop.",
     ...subjectBlocks,
     compositionLead,
     ...shotDetails,
@@ -860,12 +864,12 @@ export function buildKrea2Prompts({
   const missingMust = (priorityPlan.mustMatch || [])
     .filter((item) => !(subjectCount === 1 && wardrobeNudity(primary.wardrobe).suppressClothing
       && item.key === "wardrobe.outfit_preset"))
-    .filter((item) => !(subjectCount === 1 && lower(primary.pose?.focus) === "feet"
-      && !["full body", "wide shot"].includes(lower(primary.pose?.distance || "full body"))
+    .filter((item) => !(subjectCount === 1 && lower(catalogControl(primary, "pose", "focus")) === "feet"
+      && !["full body", "wide shot"].includes(lower(catalogControl(primary, "pose", "distance") || "full body"))
       && item.key === "pose.focus"))
     .filter((item) => !(item.key === "pose.focus"
-      && lower(primary.pose?.focus) === "face"
-      && (!primary.pose?.distance || ["full body", "wide shot", "waist-up", "thigh-up", "knees-up"].includes(lower(primary.pose.distance)))))
+      && lower(catalogControl(primary, "pose", "focus")) === "face"
+      && (!primary.pose?.distance || ["full body", "wide shot", "waist-up", "thigh-up", "knees-up"].includes(lower(catalogControl(primary, "pose", "distance"))))))
     .filter((item) => !requirementPresent(positive, item))
     .map((item) => item.phrase);
   if (missingMust.length) {
