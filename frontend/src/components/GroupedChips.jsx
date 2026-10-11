@@ -131,6 +131,7 @@ export default function GroupedChips({
                 key={opt}
                 type="button"
                 data-testid={`${testIdPrefix}-${opt.replace(/\s+/g, "-")}`}
+                aria-pressed={isActive}
                 onClick={() => toggle(opt)}
                 className={`flex flex-col items-center justify-center gap-1 rounded-xl border p-2 text-[10px] leading-tight text-center min-h-[108px] transition-all ${
                   isActive
@@ -154,6 +155,7 @@ export default function GroupedChips({
                 type="button"
                 data-testid={`${testIdPrefix}-${opt.replace(/\s+/g, "-")}`}
                 className={`chip ${isActive ? "active" : ""}`}
+                aria-pressed={isActive}
                 onClick={() => toggle(opt)}
               >
                 {labels[opt] || opt}

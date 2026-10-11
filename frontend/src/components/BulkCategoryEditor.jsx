@@ -14,7 +14,7 @@ export default function BulkCategoryEditor({section, getKeywords, onApply}) {
   const updateChoice = (field, value, key, text) => updateField(field.key, {options: field.options.map(option => option.value === value ? {...option, [key]: text} : option)});
   const batchText = () => JSON.stringify(exportCategoryBatch(working, getKeywords), null, 2);
   const stageJson = text => {
-    try {setWorking(importCategoryBatch(text, working)); setError(''); setShowJson(false);}
+    try {setWorking(importCategoryBatch(text, working, getKeywords)); setError(''); setShowJson(false);}
     catch(err) {setError(`Could not import category: ${err.message}`);}
   };
   if (!working) return <button type="button" className={buttonClass} onClick={() => {

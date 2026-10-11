@@ -18,6 +18,7 @@ export function resolveBuilderControls(source = {}) {
   const omit = (section, field, text) => {
     if (!dna[section][field] || (Array.isArray(dna[section][field]) && !dna[section][field].length)) return;
     dna[section][field] = Array.isArray(dna[section][field]) ? [] : '';
+    if (section==='watersports' && dna._catalogSelections?.[section]) dna._catalogSelections[section][field]=Array.isArray(dna._catalogSelections[section][field])?[]:'';
     notes.push({ section, field, text });
   };
   dna.wardrobe = resolveWardrobeMode(dna.wardrobe);
@@ -89,48 +90,54 @@ export function resolveBuilderControls(source = {}) {
   // Specialty QC: Watersports controls may coexist with the shared Pose, Scene,
   // Wardrobe and Feet editors, so resolve the overlapping concepts once before
   // they reach any model-specific compiler.
-  const watersportsActive = !!ws.source && ws.source !== 'none';
-  if (ws.source === 'none') {
+  const wsChoice = key => catalogSelection(dna,'watersports',key);
+  const wsSource = wsChoice('source'), wsPhase = wsChoice('phase'), wsView = wsChoice('camera_view');
+  const watersportsActive = !!wsSource && wsSource !== 'none';
+  if (wsSource === 'none') {
+    ws.source='none';
     for (const field of Object.keys(ws)) {
       if (field !== 'source') omit('watersports', field, 'Watersports Source is set to none, so saved scene-specific details are inactive.');
     }
   } else if (watersportsActive) {
     // Self-only controls must not be attached to a partner/group source.
-    if (ws.source !== 'self') {
+    if (wsSource !== 'self') {
       omit('watersports', 'self_action', 'Self-directed action is inactive because the selected source is not Self.');
       omit('watersports', 'self_aim', 'Self landing-point guidance is inactive because the selected source is not Self.');
     }
 
     // Phase owns whether an active stream should exist. This prevents common
     // before/after prompts from simultaneously asking for an active stream.
-    if (ws.phase === 'before') {
+    if (wsPhase === 'before') {
       for (const field of ['direction', 'stream', 'wetness', 'aftermath', 'liquid_visibility', 'self_aim', 'flow_appearance', 'highlight']) {
         omit('watersports', field, 'The Before phase describes setup only; active-stream and aftermath details are inactive.');
       }
       if (ws.garment_detail && !/\bdry\b/i.test(ws.garment_detail)) {
         omit('watersports', 'garment_detail', 'The Before phase keeps clothing dry unless a dry-clothing detail is selected.');
       }
-    } else if (ws.phase === 'afterward') {
+    } else if (wsPhase === 'afterward') {
       for (const field of ['direction', 'stream', 'self_aim', 'flow_appearance', 'highlight']) {
         omit('watersports', field, 'The Afterward phase keeps wetness/aftermath but removes active-stream instructions.');
       }
-      if (ws.self_action && !/checking wet clothing|washing afterward/i.test(ws.self_action)) {
+      if (ws.self_action && !/checking wet clothing|washing afterward/i.test(wsChoice('self_action') || '')) {
         omit('watersports', 'self_action', 'The selected self action describes an active moment and conflicts with the Afterward phase.');
       }
-    } else if (['starting', 'in progress', 'ending'].includes(ws.phase)) {
-      const wetness = list(ws.wetness);
+    } else if (['starting', 'in progress', 'ending'].includes(wsPhase)) {
+      const wetness = list(wsChoice('wetness'));
       if (wetness.includes('dry')) {
-        ws.wetness = wetness.filter(value => value !== 'dry');
+        ws.wetness = list(ws.wetness).filter((value,index)=>wetness[index]!=='dry');
+        if (dna._catalogSelections?.watersports) dna._catalogSelections.watersports.wetness=wetness.filter(value=>value!=='dry');
         notes.push({ section: 'watersports', field: 'wetness', text: 'Removed Dry because the selected phase contains an active or ending stream.' });
       }
-      if (ws.phase === 'in progress' && list(ws.aftermath).length) {
+      if (wsPhase === 'in progress' && list(ws.aftermath).length) {
         omit('watersports', 'aftermath', 'Aftermath details are inactive while the scene is explicitly In progress.');
       }
     }
 
     // Dry cannot coexist with visible liquid even when no phase was selected.
-    if (list(ws.wetness).includes('dry') && (ws.stream || ws.liquid_visibility || list(ws.direction).length)) {
-      ws.wetness = list(ws.wetness).filter(value => value !== 'dry');
+    if (list(wsChoice('wetness')).includes('dry') && (ws.stream || ws.liquid_visibility || list(ws.direction).length)) {
+      const selectedWetness=list(wsChoice('wetness'));
+      ws.wetness = list(ws.wetness).filter((value,index)=>selectedWetness[index]!=='dry');
+      if (dna._catalogSelections?.watersports) dna._catalogSelections.watersports.wetness=selectedWetness.filter(value=>value!=='dry');
       notes.push({ section: 'watersports', field: 'wetness', text: 'Removed Dry because visible liquid or a stream is selected.' });
     }
 
@@ -155,23 +162,23 @@ export function resolveBuilderControls(source = {}) {
           'rear three-quarter': 'full body',
           'wide environmental view': 'wide shot',
         };
-        const targetDistance = distanceByView[ws.camera_view];
+        const targetDistance = distanceByView[wsView];
         if (targetDistance && p.distance !== targetDistance) {
           p.distance = targetDistance;
-          notes.push({ section: 'pose', field: 'distance', text: `Watersports camera view (${ws.camera_view}) controls the broad crop.` });
+          notes.push({ section: 'pose', field: 'distance', text: `Watersports camera view (${wsView}) controls the broad crop.` });
         }
-        if (ws.camera_view === 'side profile' && p.angle !== 'profile') {
+        if (wsView === 'side profile' && p.angle !== 'profile') {
           p.angle = 'profile';
           notes.push({ section: 'pose', field: 'angle', text: 'Watersports side-profile view controls the body angle.' });
-        } else if (ws.camera_view === 'rear three-quarter' && p.angle !== '3/4') {
+        } else if (wsView === 'rear three-quarter' && p.angle !== '3/4') {
           p.angle = '3/4';
           notes.push({ section: 'pose', field: 'angle', text: 'Watersports rear three-quarter view controls the broad body angle.' });
         }
-        if (ws.camera_view === 'floor-level detail' && dna.camera.angle !== 'low') {
+        if (wsView === 'floor-level detail' && dna.camera.angle !== 'low') {
           dna.camera.angle = 'low';
           notes.push({ section: 'camera', field: 'angle', text: 'Watersports floor-level view controls camera height.' });
-        } else if (ws.camera_view !== 'floor-level detail' && dna.camera.angle
-          && ['side profile', 'rear three-quarter'].includes(ws.camera_view)) {
+        } else if (wsView !== 'floor-level detail' && dna.camera.angle
+          && ['side profile', 'rear three-quarter'].includes(wsView)) {
           omit('camera', 'angle', 'Watersports camera view already controls the angle; the separate Camera angle is inactive.');
         }
       }
@@ -191,7 +198,7 @@ export function resolveBuilderControls(source = {}) {
         crouching: /crouch|squat/,
         kneeling: /kneel/,
         reclining: /lying|reclin/,
-      }[ws.stance];
+      }[wsChoice('stance')];
       if (compatibility && !compatibility.test(action)) {
         omit('pose', 'action', 'Watersports body position replaces a conflicting general Pose action.');
       }
@@ -199,7 +206,7 @@ export function resolveBuilderControls(source = {}) {
 
     // "Outdoors" is unambiguous and should not retain an old indoor studio
     // environment from a different specialty workflow.
-    if (ws.container === 'outdoors') {
+    if (wsChoice('container') === 'outdoors') {
       if (dna.scene.environment && /bedroom|bathroom|studio|office|living room|kitchen/i.test(dna.scene.environment)) {
         omit('scene', 'environment', 'Watersports Outdoors context replaces the saved indoor environment.');
       }
