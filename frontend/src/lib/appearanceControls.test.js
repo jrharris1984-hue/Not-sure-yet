@@ -92,8 +92,9 @@ test('Chroma keeps breast, glute shape, garment and color controls together at e
   expect(positive).toContain('fantasy-scale maximum oversized');
   expect(positive).toContain('size intensity 300/300');
   expect(positive).toContain('BBL-style glute contour');
-  expect(positive).toContain('emerald mermaid gown');
-  expect(positive).toContain('black seamed stockings');
+  expect(positive).toContain('mermaid gown');
+  expect(positive).toContain('emerald outfit color');
+  expect(positive).toContain('black back seam seamed stockings');
   expect(positive).toContain('gold pointed-toe stilettos');
 });
 
