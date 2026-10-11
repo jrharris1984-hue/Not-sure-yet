@@ -6,6 +6,15 @@ sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 from prompt_catalog import validate_prompt_catalog
 
 class PromptCatalogTests(unittest.TestCase):
+    def test_exact_field_policy_survives_save_and_rejects_non_boolean_values(self):
+        value=self.library()
+        for setting in [True,False]:
+            value['sections'][0]['exact_fields']=setting
+            self.assertEqual(validate_prompt_catalog(value),value)
+        for setting in ['true',1,None,[]]:
+            value['sections'][0]['exact_fields']=setting
+            with self.assertRaisesRegex(ValueError,'true or false'):
+                validate_prompt_catalog(value)
     def library(self):
         return {'sections':[{'key':'custom_lighting','title':'Lighting recipes','fields':[{'key':'custom_key','label':'Main light','type':'chips','options':[{'value':'custom_window','label':'Window light','keywords':'soft window light from the left','group':'Indoor'}]}]}]}
     def test_valid_library_normalizes_and_preserves_stable_identifiers(self):

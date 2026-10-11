@@ -96,7 +96,7 @@ export function editableSection(section) {
 // Include newly shipped controls without replacing edits or removed choices.
 export function editableLibrarySection(base, saved) {
   if (!saved) return base ? editableSection(base) : undefined;
-  if (!base) return saved;
+  if (!base || saved.exact_fields) return saved;
   const defaults = editableSection(base);
   return {...saved, fields:[...defaults.fields.map(field => saved.fields.find(item => item.key === field.key) || field),
     ...saved.fields.filter(field => !defaults.fields.some(item => item.key === field.key))]};
@@ -113,6 +113,7 @@ export function catalogSections(base, config = catalog) {
   const result = base.map(section => {
     const saved = config.sections.find(item => item.key === section.key);
     if (!saved) return section;
+    if (saved.exact_fields) return {...section,title:saved.title,fields:saved.fields.map(field => buildField(section.fields.find(item => item.key === field.key),field))};
     return {...section,title:saved.title,fields:section.fields.map(field => buildField(field,saved.fields.find(item => item.key === field.key))).concat(saved.fields.filter(field => !section.fields.some(item => item.key === field.key)).map(field => buildField(null,field)))};
   });
   return result.concat(config.sections.filter(section => section.key !== SHARED_POSE_SECTION.key && !base.some(item => item.key === section.key)).map(section => ({...section,fields:section.fields.map(field => buildField(null,field))}))).filter(section=>section.key!=="kink").map(section => section.key === "scenario"
@@ -181,6 +182,13 @@ export function catalogDna(dna = {}, config = catalog, preserveSelections = fals
     if (section.key==='kink' || !dna[section.key]) continue;
     result[section.key] = {...dna[section.key]};
     if (preserveSelections) result._catalogSelections[section.key] = {...dna[section.key]};
+    if (section.exact_fields) {
+      const allowed = new Set(section.fields.map(field => field.key));
+      for (const key of Object.keys(result[section.key])) if (!allowed.has(key)) {
+        delete result[section.key][key];
+        if (preserveSelections) delete result._catalogSelections[section.key][key];
+      }
+    }
     for (const field of section.fields) {
       const translate = value => {
         const option = field.options?.find(item => item.value === value);
@@ -188,14 +196,20 @@ export function catalogDna(dna = {}, config = catalog, preserveSelections = fals
         const phrase = section.key === 'physique' && keywords ? physiqueKeywords(keywords, field.key, dna) : keywords;
         // A supplied override filtered down to nothing must stay inactive,
         // rather than falling back to the label that caused the conflict.
-        return option ? keywords ? phrase : (String(value).startsWith('custom_') ? option.label : value) : String(value || '').startsWith('custom_') ? '' : value;
+        return option ? keywords ? phrase : (String(value).startsWith('custom_') ? option.label : value) : section.exact_fields || String(value || '').startsWith('custom_') ? '' : value;
       };
       const value = dna[section.key][field.key];
       if (section.key === 'wardrobe' && field.key === 'exposure_mode') {
         result.wardrobe = withCoveragePrompt(result.wardrobe, config);
         continue;
       }
-      if (value !== undefined && ['chips','chips_multi','pose_chips'].includes(field.type)) result[section.key][field.key] = Array.isArray(value) ? value.map(translate).filter(Boolean) : translate(value);
+      if (value !== undefined && ['chips','chips_multi','pose_chips'].includes(field.type)) {
+        result[section.key][field.key] = Array.isArray(value) ? value.map(translate).filter(Boolean) : translate(value);
+        if (section.exact_fields && preserveSelections) {
+          const allowed = new Set(field.options.map(option => option.value));
+          result._catalogSelections[section.key][field.key] = Array.isArray(value) ? value.filter(item => allowed.has(item)) : allowed.has(value) ? value : '';
+        }
+      }
     }
   }
   return result;
@@ -230,6 +244,7 @@ export function validateCatalogDraft(value) {
   if(!value || !Array.isArray(value.sections) || value.sections.length>60 || JSON.stringify(value).length>1000000)throw new Error('Choose a valid prompt library (maximum 60 categories).');
   if(!unique(value.sections.map(section => section?.key)))throw new Error('Category identifiers must be unique.');
   for(const section of value.sections) {
+    if (section?.exact_fields !== undefined && typeof section.exact_fields !== 'boolean') throw new Error('Exact category fields must be true or false.');
     if(!validKey(section?.key) || !validText(section.title) || !Array.isArray(section.fields) || section.fields.length>80 || !unique(section.fields.map(field => field?.key)))throw new Error('Enter valid category and subcategory names.');
     for(const field of section.fields) {
       if(!validKey(field?.key) || !validText(field.label) || !['chips','chips_multi','pose_chips','slider','text'].includes(field.type) || !Array.isArray(field.options) || field.options.length>300 || !unique(field.options.map(option => option?.value)))throw new Error('Invalid subcategory or duplicate choices.');
