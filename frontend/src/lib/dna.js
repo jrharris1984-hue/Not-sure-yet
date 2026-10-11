@@ -339,46 +339,6 @@ export const SECTIONS = [
     ],
   },
   {
-    key: "kink",
-    title: "Kink",
-    fields: [
-      { key: "restraint", type: "chips_multi", label: "Restraint (pick many)", options: [
-        "rope shibari", "hemp bondage", "leather cuffs", "metal handcuffs", "straitjacket", "spreader bar",
-        "hogtie", "suspension", "chair-tied", "tied to bed", "wrists overhead", "ankle cuffs", "thigh cuffs",
-        "chastity cage", "chastity belt", "collar and leash", "arms behind back", "frogtie",
-      ]},
-      { key: "gag", type: "chips_multi", label: "Gag (one type, optional bib)", exclusiveGroups: [["ball gag", "ring gag", "bit gag", "cleave gag", "tape gag", "panty gag", "dildo gag", "muzzle", "spider gag"]], options: [
-        "ball gag", "ring gag", "bit gag", "cleave gag", "tape gag", "panty gag", "drool bib", "dildo gag", "muzzle", "spider gag",
-      ]},
-      { key: "marks", type: "chips_multi", label: "Impact & marks (pick many)", options: [
-        "spanking", "red handprint", "paddled", "caned", "whipped", "cropped", "welts",
-        "bruises", "rope marks", "scratched", "bite marks", "hickeys", "belt marks",
-      ]},
-      { key: "sensation", type: "chips_multi", label: "Sensation play (pick many)", options: [
-        "wax play", "hot wax on tits", "ice play", "electro pads", "needle play", "clothespins",
-        "clover clamps", "nipple clamps", "clamps with weights", "tit slaps", "nipple twist", "hair pulling",
-      ]},
-      { key: "humiliation", type: "chips_multi", label: "Humiliation / degradation (pick many)", groups: [
-        { name: "Pet play", options: ["collared pet", "puppy hood", "kitten ears and tail plug", "ponygirl gear", "on all fours pet", "leash walk", "food bowl"] },
-        { name: "Degradation", options: ["degradation stare", "spit on face", "face-fucked", "used", "wrecked", "spit-drenched"] },
-        { name: "Ahegao / mind-break", options: ["ahegao expression", "mind-break", "tongue-out", "rolled-back eyes", "drooling", "mascara tears", "slut-face"] },
-      ]},
-      { key: "orgasm_control", type: "chips_multi", label: "Orgasm control (pick many)", options: [
-        "edged", "denied", "ruined orgasm", "forced orgasm", "hitachi torture", "overstimulation",
-        "post-orgasm torture", "chastity release", "milked dry", "back-to-back orgasms",
-      ]},
-      { key: "power_dynamic", type: "chips", label: "Power dynamic", options: [
-        "none", "dominant", "submissive", "brat", "switch",
-        "master and slave", "mistress and slave", "owner and pet", "princess and daddy dom", "mommy dom and boy",
-        "slut in training", "goddess and worshipper",
-      ]},
-      { key: "group_kink", type: "chips_multi", label: "Group kink (pick many)", options: [
-        "gangbang", "train", "double penetration", "triple penetration", "air-tight",
-        "bukkake", "blowbang", "spitroast", "eiffel tower",
-      ]},
-    ],
-  },
-  {
     key: "scenario",
     title: "Scenario",
     fields: [
@@ -753,7 +713,7 @@ export const PHASES = [
   { key: "body",     label: "Body",     hint: "Who she is", sections: ["identity", "physique", "face", "hair", "skin", "feet"] },
   { key: "intimate", label: "Intimate", hint: "Anatomy & fluids", sections: ["intimate"] },
   { key: "style",    label: "Style",    hint: "How she's shot", sections: ["wardrobe", "pose", "scene", "lighting", "camera", "style"] },
-  { key: "play",     label: "Play",     hint: "Kink & scenario", sections: ["kink", "scenario", "watersports"] },
+  { key: "play",     label: "Play",     hint: "Scenario & fluids", sections: ["scenario", "watersports"] },
 ];
 
 export function phaseOfSection(sectionKey) {
@@ -780,7 +740,7 @@ export function isSectionFilled(sectionKey, dna) {
 // sections aren't touched.
 export function randomizeWetDream(current = {}, locks = {}) {
   const out = { ...current };
-  const targets = ["feet", "kink", "watersports"];
+  const targets = ["feet", "watersports"];
   targets.forEach((k) => {
     if (locks[k]) return;
     out[k] = randomizeSection(k, current[k] || {}, {}, { preserveProtected: false });
@@ -829,7 +789,7 @@ export function randomizeWetDream(current = {}, locks = {}) {
 export const SUBJECT_SCOPED_SECTIONS = [
   "identity", "physique", "face", "hair", "skin",
   "intimate", "feet", "wardrobe", "pose",
-  "kink", "watersports",
+  "watersports",
 ];
 export const SHARED_SECTIONS = ["scenario", "scene", "lighting", "camera", "style"];
 export const MAX_SUBJECTS = 4;
@@ -1374,18 +1334,7 @@ function _veniceSubjectBlock(dna = {}, opts = {}) {
     feetActive && "human feet with coherent ankles, heel and arch, exactly five distinct toes per foot",
   ]);
 
-  // -------- Kink --------
-  const kk = dna.kink || {};
-  const kinkStr = join([
-    expArr("kink", "restraint"),
-    expArr("kink", "gag"),
-    expArr("kink", "marks"),
-    expArr("kink", "sensation"),
-    expArr("kink", "humiliation"),
-    expArr("kink", "orgasm_control"),
-    kk.power_dynamic && kk.power_dynamic !== "none" && exp("kink", "power_dynamic"),
-    expArr("kink", "group_kink"),
-  ]);
+  const kinkStr = "";
 
   // -------- Watersports --------
   const ws = dna.watersports || {};

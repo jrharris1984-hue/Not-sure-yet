@@ -27,7 +27,7 @@ const BASE_CREATE_STAGES = [
   stage("scene", "Pose & Scene", "Compose the photograph and specialty scene details", [
     { key: "pose", title: "Pose & framing", sections: ["pose", "camera"] },
     { key: "scene", title: "Scene & light", sections: ["scene", "lighting", "style"] },
-    { key: "specialty", title: "Specialty", sections: ["kink", "watersports"] },
+    { key: "specialty", title: "Specialty", sections: ["watersports"] },
   ], ["pose", "scene", "lighting"]),
   stage("create", "Create", "Review generation settings and render", [], []),
 ];

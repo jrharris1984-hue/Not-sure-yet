@@ -1,3 +1,5 @@
+import {useState} from 'react';
+import {wardrobeGroups,wardrobeGroupFor} from '@/lib/wardrobeLayout';
 import { wardrobeMode, wardrobeFieldDisabled, editWardrobeField } from "@/lib/wardrobeMode";
 import { Slider } from "@/components/ui/slider";
 import { Input } from "@/components/ui/input";
@@ -75,6 +77,9 @@ export default function DnaSection({
   controlNotes = [],
   focusedField = null,
 }) {
+  const [wardrobeGroup,setWardrobeGroup]=useState('outfit');
+  const groups=section.key==='wardrobe'?wardrobeGroups(section.fields):[];
+  const activeGroup=focusedField && focusedField!=='all' ? wardrobeGroupFor(focusedField) : groups.some(group=>group.key===wardrobeGroup)?wardrobeGroup:groups[0]?.key;
   const set = (k, v) => {
     if (fieldLocks?.[k]) return; // ignore edits to a locked field
     if (section.key === "wardrobe") {
@@ -157,6 +162,9 @@ export default function DnaSection({
           <p className="text-xs text-zinc-400">{wardrobeMode(value) === 'full' ? 'Choose one complete set and its color. The lingerie underneath is optional. Separate garments, shoes and accessories are disabled to avoid conflicts.' : 'Build your outfit from separate garments and accessories. Complete sets are inactive.'}</p>
         </div>}
 
+        {section.key==='wardrobe' && groups.length>1 && (!focusedField || focusedField==='all') && <div className="flex flex-wrap gap-2" role="group" aria-label="Wardrobe control groups">
+          {groups.map(group=><button type="button" key={group.key} className={`chip ${activeGroup===group.key?'active':''}`} aria-pressed={activeGroup===group.key} onClick={()=>setWardrobeGroup(group.key)}>{group.label}</button>)}
+        </div>}
         {section.fields.map((f) => {
           if (section.key === "wardrobe" && f.key === "outfit_mode") return null;
           const outfitDisabled = section.key === "wardrobe" && wardrobeFieldDisabled(f.key, value);
@@ -177,7 +185,7 @@ export default function DnaSection({
           const fLocked = !!fieldLocks?.[f.key];
           const canLock = f.type === "slider" || f.type === "chips" || f.type === "pose_chips";
           return (
-          <div key={f.key} className={`${simpleMode && simpleFieldKeys.length && !simpleFieldKeys.includes(f.key) && !(isModeHeader && (simpleFieldKeys.includes(SIZE_CONTROL_PAIRS[preset][0]) || (preset === "bust" && simpleFieldKeys.includes("implant_volume")))) ? "hidden md:block" : "block"} space-y-2 ${fLocked ? "opacity-70" : ""}`}>
+          <div key={f.key} style={section.key==='wardrobe' && wardrobeGroupFor(f.key)!==activeGroup ? {display:'none'} : undefined} className={`${section.key!=='wardrobe' && simpleMode && simpleFieldKeys.length && !simpleFieldKeys.includes(f.key) && !(isModeHeader && (simpleFieldKeys.includes(SIZE_CONTROL_PAIRS[preset][0]) || (preset === "bust" && simpleFieldKeys.includes("implant_volume")))) ? "hidden md:block" : "block"} space-y-2 ${fLocked ? "opacity-70" : ""}`}>
             {isModeHeader && <div className="space-y-2" data-testid={`size-mode-${preset}`}>
               <div className="text-xs font-semibold text-zinc-300">{SIZE_CONTROL_PAIRS[preset][1]} · choose one control</div>
               <div className="flex gap-2" role="group" aria-label={`${SIZE_CONTROL_PAIRS[preset][1]} control`}>
@@ -301,7 +309,7 @@ export default function DnaSection({
         })}
       </div>
       )}
-      {!collapsed && simpleMode && simpleFieldKeys.length > 0 && section.fields.some((field) => !simpleFieldKeys.includes(field.key)) && (
+      {!collapsed && section.key!=='wardrobe' && simpleMode && simpleFieldKeys.length > 0 && section.fields.some((field) => !simpleFieldKeys.includes(field.key)) && (
         <button
           type="button"
           onClick={onRequestAdvanced}

@@ -58,7 +58,7 @@ describe("createHeritageCharacterVariation", () => {
     expect(result.feet.foot_act).toEqual(["keep foot act"]);
     expect(result.scenario.explicit_level).toBe(73);
     expect(result.scenario.kink_level).toBe(62);
-    expect(result.kink.restraint).toEqual(["keep restraint"]);
+    expect(result.kink).toBeUndefined();
   });
 
   it("respects section locks and clamps imported ages to 21+", () => {
@@ -93,7 +93,7 @@ describe("createHeritageCharacterVariation", () => {
     );
     expect(result.feet.sole_presentation).toBe("");
     expect(result.feet.foot_act).toEqual(["keep act"]);
-    expect(result.kink.restraint).toEqual(["keep kink"]);
+    expect(result.kink).toBeUndefined();
     expect(result.pose.focus).not.toBe("feet");
   });
 
