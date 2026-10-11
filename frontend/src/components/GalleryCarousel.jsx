@@ -1,4 +1,4 @@
-import { forwardRef, useEffect, useImperativeHandle, useLayoutEffect, useRef } from 'react';
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useLayoutEffect, useRef } from 'react';
 import { motionDuration } from '@/lib/dragMotion';
 
 // Native scrolling owns touch tracking, momentum and snapping. React only commits
@@ -16,10 +16,10 @@ const GalleryCarousel = forwardRef(function GalleryCarousel({ current, items, pr
   position.current = { index, count: slides.length };
   callback.current = onNavigate;
   available.current = slides.length > 1;
-  const width = () => viewport.current?.clientWidth || viewport.current?.getBoundingClientRect().width || window.innerWidth;
-  const recenter = () => {
+  const width = useCallback(() => viewport.current?.clientWidth || viewport.current?.getBoundingClientRect().width || window.innerWidth, []);
+  const recenter = useCallback(() => {
     if (viewport.current) viewport.current.scrollLeft = width() * position.current.index;
-  };
+  }, [width]);
   const settled = () => {
     clearTimeout(timer.current);
     if (!viewport.current || touching.current) return;
@@ -40,7 +40,7 @@ const GalleryCarousel = forwardRef(function GalleryCarousel({ current, items, pr
   } }));
   useLayoutEffect(() => {
     clearTimeout(timer.current); navigating.current = false; touching.current = false; recenter();
-  }, [current.id, index]);
+  }, [current.id, index, recenter]);
   useEffect(() => {
     const node = viewport.current;
     let measuredWidth = width();
@@ -52,7 +52,7 @@ const GalleryCarousel = forwardRef(function GalleryCarousel({ current, items, pr
     });
     resize?.observe(node);
     return () => { clearTimeout(timer.current); resize?.disconnect(); };
-  }, []);
+  }, [recenter, width]);
   return <div ref={viewport} className="gallery-carousel-viewport flex-1 min-h-0 h-full" data-testid="gallery-carousel"
     style={{ overflowX: available.current ? 'auto' : 'hidden' }}
     onTouchStart={() => { touching.current = true; clearTimeout(timer.current); }}

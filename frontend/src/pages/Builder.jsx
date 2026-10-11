@@ -1,3 +1,6 @@
+import { useBuilderRenderPolling } from '@/hooks/useBuilderRenderPolling';
+import { selectSharedCastPose, editCastPose, sharedCastPose } from '@/lib/castPoseResolution';
+import { galleryIsVideo } from '@/lib/galleryBrowse';
 import SelectionPromptAudit from '@/components/SelectionPromptAudit';
 import CastPoseOptions from "@/components/CastPoseOptions";
 import { WebPromptResearchOptions } from "@/components/WebPromptResearch";
@@ -271,7 +274,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
     setMobileStudioStep("start");
     toast.success("Media Library traits loaded into Studio");
     nav("/character/new/s/identity", { replace: true, state: null });
-  }, [draftId, editorHydrated, location.state, nav]);
+  }, [draftId, editorHydrated, location.state, nav, setActiveSubjectId, setMediaImportSummary, setMobileStudioStep, setName, setNegativePromptOverride, setPlainLanguage, setPromptOverride, setSubjects, setTags]);
 
   // Persist the latest render session so a refresh/reopen can reconnect to the
   // same queued/running batch instead of making it disappear from Builder.
@@ -326,7 +329,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
       setPromptFormat(settings.builder_prompt_format);
       localStorage.setItem('ultra-prompt-format',settings.builder_prompt_format);
     }
-  },[settings?.builder_prompt_format]);
+  },[promptFormatTouched, setPromptFormat, settings.builder_prompt_format]);
   const selectableWorkflows = useMemo(
     () => builderCatalogWorkflows(workflows, settings?.default_workflow_id, workflowId, imageToolId ? [] : settings?.builder_hidden_workflow_ids, !!galleryRecipeMode || !!location.state?.renderRecipe).filter(workflow => !imageToolId || IMAGE_TOOL_KINDS.includes(workflow.kind)),
     [workflows, settings?.default_workflow_id, settings?.builder_hidden_workflow_ids, workflowId, imageToolId, galleryRecipeMode, location.state?.renderRecipe]
@@ -338,7 +341,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
     imageToolApplied.current = true;
     setWorkflowId(target.id);
     setMobileStudioStep("create");
-  }, [imageToolId, editorHydrated, workflows]);
+  }, [imageToolId, editorHydrated, workflows, setWorkflowId, setMobileStudioStep]);
 
   const aiProvider = settings?.ai_provider === "ollama" ? "Ollama" : "Venice";
   useEffect(() => {
@@ -346,7 +349,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
       const preferred = selectableWorkflows.find((workflow) => workflow.id === settings?.default_workflow_id);
       setWorkflowId(preferred?.id || selectableWorkflows[0]?.id || "");
     }
-  }, [workflows, settings, workflowId, selectableWorkflows, imageToolId, galleryRecipeMode, location.state?.renderRecipe]);
+  }, [workflows, settings, workflowId, selectableWorkflows, imageToolId, galleryRecipeMode, location.state?.renderRecipe, setWorkflowId]);
 
   useEffect(() => {
     const incoming = location.state?.galleryReference;
@@ -461,11 +464,11 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
     } else {
       nav(location.pathname, { replace: true, state: null });
     }
-  }, [draftId, editorHydrated, location.pathname, location.state, nav, referencePreview, workflows]);
+  }, [draftId, editorHydrated, imageToolId, location.pathname, location.state, nav, referencePreview, setActiveSubjectId, setBodyAdjustAmount, setBodyAdjustRegion, setEditInstruction, setEditMode, setLocks, setLoraOverrides, setMobileStudioStep, setNegativePromptOverride, setPlainLanguage, setPreserveUnmentioned, setPromptLanguage, setPromptOverride, setReferenceImage, setReferencePreview, setSecondaryLora, setSelectedLora, setShowSecondLora, setSourceRenderId, setSubjects, setVariationDenoise, setVideoInstruction, setWorkflowId, workflows]);
 
   useEffect(() => {
     if (editMode === "body_adjust" && referenceImage?.name) setMobileStudioStep("create");
-  }, [editMode, referenceImage?.name]);
+  }, [editMode, referenceImage?.name, setMobileStudioStep]);
 
 
 
@@ -487,7 +490,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
 
   useEffect(() => {
     if (isImageFirst) setPoseAssistEnabled(false);
-  }, [isImageFirst, workflowId]);
+  }, [isImageFirst, setPoseAssistEnabled, workflowId]);
   const isVideoWorkflow = activeWorkflow?.kind === "video";
   const isTextVideoWorkflow = activeWorkflow?.kind === "text_video";
   const activeCompiler = resolvePromptCompiler({
@@ -838,7 +841,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
     if (!activeSubjectId || !subjects.find((s) => s.id === activeSubjectId)) {
       setActiveSubjectId(subjects[0].id);
     }
-  }, [subjects, activeSubjectId]);
+  }, [subjects, activeSubjectId, setActiveSubjectId]);
 
   const activeSubjectIdx = Math.max(0, subjects.findIndex((s) => s.id === activeSubjectId));
   const activeSubject = subjects[activeSubjectIdx] || subjects[0];
@@ -883,6 +886,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
 
   const setSection = (key, val) => {
     if (key === "scenario") { updateCastScenario(val); return; }
+    if (key === "pose") { setSubjects(current => editCastPose(current, activeSubjectId, val, promptCatalog)); return; }
     if (key === "identity" && ["mother and daughter", "stepmom and stepdaughter"].includes(primaryDna.scenario?.cast_type)) {
       const age = Number(val.age) || 21;
       val = { ...val, age: activeSubjectIdx === 0 ? Math.max(44, age) : Math.min(Math.max(21, age), Math.max(21, Number(primaryDna.identity?.age || 44) - 18)) };
@@ -1198,7 +1202,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
       ? "Saved setup loaded with the current compiler · prompt overrides cleared"
       : "Exact Gallery recipe restored in the editor");
     nav(location.pathname, { replace: true, state: null });
-  }, [editorHydrated, location.pathname, location.state, nav, workflows, preserveRestoredPrompt, studioSteps]);
+  }, [editorHydrated, location.pathname, location.state, nav, workflows, preserveRestoredPrompt, studioSteps, setMobileStudioStep, setQuickReview, setLocks, setSelectedLora, setSecondaryLora, setShowSecondLora, setLoraOverrides, setPromptOverride, setVariationPrompt, setVariationDenoise, setNegativePromptOverride, setReferenceImage, setEditInstruction, setVideoInstruction, setPreserveUnmentioned, setQualityTier, setVideoFrames, setVideoFps, setVideoWidth, setVideoHeight, setChromaSettings, setGalleryRecipeMode, setPoseAssistEnabled, setRenderCount, setEditMode, setReferencePreview, setSourceRenderId, setCollapsed, setSubjects, setActiveSubjectId, setPromptLanguage, setRaunch, setWorkflowId, setPlainLanguage, setMediaImportSummary, setQwenCamera, setQwenReferenceNotes, setPoseReferenceImage, setPoseReferencePreview]);
 
   const improveCompiledPrompt = async () => {
     if (!finalPositive.trim()) {
@@ -1761,48 +1765,8 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
     openMobileStudioStep(studioSteps.some((step) => step.id === "character") ? "character" : "start");
   };
 
-  // Poll every render from the latest multi-image request so progress and
-  // thumbnails update independently as ComfyUI works through the queue.
-  useEffect(() => {
-    if (batchRenders.length <= 1) return;
-    const hasPending = batchRenders.some((render) => !["done", "failed", "offline", "cancelled"].includes(render.status));
-    if (!hasPending) return;
-    const t = setInterval(async () => {
-      const updated = await Promise.all(batchRenders.map(async (render) => {
-        if (["done", "failed", "offline", "cancelled"].includes(render.status)) return render;
-        try {
-          return await endpoints.pollRender(render.id);
-        } catch {
-          return render;
-        }
-      }));
-      setBatchRenders(updated);
-      const selected = updated.find((render) => render.id === selectedBatchRenderId);
-      if (selected && updated.every((render) => RENDER_TERMINAL.has(render.status)) && selected.status !== "done") {
-        const firstSuccess = updated.find((render) => render.status === "done");
-        if (firstSuccess) {
-          setSelectedBatchRenderId(firstSuccess.id);
-          setActiveRender(firstSuccess);
-          return;
-        }
-      }
-      if (selected) setActiveRender(selected);
-    }, 2500);
-    return () => clearInterval(t);
-  }, [batchRenders, selectedBatchRenderId]);
-
-  // Poll active render for output
-  useEffect(() => {
-    if (!activeRender?.id || ["done", "failed", "offline", "cancelled"].includes(activeRender.status)) return;
-    const t = setInterval(async () => {
-      try {
-        const r = await endpoints.pollRender(activeRender.id);
-        setActiveRender(r);
-        if (["done", "failed", "offline", "cancelled"].includes(r.status)) clearInterval(t);
-      } catch { /* keep polling */ }
-    }, 2500);
-    return () => clearInterval(t);
-  }, [activeRender?.id, activeRender?.status]);
+  useBuilderRenderPolling({batchRenders, selectedBatchRenderId, activeRender,
+    setBatchRenders, setSelectedBatchRenderId, setActiveRender});
 
   const exportJson = () => {
     const blob = new Blob(
@@ -2761,8 +2725,9 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
         presetsControl={characterPresets}
         values={builderSectionValue(activeSection, activeDna, primaryDna)}
         renderControls={renderDnaControls}
-        castPoseControls={<CastPoseOptions count={subjects.length} value={activeDna.pose?.action}
-          onSelect={pose => setSection("pose", { ...activeDna.pose, action: pose, distance: "wide shot" })} />}
+        castPoseControls={<CastPoseOptions count={subjects.length} value={sharedCastPose(subjects, promptCatalog)}
+          onSelect={pose => setSubjects(current => selectSharedCastPose(current, pose))}
+          onClear={() => setSubjects(current => editCastPose(current, current[0].id, {...current[0].dna.pose, action:""}, promptCatalog))} />}
         preview={activeRender?.output_files?.[0] || referencePreview}
         renderStatus={activeRender?.status} renderError={activeRender?.error}
         livePreview={activeRender && ["queued", "running"].includes(activeRender.status)
@@ -3205,7 +3170,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
           onTools={() => nav(`/tools?render=${encodeURIComponent(activeRender.render_id || activeRender.id)}`)}
           onDownload={(url) => downloadRenderImage(
             url,
-            `render-${activeRender.render_id || activeRender.id}.${/\.(webm|mp4|mov)(?:[?&]|$)/i.test(decodeURIComponent(url)) ? "webm" : "png"}`
+            `render-${activeRender.render_id || activeRender.id}.${galleryIsVideo(url) ? "webm" : "png"}`
           )}
           busy={postRenderBusy}
         /></div>
@@ -3600,8 +3565,9 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
             /></div>
             </>
           )}
-          {activeSection === "pose" && <CastPoseOptions count={expectedCount} value={activeDna.pose?.action}
-            onSelect={pose => setSection("pose", { ...activeDna.pose, action: pose, distance: "wide shot" })} />}
+          {activeSection === "pose" && <CastPoseOptions count={expectedCount} value={sharedCastPose(subjects, promptCatalog)}
+            onSelect={pose => setSubjects(current => selectSharedCastPose(current, pose))}
+          onClear={() => setSubjects(current => editCastPose(current, current[0].id, {...current[0].dna.pose, action:""}, promptCatalog))} />}
           {studioProfile.specialtySection && activeSection === studioProfile.specialtySection && <div className="flex gap-2 overflow-x-auto pb-1" role="tablist" aria-label={`${studioProfile.title} controls`} data-testid="specialty-field-groups">
             {studioProfile.fieldGroups.map((group, index) => <button key={group.label} type="button" role="tab"
               aria-selected={specialtyTab === index} onClick={() => setSpecialtyTab(index)}

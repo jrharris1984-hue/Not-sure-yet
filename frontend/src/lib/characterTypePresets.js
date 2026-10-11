@@ -1,7 +1,7 @@
 import { DEFAULT_DNA } from './dna';
 
 export const CHARACTER_TYPE_GROUPS = ['All', 'Age', 'Roles', 'Looks'];
-const wardrobe = values => ({ ...DEFAULT_DNA.wardrobe, exposure_mode: 'use selected outfit', ...values });
+const wardrobe = values => ({ ...DEFAULT_DNA.wardrobe, exposure_mode: '', ...values });
 const sizeDefaults = { bust_scale: 0, butt_scale: 0, thigh_scale: 0, hip_scale: 0, waist_scale: 0, implant_volume: 0 };
 const preset = (name, group, description, dna, tags = []) => ({
   name, group, description, tags: [group.toLowerCase(), ...tags],

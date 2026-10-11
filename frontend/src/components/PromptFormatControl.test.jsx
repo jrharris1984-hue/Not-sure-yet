@@ -1,5 +1,5 @@
 import {createRoot} from 'react-dom/client';
-import {act} from 'react-dom/test-utils';
+import {act} from 'react';
 import PromptFormatControl from './PromptFormatControl';
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 test('format control switches to compact and identifies word counts accurately', () => {

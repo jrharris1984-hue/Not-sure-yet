@@ -3,24 +3,24 @@ import { createRoot } from "react-dom/client";
 import Tools from "./Tools";
 import { endpoints } from "@/lib/api";
 
-const navigate = jest.fn();
-let renderId = "r1";
-const workflows = [
+const mockNavigate = jest.fn();
+let mockRenderId = "r1";
+const mockWorkflows = [
   { id: "repair", name: "Repair", kind: "enhance", prompt_style: "qwen_edit" },
   { id: "animate", name: "Animate", kind: "video", prompt_style: "wan" },
   { id: "text-video", name: "Text video", kind: "text_video", prompt_style: "wan" },
 ];
-let renders = [{ id: "r1", workflow_name: "Source", output_files: ["/source.png"] }];
+let mockRenders = [{ id: "r1", workflow_name: "Source", output_files: ["/source.png"] }];
 
 jest.mock("react-router-dom", () => ({
   Link: ({ to, children, ...props }) => <a href={to} {...props}>{children}</a>,
-  useNavigate: () => navigate,
-  useSearchParams: () => [new URLSearchParams(renderId ? `render=${renderId}` : "")],
+  useNavigate: () => mockNavigate,
+  useSearchParams: () => [new URLSearchParams(mockRenderId ? `render=${mockRenderId}` : "")],
 }), { virtual: true });
 
 jest.mock("@tanstack/react-query", () => ({
   useQuery: ({ queryKey }) => ({
-    data: queryKey[0] === "workflows" ? workflows : renders,
+    data: queryKey[0] === "workflows" ? mockWorkflows : mockRenders,
     isLoading: false,
     isError: false,
   }),
@@ -44,11 +44,11 @@ jest.mock("@/lib/bodyCreationRecipe", () => ({ loadBodyCreationRecipe: jest.fn()
 let container, root;
 beforeEach(() => {
   global.IS_REACT_ACT_ENVIRONMENT = true;
-  navigate.mockClear();
+  mockNavigate.mockClear();
   endpoints.prepareRenderReference.mockReset();
   endpoints.prepareRenderReference.mockResolvedValue({ name: "source.png", source_render_id: "r1" });
-  renderId = "r1";
-  renders = [{ id: "r1", workflow_name: "Source", output_files: ["/source.png"] }];
+  mockRenderId = "r1";
+  mockRenders = [{ id: "r1", workflow_name: "Source", output_files: ["/source.png"] }];
   container = document.createElement("div");
   document.body.appendChild(container);
   root = createRoot(container);
@@ -63,7 +63,7 @@ test("selected Gallery source stays attached when launching a specific workflow"
   const repair = Array.from(container.querySelectorAll("button")).find((button) => button.textContent.includes("Repair"));
   await act(async () => repair.click());
   expect(endpoints.prepareRenderReference).toHaveBeenCalledWith("r1", expect.stringContaining("/source.png"));
-  expect(navigate).toHaveBeenCalledWith("/image-tools/repair", expect.objectContaining({
+  expect(mockNavigate).toHaveBeenCalledWith("/image-tools/repair", expect.objectContaining({
     state: expect.objectContaining({ targetKind: "enhance", previewUrl: expect.stringContaining("/source.png") }),
   }));
 });
@@ -76,9 +76,15 @@ test("post-generation Tools excludes text-only video creation", async () => {
 });
 
 test("video Gallery results render as video and do not show still-image actions", async () => {
-  renders = [{ id: "r1", workflow_name: "Video source", output_files: ["/source.mp4"] }];
+  mockRenders = [{ id: "r1", workflow_name: "Video source", output_files: ["/source.mp4"] }];
   await act(async () => root.render(<Tools />));
   expect(container.querySelector("video")).not.toBeNull();
   expect(container.querySelector('[data-testid="post-generation-actions"]')).toBeNull();
-  expect(container.textContent).toContain("still-image edit");
+  expect(container.textContent).toContain("Still-image edit");
+});
+
+ test('a filename containing a literal percent sign cannot crash the source view', async () => {
+  mockRenders = [{id:'r1', output_files:['/100%portrait.png']}];
+  await act(async () => root.render(<Tools/>));
+  expect(container.querySelector('img')).not.toBeNull();
 });

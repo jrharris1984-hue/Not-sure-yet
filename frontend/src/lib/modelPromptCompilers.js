@@ -1,3 +1,4 @@
+import { resolveCastPoses } from './castPoseResolution';
 import { buildSelectionManifest } from './selectionPromptAudit';
 import { heritagePrompt } from "./heritageProfiles";
 import { ageAppearancePrompt } from './ageAppearance';
@@ -1170,6 +1171,8 @@ function compileModelPromptsRaw({
 export function compileModelPrompts(options = {}) {
   const auditSources = options.subjects?.length > 1 ? options.subjects : [{dna:options.dna || options.subjects?.[0]?.dna || {}}];
   const promptCatalog = options.promptCatalog || getPromptCatalog();
+  const castPose = resolveCastPoses(options.subjects?.length ? options.subjects : [{dna:options.dna || {}}], promptCatalog);
+  options = {...options, ...(options.subjects?.length ? {subjects:castPose.subjects} : {}), dna:castPose.subjects[0]?.dna || options.dna};
   const outfitDna = dna => ({ ...dna, kink:{}, wardrobe: resolveWardrobeMode(withCoveragePrompt(dna?.wardrobe || {}, promptCatalog)) });
   options = { ...options, dna: outfitDna(options.dna || {}), subjects: options.subjects?.map(subject => ({ ...subject, dna: outfitDna(subject.dna || {}) })) };
   const originalSubjects = options.subjects?.length > 1 ? options.subjects : [{dna:options.dna || options.subjects?.[0]?.dna || {}}];
@@ -1178,6 +1181,12 @@ export function compileModelPrompts(options = {}) {
     return phrase ? `${originalSubjects.length > 1 ? `Subject ${subject.label || String.fromCharCode(65+index)}: ` : ''}${phrase}` : '';
   }).filter(Boolean).join('; ');
   options = {...options, dna:catalogDna(options.dna || {}, promptCatalog, true), subjects:options.subjects?.map(subject => ({...subject,dna:catalogDna(subject.dna, promptCatalog, true)}))};
+  if (castPose.notes.some(note => note.field === 'distance')) {
+    options = {...options, subjects:options.subjects.map(subject => ({...subject, dna:{...subject.dna,
+      pose:{...subject.dna.pose,distance:'wide shot'},
+      _catalogSelections:{...subject.dna._catalogSelections,pose:{...subject.dna._catalogSelections?.pose,distance:'wide shot'}}}}))};
+    options.dna = options.subjects[0].dna;
+  }
   const compiler = resolvePromptCompiler(options);
   const direct = ["qwen_edit", "wan_i2v"].includes(compiler);
   const photographic = !direct && compiler !== "wan_t2v";
@@ -1199,7 +1208,7 @@ export function compileModelPrompts(options = {}) {
   // Preserve resolved selections so the fidelity pass cannot re-add conflicts.
   const resolvedSubjects = fidelitySubjects.map(subject => {
     const guard = (compiler === 'chroma' ? resolveChromaComposition : resolveZImageComposition)(subject.dna, {forceMulti:isMulti});
-    return {...subject, dna:guard.dna, controlNotes:guard.controlNotes};
+    return {...subject, dna:guard.dna, controlNotes:[...(guard.controlNotes || []), ...(subject.castPoseNotes || castPose.notes)]};
   });
   let protectedResult = preserveGeneralSelections(result, resolvedSubjects);
   const detailed = resolvedSubjects.some(subject => hasDetailedBodyScale(subject.dna));
@@ -1247,9 +1256,13 @@ export function compileModelPrompts(options = {}) {
         promptWords:clean(positive).split(/\s+/).filter(Boolean).length,
         promptBudget:null, droppedClauses:[], omittedClauseCount:0};
     }
+    if (castPose.sharedPose) prompts = {...prompts, positive:`Shared pose for all ${castPose.subjects.length} adults: ${castPose.sharedPose}. ${prompts.positive}`} ;
     const final = applyCatalogRules(prompts, options.workflowKind || 'image', promptCatalog);
-    return {...final, selectionManifest:buildSelectionManifest({sources:auditSources, prepared:fidelitySubjects, resolved:resolvedSubjects,
-      sections:catalogSections(SECTIONS, promptCatalog), raunch:options.raunch, compactRequirements:final.compactRequirements})};
+    const manifest = buildSelectionManifest({sources:auditSources, prepared:fidelitySubjects, resolved:resolvedSubjects,
+      sections:catalogSections(SECTIONS, promptCatalog), raunch:options.raunch, compactRequirements:final.compactRequirements});
+    if (castPose.sharedPose) manifest.push({key:'shared-pose', label:'Shared cast pose', value:castPose.sharedPose,
+      expected:castPose.sharedPose, terms:[castPose.sharedPose.toLowerCase().replace(/[^\p{L}\p{N}]+/gu,' ').trim()], subjectLabel:''});
+    return {...final, selectionManifest:manifest};
   };
   if (!contract) return finalize(protectedResult);
   const positive = `${contract} ${protectedResult.positive}`;

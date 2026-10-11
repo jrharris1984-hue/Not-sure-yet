@@ -7,6 +7,7 @@ import unittest
 import sys
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from ai_research import prompt_research_messages, prompt_research_metadata, prompt_research_query
+from assistant_research import enrich_assistant_request, assistant_research_scope
 
 
 class FreeformPromptTests(unittest.TestCase):
@@ -14,6 +15,7 @@ class FreeformPromptTests(unittest.TestCase):
         seen = {}
 
         async def chat(system, user, response_format_json):
+            system,user = await enrich_assistant_request(system,user,retrieve)
             seen.update(system=system, user=user, json=response_format_json)
             return {"positive": "Watercolor forest", "negative": "blur", "changes":["Clarified light"], "source_ids":["S1", "FAKE"]}
 
@@ -29,9 +31,14 @@ class FreeformPromptTests(unittest.TestCase):
                          extract_json=lambda value: value, openrouter_chat=chat, retrieve_prompt_sources=retrieve,
                          prompt_research_messages=prompt_research_messages, prompt_research_metadata=prompt_research_metadata)
         exec(compile(ast.Module(body=[route], type_ignores=[]), str(path), "exec"), namespace)
-        result = asyncio.run(namespace[route.name](SimpleNamespace(
-            positive="watercolor forest", negative="", prompt_style="chroma",
-            workflow_name="Chroma", freeform=freeform, use_web_research=research, research_focus="architecture")))
+        async def invoke():
+            token=assistant_research_scope.set({'sources':None,'retrieving':False,'task':'refine','focus':'architecture'} if research else None)
+            try:
+                return await namespace[route.name](SimpleNamespace(
+                    positive="watercolor forest", negative="", prompt_style="chroma",
+                    workflow_name="Chroma", freeform=freeform))
+            finally: assistant_research_scope.reset(token)
+        result=asyncio.run(invoke())
         self.assertEqual(result["positive"], "Watercolor forest")
         seen["result"] = result
         return seen
@@ -47,11 +54,12 @@ class FreeformPromptTests(unittest.TestCase):
     def test_researched_refinement_preserves_requirements_and_returns_actual_sources(self):
         for freeform in (False, True):
             seen=self.call(freeform, True)
-            self.assertIn("never override",seen["system"])
+            self.assertIn("preserve all user-selected details",seen["system"])
             self.assertIn("UNTRUSTED REFERENCE DATA",seen["user"])
-            self.assertNotIn("exactly two strings",seen["system"])
-            self.assertEqual(seen["result"]["sources"][0]["url"],"https://author.example/guide")
-            self.assertEqual(seen["result"]["changes"],["Clarified light"])
+            # Middleware keeps each route's schema; sources travel in the HTTP header.
+            self.assertIn("exactly two strings",seen["system"])
+            self.assertIn("retrieval",seen)
+            self.assertEqual(set(seen["result"]),{"positive","negative"})
         self.assertNotIn("retrieval",self.call(True))
 
     def test_video_research_keeps_mode_specific_rules(self):
@@ -61,17 +69,22 @@ class FreeformPromptTests(unittest.TestCase):
         seen={}
         async def retrieve(*args): return [{'id':'S1','title':'WAN guide','url':'https://author.example/wan','content':'Clear motion'}]
         async def chat(system,user,response_format_json):
-            seen.update(system=system,json=response_format_json)
+            system,user=await enrich_assistant_request(system,user,retrieve)
+            seen.update(system=system,user=user,json=response_format_json)
             return {'positive':'Slow pan','negative':'','source_ids':['S1']} if response_format_json else 'Slow pan'
         ns=dict(VideoPromptBody=object,retrieve_prompt_sources=retrieve,openrouter_chat=chat,extract_json=lambda value:value,HTTPException=RuntimeError,prompt_research_messages=prompt_research_messages,prompt_research_metadata=prompt_research_metadata)
         exec(compile(ast.Module(body=[node],type_ignores=[]),str(path),'exec'),ns)
         for mode in ('image','text'):
             for web in (False,True):
-                result=asyncio.run(ns['ai_video_prompt'](SimpleNamespace(mode=mode,instruction='pan',use_web_research=web,research_focus='')))
+                async def invoke():
+                    token=assistant_research_scope.set({'sources':None,'retrieving':False,'task':'video','focus':''} if web else None)
+                    try: return await ns['ai_video_prompt'](SimpleNamespace(mode=mode,instruction='pan'))
+                    finally: assistant_research_scope.reset(token)
+                result=asyncio.run(invoke())
                 self.assertEqual(result['prompt'],'Slow pan')
-                self.assertEqual(seen['json'],web)
+                self.assertFalse(seen['json'])
                 self.assertIn('source image already defines' if mode=='image' else 'one coherent shot',seen['system'])
-                self.assertEqual('sources' in result,web)
+                self.assertEqual('UNTRUSTED REFERENCE DATA' in seen['user'],web)
 
     def test_existing_builder_assistance_keeps_its_rules(self):
         seen = self.call(False)

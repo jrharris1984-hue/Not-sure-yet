@@ -73,7 +73,7 @@ class ResearchTests(unittest.TestCase):
         with self.assertRaises(error) as caught:
             asyncio.run(route(SimpleNamespace(query='camera settings',context='')))
         self.assertEqual(caught.exception.status,429)
-        self.assertIn('turn off web research',caught.exception.detail)
+        self.assertIn('Try again later',caught.exception.detail)
         self.assertNotIn('secret',caught.exception.detail)
 
     def test_prompt_retrieval_bounds_search_calls_and_keeps_raw_prompt_local(self):
@@ -87,7 +87,8 @@ class ResearchTests(unittest.TestCase):
             self.assertEqual(user,'private full scene')
             self.assertIn('Do not research private identities',system)
             return {'focus':'Victorian interior architecture'}
-        ns=dict(retrieve_research_sources=retrieve,prompt_research_query=prompt_research_query,extract_json=lambda value:value,openrouter_chat=chat,HTTPException=RuntimeError,research_sources=research_sources)
+        from unittest.mock import AsyncMock
+        ns=dict(research_key=AsyncMock(return_value="test-key"), retrieve_research_sources=retrieve,prompt_research_query=prompt_research_query,extract_json=lambda value:value,openrouter_chat=chat,HTTPException=RuntimeError,research_sources=research_sources)
         exec(compile(ast.Module(body=[node],type_ignores=[]),str(path),'exec'),ns)
         result=asyncio.run(ns[node.name]('private full scene','Chroma','chroma'))
         self.assertEqual(len(queries),2)

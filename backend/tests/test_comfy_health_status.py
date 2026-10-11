@@ -33,6 +33,7 @@ class ComfyHealthTests(unittest.TestCase):
             item for item in ast.parse(source.read_text()).body
             if isinstance(item, ast.AsyncFunctionDef) and item.name == "comfyui_health"
         )
+        node.decorator_list = []
         return source, node
 
     def run_route(self, active_jobs=0, fail=False):
