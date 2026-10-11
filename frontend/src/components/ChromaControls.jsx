@@ -16,7 +16,7 @@ export default function ChromaControls({ value, onChange }) {
         <div className="flex items-center gap-2">
           <Sparkles className="h-4 w-4 text-amber-300" />
           <div>
-            <div className="section-label !text-amber-300">GoldenChroma Studio</div>
+            <div className="section-label !text-amber-300">Chroma Studio</div>
             <p className="mt-0.5 text-xs text-zinc-400">Short T5-safe prompt · controls apply directly to the Chroma workflow</p>
           </div>
         </div>
@@ -42,9 +42,9 @@ export default function ChromaControls({ value, onChange }) {
           <span className="mb-2 flex justify-between text-[10px] font-mono uppercase tracking-widest text-zinc-500">
             Steps <b className="text-amber-300">{value.steps}</b>
           </span>
-          <input type="range" min="12" max="40" step="1" value={value.steps}
+          <input type="range" min="1" max="100" step="1" value={value.steps}
             onChange={(e) => set({ steps: Number(e.target.value) })} className="w-full accent-amber-400" />
-          <span className="mt-1 block text-[10px] text-zinc-600">26 is the balanced default</span>
+          <span className="mt-1 block text-[10px] text-zinc-600">Start with the selected workflow's recipe</span>
         </label>
 
         <label className="block">
@@ -53,7 +53,7 @@ export default function ChromaControls({ value, onChange }) {
           </span>
           <input type="range" min="1" max="7" step="0.1" value={value.cfg}
             onChange={(e) => set({ cfg: Number(e.target.value) })} className="w-full accent-amber-400" />
-          <span className="mt-1 block text-[10px] text-zinc-600">3.8 keeps Chroma natural</span>
+          <span className="mt-1 block text-[10px] text-zinc-600">Adjust prompt guidance strength</span>
         </label>
 
         <label className="block">

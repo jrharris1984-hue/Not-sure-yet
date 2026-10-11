@@ -15,6 +15,15 @@ test.each(['draft', 'balanced', 'quality'])('DanrisiMix Turbo retains its own %s
   expect(getRenderRecipe('chroma').steps).toBe(26);
 });
 
+test.each(['draft', 'balanced', 'quality'])('Clyb Flash retains its own %s recipe', tier => {
+  const recipe = getRenderRecipe(renderRecipeStyle('chroma_flash', 'chroma'), tier);
+  expect(recipe).toMatchObject({compiler:'chroma_flash',family:'image',steps:8,cfg:1,sampler:'heun'});
+  expect(recipe.scheduler).toBeUndefined();
+  expect(recipe.note).toContain('Clyb');
+  expect(renderRecipeStyle('chroma_flash', 'chroma')).not.toBe(renderRecipeStyle('chroma_turbo', 'chroma'));
+  expect(getRenderRecipe(renderRecipeStyle('chroma_test', 'chroma')).steps).toBe(26);
+});
+
 describe("model-aware render recipes", () => {
   test("uses the Juggernaut XL portrait baseline and scales by tier", () => {
     const draft = getRenderRecipe("sdxl", "draft");

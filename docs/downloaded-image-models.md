@@ -10,11 +10,13 @@ independent image workflows without replacing existing workflows:
 | Krea 2 · ST-KREAL 2.91 FP8 | `stKREAL291FEMBOYS.safetensors` | `models/diffusion_models` |
 | Chroma · GonzaLomo v3 FP8 | `gonzalomoChroma_v30_fp8.safetensors` | `models/diffusion_models` |
 | Chroma · DanrisiMix Ultra INT8 Turbo | `Chroma1-HD-DanrisiMix-Hyper-Flash-Turbo-Ultra-int8-convrot.safetensors` | `models/diffusion_models` |
+| Chroma · Unlocked v50 | `chroma-unlocked-v50.safetensors` | `models/diffusion_models` |
+| Chroma · Clyb Uncanny 2K Flash v19 | `ClybUncannyChroma1-2K-Flash-v19.safetensors` | `models/diffusion_models` |
 
 These are separate diffusion weights, rather than all-in-one checkpoints.
 Each Krea preset uses `qwen3vl_4b_fp8_scaled.safetensors` in
 `models/text_encoders` and `qwen_image_vae.safetensors` in `models/vae`.
-Both Chroma presets use `t5xxl_fp8_e4m3fn_scaled.safetensors` in `models/text_encoders`
+The Chroma presets use `t5xxl_fp8_e4m3fn_scaled.safetensors` in `models/text_encoders`
 and `ae.safetensors` in `models/vae`. Existing copies can be reused.
 
 Restart ComfyUI after moving files. Subfolders and filename case differences
@@ -69,6 +71,48 @@ Sources:
 Graph validation and offline tests do not verify image quality or memory use
 on the user's GPU. Start with one Draft image. The BF16 AKSIOM download is
 approximately 24 GiB of weights and is heavier than the FP8 Krea downloads.
+
+## Unlocked v50 and Clyb Uncanny Flash v19
+
+These two presets target the exact `.safetensors` filenames above, using
+standard `UNETLoader`, weight dtype `default`, T5 FP8 and `ae.safetensors`.
+They do not target GGUF, Diffusers shards, the annealed v50 variant, or
+`ClybUncannyChroma1-2K-Flash-v19-LearnedFP8.safetensors`. Those different
+formats/variants need their own verified loader bindings. File lookup supports
+subfolders and case differences, but never silently substitutes another model.
+
+Unlocked v50 uses the existing adjustable Chroma comparison recipe: Euler,
+beta, 26 steps and CFG 3.8 at Balanced. Draft uses 18/3.4 and Quality 34/4.
+This is an adapted Chroma baseline, not a verified v50-specific author recipe.
+
+Clyb Flash uses a separate adjustable starting recipe: Heun, beta, 8 steps,
+CFG 1 across all tiers. The available creator card specifies the loader but
+does not provide v19-specific sampling settings; image quality must be tested
+and steps/CFG adjusted if needed. The negative prompt is connected but has
+no guidance effect at CFG 1. Neither graph requires the Sigmoid Offset custom
+node used by DanrisiMix Ultra. Draft is 768 × 768; Balanced 1024 × 1024;
+Quality 1024 × 1536, rather than automatically forcing a 2K canvas.
+
+Refresh bundled workflows in Settings after updating Ultra Studio. Existing
+workflow IDs and your default selection are preserved. For ComfyUI Desktop,
+use a model directory listed in its startup log; copying files into an unrelated
+portable installation does not make them available to the running instance.
+Start with one Draft image on the 12 GB RTX 4070 SUPER. The original v50
+download is approximately 17.8 GB, so it cannot fit entirely in that GPU's
+VRAM and relies on offloading. Offline tests do not measure render speed or
+memory use on the user's PC.
+
+For the user's commercial-app plans: Clybius marks every model in the
+`hybrid_merges` folder, which contains this v19 file, as noncommercial due
+to included CC BY-NC-SA 4.0 components. Treat this model as a personal test
+option, not a model to bundle in a paid product under the repository's
+top-level Apache label.
+
+Sources:
+- https://huggingface.co/lodestones/Chroma/blob/main/chroma-unlocked-v50.safetensors
+- https://huggingface.co/lodestones/Chroma/resolve/main/ComfyUI_Chroma1-HD_T2I-workflow.json
+- https://huggingface.co/Clybius/Chroma-fp8-scaled?not-for-all-audiences=true
+- https://huggingface.co/Clybius/Chroma-fp8-scaled/commits/main
 
 ## MiniMax H3 is a separate setup
 

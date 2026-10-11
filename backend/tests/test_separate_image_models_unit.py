@@ -13,7 +13,7 @@ from generation_settings import normalize_generation_settings, apply_generation_
 
 class SeparateImageModelsTests(unittest.TestCase):
     def graphs(self):
-        for name in ['krea2_aksiom', 'krea2_lustify', 'krea2_stkreal', 'chroma_gonzalomo', 'chroma_danrisimix_ultra']:
+        for name in ['krea2_aksiom', 'krea2_lustify', 'krea2_stkreal', 'chroma_gonzalomo', 'chroma_danrisimix_ultra', 'chroma_unlocked_v50', 'chroma_clyb_uncanny_flash_v19']:
             yield name, json.loads((ROOT / 'seed_workflows' / (name + '.json')).read_text())
 
     def info(self, graph):
@@ -34,7 +34,8 @@ class SeparateImageModelsTests(unittest.TestCase):
             with self.subTest(name=name):
                 spec = next(s for s in specs if s['file'] == name + '.json')
                 self.assertEqual(spec['kind'], 'image')
-                self.assertEqual(spec['prompt_style'], 'chroma_turbo' if name == 'chroma_danrisimix_ultra' else 'chroma_test' if name.startswith('chroma') else 'krea2_test')
+                style = {'chroma_danrisimix_ultra': 'chroma_turbo', 'chroma_clyb_uncanny_flash_v19': 'chroma_flash'}.get(name, 'chroma_test' if name.startswith('chroma') else 'krea2_test')
+                self.assertEqual(spec['prompt_style'], style)
                 self.assertFalse(any('Lora' in n['class_type'] for n in graph.values()))
                 self.assertTrue(any(n['class_type'] == 'SaveImage' for n in graph.values()))
                 for node in graph.values():
@@ -101,3 +102,22 @@ class SeparateImageModelsTests(unittest.TestCase):
         del info['SigmoidOffsetScheduler']
         self.assertEqual(resolve_separate_image_models(graph, info), ['ComfyUI node: SigmoidOffsetScheduler'])
         self.assertEqual(graph, original)
+
+    def test_unlocked_and_clyb_use_exact_models_with_distinct_sampling(self):
+        graphs = dict(self.graphs())
+        for stem, model, style, steps, cfg, sampler in [
+            ('chroma_unlocked_v50', 'chroma-unlocked-v50.safetensors', 'chroma_test', 26, 3.8, 'euler'),
+            ('chroma_clyb_uncanny_flash_v19', 'ClybUncannyChroma1-2K-Flash-v19.safetensors', 'chroma_flash', 8, 1, 'heun'),
+        ]:
+            with self.subTest(model=model):
+                graph = graphs[stem]
+                self.assertEqual(graph['731']['inputs'], {'unet_name': model, 'weight_dtype': 'default'})
+                self.assertEqual(graph['751']['class_type'], 'BetaSamplingScheduler')
+                self.assertEqual(graph['751']['inputs']['steps'], steps)
+                self.assertEqual(graph['694']['inputs']['cfg'], cfg)
+                self.assertEqual(graph['700']['inputs']['sampler_name'], sampler)
+                self.assertNotIn('SigmoidOffsetScheduler', {n['class_type'] for n in graph.values()})
+                values = normalize_generation_settings({'steps': 10, 'cfg': 2, 'sampler_name': 'heun'}, style)
+                effective = apply_generation_settings(graph, values)
+                self.assertEqual(effective['751'], {'steps': 10})
+                self.assertEqual(graph['694']['inputs']['cfg'], 2)
