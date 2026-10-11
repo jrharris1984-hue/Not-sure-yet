@@ -3,7 +3,7 @@ from shoot_progress import refresh_shoot_progress
 from shoot_continuity import shoot_render_settings, shoot_base_dna
 from shoot_queue import load_shoot_renders, link_shoot_render
 from wardrobe_catalog_upgrade import upgrade_wardrobe_catalog
-from downloaded_models import resolve_downloaded_models, patch_ltx_video
+from downloaded_models import resolve_downloaded_models, resolve_separate_image_models, SEPARATE_IMAGE_STYLES, patch_ltx_video
 from prompt_catalog import validate_prompt_catalog
 from qwen_test_models import resolve_qwen_test_models
 from assistant_research import AssistantResearchMiddleware, enrich_assistant_request
@@ -245,6 +245,10 @@ def _detect_prompt_nodes(wf: Dict[str, Any]) -> Dict[str, str]:
 
 
 SEED_WORKFLOWS = [
+    {"file": "krea2_aksiom.json", "name": "Krea 2 · AKSIOM V1 BF16", "kind": "image", "prompt_style": "krea2_test"},
+    {"file": "krea2_lustify.json", "name": "Krea 2 · LUSTIFY v10 FP8", "kind": "image", "prompt_style": "krea2_test"},
+    {"file": "krea2_stkreal.json", "name": "Krea 2 · ST-KREAL 2.91 FP8", "kind": "image", "prompt_style": "krea2_test"},
+    {"file": "chroma_gonzalomo.json", "name": "Chroma · GonzaLomo v3 FP8", "kind": "image", "prompt_style": "chroma_test"},
     {"file": "krea2_aio.json", "name": "Krea 2 Turbo · AIO v1.0", "kind": "image", "prompt_style": "krea2_aio"},
     {"file": "qwen_remix_edit.json", "name": "Qwen Remix AIO v2 · Image Edit", "kind": "edit", "prompt_style": "qwen_remix"},
     {"file": "sulphur2_t2v.json", "name": "Sulphur 2 Distilled NVFP4 · Text → Video + Audio", "kind": "text_video", "prompt_style": "ltx_t2v"},
@@ -1781,6 +1785,18 @@ async def _perform_dispatch(body: "DispatchBody", queue_id: Optional[str] = None
         await db.renders.insert_one(doc)
         doc.pop("_id", None)
         return doc
+
+    if wf_template and wf_template.prompt_style in SEPARATE_IMAGE_STYLES:
+        missing = resolve_separate_image_models(workflow, await _krea2_object_info(s.comfyui_url) or {})
+        if missing:
+            r.status = "failed"
+            r.error = "Selected model setup needs: " + ", ".join(missing) + ". Check model folders and restart ComfyUI."
+            doc = r.model_dump()
+            doc.update(workflow_id=wf_template.id, workflow_name=wf_template.name,
+                       shoot_id=body.shoot_id, shoot_frame_index=body.shoot_frame_index)
+            await db.renders.insert_one(doc)
+            doc.pop("_id", None)
+            return doc
 
     if wf_template and wf_template.prompt_style in {"krea2_aio", "qwen_remix", "ltx_t2v"}:
         missing = resolve_downloaded_models(workflow, await _krea2_object_info(s.comfyui_url) or {}, wf_template.prompt_style)

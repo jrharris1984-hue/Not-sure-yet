@@ -1,4 +1,9 @@
 const IMAGE_RECIPES = {
+  krea2_test: {
+    draft: { width: 768, height: 1024, steps: 8, cfg: 1, batchSize: 1, sampler: "euler", note: "Downloaded Krea 2 test · beta scheduler" },
+    balanced: { width: 1024, height: 1024, steps: 8, cfg: 1, batchSize: 1, sampler: "euler", note: "Krea 2 comparison baseline · adjust for each model" },
+    quality: { width: 1024, height: 1536, steps: 8, cfg: 1, batchSize: 1, sampler: "euler", note: "Larger Krea 2 test · higher memory use" },
+  },
   krea2_aio: {
     draft: { width: 768, height: 1024, steps: 12, cfg: 1, batchSize: 1, sampler: "euler_ancestral", note: "Krea AIO small canvas test" },
     balanced: { width: 1024, height: 1024, steps: 12, cfg: 1, batchSize: 1, sampler: "euler_ancestral", note: "Krea AIO · beta scheduler" },
@@ -57,6 +62,7 @@ const IMAGE_RECIPES = {
 };
 
 const IMAGE_SCHEDULERS = {
+  krea2_test: "beta",
   sdxl: "karras", sdxl_dmd2: "normal", pony: "normal",
   krea2_aio: "beta", zimage: "simple", krea2: "simple", qwen_image: "simple", qwen_rapid: "beta",
 };
@@ -100,8 +106,13 @@ export function recipeFamily(compiler = "standard") {
 }
 
 export function getRenderRecipe(compiler = "standard", tier = "balanced") {
+  if (compiler === 'chroma_test') compiler = 'chroma';
   const collection = VIDEO_RECIPES[compiler] || EDIT_RECIPES[compiler] || IMAGE_RECIPES[compiler] || IMAGE_RECIPES.standard;
   return { tier, compiler, family: recipeFamily(compiler), ...(IMAGE_SCHEDULERS[compiler] ? { scheduler: IMAGE_SCHEDULERS[compiler] } : {}), ...(collection[tier] || collection.balanced) };
+}
+
+export function renderRecipeStyle(promptStyle, compiler) {
+  return ['krea2_aio', 'krea2_test', 'chroma_test', 'ltx_t2v'].includes(promptStyle) ? promptStyle : compiler;
 }
 
 export function recipeSummary(recipe = {}) {

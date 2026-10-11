@@ -1,4 +1,11 @@
-import { getRenderRecipe, recipeFamily, recipeSummary } from "./renderRecipes";
+import { getRenderRecipe, recipeFamily, recipeSummary, renderRecipeStyle } from "./renderRecipes";
+
+test('downloaded models retain their own sampling recipe across builder entry points', () => {
+  const style=renderRecipeStyle('krea2_test','krea2');
+  expect(getRenderRecipe(style)).toMatchObject({steps:8,cfg:1,scheduler:'beta',sampler:'euler'});
+  expect(getRenderRecipe(renderRecipeStyle('krea2','krea2')).scheduler).toBe('simple');
+  expect(getRenderRecipe(renderRecipeStyle('chroma_test','chroma'))).toMatchObject({compiler:'chroma',steps:26});
+});
 
 describe("model-aware render recipes", () => {
   test("uses the Juggernaut XL portrait baseline and scales by tier", () => {
