@@ -1,4 +1,9 @@
 const IMAGE_RECIPES = {
+  chroma_turbo: {
+    draft: { width: 768, height: 768, steps: 12, cfg: 1, batchSize: 1, sampler: "heun", note: "DanrisiMix Ultra test · requires Sigmoid Offset scheduler node" },
+    balanced: { width: 1024, height: 1024, steps: 12, cfg: 1, batchSize: 1, sampler: "heun", note: "DanrisiMix Ultra · Heun / Sigmoid Offset creator baseline" },
+    quality: { width: 1024, height: 1536, steps: 12, cfg: 1, batchSize: 1, sampler: "heun", note: "Larger DanrisiMix Ultra canvas · higher memory use" },
+  },
   krea2_test: {
     draft: { width: 768, height: 1024, steps: 8, cfg: 1, batchSize: 1, sampler: "euler", note: "Downloaded Krea 2 test · beta scheduler" },
     balanced: { width: 1024, height: 1024, steps: 8, cfg: 1, batchSize: 1, sampler: "euler", note: "Krea 2 comparison baseline · adjust for each model" },
@@ -112,7 +117,7 @@ export function getRenderRecipe(compiler = "standard", tier = "balanced") {
 }
 
 export function renderRecipeStyle(promptStyle, compiler) {
-  return ['krea2_aio', 'krea2_test', 'chroma_test', 'ltx_t2v'].includes(promptStyle) ? promptStyle : compiler;
+  return ['krea2_aio', 'krea2_test', 'chroma_test', 'chroma_turbo', 'ltx_t2v'].includes(promptStyle) ? promptStyle : compiler;
 }
 
 export function recipeSummary(recipe = {}) {

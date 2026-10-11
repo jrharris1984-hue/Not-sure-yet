@@ -4,6 +4,15 @@ import { DEFAULT_DNA } from './dna';
 const workflow = { id: 'chroma', kind: 'image', prompt_style: 'chroma', name: 'Golden Chroma' };
 const dna = JSON.parse(JSON.stringify(DEFAULT_DNA));
 
+test('DanrisiMix previews and captures keep the Turbo recipe and selected workflow', () => {
+  for (const capture of [false, true]) {
+    const selected = {id:'danrisi', kind:'image', prompt_style:'chroma_turbo', name:'Renamed model'};
+    const payload = characterPreviewPayload({dna, workflow:selected, promptCatalog:{sections:[]}, capture});
+    expect(payload).toMatchObject({workflow_id:'danrisi', steps:12, cfg:1, sampler_name:'heun'});
+    expect(payload.scheduler).toBeUndefined();
+  }
+});
+
 test('downloaded Krea previews and captures use the selected workflow and beta recipe', () => {
   for (const capture of [false,true]) {
     const selected={id:'downloaded-krea',kind:'image',prompt_style:'krea2_test',name:'Renamed model'};

@@ -7,6 +7,14 @@ test('downloaded models retain their own sampling recipe across builder entry po
   expect(getRenderRecipe(renderRecipeStyle('chroma_test','chroma'))).toMatchObject({compiler:'chroma',steps:26});
 });
 
+test.each(['draft', 'balanced', 'quality'])('DanrisiMix Turbo retains its own %s recipe', tier => {
+  const recipe = getRenderRecipe(renderRecipeStyle('chroma_turbo', 'chroma'), tier);
+  expect(recipe).toMatchObject({compiler:'chroma_turbo',family:'image',steps:12,cfg:1,sampler:'heun'});
+  expect(recipe.scheduler).toBeUndefined();
+  expect(recipe.note).toMatch(/DanrisiMix/);
+  expect(getRenderRecipe('chroma').steps).toBe(26);
+});
+
 describe("model-aware render recipes", () => {
   test("uses the Juggernaut XL portrait baseline and scales by tier", () => {
     const draft = getRenderRecipe("sdxl", "draft");
