@@ -1,3 +1,4 @@
+import { underneathLayer } from "./underneathLayer";
 import { isPromptMetadata } from "./promptMetadata";
 import { expectedSubjectCount } from './dna';
 import { catalogSelection, physiqueKeywords } from './promptCatalog';
@@ -38,7 +39,11 @@ function visibleStockingWardrobe(dna, index, section, tagged) {
     && LOWER_BODY_OUTER.test(outer)
     && STOCKING_LINGERIE.test(lingerie);
 
-  if (!needsVisibleStockingBoundary) return join([...pieces, direction]);
+  if (!needsVisibleStockingBoundary) {
+    const layer = underneathLayer(wardrobe, dna._catalogSelections?.wardrobe?.set_lingerie);
+    const alreadyIncluded = layer && [...pieces, direction].some(piece => clean(piece).toLowerCase().includes(layer.value.toLowerCase()));
+    return join([...pieces, direction, layer && !alreadyIncluded ? layer.text : '']);
+  }
 
   // Trousers and visible garter stockings compete for the same leg area and
   // image models often fuse them into a pants/stocking hybrid. Preserve the
@@ -50,7 +55,10 @@ function visibleStockingWardrobe(dna, index, section, tagged) {
     : 'selected outer layer worn open over the selected lingerie, no trousers, pants, leggings, jeans, or slacks';
 
   const boundary = 'separate thigh-high stockings ending clearly at the upper thighs, visible bare skin between the stocking tops and the briefs, stockings are hosiery only and do not continue into pants or tights';
-  return join([tailoredUpper, ...pieces, direction, boundary]);
+  // Replacing the trouser portion must not discard the outer set's shoes
+  // or handbag, or take different shoes from its underneath-layer ensemble.
+  const retainedOuterAccessories = [...new Set(outer.match(/\b(?:pumps|heels|stilettos|boots|sandals|flats|loafers|handbag|clutch)\b/gi) || [])];
+  return join([tailoredUpper, ...pieces, ...retainedOuterAccessories, direction, boundary]);
 }
 
 const CONTEXT = {

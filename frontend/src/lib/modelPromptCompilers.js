@@ -1,3 +1,4 @@
+import { preserveUnderneathLayers, resolveUnderneathComponents } from "./underneathLayer";
 import { normalizeAnatomyDetails } from "./anatomyDetailControls";
 import { resolveCastPoses } from './castPoseResolution';
 import { buildSelectionManifest } from './selectionPromptAudit';
@@ -1197,7 +1198,7 @@ export function compileModelPrompts(options = {}) {
     const phrase=customCatalogPrompt(subject.dna, promptCatalog);
     return phrase ? `${originalSubjects.length > 1 ? `Subject ${subject.label || String.fromCharCode(65+index)}: ` : ''}${phrase}` : '';
   }).filter(Boolean).join('; ');
-  options = {...options, dna:catalogDna(normalizeAnatomyDetails(options.dna || {}, promptCatalog), promptCatalog, true), subjects:options.subjects?.map(subject => ({...subject,dna:catalogDna(normalizeAnatomyDetails(subject.dna, promptCatalog), promptCatalog, true)}))};
+  options = {...options, dna:resolveUnderneathComponents(catalogDna(normalizeAnatomyDetails(options.dna || {}, promptCatalog), promptCatalog, true)), subjects:options.subjects?.map(subject => ({...subject,dna:resolveUnderneathComponents(catalogDna(normalizeAnatomyDetails(subject.dna, promptCatalog), promptCatalog, true))}))};
   if (castPose.notes.some(note => note.field === 'distance')) {
     options = {...options, subjects:options.subjects.map(subject => ({...subject, dna:{...subject.dna,
       pose:{...subject.dna.pose,distance:'wide shot'},
@@ -1228,6 +1229,7 @@ export function compileModelPrompts(options = {}) {
     return {...subject, dna:guard.dna, controlNotes:[...(guard.controlNotes || []), ...(subject.castPoseNotes || castPose.notes)]};
   });
   let protectedResult = preserveGeneralSelections(result, resolvedSubjects);
+  if (photographic) protectedResult = preserveUnderneathLayers(protectedResult, resolvedSubjects);
   const detailed = resolvedSubjects.some(subject => hasDetailedBodyScale(subject.dna));
   protectedResult = {
     ...protectedResult,
