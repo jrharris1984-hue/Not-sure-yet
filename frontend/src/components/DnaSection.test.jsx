@@ -5,6 +5,23 @@ import { SECTIONS } from '@/lib/dna';
 
 const legacyWardrobe = () => {const section=SECTIONS.find(s=>s.key==='wardrobe');return {...section,fields:section.fields.map(field=>field.key==='exposure_mode'?{...field,options:[...field.options,'use selected outfit','open or shifted outfit','lingerie only','lingerie showing']}:field)};};
 const originalResizeObserver = global.ResizeObserver;
+test('source remains visible in a filtered tab and detail selections survive source changes',()=>{
+  global.IS_REACT_ACT_ENVIRONMENT=true;
+  const container=document.createElement('div'),root=createRoot(container);
+  const section={key:'watersports',title:'Controls',fields:[{key:'direction',label:'Detail',type:'chips_multi',options:['custom_detail']}]};
+  let value={source:'none',direction:[]};
+  const paint=()=>root.render(<DnaSection section={section} value={value} onChange={next=>{value=next;paint();}}/>);
+  try{
+    act(paint);act(()=>container.querySelector('[data-testid="chip-watersports-direction-custom_detail"]').click());
+    expect(value.direction).toEqual(['custom_detail']);
+    expect(container.querySelector('[data-testid="watersports-source-status"]').textContent).toContain('Source is Off');
+    act(()=>container.querySelector('[data-testid="chip-watersports-source-self"]').click());
+    expect(value).toEqual({source:'self',direction:['custom_detail']});
+    expect(container.querySelector('[data-testid="chip-watersports-direction-custom_detail"]').getAttribute('aria-pressed')).toBe('true');
+    act(()=>container.querySelector('[data-testid="chip-watersports-source-none"]').click());
+    expect(value.direction).toEqual(['custom_detail']);
+  }finally{act(()=>root.unmount());}
+});
 test('wardrobe groups keep all controls available and switch the visible panel',()=>{
   global.IS_REACT_ACT_ENVIRONMENT=true;
   const container=document.createElement('div'),root=createRoot(container);

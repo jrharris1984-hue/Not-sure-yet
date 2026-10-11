@@ -7,7 +7,8 @@ import { Shuffle, RotateCcw, Lock, LockOpen, Wand2, ChevronDown } from "lucide-r
 import PoseIcon from "@/components/PoseIcon";
 import GroupedChips from "@/components/GroupedChips";
 import { wardrobeExposure, coverageBehavior } from "@/lib/wardrobeNudity";
-import { normalizeMultiSelection } from "@/lib/dna";
+import {catalogSections} from "@/lib/promptCatalog";
+import { SECTIONS, normalizeMultiSelection } from "@/lib/dna";
 import { physiqueControlStatus, SIZE_CONTROL_PAIRS, sizeControlMode, selectSizeControl } from "@/lib/physiqueControlPriority";
 
 export function ChipRow({ options, value, onChange, testIdPrefix, labels = {} }) {
@@ -80,6 +81,7 @@ export default function DnaSection({
   const [wardrobeGroup,setWardrobeGroup]=useState('outfit');
   const groups=section.key==='wardrobe'?wardrobeGroups(section.fields):[];
   const activeGroup=focusedField && focusedField!=='all' ? wardrobeGroupFor(focusedField) : groups.some(group=>group.key===wardrobeGroup)?wardrobeGroup:groups[0]?.key;
+  const sourceField=section.key==='watersports' ? section.fields.find(field=>field.key==='source') || catalogSections(SECTIONS).find(item=>item.key==='watersports')?.fields.find(field=>field.key==='source') : null;
   const set = (k, v) => {
     if (fieldLocks?.[k]) return; // ignore edits to a locked field
     if (section.key === "wardrobe") {
@@ -162,11 +164,19 @@ export default function DnaSection({
           <p className="text-xs text-zinc-400">{wardrobeMode(value) === 'full' ? 'Choose one complete set and its color. The lingerie underneath is optional. Separate garments, shoes and accessories are disabled to avoid conflicts.' : 'Build your outfit from separate garments and accessories. Complete sets are inactive.'}</p>
         </div>}
 
+        {sourceField && <div className="space-y-2 rounded-lg border border-cyan-400/30 p-3" data-testid="watersports-source-status">
+          <div className="flex items-center justify-between text-xs font-semibold"><span>Source · {value.source && value.source!=='none' ? 'Active' : 'Off'}</span>
+            {onToggleFieldLock && <button type="button" aria-label={fieldLocks.source?'Unlock Source':'Lock Source'} onClick={()=>onToggleFieldLock('source')}>{fieldLocks.source?'Unlock':'Lock'}</button>}
+          </div>
+          <fieldset disabled={!!fieldLocks.source}><ChipRow options={[...new Set(['none',...(sourceField.options || sourceField.groups?.flatMap(group=>group.options) || [])])]} labels={{...sourceField.optionLabels,none:'Off'}} value={value.source || 'none'} onChange={selected=>set('source',selected || 'none')} testIdPrefix="chip-watersports-source"/></fieldset>
+          {(!value.source || value.source==='none') && <p className="text-xs text-amber-200">Source is Off. Detail selections stay saved, but are inactive in the render prompt. Choose a source above to use them.</p>}
+          {!!value.source && value.source!=='none' && !(sourceField.options || sourceField.groups?.flatMap(group=>group.options) || []).includes(value.source) && <p className="text-xs text-amber-200">The saved source is not in this library. Choose an available source above.</p>}
+        </div>}
         {section.key==='wardrobe' && groups.length>1 && (!focusedField || focusedField==='all') && <div className="flex flex-wrap gap-2" role="group" aria-label="Wardrobe control groups">
           {groups.map(group=><button type="button" key={group.key} className={`chip ${activeGroup===group.key?'active':''}`} aria-pressed={activeGroup===group.key} onClick={()=>setWardrobeGroup(group.key)}>{group.label}</button>)}
         </div>}
         {section.fields.map((f) => {
-          if (section.key === "wardrobe" && f.key === "outfit_mode") return null;
+          if ((section.key === "wardrobe" && f.key === "outfit_mode") || (sourceField && f.key === "source")) return null;
           const outfitDisabled = section.key === "wardrobe" && wardrobeFieldDisabled(f.key, value);
           const visibleChoice = option => !(section.key === 'wardrobe' && f.key === 'exposure_mode'
             && wardrobeMode(value) === 'full' && value.set_lingerie_mode === 'none'
