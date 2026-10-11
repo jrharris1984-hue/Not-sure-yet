@@ -1,5 +1,5 @@
 import axios from "axios";
-import { getAssistantResearch, researchableRequest } from "./assistantResearch";
+import { getAssistantResearch, researchableRequest, updateAssistantResearch } from "./assistantResearch";
 
 const configuredBackend = (process.env.REACT_APP_BACKEND_URL || "").replace(/\/$/, "");
 const browserOrigin = typeof window !== "undefined" ? window.location.origin : "";
@@ -30,10 +30,28 @@ export const api = axios.create({
 
 api.interceptors.request.use(config => {
   const research = getAssistantResearch();
-  if (research.enabled && config.method === 'post' && researchableRequest(config.url)) {
-    config.headers['X-Ultra-Web-Research'] = '1';
+  if (config.method === 'post' && researchableRequest(config.url)) {
+    if (research.enabled) config.headers['X-Ultra-Web-Research'] = '1';
+    else delete config.headers['X-Ultra-Web-Research'];
   }
   return config;
+});
+
+api.interceptors.response.use(response => {
+  if (response.config?.method !== 'post' || !researchableRequest(response.config.url)) return response;
+  const encoded = response.headers?.['x-ultra-research-result'];
+  let research = null;
+  if (typeof encoded === 'string' && encoded.length <= 20000) {
+    try {
+      const decoded = JSON.parse(atob(encoded));
+      if (Array.isArray(decoded.sources)) research = { sources: decoded.sources };
+    } catch { /* Optional metadata must not discard a successful assistant response. */ }
+  }
+  if (research && response.data && typeof response.data === 'object' && !Array.isArray(response.data)) {
+    response.data = { ...response.data, research };
+  }
+  if (getAssistantResearch().enabled) updateAssistantResearch({ result: research });
+  return response;
 });
 
 export const endpoints = {

@@ -24,10 +24,10 @@ export function useCreateShellState({ activeSection, studioSteps, nav, sectionUr
 
   useEffect(() => { setQuickReview(false); }, [activeSection]);
 
+  const routeStep = createStepForSection(activeSection, studioSteps);
   useEffect(() => {
-    if (mobileStudioStep === "create") return;
-    setMobileStudioStep(createStepForSection(activeSection, studioSteps));
-  }, [activeSection, mobileStudioStep, studioSteps]);
+    setMobileStudioStep(routeStep);
+  }, [activeSection, routeStep]);
 
   const activeMobileStudioIndex = Math.max(0, studioSteps.findIndex((step) => step.id === mobileStudioStep));
 

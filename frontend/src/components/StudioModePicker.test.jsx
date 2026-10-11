@@ -17,7 +17,7 @@ afterEach(() => {
 test("Studio modes are presented as one Builder choice instead of separate apps", () => {
   const onChange = jest.fn();
   act(() => root.render(<StudioModePicker value="standard" onChange={onChange} />));
-  expect(container.querySelectorAll('[data-testid^="studio-mode-"]')).toHaveLength(3);
+  expect(container.querySelectorAll('button[data-testid^="studio-mode-"]')).toHaveLength(3);
   expect(container.querySelector('[data-testid="studio-mode-standard"]').getAttribute("aria-pressed")).toBe("true");
   expect(container.querySelector('[data-testid="studio-mode-feet"]').getAttribute("aria-pressed")).toBe("false");
 

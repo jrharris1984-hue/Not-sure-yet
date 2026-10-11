@@ -3,7 +3,7 @@ import {sharedPoseGroups, usePromptCatalog} from '@/lib/promptCatalog';
 
 const clean = value => String(value || '').replace(/\s+/g, ' ').trim();
 
-export default function CastPoseOptions({count, value, onSelect}) {
+export default function CastPoseOptions({count, value, onSelect, onClear}) {
   const promptCatalog = usePromptCatalog();
   const groups = useMemo(() => sharedPoseGroups(count, promptCatalog), [count, promptCatalog]);
   const presetSet = useMemo(() => new Set(groups.flatMap(group => group.poses.flatMap(pose => [pose.value, pose.prompt]))), [groups]);
@@ -23,8 +23,9 @@ export default function CastPoseOptions({count, value, onSelect}) {
 
   return <div className="pane p-3" data-testid="cast-aware-poses">
     <div className="section-label">Poses for {count} people</div>
-    <p className="mt-1 text-xs text-zinc-400">Choose a shared composition; each person keeps separate character settings.</p>
+    <p className="mt-1 text-xs text-zinc-400">Shared poses apply to everyone and control body and hand placement. Editing an individual body pose clears the shared pose. Camera framing applies to the whole photograph.</p>
 
+    {value && onClear && <button type="button" onClick={onClear} className="mt-2 text-xs text-cyan-300">Clear shared pose</button>}
     <div className="mt-3 space-y-3">
       {groups.map(group => <section key={group.label} aria-label={group.label}>
         <div className="mb-1.5 text-[10px] font-mono uppercase tracking-widest text-emerald-300/80">{group.label}</div>

@@ -668,8 +668,16 @@ async def update_settings(body: Dict[str, Any] = Body(...)):
             raise HTTPException(400, "Builder workflow visibility must contain a list of workflow IDs.")
         current["builder_hidden_workflow_ids"] = list(dict.fromkeys(hidden))
     current["updated_at"] = now_iso()
-    await db.settings.update_one({"id": "singleton"}, {"$set": current}, upsert=True)
-    return Settings(**current)
+    if current.get("ai_provider", "venice") not in {"venice", "ollama"}:
+        raise HTTPException(422, "Choose Venice or Ollama as the prompt assistant.")
+    try:
+        validated = Settings(**current)
+    except ValueError:
+        # Validate the entire prospective record before changing live settings.
+        # Do not echo submitted settings, which may contain credentials.
+        raise HTTPException(422, "Settings contain invalid field types. No settings were saved.")
+    await db.settings.update_one({"id": "singleton"}, {"$set": validated.model_dump()}, upsert=True)
+    return validated
 
 
 # ============================================================
@@ -1041,8 +1049,11 @@ async def comfyui_ws_proxy(websocket: WebSocket, client_id: str):
 async def list_characters(q: Optional[str] = None,
                           tag: Optional[List[str]] = Query(default=None),
                           favorite: Optional[bool] = None, limit: int = 200):
+    if not 1 <= limit <= 2000:
+        raise HTTPException(422, "Limit must be between 1 and 2000.")
     query: Dict[str, Any] = {}
     if q:
+        q = re.escape(q)
         query["$or"] = [
             {"name": {"$regex": q, "$options": "i"}},
             {"tags": {"$regex": q, "$options": "i"}},
@@ -1741,6 +1752,8 @@ async def _perform_dispatch(body: "DispatchBody", queue_id: Optional[str] = None
     wf_template: Optional[WorkflowTemplate] = None
     if body.workflow_id:
         wf_template = next((w for w in s.workflows if w.id == body.workflow_id), None)
+        if not wf_template:
+            raise HTTPException(404, "The selected workflow no longer exists. Choose another workflow.")
     if not wf_template and s.default_workflow_id:
         wf_template = next((w for w in s.workflows if w.id == s.default_workflow_id), None)
     if not wf_template and s.workflows:
@@ -2424,6 +2437,11 @@ async def _enqueue_render(body: DispatchBody) -> Dict[str, Any]:
         body.seed = random.randint(0, 2**31 - 1)
     settings = await get_settings()
     selected = next((w for w in settings.workflows if w.id == body.workflow_id), None)
+    if body.workflow_id and not selected:
+        raise HTTPException(404, "The selected workflow no longer exists. Choose another workflow.")
+    if not body.workflow_id and settings.workflows:
+        selected = next((w for w in settings.workflows if w.id == settings.default_workflow_id), settings.workflows[0])
+        body.workflow_id = selected.id
     created = now_iso()
     job = {
         "id": new_id(),
@@ -2955,6 +2973,8 @@ async def recover_render_image(rid: str, body: ImageRecoveryBody):
 
 @api.get("/queue")
 async def list_queue(limit: int = 200):
+    if not 1 <= limit <= 2000:
+        raise HTTPException(422, "Limit must be between 1 and 2000.")
     jobs = await db.render_queue.find({}).sort("created_at", -1).to_list(limit)
     return [await _queue_view(job) for job in jobs]
 
@@ -3866,6 +3886,8 @@ async def create_shoot(body: ShootCreateBody, background_tasks: BackgroundTasks)
 
 @api.get("/shoots")
 async def list_shoots(character_id: Optional[str] = None, limit: int = 100):
+    if not 1 <= limit <= 2000:
+        raise HTTPException(422, "Limit must be between 1 and 2000.")
     query: Dict[str, Any] = {}
     if character_id:
         query["character_id"] = character_id

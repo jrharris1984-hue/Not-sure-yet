@@ -35,7 +35,7 @@ test('custom shared pose can be entered, selected, and restored', () => {
     act(() => root.render(<CastPoseOptions count={2} value="" onSelect={onSelect}/>));
     const input=container.querySelector('[aria-label="Custom shared pose"]');
     act(() => {
-      input.value='one kneeling while the other stands behind';
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(input, 'one kneeling while the other stands behind');
       input.dispatchEvent(new Event('input',{bubbles:true}));
     });
     const useButton=[...container.querySelectorAll('button')].find(button => button.textContent==='Use custom');
@@ -67,4 +67,14 @@ test('saved Prompt Library labels, groups and keywords drive two-person poses', 
     act(() => [...container.querySelectorAll('button')].find(button => button.textContent==='Editorial Pair').click());
     expect(onSelect).toHaveBeenCalledWith('standing close together in a polished editorial two-person composition');
   } finally {act(() => root.unmount());}
+});
+
+test('an active shared pose has an explicit clear control',()=>{
+ global.IS_REACT_ACT_ENVIRONMENT=true;
+ const container=document.createElement('div'),root=createRoot(container),onClear=jest.fn();
+ try {
+  act(()=>root.render(<CastPoseOptions count={2} value="holding hands" onSelect={jest.fn()} onClear={onClear}/>));
+  act(()=>[...container.querySelectorAll('button')].find(button=>button.textContent==='Clear shared pose').click());
+  expect(onClear).toHaveBeenCalledTimes(1);
+ } finally {act(()=>root.unmount());}
 });

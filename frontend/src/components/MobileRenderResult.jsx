@@ -1,3 +1,4 @@
+import { galleryIsVideo as isVideoOutput } from '@/lib/galleryBrowse';
 import {
   Check,
   Download,
@@ -10,7 +11,6 @@ import {
 } from "lucide-react";
 
 const renderId = (render) => render?.render_id || render?.id;
-const isVideoOutput = (url = "") => /\.(webm|mp4|mov)(?:[?&]|$)/i.test(decodeURIComponent(url));
 
 export default function MobileRenderResult({
   render,

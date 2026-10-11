@@ -10,6 +10,10 @@ import { FREEFORM_MODES, freeformPayload, freeformWorkflows } from '@/lib/freefo
 
 const field = 'w-full rounded-lg border hairline bg-elevated px-3 py-2 text-sm';
 export default function FreeformCreate({ mode = 'image' }) {
+  return <FreeformWorkspace key={mode} mode={mode}/>;
+}
+
+function FreeformWorkspace({ mode }) {
   const config = FREEFORM_MODES[mode];
   const [aiProvider, setAiProvider] = useState('AI');
   useEffect(() => {
@@ -31,6 +35,8 @@ export default function FreeformCreate({ mode = 'image' }) {
   const setUseWebResearch=value=>updateAssistantResearch({enabled:value,result:null});
   const setResearchFocus=value=>updateAssistantResearch({focus:value,result:null});
   const previewRef = useRef('');
+  const mounted = useRef(false);
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
   useEffect(() => {
     let live = true;
     endpoints.listWorkflows().then(list => {
@@ -52,6 +58,7 @@ export default function FreeformCreate({ mode = 'image' }) {
     const result = mode === 'image'
       ? await endpoints.aiImproveGeneratedPrompt(prompt, negative, workflow.prompt_style, workflow.name, true, ...(useWebResearch ? [{use_web_research:true,research_focus:researchFocus}] : []))
       : await endpoints.aiVideoPrompt(prompt, mode === 'video' ? 'image' : 'text', ...(useWebResearch ? [{use_web_research:true,research_focus:researchFocus}] : []));
+    if (!mounted.current) return;
     const positive = result.positive || result.prompt;
     if (!positive?.trim()) throw new Error('AI returned an empty prompt. Try again.');
     setSuggestion({ ...result, positive, negative: result.negative ?? negative });
@@ -60,6 +67,7 @@ export default function FreeformCreate({ mode = 'image' }) {
     const file = event.target.files?.[0]; event.target.value = ''; if (!file) return;
     run('Upload', async () => {
       const uploaded = await endpoints.uploadReferenceImage(file);
+      if (!mounted.current) return;
       if (previewRef.current) URL.revokeObjectURL(previewRef.current);
       previewRef.current = URL.createObjectURL(file); setPreview(previewRef.current); setSource(uploaded); setQueued(false);
     });

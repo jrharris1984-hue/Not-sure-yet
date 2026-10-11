@@ -45,6 +45,7 @@ export function buildSelectionManifest({sources, prepared, resolved, sections, r
         const note = notes.find(item => item.section === section.key && item.field === field.key);
         const physiqueStatus = section.key === 'physique' ? physiqueControlStatus(field.key, source.physique) : null;
         let inactive = physiqueStatus?.inactive ? physiqueStatus.text : '';
+        if (note?.overridesSelection) inactive = note.text;
         if (path === 'style.render' && selected !== preparedValue) inactive = `This image compiler uses ${preparedValue} instead of the saved render style.`;
         if (path === 'identity.age' && Number(selected) !== Number(preparedValue)) inactive = `The cast age controls use age ${preparedValue} instead of this saved age.`;
         if (section.key === 'wardrobe' && wardrobeFieldDisabled(field.key, source.wardrobe)) {
