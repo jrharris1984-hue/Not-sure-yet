@@ -1,8 +1,32 @@
 import {SECTIONS, DEFAULT_DNA} from './dna';
-import {catalogSections, catalogDna, customCatalogPrompt, setPromptCatalog, editableSection, applyCatalogRules, validateCatalogDraft, promptLibrarySections, sharedPoseGroups} from './promptCatalog';
+import {catalogSections, catalogDna, customCatalogPrompt, setPromptCatalog, editableSection, editableLibrarySection, exportPromptLibrary, applyCatalogRules, validateCatalogDraft, promptLibrarySections, sharedPoseGroups} from './promptCatalog';
 import {compileModelPrompts} from './modelPromptCompilers';
 const custom={key:'custom_atmosphere',title:'Atmosphere',fields:[{key:'custom_weather',label:'Weather details',type:'chips_multi',options:[{value:'custom_mist',label:'Morning mist',keywords:'a thin layer of morning mist over the ground',group:'Outdoors'}]}]};
 afterEach(() => setPromptCatalog({sections:[]}));
+test('exact field lists survive builder, editor and export without restoring omitted controls', () => {
+  const base=SECTIONS.find(section => section.key==='hair');
+  const saved={...editableSection(base),exact_fields:true};
+  saved.fields=saved.fields.filter(field => field.key==='color');
+  saved.fields[0].options=saved.fields[0].options.slice(0,1);
+  const config={sections:[saved]};
+  expect(catalogSections([base],config)[0].fields.map(field => field.key)).toEqual(['color']);
+  expect(editableLibrarySection(base,saved)).toEqual(saved);
+  expect(exportPromptLibrary([base],config).sections[0].fields.map(field => field.key)).toEqual(['color']);
+  expect(exportPromptLibrary([base],config).sections[0].exact_fields).toBe(true);
+  const dna={hair:{color:saved.fields[0].options[0].value,length:'long'}};
+  expect(catalogDna(dna,config,true).hair).not.toHaveProperty('length');
+  expect(catalogDna(dna,config,true)._catalogSelections.hair).not.toHaveProperty('length');
+  expect(dna.hair.length).toBe('long');
+  expect(catalogDna({hair:{color:'removed_builtin_choice'}},config).hair.color).toBe('');
+  expect(catalogDna({hair:{color:'removed_builtin_choice'}},config,true)._catalogSelections.hair.color).toBe('');
+  expect(() => validateCatalogDraft({sections:[{...saved,exact_fields:'yes'}]})).toThrow('true or false');
+});
+test('ordinary libraries still gain newly shipped fields', () => {
+  const base=SECTIONS.find(section => section.key==='hair');
+  const saved=editableSection(base);saved.fields=saved.fields.slice(0,1);
+  expect(editableLibrarySection(base,saved).fields).toHaveLength(base.fields.length);
+  expect(catalogSections([base],{sections:[saved]})[0].fields).toHaveLength(base.fields.length);
+});
 test('category and selection names can change without mutating built-ins or stored option IDs', () => {
   const hair=editableSection(SECTIONS.find(section => section.key==='hair'));
   hair.title='Hair styling';const field=hair.fields.find(field => field.key==='color');field.options[0].label='Black hair';

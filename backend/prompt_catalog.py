@@ -52,6 +52,10 @@ def validate_prompt_catalog(value):
                         clean_options[-1][compact_key] = text(option,compact_key,500,True)
             clean_fields.append({'key':fid,'label':text(field,'label',200),'type':kind,'options':clean_options})
         sections.append({'key':sid,'title':text(section,'title',200),'fields':clean_fields})
+        if 'exact_fields' in section:
+            if not isinstance(section['exact_fields'], bool):
+                raise ValueError('Exact category fields must be true or false.')
+            sections[-1]['exact_fields'] = section['exact_fields']
     rules=value.get('rules',[])
     if not isinstance(rules,list) or len(rules)>100: raise ValueError('Too many prompt rules.')
     clean_rules=[]; rule_keys=set()
