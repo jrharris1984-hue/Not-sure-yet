@@ -1,3 +1,4 @@
+import { isPromptMetadata } from "./promptMetadata";
 import { expectedSubjectCount } from './dna';
 import { catalogSelection, physiqueKeywords } from './promptCatalog';
 import { ageAppearancePrompt } from './ageAppearance';
@@ -74,6 +75,7 @@ export function buildCompactNarrative(subjects, catalog = {sections:[]}, compile
     const numeric = buildPromptPriorityPlan({dna});
     const numericItems = [...numeric.mustMatch, ...numeric.important, ...numeric.detail];
     return Object.entries(dna[key] || {}).flatMap(([field, value]) => {
+      if (isPromptMetadata(key, field)) return [];
       if (value === 'none' && ['hair.bangs', 'skin.freckles'].includes(`${key}.${field}`)) {
         const phrase = `no ${field}`;
         requirements.push({subject:index, section:key, field, text:phrase});

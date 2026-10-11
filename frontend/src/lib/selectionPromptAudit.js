@@ -1,3 +1,4 @@
+import { isPromptMetadata } from "./promptMetadata";
 import { buildPromptPriorityPlan } from './promptPriority';
 import { expandPrompt } from './promptMap';
 import { physiqueControlStatus } from './physiqueControlPriority';
@@ -33,7 +34,7 @@ export function buildSelectionManifest({sources, prepared, resolved, sections, r
     const subjectLabel = subject.label || String.fromCharCode(65 + index);
     for (const section of sections) for (const field of section.fields) {
       const path = `${section.key}.${field.key}`;
-      if (behavior.has(path) || index > 0 && shared.has(section.key)) continue;
+      if (isPromptMetadata(section.key, field.key) || behavior.has(path) || index > 0 && shared.has(section.key)) continue;
       const raw = source[section.key]?.[field.key];
       if (!present(raw) || Array.isArray(raw) && !raw.length) continue;
       values(raw).forEach((selected, part) => {
