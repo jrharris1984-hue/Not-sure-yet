@@ -69,6 +69,7 @@ export default function ChromaControls({ value, onChange }) {
           <select value={value.sampler} onChange={(e) => set({ sampler: e.target.value })}
             className="w-full rounded-lg border hairline bg-elevated px-3 py-2 text-sm text-zinc-100">
             <option value="euler">Euler</option>
+            <option value="heun">Heun</option>
             <option value="dpmpp_2m">DPM++ 2M</option>
             <option value="dpmpp_2m_sde">DPM++ 2M SDE</option>
           </select>

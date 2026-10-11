@@ -499,6 +499,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
   const isLtxVideo = promptStyle === "ltx_t2v";
   const isKrea2 = activeCompiler === "krea2" && !isKrea2Aio && promptStyle !== "krea2_test";
   const activeRecipeFamily = recipeFamily(activeCompiler);
+  const activeRecipeStyle = renderRecipeStyle(promptStyle, activeCompiler);
   const { plan: smartPhotoshootPlan, toggleKeep: toggleKeepSmartShot, regenerate: regenerateSmartPlan } = useSmartPhotoshootPlan({
     enabled: batchSeedMode === "smart" && renderCount > 1,
     count: renderCount,
@@ -520,7 +521,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
   const kreaRenderBlocked = !!kreaBaseBlocked;
 
   const applyQualityTier = (tier) => {
-    const recipe = getRenderRecipe(renderRecipeStyle(promptStyle, activeCompiler), tier);
+    const recipe = getRenderRecipe(activeRecipeStyle, tier);
     setQualityTier(tier);
     if (recipe.family === "image") {
       setChromaSettings((current) => ({
@@ -608,9 +609,9 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
 
   useEffect(() => {
     applyQualityTier("balanced");
-    // Reset to the recommended recipe only when the selected model family changes.
+    // Turbo and comparison variants can use different recipes in the same prompt family.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeCompiler]);
+  }, [activeRecipeStyle]);
 
   const uploadReference = async (file) => {
     if (!file) return;
@@ -3076,7 +3077,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
         <>
           <div className="mobile-tools-panel" data-mobile-tools="none"><MobileCreateReview
             workflow={activeWorkflow}
-            compiler={activeCompiler}
+            compiler={activeRecipeStyle}
             family={activeRecipeFamily}
             qualityTier={qualityTier}
             onQualityTier={applyQualityTier}
@@ -3211,7 +3212,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
         {activeWorkflow && (activeCompiler !== "qwen_edit" || isEnhanceWorkflow) && (
           <div data-mobile-tools="generation" className="hidden md:block">
             <RenderRecipeSelector
-              compiler={activeCompiler}
+              compiler={activeRecipeStyle}
               value={qualityTier}
               onChange={applyQualityTier}
             />

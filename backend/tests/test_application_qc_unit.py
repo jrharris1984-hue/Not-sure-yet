@@ -5,7 +5,7 @@ from pathlib import Path
 import sys
 import tempfile
 import unittest
-from unittest.mock import patch
+from unittest.mock import patch, AsyncMock
 import httpx
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from sqlite_storage import SQLiteDatabase
@@ -122,3 +122,28 @@ class ApplicationQcTests(unittest.IsolatedAsyncioTestCase):
         await self.http.put('/api/settings',json={'default_workflow_id':settings['workflows'][1]['id']})
         stored=await self.db.render_queue.find_one({'id':response.json()['id']})
         self.assertEqual(stored['payload']['workflow_id'],first)
+
+    async def test_danrisimix_seed_refresh_and_missing_scheduler_error(self):
+        settings = (await self.http.get('/api/settings')).json()
+        default = settings['default_workflow_id']
+        initial = next(workflow for workflow in settings['workflows'] if workflow['prompt_style'] == 'chroma_turbo')
+        self.assertEqual((await self.http.delete('/api/workflows/' + initial['id'])).status_code, 200)
+        refreshed = await self.http.post('/api/workflows/seed')
+        self.assertEqual(refreshed.status_code, 200)
+        self.assertEqual(refreshed.json()['added'], 1)
+        current = (await self.http.get('/api/settings')).json()
+        self.assertEqual(current['default_workflow_id'], default)
+        selected = next(workflow for workflow in current['workflows'] if workflow['prompt_style'] == 'chroma_turbo')
+        self.assertEqual(selected['positive_node_id'], '748')
+        self.assertEqual(selected['negative_node_id'], '749')
+        self.assertEqual((await self.http.post('/api/workflows/seed')).json()['added'], 0)
+        from test_separate_image_models_unit import SeparateImageModelsTests
+        import json
+        graph = json.loads(selected['json_str'])
+        info = SeparateImageModelsTests().info(graph)
+        del info['SigmoidOffsetScheduler']
+        with patch.object(self.server, '_krea2_object_info', AsyncMock(return_value=info)):
+            result = await self.server._perform_dispatch(self.server.DispatchBody(workflow_id=selected['id'], prompt_positive='Mountain lake'))
+        self.assertEqual(result['status'], 'failed')
+        self.assertIn('ComfyUI node: SigmoidOffsetScheduler', result['error'])
+        self.assertIn('https://github.com/silveroxides/ComfyUI_SigmoidOffsetScheduler', result['error'])
