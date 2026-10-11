@@ -905,7 +905,7 @@ export function buildKrea2Prompts({
 
 export function resolvePromptCompiler({ promptStyle = "", workflowKind = "", workflowName = "" } = {}) {
   const rawStyle = clean(promptStyle).toLowerCase();
-  const style = ({ krea2_aio: "krea2", krea2_test: "krea2", chroma_test: "chroma", qwen_remix: "qwen_edit", ltx_t2v: "wan_t2v" })[rawStyle] || rawStyle;
+  const style = ({ krea2_aio: "krea2", krea2_test: "krea2", chroma_test: "chroma", chroma_turbo: "chroma", qwen_remix: "qwen_edit", ltx_t2v: "wan_t2v" })[rawStyle] || rawStyle;
   const kind = clean(workflowKind).toLowerCase();
   const name = clean(workflowName).toLowerCase();
   if (["qwen_image", "qwen_rapid"].includes(style) && !["edit", "enhance"].includes(kind)) return style;

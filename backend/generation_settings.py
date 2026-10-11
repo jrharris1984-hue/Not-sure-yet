@@ -9,6 +9,7 @@ SAMPLING_FIELDS = {
     "KSamplerSelect": {"sampler_name"},
     "BasicScheduler": {"steps", "scheduler"},
     "BetaSamplingScheduler": {"steps"},
+    "SigmoidOffsetScheduler": {"steps"},
     "LTXVScheduler": {"steps"},
     "Flux2Scheduler": {"steps", "width", "height"},
 }

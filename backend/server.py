@@ -249,6 +249,7 @@ SEED_WORKFLOWS = [
     {"file": "krea2_lustify.json", "name": "Krea 2 · LUSTIFY v10 FP8", "kind": "image", "prompt_style": "krea2_test"},
     {"file": "krea2_stkreal.json", "name": "Krea 2 · ST-KREAL 2.91 FP8", "kind": "image", "prompt_style": "krea2_test"},
     {"file": "chroma_gonzalomo.json", "name": "Chroma · GonzaLomo v3 FP8", "kind": "image", "prompt_style": "chroma_test"},
+    {"file": "chroma_danrisimix_ultra.json", "name": "Chroma · DanrisiMix Ultra INT8 Turbo", "kind": "image", "prompt_style": "chroma_turbo"},
     {"file": "krea2_aio.json", "name": "Krea 2 Turbo · AIO v1.0", "kind": "image", "prompt_style": "krea2_aio"},
     {"file": "qwen_remix_edit.json", "name": "Qwen Remix AIO v2 · Image Edit", "kind": "edit", "prompt_style": "qwen_remix"},
     {"file": "sulphur2_t2v.json", "name": "Sulphur 2 Distilled NVFP4 · Text → Video + Audio", "kind": "text_video", "prompt_style": "ltx_t2v"},
@@ -1804,6 +1805,8 @@ async def _perform_dispatch(body: "DispatchBody", queue_id: Optional[str] = None
         if missing:
             r.status = "failed"
             r.error = "Selected model setup needs: " + ", ".join(missing) + ". Check model folders and restart ComfyUI."
+            if "ComfyUI node: SigmoidOffsetScheduler" in missing:
+                r.error += " Install ComfyUI_SigmoidOffsetScheduler from https://github.com/silveroxides/ComfyUI_SigmoidOffsetScheduler into ComfyUI/custom_nodes, then restart ComfyUI."
             doc = r.model_dump()
             doc.update(workflow_id=wf_template.id, workflow_name=wf_template.name,
                        shoot_id=body.shoot_id, shoot_frame_index=body.shoot_frame_index)

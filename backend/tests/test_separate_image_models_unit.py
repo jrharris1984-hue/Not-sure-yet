@@ -13,7 +13,7 @@ from generation_settings import normalize_generation_settings, apply_generation_
 
 class SeparateImageModelsTests(unittest.TestCase):
     def graphs(self):
-        for name in ['krea2_aksiom', 'krea2_lustify', 'krea2_stkreal', 'chroma_gonzalomo']:
+        for name in ['krea2_aksiom', 'krea2_lustify', 'krea2_stkreal', 'chroma_gonzalomo', 'chroma_danrisimix_ultra']:
             yield name, json.loads((ROOT / 'seed_workflows' / (name + '.json')).read_text())
 
     def info(self, graph):
@@ -34,7 +34,7 @@ class SeparateImageModelsTests(unittest.TestCase):
             with self.subTest(name=name):
                 spec = next(s for s in specs if s['file'] == name + '.json')
                 self.assertEqual(spec['kind'], 'image')
-                self.assertEqual(spec['prompt_style'], 'chroma_test' if name.startswith('chroma') else 'krea2_test')
+                self.assertEqual(spec['prompt_style'], 'chroma_turbo' if name == 'chroma_danrisimix_ultra' else 'chroma_test' if name.startswith('chroma') else 'krea2_test')
                 self.assertFalse(any('Lora' in n['class_type'] for n in graph.values()))
                 self.assertTrue(any(n['class_type'] == 'SaveImage' for n in graph.values()))
                 for node in graph.values():
@@ -72,3 +72,32 @@ class SeparateImageModelsTests(unittest.TestCase):
         self.assertEqual(graph['7']['inputs']['steps'], 9)
         self.assertEqual(graph['7']['inputs']['scheduler'], 'beta')
         self.assertEqual(graph['7']['inputs']['cfg'], 1.2)
+
+    def test_danrisimix_has_its_own_turbo_recipe_and_adjustable_steps(self):
+        graph = dict(self.graphs())['chroma_danrisimix_ultra']
+        self.assertEqual(graph['731']['inputs']['unet_name'], 'Chroma1-HD-DanrisiMix-Hyper-Flash-Turbo-Ultra-int8-convrot.safetensors')
+        self.assertEqual(graph['700']['inputs']['sampler_name'], 'heun')
+        self.assertEqual(graph['694']['inputs']['cfg'], 1)
+        self.assertEqual(graph['751']['class_type'], 'SigmoidOffsetScheduler')
+        self.assertEqual(graph['751']['inputs']['steps'], 12)
+        shape = {key: graph['751']['inputs'][key] for key in ('square_k', 'base_c', 'start_sigma')}
+        values = normalize_generation_settings({'steps': 16, 'cfg': 1.5, 'sampler_name': 'heun', 'width': 768, 'height': 1024}, 'chroma_turbo')
+        effective = apply_generation_settings(graph, values)
+        self.assertEqual(effective['751'], {'steps': 16})
+        self.assertEqual(graph['694']['inputs']['cfg'], 1.5)
+        self.assertEqual(graph['737']['inputs']['width'], 768)
+        self.assertEqual(graph['737']['inputs']['height'], 1024)
+        self.assertEqual({key: graph['751']['inputs'][key] for key in shape}, shape)
+        self.assertEqual(graph['694']['inputs']['negative'], ['749', 0])
+        # The existing non-Turbo Chroma comparison remains unchanged.
+        other = dict(self.graphs())['chroma_gonzalomo']
+        self.assertEqual(other['751']['class_type'], 'BetaSamplingScheduler')
+        self.assertEqual(other['751']['inputs']['steps'], 26)
+
+    def test_danrisimix_reports_missing_custom_scheduler_without_partial_patching(self):
+        graph = dict(self.graphs())['chroma_danrisimix_ultra']
+        original = copy.deepcopy(graph)
+        info = self.info(graph)
+        del info['SigmoidOffsetScheduler']
+        self.assertEqual(resolve_separate_image_models(graph, info), ['ComfyUI node: SigmoidOffsetScheduler'])
+        self.assertEqual(graph, original)
