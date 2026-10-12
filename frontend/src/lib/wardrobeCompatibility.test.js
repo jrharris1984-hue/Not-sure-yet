@@ -1,3 +1,4 @@
+import { SIMPLE_COVERAGE_OPTIONS } from './simpleCoverage';
 import {SECTIONS,DEFAULT_DNA,buildPrompts} from './dna';
 import {wardrobeGroups} from './wardrobeLayout';
 import {resolveBuilderControls} from './builderControlResolution';
@@ -55,4 +56,31 @@ test.each(['standard','chroma','krea2','pony','sdxl','qwen_image','wan_t2v','zim
 });
 test('the direct prompt builder also ignores old Kink selections',()=>{
   expect(buildPrompts({...dna({}),kink:{restraint:['retired restraint marker']}}).positive).not.toContain('retired restraint');
+});
+
+test.each(SIMPLE_COVERAGE_OPTIONS.map(option => [option.label, option.value]))('%s coverage overrides saved clothing state before garment resolution', (label, exposure_mode) => {
+  const source = dna({ bottom: 'jeans', top: 'cotton blouse', state: 'riding up', exposure_mode });
+  const original = JSON.stringify(source);
+  const result = resolveBuilderControls(source);
+  expect(result.dna.wardrobe.state).toBe('');
+  expect(result.notes.some(note => note.field === 'state' && note.text.includes('Clothing coverage overrides Clothing state'))).toBe(true);
+  expect(JSON.stringify(source)).toBe(original);
+});
+test.each(['compact','detailed'])('active coverage suppresses authored state across image compilers in %s format', promptFormat => {
+  const source = dna({ bottom: 'jeans', top: 'cotton blouse', state: 'custom_saved_state', exposure_mode: 'custom_coverage_unzipped' });
+  const promptCatalog = { sections: [{ key: 'wardrobe', title: 'Wardrobe', fields: [{ key: 'state', label: 'State', type: 'chips', options: [{ value: 'custom_saved_state', label: 'Saved state', keywords: 'SAVED_STATE_MARKER' }] }] }] };
+  for (const promptStyle of ['standard','chroma','krea2','pony','sdxl','qwen_image','zimage']) {
+    const result = compileModelPrompts({ dna: source, promptStyle, promptFormat, promptCatalog });
+    expect(result.positive).not.toContain('SAVED_STATE_MARKER');
+    expect(result.positive).toContain('zipper open');
+    source.wardrobe.exposure_mode = 'use selected outfit';
+    expect(compileModelPrompts({ dna: source, promptStyle, promptFormat, promptCatalog }).positive).toContain('SAVED_STATE_MARKER');
+    source.wardrobe.exposure_mode = 'custom_coverage_unzipped';
+  }
+  expect(source.wardrobe.state).toBe('custom_saved_state');
+});
+test('cleared coverage restores compatible clothing state without editing the saved state', () => {
+  const source = dna({ bottom: 'jeans', state: 'riding up', exposure_mode: '' });
+  expect(resolveBuilderControls(source).dna.wardrobe.state).toContain('trouser hems');
+  expect(source.wardrobe.state).toBe('riding up');
 });

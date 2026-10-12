@@ -247,6 +247,11 @@ export function resolveBuilderControls(source = {}) {
     omit('wardrobe', 'skirt_style', 'The selected dress replaces the separate skirt.');
   } else if (w.skirt_style) omit('wardrobe', 'bottom', 'The selected skirt replaces the separate bottom.');
   const exposure = wardrobeNudity(w);
+  // Any active coverage choice owns how clothing is worn. Resolve this before
+  // garment compatibility and visibility, on the render copy only.
+  if (exposure.selection !== 'use selected outfit') {
+    omit('wardrobe', 'state', 'Clothing coverage overrides Clothing state. Your state stays saved; clear coverage or choose Use selected outfit to use it.');
+  }
   if (exposure.mode !== 'use selected outfit' && ['nude', 'topless', 'bottomless'].includes(w.outfit_preset)) {
     omit('wardrobe', 'outfit_preset', 'Clothing coverage overrides the conflicting Bare preset. Choose Use selected outfit to follow that preset.');
   }
