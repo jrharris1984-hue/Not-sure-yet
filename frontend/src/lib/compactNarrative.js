@@ -1,7 +1,7 @@
 import { underneathLayer, underneathCoverage } from "./underneathLayer";
 import { isPromptMetadata } from "./promptMetadata";
 import { expectedSubjectCount } from './dna';
-import { catalogSelection, physiqueKeywords } from './promptCatalog';
+import { catalogControl, catalogSelection, physiqueKeywords } from './promptCatalog';
 import { ageAppearancePrompt } from './ageAppearance';
 import { buildPromptPriorityPlan } from './promptPriority';
 import { expandPrompt } from './promptMap';
@@ -34,6 +34,16 @@ function visibleStockingWardrobe(dna, index, section, tagged) {
   const layer = underneathLayer(wardrobe, dna._catalogSelections?.wardrobe?.set_lingerie);
   const alreadyIncluded = layer && [...pieces, direction].some(piece => clean(piece).toLowerCase().includes(layer.value.toLowerCase()));
   return join([...pieces, direction, layer && !alreadyIncluded ? layer.text : '', underneathCoverage(wardrobe, layer?.value)]);
+}
+
+// A crop label alone is easy to lose behind a long appearance description.
+// Give the resolved full-length selection an early, concrete camera instruction.
+function fullLengthDirection(dna) {
+  const framing = catalogControl(dna, 'pose', 'distance');
+  if (!['full body', 'wide shot'].includes(framing)) return '';
+  const reclining = /\b(?:lying|reclining|on back|on stomach)\b/i.test(catalogControl(dna, 'pose', 'action') || '');
+  const lead = framing === 'wide shot' ? 'Wide environmental full-length photograph' : 'Full-length photograph';
+  return `${lead}: the entire person fits inside the image from the top of the head to both complete feet, including any worn footwear, with space above the head and below the soles; camera far enough away to include the whole body.${reclining ? ' Include the entire reclining body with space on every side.' : ''}`;
 }
 
 const CONTEXT = {
@@ -119,6 +129,10 @@ export function buildCompactNarrative(subjects, catalog = {sections:[]}, compile
   const countTags = count === subjects.length ? join([men && `${men}boy${men > 1 ? 's' : ''}`, women && `${women}girl${women > 1 ? 's' : ''}`, count === 1 && 'solo']) : '';
   const prefix = compiler === 'pony' ? `score_9, score_8_up, source_photo, photorealistic${countTags ? `, ${countTags}` : ''}. `
     : `Photorealistic photograph of exactly ${count === 1 ? 'one' : count} adult ${count === 1 ? 'person' : 'people'}. `;
-  const positive = prefix + [...people, ...shared].join('. ') + '.';
+  const framing = subjects.map((subject, index) => {
+    const direction = fullLengthDirection(subject.dna || {});
+    return direction && (subjects.length > 1 ? `Framing for Subject ${subject.label || String.fromCharCode(65 + index)}: ${direction}` : direction);
+  }).filter(Boolean).join(' ');
+  const positive = prefix + (framing ? framing + ' ' : '') + [...people, ...shared].join('. ') + '.';
   return {positive, requirements, profile:'compact-narrative-v1'};
 }

@@ -1,3 +1,4 @@
+import { buildCompactNarrative } from './compactNarrative';
 import { DEFAULT_DNA } from './dna';
 import { compileModelPrompts } from './modelPromptCompilers';
 import { validateCatalogDraft } from './promptCatalog';
@@ -110,4 +111,41 @@ test('compact physique wording uses the shared keyword resolver', () => {
   const result = compileModelPrompts({ dna, promptCatalog, promptStyle: 'qwen_rapid', promptFormat: 'compact' });
   expect(result.positive).toContain('broad shoulders');
   expect(result.positive).not.toContain('tall stature');
+});
+
+test.each(families)('%s compact full-body framing explicitly includes both feet before appearance', promptStyle => {
+  const source = portrait();
+  source.pose.angle = 'from below';
+  const original = JSON.stringify(source);
+  const result = compileModelPrompts({ dna: source, promptStyle, promptFormat: 'compact' });
+  expect(result.positive).toContain('both complete feet, including any worn footwear');
+  expect(result.positive).toContain('space above the head and below the soles');
+  expect(result.positive.indexOf('Full-length photograph')).toBeLessThan(result.positive.indexOf('navy pantsuit'));
+  expect(result.positive).toContain('from below');
+  expect(JSON.stringify(source)).toBe(original);
+  expect(result.promptWords).toBe(result.positive.trim().split(/\s+/).length);
+});
+test.each(['portrait', 'close-up', 'waist-up', 'thigh-up', 'knees-up', 'detail shot'])('%s compact crop does not acquire a full-length instruction', distance => {
+  const source = portrait(); source.pose.distance = distance;
+  const result = compileModelPrompts({ dna: source, promptStyle: 'chroma', promptFormat: 'compact' });
+  expect(result.positive).not.toContain('space above the head and below the soles');
+});
+test('wide reclining framing preserves the whole body with space on each side', () => {
+  const source = portrait(); source.pose.distance = 'wide shot'; source.pose.action = 'lying on back';
+  const result = compileModelPrompts({ dna: source, promptStyle: 'chroma', promptFormat: 'compact' });
+  expect(result.positive).toContain('Wide environmental full-length photograph');
+  expect(result.positive).toContain('entire reclining body with space on every side');
+});
+test('each cast member keeps independently resolved framing', () => {
+  const a = portrait(), b = portrait(); b.pose.distance = 'waist-up';
+  const result = buildCompactNarrative([{ label: 'A', dna: a }, { label: 'B', dna: b }], { sections: [] }, 'chroma');
+  expect(result.positive).toContain('Framing for Subject A: Full-length photograph');
+  expect(result.positive).not.toContain('Framing for Subject B: Full-length photograph');
+});
+
+test('resolved framing identifiers survive expanded prompt-library wording', () => {
+  const source = portrait(); source.pose.distance = 'full figure composition';
+  source._catalogSelections = { pose: { distance: 'full body' } };
+  const result = buildCompactNarrative([{ dna: source }], { sections: [] }, 'chroma');
+  expect(result.positive).toContain('space above the head and below the soles');
 });
