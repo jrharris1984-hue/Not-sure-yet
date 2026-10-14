@@ -245,6 +245,7 @@ def _detect_prompt_nodes(wf: Dict[str, Any]) -> Dict[str, str]:
 
 
 SEED_WORKFLOWS = [
+    {"file": "krea2_glamour_bf16.json", "name": "Krea 2 · CamGlam BF16 Test", "kind": "image", "prompt_style": "krea2_test", "notes": "Experimental Krea 2 BF16 comparison using the supplied KR2 filename. Reuses Qwen3-VL 4B and Qwen Image VAE. The creator listing did not provide sampler settings; 8 steps / CFG 1 is an adjustable starting test, not a verified creator recipe. Approximately 24 GB weights need offloading on 12 GB VRAM."},
     {"file": "krea2_aksiom.json", "name": "Krea 2 · AKSIOM V1 BF16", "kind": "image", "prompt_style": "krea2_test"},
     {"file": "krea2_lustify.json", "name": "Krea 2 · LUSTIFY v10 FP8", "kind": "image", "prompt_style": "krea2_test"},
     {"file": "krea2_stkreal.json", "name": "Krea 2 · ST-KREAL 2.91 FP8", "kind": "image", "prompt_style": "krea2_test"},
@@ -328,6 +329,7 @@ def _load_seed_workflows() -> List[WorkflowTemplate]:
                 kind=spec["kind"],
                 prompt_style=spec.get("prompt_style", "venice"),
                 edit_variant=spec.get("edit_variant", ""),
+                notes=spec.get("notes", ""),
                 json_str=raw,
                 positive_node_id=nodes["positive_node_id"],
                 negative_node_id=nodes["negative_node_id"],
