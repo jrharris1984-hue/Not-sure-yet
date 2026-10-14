@@ -1,3 +1,4 @@
+import { preserveWardrobeLayerGuidance } from './wardrobeLayers';
 import { preserveUnderneathLayers, resolveUnderneathComponents } from "./underneathLayer";
 import { normalizeAnatomyDetails } from "./anatomyDetailControls";
 import { resolveCastPoses } from './castPoseResolution';
@@ -1272,6 +1273,7 @@ export function compileModelPrompts(options = {}) {
         promptWords:clean(guided.positive).split(/\s+/).filter(Boolean).length,
         promptBudget:null, droppedClauses:[], omittedClauseCount:0};
     }
+    if (photographic) prompts = preserveWardrobeLayerGuidance(prompts, resolvedSubjects);
     if (castPose.sharedPose) prompts = {...prompts, positive:`Shared pose for all ${castPose.subjects.length} adults: ${castPose.sharedPose}. ${prompts.positive}`} ;
     const final = applyCatalogRules(prompts, options.workflowKind || 'image', promptCatalog);
     const manifest = buildSelectionManifest({sources:auditSources, prepared:fidelitySubjects, resolved:resolvedSubjects,
