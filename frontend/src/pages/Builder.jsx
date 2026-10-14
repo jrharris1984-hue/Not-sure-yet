@@ -1,3 +1,6 @@
+import { desktopNavigationSections } from '@/lib/desktopEditingGroups';
+import DesktopDnaEditor from '@/components/DesktopDnaEditor';
+import DesktopEditingDock from '@/components/DesktopEditingDock';
 import { useBuilderRenderPolling } from '@/hooks/useBuilderRenderPolling';
 import { useBuilderPromptFormatSettings } from '@/hooks/useBuilderPromptFormatSettings';
 import { selectSharedCastPose, editCastPose, sharedCastPose } from '@/lib/castPoseResolution';
@@ -55,7 +58,6 @@ import BatchVariationControl from "@/components/BatchVariationControl";
 import { resolveReferenceNotes, translatePlainLanguage } from "@/lib/plainLanguagePrompt";
 import { analyzePromptQuality } from "@/lib/promptQuality";
 import MobileBuilderSheets from "@/components/MobileBuilderSheets";
-import DnaSection from "@/components/DnaSection";
 import ImageSourceFlow from "@/components/ImageSourceFlow";
 import PromptPreview from "@/components/PromptPreview";
 import AiAssistBar from "@/components/AiAssistBar";
@@ -2138,6 +2140,10 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
     setMobileStudioStep(mobileStudioStepForSection(key, studioSteps));
     goSection(key);
   };
+  const openDesktopSection = (key) => {
+    openCreateSection(key);
+    window.requestAnimationFrame(() => document.getElementById('studio-sections')?.scrollIntoView({ behavior: 'auto', block: 'start' }));
+  };
   const selectQuickStage = (index) => {
     if (index < 0 || index >= quickStages.length) return;
     const review = index === quickStages.length - 1;
@@ -2595,7 +2601,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
   </>);
 
   const renderDnaControls = (sheetField = null) => (
-<DnaSection
+<DesktopDnaEditor enabled={!sheetViewport && !sheetField}
             key={`${activeSubjectId}-${activeSection}`}
             section={!sheetField && studioProfile.specialtySection && activeSection === studioProfile.specialtySection
               ? { ...SECTIONS[activeIdx], fields: SECTIONS[activeIdx].fields.filter((field) => field.key === "composition_mode" || studioProfile.fieldGroups[specialtyTab]?.keys.includes(field.key)) }
@@ -2677,7 +2683,12 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
   if (imageToolId && !IMAGE_TOOL_KINDS.includes(activeWorkflow?.kind)) return <div className="mx-auto max-w-4xl p-6 text-zinc-400">Opening image tool…</div>;
 
   return (
-    <div className={`mobile-builder-content ${sheetViewport && !mobileSheets && !isImageFirst && editMode !== "body_adjust" ? "organized-mobile-tools" : ""} ${mobileSheets && !isImageFirst && editMode !== "body_adjust" ? "nested-mobile-builder" : ""} mx-auto max-w-[1600px] px-2.5 sm:px-6 py-3 sm:py-6 space-y-3 sm:space-y-4 ${desktopQuickMode && !isImageFirst ? "quick-create-mode" : ""}`} data-mobile-tools-group={mobileToolsGroup}>
+    <div className={`mobile-builder-content ${sheetViewport && !mobileSheets && !isImageFirst && editMode !== "body_adjust" ? "organized-mobile-tools" : ""} ${mobileSheets && !isImageFirst && editMode !== "body_adjust" ? "nested-mobile-builder" : ""} mx-auto max-w-[1600px] px-2.5 sm:px-6 py-3 sm:py-6 space-y-3 sm:space-y-4 ${desktopQuickMode && !isImageFirst ? "quick-create-mode" : ""}`} data-mobile-tools-group={mobileToolsGroup} style={!sheetViewport && !isImageFirst ? { paddingBottom: "7rem" } : undefined}>
+      {!sheetViewport && !isImageFirst && editMode !== "body_adjust" && !quickReview && <DesktopEditingDock
+        sections={desktopQuickMode ? desktopNavigationSections(quickStages, SECTIONS, activeSection) : SECTIONS}
+        activeSection={activeSection} onSection={openDesktopSection}
+        onFinish={() => desktopQuickMode ? selectQuickStage(quickStages.length - 1) : save.mutate()}
+        finishLabel={desktopQuickMode ? "Review & create" : "Finish & save"} />}
       {sheetViewport && !mobileSheets && !isImageFirst && editMode !== "body_adjust" && <>
         <MobileToolsNavigation group={mobileToolsGroup} onGroup={group => { setMobileToolsGroup(group); window.scrollTo({ top: 0, behavior: "auto" }); }} onBack={() => setMobileSheets(true)} />
         <section data-mobile-tools="generation" className="pane p-4 space-y-4">
