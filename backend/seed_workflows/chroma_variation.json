@@ -106,29 +106,16 @@
   "10": {
     "inputs": {
       "steps": 26,
-      "alpha": 0.45,
-      "beta": 0.45,
+      "scheduler": "simple",
+      "denoise": 0.22,
       "model": [
         "3",
         0
       ]
     },
-    "class_type": "BetaSamplingScheduler",
+    "class_type": "BasicScheduler",
     "_meta": {
-      "title": "Beta Sampling Scheduler"
-    }
-  },
-  "11": {
-    "inputs": {
-      "sigmas": [
-        "10",
-        0
-      ],
-      "denoise": 0.22
-    },
-    "class_type": "SplitSigmasDenoise",
-    "_meta": {
-      "title": "Polish Strength"
+      "title": "Image Variation Schedule"
     }
   },
   "12": {
@@ -189,8 +176,8 @@
         0
       ],
       "sigmas": [
-        "11",
-        1
+        "10",
+        0
       ],
       "latent_image": [
         "15",

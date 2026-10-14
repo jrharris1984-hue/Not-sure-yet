@@ -33,7 +33,7 @@ from urllib.parse import urlencode, urlparse, parse_qs
 from pydantic import BaseModel, Field, ConfigDict
 from media_library import router as media_library_router, configure_media_library_url, configure_media_overlays, media_library_url, _json_get as media_json_get, _binary_get as media_binary_get
 from generation_settings import normalize_generation_settings, apply_generation_settings
-from image_recovery import recovery_recipe, apply_recovery_strength
+from image_recovery import recovery_recipe, apply_recovery_strength, upgrade_chroma_variation_schedule
 from queue_reliability import submit_render, interrupted_submission_patch
 from ollama_prompt_models import configure_prompt_request
 from media_corrections import normalize_values, clean_tags, overlay_item
@@ -2005,6 +2005,8 @@ async def _perform_dispatch(body: "DispatchBody", queue_id: Optional[str] = None
             if node.get("class_type") == "LoadImage" and "image" in inputs:
                 inputs["image"] = body.reference_image
                 image_patched = True
+        if wf_template.kind == "variation" and wf_template.prompt_style == "chroma":
+            upgrade_chroma_variation_schedule(workflow)
         denoise_patched = apply_recovery_strength(workflow, max(0.05, min(0.65, float(body.refine_denoise))))
         if not image_patched:
             r.status = "failed"
