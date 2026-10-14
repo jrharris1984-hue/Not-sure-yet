@@ -68,7 +68,7 @@ class SeparateImageModelsTests(unittest.TestCase):
 
     def test_glamour_bf16_uses_exact_diffusion_model_and_real_negative_conditioning(self):
         graph = dict(self.graphs())['krea2_glamour_bf16']
-        model = 'Fucktoy Ethots and CamGlam Sluts_KR2_BF16.safetensors'
+        model = 'fucktoyEthotsAnd_v10_bf16.safetensors'
         self.assertEqual(graph['1']['inputs']['unet_name'], model)
         self.assertEqual(graph['2']['inputs']['type'], 'krea2')
         self.assertEqual(graph['3']['inputs']['vae_name'], 'qwen_image_vae.safetensors')

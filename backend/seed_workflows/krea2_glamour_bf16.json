@@ -1,7 +1,7 @@
 {
   "1": {
     "inputs": {
-      "unet_name": "Fucktoy Ethots and CamGlam Sluts_KR2_BF16.safetensors",
+      "unet_name": "fucktoyEthotsAnd_v10_bf16.safetensors",
       "weight_dtype": "default"
     },
     "class_type": "UNETLoader",

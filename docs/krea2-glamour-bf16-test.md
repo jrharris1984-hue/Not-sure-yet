@@ -1,9 +1,9 @@
 # Krea 2 CamGlam BF16 comparison workflow
 
-Adds a separate image workflow for the user-provided filename `Fucktoy Ethots and CamGlam Sluts_KR2_BF16.safetensors`, registered as `Krea 2 · CamGlam BF16 Test`. It uses the existing separate-model Krea 2 path, preserving the chosen diffusion model rather than auto-substituting the standard Turbo weights.
+Adds a separate image workflow for the user-provided filename `fucktoyEthotsAnd_v10_bf16.safetensors`, registered as `Krea 2 · CamGlam BF16 Test`. It uses the existing separate-model Krea 2 path, preserving the chosen diffusion model rather than auto-substituting the standard Turbo weights.
 
 Required files:
-- `models/diffusion_models/Fucktoy Ethots and CamGlam Sluts_KR2_BF16.safetensors`
+- `models/diffusion_models/fucktoyEthotsAnd_v10_bf16.safetensors`
 - `models/text_encoders/qwen3vl_4b_fp8_scaled.safetensors`
 - `models/vae/qwen_image_vae.safetensors`
 
