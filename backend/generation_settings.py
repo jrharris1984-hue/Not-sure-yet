@@ -7,7 +7,7 @@ SAMPLING_FIELDS = {
     "KSamplerAdvanced": {"steps", "cfg", "sampler_name", "scheduler"},
     "CFGGuider": {"cfg"},
     "KSamplerSelect": {"sampler_name"},
-    "BasicScheduler": {"steps", "scheduler"},
+    "BasicScheduler": {"steps", "scheduler", "denoise"},
     "BetaSamplingScheduler": {"steps"},
     "SigmoidOffsetScheduler": {"steps"},
     "LTXVScheduler": {"steps"},

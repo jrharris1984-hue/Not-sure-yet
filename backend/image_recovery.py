@@ -15,7 +15,7 @@ def apply_recovery_strength(workflow, strength):
     patched = False
     for node in workflow.values():
         if not isinstance(node, dict) or node.get("class_type") not in {
-            "KSampler", "KSamplerAdvanced", "SplitSigmasDenoise",
+            "KSampler", "KSamplerAdvanced", "SplitSigmasDenoise", "BasicScheduler",
         }:
             continue
         inputs = node.get("inputs", {})
@@ -58,3 +58,43 @@ def recovery_recipe(source, reference, workflow_id, mode, strength, targets, ins
         result.update(edit_instruction=prompt, repair_targets=list(dict.fromkeys(targets)),
                       repair_strength=max(0.2, min(0.85, strength)))
     return result
+
+
+def upgrade_chroma_variation_schedule(workflow):
+    """Repair only the old bundled variation topology; retain custom schedules.
+
+    A Beta tail split spent only a handful of steps near zero noise. A denoise-
+    aware simple schedule keeps the requested number of steps and makes the
+    strength describe the source-image noise range instead of a Beta tail count.
+    """
+    beta = workflow.get("10", {})
+    split = workflow.get("11", {})
+    sampler = workflow.get("16", {})
+    save = workflow.get("18", {})
+    b = beta.get("inputs", {})
+    d = split.get("inputs", {})
+    if not (beta.get("class_type") == "BetaSamplingScheduler"
+            and split.get("class_type") == "SplitSigmasDenoise"
+            and sampler.get("class_type") == "SamplerCustomAdvanced"
+            and sampler.get("inputs", {}).get("sigmas") == ["11", 1]
+            and d.get("sigmas") == ["10", 0]
+            and b.get("model") == ["3", 0]
+            and b.get("alpha") == 0.45 and b.get("beta") == 0.45
+            and isinstance(b.get("steps"), int)
+            and isinstance(d.get("denoise"), (int, float))
+            and save.get("inputs", {}).get("filename_prefix") == "Chroma_Image_Variation"):
+        return False
+    # Extra consumers indicate an authored multi-stage graph, not the bundle.
+    for key, node in workflow.items():
+        if not isinstance(node, dict):
+            continue
+        for field, value in node.get("inputs", {}).items():
+            if isinstance(value, list) and value and isinstance(value[0], str) and value[0] in {"10", "11"}:
+                if (str(key), field) not in {("11", "sigmas"), ("16", "sigmas")}:
+                    return False
+    workflow["10"] = {"class_type": "BasicScheduler", "inputs": {
+        "model": b["model"], "steps": b["steps"], "scheduler": "simple", "denoise": d["denoise"],
+    }, "_meta": {"title": "Image Variation Schedule"}}
+    del workflow["11"]
+    sampler["inputs"]["sigmas"] = ["10", 0]
+    return True

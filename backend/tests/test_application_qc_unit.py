@@ -150,6 +150,41 @@ class ApplicationQcTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result['comfy_prompt_id'], 'qc-chroma-job')
         self.assertEqual((await self.server.get_settings()).workflows[[item['id'] for item in settings['workflows']].index(selected['id'])].json_str, selected['json_str'])
 
+    async def test_chroma_variation_dispatch_uses_source_strength_and_requested_seed(self):
+        import json
+        settings = (await self.http.get('/api/settings')).json()
+        selected = next(workflow for workflow in settings['workflows'] if workflow['name'] == 'Chroma1-HD · Image Variations')
+        legacy = (Path(__file__).parent / 'fixtures/chroma_variation_legacy.json').read_text()
+        # Persist the old bundle to exercise dispatch-time repair for existing installs.
+        for workflow in settings['workflows']:
+            if workflow['id'] == selected['id']: workflow['json_str'] = legacy
+        await self.db.settings.update_one({'id':'singleton'}, {'$set': {'workflows': settings['workflows']}})
+        captured = []
+        class ComfyClient:
+            async def __aenter__(self): return self
+            async def __aexit__(self, *args): pass
+            async def post(self, url, *, json):
+                captured.append(json['prompt'])
+                return httpx.Response(200, json={'prompt_id':'qc-variation-job'})
+        for strength, seed in [(0.22, 101), (0.35, 202)]:
+            body = self.server.DispatchBody(workflow_id=selected['id'], reference_image='selected_source.png',
+                prompt_positive='A slight natural smile, same photograph', refine_denoise=strength, seed=seed)
+            with patch.object(self.server.httpx, 'AsyncClient', return_value=ComfyClient()):
+                result = await self.server._perform_dispatch(body)
+            graph = captured[-1]
+            self.assertEqual(graph['14']['inputs']['image'], 'selected_source.png')
+            self.assertEqual(graph['12']['inputs']['noise_seed'], seed)
+            self.assertEqual(graph['10']['inputs']['denoise'], strength)
+            self.assertEqual(graph['10']['inputs']['scheduler'], 'simple')
+            self.assertEqual(graph['16']['inputs']['sigmas'], ['10', 0])
+            self.assertEqual(graph['6']['inputs']['text'], body.prompt_positive)
+            self.assertEqual(result['seed_used'], seed)
+            self.assertEqual(result['render_recipe']['refine_denoise'], strength)
+            self.assertEqual(result['effective_node_settings']['10']['denoise'], strength)
+        self.assertNotEqual(captured[0]['12'], captured[1]['12'])
+        stored = await self.server.get_settings()
+        self.assertEqual(next(w.json_str for w in stored.workflows if w.id == selected['id']), legacy)
+
     async def test_missing_records_return_not_found(self):
         for path in ('characters/missing','renders/missing','renders/missing/recipe','shoots/missing'):
             self.assertEqual((await self.http.get('/api/'+path)).status_code,404)
