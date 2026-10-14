@@ -5,7 +5,7 @@ import sys
 import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from image_recovery import recovery_recipe, apply_recovery_strength
+from image_recovery import recovery_recipe, apply_recovery_strength, upgrade_chroma_variation_schedule
 
 
 class ImageRecoveryTests(unittest.TestCase):
@@ -88,6 +88,43 @@ class ImageRecoveryTests(unittest.TestCase):
         self.reference["name"] = ""
         with self.assertRaises(ValueError):
             self.recipe()
+
+    def legacy_variation(self):
+        return json.loads((Path(__file__).parent / "fixtures/chroma_variation_legacy.json").read_text())
+
+    def test_legacy_bundle_upgrade_keeps_reference_models_prompts_and_seed(self):
+        graph = self.legacy_variation()
+        original = copy.deepcopy(graph)
+        self.assertTrue(upgrade_chroma_variation_schedule(graph))
+        self.assertEqual(graph["16"]["inputs"]["sigmas"], ["10", 0])
+        self.assertEqual(graph["10"]["class_type"], "BasicScheduler")
+        self.assertTrue(apply_recovery_strength(graph, 0.3))
+        self.assertEqual(graph["10"]["inputs"], {"model": ["3", 0], "steps": 26, "scheduler": "simple", "denoise": 0.3})
+        self.assertNotIn("11", graph)
+        for key in set(original) - {"10", "11", "16"}:
+            self.assertEqual(graph[key], original[key])
+        self.assertFalse(upgrade_chroma_variation_schedule(graph))
+
+    def test_new_bundle_uses_denoise_aware_schedule_without_second_truncation(self):
+        graph = json.loads((Path(__file__).parents[1] / "seed_workflows/chroma_variation.json").read_text())
+        self.assertEqual(graph["10"]["class_type"], "BasicScheduler")
+        self.assertEqual(graph["16"]["inputs"]["sigmas"], ["10", 0])
+        self.assertFalse(any(node.get("class_type") == "SplitSigmasDenoise" for node in graph.values()))
+        for strength in [0.05, 0.22, 0.35, 0.45]:
+            self.assertTrue(apply_recovery_strength(graph, strength))
+            self.assertEqual(graph["10"]["inputs"]["denoise"], strength)
+            self.assertEqual(graph["10"]["inputs"]["steps"], 26)
+
+    def test_custom_and_multistage_schedules_are_not_auto_migrated(self):
+        for mutation in ["alpha", "extra", "link", "prefix"]:
+            graph = self.legacy_variation()
+            if mutation == "alpha": graph["10"]["inputs"]["alpha"] = 0.6
+            if mutation == "extra": graph["extra"] = {"class_type": "SplitSigmas", "inputs": {"sigmas": ["11", 0]}}
+            if mutation == "link": graph["16"]["inputs"]["sigmas"] = ["11", 0]
+            if mutation == "prefix": graph["18"]["inputs"]["filename_prefix"] = "CustomWorkflow"
+            original = copy.deepcopy(graph)
+            self.assertFalse(upgrade_chroma_variation_schedule(graph))
+            self.assertEqual(graph, original)
 
 
 if __name__ == "__main__":
