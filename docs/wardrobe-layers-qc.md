@@ -1,0 +1,11 @@
+# Shared wardrobe layers
+
+Wardrobe visibility and underneath-layer instructions previously used separate regular-expression rules. They could disagree about which surface details were covered, and transparent hosiery in a combined set could incorrectly invalidate an opaque bra or briefs.
+
+`wardrobeLayers.js` now provides a pure, model-independent plan with ordered character, underwear and outer layers. Character proportions remain active. Underwear includes individually selected garments, enabled full-set layers and hosiery. Outer garments are interpreted after the existing outfit and coverage precedence rules. Upper and lower coverage are resolved independently, using the garment components in each region. Opaque outer clothing can cover transparent underwear; sheer stockings do not make an opaque bra transparent. Unknown or authored text stays saved and is not rewritten.
+
+The existing concealment API and underneath-layer helper now consume this shared plan. A final still-image compiler pass preserves layer guidance after detailed formatting or compact rebuilding, and exposes the resolved per-character plans as `wardrobeLayers` for inspection. Trousers remain outer garments when openings reveal underwear, hosiery remains underneath, skirts retain their own identity, and conventional bra/brief coverage remains in place. Clothing coverage and explicit removal choices retain priority. Disabled saved layers do not become active, and body proportions are not changed by the layer resolver.
+
+Regression coverage spans nine still-image compiler families in compact and detailed formats, individual/full-set garments, regional transparency, closed versus opened outer garments, skirts and trousers, hosiery without invented garters, explicit removal, disabled layers, unknown and negative garment descriptions, cast-specific plans and source immutability. Edit/reference and motion instruction formats keep their existing specialized behavior. This is a logical wardrobe resolver, not composited image layers or a guarantee of model compliance. GPU rendering remains a visual validation step.
+
+Validation: all 2,224 frontend tests across 130 suites passed. The production build and git diff --check passed. No backend code or workflow sampling settings changed.
