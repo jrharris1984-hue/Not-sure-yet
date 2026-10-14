@@ -185,6 +185,37 @@ class ApplicationQcTests(unittest.IsolatedAsyncioTestCase):
         stored = await self.server.get_settings()
         self.assertEqual(next(w.json_str for w in stored.workflows if w.id == selected['id']), legacy)
 
+    async def test_glamour_bf16_dispatch_preserves_selected_model_and_both_prompts(self):
+        import json
+        settings = (await self.http.get('/api/settings')).json()
+        selected = next(workflow for workflow in settings['workflows'] if workflow['name'] == 'Krea 2 · CamGlam BF16 Test')
+        self.assertIn('Experimental', selected['notes'])
+        graph = json.loads(selected['json_str'])
+        info = {node['class_type']: {'input': {'required': {}}} for node in graph.values()}
+        for node in graph.values():
+            for field in ['unet_name','clip_name','vae_name']:
+                if field in node['inputs']: info[node['class_type']]['input']['required'][field] = [[node['inputs'][field]]]
+            if node['class_type'] == 'CLIPLoader': info['CLIPLoader']['input']['required']['type'] = [['krea2']]
+        captured = {}
+        class ComfyClient:
+            async def __aenter__(self): return self
+            async def __aexit__(self, *args): pass
+            async def post(self, url, *, json):
+                captured.update(json)
+                return httpx.Response(200, json={'prompt_id':'qc-glamour-job'})
+        body = self.server.DispatchBody(workflow_id=selected['id'], prompt_positive='Adult fashion portrait in a navy gown',
+            prompt_negative='blur, watermark', steps=20, cfg=3.5, sampler_name='heun', seed=77)
+        with patch.object(self.server, '_krea2_object_info', AsyncMock(return_value=info)), patch.object(self.server.httpx, 'AsyncClient', return_value=ComfyClient()):
+            result = await self.server._perform_dispatch(body)
+        dispatched = captured['prompt']
+        self.assertEqual(dispatched['1']['inputs']['unet_name'], graph['1']['inputs']['unet_name'])
+        self.assertEqual(dispatched['4']['inputs']['text'], body.prompt_positive)
+        self.assertEqual(dispatched['5']['inputs']['text'], body.prompt_negative)
+        self.assertEqual(dispatched['7']['inputs']['steps'], 20)
+        self.assertEqual(dispatched['7']['inputs']['cfg'], 3.5)
+        self.assertEqual(dispatched['7']['inputs']['seed'], 77)
+        self.assertEqual(result['status'], 'running')
+
     async def test_missing_records_return_not_found(self):
         for path in ('characters/missing','renders/missing','renders/missing/recipe','shoots/missing'):
             self.assertEqual((await self.http.get('/api/'+path)).status_code,404)

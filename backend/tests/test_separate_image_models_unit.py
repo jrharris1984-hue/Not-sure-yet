@@ -13,7 +13,7 @@ from generation_settings import normalize_generation_settings, apply_generation_
 
 class SeparateImageModelsTests(unittest.TestCase):
     def graphs(self):
-        for name in ['krea2_aksiom', 'krea2_lustify', 'krea2_stkreal', 'chroma_gonzalomo', 'chroma_danrisimix_ultra', 'chroma_unlocked_v50', 'chroma_clyb_uncanny_flash_v19']:
+        for name in ['krea2_glamour_bf16', 'krea2_aksiom', 'krea2_lustify', 'krea2_stkreal', 'chroma_gonzalomo', 'chroma_danrisimix_ultra', 'chroma_unlocked_v50', 'chroma_clyb_uncanny_flash_v19']:
             yield name, json.loads((ROOT / 'seed_workflows' / (name + '.json')).read_text())
 
     def info(self, graph):
@@ -65,6 +65,26 @@ class SeparateImageModelsTests(unittest.TestCase):
         self.assertTrue(any('models/text_encoders' in m for m in missing))
         self.assertTrue(any('models/vae' in m for m in missing))
         self.assertTrue(any('update ComfyUI' in m for m in missing))
+
+    def test_glamour_bf16_uses_exact_diffusion_model_and_real_negative_conditioning(self):
+        graph = dict(self.graphs())['krea2_glamour_bf16']
+        model = 'fucktoyEthotsAnd_v10_bf16.safetensors'
+        self.assertEqual(graph['1']['inputs']['unet_name'], model)
+        self.assertEqual(graph['2']['inputs']['type'], 'krea2')
+        self.assertEqual(graph['3']['inputs']['vae_name'], 'qwen_image_vae.safetensors')
+        self.assertEqual(graph['5']['class_type'], 'CLIPTextEncode')
+        self.assertEqual(graph['7']['inputs']['negative'], ['5', 0])
+        original = copy.deepcopy(graph)
+        info = self.info(graph)
+        info['UNETLoader']['input']['required']['unet_name'][0].append('krea2_turbo_fp8.safetensors')
+        self.assertEqual(resolve_separate_image_models(graph, info), [])
+        self.assertEqual(graph['1']['inputs']['unet_name'], 'local/' + model)
+        values = normalize_generation_settings({'steps': 20, 'cfg': 3.5, 'sampler_name': 'heun'}, 'krea2_test')
+        apply_generation_settings(graph, values)
+        self.assertEqual(graph['7']['inputs']['steps'], 20)
+        self.assertEqual(graph['7']['inputs']['cfg'], 3.5)
+        self.assertEqual(graph['7']['inputs']['sampler_name'], 'heun')
+        self.assertEqual(original['1']['inputs']['unet_name'], model)
 
     def test_custom_sampling_is_not_reset_to_original_turbo_defaults(self):
         graph = next(self.graphs())[1]
