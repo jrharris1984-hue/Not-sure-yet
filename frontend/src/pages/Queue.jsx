@@ -85,6 +85,7 @@ export default function Queue() {
           </div>
           {job.connection_error && <p className="mt-2 text-sm text-amber-200">{job.connection_error}</p>}
           {job.recovery_attempts > 0 && <p className="mt-1 text-xs text-zinc-400">Recovered after ComfyUI lost its prompt · original seed retained.</p>}
+          {(job.setup_notes || []).map(note => <p key={note} className="mt-2 text-sm text-amber-200">{note}</p>)}
           {job.error && <p className="mt-2 text-sm text-red-300">{job.error}</p>}
         </div>
         <div className="flex flex-wrap gap-2">
