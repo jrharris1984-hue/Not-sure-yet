@@ -56,5 +56,6 @@ export function selectableCatalogWorkflows(workflows, preferredId, activeId) {
 export function builderCatalogWorkflows(workflows, preferredId, activeId, hiddenIds = [], retainActive = false) {
   const hidden = new Set(hiddenIds);
   return selectableCatalogWorkflows(workflows, preferredId, activeId)
+    .filter(workflow => !["flux2_klein_edit", "qwen_reference"].includes(workflow.prompt_style))
     .filter(workflow => !hidden.has(workflow.id) || (retainActive && workflow.id === activeId));
 }

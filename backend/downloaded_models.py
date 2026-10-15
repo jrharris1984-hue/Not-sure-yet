@@ -7,7 +7,7 @@ CHECKPOINTS = {
     'ltx_t2v': ['sulphur2DistilledNVFP4_nvfp4.safetensors', 'sulphur_distil_nvfp4.safetensors'],
 }
 
-SEPARATE_IMAGE_STYLES = {'kroma', 'krea2_test', 'chroma_test', 'chroma_turbo', 'chroma_flash'}
+SEPARATE_IMAGE_STYLES = {'flux2_klein_edit', 'qwen_reference', 'flux1_dev', 'wan5b_t2v', 'kroma', 'krea2_test', 'chroma_test', 'chroma_turbo', 'chroma_flash'}
 
 
 def resolve_separate_image_models(workflow, info):
@@ -15,7 +15,7 @@ def resolve_separate_image_models(workflow, info):
     if not info:
         return ['ComfyUI connection']
     missing, patches = [], []
-    folders = {'unet_name': 'diffusion_models', 'clip_name': 'text_encoders', 'vae_name': 'vae'}
+    folders = {'unet_name': 'diffusion_models', 'clip_name': 'text_encoders', 'clip_name1': 'text_encoders', 'clip_name2': 'text_encoders', 'vae_name': 'vae'}
     for node in workflow.values():
         kind, inputs = node.get('class_type'), node.get('inputs', {})
         if kind not in info:
@@ -30,7 +30,7 @@ def resolve_separate_image_models(workflow, info):
                 missing.append('models/' + folder + ': ' + name)
             else:
                 patches.append((node, field, selected))
-        if kind == 'CLIPLoader':
+        if kind in {'CLIPLoader', 'DualCLIPLoader'}:
             types = _options(info, kind, 'type')
             if inputs.get('type') not in types:
                 missing.append('CLIPLoader type: ' + str(inputs.get('type')) + ' (update ComfyUI)')

@@ -149,6 +149,8 @@ export const LORA_REGISTRY = [
 ];
 
 export function workflowFamily(workflow = {}) {
+  if (workflow.prompt_style === "flux2_klein_edit") return "flux2_klein";
+  if (workflow.prompt_style === "qwen_reference") return "qwen_edit";
   if (["kroma", "krea2", "krea2_test", "krea2_aio"].includes(workflow.prompt_style)) return "krea2";
   if (["qwen_image", "qwen_rapid"].includes(workflow.prompt_style)) return "qwen_image";
   if (workflow.prompt_style === "ltx_t2v") return "ltx";

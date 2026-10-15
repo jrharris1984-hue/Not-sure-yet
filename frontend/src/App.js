@@ -1,3 +1,4 @@
+import ImageToolRoute from "@/pages/ImageToolRoute";
 import { useEffect } from "react";
 import { endpoints } from "@/lib/api";
 import { setPromptCatalog } from "@/lib/promptCatalog";
@@ -28,11 +29,6 @@ function LegacyStudioRedirect() {
   const path = id ? `/character/${id}${section ? `/s/${section}` : ""}` : `/character/new${section ? `/s/${section}` : ""}`;
   const destination = mode === "standard" ? path : `${path}?mode=${encodeURIComponent(mode)}`;
   return <Navigate to={destination} replace />;
-}
-
-function ImageToolRoute() {
-  const { workflowId } = useParams();
-  return <Builder key={workflowId} imageToolId={workflowId} />;
 }
 
 function App() {

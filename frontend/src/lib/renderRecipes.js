@@ -1,4 +1,9 @@
 const IMAGE_RECIPES = {
+  flux1_dev: {
+    draft: {width:768,height:768,steps:20,cfg:1,batchSize:1,sampler:"euler",note:"FLUX.1 Dev · guidance 3.5"},
+    balanced: {width:768,height:1024,steps:28,cfg:1,batchSize:1,sampler:"euler",note:"FLUX.1 Dev · guidance 3.5"},
+    quality: {width:1024,height:1536,steps:32,cfg:1,batchSize:1,sampler:"euler",note:"Larger FLUX.1 Dev canvas · higher memory use"},
+  },
   kroma: {
     draft: { width: 768, height: 1024, steps: 8, cfg: 1, batchSize: 1, sampler: "euler", note: "Kroma OPD · fixed mu 1.15" },
     balanced: { width: 1024, height: 1024, steps: 8, cfg: 1, batchSize: 1, sampler: "euler", note: "Kroma OPD Turbo baseline · fixed mu 1.15" },
@@ -77,6 +82,7 @@ const IMAGE_RECIPES = {
 };
 
 const IMAGE_SCHEDULERS = {
+  flux1_dev: "simple",
   kroma: "simple",
   krea2_test: "beta",
   sdxl: "karras", sdxl_dmd2: "normal", pony: "normal",
@@ -84,6 +90,11 @@ const IMAGE_SCHEDULERS = {
 };
 
 const VIDEO_RECIPES = {
+  wan5b_t2v: {
+    draft: {videoFrames:41,videoFps:24,videoWidth:512,videoHeight:320,note:"WAN 5B small test"},
+    balanced: {videoFrames:81,videoFps:24,videoWidth:640,videoHeight:384,note:"WAN 5B · longer test"},
+    quality: {videoFrames:121,videoFps:24,videoWidth:832,videoHeight:480,note:"WAN 5B larger canvas · higher memory use"},
+  },
   ltx_t2v: {
     draft: { videoFrames: 41, videoFps: 24, videoWidth: 512, videoHeight: 320, note: "Sulphur short test with synchronized audio" },
     balanced: { videoFrames: 73, videoFps: 24, videoWidth: 832, videoHeight: 480, note: "Publisher test dimensions · about 3 seconds" },
@@ -128,7 +139,7 @@ export function getRenderRecipe(compiler = "standard", tier = "balanced") {
 }
 
 export function renderRecipeStyle(promptStyle, compiler) {
-  return ['kroma', 'krea2_aio', 'krea2_test', 'chroma_test', 'chroma_turbo', 'chroma_flash', 'ltx_t2v'].includes(promptStyle) ? promptStyle : compiler;
+  return ['flux1_dev', 'wan5b_t2v', 'kroma', 'krea2_aio', 'krea2_test', 'chroma_test', 'chroma_turbo', 'chroma_flash', 'ltx_t2v'].includes(promptStyle) ? promptStyle : compiler;
 }
 
 export function recipeSummary(recipe = {}) {
