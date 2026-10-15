@@ -13,7 +13,7 @@ from generation_settings import normalize_generation_settings, apply_generation_
 
 class SeparateImageModelsTests(unittest.TestCase):
     def graphs(self):
-        for name in ['krea2_glamour_bf16', 'krea2_aksiom', 'krea2_lustify', 'krea2_stkreal', 'chroma_gonzalomo', 'chroma_danrisimix_ultra', 'chroma_unlocked_v50', 'chroma_clyb_uncanny_flash_v19']:
+        for name in ['kroma_opd', 'krea2_glamour_bf16', 'krea2_aksiom', 'krea2_lustify', 'krea2_stkreal', 'chroma_gonzalomo', 'chroma_danrisimix_ultra', 'chroma_unlocked_v50', 'chroma_clyb_uncanny_flash_v19']:
             yield name, json.loads((ROOT / 'seed_workflows' / (name + '.json')).read_text())
 
     def info(self, graph):
@@ -34,7 +34,7 @@ class SeparateImageModelsTests(unittest.TestCase):
             with self.subTest(name=name):
                 spec = next(s for s in specs if s['file'] == name + '.json')
                 self.assertEqual(spec['kind'], 'image')
-                style = {'chroma_danrisimix_ultra': 'chroma_turbo', 'chroma_clyb_uncanny_flash_v19': 'chroma_flash'}.get(name, 'chroma_test' if name.startswith('chroma') else 'krea2_test')
+                style = {'kroma_opd': 'kroma', 'chroma_danrisimix_ultra': 'chroma_turbo', 'chroma_clyb_uncanny_flash_v19': 'chroma_flash'}.get(name, 'chroma_test' if name.startswith('chroma') else 'krea2_test')
                 self.assertEqual(spec['prompt_style'], style)
                 self.assertFalse(any('Lora' in n['class_type'] for n in graph.values()))
                 self.assertTrue(any(n['class_type'] == 'SaveImage' for n in graph.values()))
@@ -141,3 +141,24 @@ class SeparateImageModelsTests(unittest.TestCase):
                 effective = apply_generation_settings(graph, values)
                 self.assertEqual(effective['751'], {'steps': 10})
                 self.assertEqual(graph['694']['inputs']['cfg'], 2)
+
+    def test_kroma_fixed_mu_survives_canvas_and_sampling_changes(self):
+        graph = dict(self.graphs())['kroma_opd']
+        self.assertEqual(graph['1']['inputs']['unet_name'], 'kroma-v0.3.1-turbo-opd.safetensors')
+        self.assertEqual(graph['2']['inputs'], {'clip_name':'qwen3vl_4b_fp8_scaled.safetensors', 'type':'krea2'})
+        self.assertEqual(graph['3']['inputs']['vae_name'], 'qwen_image_vae.safetensors')
+        self.assertEqual(graph['7']['inputs']['model'], ['10', 0])
+        self.assertEqual(graph['10']['class_type'], 'ModelSamplingFlux')
+        values = normalize_generation_settings({'steps':12,'cfg':1.5,'width':768,'height':1152}, 'kroma')
+        apply_generation_settings(graph, values)
+        self.assertEqual(graph['7']['inputs']['steps'], 12)
+        self.assertEqual(graph['7']['inputs']['cfg'], 1.5)
+        self.assertEqual(graph['6']['inputs']['width'], 768)
+        self.assertEqual(graph['10']['inputs']['max_shift'], 1.15)
+        self.assertEqual(graph['10']['inputs']['base_shift'], 1.15)
+        # Equal endpoints give mu=1.15 at every canvas size in ModelSamplingFlux.
+        original = copy.deepcopy(graph)
+        info = self.info(graph)
+        del info['ModelSamplingFlux']
+        self.assertEqual(resolve_separate_image_models(graph, info), ['ComfyUI node: ModelSamplingFlux'])
+        self.assertEqual(graph, original)

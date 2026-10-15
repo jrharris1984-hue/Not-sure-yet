@@ -245,6 +245,7 @@ def _detect_prompt_nodes(wf: Dict[str, Any]) -> Dict[str, str]:
 
 
 SEED_WORKFLOWS = [
+    {"file": "kroma_opd.json", "name": "Kroma · v0.3.1 Turbo OPD", "kind": "image", "prompt_style": "kroma", "notes": "Kroma OPD with native Krea 2 encoder and Qwen Image VAE. Creator range: 8–12 steps, CFG 1–1.5, mu 1.15. Starts at 8 steps / CFG 1 / Euler / simple; sampler and scheduler follow the official Krea 2 Turbo baseline. No required LoRA. Large weights may require offloading."},
     {"file": "krea2_glamour_bf16.json", "name": "Krea 2 · CamGlam BF16 Test", "kind": "image", "prompt_style": "krea2_test", "notes": "Experimental Krea 2 BF16 comparison using the supplied KR2 filename. Reuses Qwen3-VL 4B and Qwen Image VAE. The creator listing did not provide sampler settings; 8 steps / CFG 1 is an adjustable starting test, not a verified creator recipe. Approximately 24 GB weights need offloading on 12 GB VRAM."},
     {"file": "krea2_aksiom.json", "name": "Krea 2 · AKSIOM V1 BF16", "kind": "image", "prompt_style": "krea2_test"},
     {"file": "krea2_lustify.json", "name": "Krea 2 · LUSTIFY v10 FP8", "kind": "image", "prompt_style": "krea2_test"},
