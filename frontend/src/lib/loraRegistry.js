@@ -149,18 +149,22 @@ export const LORA_REGISTRY = [
 ];
 
 export function workflowFamily(workflow = {}) {
-  if (workflow.prompt_style === "qwen_image") return "qwen_image";
+  if (["kroma", "krea2", "krea2_test", "krea2_aio"].includes(workflow.prompt_style)) return "krea2";
+  if (["qwen_image", "qwen_rapid"].includes(workflow.prompt_style)) return "qwen_image";
+  if (workflow.prompt_style === "ltx_t2v") return "ltx";
   const text = [workflow.name, workflow.kind, workflow.prompt_style].filter(Boolean).join(" ").toLowerCase();
   if (/flux[. _-]?2.*klein|flux2_klein/.test(text)) return "flux2_klein";
   if (/z[- ]?image/.test(text)) return "zimage";
-  if (/krea\s*2|krea2/.test(text)) return "krea2";
+  if (/krea\s*2|krea2|kroma/.test(text)) return "krea2";
   if (/chroma/.test(text)) return "chroma";
   if (/pony/.test(text)) return "pony";
   if (/sdxl|juggernaut xl/.test(text)) return "sdxl";
+  if (/ltx/.test(text)) return "ltx";
+  if (/minimax/.test(text)) return "minimax";
   if (/wan/.test(text) || /video/.test(text)) return "wan22";
   if (/qwen|edit|enhance/.test(text)) return "qwen_edit";
   if (/flux/.test(text)) return "flux";
-  if (/face/.test(text)) return "sd15";
+  if (/sd[ ._-]?1[ ._-]?5|face/.test(text)) return "sd15";
   return "unknown";
 }
 
@@ -379,8 +383,29 @@ export function loraStackHealth({ workflow = {}, overrides = {}, installed = [] 
 }
 
 
+// Use whole directory segments, not incidental words in arbitrary parent paths.
+// More specific nested folders win. Generic Qwen/Flux folders still need
+// variant filename detection where the architectures differ.
+function folderFamilyForInstalled(name = "") {
+  const folders = normalized(name).split("/").slice(0, -1);
+  const aliases = {
+    krea: "krea2", krea2: "krea2", kroma: "krea2",
+    chroma: "chroma", zimage: "zimage", pony: "pony", sdxl: "sdxl",
+    sd15: "sd15", stablediffusion15: "sd15",
+    qwenimage: "qwen_image", qwenimage2512: "qwen_image", qwen2512: "qwen_image",
+    qwenedit: "qwen_edit", qwenimageedit: "qwen_edit", qwenedit2511: "qwen_edit",
+    flux2klein: "flux2_klein", wan: "wan22", wan22: "wan22", ltx: "ltx", ltx23: "ltx",
+  };
+  for (const folder of folders.reverse()) {
+    const key = folder.replace(/[ ._-]/g, "");
+    if (aliases[key]) return aliases[key];
+    if (key === "flux") return /flux[. _-]?2.*klein/.test(normalized(name)) ? "flux2_klein" : "flux";
+  }
+  return "";
+}
+
 function inferredFamilyForInstalled(name = "") {
-  const value = normalized(name);
+  const value = normalized(name).split("/").pop();
   if (/(^|\/)flux2_klein\//.test(value) || /flux[. _-]?2.*klein/.test(value)) return "flux2_klein";
   if (/(^|\/)krea2\//.test(value) || /krea\s*2|krea2/.test(value)) return "krea2";
   if (/(^|\/)z-?image\//.test(value) || /z[-_ ]?image|\bzit\b/.test(value)) return "zimage";
@@ -389,7 +414,7 @@ function inferredFamilyForInstalled(name = "") {
   if (/(^|\/)wan\//.test(value) || /wan2|lightx2v/.test(value)) return "wan22";
   // Image 2512 adapters must not be offered for the Edit 2511 model.
   if (/(^|\/)qwen[_ -]?image\//.test(value) || /qwen.*2512|qwen[-_ ]image(?![-_ ]edit)/.test(value)) return "qwen_image";
-  if (/qwen/.test(value)) return "qwen_edit";
+  if (/qwen.*edit|qwen.*2511/.test(value)) return "qwen_edit";
   if (/(^|\/)sd15\//.test(value) || /sd15/.test(value)) return "sd15";
   if (/(^|\/)sdxl\//.test(value) || /sdxl/.test(value)) return "sdxl";
   if (/chroma/.test(value)) return "chroma";
@@ -424,7 +449,7 @@ export function compatibleInstalledLoras(workflow = {}, installed = [], preferen
     const registered = registryByInstalled.get(normalizedName) ||
       LORA_REGISTRY.find((entry) => installedMatch(entry, [installedName]) && allowedFamilies.has(entry.family));
     const assignedFamily = preferences[normalizedName]?.family;
-    const inferredFamily = assignedFamily || registered?.family || inferredFamilyForInstalled(installedName);
+    const inferredFamily = assignedFamily || folderFamilyForInstalled(installedName) || registered?.family || inferredFamilyForInstalled(installedName);
     if (!allowedFamilies.has(inferredFamily)) return;
     if (registered && ["required", "identity"].includes(registered.slot)) return;
     results.push({
@@ -453,9 +478,8 @@ export function compatibleInstalledLoras(workflow = {}, installed = [], preferen
     const existing = deduped.get(basename);
     const entryRegistered = !String(entry.id || "").startsWith("local:");
     const existingRegistered = existing && !String(existing.id || "").startsWith("local:");
-    const entryInFamilyFolder = normalizedPath.includes(`/${family}/`) || normalizedPath.startsWith(`${family}/`);
-    const existingPath = existing ? normalized(existing.installedName) : "";
-    const existingInFamilyFolder = existingPath.includes(`/${family}/`) || existingPath.startsWith(`${family}/`);
+    const entryInFamilyFolder = allowedFamilies.has(folderFamilyForInstalled(entry.installedName));
+    const existingInFamilyFolder = existing && allowedFamilies.has(folderFamilyForInstalled(existing.installedName));
     if (
       !existing ||
       (!existingRegistered && entryRegistered) ||
