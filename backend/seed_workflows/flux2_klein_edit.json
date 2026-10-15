@@ -1,0 +1,247 @@
+{
+  "model": {
+    "class_type": "UNETLoader",
+    "inputs": {
+      "unet_name": "flux-2-klein-4b-fp8.safetensors",
+      "weight_dtype": "default"
+    },
+    "_meta": {
+      "title": "Model"
+    }
+  },
+  "clip": {
+    "class_type": "CLIPLoader",
+    "inputs": {
+      "clip_name": "qwen_3_4b.safetensors",
+      "type": "flux2"
+    },
+    "_meta": {
+      "title": "Clip"
+    }
+  },
+  "vae": {
+    "class_type": "VAELoader",
+    "inputs": {
+      "vae_name": "flux2-vae.safetensors"
+    },
+    "_meta": {
+      "title": "Vae"
+    }
+  },
+  "positive": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "clip": [
+        "clip",
+        0
+      ],
+      "text": "Change the background to a plain blue studio wall."
+    },
+    "_meta": {
+      "title": "Positive"
+    }
+  },
+  "negative": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "clip": [
+        "clip",
+        0
+      ],
+      "text": ""
+    },
+    "_meta": {
+      "title": "Negative"
+    }
+  },
+  "latent": {
+    "class_type": "EmptyFlux2LatentImage",
+    "inputs": {
+      "width": 768,
+      "height": 1024,
+      "batch_size": 1
+    },
+    "_meta": {
+      "title": "Latent"
+    }
+  },
+  "noise": {
+    "class_type": "RandomNoise",
+    "inputs": {
+      "noise_seed": 123456789
+    },
+    "_meta": {
+      "title": "Noise"
+    }
+  },
+  "guider": {
+    "class_type": "CFGGuider",
+    "inputs": {
+      "model": [
+        "model",
+        0
+      ],
+      "positive": [
+        "reference_positive_1",
+        0
+      ],
+      "negative": [
+        "reference_negative_1",
+        0
+      ],
+      "cfg": 1
+    },
+    "_meta": {
+      "title": "Guider"
+    }
+  },
+  "sampler_select": {
+    "class_type": "KSamplerSelect",
+    "inputs": {
+      "sampler_name": "euler"
+    },
+    "_meta": {
+      "title": "Sampler Select"
+    }
+  },
+  "schedule": {
+    "class_type": "Flux2Scheduler",
+    "inputs": {
+      "steps": 4,
+      "width": 768,
+      "height": 1024
+    },
+    "_meta": {
+      "title": "Schedule"
+    }
+  },
+  "sampler": {
+    "class_type": "SamplerCustomAdvanced",
+    "inputs": {
+      "noise": [
+        "noise",
+        0
+      ],
+      "guider": [
+        "guider",
+        0
+      ],
+      "sampler": [
+        "sampler_select",
+        0
+      ],
+      "sigmas": [
+        "schedule",
+        0
+      ],
+      "latent_image": [
+        "latent",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "Sampler"
+    }
+  },
+  "decode": {
+    "class_type": "VAEDecode",
+    "inputs": {
+      "samples": [
+        "sampler",
+        0
+      ],
+      "vae": [
+        "vae",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "Decode"
+    }
+  },
+  "save": {
+    "class_type": "SaveImage",
+    "inputs": {
+      "images": [
+        "decode",
+        0
+      ],
+      "filename_prefix": "UltraStudio_Klein_Edit"
+    },
+    "_meta": {
+      "title": "Save"
+    }
+  },
+  "reference_image_1": {
+    "class_type": "LoadImage",
+    "inputs": {
+      "image": ""
+    },
+    "_meta": {
+      "title": "Reference Image 1"
+    }
+  },
+  "reference_scale_1": {
+    "class_type": "ImageScaleToTotalPixels",
+    "inputs": {
+      "image": [
+        "reference_image_1",
+        0
+      ],
+      "upscale_method": "area",
+      "megapixels": 1.0,
+      "resolution_steps": 1
+    },
+    "_meta": {
+      "title": "Reference Scale 1"
+    }
+  },
+  "reference_encode_1": {
+    "class_type": "VAEEncode",
+    "inputs": {
+      "pixels": [
+        "reference_scale_1",
+        0
+      ],
+      "vae": [
+        "vae",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "Reference Encode 1"
+    }
+  },
+  "reference_positive_1": {
+    "class_type": "ReferenceLatent",
+    "inputs": {
+      "conditioning": [
+        "positive",
+        0
+      ],
+      "latent": [
+        "reference_encode_1",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "Reference Positive 1"
+    }
+  },
+  "reference_negative_1": {
+    "class_type": "ReferenceLatent",
+    "inputs": {
+      "conditioning": [
+        "negative",
+        0
+      ],
+      "latent": [
+        "reference_encode_1",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "Reference Negative 1"
+    }
+  }
+}

@@ -60,3 +60,9 @@ test("an explicitly opened recipe can retain a hidden workflow without revealing
   expect(builderCatalogWorkflows(workflows,"default","default",["default","other"],true).map(w => w.id)).toEqual(["default"]);
   expect(selectableCatalogWorkflows(workflows,"default","")).toHaveLength(2);
 });
+
+test('dedicated reference editors remain in Tools but not the character builder dropdown', () => {
+  const references = [{id:'klein-edit',prompt_style:'flux2_klein_edit',kind:'edit'}, {id:'qwen-refs',prompt_style:'qwen_reference',kind:'edit'}];
+  expect(workflowCatalog(references).primary).toHaveLength(2);
+  expect(builderCatalogWorkflows(references)).toEqual([]);
+});

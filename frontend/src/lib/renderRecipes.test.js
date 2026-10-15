@@ -113,3 +113,8 @@ test.each(['draft','balanced','quality'])('Kroma keeps its own %s Turbo recipe',
   expect(recipe.steps).toBe(tier === 'quality' ? 12 : 8);
   expect(getRenderRecipe('krea2_test').scheduler).toBe('beta');
 });
+
+test('new local model workflows retain their generation families and recipes', () => {
+  expect(getRenderRecipe(renderRecipeStyle('flux1_dev','flux1_dev'))).toMatchObject({family:'image',steps:28,cfg:1,sampler:'euler',scheduler:'simple'});
+  expect(getRenderRecipe(renderRecipeStyle('wan5b_t2v','wan_t2v'))).toMatchObject({family:'video',videoFrames:81,videoWidth:640,videoHeight:384});
+});
