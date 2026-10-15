@@ -272,3 +272,48 @@ describe("LoRA registry planner", () => {
     expect(health.warnings.some((warning) => warning.includes("optional LoRAs"))).toBe(true);
   });
 });
+
+describe('folder-based model family matching', () => {
+  test.each([
+    ['Krea', 'kroma', 'krea2'], ['Krea 2', 'krea2_test', 'krea2'],
+    ['Chroma', 'chroma_test', 'chroma'], ['Z-Image', 'zimage', 'zimage'],
+    ['SDXL', 'sdxl', 'sdxl'], ['SD15', 'sd15', 'sd15'],
+    ['Pony', 'pony', 'pony'], ['Flux', 'flux', 'flux'],
+    ['Wan', 'wan', 'wan22'], ['Qwen/Qwen Image', 'qwen_image', 'qwen_image'],
+    ['Qwen/Qwen Edit', 'qwen_edit', 'qwen_edit'],
+  ])('%s folder offers an unnamed adapter only to %s workflows', (folder, style, family) => {
+    const file = `${folder}/Styles/studio-light.safetensors`;
+    const choices = compatibleInstalledLoras({prompt_style:style, name:style}, [file]);
+    expect(choices).toHaveLength(1);
+    expect(choices[0]).toMatchObject({family, installedName:file, verified:false, triggerWords:[]});
+    expect(compatibleInstalledLoras({prompt_style:'unrelated'}, [file])).toEqual([]);
+  });
+
+  test('Kroma and renamed workflows use the Krea 2 family profile', () => {
+    expect(workflowFamily({name:'My test', prompt_style:'kroma'})).toBe('krea2');
+    expect(workflowFamily({name:'Kroma · v0.3.1 Turbo OPD'})).toBe('krea2');
+    expect(compatibleInstalledLoras({prompt_style:'kroma'}, ['Krea\\Styles\\studio-light.safetensors'])[0].family).toBe('krea2');
+  });
+
+  test('keeps full installed paths and prefers the Krea folder over a root duplicate', () => {
+    const names = ['studio-light.safetensors', 'Krea/Styles/studio-light.safetensors'];
+    const preferences = {'studio-light.safetensors':{family:'krea2'}};
+    expect(compatibleInstalledLoras({prompt_style:'kroma'}, names, preferences).map(x=>x.installedName)).toEqual([names[1]]);
+  });
+
+  test('explicit assignments override folders while unclassified root files stay unassigned', () => {
+    const file = 'Krea/studio-light.safetensors';
+    expect(compatibleInstalledLoras({prompt_style:'chroma'}, [file], {[file.toLowerCase()]:{family:'chroma'}})).toHaveLength(1);
+    expect(compatibleInstalledLoras({prompt_style:'kroma'}, ['adapter.safetensors'])).toEqual([]);
+    expect(compatibleInstalledLoras({prompt_style:'kroma'}, ['not-krea/studio-light.safetensors'])).toEqual([]);
+  });
+
+  test('Qwen variants and LTX are not mixed with Edit or Wan', () => {
+    expect(workflowFamily({prompt_style:'qwen_rapid'})).toBe('qwen_image');
+    expect(workflowFamily({kind:'text_video',prompt_style:'ltx_t2v'})).toBe('ltx');
+    expect(compatibleInstalledLoras({prompt_style:'qwen_image'}, ['Qwen/Qwen Edit/style.safetensors'])).toEqual([]);
+    expect(compatibleInstalledLoras({prompt_style:'ltx_t2v'}, ['Wan/style.safetensors'])).toEqual([]);
+    expect(compatibleInstalledLoras({prompt_style:'qwen_image'}, ['Qwen/Qwen_Image_2512_portrait.safetensors'])).toHaveLength(1);
+    expect(compatibleInstalledLoras({prompt_style:'qwen_edit'}, ['Qwen/studio-light.safetensors'])).toEqual([]);
+  });
+});
