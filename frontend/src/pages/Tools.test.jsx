@@ -88,3 +88,12 @@ test("video Gallery results render as video and do not show still-image actions"
   await act(async () => root.render(<Tools/>));
   expect(container.querySelector('img')).not.toBeNull();
 });
+
+test.each(['', 'r1'])('free text image creation is available from Tools with source %s', async renderId => {
+  mockRenderId = renderId;
+  await act(async () => root.render(<Tools />));
+  const entry = container.querySelector('a[href="/create/image"]');
+  expect(entry).not.toBeNull();
+  expect(entry.textContent).toContain('Free Text to Image');
+  expect(endpoints.prepareRenderReference).not.toHaveBeenCalled();
+});
