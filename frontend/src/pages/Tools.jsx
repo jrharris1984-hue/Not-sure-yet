@@ -7,7 +7,7 @@ import { endpoints } from "@/lib/api";
 import { mediaUrl } from "@/lib/media";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { Images, Wrench } from "lucide-react";
+import { ImagePlus, Images, Wrench } from "lucide-react";
 import { toast } from "sonner";
 
 const primaryOutput = render => render?.output_variants?.enhanced?.[0] || render?.output_files?.[0] || "";
@@ -88,12 +88,20 @@ export default function Tools() {
       <div>
         <div className="section-label">Tools</div>
         <h1 className="mt-1 font-display text-3xl sm:text-4xl font-extrabold">Image & video tools</h1>
-        <p className="mt-1 max-w-2xl text-sm text-zinc-400">Creation builds the image. Tools handle what happens after: edit, repair, pose, reference, variation, upscale/enhance, and animation workflows.</p>
+        <p className="mt-1 max-w-2xl text-sm text-zinc-400">Create an image from your own prompt, or use a workflow to edit, repair, vary, enhance, or animate an existing image.</p>
       </div>
       <Link to="/gallery" className="inline-flex items-center gap-2 rounded-lg border hairline px-3 py-2 text-sm text-zinc-200">
         <Images className="h-4 w-4" /> Choose from Gallery
       </Link>
     </header>
+
+    <Link to="/create/image" className="pane flex items-center gap-3 p-4 hover:border-cyan-400/40 hover:bg-cyan-500/5">
+      <ImagePlus className="h-6 w-6 shrink-0 text-cyan-300" />
+      <div>
+        <h2 className="font-display text-lg font-bold text-cyan-200">Free Text to Image</h2>
+        <p className="mt-1 text-sm text-zinc-400">Write your own prompt and choose an image workflow. No character setup required.</p>
+      </div>
+    </Link>
 
     {renderId && rendersLoading && <StudioLoading label="Loading source image…" />}
 
