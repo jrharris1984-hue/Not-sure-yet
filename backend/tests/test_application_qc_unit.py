@@ -252,6 +252,55 @@ class ApplicationQcTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(dispatched['7']['inputs']['scheduler'], 'simple')
         self.assertEqual(result['status'], 'running')
 
+    async def test_new_local_workflows_dispatch_actual_graphs_and_store_reference_roles(self):
+        import json
+        from test_local_model_workflows_unit import info_for
+        settings=(await self.http.get('/api/settings')).json()
+        for style in ['flux1_dev','flux2_klein_edit','qwen_reference','wan5b_t2v']:
+            selected=next(w for w in settings['workflows'] if w['prompt_style']==style)
+            template=json.loads(selected['json_str']);info=info_for(template)
+            captured={}
+            class ComfyClient:
+                async def __aenter__(self):return self
+                async def __aexit__(self,*args):pass
+                async def post(self,url,*,json):
+                    captured.update(json)
+                    return httpx.Response(200,json={'prompt_id':'qc-new-'+style})
+            options={'workflow_id':selected['id'],'prompt_positive':'Studio portrait','seed':91,'width':512,'height':768}
+            if style in ['flux2_klein_edit','qwen_reference']:
+                options.update(reference_images=['refs/a.png','refs/b.png'],edit_instruction='Combine image 1 and image 2 in a studio.')
+            if style=='wan5b_t2v':options.update(video_instruction='A sailboat moves slowly.',video_width=643,video_height=387,video_frames=82,video_fps=20)
+            with patch.object(self.server,'_krea2_object_info',AsyncMock(return_value=info)),patch.object(self.server.httpx,'AsyncClient',return_value=ComfyClient()):
+                result=await self.server._perform_dispatch(self.server.DispatchBody(**options))
+            self.assertEqual(result['status'],'running',result.get('error'))
+            g=captured['prompt']
+            if style in ['flux2_klein_edit','qwen_reference']:
+                self.assertEqual(g['reference_image_1']['inputs']['image'],'refs/a.png')
+                self.assertEqual(g['reference_image_2']['inputs']['image'],'refs/b.png')
+                self.assertEqual(result['render_recipe']['reference_images'],['refs/a.png','refs/b.png'])
+                prompt_key='prompt' if style=='qwen_reference' else 'text'
+                self.assertEqual(g['positive']['inputs'][prompt_key],options['edit_instruction'])
+            if style=='wan5b_t2v':
+                self.assertEqual(g['55']['inputs']['width'],640)
+                self.assertEqual(g['55']['inputs']['height'],384)
+                self.assertEqual(g['55']['inputs']['length'],81)
+                self.assertNotIn('start_image',g['55']['inputs'])
+                self.assertEqual(g['47']['inputs']['fps'],20)
+                self.assertEqual(result['render_recipe']['video_width'],640)
+                self.assertEqual(result['render_recipe']['video_frames'],81)
+            if style=='flux1_dev':self.assertEqual(g['positive_text']['inputs']['text'],'Studio portrait')
+            stored=next(w for w in (await self.server.get_settings()).workflows if w.id==selected['id'])
+            self.assertEqual(selected['json_str'],stored.json_str)
+
+    async def test_reference_composer_rejects_one_image_before_contacting_comfy(self):
+        settings=(await self.http.get('/api/settings')).json()
+        selected=next(w for w in settings['workflows'] if w['prompt_style']=='qwen_reference')
+        with patch.object(self.server,'_krea2_object_info',AsyncMock()) as lookup:
+            result=await self.server._perform_dispatch(self.server.DispatchBody(workflow_id=selected['id'],reference_images=['a.png'],edit_instruction='Combine images'))
+        self.assertEqual(result['status'],'failed')
+        self.assertIn('2–3',result['error'])
+        lookup.assert_not_awaited()
+
     async def test_missing_records_return_not_found(self):
         for path in ('characters/missing','renders/missing','renders/missing/recipe','shoots/missing'):
             self.assertEqual((await self.http.get('/api/'+path)).status_code,404)

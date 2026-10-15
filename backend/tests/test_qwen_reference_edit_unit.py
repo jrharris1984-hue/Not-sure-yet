@@ -102,7 +102,7 @@ class EditDispatchTests(unittest.IsolatedAsyncioTestCase):
             async def get(self, url): return SimpleNamespace(raise_for_status=lambda:None,json=lambda:object_info(workflow))
         record=SimpleNamespace(status='queued',error='')
         record.model_dump=lambda: {'status':record.status,'error':record.error}
-        ns={'wf_template':SimpleNamespace(kind='edit', edit_variant='pose'), 'workflow':workflow,
+        ns={'REFERENCE_STYLES':{'flux2_klein_edit','qwen_reference'}, 'wf_template':SimpleNamespace(kind='edit', edit_variant='pose',prompt_style='qwen_edit'), 'workflow':workflow,
             'pos_id':'positive','neg_id':'negative','_detect_prompt_nodes':lambda w:{'positive_node_id':'positive','negative_node_id':'negative'},
             'body':SimpleNamespace(reference_image='person.png',pose_reference_image='pose.png',qwen_reference_notes='',
                                    qwen_camera_azimuth='front view',qwen_camera_elevation='eye-level shot',qwen_camera_distance='medium shot',

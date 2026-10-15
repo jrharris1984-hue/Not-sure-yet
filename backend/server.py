@@ -1,3 +1,4 @@
+from reference_composition import REFERENCE_STYLES, configure_composition
 from ollama_compiler import validate_ollama_prompt
 from shoot_progress import refresh_shoot_progress
 from shoot_continuity import shoot_render_settings, shoot_base_dna
@@ -245,6 +246,10 @@ def _detect_prompt_nodes(wf: Dict[str, Any]) -> Dict[str, str]:
 
 
 SEED_WORKFLOWS = [
+    {"file": "flux2_klein_edit.json", "name": "FLUX.2 Klein 4B · Reference Image Edit", "kind": "edit", "prompt_style": "flux2_klein_edit", "notes": "Native distilled Klein editing with 1–3 ordered reference images. Uses the installed standard Qwen 3 4B encoder, FLUX.2 VAE, 4 steps and CFG 1. Open from Tools."},
+    {"file": "qwen_reference_composer.json", "name": "Qwen 2511 · Reference Image Composer", "kind": "edit", "prompt_style": "qwen_reference", "notes": "Compose 2–3 reference images with native Qwen Edit 2511. Reuses installed encoder/VAE; no additional task LoRA. 40-step baseline. Open from Tools."},
+    {"file": "flux1_dev_t2i.json", "name": "FLUX.1 Dev FP8 · Text to Image", "kind": "image", "prompt_style": "flux1_dev", "notes": "Plain FLUX.1 generation using CLIP-L, T5 and ae VAE. No pose image, ControlNet or required LoRA. Guidance 3.5, sampler CFG 1."},
+    {"file": "wan5b_t2v.json", "name": "WAN 2.2 5B · Text to Video", "kind": "text_video", "prompt_style": "wan5b_t2v", "notes": "Native 5B text-to-video with WAN 2.2 VAE and UMT5; no starting image. Uses 48-channel WAN 5B latent, 30 steps / CFG 5 / UniPC / simple. Begin with a short, small test."},
     {"file": "kroma_opd.json", "name": "Kroma · v0.3.1 Turbo OPD", "kind": "image", "prompt_style": "kroma", "notes": "Kroma OPD with native Krea 2 encoder and Qwen Image VAE. Creator range: 8–12 steps, CFG 1–1.5, mu 1.15. Starts at 8 steps / CFG 1 / Euler / simple; sampler and scheduler follow the official Krea 2 Turbo baseline. No required LoRA. Large weights may require offloading."},
     {"file": "krea2_glamour_bf16.json", "name": "Krea 2 · CamGlam BF16 Test", "kind": "image", "prompt_style": "krea2_test", "notes": "Experimental Krea 2 BF16 comparison using the supplied KR2 filename. Reuses Qwen3-VL 4B and Qwen Image VAE. The creator listing did not provide sampler settings; 8 steps / CFG 1 is an adjustable starting test, not a verified creator recipe. Approximately 24 GB weights need offloading on 12 GB VRAM."},
     {"file": "krea2_aksiom.json", "name": "Krea 2 · AKSIOM V1 BF16", "kind": "image", "prompt_style": "krea2_test"},
@@ -1377,6 +1382,7 @@ class DispatchBody(BaseModel):
     parent_render_id: Optional[str] = None
     operation: str = "render"
     reference_image: Optional[str] = None  # ComfyUI input filename returned by /reference-images/upload
+    reference_images: List[str] = Field(default_factory=list, max_length=3)
     pose_reference_image: Optional[str] = None
     qwen_reference_notes: str = Field(default="", max_length=1000)
     qwen_camera_azimuth: Literal["front view", "front-right quarter view", "right side view", "back-right quarter view", "back view", "back-left quarter view", "left side view", "front-left quarter view"] = "front view"
@@ -1808,6 +1814,20 @@ async def _perform_dispatch(body: "DispatchBody", queue_id: Optional[str] = None
         doc.pop("_id", None)
         return doc
 
+    if wf_template and wf_template.prompt_style in REFERENCE_STYLES:
+        try:
+            body.reference_images = configure_composition(workflow, wf_template.prompt_style,
+                body.reference_images or ([body.reference_image] if body.reference_image else []))
+            body.reference_image = body.reference_images[0]
+            if not (body.edit_instruction or body.prompt_positive).strip():
+                raise ValueError('Describe how to edit or combine the numbered reference images.')
+        except ValueError as exc:
+            r.status, r.error = 'failed', str(exc)
+            doc = r.model_dump()
+            doc.update(workflow_id=wf_template.id, workflow_name=wf_template.name)
+            await db.renders.insert_one(dict(doc))
+            return doc
+
     if wf_template and wf_template.prompt_style in SEPARATE_IMAGE_STYLES:
         missing = resolve_separate_image_models(workflow, await _krea2_object_info(s.comfyui_url) or {})
         if missing:
@@ -2030,7 +2050,10 @@ async def _perform_dispatch(body: "DispatchBody", queue_id: Optional[str] = None
 
     # Qwen Image Edit also consumes an uploaded source image, but its positive
     # prompt is a direct edit instruction rather than the character DNA prompt.
-    if wf_template and wf_template.kind in {"edit", "enhance"}:
+    if wf_template and wf_template.prompt_style in REFERENCE_STYLES:
+        positive_text = (body.edit_instruction or body.prompt_positive).strip()
+
+    if wf_template and wf_template.kind in {"edit", "enhance"} and wf_template.prompt_style not in REFERENCE_STYLES:
         # Re-detect from the live workflow every time. Older databases may have
         # stored the two Qwen prompt node IDs in reverse before sampler-aware
         # detection was added.
@@ -2167,10 +2190,16 @@ async def _perform_dispatch(body: "DispatchBody", queue_id: Optional[str] = None
                         inputs["height"] = max(256, min(1280, int(body.video_height)))
                     latent_patched = True
             else:
-                if class_type == "EmptyHunyuanLatentVideo":
+                if class_type == "EmptyHunyuanLatentVideo" or (wf_template.prompt_style == "wan5b_t2v" and class_type == "Wan22ImageToVideoLatent"):
                     inputs["length"] = frames
                     inputs["width"] = max(256, min(1280, int(body.video_width)))
                     inputs["height"] = max(256, min(1280, int(body.video_height)))
+                    if wf_template.prompt_style == "wan5b_t2v":
+                        inputs.pop("start_image", None)
+                        inputs["width"] = inputs["width"] // 32 * 32
+                        inputs["height"] = inputs["height"] // 32 * 32
+                        body.video_width, body.video_height = inputs["width"], inputs["height"]
+                        body.video_frames, body.video_fps = frames, fps
                     latent_patched = True
 
             if class_type in {"SaveAnimatedWEBP", "SaveWEBM", "VHS_VideoCombine", "CreateVideo"} and "fps" in inputs:

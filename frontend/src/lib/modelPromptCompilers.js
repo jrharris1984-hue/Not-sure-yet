@@ -920,7 +920,9 @@ export function buildKrea2Prompts({
 
 export function resolvePromptCompiler({ promptStyle = "", workflowKind = "", workflowName = "" } = {}) {
   const rawStyle = clean(promptStyle).toLowerCase();
-  const style = ({ kroma: "krea2", krea2_aio: "krea2", krea2_test: "krea2", chroma_test: "chroma", chroma_turbo: "chroma", chroma_flash: "chroma", qwen_remix: "qwen_edit", ltx_t2v: "wan_t2v" })[rawStyle] || rawStyle;
+  if (rawStyle === "flux2_klein_edit") return "flux2_klein";
+  if (rawStyle === "flux1_dev") return "flux1_dev";
+  const style = ({ flux1_dev: "flux1_dev", flux2_klein_edit: "flux2_klein", qwen_reference: "qwen_edit", wan5b_t2v: "wan_t2v", kroma: "krea2", krea2_aio: "krea2", krea2_test: "krea2", chroma_test: "chroma", chroma_turbo: "chroma", chroma_flash: "chroma", qwen_remix: "qwen_edit", ltx_t2v: "wan_t2v" })[rawStyle] || rawStyle;
   const kind = clean(workflowKind).toLowerCase();
   const name = clean(workflowName).toLowerCase();
   if (["qwen_image", "qwen_rapid"].includes(style) && !["edit", "enhance"].includes(kind)) return style;
@@ -1101,7 +1103,7 @@ function compileModelPromptsRaw({
     const prompts = basePrompts({ dna: primaryGuard.dna, subjects: guardedSubjects, isMulti, raunch });
     return withPriorityGuard({ ...prompts, negative: "" }, "sdxl");
   }
-  if (compiler === "flux2_klein") {
+  if (compiler === "flux2_klein" || compiler === "flux1_dev") {
     const prompts = basePrompts({ dna: primaryGuard.dna, subjects: guardedSubjects, isMulti, raunch });
     return {
       ...withPriorityGuard({ ...prompts, negative: "" }, "flux"),
