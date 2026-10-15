@@ -301,6 +301,33 @@ class ApplicationQcTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn('2–3',result['error'])
         lookup.assert_not_awaited()
 
+    async def test_zimage_dispatch_resolves_moved_files_and_survives_missing_detector(self):
+        import json
+        from test_zimage_setup_unit import info_for
+        settings=(await self.http.get('/api/settings')).json()
+        for name in ['Z-image Turbo · NSFW','Z-Image Turbo · Base (No LoRA)']:
+            selected=next(w for w in settings['workflows'] if w['name']==name)
+            graph=json.loads(selected['json_str']);info=info_for(graph)
+            if 'UltralyticsDetectorProvider' in info:info['UltralyticsDetectorProvider']['input']['required']['model_name']=[[]]
+            captured={}
+            class ComfyClient:
+                async def __aenter__(self):return self
+                async def __aexit__(self,*args):pass
+                async def post(self,url,*,json):
+                    captured.update(json);return httpx.Response(200,json={'prompt_id':'qc-zimage'})
+            with patch.object(self.server,'_krea2_object_info',AsyncMock(return_value=info)),patch.object(self.server.httpx,'AsyncClient',return_value=ComfyClient()):
+                result=await self.server._perform_dispatch(self.server.DispatchBody(workflow_id=selected['id'],prompt_positive='A sailboat on a calm lake.',seed=72))
+            self.assertEqual(result['status'],'running',result.get('error'))
+            sent=captured['prompt']
+            self.assertEqual(sent['57:27']['inputs']['text'],'A sailboat on a calm lake.')
+            self.assertEqual(sent['57:3']['inputs']['seed'],72)
+            self.assertIn('9',sent);self.assertNotIn('105',sent)
+            if '57:62' in sent:
+                self.assertEqual(sent['57:62']['inputs']['lora_name'],'local/ZITnsfwLoRA.safetensors')
+                self.assertIn('Original image only',result['setup_notes'][0])
+            stored=next(w for w in (await self.server.get_settings()).workflows if w.id==selected['id'])
+            self.assertEqual(stored.json_str,selected['json_str'])
+
     async def test_missing_records_return_not_found(self):
         for path in ('characters/missing','renders/missing','renders/missing/recipe','shoots/missing'):
             self.assertEqual((await self.http.get('/api/'+path)).status_code,404)
