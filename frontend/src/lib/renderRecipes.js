@@ -1,4 +1,9 @@
 const IMAGE_RECIPES = {
+  kroma: {
+    draft: { width: 768, height: 1024, steps: 8, cfg: 1, batchSize: 1, sampler: "euler", note: "Kroma OPD · fixed mu 1.15" },
+    balanced: { width: 1024, height: 1024, steps: 8, cfg: 1, batchSize: 1, sampler: "euler", note: "Kroma OPD Turbo baseline · fixed mu 1.15" },
+    quality: { width: 1024, height: 1536, steps: 12, cfg: 1, batchSize: 1, sampler: "euler", note: "Kroma OPD 12-step test · higher memory use" },
+  },
   chroma_flash: {
     draft: { width: 768, height: 768, steps: 8, cfg: 1, batchSize: 1, sampler: "heun", note: "Clyb Uncanny Flash v19 test · Heun / beta starting recipe" },
     balanced: { width: 1024, height: 1024, steps: 8, cfg: 1, batchSize: 1, sampler: "heun", note: "Clyb Uncanny Flash v19 comparison baseline · adjust for results" },
@@ -72,6 +77,7 @@ const IMAGE_RECIPES = {
 };
 
 const IMAGE_SCHEDULERS = {
+  kroma: "simple",
   krea2_test: "beta",
   sdxl: "karras", sdxl_dmd2: "normal", pony: "normal",
   krea2_aio: "beta", zimage: "simple", krea2: "simple", qwen_image: "simple", qwen_rapid: "beta",
@@ -122,7 +128,7 @@ export function getRenderRecipe(compiler = "standard", tier = "balanced") {
 }
 
 export function renderRecipeStyle(promptStyle, compiler) {
-  return ['krea2_aio', 'krea2_test', 'chroma_test', 'chroma_turbo', 'chroma_flash', 'ltx_t2v'].includes(promptStyle) ? promptStyle : compiler;
+  return ['kroma', 'krea2_aio', 'krea2_test', 'chroma_test', 'chroma_turbo', 'chroma_flash', 'ltx_t2v'].includes(promptStyle) ? promptStyle : compiler;
 }
 
 export function recipeSummary(recipe = {}) {
