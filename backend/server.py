@@ -1,3 +1,4 @@
+from zimage_setup import prepare_zimage
 from reference_composition import REFERENCE_STYLES, configure_composition
 from ollama_compiler import validate_ollama_prompt
 from shoot_progress import refresh_shoot_progress
@@ -246,6 +247,7 @@ def _detect_prompt_nodes(wf: Dict[str, Any]) -> Dict[str, str]:
 
 
 SEED_WORKFLOWS = [
+    {"file": "zimage_base.json", "name": "Z-Image Turbo · Base (No LoRA)", "kind": "image", "prompt_style": "zimage", "notes": "Plain Z-Image Turbo using the installed standard Qwen 3 4B encoder and ae VAE. No required LoRA, face detector, or upscaler."},
     {"file": "flux2_klein_edit.json", "name": "FLUX.2 Klein 4B · Reference Image Edit", "kind": "edit", "prompt_style": "flux2_klein_edit", "notes": "Native distilled Klein editing with 1–3 ordered reference images. Uses the installed standard Qwen 3 4B encoder, FLUX.2 VAE, 4 steps and CFG 1. Open from Tools."},
     {"file": "qwen_reference_composer.json", "name": "Qwen 2511 · Reference Image Composer", "kind": "edit", "prompt_style": "qwen_reference", "notes": "Compose 2–3 reference images with native Qwen Edit 2511. Reuses installed encoder/VAE; no additional task LoRA. 40-step baseline. Open from Tools."},
     {"file": "flux1_dev_t2i.json", "name": "FLUX.1 Dev FP8 · Text to Image", "kind": "image", "prompt_style": "flux1_dev", "notes": "Plain FLUX.1 generation using CLIP-L, T5 and ae VAE. No pose image, ControlNet or required LoRA. Guidance 3.5, sampler CFG 1."},
@@ -2333,6 +2335,17 @@ async def _perform_dispatch(body: "DispatchBody", queue_id: Optional[str] = None
             if "strength_clip" in inp and "strength_clip" in weights:
                 inp["strength_clip"] = max(-3.0, min(3.0, float(weights["strength_clip"])))
 
+    setup_notes = []
+    if wf_template and wf_template.prompt_style == 'zimage':
+        missing, setup_notes = prepare_zimage(workflow, await _krea2_object_info(s.comfyui_url) or {})
+        if missing:
+            r.status = 'failed'
+            r.error = 'Z-Image setup needs: ' + ', '.join(missing) + '. Check the active ComfyUI folders and restart ComfyUI. The Base (No LoRA) workflow does not require an adapter or face detector.'
+            doc = r.model_dump()
+            doc.update(workflow_id=wf_template.id, workflow_name=wf_template.name)
+            await db.renders.insert_one(dict(doc))
+            return doc
+
     # Scope creation overrides to sampler/scheduler/latent nodes. Face repair
     # and unrelated resize nodes retain their independent template settings.
     generation_overrides = normalize_generation_settings({
@@ -2372,6 +2385,8 @@ async def _perform_dispatch(body: "DispatchBody", queue_id: Optional[str] = None
     doc["workflow_id"] = wf_template.id if wf_template else None
     doc["workflow_name"] = wf_template.name if wf_template else None
     doc["seed_used"] = seed_used
+    if setup_notes:
+        doc["setup_notes"] = setup_notes
     doc["generation_settings"] = generation_overrides
     doc["effective_node_settings"] = effective_node_settings
     # Complete reusable recipe for exact recreation and seed-only variations.
