@@ -106,3 +106,10 @@ test("downloaded AIO and LTX recipes use their own sampling and frame families",
   const video = getRenderRecipe("ltx_t2v");
   expect([video.videoFrames, video.videoFps, video.videoWidth, video.videoHeight]).toEqual([73, 24, 832, 480]);
 });
+
+test.each(['draft','balanced','quality'])('Kroma keeps its own %s Turbo recipe', tier => {
+  const recipe = getRenderRecipe(renderRecipeStyle('kroma','krea2'), tier);
+  expect(recipe).toMatchObject({compiler:'kroma',family:'image',cfg:1,sampler:'euler',scheduler:'simple'});
+  expect(recipe.steps).toBe(tier === 'quality' ? 12 : 8);
+  expect(getRenderRecipe('krea2_test').scheduler).toBe('beta');
+});
