@@ -12,6 +12,7 @@ export function useCreateShellState({ activeSection, studioSteps, nav, sectionUr
   const [desktopQuickMode, setDesktopQuickMode] = useState(true);
   const [specialtyTab, setSpecialtyTab] = useState(0);
   const [quickReview, setQuickReview] = useState(false);
+  const [reviewEditing, setReviewEditing] = useState(false);
 
   useEffect(() => {
     const query = window.matchMedia?.("(max-width: 767px)");
@@ -35,9 +36,30 @@ export function useCreateShellState({ activeSection, studioSteps, nav, sectionUr
     const step = studioSteps.find((item) => item.id === stepId);
     if (!step) return;
     setMobileStudioStep(stepId);
+    if (stepId === "create") setReviewEditing(false);
     const visibleSections = createSectionsForStep(stepId, mobileStudioMode, studioSteps);
     if (visibleSections.length && !visibleSections.includes(activeSection)) nav(sectionUrl(visibleSections[0]));
     window.requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "smooth" }));
+  };
+
+  const beginReviewEdit = (key) => {
+    const step = studioSteps.find((item) => item.sections.includes(key));
+    if (!step) return;
+    setReviewEditing(true);
+    setQuickReview(false);
+    setMobileSheets(true);
+    if (!createSectionsForStep(step.id, mobileStudioMode, studioSteps).includes(key)) setMobileStudioMode("advanced");
+    setMobileStudioStep(step.id);
+    nav(sectionUrl(key));
+    window.requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "auto" }));
+  };
+
+  const returnToReview = () => {
+    setReviewEditing(false);
+    setQuickReview(true);
+    setMobileStudioStep("create");
+    setMobileSheets(true);
+    window.requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "auto" }));
   };
 
   const moveMobileStudioStep = (direction) => {
@@ -61,6 +83,7 @@ export function useCreateShellState({ activeSection, studioSteps, nav, sectionUr
     desktopQuickMode, setDesktopQuickMode,
     specialtyTab, setSpecialtyTab,
     quickReview, setQuickReview,
+    reviewEditing, beginReviewEdit, returnToReview,
     activeMobileStudioIndex,
     openMobileStudioStep,
     moveMobileStudioStep,

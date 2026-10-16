@@ -30,6 +30,7 @@ import CreationOutputControls from "@/components/CreationOutputControls";
 import CreateJourney from "@/components/CreateJourney";
 import CreateSetupSummary from "@/components/CreateSetupSummary";
 import CreateRenderOutcome from "@/components/CreateRenderOutcome";
+import ReviewEditBanner from "@/components/ReviewEditBanner";
 import StudioModePicker from "@/components/StudioModePicker";
 import { createStagesForStudio } from "@/lib/createJourney";
 import { useCreateShellState } from "@/hooks/useCreateShellState";
@@ -189,6 +190,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
     mobileToolsGroup, setMobileToolsGroup, sheetViewport,
     desktopQuickMode, setDesktopQuickMode, specialtyTab, setSpecialtyTab,
     quickReview, setQuickReview, activeMobileStudioIndex,
+    reviewEditing, beginReviewEdit, returnToReview,
     openMobileStudioStep, moveMobileStudioStep, changeMobileStudioMode,
   } = useCreateShellState({ activeSection, studioSteps, nav, sectionUrl });
 
@@ -2143,6 +2145,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
   const quickStages = studioSteps;
   const quickStageIndex = quickReview ? quickStages.length - 1 : Math.max(0, quickStages.findIndex((stage) => stage.sections.includes(activeSection)));
   const openCreateSection = (key) => {
+    if (quickReview) { beginReviewEdit(key); return; }
     setQuickReview(false);
     setMobileStudioStep(mobileStudioStepForSection(key, studioSteps));
     goSection(key);
@@ -2155,7 +2158,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
     if (index < 0 || index >= quickStages.length) return;
     const review = index === quickStages.length - 1;
     setQuickReview(review);
-    if (review) setMobileStudioStep("create");
+    if (review) returnToReview();
     else openCreateSection(quickStages[index].sections[0]);
     window.requestAnimationFrame(() => document.querySelector('[data-testid="desktop-quick-create"]')?.scrollIntoView({
       behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth",
@@ -3094,6 +3097,10 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
         }}
       /></div>}
 
+      {!isImageFirst && reviewEditing && editMode !== "body_adjust" && <div data-mobile-tools="none">
+        <ReviewEditBanner sectionTitle={SECTIONS.find((section) => section.key === activeSection)?.title} onReturn={returnToReview} />
+      </div>}
+
       {!isImageFirst && !desktopQuickMode && <nav data-mobile-tools="none" className="hidden md:grid grid-cols-5 gap-2" aria-label="Creation steps" data-testid="desktop-creation-steps">
         {studioSteps.map((step, index) => {
           const selected = step.id === mobileStudioStep;
@@ -3131,10 +3138,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
             onRenderCount={setRenderCount}
             summaries={mobileCreateSummaries}
             onEditWorkflow={() => openMobileAdvancedStudio("generation")}
-            onEditSection={(key) => {
-              setMobileStudioStep(mobileStudioStepForSection(key, studioSteps));
-              goSection(key);
-            }}
+            onEditSection={beginReviewEdit}
             issues={mobileCreateIssues}
             mode={mobileStudioMode}
             onRequestAdvanced={() => openMobileAdvancedStudio("overview")}
