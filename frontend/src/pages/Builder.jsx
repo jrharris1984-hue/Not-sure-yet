@@ -31,6 +31,8 @@ import CreateJourney from "@/components/CreateJourney";
 import CreateSetupSummary from "@/components/CreateSetupSummary";
 import CreateRenderOutcome from "@/components/CreateRenderOutcome";
 import ReviewEditBanner from "@/components/ReviewEditBanner";
+import CharacterHistoryControls from "@/components/CharacterHistoryControls";
+import { useCharacterHistory } from "@/hooks/useCharacterHistory";
 import StudioModePicker from "@/components/StudioModePicker";
 import { createStagesForStudio } from "@/lib/createJourney";
 import { useCreateShellState } from "@/hooks/useCreateShellState";
@@ -863,6 +865,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
   const activeSubjectIdx = Math.max(0, subjects.findIndex((s) => s.id === activeSubjectId));
   const activeSubject = subjects[activeSubjectIdx] || subjects[0];
   const activeDna = activeSubject?.dna || DEFAULT_DNA;
+  const characterHistory = useCharacterHistory({ subjects, onRestore: setSubjects, scope: basePath, enabled: editorHydrated });
   const activeFieldLocks = useMemo(() => activeSubject?.field_locks || {}, [activeSubject?.field_locks]);
   const primaryDna = subjects[0]?.dna || DEFAULT_DNA;
 
@@ -3095,6 +3098,11 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
           setMobileStudioStep(mobileStudioStepForSection(key, studioSteps));
           goSection(key);
         }}
+      /></div>}
+
+      {!isImageFirst && editMode !== "body_adjust" && <div data-mobile-tools="none"><CharacterHistoryControls
+        canUndo={characterHistory.canUndo} canRedo={characterHistory.canRedo}
+        onUndo={characterHistory.undo} onRedo={characterHistory.redo} busy={dispatching || !!postRenderBusy}
       /></div>}
 
       {!isImageFirst && reviewEditing && editMode !== "body_adjust" && <div data-mobile-tools="none">
