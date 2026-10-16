@@ -1,3 +1,4 @@
+import SceneReviewPanel from '@/components/SceneReviewPanel';
 import { desktopNavigationSections } from '@/lib/desktopEditingGroups';
 import DesktopDnaEditor from '@/components/DesktopDnaEditor';
 import DesktopEditingDock from '@/components/DesktopEditingDock';
@@ -1352,6 +1353,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
         positiveBase
       ),
       negative: batchPhotoPrompts.negative,
+      sceneReview: batchCompiled.sceneReview,
     };
   };
 
@@ -1510,6 +1512,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
           locks,
           prompt_language: promptLanguage,
           quality_tier: qualityTier,
+          scene_review: compiledPrompt.sceneReview,
           prompt_positive: polishPrompt,
           prompt_negative: finalNegative,
           workflow_id: poseAssistPolishWorkflow.id,
@@ -1607,7 +1610,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
         const hasBatchVariation = !!smartVariation?.changed || !!poseVariation.pose || !!cameraVariation.camera;
         const batchPrompts = hasBatchVariation
           ? compileBatchVariationPrompts(dispatchSubjects)
-          : { positive: finalPositive, negative: finalNegative };
+          : { positive: finalPositive, negative: finalNegative, sceneReview: compiledPrompt.sceneReview };
         let r;
         try {
           r = await endpoints.dispatchRender({
@@ -1625,6 +1628,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
         quality_tier: qualityTier,
         prompt_positive: editMode === "body_adjust" && isVariationWorkflow ? bodyAdjustInstruction : batchPrompts.positive,
         prompt_negative: batchPrompts.negative,
+        scene_review: batchPrompts.sceneReview,
         workflow_id: workflowId,
         lora_overrides: isVideoWorkflow || isQwenReferenceWorkflow ? {} : effectiveLoraOverrides,
         krea_style: "none",
@@ -3639,7 +3643,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
             {plainLanguage.trim() && <p className="text-xs text-zinc-400">Workflow translation: {translatedPlainLanguage.text || "Describe motion for image-to-video; the source image supplies appearance."}</p>}
             {plainLanguage.trim() && !["qwen_edit", "wan_i2v"].includes(activeCompiler) && resolveReferenceNotes(plainLanguage, activeDna, subjects) !== plainLanguage.trim() && <p className="text-xs text-amber-300">Current controls replace labeled reference notes for body orientation, camera angle, pose, framing and expression in the submitted prompt. Your original notes remain saved here.</p>}
           </div>
-          {isVideoWorkflow || isVariationWorkflow ? <details data-mobile-tools="prompts" className="pane p-4" data-testid={isVideoWorkflow ? "video-motion-preview" : "variation-prompt-preview"}><summary className="cursor-pointer text-xs text-zinc-300">{isVideoWorkflow ? "Motion prompt sent to ComfyUI" : "Variation prompt sent to ComfyUI"}</summary>{isTextVideoWorkflow && <div className="mt-3"><PromptFormatControl formats={['detailed','scene']} value={promptFormat === 'scene' ? 'scene' : 'detailed'} onChange={changePromptFormat} meta={promptFormatMeta}/></div>}<p className="mt-3 whitespace-pre-wrap text-xs text-zinc-400">{finalPositive}</p></details> : <div className="mobile-tools-panel" data-mobile-tools="prompts">{!isImageFirst && <PromptFormatControl value={promptFormat} onChange={changePromptFormat} meta={promptFormatMeta} status={promptFormat === 'ollama' ? ollamaCompiled.reason : ''} />}<PromptPreview
+          {isVideoWorkflow || isVariationWorkflow ? <details data-mobile-tools="prompts" className="pane p-4" data-testid={isVideoWorkflow ? "video-motion-preview" : "variation-prompt-preview"}><summary className="cursor-pointer text-xs text-zinc-300">{isVideoWorkflow ? "Motion prompt sent to ComfyUI" : "Variation prompt sent to ComfyUI"}</summary>{isTextVideoWorkflow && <div className="mt-3"><PromptFormatControl formats={['detailed','scene']} value={promptFormat === 'scene' ? 'scene' : 'detailed'} onChange={changePromptFormat} meta={promptFormatMeta}/></div>}<SceneReviewPanel plan={compiledPrompt.sceneReview}/><p className="mt-3 whitespace-pre-wrap text-xs text-zinc-400">{finalPositive}</p></details> : <div className="mobile-tools-panel" data-mobile-tools="prompts">{!isImageFirst && <PromptFormatControl value={promptFormat} onChange={changePromptFormat} meta={promptFormatMeta} status={promptFormat === 'ollama' ? ollamaCompiled.reason : ''} />}<PromptPreview
             aiProvider={aiProvider}
             positive={finalPositive}
             negative={finalNegative}

@@ -5,7 +5,7 @@ import { endpoints } from "@/lib/api";
 import Gallery from "./Gallery";
 
 jest.mock("@/lib/api", () => ({ API_BASE: "/api", endpoints: {
-  deleteRender: jest.fn(), deleteRenders: jest.fn(), deleteQcFlaggedRenders: jest.fn(), aiEditPrompt: jest.fn(), prepareRenderReference: jest.fn(), recoverRenderImage: jest.fn(), listRenders: jest.fn(), getRender: jest.fn(), getRenderVersions: jest.fn(), getRenderRecipe: jest.fn(),
+  saveSceneFeedback: jest.fn(), deleteRender: jest.fn(), deleteRenders: jest.fn(), deleteQcFlaggedRenders: jest.fn(), aiEditPrompt: jest.fn(), prepareRenderReference: jest.fn(), recoverRenderImage: jest.fn(), listRenders: jest.fn(), getRender: jest.fn(), getRenderVersions: jest.fn(), getRenderRecipe: jest.fn(),
 } }));
 jest.mock("sonner", () => ({ toast: { error: jest.fn(), success: jest.fn() } }));
 
@@ -235,4 +235,22 @@ test('fullscreen Delete permanently deletes without a disk checkbox', async () =
   endpoints.getRender.mockResolvedValue({ ...records[0], character_id: "other" });
   await render("/gallery?character=alice&render=a");
   expect(container.querySelector('[data-testid="btn-lightbox-open-character"]')).toBeNull();
+});
+
+test("Gallery saves feedback against the opened render and retains it when reopened", async () => {
+  const feedback={ratings:{pose:'matched'},notes:'',updated_at:'2026-10-16T12:00:00Z'};
+  endpoints.saveSceneFeedback.mockResolvedValue(feedback);
+  // Keep background refetches representative of the server after saving.
+  endpoints.saveSceneFeedback.mockImplementation(async id => {
+    endpoints.listRenders.mockResolvedValue(records.map(record=>record.id===id?{...record,scene_feedback:feedback}:record));
+    return feedback;
+  });
+  await render('/gallery?render=a');
+  act(()=>{const select=container.querySelector('[aria-label="Pose result"]');Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype,'value').set.call(select,'matched');select.dispatchEvent(new Event('change',{bubbles:true}));});
+  await act(async()=>[...container.querySelectorAll('button')].find(button=>button.textContent==='Save feedback').click());
+  expect(endpoints.saveSceneFeedback).toHaveBeenCalledWith('a',{ratings:{pose:'matched'},notes:''});
+  expect(container.textContent).toContain('Feedback saved.');
+  act(()=>container.querySelector('[data-testid="btn-lightbox-close"]').click());
+  act(()=>container.querySelector('[data-testid="gallery-thumb-0"] .gallery-poster-open').click());
+  expect(container.querySelector('[aria-label="Pose result"]').value).toBe('matched');
 });
