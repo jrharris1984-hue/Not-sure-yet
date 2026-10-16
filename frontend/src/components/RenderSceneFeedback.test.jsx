@@ -1,0 +1,33 @@
+import {act} from 'react';
+import {createRoot} from 'react-dom/client';
+import RenderSceneFeedback from './RenderSceneFeedback';
+import {endpoints} from '@/lib/api';
+jest.mock('@/lib/api',()=>({endpoints:{saveSceneFeedback:jest.fn()}}));
+global.IS_REACT_ACT_ENVIRONMENT=true;
+let container,root;
+beforeEach(()=>{container=document.createElement('div');root=createRoot(container);jest.clearAllMocks();});
+afterEach(()=>act(()=>root.unmount()));
+const plan={version:1,subject_count:1,sections:[{label:'Subject',details:['Navy suit']}],missing:['camera'],adjustments:['Wide shot replaces the tight crop.']};
+const change=(selector,value)=>act(()=>{const element=container.querySelector(selector);Object.getOwnPropertyDescriptor(Object.getPrototypeOf(element),'value').set.call(element,value);element.dispatchEvent(new Event(element.tagName==='SELECT'?'change':'input',{bubbles:true}));});
+const save=()=>[...container.querySelectorAll('button')].find(item=>item.textContent==='Save feedback');
+test('shows saved intentions and restores feedback beside the image',async()=>{
+  const feedback={ratings:{pose:'matched',framing:'missed'},notes:'Feet cropped'},onSaved=jest.fn();
+  endpoints.saveSceneFeedback.mockResolvedValue(feedback);
+  act(()=>root.render(<RenderSceneFeedback key="a" render={{id:'a',render_recipe:{scene_review:plan},scene_feedback:feedback}} onSaved={onSaved}/>));
+  expect(container.textContent).toContain('Saved scene intentions');expect(container.textContent).toContain('Navy suit');expect(container.textContent).toContain('Wide shot replaces');
+  expect(container.querySelector('[aria-label="Pose result"]').value).toBe('matched');
+  change('[aria-label="Framing result"]','matched');
+  await act(async()=>save().click());
+  expect(endpoints.saveSceneFeedback).toHaveBeenCalledWith('a',{ratings:{pose:'matched',framing:'matched'},notes:'Feet cropped'});
+  expect(onSaved).toHaveBeenCalledWith(feedback);expect(container.textContent).toContain('Feedback saved.');
+});
+test('a failed save retains the draft and switching images resets it',async()=>{
+  endpoints.saveSceneFeedback.mockRejectedValue(new Error('offline'));
+  act(()=>root.render(<RenderSceneFeedback key="a" render={{id:'a'}}/>));
+  expect(container.textContent).toContain('No scene intentions were saved');
+  change('[aria-label="Outfit result"]','missed');change('textarea','Wrong jacket');
+  await act(async()=>save().click());
+  expect(container.textContent).toContain('Could not save feedback');expect(container.querySelector('textarea').value).toBe('Wrong jacket');expect(container.querySelector('[aria-label="Outfit result"]').value).toBe('missed');
+  act(()=>root.render(<RenderSceneFeedback key="b" render={{id:'b'}}/>));
+  expect(container.querySelector('textarea').value).toBe('');expect(container.querySelector('[aria-label="Outfit result"]').value).toBe('');
+});

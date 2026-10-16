@@ -1,3 +1,4 @@
+import SceneReviewPanel from './SceneReviewPanel';
 import SelectionPromptAudit from './SelectionPromptAudit';
 import { Copy, Check, ShieldCheck, Wand2, Undo2, AlertTriangle, Sparkles, Loader2, ChevronDown, Pencil } from "lucide-react";
 import { useState, useMemo, useEffect } from "react";
@@ -86,6 +87,7 @@ export default function PromptPreview({ positive, negative, dna, workflow, conte
           </button>
         </div>
       </div>
+      <SceneReviewPanel plan={compilerMeta?.sceneReview}/>
       <button type="button" onClick={() => setExpanded((value) => !value)}
         className="w-full rounded-lg border hairline bg-elevated p-3 text-left" data-testid="btn-toggle-prompt-details">
         <div className="flex items-start gap-2">
