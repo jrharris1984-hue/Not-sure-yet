@@ -459,3 +459,99 @@ class ApplicationQcTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual((await self.http.post('/api/learning/history',json={**request,'workflow_id':'missing'})).status_code,404)
         self.assertEqual((await self.http.post('/api/learning/history',json={**request,'generation':{'steps':{}}})).status_code,422)
         self.assertEqual((await self.http.post(url,json={'context':request,'action':'auto_train'})).status_code,422)
+
+    async def _comparison_source(self):
+        settings=await self.server.get_settings()
+        workflow=next(item for item in settings.workflows if item.name=='Chroma1-HD · Golden T2I')
+        class ComfyClient:
+            async def __aenter__(self):return self
+            async def __aexit__(self,*args):pass
+            async def post(self,url,*,json):return httpx.Response(200,json={'prompt_id':'comparison-prompt'})
+        body=self.server.DispatchBody(workflow_id=workflow.id,prompt_positive='Adult portrait in a navy suit in a studio',
+            prompt_negative='blur',seed=42,width=1024,height=1024,batch_size=1,steps=26,cfg=4,
+            sampler_name='euler',scheduler='simple',scene_review={'task':'text-to-image','subject_count':1,
+                'framing':['full body'],'sections':[{'label':'Subject','details':['Navy suit']} ]})
+        with patch.object(self.server.httpx,'AsyncClient',return_value=ComfyClient()):
+            source=await self.server._perform_dispatch(body)
+        await self.db.renders.update_one({'id':source['id']},{'$set':{'status':'done','output_files':['a-enhanced.png','a.png'],'output_variants':{'original':['a.png'],'enhanced':['a-enhanced.png']}}})
+        return await self.db.renders.find_one({'id':source['id']},{'_id':0}),ComfyClient
+
+    async def test_controlled_comparison_survives_retries_and_saves_relative_preference(self):
+        import uuid
+        from copy import deepcopy
+        source,ComfyClient=await self._comparison_source()
+        request={'request_id':str(uuid.uuid4()),'source_render_id':source['id'],'width':896,'height':1344}
+        first=await self.http.post('/api/learning/comparisons',json=request)
+        self.assertEqual(first.status_code,200,first.text)
+        comparison=first.json()
+        self.assertFalse(comparison['ready'])
+        repeat=await self.http.post('/api/learning/comparisons',json=request)
+        self.assertEqual(repeat.status_code,200)
+        self.assertEqual(await self.db.render_queue.count_documents({}),1)
+        self.assertEqual((await self.http.put(f"/api/learning/comparisons/{comparison['id']}/preference",json={'preference':'B'})).status_code,409)
+        job=await self.db.render_queue.find_one({'id':comparison['id']})
+        self.assertEqual(job['payload']['seed'],source['seed_used'])
+        self.assertEqual(job['payload']['prompt_positive'],source['render_recipe']['prompt_positive'])
+        await self.db.render_queue.update_one({'id':job['id']},{'$set':{'status':'dispatching'}})
+        with patch.object(self.server.httpx,'AsyncClient',return_value=ComfyClient()):
+            result=await self.server._perform_dispatch(self.server.DispatchBody(**job['payload']),queue_id=job['id'])
+        await self.db.renders.update_one({'id':result['id']},{'$set':{'status':'done','output_files':['b-enhanced.png','b.png'],'output_variants':{'original':['b.png'],'enhanced':['b-enhanced.png']}}})
+        await self.db.render_queue.update_one({'id':job['id']},{'$set':{'status':'done'}})
+        ready=(await self.http.get(f"/api/learning/comparisons/{comparison['id']}")).json()
+        self.assertTrue(ready['ready'],ready.get('integrity_error'))
+        self.assertEqual(ready['sides']['A']['output_files'],['a.png'])
+        self.assertEqual(ready['sides']['B']['output_files'],['b.png'])
+        preference=await self.http.put(f"/api/learning/comparisons/{comparison['id']}/preference",json={'preference':'B','notes':'More room around the subject.'})
+        self.assertEqual(preference.status_code,200)
+        saved=(await self.http.get(f"/api/learning/comparisons/{comparison['id']}")).json()
+        self.assertEqual(saved['assessment']['preference'],'B')
+        self.assertNotIn('scene_feedback',await self.db.renders.find_one({'id':source['id']}))
+        self.assertNotIn('scene_feedback',await self.db.renders.find_one({'id':result['id']}))
+        # Add ordinary absolute feedback for the target size, then verify that
+        # relative comparison votes are presented alongside it, not mixed in.
+        for index in range(3):
+            record=deepcopy(await self.db.renders.find_one({'id':result['id']},{'_id':0}))
+            record.update(id=f'support-{index}',seed_used=100+index,prompt_positive=f'Clothed portrait {index}',
+                scene_feedback={'ratings':{'framing':'matched'},'updated_at':f'2026-10-16T04:00:0{index}Z'})
+            await self.db.renders.insert_one(record)
+        recipe=source['render_recipe'];plan=recipe['scene_review']
+        context={'workflow_id':source['workflow_id'],'generation':recipe,'selected_loras':recipe['selected_loras'],
+                 'lora_overrides':recipe['lora_overrides'],'framing':plan['framing'],'aspect_ratio':plan['aspect_ratio'],'subject_count':plan['subject_count']}
+        learned=(await self.http.post('/api/learning/history',json=context)).json()
+        self.assertEqual(learned['recommendations'][0]['matched'],3)
+        self.assertEqual(learned['recommendations'][0]['pairwise']['B'],1)
+        self.assertEqual(learned['comparison_history'][0]['id'],comparison['id'])
+        options=(await self.http.get(f"/api/renders/{source['id']}/comparison-options")).json()
+        self.assertEqual(options['recommendations'][0]['settings'],{'width':896,'height':1344})
+        # Clearing completed queue records must not queue B again on retry.
+        await self.db.render_queue.delete_many({})
+        self.assertEqual((await self.http.post('/api/learning/comparisons',json=request)).status_code,200)
+        self.assertEqual(await self.db.render_queue.count_documents({}),0)
+        await self.db.renders.delete_one({'id':result['id']})
+        # Support records deliberately retain the same provenance above;
+        # remove them too to represent deleted comparison output accurately.
+        await self.db.renders.delete_many({'id':{'$in':[f'support-{index}' for index in range(3)]}})
+        self.assertFalse((await self.http.get(f"/api/learning/comparisons/{comparison['id']}")).json()['ready'])
+
+    async def test_comparison_rejects_invalid_requests_and_recipe_or_model_drift(self):
+        import uuid
+        from fastapi import HTTPException
+        source,ComfyClient=await self._comparison_source()
+        request={'request_id':str(uuid.uuid4()),'source_render_id':source['id'],'width':896,'height':1344}
+        for changes,code in (({'width':895},422),({'height':3000},422),({'width':1024,'height':1024},400),({'source_render_id':'missing'},404)):
+            response=await self.http.post('/api/learning/comparisons',json={**request,**changes})
+            self.assertEqual(response.status_code,code,response.text)
+        created=(await self.http.post('/api/learning/comparisons',json=request)).json()
+        self.assertEqual((await self.http.post('/api/learning/comparisons',json={**request,'width':768})).status_code,409)
+        job=await self.db.render_queue.find_one({'id':created['id']})
+        tampered=self.server.DispatchBody(**{**job['payload'],'prompt_positive':'A different scene'})
+        with self.assertRaises(HTTPException) as caught:
+            await self.server._perform_dispatch(tampered)
+        self.assertEqual(caught.exception.status_code,409)
+        changed={**source['learning_context'],'graph_signature':'changed-model'}
+        with patch.object(self.server,'capture_learning_context',return_value=changed),patch.object(self.server.httpx,'AsyncClient',return_value=ComfyClient()):
+            with self.assertRaises(HTTPException) as caught:
+                await self.server._perform_dispatch(self.server.DispatchBody(**job['payload']))
+        self.assertEqual(caught.exception.status_code,409)
+        self.assertEqual(await self.db.renders.count_documents({}),1)
+        self.assertEqual((await self.http.put(f"/api/learning/comparisons/{created['id']}/preference",json={'preference':'not-valid'})).status_code,422)

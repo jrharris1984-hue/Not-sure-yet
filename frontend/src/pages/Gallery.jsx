@@ -1,3 +1,4 @@
+import FramingComparisonPanel from '@/components/FramingComparisonPanel';
 import RenderSceneFeedback from '@/components/RenderSceneFeedback';
 import { confirmPermanentDelete } from "@/lib/permanentDeleteConfirmation";
 import GalleryCarousel from "@/components/GalleryCarousel";
@@ -827,6 +828,7 @@ export default function Gallery() {
                   toast.success("Prompt copied");
                 } catch { toast.error("Could not copy the prompt. Select it in Prompt & advanced actions to copy manually."); }
               }} data-testid="btn-lightbox-copy-prompt" className="w-full rounded-lg border hairline px-3 py-2 text-sm disabled:opacity-40"><Copy className="inline h-4 w-4 mr-2" />Copy prompt</button>
+              <FramingComparisonPanel key={`comparison:${lightbox.id}`} render={lightbox}/>
               <RenderSceneFeedback key={`feedback:${lightbox.id}`} render={lightbox} onSaved={feedback => {
                 qc.setQueriesData({queryKey:['renders']}, current => Array.isArray(current)
                   ? current.map(render => render.id === lightbox.id ? {...render, scene_feedback:feedback} : render) : current);

@@ -1,3 +1,4 @@
+import LearningComparison from '@/pages/LearningComparison';
 import ImageToolRoute from "@/pages/ImageToolRoute";
 import { useEffect } from "react";
 import { endpoints } from "@/lib/api";
@@ -56,6 +57,7 @@ function App() {
             <Route path="/character/new/s/:section" element={<Builder />} />
             <Route path="/character/:id" element={<Builder />} />
             <Route path="/character/:id/s/:section" element={<Builder />} />
+            <Route path="/compare/:id" element={<LearningComparison />} />
             <Route path="/gallery" element={<Gallery />} />
             <Route path="/tools" element={<Tools />} />
             <Route path="/queue" element={<Queue />} />

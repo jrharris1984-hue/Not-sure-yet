@@ -1,4 +1,6 @@
-from learning_history import LearningContext, LearningDecision, capture_learning_context, workflow_revision, profile as learning_profile, framing_recommendations
+from learning_comparisons import ComparisonCreate, ComparisonPreference, comparison_recipe, comparison_output, supported_canvas, pair_error, comparison_summary
+from pymongo.errors import DuplicateKeyError
+from learning_history import digest as learning_digest, LearningContext, LearningDecision, capture_learning_context, workflow_revision, profile as learning_profile, framing_recommendations
 from scene_review import SceneReview, SceneFeedback
 from zimage_setup import prepare_zimage
 from reference_composition import REFERENCE_STYLES, configure_composition
@@ -1351,6 +1353,7 @@ async def get_render(rid: str):
 
 
 class DispatchBody(BaseModel):
+    learning_comparison_id: Optional[str] = None
     scene_review: Optional[SceneReview] = None
     character_id: Optional[str] = None
     dna: Dict[str, Any] = Field(default_factory=dict)
@@ -1768,6 +1771,11 @@ def _patch_seed(workflow: Dict[str, Any], seed: int) -> int:
 async def _perform_dispatch(body: "DispatchBody", queue_id: Optional[str] = None) -> Dict[str, Any]:
     """Shared dispatch pipeline. Builds a Render, patches the workflow, calls ComfyUI,
     persists the render, and returns the doc (without _id)."""
+    comparison = None
+    if body.operation == 'framing_comparison' and body.learning_comparison_id:
+        comparison = await db.learning_comparisons.find_one({'id':body.learning_comparison_id}, {'_id':0})
+        if not comparison or body.model_dump() != comparison.get('candidate_recipe'):
+            raise HTTPException(409, 'The saved comparison recipe does not match this request.')
     s = await get_settings()
     wf_template: Optional[WorkflowTemplate] = None
     if body.workflow_id:
@@ -2395,6 +2403,14 @@ async def _perform_dispatch(body: "DispatchBody", queue_id: Optional[str] = None
     learned = capture_learning_context(wf_template, workflow, body)
     if learned:
         doc["learning_context"] = learned
+    if comparison:
+        if not supported_canvas(workflow, effective_node_settings, comparison['target']):
+            raise HTTPException(409, 'This workflow did not apply the comparison canvas size.')
+        if (not learned or any(learned.get(key)!=comparison['expected'].get(key) for key in ('workflow_revision','graph_signature','profile'))
+            or r.prompt_positive!=comparison['prompt_positive'] or r.prompt_negative!=comparison['prompt_negative']
+            or seed_used!=comparison['seed']):
+            raise HTTPException(409, 'The workflow, model setup, prompt or seed changed. Start a new comparison from a matching render.')
+        doc['learning_comparison_id'] = comparison['id']
     # Complete reusable recipe for exact recreation and seed-only variations.
     doc["render_recipe"] = body.model_dump()
     if body.scene_review is not None:
@@ -2495,7 +2511,11 @@ async def _queue_view(job: Dict[str, Any]) -> Dict[str, Any]:
     return clean
 
 
-async def _enqueue_render(body: DispatchBody) -> Dict[str, Any]:
+async def _enqueue_render(body: DispatchBody, queue_id: Optional[str] = None) -> Dict[str, Any]:
+    if queue_id:
+        existing = await db.render_queue.find_one({'id':queue_id}, {'_id':0})
+        if existing:
+            return await _queue_view(existing)
     # Choose once at enqueue so retries survive a restart with the same seed.
     # Explicit Gallery recreation seeds remain unchanged.
     if body.seed is None:
@@ -2509,7 +2529,7 @@ async def _enqueue_render(body: DispatchBody) -> Dict[str, Any]:
         body.workflow_id = selected.id
     created = now_iso()
     job = {
-        "id": new_id(),
+        "id": queue_id or new_id(),
         "payload": body.model_dump(),
         "status": "queued",
         "workflow_id": body.workflow_id,
@@ -2526,7 +2546,16 @@ async def _enqueue_render(body: DispatchBody) -> Dict[str, Any]:
         "started_at": None,
         "finished_at": None,
     }
-    await db.render_queue.insert_one(job)
+    if queue_id:
+        job['_id'] = queue_id
+    try:
+        await db.render_queue.insert_one(job)
+    except DuplicateKeyError:
+        if not queue_id:
+            raise
+        job = await db.render_queue.find_one({'id':queue_id}, {'_id':0})
+        if not job:
+            raise
     return await _queue_view(job)
 
 
@@ -2689,8 +2718,136 @@ async def _learning_history(context: LearningContext):
     decisions = {item['id']: item for item in decisions}
     for item in result['recommendations']:
         item['decision'] = decisions.get(item['id'], {}).get('action', 'active')
-    return {**result, 'workflow_id': context.workflow_id, 'scan_limit': 2000, 'history_limited': len(records) > 2000,
+    comparisons = await db.learning_comparisons.find({'workflow_id':context.workflow_id,
+        'expected.workflow_revision':revision, 'expected.profile':selected_profile}, {'_id':0,'candidate_recipe':0}).sort('created_at',-1).to_list(2001)
+    comparisons_limited = len(comparisons)>2000
+    comparisons = comparisons[:2000]
+    identifiers = list({identifier for item in comparisons for identifier in (item['source_render_id'],item.get('result_render_id')) if identifier})
+    paired_renders = await db.renders.find({'id':{'$in':identifiers}}, {'_id':0,'id':1,'status':1,'output_files':1,
+        'output_variants':1,'learning_context':1,'seed_used':1,'prompt_positive':1,'prompt_negative':1,'parent_render_id':1,
+        'learning_comparison_id':1,'generation_settings':1}).to_list(None) if identifiers else []
+    counts = comparison_summary(comparisons, {item['id']:item for item in paired_renders})
+    for item in result['recommendations']:
+        item['pairwise'] = counts.get(item['id'])
+    return {**result, 'comparison_history_limited':comparisons_limited, 'comparison_history':[{'id':item['id'],'target':item['target'], 'assessment':item.get('assessment')} for item in comparisons[:10]], 'workflow_id': context.workflow_id, 'scan_limit': 2000, 'history_limited': len(records) > 2000,
             'minimum_matches': 3, 'minimum_distinct_prompts': 2, 'minimum_match_rate': .75}
+
+
+async def _comparison_view(comparison):
+    source = await db.renders.find_one({'id':comparison['source_render_id']}, {'_id':0})
+    job = await db.render_queue.find_one({'id':comparison['id']}, {'_id':0})
+    result = None
+    if job and job.get('render_id'):
+        result = await db.renders.find_one({'id':job['render_id']}, {'_id':0})
+    if not job:
+        if comparison.get('result_render_id'):
+            result = await db.renders.find_one({'id':comparison['result_render_id']}, {'_id':0})
+        if not result:
+            result = await db.renders.find_one({'learning_comparison_id':comparison['id']}, {'_id':0}, sort=[('created_at',-1)])
+    error = pair_error(comparison, source, result)
+    def side(record, dimensions, fallback=None):
+        return {'render_id':record.get('id') if record else None, 'dimensions':dimensions,
+                'status':fallback.get('status') if fallback else record.get('status') if record else 'unavailable',
+                'output_files':comparison_output(record)[1] if record else [],
+                'error':record.get('error') if record else (fallback or {}).get('error')}
+    return {key:value for key,value in comparison.items() if key not in {'_id','candidate_recipe'}} | {
+        'ready':error is None, 'integrity_error':error,
+        'result_render_id':result.get('id') if result else None,
+        'sides':{'A':side(source, comparison['baseline']), 'B':side(result, comparison['target'], job)}}
+
+
+@api.get("/renders/{rid}/comparison-options")
+async def comparison_options(rid: str):
+    render, recipe = await _render_recipe(rid)
+    plan = recipe.get('scene_review') or {}
+    if not render.get('learning_context') or not plan:
+        return {'recommendations':[]}
+    context = LearningContext(workflow_id=recipe.get('workflow_id') or '', generation=recipe,
+        selected_loras=recipe.get('selected_loras') or ([{'name':recipe['selected_lora_name'],
+            'strength':recipe.get('selected_lora_strength',.8), 'triggers':recipe.get('selected_lora_triggers',[])}] if recipe.get('selected_lora_name') else []),
+        lora_overrides=recipe.get('lora_overrides') or {}, framing=plan.get('framing',[]),
+        aspect_ratio=plan.get('aspect_ratio',''), subject_count=plan.get('subject_count',1))
+    history = await _learning_history(context)
+    expected = render['learning_context']
+    current = render.get('generation_settings') or {}
+    return {'recommendations':[item for item in history['recommendations'] if item['decision']!='dismissed'
+        and item['settings']!={key:current.get(key) for key in ('width','height')}
+        and item['id']==learning_digest([expected['workflow_revision'],expected['profile'],expected['graph_signature'],
+                                        item['settings']['width'],item['settings']['height'],'framing-v1'])]}
+
+
+@api.post("/learning/comparisons")
+async def create_learning_comparison(body: ComparisonCreate):
+    identifier = str(body.request_id)
+    previous = await db.learning_comparisons.find_one({'id':identifier}, {'_id':0})
+    target = {'width':body.width, 'height':body.height}
+    if previous:
+        if previous['source_render_id']!=body.source_render_id or previous['target']!=target:
+            raise HTTPException(409, 'This request ID belongs to another comparison.')
+        job = await db.render_queue.find_one({'id':identifier})
+        completed = await db.renders.find_one({'learning_comparison_id':identifier}, {'_id':1})
+        if job or completed:
+            return await _comparison_view(previous)
+    source = await db.renders.find_one({'id':body.source_render_id}, {'_id':0})
+    if not source:
+        raise HTTPException(404, 'Source render not found')
+    try:
+        candidate = comparison_recipe(source, body.width, body.height, identifier)
+        candidate_body = DispatchBody(**candidate)
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+    settings = await get_settings()
+    workflow = next((item for item in settings.workflows if item.id==candidate_body.workflow_id), None)
+    expected = {key:(source.get('learning_context') or {}).get(key) for key in ('version','workflow_revision','graph_signature','profile')}
+    try:
+        revision = workflow_revision(workflow) if workflow else None
+    except (ValueError, TypeError):
+        revision = None
+    if not workflow or workflow.kind!='image' or revision!=expected['workflow_revision']:
+        raise HTTPException(409, 'The workflow has changed. Render a new baseline image before comparing sizes.')
+    size = source['generation_settings']
+    if not supported_canvas(json.loads(workflow.json_str), source.get('effective_node_settings') or {}, size):
+        raise HTTPException(400, 'Choose a workflow with a recorded, supported canvas size control.')
+    comparison = {'id':identifier, 'source_render_id':source['id'], 'workflow_id':workflow.id,
+        'workflow_name':workflow.name, 'expected':expected, 'output_kind':comparison_output(source)[0], 'baseline':{key:size[key] for key in ('width','height')},
+        'target':target, 'seed':source['seed_used'], 'prompt_positive':source.get('prompt_positive',''),
+        'prompt_negative':source.get('prompt_negative',''), 'candidate_recipe':candidate_body.model_dump(),
+        'recommendation_id':learning_digest([expected['workflow_revision'],expected['profile'],expected['graph_signature'],body.width,body.height,'framing-v1']),
+        'created_at':now_iso()}
+    try:
+        await db.learning_comparisons.update_one({'_id':identifier}, {'$setOnInsert':comparison}, upsert=True)
+    except DuplicateKeyError:
+        pass  # A concurrent request created the same durable comparison.
+    saved = await db.learning_comparisons.find_one({'id':identifier}, {'_id':0})
+    if saved['source_render_id']!=source['id'] or saved['target']!=target:
+        raise HTTPException(409, 'This request ID belongs to another comparison.')
+    await _enqueue_render(DispatchBody(**saved['candidate_recipe']), queue_id=identifier)
+    return await _comparison_view(saved)
+
+
+@api.get("/learning/comparisons")
+async def list_learning_comparisons(source_render_id: str):
+    comparisons = await db.learning_comparisons.find({'source_render_id':source_render_id}, {'_id':0,'candidate_recipe':0}).sort('created_at',-1).to_list(20)
+    return [{'id':item['id'], 'target':item['target'], 'assessment':item.get('assessment')} for item in comparisons]
+
+
+@api.get("/learning/comparisons/{comparison_id}")
+async def get_learning_comparison(comparison_id: str):
+    comparison = await db.learning_comparisons.find_one({'id':comparison_id}, {'_id':0})
+    if not comparison:
+        raise HTTPException(404, 'Comparison not found')
+    return await _comparison_view(comparison)
+
+
+@api.put("/learning/comparisons/{comparison_id}/preference")
+async def save_learning_preference(comparison_id: str, body: ComparisonPreference):
+    comparison = await get_learning_comparison(comparison_id)
+    if not comparison['ready']:
+        raise HTTPException(409, comparison['integrity_error'])
+    assessment = {**body.model_dump(), 'updated_at':now_iso()}
+    await db.learning_comparisons.update_one({'id':comparison_id}, {'$set':{
+        'assessment':assessment, 'result_render_id':comparison['result_render_id']}})
+    return assessment
 
 
 @api.post("/learning/history")
