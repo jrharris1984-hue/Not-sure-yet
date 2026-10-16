@@ -1,3 +1,5 @@
+import { normalizePromptStyle } from "./promptModelAliases";
+import { protectModelPromptOrder } from "./modelPromptOrder";
 import { buildSceneReview } from './sceneReview';
 import { buildSceneNarrative } from "./sceneNarrative";
 import { preserveWardrobeLayerGuidance } from './wardrobeLayers';
@@ -915,7 +917,7 @@ export function resolvePromptCompiler({ promptStyle = "", workflowKind = "", wor
   const rawStyle = clean(promptStyle).toLowerCase();
   if (rawStyle === "flux2_klein_edit") return "flux2_klein";
   if (rawStyle === "flux1_dev") return "flux1_dev";
-  const style = ({ flux1_dev: "flux1_dev", flux2_klein_edit: "flux2_klein", qwen_reference: "qwen_edit", wan5b_t2v: "wan_t2v", kroma: "krea2", krea2_aio: "krea2", krea2_test: "krea2", chroma_test: "chroma", chroma_turbo: "chroma", chroma_flash: "chroma", qwen_remix: "qwen_edit", ltx_t2v: "wan_t2v" })[rawStyle] || rawStyle;
+  const style = normalizePromptStyle(rawStyle);
   const kind = clean(workflowKind).toLowerCase();
   const name = clean(workflowName).toLowerCase();
   if (["qwen_image", "qwen_rapid"].includes(style) && !["edit", "enhance"].includes(kind)) return style;
@@ -1287,7 +1289,8 @@ export function compileModelPrompts(options = {}) {
     }
     if (photographic) prompts = preserveWardrobeLayerGuidance(prompts, resolvedSubjects);
     if (castPose.sharedPose) prompts = {...prompts, positive:`Shared pose for all ${castPose.subjects.length} adults: ${castPose.sharedPose}. ${prompts.positive}`} ;
-    const final = applyCatalogRules(prompts, options.workflowKind || 'image', promptCatalog);
+    const ruled = applyCatalogRules(prompts, options.workflowKind || 'image', promptCatalog);
+    const final = {...ruled, positive:protectModelPromptOrder(ruled.positive, compiler)};
     const manifest = buildSelectionManifest({sources:auditSources, prepared:fidelitySubjects, resolved:resolvedSubjects,
       sections:catalogSections(SECTIONS, promptCatalog), raunch:options.raunch, compactRequirements:final.compactRequirements});
     if (castPose.sharedPose) manifest.push({key:'shared-pose', label:'Shared cast pose', value:castPose.sharedPose,

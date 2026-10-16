@@ -23,7 +23,8 @@ import { randomSceneSubjects } from "@/lib/randomScenes";
 import { IMAGE_TOOL_KINDS } from "@/components/HomeImageTools";
 import QwenReferenceControls from "@/components/QwenReferenceControls";
 import { QWEN_CAMERA_DEFAULTS, qwenReferenceInstruction } from "@/lib/qwenReferenceEdit";
-import { applyPhotographicGuidance } from "@/lib/photographicGuidance";
+import { assembleFinalPrompts } from "@/lib/finalPromptAssembly";
+import FinalPromptSummary from "@/components/FinalPromptSummary";
 import VariationInstruction from "@/components/VariationInstruction";
 import { resolveBuilderControls } from "@/lib/builderControlResolution";
 import CreationOutputControls from "@/components/CreationOutputControls";
@@ -1033,7 +1034,6 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
   const ollamaRenderPending = ollamaCompiled.pending;
   const positive = ollamaCompiled.positive;
   const { negative } = compiledPrompt;
-  const promptFormatMeta = {...compiledPrompt,promptWords:positive.trim().split(/\s+/).filter(Boolean).length};
   const translatedPlainLanguage = useMemo(
     () => translatePlainLanguage(
       !["qwen_edit", "wan_i2v"].includes(activeCompiler) ? resolveReferenceNotes(plainLanguage, activeDna, subjects) : plainLanguage,
@@ -1069,22 +1069,29 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
     : translatedPlainLanguage.text;
   const generatedPositive = [languageLead, acceptsLikenessPrompt && likenessPrompt, positive, translatedUserText].filter(Boolean).join(", ");
   const positiveBeforeLoraTriggers = isQwenReferenceWorkflow ? effectiveEditInstruction : isVariationWorkflow ? variationPrompt : isVideoWorkflow ? (promptOverride || positive) : (promptOverride || generatedPositive);
-  const activeLoraTriggers = isVideoWorkflow || isQwenReferenceWorkflow ? [] : [...new Set([
+  const activeLoraTriggers = useMemo(() => isVideoWorkflow || isQwenReferenceWorkflow ? [] : [...new Set([
     ...(selectedLora.name ? selectedLora.triggerWords || [] : []),
     ...(showSecondLora && secondaryLora.name ? secondaryLora.triggerWords || [] : []),
-  ])];
-  const photoPrompts = applyPhotographicGuidance({
-    positive: positiveBeforeLoraTriggers,
-    negative: isVariationWorkflow ? (negativePromptOverride || "") : (negativePromptOverride || negative),
+  ])], [isVideoWorkflow, isQwenReferenceWorkflow, selectedLora.name, selectedLora.triggerWords,
+    showSecondLora, secondaryLora.name, secondaryLora.triggerWords]);
+  const finalPrompts = useMemo(() => assembleFinalPrompts({
+    positive: galleryRecipeMode === "exact" && promptOverride ? promptOverride : positiveBeforeLoraTriggers,
+    negative: galleryRecipeMode === "exact" && promptOverride ? negativePromptOverride
+      : isVariationWorkflow ? (negativePromptOverride || "") : (negativePromptOverride || negative),
+    compiler: activeCompiler,
     negativeStrategy: compiledPrompt.negativeStrategy,
-    enabled: !isVideoWorkflow && !["qwen_edit", "wan_i2v"].includes(activeCompiler)
-      && !(galleryRecipeMode === "exact" && promptOverride),
-  });
-  const finalPositive = activeLoraTriggers.reduce(
-    (text, trigger) => text.toLowerCase().includes(trigger.toLowerCase()) ? text : `${trigger}, ${text}`,
-    photoPrompts.positive
-  );
-  const finalNegative = photoPrompts.negative;
+    photographic: !isVideoWorkflow && !["qwen_edit", "wan_i2v"].includes(activeCompiler),
+    loraTriggers: activeLoraTriggers,
+    exact: galleryRecipeMode === "exact" && !!promptOverride,
+    budgetWords: compiledPrompt.promptBudget,
+  }), [positiveBeforeLoraTriggers, isVariationWorkflow, negativePromptOverride, negative, activeCompiler,
+    compiledPrompt.negativeStrategy, compiledPrompt.promptBudget, isVideoWorkflow, activeLoraTriggers,
+    galleryRecipeMode, promptOverride]);
+  const finalPositive = finalPrompts.positive;
+  const finalNegative = finalPrompts.negative;
+  const finalPromptMeta = useMemo(() => ({...compiledPrompt, promptWords:finalPrompts.assembly.words,
+    finalAssembly:finalPrompts.assembly}), [compiledPrompt, finalPrompts.assembly]);
+  const promptFormatMeta = finalPromptMeta;
   const preflightContext = useMemo(() => ({
     hasReferenceImage: !!referenceImage?.name,
     hasNegativeOverride: !!negativePromptOverride.trim(),
@@ -1103,8 +1110,8 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
     dna: activeDna,
     workflow: activeWorkflow,
     context: preflightContext,
-    compilerMeta: compiledPrompt,
-  }), [activeDna, activeWorkflow, compiledPrompt, finalPositive, preflightContext]);
+    compilerMeta: finalPromptMeta,
+  }), [activeDna, activeWorkflow, finalPromptMeta, finalPositive, preflightContext]);
   const preserveRestoredPrompt = useCompiledPromptReset({
     positive: generatedPositive,
     negative,
@@ -1343,12 +1350,6 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
       batchCompiled.positive,
       batchUserText,
     ].filter(Boolean).join(", ");
-    const batchPhotoPrompts = applyPhotographicGuidance({
-      positive: batchGeneratedPositive,
-      negative: negativePromptOverride || batchCompiled.negative,
-      negativeStrategy: batchCompiled.negativeStrategy,
-      enabled: !["qwen_edit", "wan_i2v"].includes(activeCompiler),
-    });
     const variationDirective = [
       batchActiveDna?.pose?.action,
       batchActiveDna?.pose?.angle,
@@ -1357,16 +1358,21 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
       batchActiveDna?.face?.expression ? `${batchActiveDna.face.expression} expression` : "",
     ].filter(Boolean).join(", ");
     const positiveBase = promptOverride?.trim()
-      ? [promptOverride.trim(), variationDirective].filter(Boolean).join(", ")
-      : batchPhotoPrompts.positive;
-    return {
-      positive: activeLoraTriggers.reduce(
-        (text, trigger) => text.toLowerCase().includes(trigger.toLowerCase()) ? text : `${trigger}, ${text}`,
-        positiveBase
-      ),
-      negative: batchPhotoPrompts.negative,
-      sceneReview: batchCompiled.sceneReview,
-    };
+      ? galleryRecipeMode === "exact" ? promptOverride : [promptOverride.trim(), variationDirective].filter(Boolean).join(", ")
+      : batchGeneratedPositive;
+    const assembled = assembleFinalPrompts({
+      positive: positiveBase,
+      negative: galleryRecipeMode === "exact" && promptOverride ? negativePromptOverride : negativePromptOverride || batchCompiled.negative,
+      compiler: activeCompiler,
+      negativeStrategy: batchCompiled.negativeStrategy,
+      photographic: !isVideoWorkflow && !["qwen_edit", "wan_i2v"].includes(activeCompiler),
+      loraTriggers: activeLoraTriggers,
+      exact: galleryRecipeMode === "exact" && !!promptOverride,
+      budgetWords: batchCompiled.promptBudget,
+    });
+    return { positive: assembled.positive, negative: assembled.negative,
+      finalAssembly: assembled.assembly, sceneReview: batchCompiled.sceneReview };
+
   };
 
   const doDispatch = async () => {
@@ -1469,10 +1475,12 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
           field_locks: s.field_locks || {},
           likeness: s.likeness,
         }));
-        const foundationPrompt = [
-          "Follow the supplied pose reference closely. Preserve coherent human anatomy, subject count, joint placement, and limb connections.",
-          photoPrompts.positive,
-        ].filter(Boolean).join(" ");
+        const foundationPrompts = assembleFinalPrompts({
+          positive: ["Follow the supplied pose reference closely. Preserve coherent human anatomy, subject count, joint placement, and limb connections.", positiveBeforeLoraTriggers].filter(Boolean).join(" "),
+          negative: finalNegative,
+          compiler: resolvePromptCompiler({promptStyle:poseAssistFoundationWorkflow.prompt_style, workflowKind:poseAssistFoundationWorkflow.kind, workflowName:poseAssistFoundationWorkflow.name}),
+          negativeStrategy: "zeroed", photographic: true,
+        });
 
         const foundationQueued = await endpoints.dispatchRender({
           character_id: isNew ? undefined : id,
@@ -1481,8 +1489,8 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
           locks,
           prompt_language: promptLanguage,
           quality_tier: qualityTier,
-          prompt_positive: foundationPrompt,
-          prompt_negative: finalNegative,
+          prompt_positive: foundationPrompts.positive,
+          prompt_negative: foundationPrompts.negative,
           workflow_id: poseAssistFoundationWorkflow.id,
           operation: "pose_foundation",
           reference_image: poseReferenceImage.name,
@@ -1511,11 +1519,16 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
         const prepared = await endpoints.prepareRenderReference(foundationId);
 
         setPoseAssistStage("polish");
-        const polishPrompt = [
-          "Preserve the supplied image's exact pose, limb placement, subject count, framing, and overall silhouette.",
-          finalPositive,
-          "Refine photographic realism, face detail, skin texture, lighting, and material detail without changing the established body geometry.",
-        ].filter(Boolean).join(" ");
+        const polishPrompts = assembleFinalPrompts({
+          positive: [
+            "Preserve the supplied image's exact pose, limb placement, subject count, framing, and overall silhouette.",
+            finalPositive,
+            "Refine photographic realism, face detail, skin texture, lighting, and material detail without changing the established body geometry.",
+          ].filter(Boolean).join(" "),
+          negative: finalNegative,
+          compiler: resolvePromptCompiler({promptStyle:poseAssistPolishWorkflow.prompt_style, workflowKind:poseAssistPolishWorkflow.kind, workflowName:poseAssistPolishWorkflow.name}),
+          negativeStrategy: compiledPrompt.negativeStrategy,
+        });
 
         const finalQueued = await endpoints.dispatchRender({
           character_id: isNew ? undefined : id,
@@ -1525,8 +1538,8 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
           prompt_language: promptLanguage,
           quality_tier: qualityTier,
           scene_review: compiledPrompt.sceneReview,
-          prompt_positive: polishPrompt,
-          prompt_negative: finalNegative,
+          prompt_positive: polishPrompts.positive,
+          prompt_negative: polishPrompts.negative,
           workflow_id: poseAssistPolishWorkflow.id,
           parent_render_id: foundationId,
           operation: "pose_polish",
@@ -1582,6 +1595,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
         ? Number(chromaSettings.seed)
         : Math.floor(Math.random() * 2147483647);
       const queuedRenders = [];
+      let overBudgetBatchPrompts = 0;
       for (let imageIndex = 0; imageIndex < requestedCount; imageIndex += 1) {
         const uniqueSeed = batchSeed(baseSeed, imageIndex, batchSeedMode);
         const smartVariation = requestedCount > 1 && batchSeedMode === "smart"
@@ -1623,6 +1637,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
         const batchPrompts = hasBatchVariation
           ? compileBatchVariationPrompts(dispatchSubjects)
           : { positive: finalPositive, negative: finalNegative, sceneReview: compiledPrompt.sceneReview };
+        if (hasBatchVariation && batchPrompts.finalAssembly?.overBudgetWords > 0) overBudgetBatchPrompts += 1;
         let r;
         try {
           r = await endpoints.dispatchRender({
@@ -1702,6 +1717,9 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
         if (isSmartShoot) setSmartShootRun(current => ({ ...current, requests: [...queuedRenders] }));
         setBatchRenders([...queuedRenders]);
       }
+      if (overBudgetBatchPrompts) toast.info(`${overBudgetBatchPrompts} batch prompt${overBudgetBatchPrompts === 1 ? " is" : "s are"} above word guidance`, {
+        description: "All selected details were kept. Try Compact or simplify optional wording for future runs.",
+      });
       const latestRender = queuedRenders[queuedRenders.length - 1];
       setBatchRenders(queuedRenders);
       setSelectedBatchRenderId(queuedRenders[0]?.id || null);
@@ -2842,6 +2860,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
             <h3 className="section-label">Prompt compiler</h3>
             <WebPromptResearchOptions disabled={improvingPrompt} />
             <PromptFormatControl value={promptFormat} onChange={changePromptFormat} meta={promptFormatMeta} status={settings?.ai_provider === 'ollama' && promptFormat === 'ollama' ? ollamaCompiled.reason : ''} />
+            <FinalPromptSummary assembly={finalPrompts.assembly} />
           </section>}</>}
         onTools={() => openMobileAdvancedStudio("overview")}
       /> : <button data-mobile-tools="none" type="button" className="md:hidden chip" onClick={() => setMobileSheets(true)}>Back to bottom sheets</button>)}
@@ -3180,6 +3199,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
             <h3 className="section-label">Prompt compiler</h3>
             <WebPromptResearchOptions disabled={improvingPrompt} />
             <PromptFormatControl value={promptFormat} onChange={changePromptFormat} meta={promptFormatMeta} status={promptFormat === 'ollama' ? ollamaCompiled.reason : ''} />
+            <FinalPromptSummary assembly={finalPrompts.assembly} />
           </section>}
           {activeRecipeFamily === "image" && renderCount > 1 && <section data-mobile-tools="none" className="md:hidden pane p-3 space-y-2">
             <div className="text-xs font-semibold text-zinc-200">Batch variety</div>
@@ -3527,6 +3547,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
                 <div><span className="text-zinc-500">Output</span><div className="font-semibold">{qualityTier} · {activeRecipeFamily === "image" ? `${renderCount} image${renderCount === 1 ? "" : "s"}` : activeRecipeFamily}</div></div>
               </div>
               <PromptFormatControl value={promptFormat} onChange={changePromptFormat} meta={promptFormatMeta} status={promptFormat === 'ollama' ? ollamaCompiled.reason : ''} />
+              <FinalPromptSummary assembly={finalPrompts.assembly} />
               <details className="rounded-xl border hairline bg-black/20 p-3">
                 <summary className="cursor-pointer text-xs font-semibold text-zinc-300">Prompt preview</summary>
                 <div className="mt-2 max-h-44 overflow-y-auto text-xs leading-relaxed text-zinc-400">{finalPositive || "Choose the subject and scene to build a prompt."}</div>
@@ -3709,7 +3730,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
             dna={activeDna}
             workflow={activeWorkflow}
             context={preflightContext}
-            compilerMeta={compiledPrompt}
+            compilerMeta={finalPromptMeta}
             recipe={activeRecipeFamily === "image" ? renderSettings : null}
             selectedLora={selectedLora}
             secondaryLora={showSecondLora ? secondaryLora : null}

@@ -1,3 +1,4 @@
+import { normalizePromptStyle } from "./promptModelAliases";
 import { requirementPresent } from "@/lib/promptPriority";
 import { wardrobeNudity } from "@/lib/wardrobeNudity";
 
@@ -24,7 +25,7 @@ export function estimatePromptTokens(text = "") {
 }
 
 export function promptProfile(workflow = {}) {
-  const style = String(workflow?.prompt_style || "").toLowerCase();
+  const style = normalizePromptStyle(workflow?.prompt_style);
   const kind = String(workflow?.kind || "").toLowerCase();
   const name = String(workflow?.name || "").toLowerCase();
   const haystack = `${style} ${name}`;
@@ -113,6 +114,10 @@ export function analyzePromptQuality({
 
   if (!String(positive).trim()) {
     issues.push(issue("error", "empty-prompt", "The selected workflow does not have a prompt or instruction yet.", { blocking: true }));
+  }
+  const finalAssembly = compilerMeta.finalAssembly;
+  if (finalAssembly?.overBudgetWords > 0) {
+    issues.push(issue("warning", "final-word-budget", `The final prompt is ${finalAssembly.words} words, ${finalAssembly.overBudgetWords} above its ${finalAssembly.budgetWords}-word guidance budget. Selected details were kept; try Compact or simplify optional wording.`));
   }
   if (tokens > limits.hardTokens) {
     issues.push(issue("error", "length", `${limits.label} may truncate this ~${tokens}-token prompt. Move essential identity, body, and pose details earlier.`));
