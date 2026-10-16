@@ -66,8 +66,8 @@ test("Generate controls forward the model, quality and numeric image count to di
   const props = outputProps();
   render(<CreationOutputControls {...props} />);
   changeSelect("Generation model", "b");
-  changeSelect("Generation quality", "quality");
-  changeSelect("Image count", "4");
+  act(() => container.querySelector('[aria-label="Quality: Quality"]').click());
+  act(() => container.querySelector('[aria-label="4 images"]').click());
   expect(props.onWorkflow).toHaveBeenCalledWith("b");
   expect(props.onTier).toHaveBeenCalledWith("quality");
   expect(props.onCount).toHaveBeenCalledWith(4);
@@ -88,7 +88,7 @@ test("distilled models lock sampling while Pose Assist locks image count", () =>
   expect(container.querySelector('[aria-label="Sampling steps"]').disabled).toBe(true);
   expect(container.querySelector('[aria-label="Sampling CFG"]').disabled).toBe(true);
   expect(container.querySelector('[aria-label="Generation seed"]').disabled).toBe(false);
-  expect(container.querySelector('[aria-label="Image count"]').disabled).toBe(true);
+  expect(container.querySelector('[aria-label="4 images"]').disabled).toBe(true);
 });
 
 test("non-image workflows omit image-specific settings", () => {
@@ -96,4 +96,22 @@ test("non-image workflows omit image-specific settings", () => {
   expect(container.querySelector('[aria-label="Image count"]')).toBeNull();
   expect(container.querySelector('[aria-label="Sampling steps"]')).toBeNull();
   expect(container.querySelector('[aria-label="Generation model"]')).not.toBeNull();
+});
+
+test("visual output choices show model recipes and block changes while busy", () => {
+  render(<CreationOutputControls {...outputProps()} compiler="chroma" tier="balanced" count={4} busy />);
+  expect(container.querySelector('[aria-label="Quality: Balanced"]').getAttribute("aria-pressed")).toBe("true");
+  expect(container.querySelector('[aria-label="4 images"]').getAttribute("aria-pressed")).toBe("true");
+  expect(container.querySelector('[aria-label="Quality: Quality"]').disabled).toBe(true);
+  expect(container.querySelector('[aria-label="10 images"]').disabled).toBe(true);
+  expect(container.querySelector('[aria-label="Quality: Balanced"]').textContent).toContain("26 steps");
+});
+
+test("Pose Assist explains its batch lock and edit presets describe change strength", () => {
+  render(<CreationOutputControls {...outputProps()} countLocked />);
+  expect(container.textContent).toContain("Pose Assist uses one image at a time");
+  render(<CreationOutputControls {...outputProps()} compiler="qwen_edit" family="edit" />);
+  expect(container.querySelector('[aria-label="Image count"]')).toBeNull();
+  expect(container.querySelector('[aria-label="Quality: Quality"]').textContent).toContain("Stronger change");
+  expect(container.querySelector('[aria-label="Quality: Quality"]').textContent).toContain("Edit strength 60%");
 });
