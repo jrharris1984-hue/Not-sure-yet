@@ -12,12 +12,16 @@ import { QUALITY_TIERS, getRenderRecipe, recipeSummary } from "@/lib/renderRecip
 
 const QUALITY_ICONS = { draft: Zap, balanced: Gauge, quality: Sparkles };
 
-function SummaryRow({ label, value }) {
+function SummaryRow({ label, value, onEdit }) {
   if (!value) return null;
   return (
     <div className="flex items-start justify-between gap-3 border-b hairline py-2.5 last:border-b-0">
       <span className="shrink-0 text-[9px] font-mono uppercase tracking-[0.14em] text-zinc-600">{label}</span>
-      <span className="min-w-0 text-right text-[11px] leading-relaxed text-zinc-300">{value}</span>
+      <div className="min-w-0 text-right">
+        <span className="text-[11px] leading-relaxed text-zinc-300">{value}</span>
+        {onEdit && <button type="button" onClick={onEdit} aria-label={`Edit ${label.toLowerCase()}`}
+          className="ml-2 min-h-11 rounded-lg px-3 text-xs font-semibold text-cyan-300 hover:bg-white/5">Edit</button>}
+      </div>
     </div>
   );
 }
@@ -34,6 +38,8 @@ export default function MobileCreateReview({
   issues = [],
   mode = "simple",
   onRequestAdvanced,
+  onEditSection,
+  onEditWorkflow,
 }) {
   const ready = issues.length === 0;
 
@@ -79,10 +85,10 @@ export default function MobileCreateReview({
           </div>
         </div>
         <div className="px-3">
-          <SummaryRow label="Character" value={summaries.character} />
-          <SummaryRow label="Scene" value={summaries.scene} />
-          <SummaryRow label="Fine tune" value={summaries.fineTune} />
-          <SummaryRow label="Workflow" value={workflow?.name || "No workflow selected"} />
+          <SummaryRow label="Character" value={summaries.character} onEdit={onEditSection && (() => onEditSection("identity"))} />
+          <SummaryRow label="Scene" value={summaries.scene} onEdit={onEditSection && (() => onEditSection("scene"))} />
+          <SummaryRow label="Fine tune" value={summaries.fineTune} onEdit={onEditSection && (() => onEditSection("scenario"))} />
+          <SummaryRow label="Workflow" value={workflow?.name || "No workflow selected"} onEdit={onEditWorkflow || onRequestAdvanced} />
         </div>
       </div>
 
@@ -103,6 +109,7 @@ export default function MobileCreateReview({
                 type="button"
                 onClick={() => onQualityTier(tier.id)}
                 data-testid={`mobile-create-quality-${tier.id}`}
+                aria-pressed={selected}
                 className={`min-w-0 rounded-xl border px-2 py-3 text-center transition-colors ${
                   selected
                     ? "border-amber-400/70 bg-amber-500/10 text-amber-100"
@@ -137,6 +144,7 @@ export default function MobileCreateReview({
                 type="button"
                 onClick={() => onRenderCount(count)}
                 data-testid={`mobile-create-count-${count}`}
+                aria-pressed={renderCount === count}
                 className={`rounded-lg border py-2.5 text-xs font-bold transition-colors ${
                   renderCount === count
                     ? "border-cyan-400/70 bg-cyan-500/10 text-cyan-100"
