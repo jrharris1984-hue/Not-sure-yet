@@ -1,3 +1,4 @@
+from scene_review import SceneReview, SceneFeedback
 from zimage_setup import prepare_zimage
 from reference_composition import REFERENCE_STYLES, configure_composition
 from ollama_compiler import validate_ollama_prompt
@@ -1349,6 +1350,7 @@ async def get_render(rid: str):
 
 
 class DispatchBody(BaseModel):
+    scene_review: Optional[SceneReview] = None
     character_id: Optional[str] = None
     dna: Dict[str, Any] = Field(default_factory=dict)
     subjects: List[Dict[str, Any]] = Field(default_factory=list)
@@ -2391,6 +2393,8 @@ async def _perform_dispatch(body: "DispatchBody", queue_id: Optional[str] = None
     doc["effective_node_settings"] = effective_node_settings
     # Complete reusable recipe for exact recreation and seed-only variations.
     doc["render_recipe"] = body.model_dump()
+    if body.scene_review is not None:
+        doc["scene_review"] = body.scene_review.model_dump()
     doc["shoot_id"] = body.shoot_id
     doc["shoot_frame_index"] = body.shoot_frame_index
     doc["parent_render_id"] = body.parent_render_id
@@ -2658,6 +2662,15 @@ async def _render_recipe(rid: str) -> tuple[Dict[str, Any], Dict[str, Any]]:
             **generation,
         }
     return render, recipe
+
+
+@api.put("/renders/{rid}/scene-feedback")
+async def save_scene_feedback(rid: str, body: SceneFeedback):
+    if not await db.renders.find_one({"id": rid}, {"_id": 0}):
+        raise HTTPException(404, "Render not found")
+    feedback = {"version": 1, **body.model_dump(), "updated_at": datetime.now(timezone.utc).isoformat()}
+    await db.renders.update_one({"id": rid}, {"$set": {"scene_feedback": feedback}})
+    return feedback
 
 
 @api.get("/renders/{rid}/recipe")

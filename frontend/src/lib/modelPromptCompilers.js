@@ -1,3 +1,4 @@
+import { buildSceneReview } from './sceneReview';
 import { buildSceneNarrative } from "./sceneNarrative";
 import { preserveWardrobeLayerGuidance } from './wardrobeLayers';
 import { preserveUnderneathLayers, resolveUnderneathComponents } from "./underneathLayer";
@@ -1295,7 +1296,8 @@ export function compileModelPrompts(options = {}) {
       sections:catalogSections(SECTIONS, promptCatalog), raunch:options.raunch, compactRequirements:final.compactRequirements});
     if (castPose.sharedPose) manifest.push({key:'shared-pose', label:'Shared cast pose', value:castPose.sharedPose,
       expected:castPose.sharedPose, terms:[castPose.sharedPose.toLowerCase().replace(/[^\p{L}\p{N}]+/gu,' ').trim()], subjectLabel:''});
-    return {...final, selectionManifest:manifest};
+    return {...final, selectionManifest:manifest, sceneReview:buildSceneReview(resolvedSubjects, promptCatalog, compiler, options.raunch,
+      {video:compiler === 'wan_t2v', motion:options.videoInstruction || '', sharedPose:castPose.sharedPose})};
   };
   if (!contract) return finalize(protectedResult);
   const positive = `${contract} ${protectedResult.positive}`;

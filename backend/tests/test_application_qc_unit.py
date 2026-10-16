@@ -127,7 +127,8 @@ class ApplicationQcTests(unittest.IsolatedAsyncioTestCase):
         body = self.server.DispatchBody(workflow_id=selected['id'], character_id='qc-character',
             prompt_positive='One adult woman in a navy linen suit, full-length photograph, soft daylight',
             prompt_negative='blur, extra limbs', width=896, height=1344, steps=30, cfg=4.0,
-            sampler_name='heun', seed=987654321, batch_size=1)
+            sampler_name='heun', seed=987654321, batch_size=1,
+            scene_review={'task':'text-to-image','subject_count':1,'sections':[{'label':'Subject','details':['Navy linen suit']}], 'missing':['scene']})
         with patch.object(self.server.httpx, 'AsyncClient', return_value=ComfyClient()):
             result = await self.server._perform_dispatch(body)
         graph = captured['prompt']
@@ -147,6 +148,9 @@ class ApplicationQcTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result['seed_used'], 987654321)
         self.assertEqual(result['render_recipe']['steps'], 30)
         self.assertEqual(result['render_recipe']['prompt_positive'], body.prompt_positive)
+        self.assertEqual(result['scene_review'], body.scene_review.model_dump())
+        stored=await self.db.renders.find_one({'id':result['id']})
+        self.assertEqual(stored['scene_review'], stored['render_recipe']['scene_review'])
         self.assertEqual(result['comfy_prompt_id'], 'qc-chroma-job')
         self.assertEqual((await self.server.get_settings()).workflows[[item['id'] for item in settings['workflows']].index(selected['id'])].json_str, selected['json_str'])
 
@@ -396,3 +400,31 @@ class ApplicationQcTests(unittest.IsolatedAsyncioTestCase):
                 self.assertEqual(workflow['positive_node_id'], '748')
                 self.assertEqual(workflow['negative_node_id'], '749')
         self.assertEqual((await self.http.post('/api/workflows/seed')).json()['added'], 0)
+
+    async def test_scene_feedback_persists_without_rewriting_render_intentions(self):
+        plan={'version':1,'task':'text-to-image','subject_count':1,'sections':[{'label':'Subject','details':['Navy suit']}],'missing':[],'adjustments':[]}
+        recipe={'scene_review':plan,'seed':123,'prompt_positive':'Navy suit in a studio'}
+        await self.db.renders.insert_one({'id':'review-me','render_recipe':recipe,'scene_review':plan,'status':'done'})
+        response=await self.http.put('/api/renders/review-me/scene-feedback',json={'ratings':{'pose':'matched','framing':'missed'},'notes':'Feet were cropped.'})
+        self.assertEqual(response.status_code,200)
+        feedback=response.json()
+        self.assertEqual(feedback['ratings']['framing'],'missed')
+        self.assertTrue(feedback['updated_at'])
+        loaded=(await self.http.get('/api/renders/review-me')).json()
+        self.assertEqual(loaded['scene_feedback'],feedback)
+        self.assertEqual(loaded['scene_review'],plan)
+        self.assertEqual(loaded['render_recipe'],recipe)
+        cleared=await self.http.put('/api/renders/review-me/scene-feedback',json={'ratings':{},'notes':''})
+        self.assertEqual(cleared.status_code,200)
+        self.assertEqual(cleared.json()['ratings']['framing'],'')
+        self.assertEqual((await self.http.get('/api/renders/review-me/recipe')).json()['recipe'],recipe)
+
+    async def test_scene_feedback_and_intentions_validate_at_api_boundary(self):
+        self.assertEqual((await self.http.put('/api/renders/missing/scene-feedback',json={})).status_code,404)
+        await self.db.renders.insert_one({'id':'review-me','status':'done'})
+        for body in ({'ratings':{'pose':'invented'}}, {'ratings':{'unrecognized':'matched'}}, {'notes':'x'*2001}, {'scene_review':{}}):
+            with self.subTest(body=str(body)[:80]):
+                self.assertEqual((await self.http.put('/api/renders/review-me/scene-feedback',json=body)).status_code,422)
+        self.assertNotIn('scene_feedback',await self.db.renders.find_one({'id':'review-me'}))
+        for plan in ({'task':'unknown','subject_count':1,'sections':[]}, {'task':'text-to-image','subject_count':0,'sections':[]}):
+            self.assertEqual((await self.http.post('/api/renders/dispatch',json={'scene_review':plan})).status_code,422)
