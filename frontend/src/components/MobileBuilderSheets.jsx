@@ -57,6 +57,7 @@ function Handle({ label, onStart, onDrag, onEnd, onClick }) {
 
 export default function MobileBuilderSheets({ sections, section, onSection, subjects, activeId, onSubject,
   onPeople, presetsControl, values, renderControls, preview, livePreview, renderStatus, renderError, outputControls, castPoseControls,
+  workspaceControls, resultControls, reviewControls,
   onSave, onReset, saving, onGenerate, generating, canGenerate, issues = [], imageCount, onTools, selectedItems = [] }) {
   const [height, setHeight] = useState("expanded");
   const [detail, setDetail] = useState(null);
@@ -78,6 +79,7 @@ export default function MobileBuilderSheets({ sections, section, onSection, subj
     return () => clearTimeout(timer);
   }, [closing]);
   useEffect(() => { setDetail(null); setClosing(false); setDetailOffset(0); }, [section.key]);
+  useEffect(() => { if (detail === "results" && !resultControls) setDetail(null); }, [detail, resultControls]);
   useEffect(() => { if (detail === "cast-poses" && subjects.length < 2) setDetail(null); }, [detail, subjects.length]);
   useEffect(() => {
     if (!detail) return;
@@ -87,13 +89,14 @@ export default function MobileBuilderSheets({ sections, section, onSection, subj
   }, [detail]);
   const close = () => { setDetailDragging(false); setClosing(true); };
   const open = key => { setDetailInteracted(false); setClosing(false); setDetailOffset(0); setDetail(key); };
-  const label = detail === "selected" ? "Selected options" : detail === "output" ? "Generation settings" : detail === "cast-poses" ? `Poses for ${subjects.length} people` : section.fields.find(field => field.key === detail)?.label || section.title;
+  const label = detail === "workspace" ? "Workspace tools" : detail === "results" ? "Render results" : detail === "selected" ? "Selected options" : detail === "output" ? "Generation settings" : detail === "cast-poses" ? `Poses for ${subjects.length} people` : section.fields.find(field => field.key === detail)?.label || section.title;
   return <section className="mobile-sheet-builder md:hidden" data-testid="mobile-sheet-builder" style={personStyle(subjects.findIndex(person => person.id === activeId))}>
     <div className="sheet-workspace">
       <header className="flex items-center justify-between gap-2">
         <div><div className="section-label">Character workspace</div><div className="text-sm font-semibold">{subjects.length} {subjects.length === 1 ? "person" : "people"} · editing {subjects.find(person => person.id === activeId)?.label || "A"}</div></div>
         <div className="flex gap-2"><button type="button" className="chip" onClick={() => { setDetail(null); setClosing(false); setDetailOffset(0); setHeight("expanded"); onReset?.(); }} title="Clear the character setup and start with one person" aria-label="Reset character setup">Reset</button><button type="button" className="chip" disabled={saving} onClick={onSave}>{saving ? "Saving…" : "Save"}</button></div>
       </header>
+      {typeof reviewControls === "function" ? reviewControls({openOutput: () => open("output")}) : reviewControls}
       <div className="sheet-preview">
         {livePreview || (preview ? <img src={mediaUrl(preview)} alt="Latest character result" /> : <div className="text-center text-zinc-500 text-sm p-6">Your generated character will appear here.<br /><span className="text-xs">Open a category below to start.</span></div>)}
       </div>
@@ -124,6 +127,10 @@ export default function MobileBuilderSheets({ sections, section, onSection, subj
           })}
         </nav>
         <div className="sheet-field-scroll">
+          {(workspaceControls || resultControls) && <div className="mb-3 flex flex-wrap gap-2" aria-label="Workspace shortcuts">
+            {workspaceControls && <button type="button" className="chip min-h-11" onClick={() => open("workspace")}>Quick tools</button>}
+            {resultControls && <button type="button" className="chip min-h-11" onClick={() => open("results")}>Results & actions</button>}
+          </div>}
           <div className="flex justify-between items-center mb-3"><h2 className="font-semibold">{section.title}</h2><div className="flex gap-2"><button type="button" className="text-xs text-cyan-200" onClick={() => open("selected")}>Selected · {selectedItems.length}</button><button type="button" className="text-xs text-cyan-200" onClick={() => open("all")}>All controls</button></div></div>
           <div className="grid grid-cols-2 gap-2">
             {section.key === "pose" && subjects.length > 1 && castPoseControls && <button type="button" className="sheet-field-card" onClick={() => open("cast-poses")}>
@@ -170,7 +177,8 @@ export default function MobileBuilderSheets({ sections, section, onSection, subj
           <div className="sheet-detail-scroll">{detail === "selected" ? <div className="space-y-2">
             {selectedItems.length ? selectedItems.map(item => <button type="button" key={`${item.section}-${item.field}`} className="studio-selected-option w-full rounded-xl border p-3 text-left"
               onClick={() => { onSection(item.section); close(); }}><span className="block text-xs text-zinc-400">{item.category} · {item.label}</span><span className="block text-sm mt-1">{item.value}</span></button>) : <p className="text-sm text-zinc-400">Choose a few options to review them here.</p>}
-          </div> : detail === "output" ? outputControls : detail === "cast-poses" ? castPoseControls : renderControls(detail)}</div>
+          </div> : detail === "workspace" ? (typeof workspaceControls === "function" ? workspaceControls({close, openOutput: () => open("output")}) : workspaceControls)
+            : detail === "results" ? resultControls : detail === "output" ? outputControls : detail === "cast-poses" ? castPoseControls : renderControls(detail)}</div>
         </section>
       </>}
     </div>
