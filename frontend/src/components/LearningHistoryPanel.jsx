@@ -51,6 +51,7 @@ export default function LearningHistoryPanel({context, settings, onApply, blocke
       return <article key={item.id} className="rounded border hairline p-3">
         <h4 className="font-semibold">Try {item.settings.width} × {item.settings.height}</h4>
         <p className="mt-1">Framing matched in {item.matched} of {item.reviewed} reviewed results across {item.distinct_prompts} successful prompts.</p>
+        {item.pairwise && <p className="mt-2 text-violet-200">Size comparisons: B preferred {item.pairwise.B} of {item.pairwise.total}; A preferred {item.pairwise.A}, tied {item.pairwise.tie}, neither {item.pairwise.neither}.</p>}
         {item.decision==='applied' && <p className="mt-1 text-violet-200">Previously approved</p>}
         <details className="mt-2"><summary className="cursor-pointer">Evidence and model files</summary>
           <p className="mt-2 break-words text-zinc-400">{item.models.join(', ') || 'Workflow model files'}</p>
@@ -64,6 +65,9 @@ export default function LearningHistoryPanel({context, settings, onApply, blocke
     {items.some(item=>item.decision==='dismissed') && <details className="mt-3"><summary className="cursor-pointer">Dismissed recommendations</summary>{items.filter(item=>item.decision==='dismissed').map(item=><div key={item.id} className="mt-2 flex items-center justify-between gap-2"><span>{item.settings.width} × {item.settings.height}</span><button type="button" disabled={busy} onClick={()=>decide(item,'active')} className="rounded border hairline px-2 py-1.5">Restore recommendation</button></div>)}</details>}
     {undo && <button type="button" disabled={!canUndo || busy || !!blocked} onClick={()=>{onApply(undo.before);setUndo(null);setMessage('Previous image size restored.');}} className="mt-3 rounded border hairline px-3 py-2 disabled:opacity-40">Undo image size</button>}
     {undo && !canUndo && <p className="mt-2 text-zinc-400">Image size changed since applying. Undo is disabled to preserve your edits.</p>}
+    <div className="mt-3 text-zinc-400"><Link to="/gallery" className="text-cyan-200 underline">Compare a saved render in Gallery</Link><p className="mt-1">Open an image and expand Compare image sizes to test a new size with its saved prompt and seed.</p></div>
+    {history.data?.comparison_history_limited && <p className="mt-2 text-zinc-400">Comparison summaries check the most recent 2,000 tests for this setup.</p>}
+    {!!history.data?.comparison_history?.length && <details className="mt-3"><summary className="cursor-pointer">Recent size comparisons</summary><ul className="mt-2 space-y-1">{history.data.comparison_history.map(pair=><li key={pair.id}><Link to={`/compare/${pair.id}`} className="text-cyan-200 underline">B {pair.target.width} × {pair.target.height} · {pair.assessment?.preference || 'not assessed'}</Link></li>)}</ul></details>}
     <p role="status" className="mt-2">{message}</p>
   </details>;
 }
