@@ -1,3 +1,4 @@
+import LearningHistoryPanel from '@/components/LearningHistoryPanel';
 import SceneReviewPanel from '@/components/SceneReviewPanel';
 import { desktopNavigationSections } from '@/lib/desktopEditingGroups';
 import DesktopDnaEditor from '@/components/DesktopDnaEditor';
@@ -2686,6 +2687,22 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
   if (imageToolId && !workflows.some(workflow => workflow.id === imageToolId && IMAGE_TOOL_KINDS.includes(workflow.kind))) return <div className="mx-auto max-w-4xl p-6 text-zinc-400">This image tool is unavailable. <button type="button" onClick={() => nav('/')} className="text-cyan-300 underline">Return to the main screen</button> or refresh workflows in Settings.</div>;
   if (imageToolId && !IMAGE_TOOL_KINDS.includes(activeWorkflow?.kind)) return <div className="mx-auto max-w-4xl p-6 text-zinc-400">Opening image tool…</div>;
 
+  const learningContext = {
+    workflow_id:workflowId,
+    generation:{steps:renderSettings.steps,cfg:renderSettings.cfg,sampler_name:renderSettings.sampler,scheduler:renderSettings.scheduler},
+    selected_loras:[selectedLora,...(showSecondLora?[secondaryLora]:[])].filter(lora=>lora.name)
+      .map(lora=>({name:lora.name,strength:lora.strength,triggers:lora.triggerWords || []})),
+    lora_overrides:effectiveLoraOverrides,
+    framing:compiledPrompt.sceneReview?.framing || [],
+    aspect_ratio:compiledPrompt.sceneReview?.aspect_ratio || '',
+    subject_count:compiledPrompt.sceneReview?.subject_count || 1,
+  };
+  const learningPanel = activeWorkflow?.kind === 'image' && activeRecipeFamily === 'image' && !isImageFirst && !poseAssistEnabled
+    ? <LearningHistoryPanel key={JSON.stringify(learningContext)} context={learningContext} settings={renderSettings}
+        blocked={dispatching ? 'Wait for the current submission before changing image size.' : galleryRecipeMode === 'exact' ? 'Exact recipe mode preserves its saved image size. Rebuild with the current compiler to try recommendations.' : ''}
+        onApply={size=>setChromaSettings(current=>({...current,width:size.width,height:size.height}))}/>
+    : null;
+
   return (
     <div className={`mobile-builder-content ${sheetViewport && !mobileSheets && !isImageFirst && editMode !== "body_adjust" ? "organized-mobile-tools" : ""} ${mobileSheets && !isImageFirst && editMode !== "body_adjust" ? "nested-mobile-builder" : ""} mx-auto max-w-[1600px] px-2.5 sm:px-6 py-3 sm:py-6 space-y-3 sm:space-y-4 ${desktopQuickMode && !isImageFirst ? "quick-create-mode" : ""}`} data-mobile-tools-group={mobileToolsGroup} style={!sheetViewport && !isImageFirst ? { paddingBottom: "7rem" } : undefined}>
       {!sheetViewport && !isImageFirst && editMode !== "body_adjust" && !quickReview && <DesktopEditingDock
@@ -2761,7 +2778,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
         onGenerate={doDispatch} generating={dispatching}
         canGenerate={!!workflowId && mobileCreateIssues.length === 0}
         issues={mobileCreateIssues} imageCount={poseAssistEnabled && !isVariationWorkflow ? 1 : renderCount}
-        outputControls={<><CreationOutputControls workflows={selectableWorkflows} workflowId={workflowId}
+        outputControls={<>{learningPanel}<CreationOutputControls workflows={selectableWorkflows} workflowId={workflowId}
           onWorkflow={setWorkflowId} family={activeRecipeFamily} tier={qualityTier}
           onTier={applyQualityTier} count={poseAssistEnabled && !isVariationWorkflow ? 1 : renderCount} onCount={setRenderCount}
           countLocked={poseAssistEnabled && !isVariationWorkflow}
@@ -3644,6 +3661,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
             {plainLanguage.trim() && !["qwen_edit", "wan_i2v"].includes(activeCompiler) && resolveReferenceNotes(plainLanguage, activeDna, subjects) !== plainLanguage.trim() && <p className="text-xs text-amber-300">Current controls replace labeled reference notes for body orientation, camera angle, pose, framing and expression in the submitted prompt. Your original notes remain saved here.</p>}
           </div>
           {isVideoWorkflow || isVariationWorkflow ? <details data-mobile-tools="prompts" className="pane p-4" data-testid={isVideoWorkflow ? "video-motion-preview" : "variation-prompt-preview"}><summary className="cursor-pointer text-xs text-zinc-300">{isVideoWorkflow ? "Motion prompt sent to ComfyUI" : "Variation prompt sent to ComfyUI"}</summary>{isTextVideoWorkflow && <div className="mt-3"><PromptFormatControl formats={['detailed','scene']} value={promptFormat === 'scene' ? 'scene' : 'detailed'} onChange={changePromptFormat} meta={promptFormatMeta}/></div>}<SceneReviewPanel plan={compiledPrompt.sceneReview}/><p className="mt-3 whitespace-pre-wrap text-xs text-zinc-400">{finalPositive}</p></details> : <div className="mobile-tools-panel" data-mobile-tools="prompts">{!isImageFirst && <PromptFormatControl value={promptFormat} onChange={changePromptFormat} meta={promptFormatMeta} status={promptFormat === 'ollama' ? ollamaCompiled.reason : ''} />}<PromptPreview
+            learningPanel={learningPanel}
             aiProvider={aiProvider}
             positive={finalPositive}
             negative={finalNegative}

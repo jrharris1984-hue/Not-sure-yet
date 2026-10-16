@@ -128,7 +128,7 @@ class ApplicationQcTests(unittest.IsolatedAsyncioTestCase):
             prompt_positive='One adult woman in a navy linen suit, full-length photograph, soft daylight',
             prompt_negative='blur, extra limbs', width=896, height=1344, steps=30, cfg=4.0,
             sampler_name='heun', seed=987654321, batch_size=1,
-            scene_review={'task':'text-to-image','subject_count':1,'sections':[{'label':'Subject','details':['Navy linen suit']}], 'missing':['scene']})
+            scene_review={'task':'text-to-image','subject_count':1,'sections':[{'label':'Subject','details':['Navy linen suit']}], 'framing':['full body'], 'missing':['scene']})
         with patch.object(self.server.httpx, 'AsyncClient', return_value=ComfyClient()):
             result = await self.server._perform_dispatch(body)
         graph = captured['prompt']
@@ -148,6 +148,8 @@ class ApplicationQcTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result['seed_used'], 987654321)
         self.assertEqual(result['render_recipe']['steps'], 30)
         self.assertEqual(result['render_recipe']['prompt_positive'], body.prompt_positive)
+        self.assertEqual(result['learning_context']['version'],1)
+        self.assertIn('graph_signature',result['learning_context'])
         self.assertEqual(result['scene_review'], body.scene_review.model_dump())
         stored=await self.db.renders.find_one({'id':result['id']})
         self.assertEqual(stored['scene_review'], stored['render_recipe']['scene_review'])
@@ -428,3 +430,32 @@ class ApplicationQcTests(unittest.IsolatedAsyncioTestCase):
         self.assertNotIn('scene_feedback',await self.db.renders.find_one({'id':'review-me'}))
         for plan in ({'task':'unknown','subject_count':1,'sections':[]}, {'task':'text-to-image','subject_count':0,'sections':[]}):
             self.assertEqual((await self.http.post('/api/renders/dispatch',json={'scene_review':plan})).status_code,422)
+
+    async def test_learning_history_decisions_persist_and_recheck_evidence(self):
+        from learning_history import LearningContext, workflow_revision, profile
+        from test_learning_history_unit import example
+        workflow=next(item for item in (await self.server.get_settings()).workflows if item.kind=='image')
+        context=LearningContext(workflow_id=workflow.id,generation={'steps':8,'cfg':1},framing=['full body'])
+        for index in range(3):
+            record=example(index+1,workflow_id=workflow.id)
+            record['learning_context'].update(workflow_revision=workflow_revision(workflow),profile=profile(context,workflow.prompt_style))
+            await self.db.renders.insert_one(record)
+        request=context.model_dump()
+        response=await self.http.post('/api/learning/history',json=request)
+        self.assertEqual(response.status_code,200)
+        item=response.json()['recommendations'][0]
+        url=f"/api/learning/recommendations/{item['id']}/decision"
+        for action in ('dismissed','active','applied'):
+            decision=await self.http.post(url,json={'context':request,'action':action})
+            self.assertEqual(decision.status_code,200)
+            loaded=(await self.http.post('/api/learning/history',json=request)).json()
+            self.assertEqual(loaded['recommendations'][0]['decision'],action)
+        record=await self.db.renders.find_one({'id':'1'})
+        self.assertEqual(record['generation_settings'],{'width':896,'height':1344})
+        await self.http.put('/api/renders/1/scene-feedback',json={'ratings':{'framing':'missed'}})
+        self.assertEqual((await self.http.post('/api/learning/history',json=request)).json()['recommendations'],[])
+        stale=await self.http.post(url,json={'context':request,'action':'applied'})
+        self.assertEqual(stale.status_code,409)
+        self.assertEqual((await self.http.post('/api/learning/history',json={**request,'workflow_id':'missing'})).status_code,404)
+        self.assertEqual((await self.http.post('/api/learning/history',json={**request,'generation':{'steps':{}}})).status_code,422)
+        self.assertEqual((await self.http.post(url,json={'context':request,'action':'auto_train'})).status_code,422)

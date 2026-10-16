@@ -7,7 +7,7 @@ import { analyzePromptQuality, estimatePromptTokens } from "@/lib/promptQuality"
 import { requirementPresent } from "@/lib/promptPriority";
 import { WebPromptResearchOptions } from './WebPromptResearch';
 
-export default function PromptPreview({ positive, negative, dna, workflow, context, compilerMeta, recipe, selectedLora, secondaryLora, imageCount = 1, optimized, improving, onImprove, onOptimize, onRestore, onApplyPrompts, aiProvider = "AI", aiSuggestion, onSuggestionChange, onApplySuggestion, onDiscardSuggestion, suggestionStale }) {
+export default function PromptPreview({ learningPanel, positive, negative, dna, workflow, context, compilerMeta, recipe, selectedLora, secondaryLora, imageCount = 1, optimized, improving, onImprove, onOptimize, onRestore, onApplyPrompts, aiProvider = "AI", aiSuggestion, onSuggestionChange, onApplySuggestion, onDiscardSuggestion, suggestionStale }) {
   const [copied, setCopied] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -87,6 +87,7 @@ export default function PromptPreview({ positive, negative, dna, workflow, conte
           </button>
         </div>
       </div>
+      {learningPanel}
       <SceneReviewPanel plan={compilerMeta?.sceneReview}/>
       <button type="button" onClick={() => setExpanded((value) => !value)}
         className="w-full rounded-lg border hairline bg-elevated p-3 text-left" data-testid="btn-toggle-prompt-details">
