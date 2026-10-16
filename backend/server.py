@@ -1,3 +1,4 @@
+from learning_history import LearningContext, LearningDecision, capture_learning_context, workflow_revision, profile as learning_profile, framing_recommendations
 from scene_review import SceneReview, SceneFeedback
 from zimage_setup import prepare_zimage
 from reference_composition import REFERENCE_STYLES, configure_composition
@@ -2391,6 +2392,9 @@ async def _perform_dispatch(body: "DispatchBody", queue_id: Optional[str] = None
         doc["setup_notes"] = setup_notes
     doc["generation_settings"] = generation_overrides
     doc["effective_node_settings"] = effective_node_settings
+    learned = capture_learning_context(wf_template, workflow, body)
+    if learned:
+        doc["learning_context"] = learned
     # Complete reusable recipe for exact recreation and seed-only variations.
     doc["render_recipe"] = body.model_dump()
     if body.scene_review is not None:
@@ -2662,6 +2666,47 @@ async def _render_recipe(rid: str) -> tuple[Dict[str, Any], Dict[str, Any]]:
             **generation,
         }
     return render, recipe
+
+
+async def _learning_history(context: LearningContext):
+    settings = await get_settings()
+    workflow = next((item for item in settings.workflows if item.id == context.workflow_id), None)
+    if not workflow:
+        raise HTTPException(404, "Workflow not found")
+    if workflow.kind != 'image':
+        raise HTTPException(400, "Learning History currently supports image creation workflows")
+    try:
+        revision = workflow_revision(workflow)
+        selected_profile = learning_profile(context, workflow.prompt_style)
+    except (ValueError, TypeError, OverflowError) as exc:
+        raise HTTPException(422, "Invalid workflow or generation settings for Learning History") from exc
+    records = await db.renders.find({'workflow_id': context.workflow_id, 'scene_feedback.ratings.framing': {'$in': ['matched', 'missed']}},
+        {'_id': 0, 'id':1, 'status':1, 'hidden_from_gallery':1, 'output_files':1, 'seed_used':1,
+         'prompt_positive':1, 'prompt_negative':1, 'generation_settings':1, 'scene_feedback':1, 'learning_context':1}
+        ).sort([('scene_feedback.updated_at', -1), ('id', -1)]).to_list(2001)
+    result = framing_recommendations(records[:2000], revision, selected_profile, context.aspect_ratio)
+    decisions = await db.learning_decisions.find({'workflow_id': context.workflow_id}, {'_id': 0}).to_list(None)
+    decisions = {item['id']: item for item in decisions}
+    for item in result['recommendations']:
+        item['decision'] = decisions.get(item['id'], {}).get('action', 'active')
+    return {**result, 'workflow_id': context.workflow_id, 'scan_limit': 2000, 'history_limited': len(records) > 2000,
+            'minimum_matches': 3, 'minimum_distinct_prompts': 2, 'minimum_match_rate': .75}
+
+
+@api.post("/learning/history")
+async def learning_history(context: LearningContext):
+    return await _learning_history(context)
+
+
+@api.post("/learning/recommendations/{recommendation_id}/decision")
+async def learning_decision(recommendation_id: str, body: LearningDecision):
+    history = await _learning_history(body.context)
+    recommendation = next((item for item in history['recommendations'] if item['id'] == recommendation_id), None)
+    if not recommendation:
+        raise HTTPException(409, "This recommendation no longer has supporting evidence. Refresh Learning History.")
+    decision = {'id': recommendation_id, 'workflow_id': body.context.workflow_id, 'action': body.action, 'updated_at': now_iso()}
+    await db.learning_decisions.update_one({'_id': recommendation_id}, {'$set': decision}, upsert=True)
+    return {'decision': decision, 'recommendation': recommendation}
 
 
 @api.put("/renders/{rid}/scene-feedback")

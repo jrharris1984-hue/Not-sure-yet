@@ -832,6 +832,7 @@ export default function Gallery() {
                   ? current.map(render => render.id === lightbox.id ? {...render, scene_feedback:feedback} : render) : current);
                 setLightbox(current => current?.id === lightbox.id ? {...current, scene_feedback:feedback} : current);
                 qc.invalidateQueries({queryKey:['renders']});
+                qc.invalidateQueries({queryKey:['learning-history']});
               }}/>
               <details key={lightbox.id} className="rounded-lg border hairline bg-black/10 p-3" data-testid="gallery-other-tools">
                 <summary className="cursor-pointer text-xs font-semibold text-zinc-300">Review image, prompt & recipe tools</summary>
