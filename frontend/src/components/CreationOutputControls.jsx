@@ -1,5 +1,6 @@
 import { QUALITY_TIERS, getRenderRecipe, recipeSummary } from "@/lib/renderRecipes";
 import { Gauge, Sparkles, Zap } from "lucide-react";
+import GenerationWorkflowPicker from "@/components/GenerationWorkflowPicker";
 
 const QUALITY_ICONS = { draft: Zap, balanced: Gauge, quality: Sparkles };
 
@@ -9,13 +10,7 @@ export default function CreationOutputControls({ workflows, workflowId, onWorkfl
   return (
     <div className="space-y-3" data-testid="creation-output-controls">
       <fieldset disabled={busy} className="grid gap-3 sm:grid-cols-2">
-        <label className="text-xs text-zinc-400">Model
-          <select aria-label="Generation model" value={workflowId || ""} onChange={(event) => onWorkflow(event.target.value)}
-            className="mt-1 block w-full rounded-lg border hairline bg-elevated p-2 text-sm text-white">
-            <option value="" disabled>Choose a model</option>
-            {workflows.map((workflow) => <option key={workflow.id} value={workflow.id}>{workflow.name}</option>)}
-          </select>
-        </label>
+        <div className="sm:col-span-2"><GenerationWorkflowPicker workflows={workflows} value={workflowId} onChange={onWorkflow} busy={busy} /></div>
         {family === "image" && <>
           <label className="text-xs text-zinc-400">Canvas · {settings.width} × {settings.height}
             <select aria-label="Canvas format" value={settings.width === settings.height ? "square" : settings.width < settings.height ? "portrait" : "landscape"}
