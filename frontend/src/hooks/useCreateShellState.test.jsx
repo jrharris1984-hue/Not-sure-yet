@@ -50,3 +50,43 @@ test("focused studios keep the same shell while exposing specialty sections", ()
   act(() => api.changeMobileStudioMode("advanced"));
   expect(api.mobileStudioMode).toBe("advanced");
 });
+
+test("review edits open hidden controls and return to the shared review", () => {
+  const nav = jest.fn();
+  act(() => root.render(<Probe nav={nav} />));
+  act(() => api.setQuickReview(true));
+  act(() => api.beginReviewEdit("feet"));
+  expect(nav).toHaveBeenCalledWith("/character/new/s/feet");
+  expect(api.reviewEditing).toBe(true);
+  expect(api.quickReview).toBe(false);
+  expect(api.mobileStudioMode).toBe("advanced");
+  expect(api.mobileStudioStep).toBe("character");
+  act(() => root.render(<Probe nav={nav} activeSection="feet" />));
+  expect(api.reviewEditing).toBe(true);
+  act(() => api.returnToReview());
+  expect(api.reviewEditing).toBe(false);
+  expect(api.quickReview).toBe(true);
+  expect(api.mobileStudioStep).toBe("create");
+  expect(api.mobileSheets).toBe(true);
+  expect(nav).toHaveBeenCalledTimes(1);
+});
+
+test("visible review edits preserve Simple mode and normal Create navigation ends the edit", () => {
+  const nav = jest.fn();
+  act(() => root.render(<Probe nav={nav} />));
+  act(() => api.beginReviewEdit("hair"));
+  expect(api.mobileStudioMode).toBe("simple");
+  expect(api.reviewEditing).toBe(true);
+  act(() => api.openMobileStudioStep("create"));
+  expect(api.reviewEditing).toBe(false);
+  expect(api.mobileStudioStep).toBe("create");
+});
+
+test("unknown review sections do not change navigation", () => {
+  const nav = jest.fn();
+  act(() => root.render(<Probe nav={nav} />));
+  act(() => api.beginReviewEdit("missing"));
+  expect(api.reviewEditing).toBe(false);
+  expect(api.mobileStudioStep).toBe("start");
+  expect(nav).not.toHaveBeenCalled();
+});
