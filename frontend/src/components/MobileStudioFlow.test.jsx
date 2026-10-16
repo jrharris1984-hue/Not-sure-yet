@@ -44,3 +44,21 @@ test("final review returns directly to the selected setup area", () => {
   act(() => container.querySelector('[aria-label="Edit fine tune"]').click());
   expect(onEditSection).toHaveBeenCalledWith("scenario");
 });
+
+test("mobile search finds a hidden setting by field label and opens Advanced", () => {
+  const onSection = jest.fn(), onModeChange = jest.fn();
+  act(() => root.render(<MobileStudioFlow steps={CREATE_STAGES} currentStep="character" activeSection="hair"
+    sections={SECTIONS} mode="simple" onSection={onSection} onModeChange={onModeChange} onStep={jest.fn()} />));
+  act(() => container.querySelector('[data-testid="btn-mobile-section-finder"]').click());
+  act(() => {
+    const input = container.querySelector('input[type="search"]');
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set.call(input, "toe length");
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  const result = container.querySelector('[data-testid="mobile-jump-feet"]');
+  expect(result).not.toBeNull();
+  act(() => result.click());
+  expect(onModeChange).toHaveBeenCalledWith("advanced");
+  expect(onSection).toHaveBeenCalledWith("feet");
+  expect(container.querySelector('[data-testid="mobile-section-finder"]')).toBeNull();
+});
