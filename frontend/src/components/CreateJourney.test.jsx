@@ -65,7 +65,9 @@ const outputProps = () => ({ workflows: [{ id: "a", name: "Model A" }, { id: "b"
 test("Generate controls forward the model, quality and numeric image count to dispatch state", () => {
   const props = outputProps();
   render(<CreationOutputControls {...props} />);
-  changeSelect("Generation model", "b");
+  act(() => container.querySelector('[aria-label="Choose generation model"]').click());
+  const model = [...container.querySelectorAll('[aria-label="Available generation models"] button')].find((node) => node.textContent.includes("Model B"));
+  act(() => model.click());
   act(() => container.querySelector('[aria-label="Quality: Quality"]').click());
   act(() => container.querySelector('[aria-label="4 images"]').click());
   expect(props.onWorkflow).toHaveBeenCalledWith("b");
@@ -95,7 +97,7 @@ test("non-image workflows omit image-specific settings", () => {
   render(<CreationOutputControls {...outputProps()} family="video" />);
   expect(container.querySelector('[aria-label="Image count"]')).toBeNull();
   expect(container.querySelector('[aria-label="Sampling steps"]')).toBeNull();
-  expect(container.querySelector('[aria-label="Generation model"]')).not.toBeNull();
+  expect(container.querySelector('[aria-label="Choose generation model"]')).not.toBeNull();
 });
 
 test("visual output choices show model recipes and block changes while busy", () => {
