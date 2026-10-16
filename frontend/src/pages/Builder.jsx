@@ -32,6 +32,9 @@ import CreateSetupSummary from "@/components/CreateSetupSummary";
 import CreateRenderOutcome from "@/components/CreateRenderOutcome";
 import ReviewEditBanner from "@/components/ReviewEditBanner";
 import CharacterHistoryControls from "@/components/CharacterHistoryControls";
+import PinnedSectionControls from "@/components/PinnedSectionControls";
+import { usePinnedSections } from "@/hooks/usePinnedSections";
+import { createSectionsForStep } from "@/lib/createJourney";
 import { useCharacterHistory } from "@/hooks/useCharacterHistory";
 import StudioModePicker from "@/components/StudioModePicker";
 import { createStagesForStudio } from "@/lib/createJourney";
@@ -865,6 +868,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
   const activeSubjectIdx = Math.max(0, subjects.findIndex((s) => s.id === activeSubjectId));
   const activeSubject = subjects[activeSubjectIdx] || subjects[0];
   const activeDna = activeSubject?.dna || DEFAULT_DNA;
+  const sectionPins = usePinnedSections(SECTIONS);
   const characterHistory = useCharacterHistory({ subjects, onRestore: setSubjects, scope: basePath, enabled: editorHydrated });
   const activeFieldLocks = useMemo(() => activeSubject?.field_locks || {}, [activeSubject?.field_locks]);
   const primaryDna = subjects[0]?.dna || DEFAULT_DNA;
@@ -2153,6 +2157,14 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
     setMobileStudioStep(mobileStudioStepForSection(key, studioSteps));
     goSection(key);
   };
+  const openPinnedSection = (key) => {
+    const step = mobileStudioStepForSection(key, studioSteps);
+    if (!createSectionsForStep(step, mobileStudioMode, studioSteps).includes(key)) setMobileStudioMode("advanced");
+    if (mobileStudioStep === "create" || quickReview) beginReviewEdit(key);
+    else openCreateSection(key);
+    setMobileSheets(true);
+    window.requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "auto" }));
+  };
   const openDesktopSection = (key) => {
     openCreateSection(key);
     window.requestAnimationFrame(() => document.getElementById('studio-sections')?.scrollIntoView({ behavior: 'auto', block: 'start' }));
@@ -3103,6 +3115,13 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
       {!isImageFirst && editMode !== "body_adjust" && <div data-mobile-tools="none"><CharacterHistoryControls
         canUndo={characterHistory.canUndo} canRedo={characterHistory.canRedo}
         onUndo={characterHistory.undo} onRedo={characterHistory.redo} busy={dispatching || !!postRenderBusy}
+      /></div>}
+
+      {!isImageFirst && editMode !== "body_adjust" && <div data-mobile-tools="none"><PinnedSectionControls
+        sections={SECTIONS} pinned={sectionPins.pinned} limit={sectionPins.limit}
+        currentSection={quickReview || mobileStudioStep === "create" ? null : activeSection}
+        activeSection={quickReview || mobileStudioStep === "create" ? null : activeSection}
+        onToggle={sectionPins.toggle} onSection={openPinnedSection}
       /></div>}
 
       {!isImageFirst && reviewEditing && editMode !== "body_adjust" && <div data-mobile-tools="none">
