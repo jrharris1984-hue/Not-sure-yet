@@ -101,7 +101,7 @@ export default function DnaSection({
       data-testid={`dna-section-${section.key}`}
       className="pane selection-panel p-3 sm:p-6 space-y-3 sm:space-y-4"
     >
-      <header className="flex items-start sm:items-center justify-between gap-2">
+      <header className="flex flex-wrap items-start sm:items-center justify-between gap-2">
         <button
           type="button"
           onClick={onToggleCollapsed}
@@ -135,12 +135,14 @@ export default function DnaSection({
           </button>
           <button
             type="button"
-            title="Reset section"
+            title={locked ? "Unlock this section before resetting" : "Reset unlocked choices to defaults"}
+            aria-label={`Reset ${section.title.toLowerCase()} section`}
+            disabled={locked || !onReset}
             onClick={onReset}
             data-testid={`btn-reset-${section.key}`}
-            className={`${simpleMode ? "hidden md:grid" : "grid"} h-8 w-8 sm:h-9 sm:w-9 place-items-center rounded-lg border hairline text-zinc-300 hover:bg-white/5`}
+            className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-lg border hairline px-3 text-xs font-semibold text-zinc-300 hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-40"
           >
-            <RotateCcw className="h-4 w-4" />
+            <RotateCcw className="h-4 w-4" /> Reset
           </button>
           <button
             type="button"

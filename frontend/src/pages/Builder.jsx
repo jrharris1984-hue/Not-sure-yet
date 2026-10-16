@@ -2645,7 +2645,13 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
             onRandomize={() => setSection(activeSection, activeSection.startsWith("custom_")
               ? Object.fromEntries(SECTIONS[activeIdx].fields.map(field => [field.key, activeFieldLocks[activeSection]?.[field.key] ? activeDna[activeSection]?.[field.key] : field.type === 'chips_multi' ? [] : field.options?.[Math.floor(Math.random() * field.options.length)] || '']))
               : randomizeSection(activeSection, activeDna[activeSection] || {}, activeFieldLocks[activeSection] || {}))}
-            onReset={() => setSection(activeSection, activeSection.startsWith("custom_") ? {} : resetSection(activeSection))}
+            onReset={() => {
+              if (locks[activeSection]) return;
+              const source = activeSection === "scenario" ? subjects[0] : activeSubject;
+              const next = resetSection(activeSection, source?.dna?.[activeSection] || {}, source?.field_locks?.[activeSection] || {});
+              setSection(activeSection, next);
+              toast.success(`${SECTIONS[activeIdx].title} reset`, { description: "Locked choices were kept. Use Undo to restore the previous setup." });
+            }}
             onSuggest={() => runSuggest(activeSection)}
             fieldLocks={activeSection === "pose" ? { ...activeFieldLocks.pose, explicit_level: !!locks.scenario || !!activeFieldLocks.scenario?.explicit_level } : activeFieldLocks[activeSection] || {}}
             onToggleFieldLock={(fieldKey) => {
