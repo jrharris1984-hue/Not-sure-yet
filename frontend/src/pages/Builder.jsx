@@ -28,6 +28,7 @@ import VariationInstruction from "@/components/VariationInstruction";
 import { resolveBuilderControls } from "@/lib/builderControlResolution";
 import CreationOutputControls from "@/components/CreationOutputControls";
 import CreateJourney from "@/components/CreateJourney";
+import CreateSetupSummary from "@/components/CreateSetupSummary";
 import StudioModePicker from "@/components/StudioModePicker";
 import { createStagesForStudio } from "@/lib/createJourney";
 import { useCreateShellState } from "@/hooks/useCreateShellState";
@@ -3460,6 +3461,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
         <div className="hidden md:block">
           <CreateJourney stages={quickStages} index={quickStageIndex} activeSection={activeSection}
             sections={SECTIONS} onStage={selectQuickStage} onSection={openCreateSection} modelName={activeWorkflow?.name} />
+          <div className="mt-3"><CreateSetupSummary dna={activeDna} stages={quickStages} sections={SECTIONS} onSection={openDesktopSection} /></div>
         </div>
       )}
 
