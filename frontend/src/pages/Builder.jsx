@@ -3128,6 +3128,11 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
             renderCount={poseAssistEnabled && !isVariationWorkflow ? 1 : renderCount}
             onRenderCount={setRenderCount}
             summaries={mobileCreateSummaries}
+            onEditWorkflow={() => openMobileAdvancedStudio("generation")}
+            onEditSection={(key) => {
+              setMobileStudioStep(mobileStudioStepForSection(key, studioSteps));
+              goSection(key);
+            }}
             issues={mobileCreateIssues}
             mode={mobileStudioMode}
             onRequestAdvanced={() => openMobileAdvancedStudio("overview")}

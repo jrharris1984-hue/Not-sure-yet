@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ChevronRight, Search, SlidersHorizontal, Sparkles, X } from "lucide-react";
 import { PHASES } from "@/lib/dna";
 import { CREATE_MOBILE_STEPS, createStepForSection, createSectionsForStep } from "@/lib/createJourney";
@@ -41,6 +41,14 @@ export default function MobileStudioFlow({
   const active = steps[activeIndex] || steps[0];
   const sectionMap = Object.fromEntries(sections.map((section) => [section.key, section]));
   const visibleSections = mobileStudioSectionsForStep(active.id, mode, steps);
+  const categories = (active.categories || [{ key: active.id, title: active.label, sections: active.sections }])
+    .map((category) => ({ ...category, sections: category.sections.filter((key) => visibleSections.includes(key)) }))
+    .filter((category) => category.sections.length);
+  const [categoryKey, setCategoryKey] = useState("");
+  const selectedCategory = categories.find((category) => category.key === categoryKey) || categories[0];
+  useEffect(() => {
+    setCategoryKey(active.categories?.find((category) => category.sections.includes(activeSection))?.key || "");
+  }, [active, activeSection]);
   const jumpToSection = (key) => {
     if (mode === "simple" && !mobileStudioSectionsForStep(mobileStudioStepForSection(key, steps), "simple", steps).includes(key)) {
       onModeChange("advanced");
@@ -68,6 +76,7 @@ export default function MobileStudioFlow({
             <button
               type="button"
               onClick={() => onModeChange("simple")}
+              aria-pressed={mode === "simple"}
               data-testid="btn-mobile-mode-simple"
               className={`inline-flex items-center gap-1 rounded-md px-2 py-1.5 text-[9px] font-bold uppercase tracking-wide transition-colors ${
                 mode === "simple" ? "bg-amber-500 text-black" : "text-zinc-500"
@@ -78,6 +87,7 @@ export default function MobileStudioFlow({
             <button
               type="button"
               onClick={() => onModeChange("advanced")}
+              aria-pressed={mode === "advanced"}
               data-testid="btn-mobile-mode-advanced"
               className={`inline-flex items-center gap-1 rounded-md px-2 py-1.5 text-[9px] font-bold uppercase tracking-wide transition-colors ${
                 mode === "advanced" ? "bg-zinc-200 text-black" : "text-zinc-500"
@@ -160,8 +170,17 @@ export default function MobileStudioFlow({
       </div>
 
       {visibleSections.length > 1 && (
-        <div className="flex gap-1.5 overflow-x-auto px-3 py-2.5 scroll-fade" data-testid="mobile-studio-section-tabs">
-          {visibleSections.map((sectionKey) => {
+        <div className="space-y-2 p-3" data-testid="mobile-studio-section-tabs">
+          {categories.length > 1 && <div className="grid grid-cols-2 gap-2" aria-label={`${active.label} categories`}>
+            {categories.map((category) => <button key={category.key} type="button"
+              aria-expanded={selectedCategory?.key === category.key}
+              onClick={() => { setCategoryKey(category.key); onSection(category.sections[0]); }}
+              className={`min-h-11 rounded-xl border px-3 py-2 text-left text-xs font-semibold ${selectedCategory?.key === category.key ? "border-amber-400/70 bg-amber-500/10 text-amber-100" : "hairline bg-elevated text-zinc-300"}`}>
+              {category.title}
+            </button>)}
+          </div>}
+          <div className="grid grid-cols-2 gap-2" aria-label="Category controls">
+          {(selectedCategory?.sections || visibleSections).map((sectionKey) => {
             const section = sectionMap[sectionKey];
             if (!section) return null;
             const selected = activeSection === sectionKey;
@@ -171,7 +190,8 @@ export default function MobileStudioFlow({
                 type="button"
                 onClick={() => onSection(sectionKey)}
                 data-testid={`mobile-studio-section-${sectionKey}`}
-                className={`shrink-0 rounded-full border px-3 py-1.5 text-[10px] font-semibold transition-colors ${
+                aria-pressed={selected}
+                className={`min-h-11 rounded-lg border px-3 py-2 text-xs font-semibold transition-colors ${
                   selected
                     ? "border-amber-400/70 bg-amber-500/10 text-amber-100"
                     : "hairline bg-elevated text-zinc-400"
@@ -181,6 +201,7 @@ export default function MobileStudioFlow({
               </button>
             );
           })}
+          </div>
         </div>
       )}
 
