@@ -1,6 +1,7 @@
 import { QUALITY_TIERS, getRenderRecipe, recipeSummary } from "@/lib/renderRecipes";
 import { Gauge, Sparkles, Zap } from "lucide-react";
 import GenerationWorkflowPicker from "@/components/GenerationWorkflowPicker";
+import CanvasControls from "@/components/CanvasControls";
 
 const QUALITY_ICONS = { draft: Zap, balanced: Gauge, quality: Sparkles };
 
@@ -11,20 +12,8 @@ export default function CreationOutputControls({ workflows, workflowId, onWorkfl
     <div className="space-y-3" data-testid="creation-output-controls">
       <fieldset disabled={busy} className="grid gap-3 sm:grid-cols-2">
         <div className="sm:col-span-2"><GenerationWorkflowPicker workflows={workflows} value={workflowId} onChange={onWorkflow} busy={busy} /></div>
-        {family === "image" && <>
-          <label className="text-xs text-zinc-400">Canvas · {settings.width} × {settings.height}
-            <select aria-label="Canvas format" value={settings.width === settings.height ? "square" : settings.width < settings.height ? "portrait" : "landscape"}
-              onChange={(event) => {
-                const long = Math.max(settings.width, settings.height);
-                const short = Math.max(256, Math.floor(long * 2 / 3 / 8) * 8);
-                onSettings({ ...settings, width: event.target.value === "portrait" ? short : long,
-                  height: event.target.value === "landscape" ? short : long });
-              }} className="mt-1 block w-full rounded-lg border hairline bg-elevated p-2 text-sm text-white">
-              <option value="portrait">Portrait</option><option value="square">Square</option><option value="landscape">Landscape</option>
-            </select>
-          </label>
-        </>}
       </fieldset>
+      {family === "image" && <CanvasControls settings={settings} onSettings={onSettings} busy={busy} />}
       <fieldset disabled={busy} className="space-y-2">
         <legend className="text-xs font-semibold text-zinc-300">Quality preset</legend>
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-3" aria-label="Generation quality">

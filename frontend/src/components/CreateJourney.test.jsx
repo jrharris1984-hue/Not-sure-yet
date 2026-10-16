@@ -78,10 +78,10 @@ test("Generate controls forward the model, quality and numeric image count to di
 test("canvas changes preserve prompt and sampling settings and stay aligned to eight pixels", () => {
   const props = outputProps();
   render(<CreationOutputControls {...props} />);
-  changeSelect("Canvas format", "portrait");
+  act(() => container.querySelector('[aria-label="Canvas portrait"]').click());
   expect(props.onSettings).toHaveBeenCalledWith({ ...props.settings, width: 680, height: 1024 });
   render(<CreationOutputControls {...props} settings={{ ...props.settings, width: 256, height: 256 }} />);
-  changeSelect("Canvas format", "landscape");
+  act(() => container.querySelector('[aria-label="Canvas landscape"]').click());
   expect(props.onSettings.mock.calls[1][0].height).toBe(256);
 });
 
