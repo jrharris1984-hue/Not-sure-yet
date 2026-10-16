@@ -11,7 +11,7 @@ from assistant_research import enrich_assistant_request, assistant_research_scop
 
 
 class FreeformPromptTests(unittest.TestCase):
-    def call(self, freeform, research=False):
+    def call(self, freeform, research=False, style="chroma"):
         seen = {}
 
         async def chat(system, user, response_format_json):
@@ -35,8 +35,8 @@ class FreeformPromptTests(unittest.TestCase):
             token=assistant_research_scope.set({'sources':None,'retrieving':False,'task':'refine','focus':'architecture'} if research else None)
             try:
                 return await namespace[route.name](SimpleNamespace(
-                    positive="watercolor forest", negative="", prompt_style="chroma",
-                    workflow_name="Chroma", freeform=freeform))
+                    positive="watercolor forest", negative="", prompt_style=style,
+                    workflow_name="Test workflow", freeform=freeform))
             finally: assistant_research_scope.reset(token)
         result=asyncio.run(invoke())
         self.assertEqual(result["positive"], "Watercolor forest")
@@ -85,6 +85,20 @@ class FreeformPromptTests(unittest.TestCase):
                 self.assertFalse(seen['json'])
                 self.assertIn('source image already defines' if mode=='image' else 'one coherent shot',seen['system'])
                 self.assertEqual('UNTRUSTED REFERENCE DATA' in seen['user'],web)
+
+    def test_scene_assistance_profiles_keep_all_details_without_inventing_context(self):
+        for style in ['kroma','krea2_test','chroma_flash','zimage','flux1_dev','flux2_klein','qwen_image','sdxl','pony']:
+            with self.subTest(style=style):
+                seen=self.call(True,style=style)
+                self.assertIn('Organize a connected scene',seen['system'])
+                self.assertIn('do not enforce an arbitrary word or token cutoff',seen['system'])
+                self.assertIn('Do not invent an unspecified location',seen['system'])
+                self.assertNotIn('below 512 tokens',seen['system'])
+        self.assertIn('Keep Pony/booru syntax',self.call(True,style='pony')['system'])
+        self.assertIn('Qwen encoder',self.call(True,style='zimage')['system'])
+        self.assertIn('natural-language image descriptions',self.call(True,style='kroma')['system'])
+        self.assertIn('numbered reference roles',self.call(True,style='qwen_reference')['system'])
+        self.assertNotIn('Organize a connected scene',self.call(True,style='qwen_reference')['system'])
 
     def test_existing_builder_assistance_keeps_its_rules(self):
         seen = self.call(False)

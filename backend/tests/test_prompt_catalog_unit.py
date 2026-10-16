@@ -164,7 +164,7 @@ class CompactCatalogTests(unittest.TestCase):
 class BuilderPromptFormatSettingsTests(unittest.IsolatedAsyncioTestCase):
     setup_update = PromptCatalogSettingsTests.setup_update
     async def test_format_persists_without_replacing_connection_settings(self):
-        for mode in ['detailed','compact','ollama']:
+        for mode in ['detailed','compact','scene','ollama']:
             handler,update=await self.setup_update()
             result=await handler({'builder_prompt_format':mode})
             self.assertEqual(result.doc['builder_prompt_format'],mode)

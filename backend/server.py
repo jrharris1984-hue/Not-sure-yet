@@ -170,7 +170,7 @@ class Settings(BaseModel):
     workflows: List[WorkflowTemplate] = Field(default_factory=list)
     default_workflow_id: str = ""
     builder_hidden_workflow_ids: List[str] = Field(default_factory=list)
-    builder_prompt_format: Optional[Literal["detailed", "compact", "ollama"]] = None
+    builder_prompt_format: Optional[Literal["detailed", "compact", "scene", "ollama"]] = None
     # deprecated legacy fields (kept for older docs)
     image_workflow_json: str = ""
     video_workflow_json: str = ""
@@ -590,8 +590,8 @@ async def update_settings(body: Dict[str, Any] = Body(...)):
                "image_workflow_json", "video_workflow_json",
                "positive_prompt_node_id", "negative_prompt_node_id",
                "default_workflow_id"}
-    if "builder_prompt_format" in body and body["builder_prompt_format"] not in {None, "detailed", "compact", "ollama"}:
-        raise HTTPException(400, "Choose Detailed, Compact or Ollama prompt format.")
+    if "builder_prompt_format" in body and body["builder_prompt_format"] not in {None, "detailed", "compact", "scene", "ollama"}:
+        raise HTTPException(400, "Choose Detailed, Compact, Scene or Ollama prompt format.")
     for k, v in body.items():
         if k in allowed and not (k == "builder_prompt_format" and v is None):
             current[k] = v
@@ -4707,66 +4707,58 @@ async def ai_improve_generated_prompt(body: ImproveGeneratedPromptBody):
     if len(positive) > 30000 or len(body.negative) > 30000:
         raise HTTPException(400, "Prompt is too large to improve safely")
 
-    style = (body.prompt_style or "venice").strip().lower()
+    raw_style = (body.prompt_style or "venice").strip().lower()
+    style = {
+        "kroma":"krea2", "krea2_test":"krea2", "krea2_aio":"krea2",
+        "chroma_test":"chroma", "chroma_turbo":"chroma", "chroma_flash":"chroma",
+        "flux2_klein_edit":"reference_edit", "qwen_reference":"reference_edit", "qwen_remix":"qwen_edit",
+        "wan5b_t2v":"wan_t2v", "ltx_t2v":"wan_t2v",
+    }.get(raw_style, raw_style)
     workflow = (body.workflow_name or "selected image model").strip()
     if style == "pony":
-        model_rules = (
-            "Keep Pony/booru syntax, score and rating prefixes, underscores, and numeric weights. "
-            "Put the selected action, pose, feet/play requirements, subject count, and identity early."
-        )
+        model_rules = "Keep Pony/booru syntax, score and rating prefixes, underscores, and numeric weights. Put selected composition, subject count and action early. "
+    elif style in {"sdxl", "sdxl_dmd2"}:
+        model_rules = "Use short visual clauses with the subject, action, setting and framing early. Preserve supplied tag and numeric weight syntax. "
     elif style == "chroma" or "chroma" in workflow.lower():
-        model_rules = (
-            "Use concise natural photographic language suitable for Chroma/T5. Keep the positive "
-            "prompt comfortably below 512 tokens and place essential visual requirements first."
-        )
-    elif style == "qwen_edit":
-        model_rules = (
-            "Write literal Qwen Image Edit instructions. Clearly separate requested changes from protected "
-            "source details. Do not turn an edit into a new text-to-image scene."
-        )
+        model_rules = "Use clear natural-language descriptions suitable for Chroma, with essential selected visual requirements first. "
+    elif style in {"qwen_edit", "reference_edit"}:
+        model_rules = "Write literal image edit instructions. Separate requested changes from protected source details; keep numbered reference roles distinct. Do not turn an edit into a new text-to-image scene. "
     elif style == "wan_i2v":
-        model_rules = (
-            "Write temporal motion instructions for WAN image-to-video. The source frame owns identity, "
-            "wardrobe, setting, lighting, and composition. Do not redescribe or replace them."
-        )
+        model_rules = "Write temporal motion instructions for image-to-video. Preserve source details except changes required by the selected action. Allow viewpoint and framing to follow requested camera movement. "
     elif style == "wan_t2v":
-        model_rules = (
-            "Write one continuous WAN text-to-video shot with a clear first frame, action over time, "
-            "camera behavior, and stable identity. Avoid cuts, transformations, and contradictory motion."
-        )
+        model_rules = "Write one continuous text-to-video shot with a clear initial scene, action over time, camera behavior and continuity of unrequested details. "
     elif style == "zimage":
-        model_rules = (
-            "Use concise natural-language image instructions suitable for Z-Image Turbo/T5. Keep concrete "
-            "visual requirements early, remove exact repetition, and avoid booru-only syntax."
-        )
+        model_rules = "Use natural-language scene descriptions for Z-Image Turbo and its Qwen encoder. Keep concrete requirements early and avoid booru-only syntax. "
+    elif style in {"krea2", "qwen_image", "qwen_rapid", "flux1_dev", "flux2_klein"}:
+        model_rules = "Use natural-language image descriptions. Connect subjects, actions, setting, lighting and framing in readable clauses. Keep exact trigger words and weights. "
     else:
-        model_rules = (
-            "Use concise natural-language image instructions. Place essential composition and action "
-            "requirements before secondary styling details."
+        model_rules = "Use natural-language image descriptions. Put composition and action before secondary styling details. "
+    scene_rules = (
+        "Preserve every distinct supplied visual fact and explicit negation, even when this requires a longer prompt; do not enforce an arbitrary word or token cutoff. "
+        "Remove repetition, not selected requirements. Do not invent an unspecified location, camera lens, garment, person, prop or action. "
+    )
+    if style not in {"qwen_edit", "reference_edit", "wan_i2v"}:
+        scene_rules += (
+            "Organize a connected scene: establish the selected setting and composition, identify each subject and what they are doing, "
+            "retain selected spatial relationships, then integrate selected lighting and camera behavior. "
+            "Keep subject descriptions attached to the right person; do not mix their clothes or attributes. "
         )
-
     system = (
-        "You are the final prompt editor for Ultra Studio. Improve an already compiled adult image-generation "
-        "prompt for stronger visual adherence and realism. Preserve EVERY concrete user-selected fact: adult age, "
-        "heritage, identity, body traits, wardrobe or nudity state, pose, camera, feet details, intimate details, "
-        "Play actions, subject count, setting, and lighting. Never add a new act, fetish, person, garment, body trait, "
-        "or fluid. Never remove or soften a selected explicit detail. Resolve only genuine wording contradictions, "
-        "remove redundant wording, and make the requested visible action/composition unmistakable. "
-        + model_rules +
-        " Return JSON with exactly two strings: positive and negative. The negative prompt should remain concise, "
-        "technical, and must not negate anything requested by the positive prompt. No markdown or commentary."
+        "You are the final prompt editor for Ultra Studio. Improve an already compiled adult character prompt "
+        "while preserving all selected facts, subject identity, appearance, wardrobe, pose, framing, setting and visual style. "
+        + model_rules + scene_rules +
+        "Return JSON with exactly two strings: positive and negative. Keep negatives concise and technical; "
+        "never negate selected contents or style. No markdown or commentary."
     )
     if body.freeform:
         system = (
             "You refine free-form image prompts for Ultra Studio. Preserve the user's requested subjects, "
             "subject count, actions, composition, setting, and visual style. The prompt may describe landscapes, "
             "objects, abstract art, illustrations, or people. Do not impose photography, realism, human anatomy, "
-            "or character-builder assumptions on unrelated requests. Clarify wording, remove repetition, and "
-            "put essential requirements first without inventing new subjects or changing the intent. "
-            "Use the selected model's prompt syntax: preserve Pony score tags and weights when present; "
-            "otherwise use concise natural language. For Chroma keep the prompt comfortably below 512 tokens. "
+            "or character-builder assumptions on unrelated requests. "
+            + model_rules + scene_rules +
             "Return JSON with exactly two strings: positive and negative. Keep negatives concise and technical; "
-            "never negate the requested style or contents. No markdown or commentary."
+            "never negate requested style or contents. No markdown or commentary."
         )
     user = (
         f"WORKFLOW: {workflow}\nPROMPT STYLE: {style}\n\n"

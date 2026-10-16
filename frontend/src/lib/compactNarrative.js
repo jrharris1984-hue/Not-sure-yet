@@ -102,6 +102,7 @@ export function buildCompactNarrative(subjects, catalog = {sections:[]}, compile
       });
     });
   };
+  const sceneCast = [];
   const people = subjects.map((subject, index) => {
     const dna = subject.dna || {};
     const gender = catalogSelection(dna, 'identity', 'gender');
@@ -113,13 +114,16 @@ export function buildCompactNarrative(subjects, catalog = {sections:[]}, compile
     const pose = join(section(dna, 'pose', index));
     const otherKeys = Object.keys(dna).filter(key => !key.startsWith('_') && !SHARED.has(key) && !['identity','physique','face','hair','skin','wardrobe','pose'].includes(key));
     const other = join(otherKeys.flatMap(key => section(dna, key, index)));
+    sceneCast.push({label:subject.label || String.fromCharCode(65 + index), identity, appearance, wardrobe, pose, details:other});
     const prefix = subjects.length > 1 ? `Subject ${subject.label || String.fromCharCode(65 + index)}: ` : '';
     return prefix + (tagged ? join([identity, appearance, wardrobe, pose, other])
       : [identity, appearance && `Appearance: ${appearance}`, wardrobe && `Wearing: ${wardrobe}`, pose && `Pose and framing: ${pose}`, other && `Additional selected details: ${other}`].filter(Boolean).join('. '));
   });
   const primary = subjects[0]?.dna || {};
+  const sceneShared = [];
   const shared = [...SHARED].map(key => {
     const phrases = join(section(primary, key, 0));
+    if (phrases) sceneShared.push({section:key,text:phrases});
     return phrases && (tagged ? phrases : `${title(key)}: ${phrases}`);
   }).filter(Boolean);
   const count = Math.max(subjects.length, expectedSubjectCount(primary));
@@ -134,5 +138,5 @@ export function buildCompactNarrative(subjects, catalog = {sections:[]}, compile
     return direction && (subjects.length > 1 ? `Framing for Subject ${subject.label || String.fromCharCode(65 + index)}: ${direction}` : direction);
   }).filter(Boolean).join(' ');
   const positive = prefix + (framing ? framing + ' ' : '') + [...people, ...shared].join('. ') + '.';
-  return {positive, requirements, profile:'compact-narrative-v1'};
+  return {positive, requirements, profile:'compact-narrative-v1', sceneParts:{lead:prefix, framing, cast:sceneCast, shared:sceneShared, count}};
 }
