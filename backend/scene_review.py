@@ -14,6 +14,8 @@ class SceneReview(BaseModel):
     version: Literal[1] = 1
     task: Literal['text-to-image', 'text-to-video']
     subject_count: int = Field(ge=1, le=16)
+    framing: list[ReviewText] = Field(default_factory=list, max_length=16)
+    aspect_ratio: ReviewText = ''
     sections: list[SceneSection] = Field(max_length=20)
     missing: list[Literal['scene', 'lighting', 'camera']] = Field(default_factory=list, max_length=3)
     adjustments: list[ReviewText] = Field(default_factory=list, max_length=200)
