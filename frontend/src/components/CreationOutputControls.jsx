@@ -1,5 +1,10 @@
+import { QUALITY_TIERS, getRenderRecipe, recipeSummary } from "@/lib/renderRecipes";
+import { Gauge, Sparkles, Zap } from "lucide-react";
+
+const QUALITY_ICONS = { draft: Zap, balanced: Gauge, quality: Sparkles };
+
 export default function CreationOutputControls({ workflows, workflowId, onWorkflow, tier, onTier,
-  count, onCount, settings, onSettings, fixedSampling = false, family = "image", busy = false, countLocked = false }) {
+  count, onCount, settings, onSettings, compiler, fixedSampling = false, family = "image", busy = false, countLocked = false }) {
   const set = (key, value) => onSettings({ ...settings, [key]: value });
   return (
     <div className="space-y-3" data-testid="creation-output-controls">
@@ -11,19 +16,7 @@ export default function CreationOutputControls({ workflows, workflowId, onWorkfl
             {workflows.map((workflow) => <option key={workflow.id} value={workflow.id}>{workflow.name}</option>)}
           </select>
         </label>
-        <label className="text-xs text-zinc-400">Quality
-          <select aria-label="Generation quality" value={tier} onChange={(event) => onTier(event.target.value)}
-            className="mt-1 block w-full rounded-lg border hairline bg-elevated p-2 text-sm text-white">
-            <option value="draft">Draft</option><option value="balanced">Balanced</option><option value="quality">Quality</option>
-          </select>
-        </label>
         {family === "image" && <>
-          <label className="text-xs text-zinc-400">Images
-            <select aria-label="Image count" disabled={countLocked} value={count} onChange={(event) => onCount(Number(event.target.value))}
-              className="mt-1 block w-full rounded-lg border hairline bg-elevated p-2 text-sm text-white">
-              {[1, 2, 4, 6, 8, 10].map((n) => <option key={n} value={n}>{`${n} image${n === 1 ? "" : "s"}`}</option>)}
-            </select>
-          </label>
           <label className="text-xs text-zinc-400">Canvas · {settings.width} × {settings.height}
             <select aria-label="Canvas format" value={settings.width === settings.height ? "square" : settings.width < settings.height ? "portrait" : "landscape"}
               onChange={(event) => {
@@ -37,6 +30,34 @@ export default function CreationOutputControls({ workflows, workflowId, onWorkfl
           </label>
         </>}
       </fieldset>
+      <fieldset disabled={busy} className="space-y-2">
+        <legend className="text-xs font-semibold text-zinc-300">Quality preset</legend>
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-3" aria-label="Generation quality">
+          {QUALITY_TIERS.map((choice) => {
+            const Icon = QUALITY_ICONS[choice.id];
+            const selected = tier === choice.id;
+            return <button key={choice.id} type="button" onClick={() => onTier(choice.id)} disabled={busy}
+              aria-label={`Quality: ${choice.label}`} aria-pressed={selected}
+              className={`min-h-20 rounded-xl border p-3 text-left transition-colors disabled:opacity-40 ${selected ? "border-amber-400/70 bg-amber-500/10 text-amber-100" : "hairline bg-black/15 text-zinc-300 hover:border-white/30"}`}>
+              <span className="flex items-center gap-2 text-sm font-bold"><Icon className="h-4 w-4" />{choice.label}</span>
+              <span className="mt-1 block text-xs text-zinc-400">{family === "edit" ? (choice.id === "draft" ? "Subtle change" : choice.id === "quality" ? "Stronger change" : "Balanced change") : choice.description}</span>
+              {compiler && <span className="mt-2 block text-[11px] leading-relaxed text-zinc-500">{recipeSummary(getRenderRecipe(compiler, choice.id))}</span>}
+            </button>;
+          })}
+        </div>
+        <p className="text-[11px] text-zinc-500">Choosing a preset applies its render settings. You can adjust available controls afterward.</p>
+      </fieldset>
+      {family === "image" && <fieldset disabled={busy || countLocked} className="space-y-2">
+        <legend className="text-xs font-semibold text-zinc-300">How many images?</legend>
+        <div className="grid grid-cols-6 gap-2" aria-label="Image count">
+          {[1, 2, 4, 6, 8, 10].map((value) => <button type="button" key={value} onClick={() => onCount(value)}
+            aria-label={`${value} image${value === 1 ? "" : "s"}`} aria-pressed={count === value} disabled={busy || countLocked}
+            className={`min-h-11 rounded-lg border text-sm font-bold disabled:opacity-40 ${count === value ? "border-cyan-400/70 bg-cyan-400/10 text-cyan-100" : "hairline text-zinc-400 hover:border-white/30"}`}>
+            {value}
+          </button>)}
+        </div>
+        <p className="text-[11px] text-zinc-500">{countLocked ? "Pose Assist uses one image at a time. Turn it off to select a batch." : "Each image in a batch gets a different seed."}</p>
+      </fieldset>}
       {family === "image" && <details className="rounded-xl border hairline bg-black/15 p-3">
         <summary className="cursor-pointer text-xs font-semibold text-zinc-300">Advanced generation settings</summary>
         <fieldset disabled={busy} className="mt-3 grid grid-cols-2 gap-3">

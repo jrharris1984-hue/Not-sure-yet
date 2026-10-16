@@ -2715,7 +2715,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
       {sheetViewport && !mobileSheets && !isImageFirst && editMode !== "body_adjust" && <>
         <MobileToolsNavigation group={mobileToolsGroup} onGroup={group => { setMobileToolsGroup(group); window.scrollTo({ top: 0, behavior: "auto" }); }} onBack={() => setMobileSheets(true)} />
         <section data-mobile-tools="generation" className="pane p-4 space-y-4">
-          <CreationOutputControls workflows={selectableWorkflows} workflowId={workflowId} onWorkflow={setWorkflowId}
+          <CreationOutputControls compiler={activeRecipeStyle} workflows={selectableWorkflows} workflowId={workflowId} onWorkflow={setWorkflowId}
             tier={qualityTier} onTier={applyQualityTier} count={poseAssistEnabled && !isVariationWorkflow ? 1 : renderCount}
             onCount={setRenderCount} countLocked={poseAssistEnabled && !isVariationWorkflow}
             settings={renderSettings} onSettings={setChromaSettings} family={activeRecipeFamily}
@@ -2780,7 +2780,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
         onGenerate={doDispatch} generating={dispatching}
         canGenerate={!!workflowId && mobileCreateIssues.length === 0}
         issues={mobileCreateIssues} imageCount={poseAssistEnabled && !isVariationWorkflow ? 1 : renderCount}
-        outputControls={<>{learningPanel}<CreationOutputControls workflows={selectableWorkflows} workflowId={workflowId}
+        outputControls={<>{learningPanel}<CreationOutputControls compiler={activeRecipeStyle} workflows={selectableWorkflows} workflowId={workflowId}
           onWorkflow={setWorkflowId} family={activeRecipeFamily} tier={qualityTier}
           onTier={applyQualityTier} count={poseAssistEnabled && !isVariationWorkflow ? 1 : renderCount} onCount={setRenderCount}
           countLocked={poseAssistEnabled && !isVariationWorkflow}
@@ -3469,7 +3469,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
           {desktopQuickMode && quickReview ? (
             <div className="hidden md:block pane border-cyan-400/30 p-5 space-y-4" data-testid="desktop-quick-review">
               <div className="section-label">Generate · ready when you are</div>
-              <CreationOutputControls workflows={selectableWorkflows} workflowId={workflowId} onWorkflow={setWorkflowId}
+              <CreationOutputControls compiler={activeRecipeStyle} workflows={selectableWorkflows} workflowId={workflowId} onWorkflow={setWorkflowId}
                 tier={qualityTier} onTier={applyQualityTier} count={poseAssistEnabled && !isVariationWorkflow ? 1 : renderCount} onCount={setRenderCount}
                 countLocked={poseAssistEnabled && !isVariationWorkflow}
                 settings={renderSettings} onSettings={setChromaSettings} family={activeRecipeFamily}
