@@ -704,8 +704,14 @@ export function randomizeDna(current = {}, locks = {}, fieldLocks = {}, options 
   return out;
 }
 
-export function resetSection(sectionKey) {
-  return { ...DEFAULT_DNA[sectionKey] };
+export function resetSection(sectionKey, current = {}, fieldLocks = {}) {
+  const next = JSON.parse(JSON.stringify(DEFAULT_DNA[sectionKey] || {}));
+  Object.entries(fieldLocks).forEach(([key, locked]) => {
+    if (!locked) return;
+    if (Object.prototype.hasOwnProperty.call(current, key) && current[key] !== undefined) next[key] = JSON.parse(JSON.stringify(current[key]));
+    else delete next[key];
+  });
+  return next;
 }
 
 // Phase groupings for the wizard rail — clusters 16 sections into 4 collapsible bands.

@@ -172,3 +172,20 @@ test('intimate details keep older saved presets accessible without duplicate def
     expect(saved.nipples).toBe('small');
   } finally { act(() => root.unmount()); }
 });
+
+test('reset is labeled in Simple mode and disabled for a locked section', () => {
+  global.IS_REACT_ACT_ENVIRONMENT = true;
+  const container = document.createElement('div'), root = createRoot(container), onReset = jest.fn();
+  const section = { key: 'hair', title: 'Hair', fields: [] };
+  try {
+    act(() => root.render(<DnaSection section={section} simpleMode onReset={onReset} />));
+    const reset = container.querySelector('[aria-label="Reset hair section"]');
+    expect(reset.textContent).toContain('Reset');
+    expect(reset.className).not.toContain('hidden');
+    act(() => reset.click()); expect(onReset).toHaveBeenCalledTimes(1);
+    act(() => root.render(<DnaSection section={section} simpleMode onReset={onReset} locked />));
+    expect(container.querySelector('[aria-label="Reset hair section"]').disabled).toBe(true);
+    act(() => container.querySelector('[aria-label="Reset hair section"]').click());
+    expect(onReset).toHaveBeenCalledTimes(1);
+  } finally { act(() => root.unmount()); }
+});
