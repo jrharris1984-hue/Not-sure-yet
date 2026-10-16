@@ -38,7 +38,7 @@ describe('Builder prompt format while settings load', () => {
     }
   );
 
-  test.each(['detailed', 'compact', 'ollama'])('applies %s after settings arrive', format => {
+  test.each(['detailed', 'compact', 'scene', 'ollama'])('applies %s after settings arrive', format => {
     render(undefined);
     render({ builder_prompt_format: format });
     expect(container.textContent).toBe(format);

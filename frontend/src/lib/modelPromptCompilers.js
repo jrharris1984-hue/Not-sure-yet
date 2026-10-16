@@ -1,3 +1,4 @@
+import { buildSceneNarrative } from "./sceneNarrative";
 import { preserveWardrobeLayerGuidance } from './wardrobeLayers';
 import { preserveUnderneathLayers, resolveUnderneathComponents } from "./underneathLayer";
 import { normalizeAnatomyDetails } from "./anatomyDetailControls";
@@ -46,11 +47,6 @@ const WAN_NEGATIVE = [
 ].join(", ");
 
 const clean = (value) => String(value || "").replace(/\s+/g, " ").trim();
-
-const compactWords = (value, limit) => {
-  const words = clean(value).split(" ").filter(Boolean);
-  return words.length <= limit ? words.join(" ") : words.slice(0, limit).join(" ");
-};
 
 const basePrompts = ({ dna, subjects, isMulti, raunch }) => (
   isMulti ? buildMultiVenicePrompts(subjects || [], { raunch }) : buildPrompts(dna || {}, { raunch })
@@ -1003,11 +999,11 @@ export function buildWanImageToVideoPrompts({ instruction = "" } = {}) {
   const motion = clean(instruction);
   if (!motion) return { positive: "", negative: WAN_NEGATIVE };
   return {
-    positive: compactWords([
+    positive: clean([
       "Animate the supplied starting image as one continuous shot.", motion,
-      "Preserve the existing adult subject, identity, anatomy, clothing, environment, lighting, and composition.",
+      "Preserve the source identities, anatomy, clothing and setting wherever the requested action leaves them unchanged. Allow framing and viewpoint to follow the requested camera movement.",
       "Use coherent natural motion with stable hands, feet, face, hair, and fabric from first frame to last. Keep the same number of people and the same connected limbs in every frame; no body growth, duplication, melting, or sudden scale changes.",
-    ].join(" "), 180),
+    ].join(" ")),
     negative: WAN_NEGATIVE,
   };
 }
@@ -1192,6 +1188,10 @@ function compileModelPromptsRaw({
 export function compileModelPrompts(options = {}) {
   const auditSources = options.subjects?.length > 1 ? options.subjects : [{dna:options.dna || options.subjects?.[0]?.dna || {}}];
   const promptCatalog = options.promptCatalog || getPromptCatalog();
+  if (['flux2_klein_edit','qwen_reference'].includes(options.promptStyle)) {
+    return applyCatalogRules({positive:clean(options.editInstruction),negative:'',profile:'reference-edit-instructions',
+      negativeStrategy:options.promptStyle === 'flux2_klein_edit' ? 'zeroed' : 'text'}, options.workflowKind || 'edit', promptCatalog);
+  }
   const castPose = resolveCastPoses(options.subjects?.length ? options.subjects : [{dna:options.dna || {}}], promptCatalog);
   options = {...options, ...(options.subjects?.length ? {subjects:castPose.subjects} : {}), dna:castPose.subjects[0]?.dna || options.dna};
   const outfitDna = dna => ({ ...dna, kink:{}, wardrobe: resolveWardrobeMode(withCoveragePrompt(dna?.wardrobe || {}, promptCatalog)) });
@@ -1277,6 +1277,15 @@ export function compileModelPrompts(options = {}) {
       prompts = {...prompts, ...guided, profile:compact.profile, compactRequirements:compact.requirements,
         detailedPromptWords:clean(prompts.positive).split(/\s+/).filter(Boolean).length,
         promptWords:clean(guided.positive).split(/\s+/).filter(Boolean).length,
+        promptBudget:null, droppedClauses:[], omittedClauseCount:0};
+    }
+    if (options.promptFormat === 'scene' && (photographic || compiler === 'wan_t2v')) {
+      const scene = buildSceneNarrative(resolvedSubjects, promptCatalog, compiler, options.raunch,
+        {video:compiler === 'wan_t2v', motion:options.videoInstruction || ''});
+      const positive = [contract, scene.positive].filter(Boolean).join(' ');
+      prompts = {...prompts, positive, profile:scene.profile, scenePlan:scene.scenePlan, compactRequirements:scene.requirements,
+        detailedPromptWords:clean(prompts.positive).split(/\s+/).filter(Boolean).length,
+        promptWords:clean(positive).split(/\s+/).filter(Boolean).length,
         promptBudget:null, droppedClauses:[], omittedClauseCount:0};
     }
     if (photographic) prompts = preserveWardrobeLayerGuidance(prompts, resolvedSubjects);

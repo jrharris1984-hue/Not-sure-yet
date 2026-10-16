@@ -49,7 +49,7 @@ test('mixed levels and movement widen a portrait; compatible pair portraits keep
  expect(resolveCastPoses(original,catalog).subjects.every(person=>person.dna.pose.distance==='portrait')).toBe(true);
 });
 test.each(['standard','chroma','krea2','pony','sdxl','zimage','qwen_image','wan_t2v'])('%s emits the shared action once and preserves both identities',promptStyle=>{
- for(const promptFormat of ['detailed','compact']) {
+ for(const promptFormat of ['detailed','compact','scene']) {
   const selected=selectSharedCastPose(people(),'holding hands');
   const before=JSON.stringify(selected);
   const prompt=compileModelPrompts({subjects:selected,dna:selected[0].dna,promptStyle,promptFormat,promptCatalog:catalog});

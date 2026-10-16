@@ -32,7 +32,7 @@ test('expanded catalog wording is also checked for transparent clothing', () => 
 });
 
 test.each(['qwen_rapid','qwen_image','chroma','krea2','zimage','sdxl','pony','flux2_klein'])('%s suppresses hidden tags in detailed and compact output', promptStyle => {
-  for (const promptFormat of ['detailed','compact']) {
+  for (const promptFormat of ['detailed','compact','scene']) {
     const { positive } = compileModelPrompts({ dna: pantsuit(), promptStyle, promptFormat, workflowKind: 'image' });
     expect(positive).toMatch(/pantsuit/);
     expect(positive).not.toMatch(/landing strip|small labia|subtle clit|trimmed asshole|large nipple|pink areola/i);

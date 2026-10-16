@@ -27,7 +27,7 @@ export function useBuilderSessionState({ studio = "standard", queryClient } = {}
   const [raunch, setRaunch] = useState(false);
   const [promptLanguage, setPromptLanguage] = useState("editorial");
   const [promptOverride, setPromptOverride] = useState("");
-  const [promptFormat, setPromptFormat] = useState(() => ['compact','ollama'].includes(localStorage.getItem('ultra-prompt-format')) ? localStorage.getItem('ultra-prompt-format') : 'detailed');
+  const [promptFormat, setPromptFormat] = useState(() => ['compact','scene','ollama'].includes(localStorage.getItem('ultra-prompt-format')) ? localStorage.getItem('ultra-prompt-format') : 'detailed');
   const promptFormatTouched = useRef(false);
   const changePromptFormat = async value => {
     promptFormatTouched.current = true;
