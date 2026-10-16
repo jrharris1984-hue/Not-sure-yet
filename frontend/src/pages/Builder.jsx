@@ -30,6 +30,7 @@ import { resolveBuilderControls } from "@/lib/builderControlResolution";
 import CreationOutputControls from "@/components/CreationOutputControls";
 import CreateJourney from "@/components/CreateJourney";
 import CreateSetupSummary from "@/components/CreateSetupSummary";
+import CreateSectionFinder from "@/components/CreateSectionFinder";
 import CreateRenderOutcome from "@/components/CreateRenderOutcome";
 import ReviewEditBanner from "@/components/ReviewEditBanner";
 import CharacterHistoryControls from "@/components/CharacterHistoryControls";
@@ -2808,6 +2809,30 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
         subjects={subjects} activeId={activeSubjectId} onSubject={setActiveSubjectId}
         onPeople={() => goSection("scenario")}
         presetsControl={characterPresets}
+        workspaceControls={({close}) => <div className="space-y-3" data-testid="mobile-sheet-workspace-tools">
+          <CharacterHistoryControls canUndo={characterHistory.canUndo} canRedo={characterHistory.canRedo}
+            onUndo={characterHistory.undo} onRedo={characterHistory.redo} busy={dispatching || !!postRenderBusy} />
+          <PinnedSectionControls sections={SECTIONS} pinned={sectionPins.pinned} limit={sectionPins.limit}
+            currentSection={quickReview || mobileStudioStep === "create" ? null : activeSection}
+            activeSection={quickReview || mobileStudioStep === "create" ? null : activeSection}
+            onToggle={sectionPins.toggle} onSection={key => { openPinnedSection(key); close(); }} />
+          <CreateSectionFinder sections={SECTIONS} stages={studioSteps} activeSection={activeSection}
+            onSection={key => { openPinnedSection(key); close(); }} />
+          <CreateSetupSummary dna={activeDna} stages={studioSteps} sections={SECTIONS}
+            onSection={key => { beginReviewEdit(key); close(); }} />
+        </div>}
+        reviewControls={({openOutput}) => reviewEditing ? <ReviewEditBanner
+          sectionTitle={SECTIONS.find(item => item.key === activeSection)?.title}
+          onReturn={() => { returnToReview(); openOutput(); }} /> : null}
+        resultControls={activeRender ? <CreateRenderOutcome render={activeRender} batch={batchRenders} mediaUrl={mediaUrl}
+          onSelect={render => { setSelectedBatchRenderId(render.id); setActiveRender(render); }}
+          onNewSeed={queueVariationFromFinishedRender}
+          onEdit={() => reuseFinishedRender("edit")} onAnimate={() => reuseFinishedRender("video")}
+          canEdit={workflows.some(workflow => workflow.kind === "edit")}
+          canAnimate={workflows.some(workflow => workflow.kind === "video")}
+          onGallery={() => nav(`/gallery?render=${encodeURIComponent(activeRender.render_id || activeRender.id)}&returnTo=${encodeURIComponent(location.pathname)}`)}
+          onDownload={url => downloadRenderImage(url, `render-${activeRender.render_id || activeRender.id}.${galleryIsVideo(url) ? "webm" : "png"}`)}
+          busy={postRenderBusy} /> : null}
         values={builderSectionValue(activeSection, activeDna, primaryDna)}
         renderControls={renderDnaControls}
         castPoseControls={<CastPoseOptions count={subjects.length} value={sharedCastPose(subjects, promptCatalog)}
