@@ -29,6 +29,7 @@ import { resolveBuilderControls } from "@/lib/builderControlResolution";
 import CreationOutputControls from "@/components/CreationOutputControls";
 import CreateJourney from "@/components/CreateJourney";
 import CreateSetupSummary from "@/components/CreateSetupSummary";
+import CreateRenderOutcome from "@/components/CreateRenderOutcome";
 import StudioModePicker from "@/components/StudioModePicker";
 import { createStagesForStudio } from "@/lib/createJourney";
 import { useCreateShellState } from "@/hooks/useCreateShellState";
@@ -3472,7 +3473,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
                 tier={qualityTier} onTier={applyQualityTier} count={poseAssistEnabled && !isVariationWorkflow ? 1 : renderCount} onCount={setRenderCount}
                 countLocked={poseAssistEnabled && !isVariationWorkflow}
                 settings={renderSettings} onSettings={setChromaSettings} family={activeRecipeFamily}
-                fixedSampling={isKrea2 || isKrea2Aio || activeCompiler === "flux2_klein"} busy={dispatching} />
+                fixedSampling={isKrea2 || isKrea2Aio || activeCompiler === "flux2_klein"} busy={dispatching || !!postRenderBusy} />
               <details className="rounded-xl border hairline p-3">
                 <summary className="cursor-pointer text-xs font-semibold text-zinc-300">Optional LoRAs</summary>
                 <div className="mt-3"><UniversalLoraPicker workflow={activeWorkflow} value={selectedLora}
@@ -3495,7 +3496,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
               </details>
               <SelectionPromptAudit positive={finalPositive} manifest={compiledPrompt.selectionManifest}/>
               {mobileCreateIssues.length > 0 && <div className="text-xs text-rose-300">{mobileCreateIssues.join(" ")}</div>}
-              <button type="button" onClick={doDispatch} disabled={dispatching || ollamaRenderPending || !workflowId || mobileCreateIssues.length > 0}
+              <button type="button" onClick={doDispatch} disabled={dispatching || !!postRenderBusy || ollamaRenderPending || !workflowId || mobileCreateIssues.length > 0}
                 className="rounded-lg bg-amber-500 px-5 py-3 text-sm font-bold text-black disabled:cursor-not-allowed disabled:bg-zinc-600 disabled:text-zinc-300 disabled:opacity-70">
                 {ollamaRenderPending ? "Waiting for Ollama…" : dispatching ? "Rendering…" : "Generate images"}
               </button>
@@ -3505,19 +3506,15 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
                   Ollama is finishing the prompt. Generation will unlock automatically.
                 </p>
               )}
-              {activeRender && (
-                <div className="border-t hairline pt-4" data-testid="quick-create-result">
-                  <div className="section-label">Latest render · {activeRender.status}</div>
-                  {activeRender.error && <p className="mt-2 text-xs text-rose-300">{activeRender.error}</p>}
-                  {activeRender.output_files?.[0] ? (
-                    <Link to={`/gallery?render=${encodeURIComponent(activeRender.render_id || activeRender.id)}&returnTo=${encodeURIComponent(location.pathname)}`}
-                      className="mt-3 inline-block max-w-sm overflow-hidden rounded-xl border border-cyan-400/30">
-                      <img src={mediaUrl(activeRender.output_files[0])} alt="Latest image · open in Gallery" className="max-h-80 w-full object-contain" />
-                      <span className="block p-2 text-center text-xs font-semibold text-cyan-200">Open full size in Gallery</span>
-                    </Link>
-                  ) : <p className="mt-2 text-xs text-zinc-400">Your image will appear here when it finishes.</p>}
-                </div>
-              )}
+              <CreateRenderOutcome render={activeRender} batch={batchRenders} mediaUrl={mediaUrl}
+                onSelect={(render) => { setSelectedBatchRenderId(render.id); setActiveRender(render); }}
+                onNewSeed={queueVariationFromFinishedRender}
+                onEdit={() => reuseFinishedRender("edit")} onAnimate={() => reuseFinishedRender("video")}
+                canEdit={workflows.some((workflow) => workflow.kind === "edit")}
+                canAnimate={workflows.some((workflow) => workflow.kind === "video")}
+                onGallery={() => nav(`/gallery?render=${encodeURIComponent(activeRender?.render_id || activeRender?.id)}&returnTo=${encodeURIComponent(location.pathname)}`)}
+                onDownload={(url) => downloadRenderImage(url, `render-${activeRender?.render_id || activeRender?.id}.${galleryIsVideo(url) ? "webm" : "png"}`)}
+                busy={postRenderBusy} />
             </div>
           ) : null}
           <div key={activeSection} className={`studio-section-enter ${desktopQuickMode && quickReview ? "md:hidden" : "block"}`}>
