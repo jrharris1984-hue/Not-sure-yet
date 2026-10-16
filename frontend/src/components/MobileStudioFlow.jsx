@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { ChevronRight, Search, SlidersHorizontal, Sparkles, X } from "lucide-react";
 import { PHASES } from "@/lib/dna";
+import { matchesSection } from "@/lib/sectionSearch";
 import { CREATE_MOBILE_STEPS, createStepForSection, createSectionsForStep } from "@/lib/createJourney";
 
 export const MOBILE_STUDIO_STEPS = CREATE_MOBILE_STEPS;
@@ -117,11 +118,12 @@ export default function MobileStudioFlow({
           <input type="search" value={sectionQuery} onChange={(event) => setSectionQuery(event.target.value)}
             placeholder="Search all controls..." aria-label="Search all builder sections"
             className="w-full rounded-lg border hairline bg-elevated px-3 py-2 text-sm text-white outline-none focus:border-cyan-400/60" />
+          {!sections.some((section) => matchesSection(section, sectionQuery, PHASES.find((phase) => phase.sections.includes(section.key))?.label)) && <p role="status" className="mt-2 text-xs text-zinc-400">No sections found. Try a shorter setting name or clear your search.</p>}
           <div className="mt-2 max-h-52 overflow-y-auto scroll-fade space-y-2">
             {PHASES.map((phase) => {
               const matches = phase.sections.filter((key) => {
                 const section = sectionMap[key];
-                return section && `${phase.label} ${section.title} ${key}`.toLowerCase().includes(sectionQuery.toLowerCase());
+                return section && matchesSection(section, sectionQuery, phase.label);
               });
               if (!matches.length) return null;
               return <div key={phase.key}>

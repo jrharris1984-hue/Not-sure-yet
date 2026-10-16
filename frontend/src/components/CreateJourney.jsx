@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import CreateSectionFinder from "@/components/CreateSectionFinder";
 
 export default function CreateJourney({ stages, index, activeSection, sections, onStage, onSection, modelName }) {
   const stage = stages[index] || stages[0];
@@ -19,6 +20,7 @@ export default function CreateJourney({ stages, index, activeSection, sections, 
         </div>
         <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-zinc-300">{modelName || "Choose a model"}</span>
       </div>
+      <CreateSectionFinder sections={sections} stages={stages} activeSection={activeSection} onSection={onSection} />
       <nav className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-5" aria-label="Creation stages">
         {stages.map((item, position) => <button key={item.key} type="button" onClick={() => onStage(position)}
           aria-current={position === index ? "step" : undefined}
