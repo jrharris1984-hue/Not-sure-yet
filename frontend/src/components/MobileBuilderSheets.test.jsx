@@ -1,3 +1,9 @@
+import fs from 'fs';
+import path from 'path';
+import CharacterHistoryControls from './CharacterHistoryControls';
+import PinnedSectionControls from './PinnedSectionControls';
+import ReviewEditBanner from './ReviewEditBanner';
+import CreateRenderOutcome from './CreateRenderOutcome';
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import MobileBuilderSheets from './MobileBuilderSheets';
@@ -144,4 +150,49 @@ test('bust card shows the active preset, slider or implant value without duplica
   paint({ section, values: { bust: 'small', bust_scale: 85, implant_volume: 1500 } });
   expect(container.textContent).toContain('Implant size · 1500 cc');
   expect(container.querySelectorAll('.sheet-field-card')).toHaveLength(2);
+});
+
+test('workspace features stay inside the visible sheet under the actual mobile hiding rule', () => {
+  const css = fs.readFileSync(path.join(process.cwd(), 'src/index.css'), 'utf8');
+  const rule = css.match(/\.nested-mobile-builder > :not\(\.mobile-sheet-builder\) \{[^}]+\}/)[0];
+  const style = document.createElement('style'); style.textContent = rule; document.head.appendChild(style);
+  container.className = 'nested-mobile-builder';
+  const onUndo = jest.fn(), onSection = jest.fn();
+  try {
+    paint({ workspaceControls: ({close}) => <div>
+      <CharacterHistoryControls canUndo onUndo={onUndo} />
+      <PinnedSectionControls sections={sections} pinned={['hair']} currentSection="hair" onSection={key => { onSection(key); close(); }} />
+    </div> });
+    const hiddenSibling = document.createElement('div'); container.appendChild(hiddenSibling);
+    expect(window.getComputedStyle(hiddenSibling).display).toBe('none');
+    click('Quick tools');
+    const dialog = container.querySelector('[role="dialog"]');
+    expect(dialog.closest('.mobile-sheet-builder')).not.toBeNull();
+    let node = dialog;
+    while (node && node !== container) { expect(window.getComputedStyle(node).display).not.toBe('none'); node = node.parentElement; }
+    act(() => dialog.querySelector('[aria-label="Undo character edit"]').click());
+    expect(onUndo).toHaveBeenCalledTimes(1);
+    act(() => dialog.querySelector('[aria-label="Quick access sections"] button').click());
+    expect(onSection).toHaveBeenCalledWith('hair');
+    act(() => jest.advanceTimersByTime(320));
+    expect(container.querySelector('[role="dialog"]')).toBeNull();
+  } finally { style.remove(); container.className = ''; }
+});
+
+test('result actions are reachable inside the active sheet and stale results close', () => {
+  const onNewSeed = jest.fn();
+  paint({resultControls:<CreateRenderOutcome render={{id:'done',status:'done',output_files:['/result.png']}} onNewSeed={onNewSeed} />});
+  click('Results & actions');
+  const dialog = container.querySelector('[role="dialog"]');
+  expect(dialog.closest('.mobile-sheet-builder')).not.toBeNull();
+  click('Try a new seed'); expect(onNewSeed).toHaveBeenCalledTimes(1);
+  paint({resultControls:null});
+  expect(container.querySelector('[role="dialog"]')).toBeNull();
+});
+
+test('return to review opens generation settings in the actual sheet interface', () => {
+  const onReturn = jest.fn();
+  paint({reviewControls:({openOutput})=><ReviewEditBanner sectionTitle="Hair" onReturn={()=>{onReturn();openOutput();}} />});
+  click('Return to review'); expect(onReturn).toHaveBeenCalledTimes(1);
+  expect(container.querySelector('[role="dialog"]').textContent).toContain('Workflow settings');
 });
