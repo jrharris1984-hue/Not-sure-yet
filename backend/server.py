@@ -1,3 +1,4 @@
+from randomizer_presets import validate_randomizer
 from render_setup import graph_setup, correct_qwen_lightning, workflow_comparison_recipe, COMPARABLE_STYLES
 from learning_comparisons import ComparisonCreate, ComparisonPreference, comparison_recipe, comparison_output, supported_canvas, pair_error, comparison_summary
 from pymongo.errors import DuplicateKeyError
@@ -1251,6 +1252,48 @@ async def create_kink_preset(body: KinkPresetBody):
 async def delete_kink_preset(pid: str):
     await db.kink_presets.delete_one({"id": pid})
     return {"ok": True}
+
+
+class RandomizerPresetBody(BaseModel):
+    name: str = Field(min_length=1, max_length=100)
+    rules: List[Dict[str, Any]] = Field(min_length=1, max_length=40)
+
+
+def _randomizer_payload(body):
+    try:
+        name, rules = validate_randomizer(body.name, body.rules)
+        return {"name":name, "rules":rules}
+    except ValueError as exc:
+        raise HTTPException(400, str(exc))
+
+
+@api.get("/randomizer-presets")
+async def list_randomizer_presets():
+    return await db.randomizer_presets.find({}, {"_id":0}).sort("created_at", -1).to_list(500)
+
+
+@api.post("/randomizer-presets")
+async def create_randomizer_preset(body: RandomizerPresetBody):
+    preset = {**_randomizer_payload(body), "id":new_id(), "created_at":now_iso()}
+    await db.randomizer_presets.insert_one(dict(preset))
+    return preset
+
+
+@api.put("/randomizer-presets/{preset_id}")
+async def update_randomizer_preset(preset_id: str, body: RandomizerPresetBody):
+    payload = _randomizer_payload(body)
+    result = await db.randomizer_presets.update_one({"id":preset_id}, {"$set":payload})
+    if result.matched_count == 0:
+        raise HTTPException(404, "Randomizer preset not found")
+    return {**payload, "id":preset_id}
+
+
+@api.delete("/randomizer-presets/{preset_id}")
+async def delete_randomizer_preset(preset_id: str):
+    result = await db.randomizer_presets.delete_one({"id":preset_id})
+    if result.deleted_count == 0:
+        raise HTTPException(404, "Randomizer preset not found")
+    return {"ok":True}
 
 
 @api.get("/character_presets")

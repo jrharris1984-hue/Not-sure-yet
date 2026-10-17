@@ -1,3 +1,4 @@
+import { enforcePhotoConsistency } from './photoConsistency';
 import { DEFAULT_DNA, makeSubject, randomizeDna } from './dna';
 import { wardrobeMode } from './wardrobeMode';
 const copy = value => JSON.parse(JSON.stringify(value));
@@ -35,7 +36,7 @@ export function randomSceneSubjects(current = [], mode = 'solo', profile = 'adve
       if (!full) for (const field of ['dress_style', 'skirt_style']) if (!fieldLocks.wardrobe?.[field]) dna.wardrobe[field] = '';
     }
     // Selecting a cast mode explicitly sets its count and gender.
-    dna.identity = { ...dna.identity, gender: 'female' };
+    if (!locks.identity && !fieldLocks.identity?.gender) dna.identity = { ...dna.identity, gender: 'female' };
     dna.scenario = { ...dna.scenario, cast_size: count === 2 ? 'duo' : 'solo', cast_type: count === 2 ? 'best friends' : 'none', cast_age_mode: 'individual ages', cast_resemblance: 'individual faces' };
     if (!locks.scenario && !fieldLocks.scenario?.acts) dna.scenario.acts = ['posing'];
     if (feetFocus) {
@@ -56,6 +57,10 @@ export function randomSceneSubjects(current = [], mode = 'solo', profile = 'adve
     return original ? { ...original, label:String.fromCharCode(65 + index), dna } : makeSubject({label:String.fromCharCode(65 + index), dna, fieldLocks});
   });
   // One shared environment and lighting setup for the entire cast.
-  for (const subject of result.slice(1)) for (const section of ['scenario','scene','lighting','camera','style']) subject.dna[section] = copy(result[0].dna[section]);
-  return result;
+  for (const subject of result.slice(1)) for (const section of ['scenario','scene','lighting','camera','style']) {
+    if (locks[section]) continue;
+    for (const [field, value] of Object.entries(result[0].dna[section]))
+      if (!subject.field_locks?.[section]?.[field]) subject.dna[section][field] = copy(value);
+  }
+  return profile === 'natural' ? result.map(subject => ({...subject, dna:enforcePhotoConsistency(subject.dna, locks, subject.field_locks)})) : result;
 }

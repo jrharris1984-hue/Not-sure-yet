@@ -196,6 +196,9 @@ export const endpoints = {
   createSavedDescription: (body) => api.post("/saved_descriptions", body).then((r) => r.data),
   deleteSavedDescription: (id) => api.delete(`/saved_descriptions/${id}`).then((r) => r.data),
   // Reusable full-character presets
+  listRandomizerPresets: () => api.get('/randomizer-presets').then(r => r.data),
+  saveRandomizerPreset: (body, id) => (id ? api.put(`/randomizer-presets/${id}`, body) : api.post('/randomizer-presets', body)).then(r => r.data),
+  deleteRandomizerPreset: id => api.delete(`/randomizer-presets/${id}`).then(r => r.data),
   listCharacterPresets: () => api.get("/character_presets").then((r) => r.data),
   createCharacterPreset: (body) => api.post("/character_presets", body).then((r) => r.data),
   deleteCharacterPreset: (id) => api.delete(`/character_presets/${id}`).then((r) => r.data),
