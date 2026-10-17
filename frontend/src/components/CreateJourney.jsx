@@ -16,11 +16,11 @@ export default function CreateJourney({ stages, index, activeSection, sections, 
         <div>
           <div className="text-[10px] uppercase tracking-[.2em] text-cyan-300">Ultra Studio · Create</div>
           <h2 className="mt-1 font-display text-xl font-bold text-white">Your next image</h2>
-          <p className="mt-1 text-xs text-zinc-400">Move through one shared creation flow. Desktop and mobile use the same stages and selections.</p>
+          <p className="mt-1 text-xs text-zinc-400">Choose a few details in each step. You can skip optional choices and review everything before generating.</p>
         </div>
         <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-zinc-300">{modelName || "Choose a model"}</span>
       </div>
-      <CreateSectionFinder sections={sections} stages={stages} activeSection={activeSection} onSection={onSection} />
+      <details className="mt-3 rounded-xl border hairline p-3"><summary className="min-h-11 cursor-pointer content-center text-xs text-zinc-400">Find a specific setting</summary><CreateSectionFinder sections={sections} stages={stages} activeSection={activeSection} onSection={onSection} /></details>
       <nav className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-5" aria-label="Creation stages">
         {stages.map((item, position) => <button key={item.key} type="button" onClick={() => onStage(position)}
           aria-current={position === index ? "step" : undefined}
