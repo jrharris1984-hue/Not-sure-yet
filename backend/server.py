@@ -1,3 +1,4 @@
+from render_setup import graph_setup, correct_qwen_lightning, workflow_comparison_recipe, COMPARABLE_STYLES
 from learning_comparisons import ComparisonCreate, ComparisonPreference, comparison_recipe, comparison_output, supported_canvas, pair_error, comparison_summary
 from pymongo.errors import DuplicateKeyError
 from learning_history import digest as learning_digest, LearningContext, LearningDecision, capture_learning_context, workflow_revision, profile as learning_profile, framing_recommendations
@@ -1827,6 +1828,8 @@ async def _perform_dispatch(body: "DispatchBody", queue_id: Optional[str] = None
         doc.pop("_id", None)
         return doc
 
+    correct_qwen_lightning(workflow)
+
     if wf_template and wf_template.prompt_style in REFERENCE_STYLES:
         try:
             body.reference_images = configure_composition(workflow, wf_template.prompt_style,
@@ -2400,6 +2403,7 @@ async def _perform_dispatch(body: "DispatchBody", queue_id: Optional[str] = None
         doc["setup_notes"] = setup_notes
     doc["generation_settings"] = generation_overrides
     doc["effective_node_settings"] = effective_node_settings
+    doc["model_setup"] = graph_setup(workflow)
     learned = capture_learning_context(wf_template, workflow, body)
     if learned:
         doc["learning_context"] = learned
@@ -3099,6 +3103,29 @@ async def queue_improved_render(rid: str, body: ImprovedRenderBody):
     recipe.update({"shoot_id": None, "shoot_frame_index": None, "parent_render_id": rid,
                    "operation": "prompt_improvement", "seed": random.randint(0, 2**31 - 1),
                    "prompt_positive": prompt})
+    return await _enqueue_render(DispatchBody(**recipe))
+
+
+class WorkflowComparisonBody(BaseModel):
+    workflow_id: str
+
+
+@api.post("/renders/{rid}/compare-workflow")
+async def compare_render_workflow(rid: str, body: WorkflowComparisonBody):
+    render, source = await _render_recipe(rid)
+    settings = await get_settings()
+    target = next((w for w in settings.workflows if w.id == body.workflow_id), None)
+    original = next((w for w in settings.workflows if w.id == source.get("workflow_id")), None)
+    if not target or target.prompt_style not in COMPARABLE_STYLES or target.kind not in {"image", "pony", "krea_style"}:
+        raise HTTPException(400, "Choose a text-to-image workflow for this comparison.")
+    if not original or original.prompt_style not in COMPARABLE_STYLES or original.kind not in {"image", "pony", "krea_style"}:
+        raise HTTPException(400, "Start from a text-to-image render without reference inputs.")
+    if render.get("status") != "done" or source.get("seed") is None:
+        raise HTTPException(400, "Start from a finished render with a recorded seed.")
+    if source.get("reference_image") or source.get("reference_images") or source.get("pose_reference_image"):
+        raise HTTPException(400, "Reference-driven renders cannot use this text-only comparison.")
+    recipe = workflow_comparison_recipe(source, target.id)
+    recipe["parent_render_id"] = rid
     return await _enqueue_render(DispatchBody(**recipe))
 
 
