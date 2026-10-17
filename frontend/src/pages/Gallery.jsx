@@ -1,3 +1,4 @@
+import RenderSetupDetails from '@/components/RenderSetupDetails';
 import FramingComparisonPanel from '@/components/FramingComparisonPanel';
 import RenderSceneFeedback from '@/components/RenderSceneFeedback';
 import { confirmPermanentDelete } from "@/lib/permanentDeleteConfirmation";
@@ -939,6 +940,7 @@ export default function Gallery() {
               </section>}
 
               <div className="flex flex-col gap-2">
+                <RenderSetupDetails key={lightbox.id} render={lightbox} compare={!isVideoUrl(primaryOutput(lightbox))} />
                 <section className="rounded-lg border hairline bg-black/10 p-2.5" data-testid="gallery-recipe-snapshot">
                   <div className="mb-2 flex items-center justify-between gap-2">
                     <div className="text-xs font-bold text-zinc-200">Recipe snapshot</div>
@@ -1095,6 +1097,7 @@ export default function Gallery() {
                 </div>
                 <div className="rounded-lg border hairline bg-elevated p-2.5 text-[10px] font-mono">
                   <div className="truncate text-xs font-bold text-zinc-200">{render.workflow_name || render.workflow_type}</div>
+                  <RenderSetupDetails key={render.id} render={render} />
                   <div className="mt-1 grid grid-cols-2 gap-x-3 gap-y-1 text-zinc-500">
                     <span>seed <b className="text-amber-200">{render.seed_used ?? "—"}</b></span>
                     <span>size <b className="text-zinc-200">{renderDimensions(render)}</b></span>

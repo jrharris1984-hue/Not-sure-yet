@@ -1,3 +1,4 @@
+import RenderSetupDetails from '@/components/RenderSetupDetails';
 import { galleryIsVideo as isVideoOutput } from '@/lib/galleryBrowse';
 import {
   Check,
@@ -101,6 +102,7 @@ export default function MobileRenderResult({
         )}
       </div>
 
+      <RenderSetupDetails key={renderId(render)} render={render} compare={!isVideo} />
       <div className="pane p-2.5 space-y-2" data-testid="mobile-render-next-actions">
         <button
           type="button"
