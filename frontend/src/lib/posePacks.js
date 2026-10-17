@@ -1,3 +1,4 @@
+import { NATURAL_POOLS } from './photoConsistency';
 import { PHOTOGRAPHY_POSE_GROUPS } from "@/lib/photographyPoses";
 // Curated pose sets for the Photo Shoot mode.
 // Each pack pulls values directly from the pose.action option pool in dna.js.
@@ -138,8 +139,13 @@ export function samplePoses({ mode, packKey, manualPoses, count, allPoses }) {
     return cycleOrRepeat(manualPoses, count);
   }
   // random
-  if (!allPoses?.length) return Array(count).fill("");
-  const shuffled = [...allPoses].sort(() => Math.random() - 0.5);
+  const pool = mode === 'natural' ? NATURAL_POOLS['pose.action'] : allPoses;
+  if (!pool?.length) return Array(count).fill("");
+  const shuffled = [...pool];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
   return cycleOrRepeat(shuffled, count);
 }
 

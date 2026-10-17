@@ -1,3 +1,5 @@
+import { HERITAGE_OUTFIT_GROUP, heritagePhotoOutfit } from './heritageStyling';
+import { NATURAL_POOLS, NATURAL_RANGES, enforcePhotoConsistency, preserveSubjectLocks } from './photoConsistency';
 import {SIMPLE_COVERAGE_OPTIONS} from './simpleCoverage';
 import { catalogSelection } from './promptCatalog';
 import { ageAppearancePrompt, resolveAgeSkin } from './ageAppearance';
@@ -228,7 +230,7 @@ export const SECTIONS = [
         { name: "Lingerie sets", options: ["lace balconette set with matching panties, garter belt, stockings and heels", "satin push-up bra set with matching briefs, sheer thigh-highs and stilettos", "embroidered bralette and high-waist panties with seamed stockings and pumps", "sheer mesh bra and thong with fishnet stockings and platform heels", "silk corset and matching panties with garters, lace stockings and heels"] },
         { name: "Costume sets", options: ["French maid dress with apron, matching lingerie, stockings and heels", "classic maid dress with lace headpiece, stockings and pumps", "superheroine bodysuit with matching cape, gloves and boots", "armored heroine suit with matching cape, belt and boots", "royal princess gown with matching jewelry, veil and heels"] },
         { name: "Cultural fashion sets", options: ["Bollywood royal lehenga choli with dupatta, jewelry and embroidered heels", "Indian silk sari with matching blouse, bangles and sandals", "embroidered anarkali with dupatta, earrings and embellished flats", "formal embroidered kaftan with matching jewelry and sandals", "ornate abaya with matching scarf, jewelry and shoes"] },
-        ...ADDITIONAL_OUTFIT_GROUPS, LAYERED_OUTFIT_GROUP,
+        HERITAGE_OUTFIT_GROUP, ...ADDITIONAL_OUTFIT_GROUPS, LAYERED_OUTFIT_GROUP,
       ] },
       { key: "set_lingerie_mode", type: "chips", label: "Underneath layer", options: ["matching", "none"], defaultValue: "matching",
         optionLabels: { matching: "Include lingerie", none: "No lingerie underneath" }, help: "Optional for complete sets. No lingerie underneath keeps the selected outer outfit and disables lingerie-only coverage. A lingerie set selected as the main outfit stays on." },
@@ -499,6 +501,8 @@ export function randomizeSection(sectionKey, current = {}, fieldLocks = {}, opti
   const out = { ...current };
   const preserveProtected = options.preserveProtected !== false;
   const conservative = options.profile !== "adventurous";
+  const natural = options.profile === "natural";
+  if (!section) return out;
   const basicPools = {
     'pose.action': ['standing', 'standing hip out', 'standing hands on hips', 'sitting on edge', 'kneeling upright'],
     'pose.angle': ['front', '3/4', 'profile'],
@@ -522,22 +526,31 @@ export function randomizeSection(sectionKey, current = {}, fieldLocks = {}, opti
     'physique.waist_scale': [25, 65], 'skin.glow': [0, 50],
   };
   section.fields.forEach((f) => {
+    const naturalKey = `${sectionKey}.${f.key}`;
+    if (natural && !NATURAL_POOLS[naturalKey] && !NATURAL_RANGES[naturalKey]) return;
     if (sectionKey === "wardrobe" && f.key === "outfit_mode") return; // keep the chosen outfit workflow
     if (fieldLocks?.[f.key]) return; // per-field lock — keep current value
     if (preserveProtected && RANDOMIZE_PROTECTED_FIELDS[sectionKey]?.has(f.key)) return;
     if (f.type === "chips" || f.type === "pose_chips") {
-      const pool = conservative && basicPools[`${sectionKey}.${f.key}`] || (f.groups ? f.groups.flatMap((g) => g.options) : (f.options || []));
-      const alternatives = options.avoidCurrent ? pool.filter(value => value !== current[f.key]) : pool;
-      if (pool.length) out[f.key] = pick(alternatives.length ? alternatives : pool);
+      const pool = natural && NATURAL_POOLS[naturalKey] || conservative && basicPools[`${sectionKey}.${f.key}`] || (f.groups ? f.groups.flatMap((g) => g.options) : (f.options || []));
+      const validOptions = f.groups ? f.groups.flatMap(g => g.options) : (f.options || []);
+      const validPool = pool.filter(value => validOptions.includes(value));
+      const candidates = natural ? validPool : (validPool.length ? validPool : validOptions);
+      const alternatives = options.avoidCurrent ? candidates.filter(value => value !== current[f.key]) : candidates;
+      if (candidates.length) out[f.key] = pick(alternatives.length ? alternatives : candidates);
     }
     else if (f.type === "chips_multi") {
       const pool = f.groups ? f.groups.flatMap((g) => g.options) : (f.options || []);
       const n = conservative ? 1 : 1 + Math.floor(Math.random() * 3);
-      const shuffled = [...pool].sort(() => Math.random() - 0.5);
+      const shuffled = [...pool];
+      for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+      }
       out[f.key] = shuffled.slice(0, n).reduce((picked, option) => normalizeMultiSelection(f, [...picked, option], picked), []);
     }
     else if (f.type === "slider") {
-      const [low, high] = conservative && sliderRanges[`${sectionKey}.${f.key}`] || [f.min, f.max];
+      const [low, high] = natural && NATURAL_RANGES[naturalKey] || conservative && sliderRanges[`${sectionKey}.${f.key}`] || [f.min, f.max];
       const min = Math.max(f.min, low), max = Math.min(f.max, high), step = f.step || 1;
       out[f.key] = min + Math.floor(Math.random() * (Math.floor((max - min) / step) + 1)) * step;
     }
@@ -545,10 +558,10 @@ export function randomizeSection(sectionKey, current = {}, fieldLocks = {}, opti
   });
   if (preserveProtected && sectionKey === 'hair' && !fieldLocks.length) {
     if (/bun|chignon|ponytail|updo|braid|locs|twists/i.test(out.style) && ['pixie', 'short bob'].includes(out.length)) out.length = pick(['shoulder', 'long', 'waist-length']);
-    if (/pixie|buzz|bob/i.test(out.style)) out.length = /bob/i.test(out.style) ? 'short bob' : 'pixie';
+    if (!fieldLocks.style && /pixie|buzz|bob/i.test(out.style)) out.length = /bob/i.test(out.style) ? 'short bob' : 'pixie';
   }
   if (preserveProtected && sectionKey === 'pose' && !fieldLocks.hands && out.action === 'standing hands on hips') out.hands = 'on hips';
-  return out;
+  return natural ? enforcePhotoConsistency({ [sectionKey]: out }, {}, { [sectionKey]: fieldLocks }, [sectionKey])[sectionKey] : out;
 }
 
 export const HERITAGE_VARIATION_FIELDS = {
@@ -622,6 +635,20 @@ export function createHeritageCharacterVariation(
   fieldLocks = {},
   options = {}
 ) {
+  if (options.profile === 'natural') {
+    const base = Object.fromEntries(Object.keys(DEFAULT_DNA).map(section => [section,
+      {...DEFAULT_DNA[section], ...currentDna[section], ...presetDna[section]}]));
+    const photoLocks = {...sectionLocks, identity:true, wardrobe:true, pose:true, scene:true, lighting:true, camera:true,
+      scenario:true, intimate:true, feet:true, watersports:true};
+    let next = randomizeDna(base, photoLocks, fieldLocks, {profile:'natural',avoidCurrent:true});
+    if (options.clothing === 'inspired' && !sectionLocks.wardrobe && !Object.values(fieldLocks.wardrobe || {}).some(Boolean)) {
+      next.wardrobe = {...next.wardrobe, outfit_mode:'full',
+        outfit_set:heritagePhotoOutfit(next.identity.ethnicity, currentDna.wardrobe?.outfit_set),
+        exposure_mode:'use selected outfit'};
+    }
+    next = preserveSubjectLocks([{id:'source',dna:currentDna,field_locks:fieldLocks}], [{id:'source',dna:next}], sectionLocks)[0].dna;
+    return enforcePhotoConsistency(next, sectionLocks, fieldLocks, ['physique','face','hair','skin','style']);
+  }
   const density = HERITAGE_DENSITIES[options.density] || HERITAGE_DENSITIES.balanced;
   const next = {};
   Object.keys(DEFAULT_DNA).forEach((sectionKey) => {
@@ -701,7 +728,7 @@ export function randomizeDna(current = {}, locks = {}, fieldLocks = {}, options 
     }
     out[s.key] = randomizeSection(s.key, current[s.key] || {}, fieldLocks?.[s.key] || {}, options);
   });
-  return out;
+  return options.profile === "natural" ? enforcePhotoConsistency(out, locks, fieldLocks) : out;
 }
 
 export function resetSection(sectionKey, current = {}, fieldLocks = {}) {

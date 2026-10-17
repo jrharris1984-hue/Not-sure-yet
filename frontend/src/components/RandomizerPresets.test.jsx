@@ -1,0 +1,27 @@
+import {act} from 'react';
+import {createRoot} from 'react-dom/client';
+import RandomizerPresets from './RandomizerPresets';
+import {endpoints} from '@/lib/api';
+jest.mock('@/lib/api',()=>({endpoints:{listRandomizerPresets:jest.fn(),saveRandomizerPreset:jest.fn(),deleteRandomizerPreset:jest.fn()}}));
+let root,container;
+beforeEach(()=>{global.IS_REACT_ACT_ENVIRONMENT=true;container=document.createElement('div');document.body.appendChild(container);root=createRoot(container);jest.clearAllMocks();});
+afterEach(()=>{act(()=>root.unmount());container.remove();});
+const set=(input,value)=>act(()=>{Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(input,value);input.dispatchEvent(new Event('input',{bubbles:true}));});
+const button=text=>[...container.querySelectorAll('button')].find(b=>b.textContent===text);
+test('loads on demand, saves selected options and applies without rendering',async()=>{
+ endpoints.listRandomizerPresets.mockResolvedValue([]);
+ endpoints.saveRandomizerPreset.mockImplementation(async body=>({...body,id:'saved'}));
+ const apply=jest.fn();act(()=>root.render(<RandomizerPresets onApply={apply}/>));
+ expect(endpoints.listRandomizerPresets).not.toHaveBeenCalled();
+ await act(async()=>{const details=container.querySelector('details');details.open=true;details.dispatchEvent(new Event('toggle'));});
+ set(container.querySelector('input[placeholder="My outdoor portraits"]'),'My portraits');
+ act(()=>container.querySelector('input[type="checkbox"]').click());
+ await act(async()=>button('Save randomizer').click());
+ expect(endpoints.saveRandomizerPreset.mock.calls[0][0].name).toBe('My portraits');
+ expect(endpoints.saveRandomizerPreset.mock.calls[0][0].rules[0].values).toHaveLength(1);
+ act(()=>button('Apply randomizer').click());expect(apply.mock.calls[0][0].id).toBe('saved');
+ act(()=>button('Edit').click());expect(container.querySelector('input[placeholder="My outdoor portraits"]').value).toBe('My portraits');
+ act(()=>button('Delete').click());expect(endpoints.deleteRandomizerPreset).not.toHaveBeenCalled();
+ endpoints.deleteRandomizerPreset.mockResolvedValue({ok:true});
+ await act(async()=>button('Confirm delete').click());expect(endpoints.deleteRandomizerPreset).toHaveBeenCalledWith('saved');
+});
