@@ -66,3 +66,22 @@ test('simple desktop navigation skips optional details while allowing them to be
   expect(desktopNavigationSections(stages,sections,'physique').map(section => section.key)).toEqual(['physique','face']);
   expect(desktopNavigationSections(stages,sections,'feet').map(section => section.key)).toEqual(['physique','feet','face']);
 });
+test('Simple desktop shows essentials and offers an explicit path to all controls', () => {
+  const section = SECTIONS.find(item => item.key === 'hair');
+  const onRequestAdvanced = jest.fn();
+  render(<DesktopDnaEditor enabled section={section} value={{}} simpleMode simpleFieldKeys={['color']} onRequestAdvanced={onRequestAdvanced}/>);
+  expect(container.querySelector('[data-testid="desktop-edit-color"]')).not.toBeNull();
+  expect(container.querySelector('[data-testid="desktop-edit-texture"]')).toBeNull();
+  click('Show all hair controls');
+  expect(onRequestAdvanced).toHaveBeenCalledTimes(1);
+});
+test('desktop search filters detail cards and provides an empty state', () => {
+  render(<Editor section="hair"/>);
+  const input = container.querySelector('input[type="search"]');
+  const setValue = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set;
+  act(() => { setValue.call(input,'color'); input.dispatchEvent(new Event('input',{bubbles:true})); });
+  expect(container.querySelector('[data-testid="desktop-edit-color"]')).not.toBeNull();
+  expect(container.querySelector('[data-testid="desktop-edit-texture"]')).toBeNull();
+  act(() => { setValue.call(input,'no such detail'); input.dispatchEvent(new Event('input',{bubbles:true})); });
+  expect(container.querySelector('[role="status"]').textContent).toContain('No matching details');
+});

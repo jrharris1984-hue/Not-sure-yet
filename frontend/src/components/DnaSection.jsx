@@ -204,7 +204,7 @@ export default function DnaSection({
           const fLocked = !!fieldLocks?.[f.key];
           const canLock = f.type === "slider" || f.type === "chips" || f.type === "pose_chips";
           return (
-          <div key={f.key} style={section.key==='wardrobe' && wardrobeGroupFor(f.key)!==activeGroup ? {display:'none'} : undefined} className={`${section.key!=='wardrobe' && simpleMode && simpleFieldKeys.length && !simpleFieldKeys.includes(f.key) && !(section.key === 'intimate' && showLegacyAnatomy && LEGACY_ANATOMY_FIELDS.includes(f.key)) && !(isModeHeader && (simpleFieldKeys.includes(SIZE_CONTROL_PAIRS[preset][0]) || (preset === "bust" && simpleFieldKeys.includes("implant_volume")))) ? "hidden md:block" : "block"} space-y-2 ${fLocked ? "opacity-70" : ""}`}>
+          <div key={f.key} style={section.key==='wardrobe' && wardrobeGroupFor(f.key)!==activeGroup ? {display:'none'} : undefined} className={`${section.key!=='wardrobe' && simpleMode && simpleFieldKeys.length && !simpleFieldKeys.includes(f.key) && !(section.key === 'intimate' && showLegacyAnatomy && LEGACY_ANATOMY_FIELDS.includes(f.key)) && !(isModeHeader && (simpleFieldKeys.includes(SIZE_CONTROL_PAIRS[preset][0]) || (preset === "bust" && simpleFieldKeys.includes("implant_volume")))) ? "hidden" : "block"} space-y-2 ${fLocked ? "opacity-70" : ""}`}>
             {isModeHeader && <div className="space-y-2" data-testid={`size-mode-${preset}`}>
               <div className="text-xs font-semibold text-zinc-300">{SIZE_CONTROL_PAIRS[preset][1]} · choose one control</div>
               <div className="flex gap-2" role="group" aria-label={`${SIZE_CONTROL_PAIRS[preset][1]} control`}>
@@ -328,11 +328,11 @@ export default function DnaSection({
         })}
       </div>
       )}
-      {!collapsed && section.key!=='wardrobe' && simpleMode && simpleFieldKeys.length > 0 && section.fields.some((field) => !simpleFieldKeys.includes(field.key)) && (
+      {!collapsed && !focusedField && section.key!=='wardrobe' && simpleMode && simpleFieldKeys.length > 0 && section.fields.some((field) => !simpleFieldKeys.includes(field.key)) && (
         <button
           type="button"
           onClick={onRequestAdvanced}
-          className="md:hidden w-full rounded-lg border border-dashed hairline px-3 py-2.5 text-xs font-semibold text-zinc-500 hover:bg-white/[0.03] hover:text-zinc-300"
+          className="w-full rounded-lg border border-dashed hairline px-3 py-2.5 text-xs font-semibold text-zinc-500 hover:bg-white/[0.03] hover:text-zinc-300"
           data-testid={`btn-advanced-fields-${section.key}`}
         >
           Show all {section.fields.length} {section.title.toLowerCase()} controls
