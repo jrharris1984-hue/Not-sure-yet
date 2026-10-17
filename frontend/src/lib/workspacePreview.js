@@ -13,9 +13,9 @@ export const PREVIEW_SCENES = [
 export const PREVIEW_OUTFITS = HERITAGE_OUTFIT_GROUP.options.slice(0,3);
 export const previewCopy = value => JSON.parse(JSON.stringify(value));
 export function previewPerson(character) {
-  const dna=previewCopy(character?.dna || DEFAULT_DNA);
+  const dna=previewCopy(character?.dna || character?.subjects?.[0]?.dna || DEFAULT_DNA);
   if(!character) {dna.identity={...dna.identity,age:30};dna.pose={...dna.pose,action:'standing',distance:'full body'};dna.style={...dna.style,render:'photorealistic'};}
-  return {name:character?.name || 'New character',dna,thumbnail:character?.thumbnail || '',locks:character?.locks || {},field_locks:character?.field_locks || character?.subjects?.[0]?.field_locks || {}};
+  return {likeness:previewCopy(character?.subjects?.[0]?.likeness || {}),name:character?.name || 'New character',dna,thumbnail:character?.thumbnail || '',locks:character?.locks || {},field_locks:character?.field_locks || character?.subjects?.[0]?.field_locks || {}};
 }
 export function previewOptions(section,field) {
   const f=SECTIONS.find(s=>s.key===section)?.fields.find(f=>f.key===field);

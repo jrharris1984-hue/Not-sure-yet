@@ -5,12 +5,12 @@ import { previewPerson, previewCanContinue, previewOptions } from '@/lib/workspa
 import { endpoints } from '@/lib/api';
 
 jest.mock('react-router-dom', () => ({ Link: ({to, children, ...props}) => <a href={to} {...props}>{children}</a> }), {virtual:true});
-jest.mock('@/lib/api', () => ({endpoints:{listCharacters:jest.fn()}}));
+jest.mock('@/lib/api', () => ({endpoints:{listCharacters:jest.fn(),listWorkflows:jest.fn(),settings:jest.fn()}}));
 let root, container;
 beforeEach(() => {
   global.IS_REACT_ACT_ENVIRONMENT=true;
   container=document.createElement('div');document.body.appendChild(container);
-  root=createRoot(container);jest.clearAllMocks();
+  root=createRoot(container);jest.clearAllMocks();endpoints.settings.mockResolvedValue({});endpoints.listWorkflows.mockResolvedValue([{id:'image',name:'Image',kind:'image',prompt_style:'krea2'}]);
 });
 afterEach(() => {act(()=>root.unmount());container.remove();});
 const paint=async()=>{await act(async()=>root.render(<WorkspacePreview/>));};
@@ -26,7 +26,7 @@ test('relationship controls appear only for multiple people and disappear when r
   await click('Add another person');expect(container.textContent).toContain('Relationship');
   await click('Remove this person');expect(container.querySelector('select')).toBeNull();
 });
-test('description is required and survives step navigation; generation stays disabled',async()=>{
+test('description is required and survives step navigation; generation becomes available after review',async()=>{
   await paint();await click('Describe an image');
   const next=()=>[...container.querySelectorAll('button')].find(b=>b.textContent==='Continue');
   expect(next().disabled).toBe(true);
@@ -34,7 +34,7 @@ test('description is required and survives step navigation; generation stays dis
   expect(next().disabled).toBe(false);await click('Continue');await click('Back');
   expect(container.querySelector('textarea').value).toBe('A bright studio portrait');
   await click('Continue');await click('Review image');
-  expect([...container.querySelectorAll('button')].find(b=>b.textContent.includes('Generate')).disabled).toBe(true);
+  expect([...container.querySelectorAll('button')].find(b=>b.textContent.includes('Generate')).disabled).toBe(false);
 });
 test('saved character locks disable editing and source DNA is copied',async()=>{
   const source={id:'a',name:'Alex',dna:{identity:{age:36},hair:{style:'bob',color:'black'},face:{eye_color:'brown'}},locks:{hair:true}};
