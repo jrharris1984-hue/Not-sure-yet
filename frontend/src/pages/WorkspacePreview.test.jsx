@@ -72,3 +72,22 @@ test('new-character creation exposes identity choices and browsable appearance d
   act(()=>{Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(range,'42');range.dispatchEvent(new Event('change',{bubbles:true}));});
   await click('Done');expect(container.textContent).toContain('42');
 });
+
+test('body categories expose size sliders and the original glute maximum',async()=>{
+  await paint();await click('Create a new character');await click('Continue');await click('Body build');await click('Glutes');
+  await click('Glute size (slider)');expect(document.querySelector('input[type="range"]').max).toBe('300');await click('Done');
+  await click('Waist & hips');expect(container.textContent).toContain('Hip width (slider)');
+  await click('Bust');expect(container.textContent).toContain('Bust shape');
+});
+test('complete outfits are searchable beyond the heritage list and wardrobe has individual garment categories',async()=>{
+  await paint();await click('Create a new character');await click('Continue');await click('Continue');await click('Browse outfit choices');
+  const select=document.querySelector('select[aria-label="Option category"]');
+  act(()=>{select.value='Costume sets';select.dispatchEvent(new Event('change',{bubbles:true}));});
+  expect(document.querySelector('[role="dialog"]').textContent).toContain('superheroine');
+  await click('superheroine bodysuit');expect(container.textContent).toContain('Selected:');
+  await click('Outfit mode');await click('Custom');await click('Accessories & nails');await click('Accessories (pick many)');
+  const dialog=()=>document.querySelector('[role="dialog"]');const choices=()=>[...dialog().querySelectorAll('.wp-picker-list>button')].filter(b=>b.textContent!=='Done');
+  await act(async()=>choices()[0].click());await act(async()=>choices()[1].click());
+  expect(choices().filter(button=>button.getAttribute('aria-pressed')==='true')).toHaveLength(2);
+  await click('Done');expect(document.querySelector('[role="dialog"]')).toBeNull();
+});
