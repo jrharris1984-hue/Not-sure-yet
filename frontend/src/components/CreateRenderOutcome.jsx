@@ -1,3 +1,4 @@
+import RenderSetupDetails from '@/components/RenderSetupDetails';
 import { galleryIsVideo } from "@/lib/galleryBrowse";
 
 const failedStatuses = ["failed", "offline", "cancelled"];
@@ -52,6 +53,7 @@ export default function CreateRenderOutcome({ render, batch = [], mediaUrl = (ur
         </>}
         <button type="button" className={buttonClass} onClick={() => onDownload(output)} disabled={!!busy}>Download</button>
       </div>
+      <RenderSetupDetails key={render.id || render.render_id} render={render} compare={!isVideo} />
       <p className="text-xs text-zinc-500">New seed reuses this render’s saved recipe with a different seed.</p>
       {!isVideo && (!canEdit || !canAnimate) && <p className="text-xs text-zinc-500">Add {!canEdit && !canAnimate ? "image-edit and image-to-video workflows" : !canEdit ? "an image-edit workflow" : "an image-to-video workflow"} in Settings to enable more actions.</p>}
     </>}
