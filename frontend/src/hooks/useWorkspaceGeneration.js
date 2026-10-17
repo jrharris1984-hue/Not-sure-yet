@@ -78,6 +78,7 @@ export function useWorkspaceGeneration(values) {
       if(live.current)setSaved(result);
     }catch(e){if(live.current)setError(message(e));}finally{operation.current=false;if(live.current)setBusy('');}
   }
-  return {workflow,workflows,chooseWorkflow,loading,load,error,promptError,busy,pending,renders,pollError,prompt,
+  const clearResults=()=>{if(!operation.current && !pending){setRenders([]);setSaved(null);setError('');setPollError('');}};
+  return {clearResults,workflow,workflows,chooseWorkflow,loading,load,error,promptError,busy,pending,renders,pollError,prompt,
     negative,setNegative,seed,setSeed,lora,setLora,generate,save,saved};
 }
