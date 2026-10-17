@@ -1,6 +1,6 @@
 import LearningComparison from '@/pages/LearningComparison';
 import ImageToolRoute from "@/pages/ImageToolRoute";
-import { useEffect } from "react";
+import { useEffect, lazy, Suspense } from "react";
 import { endpoints } from "@/lib/api";
 import { setPromptCatalog } from "@/lib/promptCatalog";
 import PromptLibraryEditor from "@/pages/PromptLibraryEditor";
@@ -32,6 +32,8 @@ function LegacyStudioRedirect() {
   return <Navigate to={destination} replace />;
 }
 
+const WorkspacePreview = lazy(() => import("@/pages/WorkspacePreview"));
+
 function App() {
   useEffect(() => {endpoints.settings().then(settings => setPromptCatalog(settings.prompt_catalog)).catch(() => {});}, []);
   return (
@@ -42,6 +44,7 @@ function App() {
             <Route path="/" element={<Library />} />
             <Route path="/research" element={<div className="mx-auto max-w-4xl p-6"><AIResearchPanel open /></div>} />
             <Route path="/create" element={<CreateHub />} />
+            <Route path="/create/workspace-preview" element={<Suspense fallback={<div className="p-8 text-zinc-400">Loading workspace preview…</div>}><WorkspacePreview /></Suspense>} />
             <Route path="/create/character-preview" element={<CharacterPreviewLab />} />
             <Route path="/create/image" element={<FreeformCreate key="image" mode="image" />} />
             <Route path="/create/video" element={<FreeformCreate key="video" mode="video" />} />
