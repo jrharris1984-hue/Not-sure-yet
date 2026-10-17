@@ -1,3 +1,6 @@
+import { applyCustomRandomizer } from '@/lib/customRandomizers';
+import { randomizePhotoSubjects } from '@/lib/photoRandomizer';
+import { photoCastIssues, coherePhotoCast, preserveSubjectLocks } from '@/lib/photoConsistency';
 import LearningHistoryPanel from '@/components/LearningHistoryPanel';
 import SceneReviewPanel from '@/components/SceneReviewPanel';
 import { desktopNavigationSections } from '@/lib/desktopEditingGroups';
@@ -53,7 +56,7 @@ import { buildMediaSubjects } from "@/lib/mediaLibraryImport";
 import { applyCastAppearance, editCastSubjectDna, CAST_AGE_OPTIONS, CAST_RESEMBLANCE_OPTIONS } from "@/lib/castAppearance";
 import {
   SECTIONS as BASE_SECTIONS, DEFAULT_DNA,
-  randomizeDna, randomizeSection, resetSection,
+  randomizeDna, randomizeSection, resetSection, createHeritageCharacterVariation,
   phaseOfSection,
   MAX_SUBJECTS, makeSubject, subjectsFromCharacter, subjectLabel,
   expectedSubjectCount, seedSubjectFromPairing,
@@ -1887,21 +1890,21 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
     setSubjects((current) => {
       const primary = current[0];
       if (!primary) return current;
-      const identity = locks.identity ? primary.dna.identity : randomizeSection("identity", primary.dna.identity, primary.field_locks?.identity);
+      const identity = locks.identity ? primary.dna.identity : randomizeSection("identity", primary.dna.identity, primary.field_locks?.identity, {profile:randomProfile});
       const pairing = primary.dna.scenario?.cast_type;
       const nextIdentity = { ...identity, name: primary.dna.identity?.name || "", age: Math.max(["mother and daughter", "stepmom and stepdaughter", "aunt and niece", "grandma and granddaughter"].includes(pairing) ? 44 : 21, Number(identity.age) || 21), gender: "female" };
       const primaryVariation = { ...primary.dna, identity: nextIdentity };
       ["physique", "face", "hair", "skin"].forEach((section) => {
-        if (!locks[section]) primaryVariation[section] = randomizeSection(section, primary.dna[section], primary.field_locks?.[section]);
+        if (!locks[section]) primaryVariation[section] = randomizeSection(section, primary.dna[section], primary.field_locks?.[section], {profile:randomProfile});
       });
       const nextPrimary = { ...primary, dna: primaryVariation };
-      return applyCastAppearance([nextPrimary, ...current.slice(1).map((subject, index) => ({
+      return preserveSubjectLocks(current, applyCastAppearance([nextPrimary, ...current.slice(1).map((subject, index) => ({
         ...subject,
         dna: { ...subject.dna, ...Object.fromEntries(["identity", "physique", "face", "hair", "skin"].map((section) => [section,
           locks[section] ? subject.dna[section] : seedSubjectFromPairing(primaryVariation, index + 1)[section]])),
           identity: { ...(locks.identity ? subject.dna.identity : seedSubjectFromPairing(primaryVariation, index + 1).identity), name: subject.dna.identity?.name || "", gender: "female" },
         },
-      }))], primaryVariation.scenario, locks);
+      }))], primaryVariation.scenario, locks), locks);
     });
     toast.success("People randomized · scene and outfits kept");
   };
@@ -1911,7 +1914,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
       if (!subject) return current;
       const dna = { ...subject.dna };
       for (const section of ["identity", "physique", "face", "hair", "skin"]) {
-        if (!locks[section]) dna[section] = randomizeSection(section, subject.dna[section], subject.field_locks?.[section]);
+        if (!locks[section]) dna[section] = randomizeSection(section, subject.dna[section], subject.field_locks?.[section], {profile:randomProfile});
       }
       const pairing = primaryDna.scenario?.cast_type;
       const isMotherPair = ["mother and daughter", "stepmom and stepdaughter"].includes(pairing);
@@ -1922,7 +1925,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
         dna.identity = { ...primaryDna.identity, name: subject.dna.identity?.name || "" };
         dna.face = { ...primaryDna.face };
       }
-      return applyCastAppearance(current.map((item) => {
+      return preserveSubjectLocks(current, applyCastAppearance(current.map((item) => {
         if (item.id === activeSubjectId) return { ...item, dna };
         if (activeSubjectIdx === 0 && isMotherPair && item.id !== activeSubjectId) {
           return { ...item, dna: { ...item.dna, identity: { ...item.dna.identity,
@@ -1930,15 +1933,27 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
           } } };
         }
         return item;
-      }), current[0]?.dna.scenario, locks);
+      }), current[0]?.dna.scenario, locks), locks);
     });
     toast.success(`Subject ${activeSubject.label} randomized · outfit and scene kept`);
   };
+  const randomizeCustomPhoto = (preset) => {
+    const result = applyCustomRandomizer(subjects, preset, locks);
+    if (result.applied) { setSubjects(result.subjects); toast.success(`${preset.name} applied · review before generating`); }
+    else toast.warning("Randomizer needs review", {description:result.issues.join(" ")});
+  };
+  const randomizePhoto = (scope) => {
+    const result = randomizePhotoSubjects(subjects, scope, locks);
+    setSubjects(result.subjects);
+    if (result.issues.length) toast.warning("Setup needs review", {description: result.issues.join(" ")});
+    else toast.success("Natural photo variation ready · people and locks kept");
+  };
   const randomizeScene = () => {
+    if (randomProfile === "natural") { randomizePhoto("scene"); return; }
     setSubjects((current) => current.map((subject, index) => {
       const next = { ...subject.dna };
       for (const section of index === 0 ? ["pose", "scene", "lighting", "camera", "style"] : ["pose"]) {
-        if (!locks[section]) next[section] = randomizeSection(section, subject.dna[section], subject.field_locks?.[section]);
+        if (!locks[section]) next[section] = randomizeSection(section, subject.dna[section], subject.field_locks?.[section], {profile:randomProfile});
       }
       return { ...subject, dna: next };
     }));
@@ -1973,11 +1988,16 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
     }));
   const randomizeAllSubjects = () => {
     const nonPlayLocks = { ...locks, kink: true, scenario: true, watersports: true };
-    setSubjects((cur) => cur.map((s) => ({ ...s, dna: randomizeDna(s.dna, nonPlayLocks, s.field_locks, { profile: randomProfile }) })));
+    setSubjects((cur) => {
+      const next = cur.map(s => ({...s,dna:randomizeDna(s.dna, nonPlayLocks, s.field_locks, {profile:randomProfile})}));
+      return randomProfile === 'natural' ? coherePhotoCast(next, locks) : next;
+    });
     toast.success(`Randomized ${subjects.length} subject${subjects.length > 1 ? "s" : ""} · Play preserved`);
   };
   const randomizeSceneMode = (mode) => {
-    const next = randomSceneSubjects(subjects, mode, randomProfile, locks);
+    const footwearPhoto = randomProfile === "natural" && mode.includes("feet");
+    const base = randomSceneSubjects(subjects, footwearPhoto ? (mode.startsWith("duo") ? "duo" : "solo") : mode, randomProfile, locks);
+    const next = footwearPhoto ? randomizePhotoSubjects(base, "footwear", locks).subjects : base;
     setSubjects(next);
     setActiveSubjectId(next[0].id);
     setMobileStudioStep("create");
@@ -2107,6 +2127,12 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
       ),
     };
   }, [activeDna]);
+
+  const naturalPhotoIssues = useMemo(() => randomProfile === "natural" ? photoCastIssues(subjects) : [], [subjects, randomProfile]);
+  const photoConsistencyNotice = naturalPhotoIssues.length > 0 ? <div role="status" className="rounded-xl border border-amber-400/30 p-3 text-xs text-amber-200">
+    <b>Review photo consistency</b><ul className="mt-2 space-y-1">{naturalPhotoIssues.map(issue => <li key={issue}>{issue}</li>)}</ul>
+    <p className="mt-2">Locked choices are kept. Edit or unlock conflicting settings before generating. Custom text and the generated image need your review.</p>
+  </div> : null;
 
   const mobileCreateIssues = useMemo(() => {
     const issues = [];
@@ -2663,7 +2689,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
             onToggleLock={() => setLocks({ ...locks, [activeSection]: !locks[activeSection] })}
             onRandomize={() => setSection(activeSection, activeSection.startsWith("custom_")
               ? Object.fromEntries(SECTIONS[activeIdx].fields.map(field => [field.key, activeFieldLocks[activeSection]?.[field.key] ? activeDna[activeSection]?.[field.key] : field.type === 'chips_multi' ? [] : field.options?.[Math.floor(Math.random() * field.options.length)] || '']))
-              : randomizeSection(activeSection, activeDna[activeSection] || {}, activeFieldLocks[activeSection] || {}))}
+              : randomizeSection(activeSection, activeDna[activeSection] || {}, activeFieldLocks[activeSection] || {}, {profile:randomProfile}))}
             onReset={() => {
               if (locks[activeSection]) return;
               const source = activeSection === "scenario" ? subjects[0] : activeSubject;
@@ -2714,7 +2740,10 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
                     setSubjects([primary]);
                     setActiveSubjectId(primary.id);
                   } else {
-                    const relativeDna = seedSubjectFromPairing(primaryDna, 1);
+                    const seededRelative = seedSubjectFromPairing(primaryDna, 1);
+                    const relativeDna = context.profile === "natural" ? createHeritageCharacterVariation(seededRelative,
+                      {identity:{ethnicity:primaryDna.identity.ethnicity}}, {}, {}, {profile:'natural',clothing:context.clothing}) : seededRelative;
+                    if (context.profile === "natural" && context.cast === "twins") relativeDna.face = {...primaryDna.face};
                     const relative = makeSubject({ label: "B", dna: relativeDna });
                     setSubjects([primary, relative]);
                     setActiveSubjectId(primary.id);
@@ -2812,6 +2841,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
         onPeople={() => goSection("scenario")}
         presetsControl={characterPresets}
         workspaceControls={({close}) => <div className="space-y-3" data-testid="mobile-sheet-workspace-tools">
+          <RandomSceneControls profile={randomProfile} onProfile={setRandomProfile} onRandomize={randomizeSceneMode} onPhotoRandomize={randomizePhoto} onCustomRandomize={randomizeCustomPhoto} issues={naturalPhotoIssues} busy={dispatching} />
           <CharacterHistoryControls canUndo={characterHistory.canUndo} canRedo={characterHistory.canRedo}
             onUndo={characterHistory.undo} onRedo={characterHistory.redo} busy={dispatching || !!postRenderBusy} />
           <PinnedSectionControls sections={SECTIONS} pinned={sectionPins.pinned} limit={sectionPins.limit}
@@ -2849,7 +2879,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
         onGenerate={doDispatch} generating={dispatching}
         canGenerate={!!workflowId && mobileCreateIssues.length === 0}
         issues={mobileCreateIssues} imageCount={poseAssistEnabled && !isVariationWorkflow ? 1 : renderCount}
-        outputControls={<>{learningPanel}<CreationOutputControls compiler={activeRecipeStyle} workflows={selectableWorkflows} workflowId={workflowId}
+        outputControls={<>{photoConsistencyNotice}{learningPanel}<CreationOutputControls compiler={activeRecipeStyle} workflows={selectableWorkflows} workflowId={workflowId}
           onWorkflow={setWorkflowId} family={activeRecipeFamily} tier={qualityTier}
           onTier={applyQualityTier} count={poseAssistEnabled && !isVariationWorkflow ? 1 : renderCount} onCount={setRenderCount}
           countLocked={poseAssistEnabled && !isVariationWorkflow}
@@ -3138,7 +3168,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
         </div>
       </section>}
 
-      {!isImageFirst && <div className="mobile-tools-panel" data-mobile-tools="presets"><RandomSceneControls profile={randomProfile} onProfile={setRandomProfile} onRandomize={randomizeSceneMode} busy={dispatching} /></div>}
+      {!isImageFirst && <div className="mobile-tools-panel" data-mobile-tools="presets"><RandomSceneControls profile={randomProfile} onProfile={setRandomProfile} onRandomize={randomizeSceneMode} onPhotoRandomize={randomizePhoto} onCustomRandomize={randomizeCustomPhoto} issues={naturalPhotoIssues} busy={dispatching} /></div>}
 
       {isImageFirst && <div className="mobile-tools-panel" data-mobile-tools="none"><ImageSourceFlow title={activeWorkflow?.name} animation={isVideoWorkflow} variation={isVariationWorkflow} source={referenceImage} preview={referencePreview}
         readyToRender={!isQwenReferenceWorkflow || qwenEditVariant !== "pose" || !!poseReferenceImage?.name}
@@ -3553,6 +3583,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
           {desktopQuickMode && quickReview ? (
             <div className="hidden md:block pane border-cyan-400/30 p-5 space-y-4" data-testid="desktop-quick-review">
               <div className="section-label">Generate · ready when you are</div>
+              {photoConsistencyNotice}
               <CreationOutputControls compiler={activeRecipeStyle} workflows={selectableWorkflows} workflowId={workflowId} onWorkflow={setWorkflowId}
                 tier={qualityTier} onTier={applyQualityTier} count={poseAssistEnabled && !isVariationWorkflow ? 1 : renderCount} onCount={setRenderCount}
                 countLocked={poseAssistEnabled && !isVariationWorkflow}

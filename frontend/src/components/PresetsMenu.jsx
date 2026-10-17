@@ -39,7 +39,8 @@ export default function PresetsMenu({ onApply, currentDna, sectionLocks = {}, fi
   const [category, setCategory] = useState("types");
   const [description, setDescription] = useState("");
   const [draft, setDraft] = useState(null);
-  const [heritageMode, setHeritageMode] = useState("complete");
+  const [heritageMode, setHeritageMode] = useState("natural");
+  const [heritageClothing, setHeritageClothing] = useState("inspired");
   const [heritageDensity, setHeritageDensity] = useState("balanced");
   const [heritageCast, setHeritageCast] = useState("solo");
   const [lastHeritage, setLastHeritage] = useState(null);
@@ -106,19 +107,19 @@ export default function PresetsMenu({ onApply, currentDna, sectionLocks = {}, fi
       next[k] = { ...DEFAULT_DNA[k], ...(base[k] || {}), ...(preset.dna[k] || {}) };
     });
 
-    if (isHeritage && (mode === "complete" || mode === "variation")) {
+    if (isHeritage && (mode === "natural" || mode === "complete" || mode === "variation")) {
       next = createHeritageCharacterVariation(
         currentDna || DEFAULT_DNA,
         preset.dna || {},
         sectionLocks,
         fieldLocks,
-        { density: heritageDensity }
+        { density: heritageDensity, profile: mode === "natural" || (mode === "variation" && heritageMode === "natural") ? "natural" : undefined, clothing:heritageClothing }
       );
     }
 
     if (category === "types") next = applyCharacterTypePreset(currentDna, preset);
 
-    onApply(next, isHeritage ? { type: "heritage", cast: heritageCast } : { type: "preset" });
+    onApply(next, isHeritage ? { type: "heritage", cast: heritageCast, profile:heritageMode === "natural" ? "natural" : undefined, clothing:heritageClothing } : { type: "preset" });
     if (isHeritage) {
       setLastHeritage(preset);
       toast.success(mode === "heritage" ? "Heritage applied" : "Complete heritage character created");
@@ -202,7 +203,8 @@ export default function PresetsMenu({ onApply, currentDna, sectionLocks = {}, fi
                     Complete character varies appearance, outfit, pose, and the selected body details. Play, fluids, acts, and explicit settings stay untouched.
                   </p>
                 </div>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  <button type="button" onClick={() => setHeritageMode("natural")} aria-pressed={heritageMode === "natural"} className={`min-h-11 rounded-lg border px-2 py-2 text-xs ${heritageMode === "natural" ? "border-cyan-400 text-cyan-100" : "hairline text-zinc-400"}`}>Natural portrait</button>
                   <button type="button" onClick={() => setHeritageMode("heritage")}
                     data-testid="heritage-mode-only"
                     className={`rounded-lg border px-2 py-2 text-xs font-semibold ${heritageMode === "heritage" ? "border-amber-400 bg-amber-500/15 text-amber-100" : "hairline text-zinc-400"}`}>
@@ -214,6 +216,7 @@ export default function PresetsMenu({ onApply, currentDna, sectionLocks = {}, fi
                     Complete character
                   </button>
                 </div>
+                {heritageMode === "natural" && <label className="block text-xs text-zinc-400">Clothing inspiration<select className="mt-2 min-h-11 w-full rounded-lg border hairline bg-elevated p-2" value={heritageClothing} onChange={event=>setHeritageClothing(event.target.value)}><option value="inspired">Contemporary regional inspiration</option><option value="keep">Keep current clothing</option></select><span className="mt-2 block">Varies individual features and hairstyle. Clothing is creative styling, not traditional costume; every choice stays editable. Wardrobe locks keep your outfit.</span></label>}
                 {heritageMode === "complete" && (
                   <div>
                     <div className="mb-1.5 text-[10px] font-mono uppercase tracking-widest text-zinc-500">Detail density</div>

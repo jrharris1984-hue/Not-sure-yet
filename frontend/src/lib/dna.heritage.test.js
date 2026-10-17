@@ -114,3 +114,22 @@ describe("createHeritageCharacterVariation", () => {
     expect(seedSubjectFromPairing(twins, 1).identity.age).toBe(48);
   });
 });
+test('natural heritage portraits vary ordinary features and use optional coordinated clothing', () => {
+  const current=clone(DEFAULT_DNA);
+  current.identity={...current.identity,ethnicity:'latina'};
+  const first=createHeritageCharacterVariation(current,{identity:{ethnicity:'latina'}},{},{},{profile:'natural',clothing:'inspired'});
+  const second=createHeritageCharacterVariation(first,{identity:{ethnicity:'latina'}},{},{},{profile:'natural',clothing:'inspired'});
+  expect(first.identity.ethnicity).toBe('latina');expect(second.identity.ethnicity).toBe('latina');
+  expect(first.wardrobe.outfit_mode).toBe('full');expect(first.wardrobe.outfit_set).toBeTruthy();
+  expect(second.wardrobe.outfit_set).not.toBe(first.wardrobe.outfit_set);
+  expect(second.face.eye_color).not.toBe(first.face.eye_color);
+  expect(first.intimate).toEqual(current.intimate);expect(first.scene).toEqual(current.scene);
+  expect(current.wardrobe.outfit_set).toBe('');
+});
+test('heritage portrait locks and keep-clothing choice win over style suggestions', () => {
+  const current=clone(DEFAULT_DNA);current.wardrobe.outfit_set='My outfit';current.hair.color='chestnut';
+  const result=createHeritageCharacterVariation(current,{identity:{ethnicity:'japanese'}},{},{hair:{color:true},wardrobe:{outfit_set:true}},{profile:'natural',clothing:'inspired'});
+  expect(result.hair.color).toBe('chestnut');expect(result.wardrobe.outfit_set).toBe('My outfit');
+  const kept=createHeritageCharacterVariation(current,{identity:{ethnicity:'mexican'}},{},{},{profile:'natural',clothing:'keep'});
+  expect(kept.wardrobe).toEqual(current.wardrobe);
+});

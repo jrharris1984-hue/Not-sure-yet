@@ -320,7 +320,8 @@ export default function ShootSetup() {
               </div>
               <div className="flex gap-1">
                 {[
-                  { k: "random", label: "Random" },
+                  { k: "natural", label: "Natural random" },
+                  { k: "random", label: "Random · full range" },
                   { k: "pack", label: "Pack" },
                   { k: "manual", label: "Pick" },
                 ].map((m) => (

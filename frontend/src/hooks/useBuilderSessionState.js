@@ -54,7 +54,7 @@ export function useBuilderSessionState({ studio = "standard", queryClient } = {}
   const [batchRenders, setBatchRenders] = useState([]);
   const [selectedBatchRenderId, setSelectedBatchRenderId] = useState(null);
   const [postRenderBusy, setPostRenderBusy] = useState("");
-  const [randomProfile, setRandomProfile] = useState("adventurous");
+  const [randomProfile, setRandomProfile] = useState("natural");
   const [workflowId, setWorkflowId] = useState("");
   const [loraOverrides, setLoraOverrides] = useState({});
   const [selectedLora, setSelectedLora] = useState({ name: "", strength: 0.8, triggerWords: [] });
