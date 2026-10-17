@@ -15,13 +15,13 @@ beforeEach(() => {
 afterEach(() => {act(()=>root.unmount());container.remove();});
 const paint=async()=>{await act(async()=>root.render(<WorkspacePreview/>));};
 const click=async text=>{await act(async()=>[...document.querySelectorAll('button')].find(b=>b.textContent.includes(text)).click());};
-test('start screen offers only three tasks without loading the character library',async()=>{
-  await paint();expect(container.querySelectorAll('main button')).toHaveLength(3);
+test('start screen offers four distinct tasks without loading the character library',async()=>{
+  await paint();expect(container.querySelectorAll('main button')).toHaveLength(4);
   expect(container.querySelector('footer')).toBeNull();
   expect(endpoints.listCharacters).not.toHaveBeenCalled();
 });
 test('relationship controls appear only for multiple people and disappear when removed',async()=>{
-  await paint();await click('Choose a character');
+  await paint();await click('Create a new character');
   expect(container.textContent).toContain('One person');expect(container.querySelector('select')).toBeNull();
   await click('Add another person');expect(container.textContent).toContain('Relationship');
   await click('Remove this person');expect(container.querySelector('select')).toBeNull();
@@ -38,7 +38,7 @@ test('description is required and survives step navigation; generation becomes a
 });
 test('saved character locks disable editing and source DNA is copied',async()=>{
   const source={id:'a',name:'Alex',dna:{identity:{age:36},hair:{style:'bob',color:'black'},face:{eye_color:'brown'}},locks:{hair:true}};
-  endpoints.listCharacters.mockResolvedValue([source]);await paint();await click('Choose a character');await click('Choose character');await click('Alex');
+  endpoints.listCharacters.mockResolvedValue([source]);await paint();await click('Create a new character');await click('Choose character');await click('Alex');
   await click('Continue');expect([...container.querySelectorAll('button')].find(b=>b.textContent.includes('Hair style')).disabled).toBe(true);
   const copy=previewPerson(source);copy.dna.identity.age=40;expect(source.dna.identity.age).toBe(36);
 });
@@ -48,4 +48,27 @@ test('flow requirements and option data use existing editor choices',()=>{
   expect(previewCanContinue('source',{image:'blob:local'})).toBe(true);
   expect(previewOptions('hair','style').length).toBeGreaterThan(0);
   expect(previewPerson().dna.identity.age).toBe(30);
+});
+
+test('saved-character entry opens the library picker directly',async()=>{
+  endpoints.listCharacters.mockResolvedValue([{id:'saved',name:'Saved person',dna:previewPerson().dna}]);
+  await paint();await click('Use a saved character');
+  expect(document.querySelector('[role="dialog"]').textContent).toContain('Saved person');
+  await click('Saved person');expect(container.querySelector('input').value).toBe('Saved person');
+});
+
+test('new-character creation exposes identity choices and browsable appearance details',async()=>{
+  await paint();await click('Create a new character');
+  expect(container.textContent).toContain('Heritage');expect(container.textContent).toContain('Character theme');
+  expect(endpoints.listCharacters).not.toHaveBeenCalled();
+  await click('Continue');await click('Face');expect(container.textContent).toContain('Eye shape');
+  expect(container.textContent).toContain('Jawline');expect(container.textContent).not.toContain('Hair length');
+  await click('Skin');await click('Tattoos');
+  const input=document.querySelector('input[aria-label="Tattoos"]');
+  act(()=>{Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(input,'small shoulder tattoo');input.dispatchEvent(new Event('input',{bubbles:true}));});
+  await click('Done');expect(container.textContent).toContain('small shoulder tattoo');
+  await click('Body build');await click('Muscularity');
+  const range=document.querySelector('input[type="range"]');
+  act(()=>{Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(range,'42');range.dispatchEvent(new Event('change',{bubbles:true}));});
+  await click('Done');expect(container.textContent).toContain('42');
 });
