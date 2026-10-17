@@ -91,3 +91,11 @@ test('complete outfits are searchable beyond the heritage list and wardrobe has 
   expect(choices().filter(button=>button.getAttribute('aria-pressed')==='true')).toHaveLength(2);
   await click('Done');expect(document.querySelector('[role="dialog"]')).toBeNull();
 });
+
+test('guided character flow opens the suite library and requires an explicit apply',async()=>{
+  await paint();await click('Create a new character');await click('Randomize');
+  expect(document.querySelector('[aria-label="Randomizer suites"]')).not.toBeNull();
+  await click('Fresh character look');expect(document.querySelector('[aria-label="Randomizer preview"]')).not.toBeNull();
+  await click('Apply these changes');expect(document.querySelector('[role="dialog"]').textContent).toContain('Applied. Review the character');
+  await click('Undo last randomizer');expect(document.querySelector('[role="dialog"]').textContent).toContain('Randomizer undone.');
+});

@@ -1,3 +1,4 @@
+import RandomizerSuites from '@/components/RandomizerSuites';
 import GuidedCharacterPreview from '@/components/GuidedCharacterPreview';
 import { applyCustomRandomizer } from '@/lib/customRandomizers';
 import { randomizePhotoSubjects } from '@/lib/photoRandomizer';
@@ -1938,6 +1939,14 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
     });
     toast.success(`Subject ${activeSubject.label} randomized · outfit and scene kept`);
   };
+  const randomizerPromptBackup = useRef(null);
+  const suiteRandomizers = <details className="rs-builder-panel"><summary>Randomize · suite library</summary><RandomizerSuites
+    people={subjects.map(subject=>({...subject,locks:{...subject.locks,...Object.fromEntries(Object.entries(locks).filter(([,value])=>value))}}))} active={activeSubjectIdx} busy={dispatching || !!postRenderBusy}
+    onApply={(next,meta)=>{
+      if(meta.undo){if(randomizerPromptBackup.current && !promptOverride && !negativePromptOverride){setPromptOverride(randomizerPromptBackup.current.positive);setNegativePromptOverride(randomizerPromptBackup.current.negative);}}
+      else {randomizerPromptBackup.current={positive:promptOverride,negative:negativePromptOverride};setPromptOverride('');setNegativePromptOverride('');}
+      setSubjects(current=>current.map((subject,index)=>({...subject,dna:next[index].dna})));
+    }}/></details>;
   const randomizeCustomPhoto = (preset) => {
     const result = applyCustomRandomizer(subjects, preset, locks);
     if (result.applied) { setSubjects(result.subjects); toast.success(`${preset.name} applied · review before generating`); }
@@ -2842,7 +2851,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
         onPeople={() => goSection("scenario")}
         presetsControl={characterPresets}
         workspaceControls={({close}) => <div className="space-y-3" data-testid="mobile-sheet-workspace-tools">
-          <RandomSceneControls profile={randomProfile} onProfile={setRandomProfile} onRandomize={randomizeSceneMode} onPhotoRandomize={randomizePhoto} onCustomRandomize={randomizeCustomPhoto} issues={naturalPhotoIssues} busy={dispatching} />
+          {suiteRandomizers}<RandomSceneControls profile={randomProfile} onProfile={setRandomProfile} onRandomize={randomizeSceneMode} onPhotoRandomize={randomizePhoto} onCustomRandomize={randomizeCustomPhoto} issues={naturalPhotoIssues} busy={dispatching} />
           <CharacterHistoryControls canUndo={characterHistory.canUndo} canRedo={characterHistory.canRedo}
             onUndo={characterHistory.undo} onRedo={characterHistory.redo} busy={dispatching || !!postRenderBusy} />
           <PinnedSectionControls sections={SECTIONS} pinned={sectionPins.pinned} limit={sectionPins.limit}
@@ -3169,7 +3178,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
         </div>
       </section>}
 
-      {!isImageFirst && <div className="mobile-tools-panel" data-mobile-tools="presets"><RandomSceneControls profile={randomProfile} onProfile={setRandomProfile} onRandomize={randomizeSceneMode} onPhotoRandomize={randomizePhoto} onCustomRandomize={randomizeCustomPhoto} issues={naturalPhotoIssues} busy={dispatching} /></div>}
+      {!isImageFirst && <div className="mobile-tools-panel" data-mobile-tools="presets">{suiteRandomizers}<RandomSceneControls profile={randomProfile} onProfile={setRandomProfile} onRandomize={randomizeSceneMode} onPhotoRandomize={randomizePhoto} onCustomRandomize={randomizeCustomPhoto} issues={naturalPhotoIssues} busy={dispatching} /></div>}
 
       {isImageFirst && <div className="mobile-tools-panel" data-mobile-tools="none"><ImageSourceFlow title={activeWorkflow?.name} animation={isVideoWorkflow} variation={isVariationWorkflow} source={referenceImage} preview={referencePreview}
         readyToRender={!isQwenReferenceWorkflow || qwenEditVariant !== "pose" || !!poseReferenceImage?.name}
