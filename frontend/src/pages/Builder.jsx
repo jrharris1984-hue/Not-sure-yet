@@ -1,3 +1,4 @@
+import GuidedCharacterPreview from '@/components/GuidedCharacterPreview';
 import { applyCustomRandomizer } from '@/lib/customRandomizers';
 import { randomizePhotoSubjects } from '@/lib/photoRandomizer';
 import { photoCastIssues, coherePhotoCast, preserveSubjectLocks } from '@/lib/photoConsistency';
@@ -3576,7 +3577,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
         <div className="hidden md:block">
           <CreateJourney stages={quickStages} index={quickStageIndex} activeSection={activeSection}
             sections={SECTIONS} onStage={selectQuickStage} onSection={openCreateSection} modelName={activeWorkflow?.name} />
-          <div className="mt-3"><CreateSetupSummary dna={activeDna} stages={quickStages} sections={SECTIONS} onSection={openDesktopSection} /></div>
+          <details className="mt-3 xl:hidden rounded-xl border hairline p-3"><summary className="cursor-pointer min-h-11 content-center text-sm text-zinc-300">Review your current choices</summary><CreateSetupSummary dna={activeDna} stages={quickStages} sections={SECTIONS} onSection={openDesktopSection} /></details>
         </div>
       )}
 
@@ -3740,7 +3741,16 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
             <Link to="/settings/prompts" className="text-xs text-cyan-200 underline">Edit Prompt Library</Link>
             {SECTIONS.filter(section => section.key.startsWith('custom_')).map(section => <button type="button" key={section.key} onClick={() => goSection(section.key)} className="rounded-lg border hairline px-3 py-2 text-xs text-cyan-200">{section.title}</button>)}
           </nav>
-          {renderDnaControls()}
+          {desktopQuickMode && quickStageIndex === 0 && <section className="hidden md:flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-cyan-400/20 bg-cyan-500/[0.04] p-4">
+            <div><h2 className="text-sm font-semibold">Choose your starting point</h2><p className="mt-1 text-xs text-zinc-400">Use a character preset, or choose the details below. You can edit every choice.</p></div>
+            {characterPresets}
+          </section>}
+          <div className={desktopQuickMode ? "guided-editor-layout grid gap-4 xl:grid-cols-[minmax(0,1fr)_300px]" : ""}>
+            <div className="min-w-0">{renderDnaControls()}</div>
+            {desktopQuickMode && <GuidedCharacterPreview preview={activeRender?.output_files?.[0] || referencePreview || character?.thumbnail}
+              name={name} dna={activeDna} stages={quickStages} sections={SECTIONS} onSection={openDesktopSection}
+              onReview={() => selectQuickStage(quickStages.length - 1)}/>}
+          </div>
           {sectionNavigation("bottom")}
           </div>
         </div>

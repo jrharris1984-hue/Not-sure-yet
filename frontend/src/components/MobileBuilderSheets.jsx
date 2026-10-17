@@ -59,16 +59,20 @@ export default function MobileBuilderSheets({ sections, section, onSection, subj
   onPeople, presetsControl, values, renderControls, preview, livePreview, renderStatus, renderError, outputControls, castPoseControls,
   workspaceControls, resultControls, reviewControls, stages = [], mode = "advanced", onMode, simpleFieldKeys = [],
   onSave, onReset, saving, onGenerate, generating, canGenerate, issues = [], imageCount, onTools, selectedItems = [] }) {
+  const [guidedReview, setGuidedReview] = useState(false);
+  const guided = mode === "simple" && stages.length > 0;
   const fieldScroll = useRef(null);
   const [fieldSearch, setFieldSearch] = useState("");
   const stage = stages.find(item => item.sections.includes(section.key));
+  const stageIndex = Math.max(0, stages.findIndex(item => item === stage));
+  const nextStage = stages.slice(stageIndex + 1).find(item => item.id !== "create" && item.sections.length);
   const availableSections = sections.filter(item => mode !== "simple" || !stages.length ||
     stages.some(group => group.simpleSections?.includes(item.key)) || item.key === section.key);
   const categorySections = stage ? availableSections.filter(item => stage.sections.includes(item.key)) : availableSections;
   const categoryIndex = availableSections.findIndex(item => item.key === section.key);
   const essentialFields = section.fields.filter(field => mode !== "simple" || !simpleFieldKeys.length || simpleFieldKeys.includes(field.key) || (section.key === "wardrobe" && field.key === "outfit_mode"));
   const visibleFields = essentialFields.filter(field => `${field.label} ${field.key}`.toLowerCase().includes(fieldSearch.trim().toLowerCase()));
-  useEffect(() => { setFieldSearch(""); if (fieldScroll.current) fieldScroll.current.scrollTop = 0; }, [section.key]);
+  useEffect(() => { setFieldSearch(""); setGuidedReview(false); if (fieldScroll.current) fieldScroll.current.scrollTop = 0; }, [section.key]);
   const [height, setHeight] = useState("expanded");
   const [detail, setDetail] = useState(null);
   const closeButton = useRef(null);
@@ -99,6 +103,11 @@ export default function MobileBuilderSheets({ sections, section, onSection, subj
   }, [detail]);
   const close = () => { setDetailDragging(false); setClosing(true); };
   const open = key => { setDetailInteracted(false); setClosing(false); setDetailOffset(0); setDetail(key); };
+  const continueGuided = () => {
+    const next = nextStage?.simpleSections?.[0] || nextStage?.sections?.[0];
+    if (next) onSection(next);
+    else { setGuidedReview(true); open("output"); }
+  };
   const label = detail === "workspace" ? "Workspace tools" : detail === "results" ? "Render results" : detail === "selected" ? "Selected options" : detail === "output" ? "Generation settings" : detail === "cast-poses" ? `Poses for ${subjects.length} people` : section.fields.find(field => field.key === detail)?.label || section.title;
   return <section className="mobile-sheet-builder md:hidden" data-testid="mobile-sheet-builder" style={personStyle(subjects.findIndex(person => person.id === activeId))}>
     <div className="sheet-workspace">
@@ -127,14 +136,15 @@ export default function MobileBuilderSheets({ sections, section, onSection, subj
           <button type="button" className="chip shrink-0" onClick={onPeople}>People · {subjects.length}</button>
           {subjects.map((person, index) => <button type="button" key={person.id} style={personStyle(index)} aria-pressed={person.id === activeId}
             className={`chip sheet-person-button shrink-0 ${person.id === activeId ? "active" : ""}`} onClick={() => onSubject(person.id)}><span className="studio-person-badge" aria-hidden="true" data-label={person.label} />Edit {person.label}</button>)}
-          {section.key === "scenario" && presetsControl}
+          {(section.key === "scenario" || (guided && stageIndex === 0)) && presetsControl}
         </div>
+        {guided && <div className="px-3 pb-2 text-xs text-cyan-200" role="status">{guidedReview ? "Review & create" : `Step ${stageIndex + 1} of ${stages.length} · ${stage?.title || section.title}`}<span className="ml-2 text-zinc-500">{guidedReview ? "Check your choices before generating." : "Optional details can stay as they are."}</span></div>}
         {onMode && <div className="sheet-mode-toolbar">
           <div className="studio-mode-switch" role="group" aria-label="Editing view">
             {[["simple", "Simple"], ["advanced", "All options"]].map(([value, title]) => <button key={value} type="button" aria-pressed={mode === value} onClick={() => onMode(value)}>{title}</button>)}
           </div>
           <label className="sr-only" htmlFor="sheet-category-select">Choose a category</label>
-          <select id="sheet-category-select" value={section.key} onChange={event => onSection(event.target.value)} className="sheet-category-select">
+          <select id="sheet-category-select" value={section.key} onChange={event => {setGuidedReview(false); onSection(event.target.value);}} className="sheet-category-select">
             {availableSections.map(item => <option key={item.key} value={item.key}>{item.title}</option>)}
           </select>
         </div>}
@@ -142,10 +152,18 @@ export default function MobileBuilderSheets({ sections, section, onSection, subj
           {categorySections.map(item => {
             const Icon = CATEGORY_ICONS[item.key] || Layers;
             return <button type="button" key={item.key} aria-pressed={item.key === section.key}
-              className={`chip shrink-0 ${item.key === section.key ? "active" : ""}`} onClick={() => onSection(item.key)}><Icon className="h-4 w-4" aria-hidden="true" />{item.title}</button>;
+              className={`chip shrink-0 ${item.key === section.key ? "active" : ""}`} onClick={() => {setGuidedReview(false); onSection(item.key);}}><Icon className="h-4 w-4" aria-hidden="true" />{item.title}</button>;
           })}
         </nav>
         <div ref={fieldScroll} className="sheet-field-scroll">
+          {guided && guidedReview ? <div className="space-y-3" data-testid="mobile-guided-review">
+            <h2 className="font-semibold">Ready for your first image?</h2>
+            <p className="text-xs text-zinc-400">Review the person and scene, then check image settings. Selecting a summary returns to editing.</p>
+            {[...new Set(selectedItems.map(item => item.section))].map(key => <button type="button" key={key} className="min-h-11 w-full rounded-xl border hairline p-3 text-left text-xs" onClick={() => {setGuidedReview(false); onSection(key);}}><b>{sections.find(item => item.key === key)?.title || key}</b><span className="mt-1 block truncate text-zinc-400">{selectedItems.filter(item => item.section === key).slice(0,3).map(item => item.value).join(" · ")}</span></button>)}
+            {!selectedItems.length && <p className="text-xs text-zinc-400">No extra details selected. The current defaults will be used.</p>}
+            <button type="button" className="chip min-h-11 w-full" onClick={() => open("output")}>Review image settings</button>
+            <button type="button" className="chip min-h-11 w-full" onClick={() => setGuidedReview(false)}>Back to editing</button>
+          </div> : <>
           {(workspaceControls || resultControls) && <div className="mb-3 flex flex-wrap gap-2" aria-label="Workspace shortcuts">
             {workspaceControls && <button type="button" className="chip min-h-11" onClick={() => open("workspace")}>Quick tools</button>}
             {resultControls && <button type="button" className="chip min-h-11" onClick={() => open("results")}>Results & actions</button>}
@@ -178,6 +196,7 @@ export default function MobileBuilderSheets({ sections, section, onSection, subj
             <span>{categoryIndex + 1} of {availableSections.length}</span>
             <button type="button" onClick={() => categoryIndex < availableSections.length - 1 ? onSection(availableSections[categoryIndex + 1].key) : open("output")}>{categoryIndex < availableSections.length - 1 ? "Next category" : "Review & create"}</button>
           </div>}
+          </>}
         </div>
       </div>
       {detail && <>
@@ -213,10 +232,10 @@ export default function MobileBuilderSheets({ sections, section, onSection, subj
       </>}
     </div>
     <footer className="sheet-generation-dock">
-      <div className="flex gap-2"><button type="button" className="chip" onClick={() => open("output")}>Generation</button>
+      <div className="flex gap-2"><button type="button" className="chip" onClick={() => {if (guided) setGuidedReview(true); open("output");}}>{guided ? "Review" : "Generation"}</button>
         <button type="button" className="chip" onClick={onTools}>Advanced</button>
-        <button type="button" className="sheet-generate-button flex-1 rounded-xl bg-emerald-400 text-black py-3 text-sm font-bold disabled:opacity-40" disabled={!canGenerate || generating} onClick={onGenerate}>{generating ? "Queuing…" : `Generate (${imageCount})`}</button></div>
-      {issues.length > 0 && <p className="text-xs text-amber-200 mt-1">{issues.join(" ")}</p>}
+        <button type="button" className="sheet-generate-button flex-1 rounded-xl bg-emerald-400 text-black py-3 text-sm font-bold disabled:opacity-40" disabled={generating || ((!guided || guidedReview) && !canGenerate)} onClick={guided && !guidedReview ? continueGuided : onGenerate}>{generating ? "Queuing…" : guided && !guidedReview ? (nextStage ? "Continue" : "Review & create") : `Generate (${imageCount})`}</button></div>
+      {issues.length > 0 && (!guided || guidedReview) && <p className="text-xs text-amber-200 mt-1">{issues.join(" ")}</p>}
     </footer>
   </section>;
 }

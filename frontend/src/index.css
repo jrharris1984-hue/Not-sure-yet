@@ -502,3 +502,6 @@ html[data-studio-theme], html[data-studio-theme] body, html[data-studio-theme] #
   .mobile-sheet-builder .sheet-field-card:active { background: #303044; border-color: #67e8f9; }
   .sheet-field-scroll, .sheet-detail-scroll { scrollbar-gutter: stable; scroll-padding-block: 12px; }
 }
+@media (min-width: 1280px) {
+  .quick-create-mode #studio-sections { max-width: 1200px; }
+}

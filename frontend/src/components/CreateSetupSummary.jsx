@@ -9,12 +9,12 @@ function selectedFields(dna, section) {
   });
 }
 
-export default function CreateSetupSummary({ dna = {}, stages = [], sections = [], onSection }) {
+export default function CreateSetupSummary({ dna = {}, stages = [], sections = [], onSection, compact = false }) {
   const sectionMap = Object.fromEntries(sections.map((section) => [section.key, section]));
   return <section className="pane p-4 sm:p-5" aria-label="Your setup" data-testid="create-setup-summary">
     <h2 className="font-display text-base font-bold text-white">Your setup</h2>
     <p className="mt-1 text-xs text-zinc-400">Review the current subject. Open a group and choose a section to edit.</p>
-    <div className="mt-3 grid gap-3 lg:grid-cols-2">
+    <div className={`mt-3 grid gap-3 ${compact ? "grid-cols-1" : "lg:grid-cols-2"}`}>
       {stages.filter((stage) => stage.sections.length).map((stage) => {
         const rows = stage.sections.map((key) => sectionMap[key]).filter(Boolean).map((section) => ({
           ...section, selected: selectedFields(dna, section),

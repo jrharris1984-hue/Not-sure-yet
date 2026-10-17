@@ -6,7 +6,7 @@ jest.mock("react-router-dom", () => ({
   Link: ({ to, children, ...props }) => <a href={to} {...props}>{children}</a>,
 }), { virtual: true });
 
-test("Create hub keeps new-work paths together and separate from post-generation Tools", () => {
+test("Create hub offers task-first entry points while keeping specialist paths expandable", () => {
   global.IS_REACT_ACT_ENVIRONMENT = true;
   const container = document.createElement("div");
   document.body.appendChild(container);
@@ -18,7 +18,9 @@ test("Create hub keeps new-work paths together and separate from post-generation
   }
   expect(container.textContent).toContain("Start new work here");
   expect(container.querySelector('a[href="/research"]')).not.toBeNull();
-  expect(container.querySelector('a[href="/tools"]')).toBeNull();
+  expect(container.querySelector('a[href="/tools"]')).not.toBeNull();
+  expect([...container.querySelectorAll("h2")].map(node=>node.textContent)).toEqual(expect.arrayContaining(["Create a character","Use a saved character","Edit an image","Create a photoshoot"]));
+  expect(container.querySelector("details").open).toBe(false);
 
   act(() => root.unmount());
   container.remove();
