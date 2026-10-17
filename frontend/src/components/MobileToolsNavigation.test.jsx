@@ -23,3 +23,11 @@ test('marks the open category and allows switching or returning to all settings'
   act(() => [...container.querySelectorAll('button')].find(button => button.textContent === 'All settings').click());
   expect(onGroup).toHaveBeenCalledWith('overview');
 });
+test('beginners can find tools by purpose without knowing the category', () => {
+  act(() => root.render(<MobileToolsNavigation group="overview" onGroup={jest.fn()} />));
+  const input=container.querySelector('input[type="search"]');
+  const setValue=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set;
+  act(() => {setValue.call(input,'download');input.dispatchEvent(new Event('input',{bubbles:true}));});
+  expect(container.textContent).toContain('Results');
+  expect(container.textContent).not.toContain('Presets & people');
+});
