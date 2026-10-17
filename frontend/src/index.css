@@ -482,3 +482,23 @@ html[data-studio-theme], html[data-studio-theme] body, html[data-studio-theme] #
 @media (max-width: 767px) { .organized-mobile-tools[data-mobile-tools-group="files"] [data-mobile-tools-container~="files"] { display: block !important; } }
 
 @media (max-width: 767px) { .organized-mobile-tools[data-mobile-tools-group="results"] [data-mobile-tools-container~="results"] { display: block !important; } }
+
+/* Clear, consistent editing controls across pointer and touch layouts. */
+.studio-control-search { width: 100%; min-height: 44px; border: 1px solid var(--studio-border, #3a3a46); border-radius: 12px; padding: 10px 12px; color: #f4f4f5; background: var(--studio-surface, #191922); font-size: 14px; }
+.studio-control-search:focus-visible, .sheet-category-select:focus-visible { outline: 2px solid #67e8f9; outline-offset: 2px; }
+.studio-mode-switch { display: flex; padding: 3px; gap: 2px; border: 1px solid #393944; border-radius: 12px; background: #09090b55; }
+.studio-mode-switch button { min-height: 40px; padding: 8px 12px; border-radius: 9px; font-size: 12px; color: #a1a1aa; white-space: nowrap; }
+.studio-mode-switch button[aria-pressed="true"] { color: #cffafe; background: #164e6380; box-shadow: inset 0 0 0 1px #22d3ee55; }
+@media (max-width: 767px) {
+  .sheet-mode-toolbar { display: flex; gap: 8px; align-items: center; padding: 0 12px 10px; flex-shrink: 0; }
+  .sheet-category-select { min-height: 46px; min-width: 0; flex: 1; border: 1px solid #393944; border-radius: 12px; padding: 8px; font-size: 13px; color: #f4f4f5; background: var(--studio-surface, #191922); }
+  .sheet-category-progress { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: 16px; padding-top: 12px; border-top: 1px solid #393944; font-size: 12px; }
+  .sheet-category-progress button { min-height: 44px; padding: 8px; color: #a5f3fc; border-radius: 10px; }
+  .sheet-category-progress button:disabled { opacity: .35; }
+  .sheet-category-progress span { color: #a1a1aa; }
+  .mobile-sheet-builder input, .mobile-sheet-builder select, .mobile-tools-navigation input { font-size: 16px; }
+  .sheet-generation-dock { padding-bottom: max(10px, env(safe-area-inset-bottom, 0px)); }
+  .mobile-sheet-builder .sheet-field-card { min-height: 76px; transition: border-color 120ms ease, background-color 120ms ease; }
+  .mobile-sheet-builder .sheet-field-card:active { background: #303044; border-color: #67e8f9; }
+  .sheet-field-scroll, .sheet-detail-scroll { scrollbar-gutter: stable; scroll-padding-block: 12px; }
+}

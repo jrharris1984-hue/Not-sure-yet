@@ -57,8 +57,18 @@ function Handle({ label, onStart, onDrag, onEnd, onClick }) {
 
 export default function MobileBuilderSheets({ sections, section, onSection, subjects, activeId, onSubject,
   onPeople, presetsControl, values, renderControls, preview, livePreview, renderStatus, renderError, outputControls, castPoseControls,
-  workspaceControls, resultControls, reviewControls,
+  workspaceControls, resultControls, reviewControls, stages = [], mode = "advanced", onMode, simpleFieldKeys = [],
   onSave, onReset, saving, onGenerate, generating, canGenerate, issues = [], imageCount, onTools, selectedItems = [] }) {
+  const fieldScroll = useRef(null);
+  const [fieldSearch, setFieldSearch] = useState("");
+  const stage = stages.find(item => item.sections.includes(section.key));
+  const availableSections = sections.filter(item => mode !== "simple" || !stages.length ||
+    stages.some(group => group.simpleSections?.includes(item.key)) || item.key === section.key);
+  const categorySections = stage ? availableSections.filter(item => stage.sections.includes(item.key)) : availableSections;
+  const categoryIndex = availableSections.findIndex(item => item.key === section.key);
+  const essentialFields = section.fields.filter(field => mode !== "simple" || !simpleFieldKeys.length || simpleFieldKeys.includes(field.key) || (section.key === "wardrobe" && field.key === "outfit_mode"));
+  const visibleFields = essentialFields.filter(field => `${field.label} ${field.key}`.toLowerCase().includes(fieldSearch.trim().toLowerCase()));
+  useEffect(() => { setFieldSearch(""); if (fieldScroll.current) fieldScroll.current.scrollTop = 0; }, [section.key]);
   const [height, setHeight] = useState("expanded");
   const [detail, setDetail] = useState(null);
   const closeButton = useRef(null);
@@ -119,25 +129,38 @@ export default function MobileBuilderSheets({ sections, section, onSection, subj
             className={`chip sheet-person-button shrink-0 ${person.id === activeId ? "active" : ""}`} onClick={() => onSubject(person.id)}><span className="studio-person-badge" aria-hidden="true" data-label={person.label} />Edit {person.label}</button>)}
           {section.key === "scenario" && presetsControl}
         </div>
+        {onMode && <div className="sheet-mode-toolbar">
+          <div className="studio-mode-switch" role="group" aria-label="Editing view">
+            {[["simple", "Simple"], ["advanced", "All options"]].map(([value, title]) => <button key={value} type="button" aria-pressed={mode === value} onClick={() => onMode(value)}>{title}</button>)}
+          </div>
+          <label className="sr-only" htmlFor="sheet-category-select">Choose a category</label>
+          <select id="sheet-category-select" value={section.key} onChange={event => onSection(event.target.value)} className="sheet-category-select">
+            {availableSections.map(item => <option key={item.key} value={item.key}>{item.title}</option>)}
+          </select>
+        </div>}
         <nav className="sheet-category-tabs" aria-label="Character categories">
-          {sections.map(item => {
+          {categorySections.map(item => {
             const Icon = CATEGORY_ICONS[item.key] || Layers;
             return <button type="button" key={item.key} aria-pressed={item.key === section.key}
               className={`chip shrink-0 ${item.key === section.key ? "active" : ""}`} onClick={() => onSection(item.key)}><Icon className="h-4 w-4" aria-hidden="true" />{item.title}</button>;
           })}
         </nav>
-        <div className="sheet-field-scroll">
+        <div ref={fieldScroll} className="sheet-field-scroll">
           {(workspaceControls || resultControls) && <div className="mb-3 flex flex-wrap gap-2" aria-label="Workspace shortcuts">
             {workspaceControls && <button type="button" className="chip min-h-11" onClick={() => open("workspace")}>Quick tools</button>}
             {resultControls && <button type="button" className="chip min-h-11" onClick={() => open("results")}>Results & actions</button>}
           </div>}
           <div className="flex justify-between items-center mb-3"><h2 className="font-semibold">{section.title}</h2><div className="flex gap-2"><button type="button" className="text-xs text-cyan-200" onClick={() => open("selected")}>Selected · {selectedItems.length}</button><button type="button" className="text-xs text-cyan-200" onClick={() => open("all")}>All controls</button></div></div>
+          {onMode && <div className="mb-3 space-y-2">
+            <p className="text-xs text-zinc-400">{mode === "simple" ? "Pick a few details; unselected options use the current defaults." : "All details are available. Search to find a control."}</p>
+            <input type="search" aria-label="Find a control in this category" placeholder={`Find in ${section.title.toLowerCase()}…`} value={fieldSearch} onChange={event => setFieldSearch(event.target.value)} className="studio-control-search" />
+          </div>}
           <div className="grid grid-cols-2 gap-2">
             {section.key === "pose" && subjects.length > 1 && castPoseControls && <button type="button" className="sheet-field-card" onClick={() => open("cast-poses")}>
               <span className="block text-sm font-semibold">Poses for {subjects.length} people</span>
               <span className="block text-xs text-zinc-400 mt-1">Shared poses & composition</span>
             </button>}
-            {section.fields.filter(field => section.key !== 'physique' || !Object.entries(SIZE_CONTROL_PAIRS).some(([preset, [slider]]) =>
+            {visibleFields.filter(field => section.key !== 'physique' || !Object.entries(SIZE_CONTROL_PAIRS).some(([preset, [slider]]) =>
               (field.key === slider || (preset === 'bust' && field.key === 'implant_volume')) && section.fields.some(item => item.key === preset)))
               .map(field => {
                 const sizeSummary = section.key === 'physique' ? sizeControlSummary(field.key, values, field.optionLabels) : null;
@@ -148,6 +171,13 @@ export default function MobileBuilderSheets({ sections, section, onSection, subj
               <span className="block text-xs text-zinc-400 mt-1 truncate">{sizeSummary || (section.key === "wardrobe" && field.key === "outfit_mode" ? wardrobeMode(values) === "full" ? "Full set" : "Custom" : section.key === "wardrobe" && wardrobeFieldDisabled(field.key, values) ? "Switch outfit mode to edit" : Array.isArray(values[field.key]) ? values[field.key].join(", ") || "Choose" : String(values[field.key] ?? "Choose") || "Choose")}</span>
             </button>; })}
           </div>
+          {!visibleFields.length && <p role="status" className="py-4 text-sm text-zinc-400">No controls match. Try another word or switch to All options.</p>}
+          {mode === "simple" && essentialFields.length < section.fields.length && <button type="button" className="min-h-11 mt-3 w-full rounded-xl border border-dashed hairline p-3 text-xs text-cyan-200" onClick={() => { setFieldSearch(""); onMode?.("advanced"); }}>Show all {section.title.toLowerCase()} controls</button>}
+          {onMode && <div className="sheet-category-progress">
+            <button type="button" disabled={categoryIndex <= 0} onClick={() => onSection(availableSections[categoryIndex - 1].key)}>Previous</button>
+            <span>{categoryIndex + 1} of {availableSections.length}</span>
+            <button type="button" onClick={() => categoryIndex < availableSections.length - 1 ? onSection(availableSections[categoryIndex + 1].key) : open("output")}>{categoryIndex < availableSections.length - 1 ? "Next category" : "Review & create"}</button>
+          </div>}
         </div>
       </div>
       {detail && <>

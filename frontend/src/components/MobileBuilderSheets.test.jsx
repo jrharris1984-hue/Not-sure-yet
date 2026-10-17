@@ -196,3 +196,22 @@ test('return to review opens generation settings in the actual sheet interface',
   click('Return to review'); expect(onReturn).toHaveBeenCalledTimes(1);
   expect(container.querySelector('[role="dialog"]').textContent).toContain('Workflow settings');
 });
+test('Simple sheets show essential fields and preserve access to all options', () => {
+  const section = { key:'hair',title:'Hair',fields:[{key:'color',label:'Color'},{key:'texture',label:'Texture'}] };
+  const onMode = jest.fn();
+  paint({section,mode:'simple',simpleFieldKeys:['color'],onMode});
+  expect(container.textContent).toContain('Colorblack');
+  expect(container.textContent).not.toContain('TextureChoose');
+  click('Show all hair controls');
+  expect(onMode).toHaveBeenCalledWith('advanced');
+  paint({section,mode:'advanced',simpleFieldKeys:['color'],onMode});
+  expect(container.textContent).toContain('TextureChoose');
+});
+test('category navigation advances and ends at generation settings', () => {
+  const onSection = jest.fn(), onMode=jest.fn();
+  paint({onSection,onMode,mode:'simple'});
+  click('Next category'); expect(onSection).toHaveBeenCalledWith('scenario');
+  paint({onSection,onMode,mode:'simple',section:sections[1]});
+  click('Review & create');
+  expect(container.querySelector('[role="dialog"]').textContent).toContain('Workflow settings');
+});

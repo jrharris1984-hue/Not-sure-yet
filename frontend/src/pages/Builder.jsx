@@ -2680,11 +2680,11 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
               } });
             }}
             onToggleCollapsed={() => setCollapsed((cur) => ({ ...cur, [activeSection]: !cur[activeSection] }))}
-            simpleMode={!sheetField && mobileStudioMode === "simple"}
+            simpleMode={!sheetField && (sheetViewport ? mobileStudioMode === "simple" : desktopQuickMode)}
             focusedField={sheetField}
             collapsed={sheetField ? false : !!collapsed[activeSection]}
             simpleFieldKeys={SIMPLE_FIELD_KEYS[activeSection] || []}
-            onRequestAdvanced={() => setMobileStudioMode("advanced")}
+            onRequestAdvanced={() => sheetViewport ? setMobileStudioMode("advanced") : setDesktopQuickMode(false)}
           />
   );
 
@@ -2801,6 +2801,8 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
       </>}
       {sheetViewport && !isImageFirst && editMode !== "body_adjust" && (mobileSheets ? <MobileBuilderSheets
         sections={SECTIONS} section={SECTIONS[activeIdx]} onSection={goSection}
+        stages={studioSteps} mode={mobileStudioMode} onMode={changeMobileStudioMode}
+        simpleFieldKeys={SIMPLE_FIELD_KEYS[activeSection] || []}
         selectedItems={SECTIONS.flatMap(category => category.fields.flatMap(field => {
           const value = builderSectionValue(category.key, activeDna, primaryDna)[field.key];
           const label = Array.isArray(value) ? value.join(", ") : String(value ?? "");
@@ -2929,8 +2931,8 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
       )}
       {/* Header */}
       <div data-mobile-tools="none" className={`${isImageFirst ? "!hidden" : ""} hidden md:flex items-center gap-2 rounded-xl border border-cyan-400/20 bg-black/40 p-2 text-xs`} aria-label="Builder view">
-        <span className="px-2 font-mono uppercase tracking-wider text-cyan-300">Create</span>
-        <span className="ml-auto hidden xl:inline pr-2 text-zinc-500">{desktopQuickMode ? "Simple view keeps the five creation stages focused." : "Advanced view exposes every section and tuning control."}</span>
+        <span className="px-2 font-semibold text-cyan-200">{desktopQuickMode ? "Simple view" : "Advanced view"}</span>
+        <span className="ml-auto hidden xl:inline pr-2 text-zinc-500">{desktopQuickMode ? "Start with the essentials. Your choices are kept when switching views." : "All controls available. Switch to Simple whenever you want."}</span>
         <button type="button" onClick={() => { setDesktopQuickMode((value) => !value); setQuickReview(false); }}
           data-testid="btn-desktop-studio-mode" className="ml-auto rounded-lg border border-cyan-400/40 px-3 py-2 font-semibold text-cyan-200 hover:bg-cyan-400/10">
           {desktopQuickMode ? "Advanced view · all options" : "Simple view"}
