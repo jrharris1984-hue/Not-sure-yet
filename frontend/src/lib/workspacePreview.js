@@ -19,7 +19,7 @@ export function previewPerson(character) {
 }
 export function previewOptions(section,field) {
   const f=SECTIONS.find(s=>s.key===section)?.fields.find(f=>f.key===field);
-  return (f?.groups ? f.groups.flatMap(g=>g.options) : f?.options || []).map(value=>({value,label:f?.optionLabels?.[value] || value}));
+  return [...new Set(f?.groups ? f.groups.flatMap(g=>g.options) : f?.options || [])].map(value=>({value,label:f?.optionLabels?.[value] || value}));
 }
 export function previewCanContinue(key,{description,instruction,image}) {
   if(key==='description')return !!description.trim();
