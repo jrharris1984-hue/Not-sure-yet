@@ -4,8 +4,8 @@ import {ImagePlus, Images, UsersRound, WandSparkles, SlidersHorizontal, Layers, 
 import {Dialog, DialogContent, DialogTitle, DialogDescription} from '@/components/ui/dialog';
 import {endpoints} from '@/lib/api';
 import {mediaUrl} from '@/lib/media';
-import {SECTIONS} from '@/lib/dna';
-import {previewPerson, previewOptions} from '@/lib/workspacePreview';
+import {STUDIO_CHARACTER_SECTIONS,STUDIO_SECTION_NAMES,INTIMATE_DETAIL_GROUPS,studioFeatureSection,studioFeatureOptions} from '@/lib/studioFeatures';
+import {previewPerson} from '@/lib/workspacePreview';
 import {BODY_GROUPS, updateWorkspaceField, workspaceFieldLocked, wardrobeFieldDisabled} from '@/lib/workspaceFields';
 import {wardrobeGroups} from '@/lib/wardrobeLayout';
 import {sizeControlSummary, physiqueControlStatus} from '@/lib/physiqueControlPriority';
@@ -16,16 +16,16 @@ import RandomizerSuites from '@/components/RandomizerSuites';
 import UniversalLoraPicker from '@/components/UniversalLoraPicker';
 import './StudioWorkspace.css';
 
-const characterSections = ['identity','hair','face','physique','wardrobe','skin','feet'];
+const characterSections = STUDIO_CHARACTER_SECTIONS;
 const sceneSections = ['scene','pose','lighting','camera','style'];
-const sectionNames = {identity:'Identity',hair:'Hair',face:'Face',physique:'Body',wardrobe:'Outfit',skin:'Skin',feet:'Feet',scene:'Setting',pose:'Pose',lighting:'Lighting',camera:'Camera',style:'Style'};
+const sectionNames = STUDIO_SECTION_NAMES;
 const modes = [{id:'character',label:'Character'},{id:'describe',label:'Text to image'},{id:'image',label:'Image edit'}];
 const navigation = [
   {to:'/create',label:'Studio',icon:WandSparkles}, {to:'/',label:'Characters',icon:UsersRound},
   {to:'/gallery',label:'Gallery',icon:Images}, {to:'/queue',label:'Queue',icon:ListOrdered},
   {to:'/create/tools',label:'Tools',icon:Layers}, {to:'/settings',label:'Settings',icon:Settings},
 ];
-const sectionFor = key => SECTIONS.find(section=>section.key===key);
+const sectionFor = studioFeatureSection;
 
 export default function StudioWorkspace() {
   const [initialDraft]=useState(loadStudioDraft);
@@ -37,7 +37,7 @@ export default function StudioWorkspace() {
   const [count,setCount]=useState([1,2,4].includes(initialDraft?.count)?initialDraft.count:1), [shape,setShape]=useState(['Portrait','Square','Landscape'].includes(initialDraft?.shape)?initialDraft.shape:'Portrait');
   const [file,setFile]=useState(null), [sourceUrl,setSourceUrl]=useState('');
   const [panel,setPanel]=useState(initialDraft?.mode && initialDraft.mode!=='character'?'prompt':'character'), [category,setCategory]=useState('identity');
-  const [bodyGroup,setBodyGroup]=useState('build'), [outfitGroup,setOutfitGroup]=useState('outfit');
+  const [bodyGroup,setBodyGroup]=useState('build'), [outfitGroup,setOutfitGroup]=useState('outfit'), [intimateGroup,setIntimateGroup]=useState('grooming');
   const [detailQuery,setDetailQuery]=useState(''), [dialog,setDialog]=useState(null);
   const [query,setQuery]=useState(''), [choiceGroup,setChoiceGroup]=useState('All');
   const [returnToInspector,setReturnToInspector]=useState(false);
@@ -102,7 +102,7 @@ export default function StudioWorkspace() {
   }
   const choiceField=dialog?.type==='field'?sectionFor(dialog.section)?.fields.find(field=>field.key===dialog.field):null;
   const choiceValue=mode==='describe' && !Object.prototype.hasOwnProperty.call(sceneOverrides,`${dialog?.section}.${dialog?.field}`)?undefined:person.dna[dialog?.section]?.[dialog?.field];
-  const choices=choiceField?previewOptions(dialog.section,dialog.field).filter(option=>option.label.toLowerCase().includes(query.toLowerCase()) &&
+  const choices=choiceField?studioFeatureOptions(dialog.section,dialog.field).filter(option=>option.label.toLowerCase().includes(query.toLowerCase()) &&
     (choiceGroup==='All' || choiceField.groups?.find(group=>group.name===choiceGroup)?.options.includes(option.value))):[];
 
   function renderField(section,field) {
@@ -118,12 +118,12 @@ export default function StudioWorkspace() {
     </button>;
   }
   const allowed=panel==='scene'?sceneSections:characterSections;
-  const groups=category==='physique'?BODY_GROUPS:category==='wardrobe'?wardrobeGroups(sectionFor('wardrobe').fields):[];
-  const groupKey=category==='physique'?bodyGroup:outfitGroup;
+  const groups=category==='physique'?BODY_GROUPS:category==='intimate'?INTIMATE_DETAIL_GROUPS:category==='wardrobe'?wardrobeGroups(sectionFor('wardrobe').fields):[];
+  const groupKey=category==='physique'?bodyGroup:category==='intimate'?intimateGroup:outfitGroup;
   const activeFields=(sectionFor(category)?.fields || []).filter(field=>
     category==='identity'?field.key!=='name':category==='physique'?BODY_GROUPS.find(group=>group.key===bodyGroup)?.fields.includes(field.key):
-    category==='wardrobe'?field.key==='outfit_mode' || groups.find(group=>group.key===outfitGroup)?.fields.some(f=>f.key===field.key):true);
-  const matched=matchingWorkspaceFields(SECTIONS.filter(section=>allowed.includes(section.key)),detailQuery).filter(item=>item.section!=='identity' || item.field.key!=='name');
+    category==='intimate'?INTIMATE_DETAIL_GROUPS.find(group=>group.key===intimateGroup)?.fields.includes(field.key):category==='wardrobe'?field.key==='outfit_mode' || groups.find(group=>group.key===outfitGroup)?.fields.some(f=>f.key===field.key):true);
+  const matched=matchingWorkspaceFields(allowed.map(key=>({...sectionFor(key),title:sectionNames[key]})),detailQuery).filter(item=>item.section!=='identity' || item.field.key!=='name');
   const navigationContent=<nav className="cs-navigation" aria-label="Studio navigation">{navigation.map(item=><Link key={item.to} to={item.to} aria-current={item.to==='/create'?'page':undefined}><item.icon size={21} strokeWidth={1.7}/><span>{item.label}</span></Link>)}<div className="cs-nav-extra"><Link to="/create/guided">Guided editor</Link><Link to="/character/new">Classic editor</Link></div></nav>;
 
   const inspectorContent=<>
@@ -145,8 +145,8 @@ export default function StudioWorkspace() {
         {mode==='describe' && <p className="cs-note">Only details you change here are added to your prompt. {Object.keys(sceneOverrides).length>0 && <button type="button" className="cs-text-button" onClick={()=>setSceneOverrides({})}>Use prompt only</button>}</p>}
         <label className="cs-search"><span className="cs-sr-only">Find a detail</span><input type="search" aria-label="Find a detail" placeholder="Find a detail…" value={detailQuery} onChange={event=>setDetailQuery(event.target.value)}/></label>
         {!detailQuery && <>
-          <div className="cs-category-grid" role="group" aria-label="Detail categories">{allowed.map(key=><button type="button" key={key} aria-pressed={category===key} onClick={()=>setCategory(key)}>{sectionNames[key]}</button>)}</div>
-          {!!groups.length && <label className="cs-label">{category==='physique'?'Body category':'Wardrobe category'}<select value={groupKey} onChange={event=>category==='physique'?setBodyGroup(event.target.value):setOutfitGroup(event.target.value)}>{groups.map(group=><option key={group.key} value={group.key}>{group.label}</option>)}</select></label>}
+          <div className="cs-category-grid" role="group" aria-label="Detail categories">{allowed.map(key=><button type="button" key={key} className={['physique','intimate'].includes(key)?'cs-feature-category':''} aria-pressed={category===key} onClick={()=>setCategory(key)}>{sectionNames[key]}</button>)}</div>
+          {['physique','intimate'].includes(category)?<section className="cs-feature-groups" aria-label={`${sectionNames[category]} categories`}><h3>{sectionNames[category]}</h3><p className="cs-note">{category==='physique'?'Choose a body region to edit presets, shape and size sliders.':'Grooming and non-explicit anatomy details. Clothing coverage still controls which details enter the image prompt.'}</p><div role="group" aria-label="Feature groups">{groups.map(group=><button type="button" key={group.key} aria-pressed={groupKey===group.key} onClick={()=>category==='physique'?setBodyGroup(group.key):setIntimateGroup(group.key)}>{group.label}</button>)}</div></section>:!!groups.length && <label className="cs-label">Wardrobe category<select value={groupKey} onChange={event=>setOutfitGroup(event.target.value)}>{groups.map(group=><option key={group.key} value={group.key}>{group.label}</option>)}</select></label>}
           {category==='wardrobe' && <p className="cs-note">Complete sets coordinate the outfit. Choose Custom in Outfit mode to edit separate garments, shoes and accessories.</p>}
         </>}
         <div className="cs-field-list">{detailQuery?matched.length?matched.map(item=>renderField(item.section,item.field)):<p className="cs-note" role="status">No matching details. Try another word.</p>:activeFields.map(field=>renderField(category,field))}</div>
