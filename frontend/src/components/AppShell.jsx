@@ -49,7 +49,7 @@ export default function AppShell({ children }) {
       { duration: 180, easing: "ease-out" });
     return () => animation?.cancel();
   }, [pageGroup]);
-  if (["/create", "/create/workspace-preview"].includes(loc.pathname)) return <div className="min-h-screen">{children}</div>;
+  if (["/create", "/create/guided", "/create/workspace-preview"].includes(loc.pathname)) return <div className="min-h-screen">{children}</div>;
   return (
     <div className="studio-shell min-h-screen flex flex-col">
       <a className="studio-skip-link" href="#studio-main">Skip to content</a>
