@@ -83,3 +83,10 @@ test('physical and intimate detail categories are visible and their controls can
   expect(document.querySelector('[role="dialog"]').textContent).toContain('small nipple tips');await click('small nipple tips');
   expect(container.querySelector('.cs-field-list').textContent).toContain('small nipple tips');
 });
+test('category directory can jump directly from character controls to photography controls',async()=>{
+  await paint();await act(async()=>buttons().find(button=>button.textContent.includes('Browse all categories')).click());
+  const dialog=document.querySelector('[role="dialog"]');expect(dialog.textContent).toContain('People & casting');
+  await act(async()=>[...dialog.querySelectorAll('button')].find(button=>button.textContent.includes('Lighting')).click());
+  expect(document.querySelector('[role="dialog"]')).toBeNull();expect(container.querySelector('.cs-inspector h2').textContent).toBe('Build the scene');
+  expect(container.querySelector('.cs-field-list').textContent).toContain('Color temp');
+});

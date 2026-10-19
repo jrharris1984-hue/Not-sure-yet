@@ -21,3 +21,9 @@ test('new anatomy selections still follow the existing clothing-coverage compile
   const prompt=workspacePrompt({mode:'character',workflow:{id:'image',name:'Krea 2',kind:'image',prompt_style:'krea2'},people:[person],relationship:'Choose later'});
   expect(prompt.positive).not.toContain('small nipple tips');
 });
+test('category directory includes casting and every standard scene category',()=>{
+  const {studioCategoryDirectory}=require('./studioFeatures');const directory=studioCategoryDirectory();
+  expect(directory.map(item=>item.key)).toEqual(expect.arrayContaining(['identity','physique','intimate','wardrobe','scenario','pose','scene','lighting','camera','style']));
+  expect(directory.every(item=>item.fields>0)).toBe(true);expect(new Set(directory.map(item=>item.key)).size).toBe(directory.length);
+  expect(studioFeatureSection('scenario').fields.map(field=>field.key)).toContain('cast_age_mode');
+});
