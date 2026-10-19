@@ -32,6 +32,7 @@ function LegacyStudioRedirect() {
   return <Navigate to={destination} replace />;
 }
 
+const StudioWorkspace = lazy(() => import("@/pages/StudioWorkspace"));
 const WorkspacePreview = lazy(() => import("@/pages/WorkspacePreview"));
 
 function App() {
@@ -43,7 +44,8 @@ function App() {
           <Routes>
             <Route path="/" element={<Library />} />
             <Route path="/research" element={<div className="mx-auto max-w-4xl p-6"><AIResearchPanel open /></div>} />
-            <Route path="/create" element={<Suspense fallback={<div className="p-8">Loading workspace…</div>}><WorkspacePreview /></Suspense>} />
+            <Route path="/create" element={<Suspense fallback={<div className="p-8">Loading workspace…</div>}><StudioWorkspace /></Suspense>} />
+            <Route path="/create/guided" element={<Suspense fallback={<div className="p-8">Loading guided editor…</div>}><WorkspacePreview /></Suspense>} />
             <Route path="/create/tools" element={<CreateHub />} />
             <Route path="/create/workspace-preview" element={<Suspense fallback={<div className="p-8 text-zinc-400">Loading workspace preview…</div>}><WorkspacePreview /></Suspense>} />
             <Route path="/create/character-preview" element={<CharacterPreviewLab />} />
