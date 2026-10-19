@@ -24,8 +24,7 @@ test('opens a canvas workspace with app navigation and one inspector instead of 
   expect(container.querySelector('a[href="/create/guided"]')).not.toBeNull();
 });
 test('all body and outfit collections remain accessible through the inspector',async()=>{
-  await paint();await click('Body');const body=document.querySelector('.cs-controls select:not([aria-label])');
-  act(()=>{body.value='glutes';body.dispatchEvent(new Event('change',{bubbles:true}));});
+  await paint();await click('Physical features');await click('Glutes');
   const glutes=buttons().find(button=>button.textContent.includes('Glute size · slider'));await act(async()=>glutes.click());
   expect(document.querySelector('input[type="range"]').max).toBe('300');await click('Done');
   await click('Outfit');await act(async()=>buttons().find(button=>button.textContent.includes('Complete outfit set')).click());
@@ -76,4 +75,11 @@ test('image edit uploads the chosen reference and uses the edit workflow',async(
     expect(endpoints.dispatchRender.mock.calls[0][0]).toMatchObject({workflow_id:'edit',reference_image:'input/uploaded.png',preserve_unmentioned:true});
     await act(async()=>root.unmount());root=createRoot(container);expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:reference');
   } finally {URL.createObjectURL=createURL;URL.revokeObjectURL=revokeURL;}
+});
+test('physical and intimate detail categories are visible and their controls can be edited',async()=>{
+  await paint();await click('Physical features');expect(container.textContent).toContain('Waist & hips');await click('Bust');expect(container.textContent).toContain('Bust shape');
+  await click('Intimate details');expect(container.textContent).toContain('Grooming');await click('Chest anatomy');
+  await act(async()=>buttons().find(button=>button.textContent.includes('Nipple size')).click());
+  expect(document.querySelector('[role="dialog"]').textContent).toContain('small nipple tips');await click('small nipple tips');
+  expect(container.querySelector('.cs-field-list').textContent).toContain('small nipple tips');
 });
