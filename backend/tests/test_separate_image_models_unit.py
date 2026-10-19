@@ -13,7 +13,7 @@ from generation_settings import normalize_generation_settings, apply_generation_
 
 class SeparateImageModelsTests(unittest.TestCase):
     def graphs(self):
-        for name in ['kroma_opd', 'krea2_glamour_bf16', 'krea2_aksiom', 'krea2_lustify', 'krea2_stkreal', 'chroma_gonzalomo', 'chroma_danrisimix_ultra', 'chroma_unlocked_v50', 'chroma_clyb_uncanny_flash_v19']:
+        for name in ['kroma_opd', 'krea2_finalcut_redux', 'krea2_glamour_bf16', 'krea2_aksiom', 'krea2_lustify', 'krea2_stkreal', 'chroma_gonzalomo', 'chroma_danrisimix_ultra', 'chroma_unlocked_v50', 'chroma_clyb_uncanny_flash_v19']:
             yield name, json.loads((ROOT / 'seed_workflows' / (name + '.json')).read_text())
 
     def info(self, graph):
@@ -85,6 +85,21 @@ class SeparateImageModelsTests(unittest.TestCase):
         self.assertEqual(graph['7']['inputs']['cfg'], 3.5)
         self.assertEqual(graph['7']['inputs']['sampler_name'], 'heun')
         self.assertEqual(original['1']['inputs']['unet_name'], model)
+
+    def test_finalcut_redux_keeps_model_and_adjustable_creator_step_range(self):
+        graph = dict(self.graphs())['krea2_finalcut_redux']
+        self.assertEqual(graph['1']['inputs']['unet_name'], 'krea2FinalcutV1Redux_comfyQuants.safetensors')
+        self.assertEqual(graph['1']['inputs']['weight_dtype'], 'default')
+        self.assertEqual(graph['2']['inputs']['clip_name'], 'qwen3vl_4b_fp8_scaled.safetensors')
+        self.assertEqual(graph['2']['inputs']['type'], 'krea2')
+        self.assertEqual(graph['3']['inputs']['vae_name'], 'qwen_image_vae.safetensors')
+        self.assertEqual(graph['7']['inputs']['steps'], 10)
+        self.assertEqual(graph['7']['inputs']['sampler_name'], 'euler')
+        for steps in (8, 12):
+            apply_generation_settings(graph, normalize_generation_settings({'steps': steps}, 'krea2_test'))
+            self.assertEqual(graph['7']['inputs']['steps'], steps)
+        self.assertEqual(graph['7']['inputs']['negative'], ['5', 0])
+        self.assertEqual(graph['5']['class_type'], 'CLIPTextEncode')
 
     def test_custom_sampling_is_not_reset_to_original_turbo_defaults(self):
         graph = next(self.graphs())[1]
