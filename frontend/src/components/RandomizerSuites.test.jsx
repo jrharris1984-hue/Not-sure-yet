@@ -18,3 +18,10 @@ test('stale previews cannot overwrite a character that changed meanwhile',async(
   await click('Fresh character look');people=[{...people[0],name:'Changed'}];act(()=>root.render(<Harness/>));
   expect([...container.querySelectorAll('button')].find(b=>b.textContent==='Apply these changes').disabled).toBe(true);
 });
+test('preview appears above the suite grid and all changes can be inspected',async()=>{
+  await click('Complete photo setup');
+  const preview=container.querySelector('.rs-proposal'),grid=container.querySelector('.rs-grid');
+  expect(preview.compareDocumentPosition(grid)&Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  const expand=container.querySelector('.rs-expand-changes');
+  expect(expand).not.toBeNull();const beforeCount=preview.querySelectorAll('li').length;await act(async()=>expand.click());expect(preview.querySelectorAll('li').length).toBeGreaterThan(beforeCount);expect(expand.getAttribute('aria-expanded')).toBe('true');
+});
