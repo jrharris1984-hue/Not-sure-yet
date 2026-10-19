@@ -22,9 +22,9 @@ test('start screen offers four distinct tasks without loading the character libr
 });
 test('relationship controls appear only for multiple people and disappear when removed',async()=>{
   await paint();await click('Create a new character');
-  expect(container.textContent).toContain('One person');expect(container.querySelector('select')).toBeNull();
+  expect(container.textContent).toContain('One person');expect([...container.querySelectorAll('label')].some(label=>label.textContent.startsWith('Relationship'))).toBe(false);
   await click('Add another person');expect(container.textContent).toContain('Relationship');
-  await click('Remove this person');expect(container.querySelector('select')).toBeNull();
+  await click('Remove this person');expect([...container.querySelectorAll('label')].some(label=>label.textContent.startsWith('Relationship'))).toBe(false);
 });
 test('description is required and survives step navigation; generation becomes available after review',async()=>{
   await paint();await click('Describe an image');
@@ -98,4 +98,20 @@ test('guided character flow opens the suite library and requires an explicit app
   await click('Fresh character look');expect(document.querySelector('[aria-label="Randomizer preview"]')).not.toBeNull();
   await click('Apply these changes');expect(document.querySelector('[role="dialog"]').textContent).toContain('Applied. Review the character');
   await click('Undo last randomizer');expect(document.querySelector('[role="dialog"]').textContent).toContain('Randomizer undone.');
+});
+
+test('completed stages can be revisited without repeatedly clicking Continue',async()=>{
+  await paint();await click('Create a new character');await click('Continue');await click('Continue');await click('Back');await click('Back');
+  const select=container.querySelector('select[aria-label="Jump to a visited step"]');
+  expect(select.options[2].disabled).toBe(false);expect(select.options[4].disabled).toBe(true);
+  act(()=>{select.value='2';select.dispatchEvent(new Event('change',{bubbles:true}));});
+  expect(container.querySelector('h1').textContent).toBe('What are they wearing?');
+});
+test('detail search finds controls outside the current appearance category',async()=>{
+  await paint();await click('Create a new character');await click('Continue');
+  const input=container.querySelector('input[aria-label="Find a character detail"]');
+  act(()=>{Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(input,'hip');input.dispatchEvent(new Event('input',{bubbles:true}));});
+  expect(container.querySelector('.wp-search-results').textContent).toContain('Hip width');
+  expect(container.querySelector('.wp-search-results').textContent).not.toContain('Hair color');
+  expect(container.querySelector('nav[aria-label="Workspace navigation"] a[href="/gallery"]')).not.toBeNull();
 });
