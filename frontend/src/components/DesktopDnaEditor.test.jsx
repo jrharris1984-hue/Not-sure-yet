@@ -85,3 +85,10 @@ test('desktop search filters detail cards and provides an empty state', () => {
   act(() => { setValue.call(input,'no such detail'); input.dispatchEvent(new Event('input',{bubbles:true})); });
   expect(container.querySelector('[role="status"]').textContent).toContain('No matching details');
 });
+
+test('ordinary ungrouped categories open one field at a time and retain every field destination', () => {
+  render(<Editor section="camera" />);
+  const section=SECTIONS.find(item=>item.key==='camera');
+  for(const field of section.fields) expect(container.querySelector(`[data-testid="desktop-edit-${field.key}"]`)).not.toBeNull();
+  expect(container.querySelector('[data-testid="desktop-focused-editor"]')).not.toBeNull();
+});
