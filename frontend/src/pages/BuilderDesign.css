@@ -1,0 +1,26 @@
+.design-workspace .design-tool-heading {cursor:pointer;min-height:44px;align-content:center;font-size:14px;font-weight:600;color:#e4e4e7}
+.design-workspace .design-tool-heading span {font-size:12px;font-weight:400;color:#a1a1aa;margin-left:12px}
+.design-workspace .design-tool-panel[open] {border-color:#22d3ee55}
+.design-category-nav {display:none}
+@media(min-width:768px) {
+  .design-workspace {max-width:1800px!important}
+  .design-workspace .design-legacy-rail {display:none!important}
+  .design-workspace .design-main-layout {grid-template-columns:minmax(0,1fr)}
+  .design-workspace #studio-sections {display:grid;grid-template-columns:210px minmax(0,1fr);gap:24px;max-width:none!important;width:100%;align-items:start}
+  .design-workspace #studio-sections > * {grid-column:2;min-width:0}
+  .design-workspace #studio-sections > .design-category-nav {grid-column:1;grid-row:1 / span 4;display:block;position:sticky;top:80px;max-height:calc(100dvh - 110px);overflow:auto;margin:0;padding:16px;border:1px solid #ffffff18;border-radius:16px;background:#12141c}
+  .design-category-nav label {font-size:12px;color:#a1a1aa}
+  .design-category-nav input {width:100%;margin:8px 0 12px;padding:10px;background:#090b10;border:1px solid #ffffff20;border-radius:8px;color:white}
+  .design-category-nav h3 {font-size:11px;color:#a1a1aa;margin:16px 0 4px}
+  .design-category-nav button {display:block;width:100%;min-height:44px;text-align:left;padding:10px;border-radius:8px;font-size:13px;color:#d4d4d8}
+  .design-category-nav button:hover {background:#ffffff08}
+  .design-category-nav button[aria-current=page] {background:#22d3ee18;color:#a5f3fc;box-shadow:inset 2px 0 #22d3ee}
+  .design-category-nav .design-review-button {margin-top:16px;border:1px solid #22d3ee55}
+  .design-workspace [aria-label="Builder view"] {margin-bottom:8px}
+  .design-workspace #studio-model {position:sticky;top:0;z-index:25;background:#12141cf5;backdrop-filter:blur(12px)}
+  .design-workspace .design-main-layout > aside {max-width:100%}
+}
+@media(max-width:767px) {
+  .design-workspace .design-tool-heading span {display:block;margin:4px 0}
+}
+.design-workspace summary:focus-visible,.design-category-nav button:focus-visible,.design-category-nav input:focus-visible {outline:2px solid #22d3ee;outline-offset:3px}
