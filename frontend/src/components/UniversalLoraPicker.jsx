@@ -202,7 +202,7 @@ export default function UniversalLoraPicker({ workflow, value, onChange, slotLab
             <select aria-label={`Model family for ${name}`} className="mt-1 w-full rounded border hairline bg-elevated px-2 py-1" value={preferences[loraFileKey(name)]?.family || ""}
               onChange={event => {const saved = saveLoraPreference(name, {family:event.target.value}); setSaveError(saved ? "" : "Could not save model family in this browser.");}}>
               <option value="">Use filename / folder detection</option>
-              {[['qwen_image','Qwen Image 2512'],['qwen_edit','Qwen Image Edit'],['chroma','Chroma'],['krea2','Krea 2'],['flux','FLUX'],['flux2_klein','FLUX.2 Klein'],['zimage','Z-Image'],['pony','Pony'],['sdxl','SDXL'],['sd15','SD 1.5'],['wan22','WAN 2.2']].map(([key,label]) => <option key={key} value={key}>{label}</option>)}
+              {[['moss_image','MOSS Image'],['qwen_image','Qwen Image 2512'],['qwen_edit','Qwen Image Edit'],['chroma','Chroma'],['krea2','Krea 2'],['flux','FLUX'],['flux2_klein','FLUX.2 Klein'],['zimage','Z-Image'],['pony','Pony'],['sdxl','SDXL'],['sd15','SD 1.5'],['wan22','WAN 2.2']].map(([key,label]) => <option key={key} value={key}>{label}</option>)}
             </select></label>)}</div>
         </details>}
         {saveError && <p role="alert" className="text-xs text-amber-200">{saveError}</p>}

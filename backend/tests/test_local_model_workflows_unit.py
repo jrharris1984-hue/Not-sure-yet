@@ -11,7 +11,7 @@ from reference_composition import configure_composition
 from downloaded_models import resolve_separate_image_models
 from generation_settings import normalize_generation_settings, apply_generation_settings
 
-STEMS = ['flux1_dev_t2i','flux2_klein_edit','qwen_reference_composer','wan5b_t2v']
+STEMS = ['moss_finalcut_universal','flux1_dev_t2i','flux2_klein_edit','qwen_reference_composer','wan5b_t2v']
 def graph(stem):
     return json.loads((ROOT/'seed_workflows'/(stem+'.json')).read_text())
 def info_for(g):
@@ -87,3 +87,24 @@ class LocalModelWorkflowTests(unittest.TestCase):
         self.assertFalse(any(n['class_type']=='LoadImage' for n in g.values()))
         self.assertEqual(g['3']['inputs']['latent_image'],['55',0])
         self.assertEqual(g['3']['inputs']['steps'],30)
+
+    def test_moss_uses_correct_architecture_and_universal_sampling(self):
+        from downloaded_models import SEPARATE_IMAGE_STYLES
+        self.assertIn('moss_image', SEPARATE_IMAGE_STYLES)
+        g=graph('moss_finalcut_universal')
+        self.assertEqual(g['1']['inputs']['unet_name'],'mossImageFinalcut5GB_universal.safetensors')
+        self.assertEqual(g['2']['inputs']['type'],'moss_image')
+        self.assertEqual(g['2']['inputs']['clip_name'],'qwen3.5_9b_w4a8_gptq.safetensors')
+        self.assertEqual(g['3']['inputs']['vae_name'],'flux2-vae_small.safetensors')
+        self.assertEqual(g['6']['class_type'],'EmptyFlux2LatentImage')
+        self.assertEqual(g['7']['inputs']['steps'],6)
+        self.assertEqual(g['7']['inputs']['cfg'],2.5)
+        self.assertEqual(g['7']['inputs']['sampler_name'],'euler')
+        original=copy.deepcopy(g);info=info_for(g)
+        info['CLIPLoader']['input']['required']['clip_name']=[['qwen3vl_4b_fp8_scaled.safetensors']]
+        self.assertTrue(resolve_separate_image_models(g,info));self.assertEqual(g,original)
+        values=normalize_generation_settings({'width':776,'height':1032,'steps':6,'cfg':3},'moss_image')
+        apply_generation_settings(g,values)
+        self.assertEqual(g['6']['inputs']['width'],768)
+        self.assertEqual(g['6']['inputs']['height'],1024)
+        self.assertEqual(g['7']['inputs']['cfg'],3)
