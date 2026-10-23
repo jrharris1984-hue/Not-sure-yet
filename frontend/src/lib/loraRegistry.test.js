@@ -317,3 +317,11 @@ describe('folder-based model family matching', () => {
     expect(compatibleInstalledLoras({prompt_style:'qwen_edit'}, ['Qwen/studio-light.safetensors'])).toEqual([]);
   });
 });
+
+test("MOSS adapters stay separate from Qwen, Krea and FLUX adapters", () => {
+  const workflow={name:"MOSS Image · FinalCut Universal FP8",prompt_style:"moss_image",kind:"image"};
+  expect(workflowFamily(workflow)).toBe("moss_image");
+  const result=compatibleInstalledLoras(workflow,["MOSS/film_style.safetensors","moss_image_portrait.safetensors","Qwen Image/style.safetensors","Krea2/style.safetensors","Flux/style.safetensors"]);
+  expect(result).toHaveLength(2);
+  expect(result.every(item=>item.family==="moss_image")).toBe(true);
+});

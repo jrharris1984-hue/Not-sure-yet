@@ -34,6 +34,10 @@ def normalize_generation_settings(requested, prompt_style=""):
         values[key] = int(number) // 8 * 8 if key in {"width", "height"} else (
             float(number) if key == "cfg" else int(number)
         )
+    if prompt_style == "moss_image":
+        for key in ("width", "height"):
+            if key in values:
+                values[key] = int(values[key]) // 16 * 16
     if prompt_style in {"krea2", "flux2_klein", "flux2_klein_edit"}:
         values.update(steps=8 if prompt_style == "krea2" else 4,
                       cfg=1.0, sampler_name="euler")

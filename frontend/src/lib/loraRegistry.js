@@ -149,6 +149,7 @@ export const LORA_REGISTRY = [
 ];
 
 export function workflowFamily(workflow = {}) {
+  if (workflow.prompt_style === "moss_image" || /moss[ _-]?image/i.test(workflow.name || "")) return "moss_image";
   if (workflow.prompt_style === "flux2_klein_edit") return "flux2_klein";
   if (workflow.prompt_style === "qwen_reference") return "qwen_edit";
   if (["kroma", "krea2", "krea2_test", "krea2_aio"].includes(workflow.prompt_style)) return "krea2";
@@ -391,6 +392,7 @@ export function loraStackHealth({ workflow = {}, overrides = {}, installed = [] 
 function folderFamilyForInstalled(name = "") {
   const folders = normalized(name).split("/").slice(0, -1);
   const aliases = {
+    moss: "moss_image", mossimage: "moss_image",
     krea: "krea2", krea2: "krea2", kroma: "krea2",
     chroma: "chroma", zimage: "zimage", pony: "pony", sdxl: "sdxl",
     sd15: "sd15", stablediffusion15: "sd15",
@@ -407,6 +409,7 @@ function folderFamilyForInstalled(name = "") {
 }
 
 function inferredFamilyForInstalled(name = "") {
+  if (/moss[ _-]?image|\bmoss\b/i.test(name)) return "moss_image";
   const value = normalized(name).split("/").pop();
   if (/(^|\/)flux2_klein\//.test(value) || /flux[. _-]?2.*klein/.test(value)) return "flux2_klein";
   if (/(^|\/)krea2\//.test(value) || /krea\s*2|krea2/.test(value)) return "krea2";
