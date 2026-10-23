@@ -5,9 +5,9 @@ import { randomizePhotoSubjects } from '@/lib/photoRandomizer';
 import { photoCastIssues, coherePhotoCast, preserveSubjectLocks } from '@/lib/photoConsistency';
 import LearningHistoryPanel from '@/components/LearningHistoryPanel';
 import SceneReviewPanel from '@/components/SceneReviewPanel';
-import { desktopNavigationSections } from '@/lib/desktopEditingGroups';
 import DesktopDnaEditor from '@/components/DesktopDnaEditor';
-import DesktopEditingDock from '@/components/DesktopEditingDock';
+import DesignCategoryNavigation from '@/components/DesignCategoryNavigation';
+import './BuilderDesign.css';
 import { useBuilderRenderPolling } from '@/hooks/useBuilderRenderPolling';
 import { useBuilderPromptFormatSettings } from '@/hooks/useBuilderPromptFormatSettings';
 import { selectSharedCastPose, editCastPose, sharedCastPose } from '@/lib/castPoseResolution';
@@ -33,7 +33,6 @@ import FinalPromptSummary from "@/components/FinalPromptSummary";
 import VariationInstruction from "@/components/VariationInstruction";
 import { resolveBuilderControls } from "@/lib/builderControlResolution";
 import CreationOutputControls from "@/components/CreationOutputControls";
-import CreateJourney from "@/components/CreateJourney";
 import CreateSetupSummary from "@/components/CreateSetupSummary";
 import CreateSectionFinder from "@/components/CreateSectionFinder";
 import CreateRenderOutcome from "@/components/CreateRenderOutcome";
@@ -2236,7 +2235,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
     }));
   };
 
-  const sectionNavigation = (position) => desktopQuickMode ? null : (
+  const sectionNavigation = (position) => !sheetViewport || desktopQuickMode ? null : (
     <div className="hidden md:flex items-center justify-between gap-2" aria-label={`${position} section navigation`}>
       <button type="button" onClick={() => activeIdx > 0 && goSection(SECTIONS[activeIdx - 1].key)}
         disabled={activeIdx === 0} data-testid={`btn-section-prev${position === "top" ? "-top" : ""}`}
@@ -2788,12 +2787,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
     : null;
 
   return (
-    <div className={`mobile-builder-content ${sheetViewport && !mobileSheets && !isImageFirst && editMode !== "body_adjust" ? "organized-mobile-tools" : ""} ${mobileSheets && !isImageFirst && editMode !== "body_adjust" ? "nested-mobile-builder" : ""} mx-auto max-w-[1600px] px-2.5 sm:px-6 py-3 sm:py-6 space-y-3 sm:space-y-4 ${desktopQuickMode && !isImageFirst ? "quick-create-mode" : ""}`} data-mobile-tools-group={mobileToolsGroup} style={!sheetViewport && !isImageFirst ? { paddingBottom: "7rem" } : undefined}>
-      {!sheetViewport && !isImageFirst && editMode !== "body_adjust" && !quickReview && <DesktopEditingDock
-        sections={desktopQuickMode ? desktopNavigationSections(quickStages, SECTIONS, activeSection) : SECTIONS}
-        activeSection={activeSection} onSection={openDesktopSection}
-        onFinish={() => desktopQuickMode ? selectQuickStage(quickStages.length - 1) : save.mutate()}
-        finishLabel={desktopQuickMode ? "Review & create" : "Finish & save"} />}
+    <div className={`mobile-builder-content ${!isImageFirst && editMode !== "body_adjust" ? "design-workspace" : ""} ${sheetViewport && !mobileSheets && !isImageFirst && editMode !== "body_adjust" ? "organized-mobile-tools" : ""} ${mobileSheets && !isImageFirst && editMode !== "body_adjust" ? "nested-mobile-builder" : ""} mx-auto max-w-[1600px] px-2.5 sm:px-6 py-3 sm:py-6 space-y-3 sm:space-y-4 ${desktopQuickMode && !isImageFirst ? "quick-create-mode" : ""}`} data-mobile-tools-group={mobileToolsGroup} style={!sheetViewport && !isImageFirst ? { paddingBottom: "7rem" } : undefined}>
       {sheetViewport && !mobileSheets && !isImageFirst && editMode !== "body_adjust" && <>
         <MobileToolsNavigation group={mobileToolsGroup} onGroup={group => { setMobileToolsGroup(group); window.scrollTo({ top: 0, behavior: "auto" }); }} onBack={() => setMobileSheets(true)} />
         <section data-mobile-tools="generation" className="pane p-4 space-y-4">
@@ -3002,7 +2996,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
               setWorkflowId(nextWorkflowId);
               setLoraOverrides({});
             }}
-            className={`${isImageFirst || mobileStudioStep === "start" || mobileStudioStep === "create" ? "block" : "hidden"} ${desktopQuickMode && !isImageFirst ? "md:hidden" : "md:block"} bg-elevated border border-hairline rounded-lg px-3 py-2 text-sm text-zinc-100 w-full sm:w-auto sm:min-w-[200px]`}
+            className={`${isImageFirst || mobileStudioStep === "start" || mobileStudioStep === "create" ? "block" : "hidden"} md:block bg-elevated border border-hairline rounded-lg px-3 py-2 text-sm text-zinc-100 w-full sm:w-auto sm:min-w-[200px]`}
           >
             {selectableWorkflows.length === 0 && <option value="">No visible workflows — choose workflows in Settings</option>}
             {selectableWorkflows.filter((w) => !["sdxl", "sdxl_dmd2"].includes(w.prompt_style) && !w.name.startsWith("Pony · Ultra Realistic")).map((w) => (
@@ -3087,8 +3081,8 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
         </div>
       </div>
 
-      {!isImageFirst && <section data-mobile-tools-container="presets prompts files" className="pane p-3 sm:p-4 space-y-3" aria-label="Character tools" data-testid="builder-action-toolbar">
-        <div data-mobile-tools="none" className="section-label">Character tools</div>
+      {!isImageFirst && <details data-mobile-tools-container="presets prompts files" className="design-tool-panel pane p-3 sm:p-4 space-y-3" aria-label="Character tools" data-testid="builder-action-toolbar">
+        <summary className="design-tool-heading">Character tools <span>Presets, language, import & export</span></summary>
         <div data-mobile-tools-container="presets prompts files" className="flex flex-wrap items-center gap-2">
             <button data-mobile-tools="presets"
               type="button"
@@ -3176,16 +3170,16 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
               <input type="file" accept="application/json" onChange={importJson} className="hidden" />
             </label>
         </div>
-      </section>}
+      </details>}
 
-      {!isImageFirst && <div className="mobile-tools-panel" data-mobile-tools="presets">{suiteRandomizers}<RandomSceneControls profile={randomProfile} onProfile={setRandomProfile} onRandomize={randomizeSceneMode} onPhotoRandomize={randomizePhoto} onCustomRandomize={randomizeCustomPhoto} issues={naturalPhotoIssues} busy={dispatching} /></div>}
+      {!isImageFirst && <details className="design-tool-panel mobile-tools-panel pane p-3" data-mobile-tools="presets"><summary className="design-tool-heading">Randomize <span>Suites, individual details & saved randomizers</span></summary>{suiteRandomizers}<RandomSceneControls profile={randomProfile} onProfile={setRandomProfile} onRandomize={randomizeSceneMode} onPhotoRandomize={randomizePhoto} onCustomRandomize={randomizeCustomPhoto} issues={naturalPhotoIssues} busy={dispatching} /></details>}
 
       {isImageFirst && <div className="mobile-tools-panel" data-mobile-tools="none"><ImageSourceFlow title={activeWorkflow?.name} animation={isVideoWorkflow} variation={isVariationWorkflow} source={referenceImage} preview={referencePreview}
         readyToRender={!isQwenReferenceWorkflow || qwenEditVariant !== "pose" || !!poseReferenceImage?.name}
         uploading={referenceUploading || (isQwenReferenceWorkflow && poseReferenceUploading)} busy={dispatching} onUpload={uploadReference} onRemove={clearReference} onRender={doDispatch}
         renderCount={renderCount} onRenderCount={setRenderCount}>{imageSourceControls}</ImageSourceFlow></div>}
 
-      {!isImageFirst && mobileStudioStep === "start" && <div data-mobile-tools="none"><StudioModePicker value={studioMode} onChange={changeStudioMode} disabled={dispatching} /></div>}
+      {!isImageFirst && mobileStudioStep === "start" && <details className="design-tool-panel pane p-3" data-mobile-tools="none"><summary className="design-tool-heading">Creation mode <span>{studioProfile.title || studioMode}</span></summary><StudioModePicker value={studioMode} onChange={changeStudioMode} disabled={dispatching} /></details>}
 
       {!isImageFirst && <div className="mobile-tools-panel" data-mobile-tools="none"><MobileStudioFlow
         steps={studioSteps}
@@ -3209,29 +3203,17 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
         onUndo={characterHistory.undo} onRedo={characterHistory.redo} busy={dispatching || !!postRenderBusy}
       /></div>}
 
-      {!isImageFirst && editMode !== "body_adjust" && <div data-mobile-tools="none"><PinnedSectionControls
+      {!isImageFirst && editMode !== "body_adjust" && <details className="design-tool-panel pane p-3" data-mobile-tools="none"><summary className="design-tool-heading">Pinned categories</summary><PinnedSectionControls
         sections={SECTIONS} pinned={sectionPins.pinned} limit={sectionPins.limit}
         currentSection={quickReview || mobileStudioStep === "create" ? null : activeSection}
         activeSection={quickReview || mobileStudioStep === "create" ? null : activeSection}
         onToggle={sectionPins.toggle} onSection={openPinnedSection}
-      /></div>}
+      /></details>}
 
       {!isImageFirst && reviewEditing && editMode !== "body_adjust" && <div data-mobile-tools="none">
         <ReviewEditBanner sectionTitle={SECTIONS.find((section) => section.key === activeSection)?.title} onReturn={returnToReview} />
       </div>}
 
-      {!isImageFirst && !desktopQuickMode && <nav data-mobile-tools="none" className="hidden md:grid grid-cols-5 gap-2" aria-label="Creation steps" data-testid="desktop-creation-steps">
-        {studioSteps.map((step, index) => {
-          const selected = step.id === mobileStudioStep;
-          return <button key={step.id} type="button" onClick={() => openMobileStudioStep(step.id)}
-            aria-current={selected ? "step" : undefined}
-            className={`studio-stage rounded-xl border px-3 py-3 text-left ${selected ? "studio-stage-active border-amber-400/60 bg-amber-500/10" : "hairline bg-elevated hover:border-cyan-400/50"}`}>
-            <span className={`text-[10px] font-mono ${selected ? "text-amber-300" : "text-zinc-500"}`}>{String(index + 1).padStart(2, "0")}</span>
-            <span className="mt-1 block font-display text-sm font-bold text-zinc-100">{step.label}</span>
-            <span className="mt-0.5 block text-[11px] text-zinc-400">{step.hint}</span>
-          </button>;
-        })}
-      </nav>}
 
       <div data-mobile-tools="prompts" className={isImageFirst ? "hidden" : mobileStudioStep === "start" ? "block" : "hidden md:block"}>
         <AiAssistBar dna={activeDna} aiProvider={aiProvider}
@@ -3483,9 +3465,9 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
         {!collapsed._glance && <DnaAtAGlance dna={activeDna} name={name} subjects={isMulti ? subjects : undefined} />}
       </div>
 
-      <div data-mobile-tools-container="generation references prompts loras results" className={isImageFirst || editMode === "body_adjust" ? "grid grid-cols-1 gap-4" : "grid grid-cols-1 lg:grid-cols-[260px_1fr_380px] gap-4"}>
+      <div data-mobile-tools-container="generation references prompts loras results" className={isImageFirst || editMode === "body_adjust" ? "grid grid-cols-1 gap-4" : "design-main-layout grid grid-cols-1 gap-4"}>
         {/* Left rail - grouped-by-phase section nav (uses active subject's dna for filled dots) */}
-        <aside data-mobile-tools="none" className={`quick-hide hidden lg:block h-fit sticky top-20 ${isImageFirst || editMode === "body_adjust" ? "!hidden" : ""}`}>
+        <aside data-mobile-tools="none" className={`design-legacy-rail quick-hide hidden lg:block h-fit sticky top-20 ${isImageFirst || editMode === "body_adjust" ? "!hidden" : ""}`}>
           <GroupedSectionRail
             dna={activeDna}
             locks={locks}
@@ -3582,13 +3564,9 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
           </button>)}
         </div>
       </section>}
-      {desktopQuickMode && editMode !== "body_adjust" && (
-        <div className="hidden md:block">
-          <CreateJourney stages={quickStages} index={quickStageIndex} activeSection={activeSection}
-            sections={SECTIONS} onStage={selectQuickStage} onSection={openCreateSection} modelName={activeWorkflow?.name} />
-          <details className="mt-3 xl:hidden rounded-xl border hairline p-3"><summary className="cursor-pointer min-h-11 content-center text-sm text-zinc-300">Review your current choices</summary><CreateSetupSummary dna={activeDna} stages={quickStages} sections={SECTIONS} onSection={openDesktopSection} /></details>
-        </div>
-      )}
+      {!isImageFirst && editMode !== "body_adjust" && <DesignCategoryNavigation stages={quickStages} sections={SECTIONS}
+        activeSection={activeSection} onSection={openCreateSection} review={quickReview}
+        onReview={() => { setDesktopQuickMode(true); selectQuickStage(quickStages.length - 1); }} />}
 
           {desktopQuickMode && quickReview ? (
             <div className="hidden md:block pane border-cyan-400/30 p-5 space-y-4" data-testid="desktop-quick-review">

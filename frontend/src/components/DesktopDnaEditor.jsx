@@ -18,13 +18,14 @@ function selectionSummary(field, value, section) {
 export default function DesktopDnaEditor({ enabled, ...props }) {
   const simpleFields = props.simpleMode && props.simpleFieldKeys?.length
     ? props.section.fields.filter(field => props.simpleFieldKeys.includes(field.key)) : props.section.fields;
-  const groups = desktopEditingGroups({ ...props.section, fields: simpleFields });
+  const configuredGroups = desktopEditingGroups({ ...props.section, fields: simpleFields });
+  const groups = configuredGroups.length ? configuredGroups : [{key:"details",label:props.section.title,fields:simpleFields}];
   const [search, setSearch] = useState('');
   const matchingGroups = groups.map(group => ({ ...group, fields: group.fields.filter(field =>
     `${group.label} ${field.label} ${field.key}`.toLowerCase().includes(search.trim().toLowerCase())) })).filter(group => group.fields.length);
   const [groupKey, setGroupKey] = useState('');
   const [fieldKey, setFieldKey] = useState('');
-  if (!enabled || !groups.length || props.focusedField) return <DnaSection {...props} />;
+  if (!enabled || !simpleFields.length || !groups.length || props.focusedField) return <DnaSection {...props} />;
   const searchControl = <label className="block text-xs text-zinc-400">Find a detail
     <input type="search" className="studio-control-search mt-2" placeholder={`Search ${props.section.title.toLowerCase()}…`}
       value={search} onChange={event => { setSearch(event.target.value); setFieldKey(''); }} /></label>;
