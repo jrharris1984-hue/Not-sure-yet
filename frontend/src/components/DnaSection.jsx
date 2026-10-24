@@ -25,7 +25,7 @@ export function ChipRow({ options, value, onChange, testIdPrefix, labels = {} })
             type="button"
             aria-pressed={active}
             data-testid={`${testIdPrefix}-${opt.replace(/\s+/g, "-")}`}
-            className={`chip ${active ? "active" : ""}`}
+            className={`studio-choice chip ${active ? "active" : ""}`}
             onClick={() => onChange(active ? "" : opt)}
           >
             {labels[opt] || opt}
@@ -46,8 +46,9 @@ export function PoseChipGrid({ options, value, onChange, testIdPrefix, labels = 
             key={opt}
             type="button"
             data-testid={`${testIdPrefix}-${opt.replace(/\s+/g, "-")}`}
+            aria-pressed={active}
             onClick={() => onChange(active ? "" : opt)}
-            className={`flex flex-col items-center justify-center gap-1 rounded-xl border p-2 text-[10px] leading-tight text-center min-h-[108px] transition-all ${
+            className={`studio-choice flex flex-col items-center justify-center gap-1 rounded-xl border p-2 text-[10px] leading-tight text-center min-h-[108px] transition-all ${
               active
                 ? "border-amber-500 bg-amber-500/10 text-amber-100 shadow-[0_0_20px_rgba(245,158,11,0.15)]"
                 : "border-[#222634] bg-[#12141C] text-zinc-300 hover:border-zinc-600 hover:bg-[#1A1D28]"

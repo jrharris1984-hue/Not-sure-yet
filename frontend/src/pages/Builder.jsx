@@ -15,6 +15,7 @@ import EditorPanelBoundary from '@/components/EditorPanelBoundary';
 import DesktopDnaEditor from '@/components/DesktopDnaEditor';
 import DesignCategoryNavigation from '@/components/DesignCategoryNavigation';
 import './BuilderDesign.css';
+import './StudioSurfaces.css';
 import { useBuilderRenderPolling } from '@/hooks/useBuilderRenderPolling';
 import { useBuilderPromptFormatSettings } from '@/hooks/useBuilderPromptFormatSettings';
 import { selectSharedCastPose, editCastPose, sharedCastPose } from '@/lib/castPoseResolution';
