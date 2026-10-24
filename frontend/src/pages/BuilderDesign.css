@@ -80,3 +80,25 @@
 .selected-details-drawer-inner {padding:20px}
 .selected-details-drawer header {display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px}
 .selected-details-drawer h2 {font-weight:600;font-size:18px}
+
+/* Stabilization: measured offsets replace assumptions about toolbar wrapping. */
+@media(min-width:768px) {
+  .design-workspace #studio-model {top:var(--workspace-header-height,64px)}
+  .design-workspace #studio-sections > .design-category-nav,
+  .design-workspace .workspace-preview-content {top:var(--workspace-sticky-offset,220px)}
+  .design-workspace #studio-sections > .design-category-nav,
+  .design-workspace .workspace-preview-content .guided-preview {max-height:calc(100dvh - var(--workspace-sticky-offset,220px) - 16px)}
+  .design-workspace [data-testid=desktop-focused-editor] > nav {position:static}
+  .design-workspace #studio-render {position:static;scroll-margin-top:var(--workspace-sticky-offset,220px)}
+  .design-workspace #studio-sections,.design-workspace #workspace-render-result,.design-workspace .selection-panel {scroll-margin-top:var(--workspace-sticky-offset,220px)}
+  .design-workspace #studio-model .flex.flex-wrap {min-width:0;max-width:100%}
+}
+@media(min-width:768px) and (max-height:700px) {
+  .design-workspace #studio-model,.design-workspace #studio-sections > .design-category-nav,.design-workspace .workspace-preview-content {position:static}
+  .design-workspace #studio-sections > .design-category-nav,.design-workspace .workspace-preview-content .guided-preview {max-height:none}
+  .design-workspace #studio-sections,.design-workspace #workspace-render-result {scroll-margin-top:var(--workspace-header-height,64px)}
+}
+.selected-details-drawer {overflow-y:auto;overscroll-behavior:contain;scrollbar-gutter:stable}
+.selected-details-drawer header {position:sticky;top:-20px;z-index:1;background:#12141c;padding:12px 0}
+.selection-panel header > button,.selection-panel fieldset > div > span {min-width:0;flex-wrap:wrap}
+.workspace-render-details {max-height:60dvh;overflow-y:auto}
