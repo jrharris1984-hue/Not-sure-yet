@@ -1,5 +1,5 @@
 import useTabPreference from '@/hooks/useTabPreference';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import DnaSection from './DnaSection';
 import { desktopEditingGroups, desktopFieldTarget } from '@/lib/desktopEditingGroups';
 import { sizeControlSummary } from '@/lib/physiqueControlPriority';
@@ -16,7 +16,7 @@ function selectionSummary(field, value, section) {
     : selected === undefined || selected === null || selected === '' ? 'Not selected' : label(selected);
 }
 
-export default function DesktopDnaEditor({ enabled, ...props }) {
+export default function DesktopDnaEditor({ enabled, requestedField, ...props }) {
   const simpleFields = props.simpleMode && props.simpleFieldKeys?.length
     ? props.section.fields.filter(field => props.simpleFieldKeys.includes(field.key)) : props.section.fields;
   const configuredGroups = desktopEditingGroups({ ...props.section, fields: simpleFields });
@@ -26,6 +26,16 @@ export default function DesktopDnaEditor({ enabled, ...props }) {
     `${group.label} ${field.label} ${field.key}`.toLowerCase().includes(search.trim().toLowerCase())) })).filter(group => group.fields.length);
   const [groupKey, setGroupKey] = useTabPreference(`ultra:detail-group:${props.section.key}`, '');
   const [fieldKey, setFieldKey] = useTabPreference(`ultra:detail-field:${props.section.key}`, '');
+  useEffect(() => {
+    if (!requestedField?.field) return;
+    const target = desktopFieldTarget(props.section.key, requestedField.field);
+    const selectedGroup = groups.find(group=>group.fields.some(field=>desktopFieldTarget(props.section.key,field.key)===target));
+    setSearch('');
+    if (selectedGroup) setGroupKey(selectedGroup.key);
+    setFieldKey(target);
+    // The request is an explicit navigation event, not a reaction to edits.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [requestedField]);
   if (!enabled || !simpleFields.length || !groups.length || props.focusedField) return <DnaSection {...props} />;
   const searchControl = <label className="block text-xs text-zinc-400">Find a detail
     <input type="search" className="studio-control-search mt-2" placeholder={`Search ${props.section.title.toLowerCase()}…`}

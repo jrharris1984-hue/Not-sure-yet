@@ -94,3 +94,10 @@ test('ordinary ungrouped categories open one field at a time and retain every fi
 });
 
 beforeEach(() => sessionStorage.clear());
+
+test('a selected-detail navigation request opens its group and field', () => {
+  const section=SECTIONS.find(item=>item.key==='hair');
+  render(<DesktopDnaEditor enabled section={section} value={{color:'brown'}} requestedField={{field:'color'}} onChange={jest.fn()} />);
+  expect(container.querySelector('[data-testid="desktop-edit-color"]').getAttribute('aria-pressed')).toBe('true');
+  expect(container.querySelector('[data-testid="dna-section-hair"]')).not.toBeNull();
+});
