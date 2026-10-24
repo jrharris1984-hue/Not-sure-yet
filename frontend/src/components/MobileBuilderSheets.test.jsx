@@ -179,7 +179,7 @@ test('workspace features stay inside the visible sheet under the actual mobile h
   } finally { style.remove(); container.className = ''; }
 });
 
-test('result actions are reachable inside the active sheet and stale results close', () => {
+test('result actions are reachable and cleared results show an empty state', () => {
   const onNewSeed = jest.fn();
   paint({resultControls:<CreateRenderOutcome render={{id:'done',status:'done',output_files:['/result.png']}} onNewSeed={onNewSeed} />});
   click('Results & actions');
@@ -187,7 +187,7 @@ test('result actions are reachable inside the active sheet and stale results clo
   expect(dialog.closest('.mobile-sheet-builder')).not.toBeNull();
   click('Try a new seed'); expect(onNewSeed).toHaveBeenCalledTimes(1);
   paint({resultControls:null});
-  expect(container.querySelector('[role="dialog"]')).toBeNull();
+  expect(container.querySelector('[role="dialog"]').textContent).toContain('No results yet');
 });
 
 test('return to review opens generation settings in the actual sheet interface', () => {
@@ -232,4 +232,18 @@ test('guided first step exposes presets without requiring a category hunt', () =
   const stages=[{id:'start',title:'People',sections:['hair'],simpleSections:['hair']},{id:'create',title:'Create',sections:[]}];
   paint({mode:'simple',stages,presetsControl:<button type="button">Choose a preset</button>});
   expect([...container.querySelectorAll('button')].some(button=>button.textContent==='Choose a preset')).toBe(true);
+});
+
+test('workspace navigation preserves editing selections and explains empty results', () => {
+  paint();
+  const nav = container.querySelector('[aria-label="Workspace views"]');
+  const choose = name => act(() => [...nav.querySelectorAll('button')].find(button => button.textContent === name).click());
+  choose('Preview');
+  expect(container.querySelector('[data-testid="primary-creation-sheet"]').className).toContain('sheet-peek');
+  choose('Results');
+  expect(container.querySelector('[role="dialog"]').textContent).toContain('No results yet');
+  choose('Edit');
+  expect(container.querySelector('[role="dialog"]')).toBeNull();
+  expect(container.textContent).toContain('Colorblack');
+  expect(container.querySelector('[data-testid="primary-creation-sheet"]').className).toContain('sheet-expanded');
 });
