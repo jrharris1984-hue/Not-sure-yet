@@ -90,3 +90,5 @@ test("unknown review sections do not change navigation", () => {
   expect(api.mobileStudioStep).toBe("start");
   expect(nav).not.toHaveBeenCalled();
 });
+
+beforeEach(() => sessionStorage.clear());

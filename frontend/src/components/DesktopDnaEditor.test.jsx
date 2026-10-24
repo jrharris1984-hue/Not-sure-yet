@@ -92,3 +92,5 @@ test('ordinary ungrouped categories open one field at a time and retain every fi
   for(const field of section.fields) expect(container.querySelector(`[data-testid="desktop-edit-${field.key}"]`)).not.toBeNull();
   expect(container.querySelector('[data-testid="desktop-focused-editor"]')).not.toBeNull();
 });
+
+beforeEach(() => sessionStorage.clear());

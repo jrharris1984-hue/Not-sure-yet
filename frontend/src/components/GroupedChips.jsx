@@ -1,4 +1,5 @@
 import { useMemo, useState, useEffect } from "react";
+import OptionBrowser from "./OptionBrowser";
 import PoseIcon from "@/components/PoseIcon";
 import { X } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
@@ -34,7 +35,7 @@ export default function GroupedChips({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value, multi]);
 
-  const active = groups[tab] || groups[0];
+  const active = groups[tab] || groups[0] || { name: "Choices", options: [] };
 
   // Selected count per group (for dot indicator)
   const countPerGroup = useMemo(() => groups.map((g) => {
@@ -94,6 +95,7 @@ export default function GroupedChips({
             <button
               key={g.name}
               type="button"
+              aria-pressed={isActive}
               onClick={() => setTab(i)}
               data-testid={`${testIdPrefix}-tab-${g.name.replace(/[^a-z0-9]+/gi, "-")}`}
               className={`relative inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-[11px] font-mono uppercase tracking-wider transition-colors ${
@@ -116,6 +118,7 @@ export default function GroupedChips({
         })}
       </div>
 
+      <OptionBrowser options={active.options} searchOptions={groups.flatMap(group => group.options)} value={value} labels={labels}>{visible => <>
       <AnimatePresence mode="wait" initial={false}>
       <motion.div key={`${testIdPrefix}-${active.name}`}
         initial={reduceMotion ? false : { opacity: 0, y: 7 }}
@@ -124,7 +127,7 @@ export default function GroupedChips({
         transition={{ duration: reduceMotion ? 0 : 0.16 }}>
       {variant === "poses" ? (
         <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
-          {active.options.map((opt) => {
+          {visible.map((opt) => {
             const isActive = has(opt);
             return (
               <button
@@ -147,7 +150,7 @@ export default function GroupedChips({
         </div>
       ) : (
         <div className="flex flex-wrap gap-2">
-          {active.options.map((opt) => {
+          {visible.map((opt) => {
             const isActive = has(opt);
             return (
               <button
@@ -166,6 +169,7 @@ export default function GroupedChips({
       )}
       </motion.div>
       </AnimatePresence>
+      </>}</OptionBrowser>
     </div>
   );
 }
