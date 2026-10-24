@@ -1,0 +1,7 @@
+{
+  "name": "ultra-studio-ui-checks",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {"test": "node run.cjs", "test:fixtures": "node --test fixtures.test.cjs"},
+  "dependencies": {"playwright-core": "1.62.1"}
+}
