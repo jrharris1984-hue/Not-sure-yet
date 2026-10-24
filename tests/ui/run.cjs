@@ -30,6 +30,15 @@ async function check(browser,viewport) {
   try {
     await page.goto(`${baseURL}/character/new/s/hair`,{waitUntil:'domcontentloaded'});
     if(viewport.width>=768) {
+      await page.getByTestId('dna-section-hair').waitFor({state:'visible'});
+      const choiceVisible = await page.locator('[data-testid^="chip-hair-style-"]:not([data-testid*="-tab-"])').evaluateAll(buttons => buttons.some(button => {
+        const bounds=button.getBoundingClientRect();
+        if(button.disabled || bounds.width<=0 || bounds.height<=0 || bounds.top<0 || bounds.bottom>innerHeight) return false;
+        const hit=document.elementFromPoint(bounds.left+bounds.width/2,bounds.top+bounds.height/2);
+        return hit===button || button.contains(hit);
+      }));
+      assert.ok(choiceVisible,'No editable hair choice is visible before scrolling');
+      await page.screenshot({path:path.join(output,`${viewport.name}-initial.png`),fullPage:false});
       const name=page.getByTestId('input-character-name');
       await name.fill('UI walkthrough');
       const drawerButton=page.getByRole('button',{name:/^Selected details \(/});

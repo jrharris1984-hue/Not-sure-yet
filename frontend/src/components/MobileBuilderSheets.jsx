@@ -155,7 +155,7 @@ export default function MobileBuilderSheets({ sections, section, onSection, subj
         {guided && <div className="px-3 pb-2 text-xs text-cyan-200" role="status">{guidedReview ? "Review & create" : `Step ${stageIndex + 1} of ${stages.length} · ${stage?.title || section.title}`}<span className="ml-2 text-zinc-500">{guidedReview ? "Check your choices before generating." : "Optional details can stay as they are."}</span></div>}
         {onMode && <div className="sheet-mode-toolbar">
           <div className="studio-mode-switch" role="group" aria-label="Editing view">
-            {[["simple", "Simple"], ["advanced", "All options"]].map(([value, title]) => <button key={value} type="button" aria-pressed={mode === value} onClick={() => onMode(value)}>{title}</button>)}
+            {[["simple", "Simple"], ["advanced", "Advanced"]].map(([value, title]) => <button key={value} type="button" aria-pressed={mode === value} onClick={() => onMode(value)}>{title}</button>)}
           </div>
           <label className="sr-only" htmlFor="sheet-category-select">Choose a category</label>
           <select id="sheet-category-select" value={section.key} onChange={event => {setGuidedReview(false); onSection(event.target.value);}} className="sheet-category-select">
@@ -182,7 +182,7 @@ export default function MobileBuilderSheets({ sections, section, onSection, subj
             {workspaceControls && <button type="button" className="chip min-h-11" onClick={() => open("workspace")}>Quick tools</button>}
             {resultControls && <button type="button" className="chip min-h-11" onClick={() => open("results")}>Results & actions</button>}
           </div>}
-          <div className="flex justify-between items-center mb-3"><h2 className="font-semibold">{section.title}</h2><div className="flex gap-2"><button type="button" className="text-xs text-cyan-200" onClick={() => open("selected")}>Selected · {selectedItems.length}</button><button type="button" className="text-xs text-cyan-200" onClick={() => open("all")}>All controls</button></div></div>
+          <div className="flex justify-between items-center mb-3"><h2 className="font-semibold">{section.title}</h2><div className="flex gap-2"><button type="button" className="text-xs text-cyan-200" onClick={() => open("selected")}>Selected · {selectedItems.length}</button><button type="button" className="text-xs text-cyan-200" onClick={() => open("all")}>Open category</button></div></div>
           {onMode && <div className="mb-3 space-y-2">
             <p className="text-xs text-zinc-400">{mode === "simple" ? "Pick a few details; unselected options use the current defaults." : "All details are available. Search to find a control."}</p>
             <input type="search" aria-label="Find a control in this category" placeholder={`Find in ${section.title.toLowerCase()}…`} value={fieldSearch} onChange={event => setFieldSearch(event.target.value)} className="studio-control-search" />
@@ -203,7 +203,7 @@ export default function MobileBuilderSheets({ sections, section, onSection, subj
               <span className="block text-xs text-zinc-400 mt-1 truncate">{sizeSummary || (section.key === "wardrobe" && field.key === "outfit_mode" ? wardrobeMode(values) === "full" ? "Full set" : "Custom" : section.key === "wardrobe" && wardrobeFieldDisabled(field.key, values) ? "Switch outfit mode to edit" : Array.isArray(values[field.key]) ? values[field.key].join(", ") || "Choose" : String(values[field.key] ?? "Choose") || "Choose")}</span>
             </button>; })}
           </div>
-          {!visibleFields.length && <p role="status" className="py-4 text-sm text-zinc-400">No controls match. Try another word or switch to All options.</p>}
+          {!visibleFields.length && <p role="status" className="py-4 text-sm text-zinc-400">No controls match. Try another word or switch to Advanced.</p>}
           {mode === "simple" && essentialFields.length < section.fields.length && <button type="button" className="min-h-11 mt-3 w-full rounded-xl border border-dashed hairline p-3 text-xs text-cyan-200" onClick={() => { setFieldSearch(""); onMode?.("advanced"); }}>Show all {section.title.toLowerCase()} controls</button>}
           {onMode && <div className="sheet-category-progress">
             <button type="button" disabled={categoryIndex <= 0} onClick={() => onSection(availableSections[categoryIndex - 1].key)}>Previous</button>
@@ -249,7 +249,7 @@ export default function MobileBuilderSheets({ sections, section, onSection, subj
         <button type="button" aria-pressed={detail === 'results'} onClick={() => { setHeight('expanded'); open('results'); }}>Results</button>
       </nav>
       <div className="flex gap-2"><button type="button" className="chip" onClick={() => {if (guided) setGuidedReview(true); open("output");}}>{guided ? "Review" : "Generation"}</button>
-        <button type="button" className="chip" onClick={onTools}>Advanced</button>
+        <button type="button" className="chip" onClick={onTools}>More tools</button>
         <button type="button" className="sheet-generate-button flex-1 rounded-xl bg-emerald-400 text-black py-3 text-sm font-bold disabled:opacity-40" disabled={generating || ((!guided || guidedReview) && !canGenerate)} onClick={guided && !guidedReview ? continueGuided : onGenerate}>{generating ? "Queuing…" : guided && !guidedReview ? (nextStage ? "Continue" : "Review & create") : `Generate (${imageCount})`}</button></div>
       {issues.length > 0 && (!guided || guidedReview) && <p className="text-xs text-amber-200 mt-1">{issues.join(" ")}</p>}
     </footer>

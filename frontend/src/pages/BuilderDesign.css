@@ -102,3 +102,42 @@
 .selected-details-drawer header {position:sticky;top:-20px;z-index:1;background:#12141c;padding:12px 0}
 .selection-panel header > button,.selection-panel fieldset > div > span {min-width:0;flex-wrap:wrap}
 .workspace-render-details {max-height:60dvh;overflow-y:auto}
+
+/* Keep the editor ahead of optional utilities on the initial desktop screen. */
+.workspace-tools {border:1px solid #ffffff20;border-radius:12px;padding:0 12px}
+.workspace-tools > summary {min-height:44px;align-content:center;cursor:pointer;font-size:13px;font-weight:600}
+.workspace-tools > summary span {font-weight:400;color:#a1a1aa;margin-left:12px;font-size:12px}
+.workspace-tools-content {display:grid;gap:12px;padding-bottom:12px}
+.desktop-detail-search summary {cursor:pointer;min-height:32px;align-content:center;font-size:12px;color:#a5f3fc}
+.desktop-detail-search[open] {flex-basis:100%}
+@media(min-width:768px) {
+  .design-workspace {padding-top:12px!important}
+  .design-workspace > * + * {margin-top:8px!important}
+  .design-workspace #studio-model {display:grid;grid-template-columns:1fr auto;gap:6px;padding:10px}
+  .design-workspace #studio-model > .workspace-render-status {grid-column:1}
+  .design-workspace #studio-model > p[role=status] {align-self:center;text-align:right}
+  .design-workspace #studio-model > .flex {grid-column:1/-1;flex-direction:row;gap:8px}
+  .design-workspace #studio-model > .flex > .flex.flex-wrap {display:contents}
+  .design-workspace #studio-model input[data-testid=input-character-name] {flex:0 1 180px;max-width:180px}
+  .design-workspace .workspace-tools .design-tool-panel {padding:8px!important}
+  .design-workspace .desktop-detail-navigation {display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:8px}
+  .design-workspace .desktop-detail-navigation > p {display:none}
+  .design-workspace .desktop-detail-navigation > .flex {margin-left:auto}
+  .design-workspace .desktop-detail-search[open] input {margin-top:4px}
+  .design-workspace [data-testid=desktop-focused-editor] > .grid {gap:6px}
+  .design-workspace [data-testid=desktop-focused-editor] > .grid > button {padding:8px}
+  .design-workspace .selection-panel {padding:12px;min-height:0}
+  .design-workspace .option-browser-results {min-height:0}
+  .design-workspace .workspace-preview-tools {gap:8px}
+  .design-workspace .workspace-preview-layout {gap:8px}
+  .design-workspace .workspace-preview-tools .chip {min-height:32px}
+}
+.option-browser-search > summary {min-height:32px;align-content:center;cursor:pointer;font-size:12px;color:#a5f3fc}
+@media(min-width:768px) {
+  .design-workspace [data-testid=desktop-focused-editor] {display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px;align-items:start}
+  .design-workspace [data-testid=desktop-focused-editor] > * {margin-top:0!important;min-width:0;grid-column:1/-1}
+  .design-workspace [data-testid=desktop-focused-editor] > .desktop-detail-navigation {grid-column:1}
+  .design-workspace [data-testid=desktop-focused-editor] > .grid {grid-column:2;grid-template-columns:repeat(2,minmax(0,1fr))}
+  .design-workspace .selection-panel > header .section-label {display:none}
+  .design-workspace .selection-panel > header h2 {font-size:16px}
+}
