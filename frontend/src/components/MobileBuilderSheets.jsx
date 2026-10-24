@@ -1,3 +1,4 @@
+import SelectedDetails from "./SelectedDetails";
 import { wardrobeFieldDisabled, wardrobeMode } from "@/lib/wardrobeMode";
 import { useEffect, useRef, useState } from "react";
 import { clamp, sheetSnap, motionDuration } from "@/lib/dragMotion";
@@ -74,6 +75,7 @@ export default function MobileBuilderSheets({ sections, section, onSection, subj
   const visibleFields = essentialFields.filter(field => `${field.label} ${field.key}`.toLowerCase().includes(fieldSearch.trim().toLowerCase()));
   useEffect(() => { setFieldSearch(""); setGuidedReview(false); if (fieldScroll.current) fieldScroll.current.scrollTop = 0; }, [section.key]);
   const [height, setHeight] = useState("expanded");
+  const [pendingDetail, setPendingDetail] = useState(null);
   const [detail, setDetail] = useState(null);
   const closeButton = useRef(null);
   const primary = useRef(null);
@@ -102,6 +104,10 @@ export default function MobileBuilderSheets({ sections, section, onSection, subj
   }, [closing]);
   useEffect(() => { setDetail(null); setClosing(false); setDetailOffset(0); }, [section.key]);
 
+  useEffect(() => {
+    if (pendingDetail?.section !== section.key) return;
+    setDetail(pendingDetail.field); setClosing(false); setDetailOffset(0); setPendingDetail(null);
+  }, [pendingDetail, section.key]);
   useEffect(() => { if (detail === "cast-poses" && subjects.length < 2) setDetail(null); }, [detail, subjects.length]);
   useEffect(() => {
     if (!detail) return;
@@ -231,10 +237,7 @@ export default function MobileBuilderSheets({ sections, section, onSection, subj
               else setDetailOffset(0);
             }} />
           <header className="flex items-center justify-between px-3 pb-3"><h2 id="sheet-detail-title" className="font-semibold">{label}</h2><button ref={closeButton} type="button" className="chip" onClick={close}>Done</button></header>
-          <div className="sheet-detail-scroll">{detail === "selected" ? <div className="space-y-2">
-            {selectedItems.length ? selectedItems.map(item => <button type="button" key={`${item.section}-${item.field}`} className="studio-selected-option w-full rounded-xl border p-3 text-left"
-              onClick={() => { onSection(item.section); close(); }}><span className="block text-xs text-zinc-400">{item.category} · {item.label}</span><span className="block text-sm mt-1">{item.value}</span></button>) : <p className="text-sm text-zinc-400">Choose a few options to review them here.</p>}
-          </div> : detail === "workspace" ? (typeof workspaceControls === "function" ? workspaceControls({close, openOutput: () => open("output")}) : workspaceControls)
+          <div className="sheet-detail-scroll">{detail === "selected" ? <SelectedDetails items={selectedItems} onEdit={item=>{setPendingDetail(item); onSection(item.section);}} /> : detail === "workspace" ? (typeof workspaceControls === "function" ? workspaceControls({close, openOutput: () => open("output")}) : workspaceControls)
             : detail === "results" ? (resultControls || <p className="p-3 text-sm text-zinc-400">No results yet. Choose your details, then generate an image.</p>) : detail === "output" ? outputControls : detail === "cast-poses" ? castPoseControls : renderControls(detail)}</div>
         </section>
       </>}

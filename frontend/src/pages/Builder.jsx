@@ -5,6 +5,7 @@ import { randomizePhotoSubjects } from '@/lib/photoRandomizer';
 import { photoCastIssues, coherePhotoCast, preserveSubjectLocks } from '@/lib/photoConsistency';
 import LearningHistoryPanel from '@/components/LearningHistoryPanel';
 import SceneReviewPanel from '@/components/SceneReviewPanel';
+import SelectedDetailsDrawer from '@/components/SelectedDetailsDrawer';
 import WorkspacePreviewLayout from '@/components/WorkspacePreviewLayout';
 import WorkspaceRenderStatus from '@/components/WorkspaceRenderStatus';
 import EditorPanelBoundary from '@/components/EditorPanelBoundary';
@@ -174,6 +175,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
   const imageToolApplied = useRef(false);
   const mediaLibraryImportApplied = useRef(false);
   const draftHydrated = useRef(false);
+  const [requestedDetail, setRequestedDetail] = useState(null);
   const [draftStatus, setDraftStatus] = useState("");
   const [smartBatchOptions, setSmartBatchOptions] = useState({
     pose: true,
@@ -2689,8 +2691,27 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
           )}
   </>);
 
+  const selectionNotes = resolveBuilderControls(activeDna).notes;
+  const selectedDetails = SECTIONS.flatMap(category => category.fields.flatMap(field => {
+    const value = builderSectionValue(category.key, activeDna, primaryDna)[field.key];
+    if (value === undefined || value === null || value === '' || (Array.isArray(value) && !value.length)) return [];
+    const display = option => field.optionLabels?.[option] || String(option);
+    const shared = category.key === 'scenario' || (category.key === 'pose' && field.key === 'explicit_level');
+    const lockSection = shared ? 'scenario' : category.key;
+    const sectionLocks = shared ? subjects[0]?.field_locks : activeFieldLocks;
+    return [{section:category.key, field:field.key, category:category.title, label:field.label,
+      value:(Array.isArray(value) ? value : [value]).map(display).join(', '),
+      locked:!!locks[lockSection] || !!sectionLocks?.[lockSection]?.[field.key],
+      note:selectionNotes.filter(note=>note.section===category.key && note.field===field.key).map(note=>note.text).join(' ')}];
+  }));
+  const editSelectedDetail = item => {
+    setDesktopQuickMode(false);
+    setCollapsed(current=>({...current,[item.section]:false}));
+    setRequestedDetail({...item, token:Date.now()});
+    openDesktopSection(item.section);
+  };
   const renderDnaControls = (sheetField = null) => (
-<EditorPanelBoundary key={`${activeSubjectId}-${activeSection}-${sheetField || "all"}`}><DesktopDnaEditor enabled={!sheetViewport && !sheetField}
+<EditorPanelBoundary key={`${activeSubjectId}-${activeSection}-${sheetField || "all"}`}><DesktopDnaEditor requestedField={requestedDetail?.section === activeSection ? requestedDetail : null} enabled={!sheetViewport && !sheetField}
             key={`${activeSubjectId}-${activeSection}`}
             section={!sheetField && studioProfile.specialtySection && activeSection === studioProfile.specialtySection
               ? { ...SECTIONS[activeIdx], fields: SECTIONS[activeIdx].fields.filter((field) => field.key === "composition_mode" || studioProfile.fieldGroups[specialtyTab]?.keys.includes(field.key)) }
@@ -2846,11 +2867,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
         sections={SECTIONS} section={SECTIONS[activeIdx]} onSection={goSection}
         stages={studioSteps} mode={mobileStudioMode} onMode={changeMobileStudioMode}
         simpleFieldKeys={SIMPLE_FIELD_KEYS[activeSection] || []}
-        selectedItems={SECTIONS.flatMap(category => category.fields.flatMap(field => {
-          const value = builderSectionValue(category.key, activeDna, primaryDna)[field.key];
-          const label = Array.isArray(value) ? value.join(", ") : String(value ?? "");
-          return label && !["0", "none"].includes(label) ? [{ section: category.key, field: field.key, category: category.title, label: field.label, value: label }] : [];
-        }))}
+        selectedItems={selectedDetails}
         subjects={subjects} activeId={activeSubjectId} onSubject={setActiveSubjectId}
         onPeople={() => goSection("scenario")}
         presetsControl={characterPresets}
@@ -3023,6 +3040,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
               </optgroup>
             )}
           </select>
+          {!isImageFirst && <div className="hidden md:block"><SelectedDetailsDrawer items={selectedDetails} onEdit={editSelectedDetail} /></div>}
           {!isImageFirst && editMode !== "body_adjust" && <div className="hidden md:block"><CharacterHistoryControls compact
             canUndo={characterHistory.canUndo} canRedo={characterHistory.canRedo}
             onUndo={characterHistory.undo} onRedo={characterHistory.redo} busy={dispatching || !!postRenderBusy} /></div>}
