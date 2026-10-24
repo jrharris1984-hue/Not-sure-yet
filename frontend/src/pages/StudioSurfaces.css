@@ -1,0 +1,158 @@
+/* Studio theme refresh for Design. Other saved color themes retain their palettes.
+   Layout, hit areas and sheet geometry live elsewhere. */
+:where(html[data-studio-theme="studio"], html:not([data-studio-theme])) .studio-shell .design-workspace {
+  --design-canvas: #0e1623;
+  --design-panel: #172334;
+  --design-edge: #394c63;
+  --design-text: #e8eff8;
+  --design-muted: #acbcd0;
+  --design-accent: #7de3d1;
+  --design-selected: #184a49;
+  --design-violet: #c4b5fd;
+  --design-lift: inset 0 1px 0 #ffffff0d, 0 8px 24px #02081440;
+  --design-control: linear-gradient(165deg, #2a3b50, #202e41 65%, #1c293b);
+  color: var(--design-text);
+  background: radial-gradient(ellipse at 85% 0, #6857aa12, transparent 55%),
+    radial-gradient(ellipse at 0 0, #42b9aa0c, transparent 45%), var(--design-canvas);
+  color-scheme: dark;
+}
+:where(html[data-studio-theme="studio"], html:not([data-studio-theme])) .studio-shell .design-workspace :is(.pane, .design-category-nav, .desktop-detail-navigation,
+  .workspace-tools, .workspace-render-details, .selected-details-drawer) {
+  background: linear-gradient(155deg, #1d2b3f, var(--design-panel) 70%);
+  border-color: var(--design-edge) !important;
+  box-shadow: var(--design-lift);
+}
+:where(html[data-studio-theme="studio"], html:not([data-studio-theme])) .studio-shell .design-workspace #studio-model {
+  background: linear-gradient(120deg, #203247, #18273a 72%);
+  border-color: #476078;
+  box-shadow: inset 0 1px 0 #ffffff15, 0 8px 24px #02081450;
+}
+:where(html[data-studio-theme="studio"], html:not([data-studio-theme])) .studio-shell .design-workspace [aria-label="Builder view"] {
+  background: #131f30;
+  border-color: #32475e;
+}
+:where(html[data-studio-theme="studio"], html:not([data-studio-theme])) .studio-shell .design-workspace :is(.chip, .sheet-field-card,
+  [data-testid^="desktop-edit-"], .selected-detail-row) {
+  background: var(--design-control);
+  border-color: var(--design-edge);
+  color: var(--design-text);
+  box-shadow: inset 0 1px 0 #ffffff12, 0 2px 4px #02081445;
+  transition: background-color 140ms ease, border-color 140ms ease, box-shadow 140ms ease, transform 140ms ease;
+}
+:where(html[data-studio-theme="studio"], html:not([data-studio-theme])) .studio-shell .design-workspace :is(.section-label, .selection-mode-label) {
+  font-family: inherit;
+  text-transform: none;
+  letter-spacing: .025em;
+  color: var(--design-muted);
+}
+:where(html[data-studio-theme="studio"], html:not([data-studio-theme])) .studio-shell .design-workspace :is(.text-zinc-400, .text-zinc-500, .text-zinc-600,
+  .workspace-tools > summary span, .design-category-nav label, .design-category-nav h3) {
+  color: var(--design-muted);
+}
+:where(html[data-studio-theme="studio"], html:not([data-studio-theme])) .studio-shell .design-workspace .selection-panel h2 {letter-spacing: -.015em; color: var(--design-text)}
+:where(html[data-studio-theme="studio"], html:not([data-studio-theme])) .studio-shell .design-workspace :is(input:not([type=range]):not([type=checkbox]):not([type=radio]), textarea, select) {
+  background: #101c2b;
+  color: var(--design-text);
+  border-color: #42566f !important;
+  box-shadow: inset 0 2px 5px #02081460, 0 1px 0 #ffffff07;
+}
+:where(html[data-studio-theme="studio"], html:not([data-studio-theme])) .studio-shell .design-workspace ::placeholder {color: #9aaec5; opacity: 1}
+:where(html[data-studio-theme="studio"], html:not([data-studio-theme])) .studio-shell .design-workspace select option {background: #101c2b; color: var(--design-text)}
+:where(html[data-studio-theme="studio"], html:not([data-studio-theme])) .studio-shell .design-workspace :is(.chip.active, button[aria-pressed=true], .sheet-field-card.has-selection) {
+  background: linear-gradient(155deg, #235a56, var(--design-selected));
+  color: #d4fff5;
+  border-color: #70bdaf;
+  box-shadow: inset 0 1px 0 #baffeb26, 0 2px 4px #02081445;
+}
+/* A small corner mark supplements aria-pressed without widening or reflowing choices. */
+:where(html[data-studio-theme="studio"], html:not([data-studio-theme])) .studio-shell .design-workspace .studio-choice {position: relative}
+:where(html[data-studio-theme="studio"], html:not([data-studio-theme])) .studio-shell .design-workspace .studio-choice[aria-pressed=true]::after {
+  content: "";
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  width: 13px;
+  height: 13px;
+  border: 1px solid #b8fff0;
+  border-radius: 50%;
+  background: #7de3d1 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='none' stroke='%230c2928' stroke-width='2.3' stroke-linecap='round' stroke-linejoin='round' d='m4 8 3 3 5-6'/%3E%3C/svg%3E") center / 11px no-repeat;
+  pointer-events: none;
+}
+:where(html[data-studio-theme="studio"], html:not([data-studio-theme])) .studio-shell .design-workspace .design-category-nav button {
+  color: var(--design-muted);
+  box-shadow: none;
+}
+:where(html[data-studio-theme="studio"], html:not([data-studio-theme])) .studio-shell .design-workspace .design-category-nav button[aria-current=page] {
+  background: #1c3b43;
+  color: #caffef;
+  box-shadow: inset 3px 0 0 var(--design-accent);
+}
+:where(html[data-studio-theme="studio"], html:not([data-studio-theme])) .studio-shell .design-workspace :is(.workspace-tools > summary, .design-tool-heading,
+  .desktop-detail-search summary, .option-browser-search summary) {color: var(--design-violet)}
+:where(html[data-studio-theme="studio"], html:not([data-studio-theme])) .studio-shell .design-workspace :is([data-testid="btn-dispatch-comfyui-render"], .sheet-generate-button) {
+  background: linear-gradient(160deg, #a3f0db, #61ccb9);
+  color: #102d2d;
+  border-color: #9de9d7;
+  box-shadow: inset 0 1px 0 #ffffff66, 0 3px 0 #255953, 0 5px 12px #02081440;
+}
+:where(html[data-studio-theme="studio"], html:not([data-studio-theme])) .studio-shell .design-workspace [data-testid="btn-save-character"] {
+  background: var(--design-control);
+  color: var(--design-text);
+  border: 1px solid var(--design-edge);
+  box-shadow: inset 0 1px 0 #ffffff12, 0 2px 4px #02081445;
+}
+:where(html[data-studio-theme="studio"], html:not([data-studio-theme])) .studio-shell .design-workspace :is(.guided-preview, .sheet-preview) {
+  background: radial-gradient(ellipse at top, #23354b, #0a1220 75%);
+  box-shadow: inset 0 0 0 1px #61778e40, 0 12px 30px #02081466;
+}
+:where(html[data-studio-theme="studio"], html:not([data-studio-theme])) .studio-shell .design-workspace :is(.guided-preview img, .sheet-preview img) {box-shadow: 0 8px 24px #0006}
+:where(html[data-studio-theme="studio"], html:not([data-studio-theme])) .studio-shell .design-workspace .selected-details-drawer::backdrop {background: #040a14b8}
+:where(html[data-studio-theme="studio"], html:not([data-studio-theme])) .studio-shell .design-workspace .selected-details-drawer header {background: var(--design-panel)}
+:where(html[data-studio-theme="studio"], html:not([data-studio-theme])) .studio-shell .design-workspace :is(button, a, input, textarea, select, summary):focus-visible {
+  outline: 2px solid var(--design-accent);
+  outline-offset: 3px;
+}
+:where(html[data-studio-theme="studio"], html:not([data-studio-theme])) .studio-shell .design-workspace :is(.option-browser-results, .sheet-field-scroll, .sheet-detail-scroll, .design-category-nav) {
+  scrollbar-color: #50667f #111d2d;
+}
+@media (hover:hover) and (pointer:fine) {
+  :where(html[data-studio-theme="studio"], html:not([data-studio-theme])) .studio-shell .design-workspace :is(.chip, .sheet-field-card, [data-testid^="desktop-edit-"], .selected-detail-row):not(:disabled):hover {
+    border-color: #91a9c5;
+    box-shadow: inset 0 1px 0 #ffffff20, 0 4px 10px #02081450;
+    transform: translateY(-1px);
+  }
+  :where(html[data-studio-theme="studio"], html:not([data-studio-theme])) .studio-shell .design-workspace .design-category-nav button:hover {background: #25374c; color: var(--design-text)}
+}
+:where(html[data-studio-theme="studio"], html:not([data-studio-theme])) .studio-shell .design-workspace :is(.chip, .sheet-field-card, .studio-choice, .sheet-generate-button):not(:disabled):active {
+  scale: 1;
+  transform: translateY(1px);
+  box-shadow: inset 0 2px 4px #02081455;
+}
+:where(html[data-studio-theme="studio"], html:not([data-studio-theme])) .studio-shell .design-workspace button:disabled {filter: none; cursor: not-allowed}
+@media (max-width:767px) {
+  :where(html[data-studio-theme="studio"], html:not([data-studio-theme])) .studio-shell .design-workspace .mobile-sheet-builder {background: var(--design-canvas)}
+  :where(html[data-studio-theme="studio"], html:not([data-studio-theme])) .studio-shell .design-workspace :is(.primary-creation-sheet, .nested-creation-sheet) {
+    background: linear-gradient(155deg, #203047, #172334 70%);
+    border-color: #536b85;
+    box-shadow: inset 0 1px 0 #ffffff12, 0 -8px 28px #02081455;
+  }
+  :where(html[data-studio-theme="studio"], html:not([data-studio-theme])) .studio-shell .design-workspace .sheet-generation-dock {
+    background: #111e30;
+    box-shadow: inset 0 1px 0 #536b8566, 0 -6px 20px #02081445;
+  }
+  :where(html[data-studio-theme="studio"], html:not([data-studio-theme])) .studio-shell .design-workspace .sheet-handle span {background: #7f93ac}
+  /* Subject identity remains distinct from selection and action colors. */
+  :where(html[data-studio-theme="studio"], html:not([data-studio-theme])) .studio-shell .design-workspace .sheet-person-button {border-color: var(--person-accent)}
+  :where(html[data-studio-theme="studio"], html:not([data-studio-theme])) .studio-shell .design-workspace .sheet-person-button[aria-pressed=true] {box-shadow: inset 0 -2px 0 var(--person-accent)}
+}
+@media (prefers-reduced-motion:reduce) {
+  :where(html[data-studio-theme="studio"], html:not([data-studio-theme])) .studio-shell .design-workspace :is(.chip, .sheet-field-card, .studio-choice, [data-testid^="desktop-edit-"], .sheet-generate-button) {
+    transition: none !important;
+    transform: none !important;
+    scale: 1 !important;
+  }
+}
+@media (forced-colors:active) {
+  :where(html[data-studio-theme="studio"], html:not([data-studio-theme])) .studio-shell .design-workspace .studio-choice[aria-pressed=true] {outline: 2px solid Highlight; outline-offset: -3px}
+  :where(html[data-studio-theme="studio"], html:not([data-studio-theme])) .studio-shell .design-workspace .studio-choice[aria-pressed=true]::after {display: none}
+}
