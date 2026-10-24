@@ -5,6 +5,7 @@ import { randomizePhotoSubjects } from '@/lib/photoRandomizer';
 import { photoCastIssues, coherePhotoCast, preserveSubjectLocks } from '@/lib/photoConsistency';
 import LearningHistoryPanel from '@/components/LearningHistoryPanel';
 import SceneReviewPanel from '@/components/SceneReviewPanel';
+import WorkspaceTools from '@/components/WorkspaceTools';
 import useWorkspaceOffsets from '@/hooks/useWorkspaceOffsets';
 import SelectedDetailsDrawer from '@/components/SelectedDetailsDrawer';
 import WorkspacePreviewLayout from '@/components/WorkspacePreviewLayout';
@@ -2801,6 +2802,122 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
               }}
             />;
 
+  const workspaceTools = !isImageFirst && <WorkspaceTools compact={!sheetViewport}>
+      {!isImageFirst && <details data-mobile-tools-container="presets prompts files" className="design-tool-panel pane p-3 sm:p-4 space-y-3" aria-label="Character tools" data-testid="builder-action-toolbar">
+        <summary className="design-tool-heading">Character tools <span>Presets, language, import & export</span></summary>
+        <div className={isImageFirst ? "hidden" : mobileStudioStep === "start" ? "block" : "hidden md:block"}>
+          <TagInput value={tags} onChange={setTags} placeholder="tag this character (mood, ethnicity, persona)…" testId="builder-tags" />
+        </div>
+        <div data-mobile-tools-container="presets prompts files" className="flex flex-wrap items-center gap-2">
+            <button data-mobile-tools="presets"
+              type="button"
+              onClick={() => save.mutate()}
+              disabled={save.isPending}
+              data-testid="btn-save-character-mobile-menu"
+              className="md:hidden inline-flex items-center gap-1.5 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm font-semibold text-amber-200 disabled:opacity-40"
+            >
+              {save.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Save character
+            </button>
+            <button data-mobile-tools="presets"
+              type="button"
+              onClick={resetCharacter}
+              data-testid="btn-reset-character"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-red-500/30 px-3 py-2 text-sm font-semibold text-red-300 hover:bg-red-500/10"
+              title="Reset all current character selections"
+            >
+              <RotateCcw className="h-4 w-4" /> Reset
+            </button>
+            <button data-mobile-tools="presets"
+              onClick={randomizeAllSubjects}
+              data-testid="btn-randomize-all"
+              className="inline-flex items-center gap-1.5 rounded-lg border hairline px-3 py-2 text-sm text-zinc-200 hover:bg-white/5"
+              title={isMulti ? `Randomize all ${subjects.length} subjects` : "Randomize DNA"}
+            >
+              <Shuffle className="h-4 w-4" /> {isMulti ? "Randomize all" : "Randomize"}
+            </button>
+            <div className="mobile-tools-panel" data-mobile-tools="presets">{!sheetViewport && characterPresets}</div>
+            <div data-mobile-tools="prompts"
+              className="inline-flex items-center gap-1 rounded-lg border border-hairline bg-elevated p-1 text-sm text-zinc-300"
+              title="Changes prompt vocabulary only; it never adds activities or changes DNA selections."
+              data-testid="prompt-language-control"
+            >
+              <Flame className="ml-1 h-4 w-4 shrink-0 text-fuchsia-300" />
+              <span className="hidden sm:inline px-1 text-xs">Language</span>
+              {[
+                ["editorial", "Editorial"],
+                ["direct", "Direct"],
+                ["explicit", "Explicit"],
+              ].map(([value, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => {
+                    setPromptLanguage(value);
+                    setRaunch(value === "explicit");
+                  }}
+                  className={
+                    "rounded-md px-2 py-1 text-[10px] font-semibold transition "
+                    + (promptLanguage === value
+                      ? "bg-fuchsia-500/20 text-fuchsia-100 ring-1 ring-fuchsia-500/30"
+                      : "text-zinc-500 hover:bg-white/5 hover:text-zinc-200")
+                  }
+                  aria-pressed={promptLanguage === value}
+                  data-testid={`btn-prompt-language-${value}`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            {!isNew && (
+              <div className="mobile-tools-panel" data-mobile-tools="files"><Link
+                to={`/shoots?character=${encodeURIComponent(id)}`}
+                data-testid="btn-open-shoot"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/40 bg-emerald-500/10 text-emerald-200 text-sm font-semibold px-3 py-2 hover:bg-emerald-500/20"
+                title="Batch photo shoot"
+              >
+                <Camera className="h-4 w-4" /> Shoot
+              </Link></div>
+            )}
+            <button data-mobile-tools="files"
+              onClick={exportJson}
+              data-testid="btn-export-json"
+              className="inline-flex items-center gap-1.5 rounded-lg border hairline px-3 py-2 text-sm text-zinc-300"
+              title="Export DNA JSON"
+            >
+              <Download className="h-4 w-4" /> Export
+            </button>
+            <label data-mobile-tools="files"
+              data-testid="btn-import-json"
+              className="inline-flex items-center gap-1.5 rounded-lg border hairline px-3 py-2 text-sm text-zinc-300 cursor-pointer"
+              title="Import DNA JSON"
+            >
+              <Upload className="h-4 w-4" /> Import
+              <input type="file" accept="application/json" onChange={importJson} className="hidden" />
+            </label>
+        </div>
+      </details>}
+
+      {!isImageFirst && <details className="design-tool-panel mobile-tools-panel pane p-3" data-mobile-tools="presets"><summary className="design-tool-heading">Randomize <span>Suites, individual details & saved randomizers</span></summary>{suiteRandomizers}<RandomSceneControls profile={randomProfile} onProfile={setRandomProfile} onRandomize={randomizeSceneMode} onPhotoRandomize={randomizePhoto} onCustomRandomize={randomizeCustomPhoto} issues={naturalPhotoIssues} busy={dispatching} /></details>}
+      {!isImageFirst && mobileStudioStep === "start" && <details className="design-tool-panel pane p-3" data-mobile-tools="none"><summary className="design-tool-heading">Creation mode <span>{studioProfile.title || studioMode}</span></summary><StudioModePicker value={studioMode} onChange={changeStudioMode} disabled={dispatching} /></details>}
+      {!isImageFirst && editMode !== "body_adjust" && <details className="design-tool-panel pane p-3" data-mobile-tools="none"><summary className="design-tool-heading">Pinned categories</summary><PinnedSectionControls
+        sections={SECTIONS} pinned={sectionPins.pinned} limit={sectionPins.limit}
+        currentSection={quickReview || mobileStudioStep === "create" ? null : activeSection}
+        activeSection={quickReview || mobileStudioStep === "create" ? null : activeSection}
+        onToggle={sectionPins.toggle} onSection={openPinnedSection}
+      /></details>}
+      <div data-mobile-tools="prompts" className={isImageFirst ? "hidden" : mobileStudioStep === "start" ? "block" : "hidden md:block"}>
+        <AiAssistBar dna={activeDna} aiProvider={aiProvider}
+          onApplyDna={(draft) => { setActiveDna(draft); setPlainLanguage(""); }}
+          onApplySubjects={(draftSubjects) => {
+            setSubjects(draftSubjects);
+            setActiveSubjectId(draftSubjects[0].id);
+            setPlainLanguage("");
+            setPromptOverride("");
+            setNegativePromptOverride("");
+          }} />
+      </div>
+  </WorkspaceTools>;
+
   if (imageToolId && (!editorHydrated || workflowsLoading)) return <div className="mx-auto max-w-4xl p-6 text-zinc-400">Loading image tool…</div>;
   if (imageToolId && !workflows.some(workflow => workflow.id === imageToolId && IMAGE_TOOL_KINDS.includes(workflow.kind))) return <div className="mx-auto max-w-4xl p-6 text-zinc-400">This image tool is unavailable. <button type="button" onClick={() => nav('/')} className="text-cyan-300 underline">Return to the main screen</button> or refresh workflows in Settings.</div>;
   if (imageToolId && !IMAGE_TOOL_KINDS.includes(activeWorkflow?.kind)) return <div className="mx-auto max-w-4xl p-6 text-zinc-400">Opening image tool…</div>;
@@ -3114,110 +3231,17 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
           </div>
         )}
         </div>
-        <div className={isImageFirst ? "hidden" : mobileStudioStep === "start" ? "block" : "hidden md:block"}>
-          <TagInput value={tags} onChange={setTags} placeholder="tag this character (mood, ethnicity, persona)…" testId="builder-tags" />
-        </div>
+
       </div>
 
-      {!isImageFirst && <details data-mobile-tools-container="presets prompts files" className="design-tool-panel pane p-3 sm:p-4 space-y-3" aria-label="Character tools" data-testid="builder-action-toolbar">
-        <summary className="design-tool-heading">Character tools <span>Presets, language, import & export</span></summary>
-        <div data-mobile-tools-container="presets prompts files" className="flex flex-wrap items-center gap-2">
-            <button data-mobile-tools="presets"
-              type="button"
-              onClick={() => save.mutate()}
-              disabled={save.isPending}
-              data-testid="btn-save-character-mobile-menu"
-              className="md:hidden inline-flex items-center gap-1.5 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm font-semibold text-amber-200 disabled:opacity-40"
-            >
-              {save.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Save character
-            </button>
-            <button data-mobile-tools="presets"
-              type="button"
-              onClick={resetCharacter}
-              data-testid="btn-reset-character"
-              className="inline-flex items-center gap-1.5 rounded-lg border border-red-500/30 px-3 py-2 text-sm font-semibold text-red-300 hover:bg-red-500/10"
-              title="Reset all current character selections"
-            >
-              <RotateCcw className="h-4 w-4" /> Reset
-            </button>
-            <button data-mobile-tools="presets"
-              onClick={randomizeAllSubjects}
-              data-testid="btn-randomize-all"
-              className="inline-flex items-center gap-1.5 rounded-lg border hairline px-3 py-2 text-sm text-zinc-200 hover:bg-white/5"
-              title={isMulti ? `Randomize all ${subjects.length} subjects` : "Randomize DNA"}
-            >
-              <Shuffle className="h-4 w-4" /> {isMulti ? "Randomize all" : "Randomize"}
-            </button>
-            <div className="mobile-tools-panel" data-mobile-tools="presets">{!sheetViewport && characterPresets}</div>
-            <div data-mobile-tools="prompts"
-              className="inline-flex items-center gap-1 rounded-lg border border-hairline bg-elevated p-1 text-sm text-zinc-300"
-              title="Changes prompt vocabulary only; it never adds activities or changes DNA selections."
-              data-testid="prompt-language-control"
-            >
-              <Flame className="ml-1 h-4 w-4 shrink-0 text-fuchsia-300" />
-              <span className="hidden sm:inline px-1 text-xs">Language</span>
-              {[
-                ["editorial", "Editorial"],
-                ["direct", "Direct"],
-                ["explicit", "Explicit"],
-              ].map(([value, label]) => (
-                <button
-                  key={value}
-                  type="button"
-                  onClick={() => {
-                    setPromptLanguage(value);
-                    setRaunch(value === "explicit");
-                  }}
-                  className={
-                    "rounded-md px-2 py-1 text-[10px] font-semibold transition "
-                    + (promptLanguage === value
-                      ? "bg-fuchsia-500/20 text-fuchsia-100 ring-1 ring-fuchsia-500/30"
-                      : "text-zinc-500 hover:bg-white/5 hover:text-zinc-200")
-                  }
-                  aria-pressed={promptLanguage === value}
-                  data-testid={`btn-prompt-language-${value}`}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-            {!isNew && (
-              <div className="mobile-tools-panel" data-mobile-tools="files"><Link
-                to={`/shoots?character=${encodeURIComponent(id)}`}
-                data-testid="btn-open-shoot"
-                className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/40 bg-emerald-500/10 text-emerald-200 text-sm font-semibold px-3 py-2 hover:bg-emerald-500/20"
-                title="Batch photo shoot"
-              >
-                <Camera className="h-4 w-4" /> Shoot
-              </Link></div>
-            )}
-            <button data-mobile-tools="files"
-              onClick={exportJson}
-              data-testid="btn-export-json"
-              className="inline-flex items-center gap-1.5 rounded-lg border hairline px-3 py-2 text-sm text-zinc-300"
-              title="Export DNA JSON"
-            >
-              <Download className="h-4 w-4" /> Export
-            </button>
-            <label data-mobile-tools="files"
-              data-testid="btn-import-json"
-              className="inline-flex items-center gap-1.5 rounded-lg border hairline px-3 py-2 text-sm text-zinc-300 cursor-pointer"
-              title="Import DNA JSON"
-            >
-              <Upload className="h-4 w-4" /> Import
-              <input type="file" accept="application/json" onChange={importJson} className="hidden" />
-            </label>
-        </div>
-      </details>}
-
-      {!isImageFirst && <details className="design-tool-panel mobile-tools-panel pane p-3" data-mobile-tools="presets"><summary className="design-tool-heading">Randomize <span>Suites, individual details & saved randomizers</span></summary>{suiteRandomizers}<RandomSceneControls profile={randomProfile} onProfile={setRandomProfile} onRandomize={randomizeSceneMode} onPhotoRandomize={randomizePhoto} onCustomRandomize={randomizeCustomPhoto} issues={naturalPhotoIssues} busy={dispatching} /></details>}
+      {workspaceTools}
 
       {isImageFirst && <div className="mobile-tools-panel" data-mobile-tools="none"><ImageSourceFlow title={activeWorkflow?.name} animation={isVideoWorkflow} variation={isVariationWorkflow} source={referenceImage} preview={referencePreview}
         readyToRender={!isQwenReferenceWorkflow || qwenEditVariant !== "pose" || !!poseReferenceImage?.name}
         uploading={referenceUploading || (isQwenReferenceWorkflow && poseReferenceUploading)} busy={dispatching} onUpload={uploadReference} onRemove={clearReference} onRender={doDispatch}
         renderCount={renderCount} onRenderCount={setRenderCount}>{imageSourceControls}</ImageSourceFlow></div>}
 
-      {!isImageFirst && mobileStudioStep === "start" && <details className="design-tool-panel pane p-3" data-mobile-tools="none"><summary className="design-tool-heading">Creation mode <span>{studioProfile.title || studioMode}</span></summary><StudioModePicker value={studioMode} onChange={changeStudioMode} disabled={dispatching} /></details>}
+
 
       {!isImageFirst && <div className="mobile-tools-panel" data-mobile-tools="none"><MobileStudioFlow
         steps={studioSteps}
@@ -3241,29 +3265,14 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
         onUndo={characterHistory.undo} onRedo={characterHistory.redo} busy={dispatching || !!postRenderBusy}
       /></div>}
 
-      {!isImageFirst && editMode !== "body_adjust" && <details className="design-tool-panel pane p-3" data-mobile-tools="none"><summary className="design-tool-heading">Pinned categories</summary><PinnedSectionControls
-        sections={SECTIONS} pinned={sectionPins.pinned} limit={sectionPins.limit}
-        currentSection={quickReview || mobileStudioStep === "create" ? null : activeSection}
-        activeSection={quickReview || mobileStudioStep === "create" ? null : activeSection}
-        onToggle={sectionPins.toggle} onSection={openPinnedSection}
-      /></details>}
+
 
       {!isImageFirst && reviewEditing && editMode !== "body_adjust" && <div data-mobile-tools="none">
         <ReviewEditBanner sectionTitle={SECTIONS.find((section) => section.key === activeSection)?.title} onReturn={returnToReview} />
       </div>}
 
 
-      <div data-mobile-tools="prompts" className={isImageFirst ? "hidden" : mobileStudioStep === "start" ? "block" : "hidden md:block"}>
-        <AiAssistBar dna={activeDna} aiProvider={aiProvider}
-          onApplyDna={(draft) => { setActiveDna(draft); setPlainLanguage(""); }}
-          onApplySubjects={(draftSubjects) => {
-            setSubjects(draftSubjects);
-            setActiveSubjectId(draftSubjects[0].id);
-            setPlainLanguage("");
-            setPromptOverride("");
-            setNegativePromptOverride("");
-          }} />
-      </div>
+
 
       {!isImageFirst && mobileStudioStep === "create" && !showMobileResult && (
         <>
