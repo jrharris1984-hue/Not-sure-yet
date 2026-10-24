@@ -45,8 +45,8 @@ export default function DesktopDnaEditor({ enabled, requestedField, ...props }) 
     .map(key => props.section.fields.find(field => field.key === key) || group.fields.find(field => desktopFieldTarget(props.section.key, field.key) === key));
   const active = fields.find(field => field.key === fieldKey) || fields.find(field => props.section.key !== 'wardrobe' || !wardrobeFieldDisabled(field.key, props.value)) || fields[0];
   return <div className="space-y-3" data-testid="desktop-focused-editor">
-    <nav className="sticky top-20 z-20 rounded-xl border border-white/10 bg-[#12141C]/95 p-3 backdrop-blur" aria-label={`${props.section.title} editing groups`}>
-      {searchControl}
+    <nav className="desktop-detail-navigation sticky top-20 z-20 rounded-xl border border-white/10 bg-[#12141C]/95 p-3 backdrop-blur" aria-label={`${props.section.title} editing groups`}>
+      <details className="desktop-detail-search"><summary>Find a detail</summary>{searchControl}</details>
       <p className="mt-3 mb-2 text-xs text-zinc-400">{props.section.title} / <span className="text-white">{group.label}</span> · choose one detail to edit</p>
       <div className="flex flex-wrap gap-2">{matchingGroups.map(item => <button key={item.key} type="button"
         aria-pressed={group.key === item.key} onClick={() => { setGroupKey(item.key); setFieldKey(''); }}
