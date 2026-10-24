@@ -1,3 +1,4 @@
+import SettingFinder from './SettingFinder';
 import SelectedDetails from "./SelectedDetails";
 import { wardrobeFieldDisabled, wardrobeMode } from "@/lib/wardrobeMode";
 import { useEffect, useRef, useState } from "react";
@@ -149,6 +150,7 @@ export default function MobileBuilderSheets({ sections, section, onSection, subj
         }} />
       <div className="sheet-primary-content" inert={!!detail} aria-hidden={detail ? true : undefined}>
         <div className="flex gap-2 items-center px-3 pb-2 overflow-x-auto">
+          <SettingFinder sections={sections} onSelect={item => {setGuidedReview(false);setHeight("expanded");setPendingDetail(item);onSection(item.section);}} />
           <button type="button" className="chip shrink-0" onClick={onPeople}>People · {subjects.length}</button>
           {subjects.map((person, index) => <button type="button" key={person.id} style={personStyle(index)} aria-pressed={person.id === activeId}
             className={`chip sheet-person-button shrink-0 ${person.id === activeId ? "active" : ""}`} onClick={() => onSubject(person.id)}><span className="studio-person-badge" aria-hidden="true" data-label={person.label} />Edit {person.label}</button>)}
