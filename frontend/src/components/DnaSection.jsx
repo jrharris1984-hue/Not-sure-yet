@@ -244,6 +244,7 @@ export default function DnaSection({
             <div className="flex items-center justify-between text-xs text-zinc-400 font-mono uppercase tracking-widest">
               <span className="flex items-center gap-1.5">
                 {f.label}
+                {["chips", "pose_chips", "chips_multi"].includes(f.type) && <span className="selection-mode-label">{f.type === "chips_multi" ? "Choose multiple" : "Choose one"}</span>}
                 {priority?.inactive && <span className="text-[10px] text-amber-300 normal-case tracking-normal">Overridden</span>}
                 {fLocked && <Lock className="h-3 w-3 text-amber-300" />}
               </span>
