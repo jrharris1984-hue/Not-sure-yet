@@ -143,7 +143,7 @@ export default function GroupedChips({
                 data-testid={`${testIdPrefix}-${opt.replace(/\s+/g, "-")}`}
                 aria-pressed={isActive}
                 onClick={() => toggle(opt)}
-                className={`flex flex-col items-center justify-center gap-1 rounded-xl border p-2 text-[10px] leading-tight text-center min-h-[108px] transition-all ${
+                className={`studio-choice flex flex-col items-center justify-center gap-1 rounded-xl border p-2 text-[10px] leading-tight text-center min-h-[108px] transition-all ${
                   isActive
                     ? "border-amber-500 bg-amber-500/10 text-amber-100 shadow-[0_0_20px_rgba(245,158,11,0.15)]"
                     : "border-[#222634] bg-[#12141C] text-zinc-300 hover:border-zinc-600 hover:bg-[#1A1D28]"
@@ -164,7 +164,7 @@ export default function GroupedChips({
                 key={opt}
                 type="button"
                 data-testid={`${testIdPrefix}-${opt.replace(/\s+/g, "-")}`}
-                className={`chip ${isActive ? "active" : ""}`}
+                className={`studio-choice chip ${isActive ? "active" : ""}`}
                 aria-pressed={isActive}
                 onClick={() => toggle(opt)}
               >
