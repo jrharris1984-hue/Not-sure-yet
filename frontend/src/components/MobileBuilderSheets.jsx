@@ -3,7 +3,8 @@ import { wardrobeFieldDisabled, wardrobeMode } from "@/lib/wardrobeMode";
 import { useEffect, useRef, useState } from "react";
 import { clamp, sheetSnap, motionDuration } from "@/lib/dragMotion";
 import { UserRound, ScanFace, Scissors, Shirt, PersonStanding, Users, Palette, Sun, Camera, MapPin, Sparkles, Layers, Footprints, Droplets } from "lucide-react";
-import { mediaUrl } from "@/lib/media";
+import StudioPreviewMedia from "./StudioPreviewMedia";
+import {renderFeedback} from "@/lib/renderFeedback";
 import { SIZE_CONTROL_PAIRS, sizeControlSummary } from "@/lib/physiqueControlPriority";
 
 const CATEGORY_ICONS = { identity: UserRound, physique: PersonStanding, face: ScanFace, hair: Scissors,
@@ -60,6 +61,7 @@ export default function MobileBuilderSheets({ sections, section, onSection, subj
   onPeople, presetsControl, values, renderControls, preview, livePreview, renderStatus, renderError, outputControls, castPoseControls,
   workspaceControls, resultControls, reviewControls, stages = [], mode = "advanced", onMode, simpleFieldKeys = [],
   onSave, onReset, saving, onGenerate, generating, canGenerate, issues = [], imageCount, onTools, selectedItems = [] }) {
+  const feedback = renderFeedback(renderStatus, generating);
   const [guidedReview, setGuidedReview] = useState(false);
   const guided = mode === "simple" && stages.length > 0;
   const fieldScroll = useRef(null);
@@ -131,9 +133,9 @@ export default function MobileBuilderSheets({ sections, section, onSection, subj
       </header>
       {typeof reviewControls === "function" ? reviewControls({openOutput: () => open("output")}) : reviewControls}
       <div className="sheet-preview">
-        {livePreview || (preview ? <img src={mediaUrl(preview)} alt="Latest character result" /> : <div className="text-center text-zinc-500 text-sm p-6">Your generated character will appear here.<br /><span className="text-xs">Open a category below to start.</span></div>)}
+        {livePreview || <StudioPreviewMedia source={preview} status={renderStatus} submitting={generating} alt="Latest character result"/>}
       </div>
-      <div className={`studio-generation-status status-${renderStatus || "ready"}`} role="status"><span className="studio-status-dot" aria-hidden="true" />{renderStatus ? `Generation: ${renderStatus}` : "Ready to create"}</div>
+      <div className={`studio-generation-status status-${feedback.state}`} role="status"><span className="studio-status-dot" aria-hidden="true" />{feedback.label}</div>
       {renderError && <p className="text-xs text-rose-300">{renderError}</p>}
     </div>
     <div ref={primary} className={`primary-creation-sheet sheet-${height}`} data-testid="primary-creation-sheet"

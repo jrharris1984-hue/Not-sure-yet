@@ -63,6 +63,16 @@ async function check(browser,viewport) {
       await page.getByTestId('btn-dispatch-comfyui-render').click();
       await page.waitForFunction(()=>document.body.textContent.includes('Ready to view'));
       assert.equal(fixture.dispatches,1,'Render should submit exactly once to the fixture');
+      if(viewport.width>=1280) {
+        const expand=page.locator('.workspace-preview-content').getByRole('button',{name:'View larger preview'});
+        await expand.click();
+        const enlarged=page.getByRole('dialog',{name:'Expanded character preview'});
+        await enlarged.waitFor({state:'visible'});
+        await page.keyboard.press('Escape');
+        await enlarged.waitFor({state:'hidden'});
+        assert.equal(await expand.evaluate(el=>el===document.activeElement),true,'Closing the larger preview must restore focus');
+        assert.equal(fixture.dispatches,1,'Viewing a preview must not submit another render');
+      }
       await page.reload({waitUntil:'domcontentloaded'});
       assert.equal(await page.getByTestId('input-character-name').inputValue(),'UI walkthrough');
     } else {
