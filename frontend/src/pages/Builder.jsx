@@ -5,6 +5,7 @@ import { randomizePhotoSubjects } from '@/lib/photoRandomizer';
 import { photoCastIssues, coherePhotoCast, preserveSubjectLocks } from '@/lib/photoConsistency';
 import LearningHistoryPanel from '@/components/LearningHistoryPanel';
 import SceneReviewPanel from '@/components/SceneReviewPanel';
+import EditorPanelBoundary from '@/components/EditorPanelBoundary';
 import DesktopDnaEditor from '@/components/DesktopDnaEditor';
 import DesignCategoryNavigation from '@/components/DesignCategoryNavigation';
 import './BuilderDesign.css';
@@ -171,6 +172,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
   const imageToolApplied = useRef(false);
   const mediaLibraryImportApplied = useRef(false);
   const draftHydrated = useRef(false);
+  const [draftStatus, setDraftStatus] = useState("");
   const [smartBatchOptions, setSmartBatchOptions] = useState({
     pose: true,
     camera: true,
@@ -839,7 +841,8 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
 
   useEffect(() => {
     if (!draftHydrated.current) return undefined;
-    const timer = window.setTimeout(() => writeBuilderDraft(draftId, {
+    setDraftStatus("Saving draft…");
+    const snapshot = {
       name, subjects, activeSubjectId, locks, collapsed, tags, raunch, promptLanguage,
       promptOverride, plainLanguage, negativePromptOverride, workflowId, loraOverrides,
       editInstruction, preserveUnmentioned, repairTargets, repairInstruction,
@@ -849,8 +852,13 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
       videoInstruction, videoFrames, videoFps, videoWidth, videoHeight,
       qualityTier, poseAssistEnabled, poseAssistStrength, poseAssistPolish,
       selectedLora, secondaryLora, showSecondLora, chromaSettings, activeRender,
-    }), 350);
-    return () => window.clearTimeout(timer);
+    };
+    const flush = () => writeBuilderDraft(draftId, snapshot);
+    const timer = window.setTimeout(() => {
+      setDraftStatus(flush() ? "Draft saved in this tab" : "Draft in memory only — use Save before refreshing");
+    }, 350);
+    window.addEventListener("pagehide", flush);
+    return () => { window.clearTimeout(timer); window.removeEventListener("pagehide", flush); flush(); };
   }, [
     draftId, name, subjects, activeSubjectId, locks, collapsed, tags, raunch, promptLanguage,
     promptOverride, plainLanguage, negativePromptOverride, workflowId, loraOverrides,
@@ -2680,7 +2688,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
   </>);
 
   const renderDnaControls = (sheetField = null) => (
-<DesktopDnaEditor enabled={!sheetViewport && !sheetField}
+<EditorPanelBoundary key={`${activeSubjectId}-${activeSection}-${sheetField || "all"}`}><DesktopDnaEditor enabled={!sheetViewport && !sheetField}
             key={`${activeSubjectId}-${activeSection}`}
             section={!sheetField && studioProfile.specialtySection && activeSection === studioProfile.specialtySection
               ? { ...SECTIONS[activeIdx], fields: SECTIONS[activeIdx].fields.filter((field) => field.key === "composition_mode" || studioProfile.fieldGroups[specialtyTab]?.keys.includes(field.key)) }
@@ -2720,7 +2728,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
             collapsed={sheetField ? false : !!collapsed[activeSection]}
             simpleFieldKeys={SIMPLE_FIELD_KEYS[activeSection] || []}
             onRequestAdvanced={() => sheetViewport ? setMobileStudioMode("advanced") : setDesktopQuickMode(false)}
-          />
+          /></EditorPanelBoundary>
   );
 
   const characterPresets = <PresetsMenu
@@ -2973,6 +2981,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
         </button>
       </div>
       <div data-mobile-tools="none" id="studio-model" className="pane scroll-mt-24 p-2.5 sm:p-4 flex flex-col gap-2.5 sm:gap-3">
+        <p role="status" className="text-xs text-zinc-400">{save.isPending ? "Saving character…" : save.isError ? "Character save failed — retry Save" : draftStatus}</p>
         <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
           <Input
             data-testid="input-character-name"
