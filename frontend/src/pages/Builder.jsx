@@ -3784,7 +3784,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
             {characterPresets}
           </section>}
           <WorkspacePreviewLayout preview={<GuidedCharacterPreview preview={activeRender?.output_files?.[0] || referencePreview || character?.thumbnail}
-              name={name} dna={activeDna} stages={quickStages} sections={SECTIONS} onSection={openDesktopSection}
+              renderStatus={activeRender?.status} submitting={dispatching} name={name} dna={activeDna} stages={quickStages} sections={SECTIONS} onSection={openDesktopSection}
               onReview={() => { setDesktopQuickMode(true); selectQuickStage(quickStages.length - 1); }} />}>
             {renderDnaControls()}
           </WorkspacePreviewLayout>
