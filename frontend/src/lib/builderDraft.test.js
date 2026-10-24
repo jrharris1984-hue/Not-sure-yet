@@ -1,30 +1,24 @@
-import { builderDraftKey, clearBuilderDraft, readBuilderDraft, writeBuilderDraft, resetWorkspaceDrafts, startWorkspaceSession } from "./builderDraft";
-
-describe("builder drafts", () => {
-  afterEach(() => {window.localStorage.clear();resetWorkspaceDrafts();});
-
-  it("saves and restores a versioned character editing session", () => {
-    writeBuilderDraft("character-1", { name: "Still editing", workflowId: "zimage", subjects: [{ id: "a" }] });
-    expect(readBuilderDraft("character-1")).toMatchObject({
-      version: 1,
-      name: "Still editing",
-      workflowId: "zimage",
-    });
-    expect(window.localStorage.getItem(builderDraftKey("character-1"))).toBeNull();
-  });
-
-  it("clears only the requested draft", () => {
-    writeBuilderDraft(null, { name: "new" });
-    clearBuilderDraft(null);
-    expect(readBuilderDraft(null)).toBeNull();
-  });
-});
-
-it('a new app load starts at the roster with no unfinished draft', () => {
-  writeBuilderDraft(null,{name:'Unsaved character'});
-  window.localStorage.setItem(builderDraftKey(null),JSON.stringify({version:1,name:'Old draft'}));
-  const browser={history:{replaceState:jest.fn()}};
+import { builderDraftKey, clearBuilderDraft, readBuilderDraft, writeBuilderDraft, resetWorkspaceDrafts, startWorkspaceSession } from './builderDraft';
+afterEach(() => { resetWorkspaceDrafts(); jest.restoreAllMocks(); });
+it('recovers a draft after an app reload without changing the URL', () => {
+  writeBuilderDraft('a', {name:'Work in progress', subjects:[{id:'one'}]});
+  const browser = {history:{replaceState:jest.fn()}};
   startWorkspaceSession(browser);
-  expect(browser.history.replaceState).toHaveBeenCalledWith(null,'','/');
-  expect(readBuilderDraft(null)).toBeNull();
+  expect(readBuilderDraft('a')).toMatchObject({version:1,name:'Work in progress'});
+  expect(browser.history.replaceState).not.toHaveBeenCalled();
+});
+it('clears only the requested draft and supports explicit reset', () => {
+  writeBuilderDraft('a', {name:'A'}); writeBuilderDraft('b', {name:'B'});
+  clearBuilderDraft('a'); expect(readBuilderDraft('a')).toBeNull();
+  expect(readBuilderDraft('b').name).toBe('B');
+  resetWorkspaceDrafts(); expect(readBuilderDraft('b')).toBeNull();
+});
+it('ignores corrupt drafts', () => {
+  sessionStorage.setItem(builderDraftKey('bad'), '{broken');
+  expect(readBuilderDraft('bad')).toBeNull();
+});
+it('retains an in-memory copy when browser storage is full', () => {
+  jest.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {throw new Error('quota');});
+  expect(writeBuilderDraft('a', {name:'Still here'})).toBe(false);
+  expect(readBuilderDraft('a').name).toBe('Still here');
 });

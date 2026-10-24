@@ -24,3 +24,14 @@
   .design-workspace .design-tool-heading span {display:block;margin:4px 0}
 }
 .design-workspace summary:focus-visible,.design-category-nav button:focus-visible,.design-category-nav input:focus-visible {outline:2px solid #22d3ee;outline-offset:3px}
+
+/* Keep long lists inside a predictable editing area, including mobile sheets. */
+.option-browser-results {max-height:360px;overflow:auto;overscroll-behavior:contain;scrollbar-gutter:stable;padding:3px}
+.design-workspace .option-browser-results {min-height:120px}
+.design-workspace .selection-panel {min-width:0;scroll-margin-top:150px}
+.design-workspace button:focus-visible,.option-browser button:focus-visible {outline:2px solid #22d3ee;outline-offset:3px}
+.design-workspace .option-browser .chip {min-height:44px}
+.design-workspace .design-tool-panel {transition:border-color .15s ease}
+@media(prefers-reduced-motion:reduce) {
+  .design-workspace *, .option-browser * {scroll-behavior:auto!important;transition:none!important;animation:none!important}
+}

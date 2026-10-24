@@ -1,3 +1,4 @@
+import useTabPreference from '@/hooks/useTabPreference';
 import { useState } from 'react';
 import DnaSection from './DnaSection';
 import { desktopEditingGroups, desktopFieldTarget } from '@/lib/desktopEditingGroups';
@@ -23,8 +24,8 @@ export default function DesktopDnaEditor({ enabled, ...props }) {
   const [search, setSearch] = useState('');
   const matchingGroups = groups.map(group => ({ ...group, fields: group.fields.filter(field =>
     `${group.label} ${field.label} ${field.key}`.toLowerCase().includes(search.trim().toLowerCase())) })).filter(group => group.fields.length);
-  const [groupKey, setGroupKey] = useState('');
-  const [fieldKey, setFieldKey] = useState('');
+  const [groupKey, setGroupKey] = useTabPreference(`ultra:detail-group:${props.section.key}`, '');
+  const [fieldKey, setFieldKey] = useTabPreference(`ultra:detail-field:${props.section.key}`, '');
   if (!enabled || !simpleFields.length || !groups.length || props.focusedField) return <DnaSection {...props} />;
   const searchControl = <label className="block text-xs text-zinc-400">Find a detail
     <input type="search" className="studio-control-search mt-2" placeholder={`Search ${props.section.title.toLowerCase()}…`}

@@ -1,15 +1,16 @@
+import useTabPreference from "./useTabPreference";
 import { useEffect, useState } from "react";
 import { createSectionsForStep, createStepForSection } from "@/lib/createJourney";
 
 export function useCreateShellState({ activeSection, studioSteps, nav, sectionUrl }) {
   const [mobileStudioStep, setMobileStudioStep] = useState(() => createStepForSection(activeSection, studioSteps));
-  const [mobileStudioMode, setMobileStudioMode] = useState("simple");
+  const [mobileStudioMode, setMobileStudioMode] = useTabPreference("ultra:mobile-view", "simple");
   const [mobileSheets, setMobileSheets] = useState(true);
   const [mobileToolsGroup, setMobileToolsGroup] = useState("overview");
   const [sheetViewport, setSheetViewport] = useState(() =>
     window.matchMedia?.("(max-width: 767px)").matches ?? window.innerWidth < 768
   );
-  const [desktopQuickMode, setDesktopQuickMode] = useState(true);
+  const [desktopQuickMode, setDesktopQuickMode] = useTabPreference("ultra:desktop-simple", true);
   const [specialtyTab, setSpecialtyTab] = useState(0);
   const [quickReview, setQuickReview] = useState(false);
   const [reviewEditing, setReviewEditing] = useState(false);
@@ -39,7 +40,7 @@ export function useCreateShellState({ activeSection, studioSteps, nav, sectionUr
     if (stepId === "create") setReviewEditing(false);
     const visibleSections = createSectionsForStep(stepId, mobileStudioMode, studioSteps);
     if (visibleSections.length && !visibleSections.includes(activeSection)) nav(sectionUrl(visibleSections[0]));
-    window.requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "smooth" }));
+    window.requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" }));
   };
 
   const beginReviewEdit = (key) => {

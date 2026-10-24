@@ -1,4 +1,5 @@
 import { LEGACY_ANATOMY_FIELDS } from "@/lib/anatomyDetailControls";
+import OptionBrowser from "./OptionBrowser";
 import {useState} from 'react';
 import {wardrobeGroups,wardrobeGroupFor} from '@/lib/wardrobeLayout';
 import { wardrobeMode, wardrobeFieldDisabled, editWardrobeField } from "@/lib/wardrobeMode";
@@ -14,8 +15,8 @@ import { physiqueControlStatus, SIZE_CONTROL_PAIRS, sizeControlMode, selectSizeC
 
 export function ChipRow({ options, value, onChange, testIdPrefix, labels = {} }) {
   return (
-    <div className="flex flex-wrap gap-2">
-      {options.map((opt) => {
+    <OptionBrowser options={options} value={value} labels={labels}>{visible => <div className="flex flex-wrap gap-2">
+      {visible.map((opt) => {
         const active = value === opt;
         return (
           <button
@@ -30,14 +31,14 @@ export function ChipRow({ options, value, onChange, testIdPrefix, labels = {} })
           </button>
         );
       })}
-    </div>
+    </div>}</OptionBrowser>
   );
 }
 
 export function PoseChipGrid({ options, value, onChange, testIdPrefix, labels = {} }) {
   return (
-    <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
-      {options.map((opt) => {
+    <OptionBrowser options={options} value={value} labels={labels}>{visible => <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
+      {visible.map((opt) => {
         const active = value === opt;
         return (
           <button
@@ -56,7 +57,7 @@ export function PoseChipGrid({ options, value, onChange, testIdPrefix, labels = 
           </button>
         );
       })}
-    </div>
+    </div>}</OptionBrowser>
   );
 }
 
@@ -105,6 +106,7 @@ export default function DnaSection({
         <button
           type="button"
           onClick={onToggleCollapsed}
+          aria-expanded={!collapsed}
           data-testid={`btn-collapse-${section.key}`}
           className="flex items-center gap-2 text-left group"
         >
@@ -158,6 +160,11 @@ export default function DnaSection({
         </div>
       </header>
 
+      {collapsed && <p className="text-xs text-zinc-400 break-words">{section.fields.flatMap(field => {
+        const selected = value[field.key];
+        if (selected === undefined || selected === null || selected === "" || (Array.isArray(selected) && !selected.length)) return [];
+        return [`${field.label}: ${(Array.isArray(selected) ? selected : [selected]).map(item => field.optionLabels?.[item] || String(item)).join(", ")}`];
+      }).slice(0, 4).join(" · ") || "No selections yet"}</p>}
       {!collapsed && controlNotes.length > 0 && <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-3 text-xs text-amber-100 space-y-1" data-testid="builder-control-notes">
         {[...new Set(controlNotes)].map(note => <p key={note}>{note}</p>)}
       </div>}
