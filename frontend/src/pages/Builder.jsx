@@ -5,6 +5,7 @@ import { randomizePhotoSubjects } from '@/lib/photoRandomizer';
 import { photoCastIssues, coherePhotoCast, preserveSubjectLocks } from '@/lib/photoConsistency';
 import LearningHistoryPanel from '@/components/LearningHistoryPanel';
 import SceneReviewPanel from '@/components/SceneReviewPanel';
+import useWorkspaceOffsets from '@/hooks/useWorkspaceOffsets';
 import SelectedDetailsDrawer from '@/components/SelectedDetailsDrawer';
 import WorkspacePreviewLayout from '@/components/WorkspacePreviewLayout';
 import WorkspaceRenderStatus from '@/components/WorkspaceRenderStatus';
@@ -2691,8 +2692,11 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
           )}
   </>);
 
-  const selectionNotes = resolveBuilderControls(activeDna).notes;
-  const selectedDetails = SECTIONS.flatMap(category => category.fields.flatMap(field => {
+  useWorkspaceOffsets(!isImageFirst && editMode !== 'body_adjust');
+  // Resolution reads the current catalog internally; catalog edits invalidate this cache.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const selectionNotes = useMemo(() => resolveBuilderControls(activeDna).notes, [activeDna, promptCatalog]);
+  const selectedDetails = useMemo(() => SECTIONS.flatMap(category => category.fields.flatMap(field => {
     const value = builderSectionValue(category.key, activeDna, primaryDna)[field.key];
     if (value === undefined || value === null || value === '' || (Array.isArray(value) && !value.length)) return [];
     const display = option => field.optionLabels?.[option] || String(option);
@@ -2703,7 +2707,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
       value:(Array.isArray(value) ? value : [value]).map(display).join(', '),
       locked:!!locks[lockSection] || !!sectionLocks?.[lockSection]?.[field.key],
       note:selectionNotes.filter(note=>note.section===category.key && note.field===field.key).map(note=>note.text).join(' ')}];
-  }));
+  })), [SECTIONS, activeDna, primaryDna, subjects, activeFieldLocks, locks, selectionNotes]);
   const editSelectedDetail = item => {
     setDesktopQuickMode(false);
     setCollapsed(current=>({...current,[item.section]:false}));
@@ -2719,7 +2723,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
                 if (!["cast_age_mode", "cast_age_gap", "cast_resemblance"].includes(field.key)) return true;
                 return subjects.length > 1 && (field.key !== "cast_age_gap" || primaryDna.scenario?.cast_age_mode === "age contrast");
               }) } : SECTIONS[activeIdx]}
-            controlNotes={resolveBuilderControls(activeDna).notes.filter(note => note.section === activeSection).map(note => note.text)}
+            controlNotes={selectionNotes.filter(note => note.section === activeSection).map(note => note.text)}
             value={builderSectionValue(activeSection, activeDna, primaryDna)}
             onChange={(v) => {
               const change = builderSectionChange(activeSection, v, primaryDna);
