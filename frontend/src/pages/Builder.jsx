@@ -2712,6 +2712,10 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
       note:selectionNotes.filter(note=>note.section===category.key && note.field===field.key).map(note=>note.text).join(' ')}];
   })), [SECTIONS, activeDna, primaryDna, subjects, activeFieldLocks, locks, selectionNotes]);
   const editSelectedDetail = item => {
+    if (item.section === studioProfile.specialtySection) {
+      const group = studioProfile.fieldGroups.findIndex(entry => entry.keys.includes(item.field));
+      if (group >= 0) setSpecialtyTab(group);
+    }
     setDesktopQuickMode(false);
     setCollapsed(current=>({...current,[item.section]:false}));
     setRequestedDetail({...item, token:Date.now()});
@@ -3616,7 +3620,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
         </div>
       </section>}
       {!isImageFirst && editMode !== "body_adjust" && <DesignCategoryNavigation stages={quickStages} sections={SECTIONS}
-        activeSection={activeSection} onSection={openCreateSection} review={quickReview}
+        activeSection={activeSection} onSection={openCreateSection} onSetting={editSelectedDetail} review={quickReview}
         onReview={() => { setDesktopQuickMode(true); selectQuickStage(quickStages.length - 1); }} />}
 
           {desktopQuickMode && quickReview ? (
