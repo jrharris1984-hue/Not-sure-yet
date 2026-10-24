@@ -1,3 +1,4 @@
+import { mossWorkflowSettings } from "@/lib/mossWorkflowSettings";
 import RandomizerSuites from '@/components/RandomizerSuites';
 import GuidedCharacterPreview from '@/components/GuidedCharacterPreview';
 import { applyCustomRandomizer } from '@/lib/customRandomizers';
@@ -3138,6 +3139,8 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
             onChange={(e) => {
               const nextWorkflowId = e.target.value;
               if (nextWorkflowId !== workflowId) {
+                const defaults = mossWorkflowSettings(workflows.find(workflow => workflow.id === nextWorkflowId));
+                if (defaults) setChromaSettings(current => ({ ...current, ...defaults }));
                 clearReference();
                 setEditMode("standard");
                 setBodyAdjustRegion("glutes");

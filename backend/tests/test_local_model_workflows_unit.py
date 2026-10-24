@@ -11,7 +11,7 @@ from reference_composition import configure_composition
 from downloaded_models import resolve_separate_image_models
 from generation_settings import normalize_generation_settings, apply_generation_settings
 
-STEMS = ['moss_finalcut_universal','flux1_dev_t2i','flux2_klein_edit','qwen_reference_composer','wan5b_t2v']
+STEMS = ['moss_stardust_bf16','moss_jib_realistic_bf16','moss_finalcut_universal','flux1_dev_t2i','flux2_klein_edit','qwen_reference_composer','wan5b_t2v']
 def graph(stem):
     return json.loads((ROOT/'seed_workflows'/(stem+'.json')).read_text())
 def info_for(g):
@@ -29,7 +29,7 @@ class LocalModelWorkflowTests(unittest.TestCase):
             for value in node['inputs'].values():
                 if isinstance(value,list): self.assertIn(value[0],g)
 
-    def test_all_four_registered_graphs_resolve_exact_files_and_are_connected(self):
+    def test_all_registered_graphs_resolve_exact_files_and_are_connected(self):
         tree=ast.parse((ROOT/'server.py').read_text())
         specs=ast.literal_eval(next(n.value for n in tree.body if isinstance(n,ast.Assign) and any(isinstance(t,ast.Name) and t.id=='SEED_WORKFLOWS' for t in n.targets)))
         for stem in STEMS:
@@ -108,3 +108,29 @@ class LocalModelWorkflowTests(unittest.TestCase):
         self.assertEqual(g['6']['inputs']['width'],768)
         self.assertEqual(g['6']['inputs']['height'],1024)
         self.assertEqual(g['7']['inputs']['cfg'],3)
+
+    def test_moss_bf16_comparisons_keep_exact_models_and_editable_sampling(self):
+        cases = [
+            ('moss_stardust_bf16', 'loxsStardustMixMoss_v10_bf16.safetensors', 25, 3.0, 'er_sde'),
+            ('moss_jib_realistic_bf16', 'jibMixMossRealistic_v1OneToOne_bf16.safetensors', 8, 1.0, 'euler'),
+        ]
+        for stem, filename, steps, cfg, sampler in cases:
+            with self.subTest(stem=stem):
+                g = graph(stem)
+                self.assertEqual(g['1']['inputs'], {'unet_name': filename, 'weight_dtype': 'default'})
+                self.assertEqual(g['2']['inputs']['type'], 'moss_image')
+                self.assertEqual(g['3']['inputs']['vae_name'], 'flux2-vae_small.safetensors')
+                self.assertEqual(g['6']['inputs'], {'width': 1024 if stem == 'moss_stardust_bf16' else 768, 'height': 1024, 'batch_size': 1})
+                self.assertEqual(g['7']['inputs']['steps'], steps)
+                self.assertEqual(g['7']['inputs']['cfg'], cfg)
+                self.assertEqual(g['7']['inputs']['sampler_name'], sampler)
+                self.assertEqual(g['7']['inputs']['scheduler'], 'simple')
+                self.assertFalse(any('Lora' in n['class_type'] for n in g.values()))
+                info = info_for(g)
+                info['UNETLoader']['input']['required']['unet_name'] = [['mossImageFinalcut5GB_universal.safetensors']]
+                original = copy.deepcopy(g)
+                self.assertIn('models/diffusion_models: ' + filename, resolve_separate_image_models(g, info))
+                self.assertEqual(g, original)
+                apply_generation_settings(g, normalize_generation_settings({'steps': 12, 'cfg': 2}, 'moss_image'))
+                self.assertEqual(g['7']['inputs']['steps'], 12)
+                self.assertEqual(g['7']['inputs']['cfg'], 2)
