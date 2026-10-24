@@ -2,6 +2,11 @@ import { wardrobeGroups } from './wardrobeLayout';
 import { SIZE_CONTROL_PAIRS } from './physiqueControlPriority';
 
 const groups = {
+  intimate: [
+    ['areola', 'Areola details', ['areola_size','areola_shape','areola_color','areola_detail']],
+    ['chest', 'Other chest details', ['nipple_size','nipple_shape']],
+    ['presets', 'Combined presets', ['nipples','areolas']],
+  ],
   physique: [
     ['frame', 'Frame & build', ['height','body_type','muscularity','shoulders','legs']],
     ['upper', 'Upper body', ['bust','bust_scale','bust_shape','implant_volume']],
