@@ -1,4 +1,5 @@
-import { LEGACY_ANATOMY_FIELDS } from "@/lib/anatomyDetailControls";
+import AnatomySelectionReview from "./AnatomySelectionReview";
+import { LEGACY_ANATOMY_FIELDS, selectAnatomyPreset, anatomyPresetDetails } from "@/lib/anatomyDetailControls";
 import OptionBrowser from "./OptionBrowser";
 import {useState} from 'react';
 import {wardrobeGroups,wardrobeGroupFor} from '@/lib/wardrobeLayout';
@@ -9,7 +10,7 @@ import { Shuffle, RotateCcw, Lock, LockOpen, Wand2, ChevronDown } from "lucide-r
 import PoseIcon from "@/components/PoseIcon";
 import GroupedChips from "@/components/GroupedChips";
 import { wardrobeExposure, coverageBehavior } from "@/lib/wardrobeNudity";
-import {catalogSections} from "@/lib/promptCatalog";
+import {catalogSections, getPromptCatalog} from "@/lib/promptCatalog";
 import { SECTIONS, normalizeMultiSelection } from "@/lib/dna";
 import { physiqueControlStatus, SIZE_CONTROL_PAIRS, sizeControlMode, selectSizeControl } from "@/lib/physiqueControlPriority";
 
@@ -80,6 +81,7 @@ export default function DnaSection({
   controlNotes = [],
   focusedField = null,
 }) {
+  const [presetFeedback, setPresetFeedback] = useState("");
   const [showLegacyAnatomy, setShowLegacyAnatomy] = useState(false);
   const [wardrobeGroup,setWardrobeGroup]=useState('outfit');
   const groups=section.key==='wardrobe'?wardrobeGroups(section.fields):[];
@@ -87,6 +89,14 @@ export default function DnaSection({
   const sourceField=section.key==='watersports' ? section.fields.find(field=>field.key==='source') || catalogSections(SECTIONS).find(item=>item.key==='watersports')?.fields.find(field=>field.key==='source') : null;
   const set = (k, v) => {
     if (fieldLocks?.[k]) return; // ignore edits to a locked field
+    if (section.key === "intimate" && LEGACY_ANATOMY_FIELDS.includes(k)) {
+      if (locked) return;
+      const catalog = getPromptCatalog();
+      const details = anatomyPresetDetails(k, v, catalog);
+      onChange(selectAnatomyPreset(value, k, v, catalog, fieldLocks));
+      setPresetFeedback(details ? 'Preset applied to individual controls. Locked choices were kept. Open those controls to adjust the result.' : '');
+      return;
+    }
     if (section.key === "wardrobe") {
       const next = editWardrobeField(value, k, v);
       if (next !== value) onChange(k === "exposure_mode" ? { ...next, exposure_mode: v || "use selected outfit", nudity_level: 0, nudity_outfit: "" } : next);
@@ -186,8 +196,10 @@ export default function DnaSection({
         {section.key==='wardrobe' && groups.length>1 && (!focusedField || focusedField==='all') && <div className="flex flex-wrap gap-2" role="group" aria-label="Wardrobe control groups">
           {groups.map(group=><button type="button" key={group.key} className={`chip ${activeGroup===group.key?'active':''}`} aria-pressed={activeGroup===group.key} onClick={()=>setWardrobeGroup(group.key)}>{group.label}</button>)}
         </div>}
+        {section.key === 'intimate' && presetFeedback && <p role="status" className="text-xs text-cyan-200">{presetFeedback}</p>}
+        {section.key === 'intimate' && <AnatomySelectionReview value={value} catalog={getPromptCatalog()} fields={section.fields} locks={fieldLocks} locked={locked} onChange={onChange} />}
         {section.key === 'intimate' && <div className="space-y-2 text-xs text-zinc-400">
-          <p>Use the separate size, shape, color and texture controls. Older combined presets supply only details you have not selected here.</p>
+          <p>Choose one option per individual control. Selecting a recognized older preset fills its unlocked controls directly. Custom presets keep their authored text.</p>
           <button type="button" className="chip" aria-expanded={showLegacyAnatomy} onClick={() => setShowLegacyAnatomy(open => !open)} data-testid="toggle-legacy-anatomy">{showLegacyAnatomy ? 'Hide' : 'Show'} older combined presets{LEGACY_ANATOMY_FIELDS.some(key => value[key]) ? ' · saved choices active' : ''}</button>
         </div>}
         {section.fields.map((f) => {
