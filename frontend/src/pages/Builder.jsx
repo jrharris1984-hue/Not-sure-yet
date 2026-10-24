@@ -5,6 +5,8 @@ import { randomizePhotoSubjects } from '@/lib/photoRandomizer';
 import { photoCastIssues, coherePhotoCast, preserveSubjectLocks } from '@/lib/photoConsistency';
 import LearningHistoryPanel from '@/components/LearningHistoryPanel';
 import SceneReviewPanel from '@/components/SceneReviewPanel';
+import WorkspacePreviewLayout from '@/components/WorkspacePreviewLayout';
+import WorkspaceRenderStatus from '@/components/WorkspaceRenderStatus';
 import EditorPanelBoundary from '@/components/EditorPanelBoundary';
 import DesktopDnaEditor from '@/components/DesktopDnaEditor';
 import DesignCategoryNavigation from '@/components/DesignCategoryNavigation';
@@ -2981,6 +2983,8 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
         </button>
       </div>
       <div data-mobile-tools="none" id="studio-model" className="pane scroll-mt-24 p-2.5 sm:p-4 flex flex-col gap-2.5 sm:gap-3">
+        {!isImageFirst && <WorkspaceRenderStatus render={activeRender} renders={batchRenders} dispatching={dispatching}
+          onResults={() => { setDesktopQuickMode(false); window.requestAnimationFrame(() => { const panel = document.getElementById('workspace-render-result') || document.getElementById('studio-render'); panel?.scrollIntoView({behavior:'auto', block:'start'}); panel?.focus({preventScroll:true}); }); }} />}
         <p role="status" className="text-xs text-zinc-400">{save.isPending ? "Saving character…" : save.isError ? "Character save failed — retry Save" : draftStatus}</p>
         <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
           <Input
@@ -3019,6 +3023,9 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
               </optgroup>
             )}
           </select>
+          {!isImageFirst && editMode !== "body_adjust" && <div className="hidden md:block"><CharacterHistoryControls compact
+            canUndo={characterHistory.canUndo} canRedo={characterHistory.canRedo}
+            onUndo={characterHistory.undo} onRedo={characterHistory.redo} busy={dispatching || !!postRenderBusy} /></div>}
           <button
             onClick={() => save.mutate()}
             disabled={save.isPending}
@@ -3207,7 +3214,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
         }}
       /></div>}
 
-      {!isImageFirst && editMode !== "body_adjust" && <div data-mobile-tools="none"><CharacterHistoryControls
+      {!isImageFirst && editMode !== "body_adjust" && <div className="md:hidden" data-mobile-tools="none"><CharacterHistoryControls
         canUndo={characterHistory.canUndo} canRedo={characterHistory.canRedo}
         onUndo={characterHistory.undo} onRedo={characterHistory.redo} busy={dispatching || !!postRenderBusy}
       /></div>}
@@ -3741,12 +3748,11 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
             <div><h2 className="text-sm font-semibold">Choose your starting point</h2><p className="mt-1 text-xs text-zinc-400">Use a character preset, or choose the details below. You can edit every choice.</p></div>
             {characterPresets}
           </section>}
-          <div className={desktopQuickMode ? "guided-editor-layout grid gap-4 xl:grid-cols-[minmax(0,1fr)_300px]" : ""}>
-            <div className="min-w-0">{renderDnaControls()}</div>
-            {desktopQuickMode && <GuidedCharacterPreview preview={activeRender?.output_files?.[0] || referencePreview || character?.thumbnail}
+          <WorkspacePreviewLayout preview={<GuidedCharacterPreview preview={activeRender?.output_files?.[0] || referencePreview || character?.thumbnail}
               name={name} dna={activeDna} stages={quickStages} sections={SECTIONS} onSection={openDesktopSection}
-              onReview={() => selectQuickStage(quickStages.length - 1)}/>}
-          </div>
+              onReview={() => { setDesktopQuickMode(true); selectQuickStage(quickStages.length - 1); }} />}>
+            {renderDnaControls()}
+          </WorkspacePreviewLayout>
           {sectionNavigation("bottom")}
           </div>
         </div>
@@ -4007,7 +4013,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
           )}
 
           {activeRender && (!poseAssistEnabled || poseAssistStage === "done") && (
-            <div data-mobile-tools="results" className={`${showMobileResult ? "hidden md:block" : "block"} pane p-4 space-y-3`} data-testid="render-status-panel">
+            <div data-mobile-tools="results" className={`${showMobileResult ? "hidden md:block" : "block"} pane p-4 space-y-3`} id="workspace-render-result" tabIndex={-1} data-testid="render-status-panel">
               <div className="flex items-center justify-between">
                 <div className="section-label">Render</div>
                 <span
