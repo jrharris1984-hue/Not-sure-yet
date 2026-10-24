@@ -13,3 +13,14 @@ test('retains uncategorized custom sections and calls the chosen destination wit
   act(()=>[...container.querySelectorAll('button')].find(b=>b.textContent==='Review & create').click());
   expect(onReview).toHaveBeenCalledTimes(1);
 });
+
+test('an empty category search can be cleared without navigating or editing data', () => {
+  const onSection=jest.fn();
+  act(()=>root.render(<DesignCategoryNavigation stages={[]} sections={[{key:'hair',title:'Hair'}]} activeSection="hair" onSection={onSection}/>));
+  const input=container.querySelector('input');
+  act(()=>{Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(input,'unavailable category');input.dispatchEvent(new Event('input',{bubbles:true}));});
+  expect(container.querySelector('[role="status"]').textContent).toContain('No matching categories');
+  act(()=>[...container.querySelectorAll('button')].find(button=>button.textContent==='Clear search').click());
+  expect(container.querySelector('[aria-current="page"]').textContent).toBe('Hair');
+  expect(onSection).not.toHaveBeenCalled();
+});

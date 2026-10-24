@@ -1,4 +1,5 @@
-import { useMemo, useState, useEffect } from "react";
+import useTabPreference from "@/hooks/useTabPreference";
+import { useMemo, useRef, useEffect } from "react";
 import OptionBrowser from "./OptionBrowser";
 import PoseIcon from "@/components/PoseIcon";
 import { X } from "lucide-react";
@@ -25,15 +26,21 @@ export default function GroupedChips({
     if (!multi) return Math.max(0, findGroupOf(value));
     return 0;
   };
-  const [tab, setTab] = useState(initialTab);
+  const [groupName, setGroupName] = useTabPreference(testIdPrefix ? `ultra:choice-group:${testIdPrefix}` : null, groups[initialTab()]?.name || "");
+  const tab = Math.max(0, groups.findIndex(group => group.name === groupName));
+  const setTab = index => setGroupName(groups[index]?.name || "");
+  const previousSelection = useRef({ key: testIdPrefix, value });
 
   useEffect(() => {
+    const previous = previousSelection.current;
+    previousSelection.current = { key: testIdPrefix, value };
+    if (previous.key !== testIdPrefix || previous.value === value) return;
     if (!multi) {
       const i = findGroupOf(value);
       if (i >= 0 && i !== tab) setTab(i);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [value, multi]);
+  }, [value, multi, testIdPrefix]);
 
   const active = groups[tab] || groups[0] || { name: "Choices", options: [] };
 
@@ -118,7 +125,7 @@ export default function GroupedChips({
         })}
       </div>
 
-      <OptionBrowser options={active.options} searchOptions={groups.flatMap(group => group.options)} value={value} labels={labels}>{visible => <>
+      <OptionBrowser key={`${testIdPrefix}:${active.name}`} preferenceKey={testIdPrefix} browseGroup={active.name} options={active.options} searchOptions={groups.flatMap(group => group.options)} value={value} labels={labels}>{visible => <>
       <AnimatePresence mode="wait" initial={false}>
       <motion.div key={`${testIdPrefix}-${active.name}`}
         initial={reduceMotion ? false : { opacity: 0, y: 7 }}

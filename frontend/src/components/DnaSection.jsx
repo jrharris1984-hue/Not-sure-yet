@@ -16,7 +16,7 @@ import { physiqueControlStatus, SIZE_CONTROL_PAIRS, sizeControlMode, selectSizeC
 
 export function ChipRow({ options, value, onChange, testIdPrefix, labels = {} }) {
   return (
-    <OptionBrowser options={options} value={value} labels={labels}>{visible => <div className="flex flex-wrap gap-2">
+    <OptionBrowser key={testIdPrefix} preferenceKey={testIdPrefix} options={options} value={value} labels={labels}>{visible => <div className="flex flex-wrap gap-2">
       {visible.map((opt) => {
         const active = value === opt;
         return (
@@ -38,7 +38,7 @@ export function ChipRow({ options, value, onChange, testIdPrefix, labels = {} })
 
 export function PoseChipGrid({ options, value, onChange, testIdPrefix, labels = {} }) {
   return (
-    <OptionBrowser options={options} value={value} labels={labels}>{visible => <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
+    <OptionBrowser key={testIdPrefix} preferenceKey={testIdPrefix} options={options} value={value} labels={labels}>{visible => <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
       {visible.map((opt) => {
         const active = value === opt;
         return (
