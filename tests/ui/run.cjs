@@ -39,6 +39,16 @@ async function check(browser,viewport) {
         return hit===button || button.contains(hit);
       }));
       assert.ok(choiceVisible,'No editable hair choice is visible before scrolling');
+      const hairChoice=page.getByTestId('chip-hair-style-straight');
+      await hairChoice.click();
+      assert.equal(await hairChoice.getAttribute('aria-pressed'),'true','Hair choice should be selected');
+      const categories=page.getByRole('navigation',{name:'Design categories'});
+      await categories.getByRole('button',{name:'Skin',exact:true}).click();
+      await categories.getByRole('button',{name:'Hair',exact:true}).click();
+      assert.equal(await hairChoice.getAttribute('aria-pressed'),'true','Category navigation must retain the selected choice');
+      await page.getByTestId('btn-desktop-studio-mode').click();
+      await page.getByTestId('btn-desktop-studio-mode').click();
+      assert.equal(await hairChoice.getAttribute('aria-pressed'),'true','Switching views must retain the selected choice');
       const name=page.getByTestId('input-character-name');
       await name.fill('UI walkthrough');
       const drawerButton=page.getByRole('button',{name:/^Selected details \(/});
