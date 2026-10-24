@@ -77,6 +77,14 @@ export default function MobileBuilderSheets({ sections, section, onSection, subj
   const [detail, setDetail] = useState(null);
   const closeButton = useRef(null);
   const primary = useRef(null);
+  const dock = useRef(null);
+  const [dockHeight, setDockHeight] = useState(132);
+  useEffect(() => {
+    if (!dock.current || typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(entries => setDockHeight(entries[0].target.getBoundingClientRect().height));
+    observer.observe(dock.current);
+    return () => observer.disconnect();
+  }, []);
   const dragBase = useRef(0);
   const [dragHeight, setDragHeight] = useState(null);
   const [detailOffset, setDetailOffset] = useState(0);
@@ -93,7 +101,7 @@ export default function MobileBuilderSheets({ sections, section, onSection, subj
     return () => clearTimeout(timer);
   }, [closing]);
   useEffect(() => { setDetail(null); setClosing(false); setDetailOffset(0); }, [section.key]);
-  useEffect(() => { if (detail === "results" && !resultControls) setDetail(null); }, [detail, resultControls]);
+
   useEffect(() => { if (detail === "cast-poses" && subjects.length < 2) setDetail(null); }, [detail, subjects.length]);
   useEffect(() => {
     if (!detail) return;
@@ -109,7 +117,7 @@ export default function MobileBuilderSheets({ sections, section, onSection, subj
     else { setGuidedReview(true); open("output"); }
   };
   const label = detail === "workspace" ? "Workspace tools" : detail === "results" ? "Render results" : detail === "selected" ? "Selected options" : detail === "output" ? "Generation settings" : detail === "cast-poses" ? `Poses for ${subjects.length} people` : section.fields.find(field => field.key === detail)?.label || section.title;
-  return <section className="mobile-sheet-builder md:hidden" data-testid="mobile-sheet-builder" style={personStyle(subjects.findIndex(person => person.id === activeId))}>
+  return <section className="mobile-sheet-builder md:hidden" data-testid="mobile-sheet-builder" data-workspace-view={height === "peek" && !detail ? "preview" : "edit"} style={{...personStyle(subjects.findIndex(person => person.id === activeId)), "--workspace-dock-height":`${dockHeight}px`}}>
     <div className="sheet-workspace">
       <header className="flex items-center justify-between gap-2">
         <div><div className="section-label">Character workspace</div><div className="text-sm font-semibold">{subjects.length} {subjects.length === 1 ? "person" : "people"} · editing {subjects.find(person => person.id === activeId)?.label || "A"}</div></div>
@@ -227,11 +235,16 @@ export default function MobileBuilderSheets({ sections, section, onSection, subj
             {selectedItems.length ? selectedItems.map(item => <button type="button" key={`${item.section}-${item.field}`} className="studio-selected-option w-full rounded-xl border p-3 text-left"
               onClick={() => { onSection(item.section); close(); }}><span className="block text-xs text-zinc-400">{item.category} · {item.label}</span><span className="block text-sm mt-1">{item.value}</span></button>) : <p className="text-sm text-zinc-400">Choose a few options to review them here.</p>}
           </div> : detail === "workspace" ? (typeof workspaceControls === "function" ? workspaceControls({close, openOutput: () => open("output")}) : workspaceControls)
-            : detail === "results" ? resultControls : detail === "output" ? outputControls : detail === "cast-poses" ? castPoseControls : renderControls(detail)}</div>
+            : detail === "results" ? (resultControls || <p className="p-3 text-sm text-zinc-400">No results yet. Choose your details, then generate an image.</p>) : detail === "output" ? outputControls : detail === "cast-poses" ? castPoseControls : renderControls(detail)}</div>
         </section>
       </>}
     </div>
-    <footer className="sheet-generation-dock">
+    <footer ref={dock} className="sheet-generation-dock">
+      <nav className="workspace-mobile-navigation" aria-label="Workspace views">
+        <button type="button" aria-pressed={height !== 'peek' && detail !== 'results'} onClick={() => { setDetail(null); setClosing(false); setHeight('expanded'); }}>Edit</button>
+        <button type="button" aria-pressed={height === 'peek' && !detail} onClick={() => { setDetail(null); setClosing(false); setHeight('peek'); }}>Preview</button>
+        <button type="button" aria-pressed={detail === 'results'} onClick={() => { setHeight('expanded'); open('results'); }}>Results</button>
+      </nav>
       <div className="flex gap-2"><button type="button" className="chip" onClick={() => {if (guided) setGuidedReview(true); open("output");}}>{guided ? "Review" : "Generation"}</button>
         <button type="button" className="chip" onClick={onTools}>Advanced</button>
         <button type="button" className="sheet-generate-button flex-1 rounded-xl bg-emerald-400 text-black py-3 text-sm font-bold disabled:opacity-40" disabled={generating || ((!guided || guidedReview) && !canGenerate)} onClick={guided && !guidedReview ? continueGuided : onGenerate}>{generating ? "Queuing…" : guided && !guidedReview ? (nextStage ? "Continue" : "Review & create") : `Generate (${imageCount})`}</button></div>
