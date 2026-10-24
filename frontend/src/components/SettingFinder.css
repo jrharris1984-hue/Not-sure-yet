@@ -1,0 +1,17 @@
+.setting-finder-trigger {min-height:44px;padding:8px 12px;border:1px solid var(--studio-edge,#ffffff30);border-radius:10px;background:var(--studio-panel,#172334);color:inherit;font-size:13px;white-space:nowrap}
+dialog.setting-finder {position:fixed;inset:0;margin:auto;width:min(560px,calc(100vw - 24px));max-height:calc(100dvh - 32px);padding:20px;border:1px solid #52657b;border-radius:18px;background:#172334;color:#e8eff8;box-shadow:0 24px 80px #0009;overflow:hidden}
+dialog.setting-finder[open] {display:flex;flex-direction:column;gap:12px}
+.setting-finder::backdrop {background:#050a14b8}
+.setting-finder header {display:flex;justify-content:space-between;align-items:start;gap:12px}
+.setting-finder h2 {font-size:18px;font-weight:650}
+.setting-finder p,.setting-finder-summary,.setting-finder label {font-size:13px;color:#acbcd0}
+.setting-finder label input {display:block;width:100%;margin-top:6px;min-height:44px;padding:10px 12px;background:#0e1623;color:#e8eff8;border:1px solid #52657b;border-radius:10px}
+.setting-finder button {min-height:44px;padding:8px 12px;border-radius:8px;text-align:left}
+.setting-finder button:hover {background:#ffffff0d}
+.setting-finder-results {overflow:auto;min-height:0;overscroll-behavior:contain}
+.setting-finder-results button {display:grid;grid-template-columns:1fr auto;gap:2px 12px;width:100%;border-bottom:1px solid #ffffff10}
+.setting-finder-results small {grid-column:1;color:#acbcd0}
+.setting-finder-results button span:last-child {grid-column:2;grid-row:1 / span 2;align-self:center}
+.setting-finder button:focus-visible,.setting-finder input:focus-visible,.setting-finder-trigger:focus-visible {outline:2px solid #7de3d1;outline-offset:-2px}
+.setting-finder-clear {color:#7de3d1;flex-shrink:0}
+@media(max-width:600px) {dialog.setting-finder {padding:14px;max-height:calc(100dvh - 24px)}}
