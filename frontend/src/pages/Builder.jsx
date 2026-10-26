@@ -372,9 +372,15 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
   useEffect(() => {
     if (!imageToolId && settings && !galleryRecipeMode && !location.state?.renderRecipe && workflows.length && (!workflowId || !selectableWorkflows.some(workflow => workflow.id === workflowId))) {
       const preferred = selectableWorkflows.find((workflow) => workflow.id === settings?.default_workflow_id);
-      setWorkflowId(preferred?.id || selectableWorkflows[0]?.id || "");
+      const next = preferred || selectableWorkflows[0];
+      const defaults = mossWorkflowSettings(next);
+      if (defaults) {
+        setChromaSettings(current => ({...current, ...defaults}));
+        setQualityTier('balanced');
+      }
+      setWorkflowId(next?.id || "");
     }
-  }, [workflows, settings, workflowId, selectableWorkflows, imageToolId, galleryRecipeMode, location.state?.renderRecipe, setWorkflowId]);
+  }, [workflows, settings, workflowId, selectableWorkflows, imageToolId, galleryRecipeMode, location.state?.renderRecipe, setWorkflowId, setChromaSettings, setQualityTier]);
 
   useEffect(() => {
     const incoming = location.state?.galleryReference;
@@ -538,7 +544,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
   const isGoldenChroma = activeCompiler === "chroma";
   const isKrea2Aio = promptStyle === "krea2_aio";
   const isLtxVideo = promptStyle === "ltx_t2v";
-  const isKrea2 = activeCompiler === "krea2" && !isKrea2Aio && promptStyle !== "krea2_test";
+  const isKrea2 = promptStyle === "krea2";
   const activeRecipeFamily = recipeFamily(activeCompiler);
   const activeRecipeStyle = renderRecipeStyle(promptStyle, activeCompiler);
   const { plan: smartPhotoshootPlan, toggleKeep: toggleKeepSmartShot, regenerate: regenerateSmartPlan } = useSmartPhotoshootPlan({
@@ -561,8 +567,32 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
   const kreaBaseBlocked = isKrea2 && krea2Status && !krea2Status.ready;
   const kreaRenderBlocked = !!kreaBaseBlocked;
 
+  // Explicit selections share one path. Saved recipe/draft restoration keeps its
+  // own setters so rendering a restored recipe never resets manual settings.
+  const changeGenerationWorkflow = (nextWorkflowId) => {
+    if (nextWorkflowId === workflowId) return;
+    const next = workflows.find(workflow => workflow.id === nextWorkflowId);
+    const defaults = mossWorkflowSettings(next);
+    if (next?.prompt_style === 'moss_image' && !defaults) {
+      toast.error('The MOSS workflow defaults could not be read. Check this workflow in Settings.');
+      return;
+    }
+    if (defaults) {
+      setChromaSettings(current => ({...current, ...defaults}));
+      setQualityTier('balanced');
+    }
+    clearReference();
+    setEditMode('standard');
+    setBodyAdjustRegion('glutes');
+    setBodyAdjustAmount(50);
+    setEditInstruction('');
+    setWorkflowId(nextWorkflowId);
+    setLoraOverrides({});
+  };
+
   const applyQualityTier = (tier) => {
-    const recipe = getRenderRecipe(activeRecipeStyle, tier);
+    const recipe = getRenderRecipe(activeRecipeStyle, tier, activeWorkflow);
+    if (recipe.unavailable) { toast.error(recipe.note); return; }
     setQualityTier(tier);
     if (recipe.family === "image") {
       setChromaSettings((current) => ({
@@ -626,9 +656,9 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
     const workflow = workflows.find((item) => item.id === recommendation.workflowId);
     if (!workflow) return;
     const compiler = resolvePromptCompiler({ promptStyle: workflow.prompt_style, workflowKind: workflow.kind, workflowName: workflow.name });
-    const recipe = getRenderRecipe(renderRecipeStyle(workflow.prompt_style, compiler), recommendation.qualityTier);
-    setWorkflowId(workflow.id);
-    setLoraOverrides({});
+    const recipe = getRenderRecipe(renderRecipeStyle(workflow.prompt_style, compiler), recommendation.qualityTier, workflow);
+    if (recipe.unavailable) { toast.error(recipe.note); return; }
+    changeGenerationWorkflow(workflow.id);
     setQualityTier(recommendation.qualityTier);
     if (recipe.family === "image") {
       setChromaSettings((current) => ({ ...current, width: recipe.width, height: recipe.height, steps: recipe.steps, cfg: recipe.cfg, batchSize: recipe.batchSize, sampler: recipe.sampler, scheduler: recipe.scheduler }));
@@ -649,6 +679,8 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
   };
 
   useEffect(() => {
+    // MOSS initializes on explicit selection, not on render or draft replay.
+    if (promptStyle === 'moss_image' || galleryRecipeMode || location.state?.renderRecipe) return;
     applyQualityTier("balanced");
     // Turbo and comparison variants can use different recipes in the same prompt family.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -2949,7 +2981,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
       {sheetViewport && !mobileSheets && !isImageFirst && editMode !== "body_adjust" && <>
         <MobileToolsNavigation group={mobileToolsGroup} onGroup={group => { setMobileToolsGroup(group); window.scrollTo({ top: 0, behavior: "auto" }); }} onBack={() => setMobileSheets(true)} />
         <section data-mobile-tools="generation" className="pane p-4 space-y-4">
-          <CreationOutputControls compiler={activeRecipeStyle} workflows={selectableWorkflows} workflowId={workflowId} onWorkflow={setWorkflowId}
+          <CreationOutputControls compiler={activeRecipeStyle} workflows={selectableWorkflows} workflowId={workflowId} onWorkflow={changeGenerationWorkflow}
             tier={qualityTier} onTier={applyQualityTier} count={poseAssistEnabled && !isVariationWorkflow ? 1 : renderCount}
             onCount={setRenderCount} countLocked={poseAssistEnabled && !isVariationWorkflow}
             settings={renderSettings} onSettings={setChromaSettings} family={activeRecipeFamily}
@@ -3038,7 +3070,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
         canGenerate={!!workflowId && mobileCreateIssues.length === 0}
         issues={mobileCreateIssues} imageCount={poseAssistEnabled && !isVariationWorkflow ? 1 : renderCount}
         outputControls={<>{photoConsistencyNotice}{learningPanel}<CreationOutputControls compiler={activeRecipeStyle} workflows={selectableWorkflows} workflowId={workflowId}
-          onWorkflow={setWorkflowId} family={activeRecipeFamily} tier={qualityTier}
+          onWorkflow={changeGenerationWorkflow} family={activeRecipeFamily} tier={qualityTier}
           onTier={applyQualityTier} count={poseAssistEnabled && !isVariationWorkflow ? 1 : renderCount} onCount={setRenderCount}
           countLocked={poseAssistEnabled && !isVariationWorkflow}
           settings={renderSettings} onSettings={setChromaSettings}
@@ -3141,20 +3173,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
           <select
             data-testid="select-workflow"
             value={workflowId}
-            onChange={(e) => {
-              const nextWorkflowId = e.target.value;
-              if (nextWorkflowId !== workflowId) {
-                const defaults = mossWorkflowSettings(workflows.find(workflow => workflow.id === nextWorkflowId));
-                if (defaults) setChromaSettings(current => ({ ...current, ...defaults }));
-                clearReference();
-                setEditMode("standard");
-                setBodyAdjustRegion("glutes");
-                setBodyAdjustAmount(50);
-                setEditInstruction("");
-              }
-              setWorkflowId(nextWorkflowId);
-              setLoraOverrides({});
-            }}
+            onChange={(e) => changeGenerationWorkflow(e.target.value)}
             className={`${isImageFirst || mobileStudioStep === "start" || mobileStudioStep === "create" ? "block" : "hidden"} md:block bg-elevated border border-hairline rounded-lg px-3 py-2 text-sm text-zinc-100 w-full sm:w-auto sm:min-w-[200px]`}
           >
             {selectableWorkflows.length === 0 && <option value="">No visible workflows — choose workflows in Settings</option>}
@@ -3424,6 +3443,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
         {activeWorkflow && (activeCompiler !== "qwen_edit" || isEnhanceWorkflow) && (
           <div data-mobile-tools="generation" className="hidden md:block">
             <RenderRecipeSelector
+              workflow={activeWorkflow}
               compiler={activeRecipeStyle}
               value={qualityTier}
               onChange={applyQualityTier}
@@ -3627,7 +3647,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
             <div className="hidden md:block pane border-cyan-400/30 p-5 space-y-4" data-testid="desktop-quick-review">
               <div className="section-label">Generate · ready when you are</div>
               {photoConsistencyNotice}
-              <CreationOutputControls compiler={activeRecipeStyle} workflows={selectableWorkflows} workflowId={workflowId} onWorkflow={setWorkflowId}
+              <CreationOutputControls compiler={activeRecipeStyle} workflows={selectableWorkflows} workflowId={workflowId} onWorkflow={changeGenerationWorkflow}
                 tier={qualityTier} onTier={applyQualityTier} count={poseAssistEnabled && !isVariationWorkflow ? 1 : renderCount} onCount={setRenderCount}
                 countLocked={poseAssistEnabled && !isVariationWorkflow}
                 settings={renderSettings} onSettings={setChromaSettings} family={activeRecipeFamily}

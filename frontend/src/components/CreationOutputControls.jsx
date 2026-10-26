@@ -7,6 +7,8 @@ const QUALITY_ICONS = { draft: Zap, balanced: Gauge, quality: Sparkles };
 
 export default function CreationOutputControls({ workflows, workflowId, onWorkflow, tier, onTier,
   count, onCount, settings, onSettings, compiler, fixedSampling = false, family = "image", busy = false, countLocked = false }) {
+  const workflow = workflows?.find(item => item.id === workflowId);
+  const moss = workflow?.prompt_style === 'moss_image';
   const set = (key, value) => onSettings({ ...settings, [key]: value });
   return (
     <div className="space-y-3" data-testid="creation-output-controls">
@@ -18,18 +20,19 @@ export default function CreationOutputControls({ workflows, workflowId, onWorkfl
         <legend className="text-xs font-semibold text-zinc-300">Quality preset</legend>
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-3" aria-label="Generation quality">
           {QUALITY_TIERS.map((choice) => {
+            const recipe = getRenderRecipe(compiler, choice.id, workflow);
             const Icon = QUALITY_ICONS[choice.id];
             const selected = tier === choice.id;
-            return <button key={choice.id} type="button" onClick={() => onTier(choice.id)} disabled={busy}
-              aria-label={`Quality: ${choice.label}`} aria-pressed={selected}
+            return <button key={choice.id} type="button" onClick={() => onTier(choice.id)} disabled={busy || recipe.unavailable}
+              aria-label={moss ? ({draft:'Smaller canvas',balanced:'Workflow default',quality:'Larger canvas'}[choice.id]) : `Quality: ${choice.label}`} aria-pressed={selected}
               className={`min-h-20 rounded-xl border p-3 text-left transition-colors disabled:opacity-40 ${selected ? "border-amber-400/70 bg-amber-500/10 text-amber-100" : "hairline bg-black/15 text-zinc-300 hover:border-white/30"}`}>
-              <span className="flex items-center gap-2 text-sm font-bold"><Icon className="h-4 w-4" />{choice.label}</span>
-              <span className="mt-1 block text-xs text-zinc-400">{family === "edit" ? (choice.id === "draft" ? "Subtle change" : choice.id === "quality" ? "Stronger change" : "Balanced change") : choice.description}</span>
-              {compiler && <span className="mt-2 block text-[11px] leading-relaxed text-zinc-500">{recipeSummary(getRenderRecipe(compiler, choice.id))}</span>}
+              <span className="flex items-center gap-2 text-sm font-bold"><Icon className="h-4 w-4" />{moss ? ({draft:'Smaller canvas',balanced:'Workflow default',quality:'Larger canvas'}[choice.id]) : choice.label}</span>
+              <span className="mt-1 block text-xs text-zinc-400">{moss ? "Workflow sampling preserved" : family === "edit" ? (choice.id === "draft" ? "Subtle change" : choice.id === "quality" ? "Stronger change" : "Balanced change") : choice.description}</span>
+              {compiler && <span className="mt-2 block text-[11px] leading-relaxed text-zinc-500">{recipeSummary(recipe)}</span>}
             </button>;
           })}
         </div>
-        <p className="text-[11px] text-zinc-500">Choosing a preset applies its render settings. You can adjust available controls afterward.</p>
+        <p className="text-[11px] text-zinc-500">{moss ? "Canvas presets use this workflow’s sampling defaults. Advanced settings remain adjustable." : "Choosing a preset applies its render settings. You can adjust available controls afterward."}</p>
       </fieldset>
       {family === "image" && <fieldset disabled={busy || countLocked} className="space-y-2">
         <legend className="text-xs font-semibold text-zinc-300">How many images?</legend>
