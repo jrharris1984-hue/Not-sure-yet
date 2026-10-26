@@ -1,3 +1,5 @@
+import VideoDirector from '@/components/VideoDirector';
+import { compileVideoDirection, normalizeVideoDirector } from '@/lib/videoDirector';
 import { workflowPromptPolicy, builderLoraFields, generationPromptFields } from '@/lib/workflowPromptPolicy';
 import { mossWorkflowSettings } from "@/lib/mossWorkflowSettings";
 import RandomizerSuites from '@/components/RandomizerSuites';
@@ -254,7 +256,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
     enhancingEdit, setEnhancingEdit, repairTargets, setRepairTargets,
     repairInstruction, setRepairInstruction, repairStrength, setRepairStrength,
     repairAnalysis, setRepairAnalysis, analyzingRepair, setAnalyzingRepair,
-    videoInstruction, setVideoInstruction, videoFrames, setVideoFrames, videoFps, setVideoFps,
+    videoDirector, setVideoDirector, videoInstruction, setVideoInstruction, videoFrames, setVideoFrames, videoFps, setVideoFps,
     videoWidth, setVideoWidth, videoHeight, setVideoHeight, qualityTier, setQualityTier,
     poseAssistEnabled, setPoseAssistEnabled, poseAssistStrength, setPoseAssistStrength,
     poseAssistPolish, setPoseAssistPolish, poseAssistStage, setPoseAssistStage,
@@ -449,8 +451,10 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
       setPreserveUnmentioned(true);
       setEditInstruction("");
       setVideoInstruction("");
+      setVideoDirector(normalizeVideoDirector());
     } else if (requestedKind === "edit") {
       setVideoInstruction("");
+      setVideoDirector(normalizeVideoDirector());
       if (location.state?.referenceMode === "new_pose") {
         setEditMode("new_pose");
         setPreserveUnmentioned(true);
@@ -464,10 +468,12 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
       setEditMode("standard");
       setEditInstruction("");
       setVideoInstruction("Describe how you want this Gallery image to move.");
+      setVideoDirector(normalizeVideoDirector());
     } else if (requestedKind === "face") {
       setEditMode("standard");
       setEditInstruction("");
       setVideoInstruction("");
+      setVideoDirector(normalizeVideoDirector());
     }
 
     const message = requestedKind === "video"
@@ -496,7 +502,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
     } else {
       nav(location.pathname, { replace: true, state: null });
     }
-  }, [draftId, editorHydrated, imageToolId, location.pathname, location.state, nav, referencePreview, setActiveSubjectId, setBodyAdjustAmount, setBodyAdjustRegion, setEditInstruction, setEditMode, setLocks, setLoraOverrides, setMobileStudioStep, setNegativePromptOverride, setPlainLanguage, setPreserveUnmentioned, setPromptLanguage, setPromptOverride, setReferenceImage, setReferencePreview, setSecondaryLora, setSelectedLora, setShowSecondLora, setSourceRenderId, setSubjects, setVariationDenoise, setVideoInstruction, setWorkflowId, workflows]);
+  }, [draftId, editorHydrated, imageToolId, location.pathname, location.state, nav, referencePreview, setActiveSubjectId, setBodyAdjustAmount, setBodyAdjustRegion, setEditInstruction, setEditMode, setLocks, setLoraOverrides, setMobileStudioStep, setNegativePromptOverride, setPlainLanguage, setPreserveUnmentioned, setPromptLanguage, setPromptOverride, setReferenceImage, setReferencePreview, setSecondaryLora, setSelectedLora, setShowSecondLora, setSourceRenderId, setSubjects, setVariationDenoise, setVideoInstruction, setVideoDirector, setWorkflowId, workflows]);
 
   useEffect(() => {
     if (editMode === "body_adjust" && referenceImage?.name) setMobileStudioStep("create");
@@ -544,6 +550,13 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
   });
   const promptPolicy = workflowPromptPolicy({workflowKind:activeWorkflow?.kind, promptStyle, compiler:activeCompiler});
   const isAnyVideoWorkflow = promptPolicy.task === 'video';
+  const effectiveVideoInstruction = useMemo(() => compileVideoDirection({director:videoDirector,notes:videoInstruction,workflow:activeWorkflow}), [videoDirector,videoInstruction,activeWorkflow]);
+  const changeVideoDirector = value => {
+    setVideoDirector(value); setPromptOverride(''); setGalleryRecipeMode('');
+  };
+  const changeVideoNotes = value => {
+    setVideoInstruction(value); setPromptOverride(''); setGalleryRecipeMode('');
+  };
   const isGoldenChroma = activeCompiler === "chroma";
   const isKrea2Aio = promptStyle === "krea2_aio";
   const isLtxVideo = promptStyle === "ltx_t2v";
@@ -792,17 +805,17 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
   };
 
   const enhanceVideoInstruction = async () => {
-    if (!videoInstruction.trim()) {
+    if (!effectiveVideoInstruction.trim()) {
       toast.error("Describe the movement first");
       return;
     }
     setEnhancingVideo(true);
     try {
       const result = await endpoints.aiVideoPrompt(
-        videoInstruction.trim(),
+        effectiveVideoInstruction.trim(),
         isTextVideoWorkflow ? "text" : "image"
       );
-      setVideoInstruction(result.prompt || videoInstruction);
+      if (result.prompt) { changeVideoNotes(result.prompt); setVideoDirector(normalizeVideoDirector()); }
       toast.success(isTextVideoWorkflow ? `${aiProvider} expanded the video prompt` : `${aiProvider} enhanced the motion prompt`);
     } catch (e) {
       toast.error(e?.response?.data?.detail || `${aiProvider} could not enhance the motion prompt`);
@@ -820,7 +833,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
     try {
       const result = await endpoints.aiAnalyzeVideoImage(referenceImage.name, videoInstruction.trim());
       setVideoImageAnalysis(result.analysis || "");
-      if (result.prompt) setVideoInstruction(result.prompt);
+      if (result.prompt) { changeVideoNotes(result.prompt); setVideoDirector(normalizeVideoDirector()); }
       toast.success(`${aiProvider} analyzed the starting image and drafted the motion prompt`);
     } catch (e) {
       toast.error(e?.response?.data?.detail || `${aiProvider} could not analyze the starting image`);
@@ -892,7 +905,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
       variationPrompt, variationDenoise, qwenCamera, qwenReferenceNotes,
       editMode, bodyAdjustRegion, bodyAdjustAmount, poseTarget, poseNotes, poseLocks,
       referenceStudioView, referenceRecipe, referenceStrengths, poseReferenceAnalysis,
-      videoInstruction, videoFrames, videoFps, videoWidth, videoHeight,
+      videoInstruction, videoDirector, videoFrames, videoFps, videoWidth, videoHeight,
       qualityTier, poseAssistEnabled, poseAssistStrength, poseAssistPolish,
       selectedLora, secondaryLora, showSecondLora, chromaSettings, activeRender,
     };
@@ -909,7 +922,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
     variationPrompt, variationDenoise, qwenCamera, qwenReferenceNotes,
     editMode, bodyAdjustRegion, bodyAdjustAmount, poseTarget, poseNotes, poseLocks,
     referenceStudioView, referenceRecipe, referenceStrengths, poseReferenceAnalysis,
-    videoInstruction, videoFrames, videoFps, videoWidth, videoHeight,
+    videoInstruction, videoDirector, videoFrames, videoFps, videoWidth, videoHeight,
     qualityTier, poseAssistEnabled, poseAssistStrength, poseAssistPolish,
     selectedLora, secondaryLora, showSecondLora, chromaSettings, activeRender,
   ]);
@@ -1074,7 +1087,8 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
         editInstruction: isEnhanceWorkflow
           ? (repairInstruction || `Repair only these areas: ${repairTargets.join(", ")}`)
           : effectiveEditInstruction,
-        videoInstruction,
+        videoInstruction: effectiveVideoInstruction,
+        structuredVideo: videoDirector.enabled,
         preserveUnmentioned,
       });
     },
@@ -1082,7 +1096,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
       subjects, isMulti, activeDna, activeSubject?.likeness?.enabled, isAnyVideoWorkflow,
       activeFieldLocks, locks,
       promptStyle, activeWorkflow?.kind, activeWorkflow?.name, raunch,
-      effectiveEditInstruction, repairInstruction, repairTargets, videoInstruction, preserveUnmentioned,
+      effectiveEditInstruction, repairInstruction, repairTargets, effectiveVideoInstruction, videoDirector.enabled, preserveUnmentioned,
       isEnhanceWorkflow, promptCatalog, promptFormat,
     ]
   );
@@ -1155,11 +1169,11 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
     editInstruction: isEnhanceWorkflow
       ? (repairInstruction || repairTargets.join(", "))
       : effectiveEditInstruction,
-    videoInstruction,
+    videoInstruction: effectiveVideoInstruction,
     subjectCount: subjects.length,
   }), [
     referenceImage?.name, negativePromptOverride, isEnhanceWorkflow, repairInstruction,
-    repairTargets, effectiveEditInstruction, videoInstruction, subjects.length,
+    repairTargets, effectiveEditInstruction, effectiveVideoInstruction, subjects.length,
   ]);
 
   const promptAnalysis = useMemo(() => analyzePromptQuality({
@@ -1194,6 +1208,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
       setSourceRenderId(null);
       setEditInstruction("");
       setVideoInstruction("");
+      setVideoDirector(normalizeVideoDirector());
       setQuickReview(false);
       setCollapsed((current) => ({ ...current, physique: false }));
     }
@@ -1270,7 +1285,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
       setPoseReferenceImage(saved.pose_reference_image ? { name: saved.pose_reference_image, type: "input" } : null);
       setPoseReferencePreview("");
     }
-    if (!bodyCreation && saved.video_instruction) setVideoInstruction(saved.video_instruction);
+    if (!bodyCreation && saved.video_instruction) { setVideoInstruction(saved.video_instruction); setVideoDirector(normalizeVideoDirector()); }
     setPreserveUnmentioned(saved.preserve_unmentioned !== false);
     if (saved.quality_tier) setQualityTier(saved.quality_tier);
     setVideoFrames(saved.video_frames || 41);
@@ -1290,7 +1305,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
       ? "Saved setup loaded with the current compiler · prompt overrides cleared"
       : "Exact Gallery recipe restored in the editor");
     nav(location.pathname, { replace: true, state: null });
-  }, [editorHydrated, location.pathname, location.state, nav, workflows, preserveRestoredPrompt, studioSteps, setMobileStudioStep, setQuickReview, setLocks, setSelectedLora, setSecondaryLora, setShowSecondLora, setLoraOverrides, setPromptOverride, setVariationPrompt, setVariationDenoise, setNegativePromptOverride, setReferenceImage, setEditInstruction, setVideoInstruction, setPreserveUnmentioned, setQualityTier, setVideoFrames, setVideoFps, setVideoWidth, setVideoHeight, setChromaSettings, setGalleryRecipeMode, setPoseAssistEnabled, setRenderCount, setEditMode, setReferencePreview, setSourceRenderId, setCollapsed, setSubjects, setActiveSubjectId, setPromptLanguage, setRaunch, setWorkflowId, setPlainLanguage, setMediaImportSummary, setQwenCamera, setQwenReferenceNotes, setPoseReferenceImage, setPoseReferencePreview]);
+  }, [editorHydrated, location.pathname, location.state, nav, workflows, preserveRestoredPrompt, studioSteps, setMobileStudioStep, setQuickReview, setLocks, setSelectedLora, setSecondaryLora, setShowSecondLora, setLoraOverrides, setPromptOverride, setVariationPrompt, setVariationDenoise, setNegativePromptOverride, setReferenceImage, setEditInstruction, setVideoInstruction, setVideoDirector, setPreserveUnmentioned, setQualityTier, setVideoFrames, setVideoFps, setVideoWidth, setVideoHeight, setChromaSettings, setGalleryRecipeMode, setPoseAssistEnabled, setRenderCount, setEditMode, setReferencePreview, setSourceRenderId, setCollapsed, setSubjects, setActiveSubjectId, setPromptLanguage, setRaunch, setWorkflowId, setPlainLanguage, setMediaImportSummary, setQwenCamera, setQwenReferenceNotes, setPoseReferenceImage, setPoseReferencePreview]);
 
   const improveCompiledPrompt = async () => {
     if (!finalPositive.trim()) {
@@ -1376,7 +1391,8 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
       fieldLocks: batchActiveSubject?.field_locks || {},
       sectionLocks: locks,
       editInstruction: effectiveEditInstruction,
-      videoInstruction,
+      videoInstruction: effectiveVideoInstruction,
+      structuredVideo: videoDirector.enabled,
       preserveUnmentioned,
     });
     const batchTranslated = translatePlainLanguage(
@@ -1485,7 +1501,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
       toast.error("Upload a starting image before using WAN Image to Video");
       return;
     }
-    if ((isVideoWorkflow || isTextVideoWorkflow) && !videoInstruction.trim()) {
+    if ((isVideoWorkflow || isTextVideoWorkflow) && !effectiveVideoInstruction.trim()) {
       toast.error(isTextVideoWorkflow
         ? "Describe the video you want to create"
         : "Describe the movement you want WAN to create");
@@ -1845,6 +1861,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
       setEditMode("standard");
       setEditInstruction("");
       setVideoInstruction("");
+      setVideoDirector(normalizeVideoDirector());
       clearFinishedRenderSession();
       setMobileStudioMode("simple");
       setMobileStudioStep("create");
@@ -2109,6 +2126,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
     setRepairInstruction("");
     setRepairAnalysis("");
     setVideoInstruction("");
+    setVideoDirector(normalizeVideoDirector());
     setVideoImageAnalysis("");
     setFaceStrength(1.1);
     setFaceIdV2Strength(1.4);
@@ -2223,7 +2241,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
     if (isEditWorkflow && !effectiveEditInstruction.trim()) {
       issues.push(editMode === "new_pose" ? "Choose a new pose or describe the motion." : "Describe the image edit you want.");
     }
-    if ((isVideoWorkflow || isTextVideoWorkflow) && !videoInstruction.trim()) {
+    if ((isVideoWorkflow || isTextVideoWorkflow) && !effectiveVideoInstruction.trim()) {
       issues.push(isTextVideoWorkflow ? "Describe the video you want to create." : "Describe how you want the image to move.");
     }
     return [...new Set(issues)];
@@ -2232,7 +2250,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
     isEditWorkflow, isEnhanceWorkflow, isFaceWorkflow, isTextVideoWorkflow, isVideoWorkflow, isAnyVideoWorkflow, isVariationWorkflow, isImageFirst,
     poseAssistAvailable, poseAssistEnabled, poseAssistStatus, poseReferenceImage?.name,
     isKrea2, krea2Status,
-    promptAnalysis, referenceImage?.name, repairInstruction, repairTargets, subjects, videoInstruction,
+    promptAnalysis, referenceImage?.name, repairInstruction, repairTargets, subjects, effectiveVideoInstruction,
   ]);
 
   const batchIsFinished = batchRenders.length <= 1 || batchRenders.every((render) =>
@@ -2414,10 +2432,11 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
               <p className="text-xs text-zinc-400">
                 Upload the starting frame, then describe movement rather than redesigning the image.
               </p>
+              <VideoDirector value={videoDirector} onChange={changeVideoDirector} workflow={activeWorkflow} frames={videoFrames} fps={videoFps} disabled={dispatching}/>
               <label className="block space-y-1">
-                <span className="text-xs uppercase tracking-widest text-zinc-500 font-mono">Movement instruction</span>
+                <span className="text-xs uppercase tracking-widest text-zinc-500 font-mono">{videoDirector.enabled ? 'Additional direction (optional)' : 'Movement instruction'}</span>
                 <Textarea rows={5} value={videoInstruction}
-                  onChange={(event) => setVideoInstruction(event.target.value)}
+                  onChange={(event) => changeVideoNotes(event.target.value)}
                   placeholder="Example: She slowly turns toward the camera and smiles. Natural blinking and breathing, gentle hair movement, steady camera."
                   className="bg-elevated border-hairline text-sm"
                   data-testid="textarea-wan-motion" />
@@ -2436,7 +2455,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
                 </div>
               )}
               <button type="button" onClick={enhanceVideoInstruction}
-                disabled={enhancingVideo || !videoInstruction.trim()}
+                disabled={enhancingVideo || !effectiveVideoInstruction.trim()}
                 className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm font-semibold text-amber-200 hover:bg-amber-500/20 disabled:opacity-40"
                 data-testid="btn-venice-enhance-video">
                 {enhancingVideo ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
@@ -3068,7 +3087,11 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
         onGenerate={doDispatch} generating={dispatching}
         canGenerate={!!workflowId && mobileCreateIssues.length === 0}
         issues={mobileCreateIssues} imageCount={poseAssistEnabled && !isVariationWorkflow && !isAnyVideoWorkflow ? 1 : renderCount}
-        outputControls={<>{photoConsistencyNotice}{learningPanel}<CreationOutputControls compiler={activeRecipeStyle} workflows={selectableWorkflows} workflowId={workflowId}
+        outputControls={<>{photoConsistencyNotice}{learningPanel}{isAnyVideoWorkflow && <div className="space-y-3 mb-3">
+          <VideoDirector value={videoDirector} onChange={changeVideoDirector} workflow={activeWorkflow} frames={videoFrames} fps={videoFps} disabled={dispatching}/>
+          <label className="block text-xs text-zinc-300">{videoDirector.enabled ? 'Additional direction (optional)' : 'Video description'}<Textarea rows={3} value={videoInstruction} onChange={event=>changeVideoNotes(event.target.value)} className="mt-1 w-full"/></label>
+          <details><summary className="text-xs text-cyan-200 cursor-pointer py-2">Motion prompt sent to ComfyUI</summary><p className="text-xs text-zinc-400 whitespace-pre-wrap">{finalPositive}</p></details>
+        </div>}<CreationOutputControls compiler={activeRecipeStyle} workflows={selectableWorkflows} workflowId={workflowId}
           onWorkflow={changeGenerationWorkflow} family={activeRecipeFamily} tier={qualityTier}
           onTier={applyQualityTier} count={poseAssistEnabled && !isVariationWorkflow && !isAnyVideoWorkflow ? 1 : renderCount} onCount={setRenderCount}
           countLocked={poseAssistEnabled && !isVariationWorkflow && !isAnyVideoWorkflow}
@@ -3900,16 +3923,17 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
               <p className="text-xs text-zinc-400">
                 Describe the complete shot: adult subject, action, environment, lighting, framing, and camera motion. No starting image is required.
               </p>
+              <VideoDirector value={videoDirector} onChange={changeVideoDirector} workflow={activeWorkflow} frames={videoFrames} fps={videoFps} disabled={dispatching}/>
               <label className="block space-y-1">
-                <span className="text-xs uppercase tracking-widest text-zinc-500 font-mono">Video description</span>
+                <span className="text-xs uppercase tracking-widest text-zinc-500 font-mono">{videoDirector.enabled ? 'Additional direction (optional)' : 'Video description'}</span>
                 <Textarea rows={7} value={videoInstruction}
-                  onChange={(event) => setVideoInstruction(event.target.value)}
+                  onChange={(event) => changeVideoNotes(event.target.value)}
                   placeholder="Example: A cinematic full-body shot of an adult woman walking through a softly lit hotel suite, natural body movement, gentle handheld camera, stable identity, one continuous shot."
                   className="bg-elevated border-hairline text-sm"
                   data-testid="textarea-wan-text-video" />
               </label>
               <button type="button" onClick={enhanceVideoInstruction}
-                disabled={enhancingVideo || !videoInstruction.trim()}
+                disabled={enhancingVideo || !effectiveVideoInstruction.trim()}
                 className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm font-semibold text-amber-200 hover:bg-amber-500/20 disabled:opacity-40"
                 data-testid="btn-venice-enhance-text-video">
                 {enhancingVideo ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}

@@ -1,3 +1,4 @@
+import { normalizeVideoDirector } from '@/lib/videoDirector';
 import { useRef, useState } from "react";
 import { DEFAULT_DNA, makeSubject } from "@/lib/dna";
 import { QWEN_CAMERA_DEFAULTS } from "@/lib/qwenReferenceEdit";
@@ -92,6 +93,7 @@ export function useBuilderSessionState({ studio = "standard", queryClient } = {}
   const [repairStrength, setRepairStrength] = useState(0.45);
   const [repairAnalysis, setRepairAnalysis] = useState("");
   const [analyzingRepair, setAnalyzingRepair] = useState(false);
+  const [videoDirector, setVideoDirector] = useState(() => normalizeVideoDirector());
   const [videoInstruction, setVideoInstruction] = useState("");
   const [videoFrames, setVideoFrames] = useState(41);
   const [videoFps, setVideoFps] = useState(24);
@@ -154,6 +156,7 @@ export function useBuilderSessionState({ studio = "standard", queryClient } = {}
     setRepairTargets(draft.repairTargets || ["face", "hands"]);
     setRepairInstruction(draft.repairInstruction || "");
     setVideoInstruction(draft.videoInstruction || "");
+    setVideoDirector(normalizeVideoDirector(draft.videoDirector));
     setVideoFrames(draft.videoFrames || 41);
     setVideoFps(draft.videoFps || 24);
     setVideoWidth(draft.videoWidth || 640);
@@ -204,7 +207,7 @@ export function useBuilderSessionState({ studio = "standard", queryClient } = {}
     enhancingEdit, setEnhancingEdit, repairTargets, setRepairTargets,
     repairInstruction, setRepairInstruction, repairStrength, setRepairStrength,
     repairAnalysis, setRepairAnalysis, analyzingRepair, setAnalyzingRepair,
-    videoInstruction, setVideoInstruction, videoFrames, setVideoFrames, videoFps, setVideoFps,
+    videoDirector, setVideoDirector, videoInstruction, setVideoInstruction, videoFrames, setVideoFrames, videoFps, setVideoFps,
     videoWidth, setVideoWidth, videoHeight, setVideoHeight, qualityTier, setQualityTier,
     poseAssistEnabled, setPoseAssistEnabled, poseAssistStrength, setPoseAssistStrength,
     poseAssistPolish, setPoseAssistPolish, poseAssistStage, setPoseAssistStage,
