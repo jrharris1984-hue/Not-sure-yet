@@ -1,3 +1,4 @@
+import { workflowPromptPolicy, builderLoraFields, generationPromptFields } from '@/lib/workflowPromptPolicy';
 import { mossWorkflowSettings } from "@/lib/mossWorkflowSettings";
 import RandomizerSuites from '@/components/RandomizerSuites';
 import GuidedCharacterPreview from '@/components/GuidedCharacterPreview';
@@ -532,8 +533,8 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
 
 
   useEffect(() => {
-    if (isImageFirst) setPoseAssistEnabled(false);
-  }, [isImageFirst, setPoseAssistEnabled, workflowId]);
+    if (isImageFirst || activeWorkflow?.kind === "text_video") setPoseAssistEnabled(false);
+  }, [isImageFirst, activeWorkflow?.kind, setPoseAssistEnabled, workflowId]);
   const isVideoWorkflow = activeWorkflow?.kind === "video";
   const isTextVideoWorkflow = activeWorkflow?.kind === "text_video";
   const activeCompiler = resolvePromptCompiler({
@@ -541,6 +542,8 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
     workflowKind: activeWorkflow?.kind,
     workflowName: activeWorkflow?.name,
   });
+  const promptPolicy = workflowPromptPolicy({workflowKind:activeWorkflow?.kind, promptStyle, compiler:activeCompiler});
+  const isAnyVideoWorkflow = promptPolicy.task === 'video';
   const isGoldenChroma = activeCompiler === "chroma";
   const isKrea2Aio = promptStyle === "krea2_aio";
   const isLtxVideo = promptStyle === "ltx_t2v";
@@ -1049,11 +1052,11 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
     () => {
       // A saved display name is useful in the library, but it is prompt noise
       // when a real likeness LoRA is active. The LoRA trigger owns identity.
-      const promptSubjects = subjects.map((subject) => subject?.likeness?.enabled
+      const promptSubjects = subjects.map((subject) => !isAnyVideoWorkflow && subject?.likeness?.enabled
         ? { ...subject, dna: { ...subject.dna, identity: { ...(subject.dna?.identity || {}), name: "" } } }
         : subject
       );
-      const promptActiveDna = activeSubject?.likeness?.enabled
+      const promptActiveDna = !isAnyVideoWorkflow && activeSubject?.likeness?.enabled
         ? { ...activeDna, identity: { ...(activeDna.identity || {}), name: "" } }
         : activeDna;
       return compileModelPrompts({
@@ -1076,7 +1079,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
       });
     },
     [
-      subjects, isMulti, activeDna, activeSubject?.likeness?.enabled,
+      subjects, isMulti, activeDna, activeSubject?.likeness?.enabled, isAnyVideoWorkflow,
       activeFieldLocks, locks,
       promptStyle, activeWorkflow?.kind, activeWorkflow?.name, raunch,
       effectiveEditInstruction, repairInstruction, repairTargets, videoInstruction, preserveUnmentioned,
@@ -1095,7 +1098,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
     [plainLanguage, activeCompiler, activeDna, subjects]
   );
   const likenessPrompt = useMemo(() => likenessTriggerText(subjects), [subjects]);
-  const acceptsLikenessPrompt = !["qwen_edit", "wan_i2v"].includes(activeCompiler);
+  const acceptsLikenessPrompt = !isAnyVideoWorkflow && !["qwen_edit", "wan_i2v"].includes(activeCompiler);
   const languageLead = acceptsLikenessPrompt
     ? activeCompiler === "krea2"
       ? ""
@@ -1122,10 +1125,10 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
     : translatedPlainLanguage.text;
   const generatedPositive = [languageLead, acceptsLikenessPrompt && likenessPrompt, positive, translatedUserText].filter(Boolean).join(", ");
   const positiveBeforeLoraTriggers = isQwenReferenceWorkflow ? effectiveEditInstruction : isVariationWorkflow ? variationPrompt : isVideoWorkflow ? (promptOverride || positive) : (promptOverride || generatedPositive);
-  const activeLoraTriggers = useMemo(() => isVideoWorkflow || isQwenReferenceWorkflow ? [] : [...new Set([
+  const activeLoraTriggers = useMemo(() => isAnyVideoWorkflow || isQwenReferenceWorkflow ? [] : [...new Set([
     ...(selectedLora.name ? selectedLora.triggerWords || [] : []),
     ...(showSecondLora && secondaryLora.name ? secondaryLora.triggerWords || [] : []),
-  ])], [isVideoWorkflow, isQwenReferenceWorkflow, selectedLora.name, selectedLora.triggerWords,
+  ])], [isAnyVideoWorkflow, isQwenReferenceWorkflow, selectedLora.name, selectedLora.triggerWords,
     showSecondLora, secondaryLora.name, secondaryLora.triggerWords]);
   const finalPrompts = useMemo(() => assembleFinalPrompts({
     positive: galleryRecipeMode === "exact" && promptOverride ? promptOverride : positiveBeforeLoraTriggers,
@@ -1133,12 +1136,13 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
       : isVariationWorkflow ? (negativePromptOverride || "") : (negativePromptOverride || negative),
     compiler: activeCompiler,
     negativeStrategy: compiledPrompt.negativeStrategy,
-    photographic: !isVideoWorkflow && !["qwen_edit", "wan_i2v"].includes(activeCompiler),
+    photographic: promptPolicy.photographic,
+      workflowKind: activeWorkflow?.kind, promptStyle,
     loraTriggers: activeLoraTriggers,
     exact: galleryRecipeMode === "exact" && !!promptOverride,
     budgetWords: compiledPrompt.promptBudget,
   }), [positiveBeforeLoraTriggers, isVariationWorkflow, negativePromptOverride, negative, activeCompiler,
-    compiledPrompt.negativeStrategy, compiledPrompt.promptBudget, isVideoWorkflow, activeLoraTriggers,
+    compiledPrompt.negativeStrategy, compiledPrompt.promptBudget, promptPolicy.photographic, activeWorkflow?.kind, promptStyle, activeLoraTriggers,
     galleryRecipeMode, promptOverride]);
   const finalPositive = finalPrompts.positive;
   const finalNegative = finalPrompts.negative;
@@ -1352,11 +1356,11 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
   const compileBatchVariationPrompts = (batchSubjects) => {
     const batchActiveSubject = batchSubjects.find(subject => subject.id === activeSubjectId) || batchSubjects[0];
     const batchActiveDna = batchActiveSubject?.dna || activeDna;
-    const promptSubjects = batchSubjects.map((subject) => subject?.likeness?.enabled
+    const promptSubjects = batchSubjects.map((subject) => !isAnyVideoWorkflow && subject?.likeness?.enabled
       ? { ...subject, dna: { ...subject.dna, identity: { ...(subject.dna?.identity || {}), name: "" } } }
       : subject
     );
-    const promptDna = batchActiveSubject?.likeness?.enabled
+    const promptDna = !isAnyVideoWorkflow && batchActiveSubject?.likeness?.enabled
       ? { ...batchActiveDna, identity: { ...(batchActiveDna.identity || {}), name: "" } }
       : batchActiveDna;
     const batchCompiled = compileModelPrompts({
@@ -1418,7 +1422,8 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
       negative: galleryRecipeMode === "exact" && promptOverride ? negativePromptOverride : negativePromptOverride || batchCompiled.negative,
       compiler: activeCompiler,
       negativeStrategy: batchCompiled.negativeStrategy,
-      photographic: !isVideoWorkflow && !["qwen_edit", "wan_i2v"].includes(activeCompiler),
+      photographic: promptPolicy.photographic,
+      workflowKind: activeWorkflow?.kind, promptStyle,
       loraTriggers: activeLoraTriggers,
       exact: galleryRecipeMode === "exact" && !!promptOverride,
       budgetWords: batchCompiled.promptBudget,
@@ -1496,7 +1501,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
       }
     }
 
-    if (poseAssistEnabled && !isVariationWorkflow) {
+    if (poseAssistEnabled && !isVariationWorkflow && !isAnyVideoWorkflow) {
       if (!poseAssistAvailable) {
         toast.error("Pose Assist workflows are not installed. Use Install Pose Assist in the Create step.");
         return;
@@ -1701,24 +1706,19 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
           label: s.label,
           dna: s.dna,
           field_locks: s.field_locks || {},
-          likeness: isImageFirst ? undefined : s.likeness,
+          likeness: isImageFirst || isAnyVideoWorkflow ? undefined : s.likeness,
         })),
         locks,
         prompt_language: promptLanguage,
         quality_tier: qualityTier,
-        prompt_positive: editMode === "body_adjust" && isVariationWorkflow ? bodyAdjustInstruction : batchPrompts.positive,
-        prompt_negative: batchPrompts.negative,
+        ...generationPromptFields(promptPolicy, {positive:editMode === "body_adjust" && isVariationWorkflow
+          ? bodyAdjustInstruction : batchPrompts.positive, negative:batchPrompts.negative}),
         scene_review: batchPrompts.sceneReview,
         workflow_id: workflowId,
-        lora_overrides: isVideoWorkflow || isQwenReferenceWorkflow ? {} : effectiveLoraOverrides,
+        ...builderLoraFields(promptPolicy, {primary:selectedLora,
+          secondary:showSecondLora ? secondaryLora : null, overrides:effectiveLoraOverrides}),
         krea_style: "none",
         krea_lora_strength: 0.8,
-        selected_lora_name: isVideoWorkflow || isQwenReferenceWorkflow ? "" : selectedLora.name || "",
-        selected_lora_strength: selectedLora.strength,
-        selected_lora_triggers: isVideoWorkflow || isQwenReferenceWorkflow ? [] : selectedLora.triggerWords || [],
-        selected_loras: (isVideoWorkflow || isQwenReferenceWorkflow ? [] : [selectedLora, ...(showSecondLora ? [secondaryLora] : [])])
-          .filter((lora) => lora.name)
-          .map((lora) => ({ name: lora.name, strength: lora.strength, triggers: lora.triggerWords || [] })),
         parent_render_id: sourceRenderId || undefined,
         operation: isQwenReferenceWorkflow ? `qwen_${qwenEditVariant}` : isVariationWorkflow ? (editMode === "body_adjust" ? "body_adjust_chroma" : "variation") : sourceRenderId
           ? (isVideoWorkflow ? "animate" : isFaceWorkflow ? "face_reference" : editMode === "new_pose" ? "new_pose" : "edit")
@@ -1753,7 +1753,6 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
         preserve_unmentioned: preserveUnmentioned,
         repair_targets: isEnhanceWorkflow ? repairTargets : [],
         repair_strength: repairStrength,
-        video_instruction: (isVideoWorkflow || isTextVideoWorkflow) ? finalPositive : undefined,
         video_frames: videoFrames,
         video_fps: videoFps,
         video_width: videoWidth,
@@ -2195,11 +2194,11 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
     const issues = [];
     if (ollamaCompiled.pending) issues.push("Waiting for Ollama compilation.");
     if (!activeWorkflow) issues.push("Choose a workflow.");
-    if (poseAssistEnabled && !isVariationWorkflow && !poseAssistAvailable) issues.push("Install Pose Assist workflows.");
-    if (poseAssistEnabled && !isVariationWorkflow && poseAssistStatus && !poseAssistStatus.ready && poseAssistAvailable) {
+    if (poseAssistEnabled && !isVariationWorkflow && !isAnyVideoWorkflow && !poseAssistAvailable) issues.push("Install Pose Assist workflows.");
+    if (poseAssistEnabled && !isVariationWorkflow && !isAnyVideoWorkflow && poseAssistStatus && !poseAssistStatus.ready && poseAssistAvailable) {
       issues.push(`Pose Assist setup needs: ${(poseAssistStatus.missing || []).join(", ") || "local ComfyUI check"}.`);
     }
-    if (poseAssistEnabled && !isVariationWorkflow && !poseReferenceImage?.name) issues.push("Add a pose reference for Pose Assist.");
+    if (poseAssistEnabled && !isVariationWorkflow && !isAnyVideoWorkflow && !poseReferenceImage?.name) issues.push("Add a pose reference for Pose Assist.");
     if (isKrea2 && krea2Status && !krea2Status.ready) {
       issues.push(`Krea 2 setup needs: ${(krea2Status.missing || []).join(", ") || "local ComfyUI check"}.`);
     }
@@ -2230,7 +2229,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
     return [...new Set(issues)];
   }, [ollamaCompiled.pending,
     activeWorkflow, editMode, effectiveEditInstruction, isQwenReferenceWorkflow, qwenEditVariant,
-    isEditWorkflow, isEnhanceWorkflow, isFaceWorkflow, isTextVideoWorkflow, isVideoWorkflow, isVariationWorkflow, isImageFirst,
+    isEditWorkflow, isEnhanceWorkflow, isFaceWorkflow, isTextVideoWorkflow, isVideoWorkflow, isAnyVideoWorkflow, isVariationWorkflow, isImageFirst,
     poseAssistAvailable, poseAssistEnabled, poseAssistStatus, poseReferenceImage?.name,
     isKrea2, krea2Status,
     promptAnalysis, referenceImage?.name, repairInstruction, repairTargets, subjects, videoInstruction,
@@ -2982,8 +2981,8 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
         <MobileToolsNavigation group={mobileToolsGroup} onGroup={group => { setMobileToolsGroup(group); window.scrollTo({ top: 0, behavior: "auto" }); }} onBack={() => setMobileSheets(true)} />
         <section data-mobile-tools="generation" className="pane p-4 space-y-4">
           <CreationOutputControls compiler={activeRecipeStyle} workflows={selectableWorkflows} workflowId={workflowId} onWorkflow={changeGenerationWorkflow}
-            tier={qualityTier} onTier={applyQualityTier} count={poseAssistEnabled && !isVariationWorkflow ? 1 : renderCount}
-            onCount={setRenderCount} countLocked={poseAssistEnabled && !isVariationWorkflow}
+            tier={qualityTier} onTier={applyQualityTier} count={poseAssistEnabled && !isVariationWorkflow && !isAnyVideoWorkflow ? 1 : renderCount}
+            onCount={setRenderCount} countLocked={poseAssistEnabled && !isVariationWorkflow && !isAnyVideoWorkflow}
             settings={renderSettings} onSettings={setChromaSettings} family={activeRecipeFamily}
             fixedSampling={isKrea2 || isKrea2Aio || activeCompiler === "flux2_klein"} busy={dispatching} />
           {activeRecipeFamily === "image" && renderCount > 1 && (
@@ -2999,7 +2998,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
               smartPlan={smartPhotoshootPlan}
               onGenerate={doDispatch}
               generating={dispatching}
-              generateBlockedReason={poseAssistEnabled && !isVariationWorkflow ? 'Turn off Pose Assist to generate a multi-shot photoshoot.' : mobileCreateIssues.join(' ')}
+              generateBlockedReason={poseAssistEnabled && !isVariationWorkflow && !isAnyVideoWorkflow ? 'Turn off Pose Assist to generate a multi-shot photoshoot.' : mobileCreateIssues.join(' ')}
               shootRun={smartShootRun}
               shootRenders={smartShootRenders}
               onSelectRender={render => { setSelectedBatchRenderId(render.id); setActiveRender(render); }}
@@ -3068,11 +3067,11 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
         onReset={resetCharacter}
         onGenerate={doDispatch} generating={dispatching}
         canGenerate={!!workflowId && mobileCreateIssues.length === 0}
-        issues={mobileCreateIssues} imageCount={poseAssistEnabled && !isVariationWorkflow ? 1 : renderCount}
+        issues={mobileCreateIssues} imageCount={poseAssistEnabled && !isVariationWorkflow && !isAnyVideoWorkflow ? 1 : renderCount}
         outputControls={<>{photoConsistencyNotice}{learningPanel}<CreationOutputControls compiler={activeRecipeStyle} workflows={selectableWorkflows} workflowId={workflowId}
           onWorkflow={changeGenerationWorkflow} family={activeRecipeFamily} tier={qualityTier}
-          onTier={applyQualityTier} count={poseAssistEnabled && !isVariationWorkflow ? 1 : renderCount} onCount={setRenderCount}
-          countLocked={poseAssistEnabled && !isVariationWorkflow}
+          onTier={applyQualityTier} count={poseAssistEnabled && !isVariationWorkflow && !isAnyVideoWorkflow ? 1 : renderCount} onCount={setRenderCount}
+          countLocked={poseAssistEnabled && !isVariationWorkflow && !isAnyVideoWorkflow}
           settings={renderSettings} onSettings={setChromaSettings}
           fixedSampling={isKrea2 || isKrea2Aio || activeCompiler === "flux2_klein"} busy={dispatching} />
           {activeRecipeFamily === "image" && renderCount > 1 && (
@@ -3088,7 +3087,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
               smartPlan={smartPhotoshootPlan}
               onGenerate={doDispatch}
               generating={dispatching}
-              generateBlockedReason={poseAssistEnabled && !isVariationWorkflow ? 'Turn off Pose Assist to generate a multi-shot photoshoot.' : mobileCreateIssues.join(' ')}
+              generateBlockedReason={poseAssistEnabled && !isVariationWorkflow && !isAnyVideoWorkflow ? 'Turn off Pose Assist to generate a multi-shot photoshoot.' : mobileCreateIssues.join(' ')}
               shootRun={smartShootRun}
               shootRenders={smartShootRenders}
               onSelectRender={render => { setSelectedBatchRenderId(render.id); setActiveRender(render); }}
@@ -3203,9 +3202,9 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
           {!isImageFirst && activeRecipeFamily === "image" && (
             <select
               data-testid="select-render-count"
-              value={poseAssistEnabled && !isVariationWorkflow ? 1 : renderCount}
+              value={poseAssistEnabled && !isVariationWorkflow && !isAnyVideoWorkflow ? 1 : renderCount}
               onChange={(e) => setRenderCount(Number(e.target.value))}
-              disabled={dispatching || (poseAssistEnabled && !isVariationWorkflow)}
+              disabled={dispatching || (poseAssistEnabled && !isVariationWorkflow && !isAnyVideoWorkflow)}
               className="hidden md:block bg-elevated border border-hairline rounded-lg px-3 py-2 text-sm text-zinc-100 flex-1 sm:flex-none"
               title="Number of images to queue with unique seeds"
             >
@@ -3225,7 +3224,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
               smartPlan={smartPhotoshootPlan}
               onGenerate={doDispatch}
               generating={dispatching}
-              generateBlockedReason={poseAssistEnabled && !isVariationWorkflow ? 'Turn off Pose Assist to generate a multi-shot photoshoot.' : mobileCreateIssues.join(' ')}
+              generateBlockedReason={poseAssistEnabled && !isVariationWorkflow && !isAnyVideoWorkflow ? 'Turn off Pose Assist to generate a multi-shot photoshoot.' : mobileCreateIssues.join(' ')}
               shootRun={smartShootRun}
               shootRenders={smartShootRenders}
               onSelectRender={render => { setSelectedBatchRenderId(render.id); setActiveRender(render); }}
@@ -3242,12 +3241,12 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
           </div>}
           <button
             onClick={doDispatch}
-            disabled={dispatching || ollamaRenderPending || !workflowId || kreaRenderBlocked || ((isImageFirst || activeRecipeFamily === "edit") && !referenceImage?.name) || (poseAssistEnabled && !isVariationWorkflow && (!poseAssistAvailable || !poseReferenceImage?.name || (poseAssistStatus && !poseAssistStatus.ready)))}
+            disabled={dispatching || ollamaRenderPending || !workflowId || kreaRenderBlocked || ((isImageFirst || activeRecipeFamily === "edit") && !referenceImage?.name) || (poseAssistEnabled && !isVariationWorkflow && !isAnyVideoWorkflow && (!poseAssistAvailable || !poseReferenceImage?.name || (poseAssistStatus && !poseAssistStatus.ready)))}
             data-testid="btn-dispatch-comfyui-render"
             className={`${isImageFirst ? "!hidden" : ""} hidden md:inline-flex items-center gap-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black text-sm font-semibold px-3 py-2 disabled:cursor-not-allowed disabled:bg-zinc-600 disabled:text-zinc-300 disabled:opacity-70`}
           >
             {dispatching || ollamaRenderPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
-            {ollamaRenderPending ? "Waiting for Ollama…" : poseAssistEnabled && !isVariationWorkflow ? "Pose Assist" : dispatching ? "Rendering…" : "Render"}
+            {ollamaRenderPending ? "Waiting for Ollama…" : poseAssistEnabled && !isVariationWorkflow && !isAnyVideoWorkflow ? "Pose Assist" : dispatching ? "Rendering…" : "Render"}
           </button>
 
         </div>
@@ -3309,7 +3308,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
             family={activeRecipeFamily}
             qualityTier={qualityTier}
             onQualityTier={applyQualityTier}
-            renderCount={poseAssistEnabled && !isVariationWorkflow ? 1 : renderCount}
+            renderCount={poseAssistEnabled && !isVariationWorkflow && !isAnyVideoWorkflow ? 1 : renderCount}
             onRenderCount={setRenderCount}
             summaries={mobileCreateSummaries}
             onEditWorkflow={() => openMobileAdvancedStudio("generation")}
@@ -3336,7 +3335,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
               smartPlan={smartPhotoshootPlan}
               onGenerate={doDispatch}
               generating={dispatching}
-              generateBlockedReason={poseAssistEnabled && !isVariationWorkflow ? 'Turn off Pose Assist to generate a multi-shot photoshoot.' : mobileCreateIssues.join(' ')}
+              generateBlockedReason={poseAssistEnabled && !isVariationWorkflow && !isAnyVideoWorkflow ? 'Turn off Pose Assist to generate a multi-shot photoshoot.' : mobileCreateIssues.join(' ')}
               shootRun={smartShootRun}
               shootRenders={smartShootRenders}
               onSelectRender={render => { setSelectedBatchRenderId(render.id); setActiveRender(render); }}
@@ -3424,7 +3423,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
               className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-emerald-500 py-3 text-sm font-bold text-black disabled:opacity-40"
               data-testid="btn-mobile-studio-render"
             >
-              {dispatching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />} {poseAssistEnabled && !isVariationWorkflow ? "Generate" : "Render"}
+              {dispatching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />} {poseAssistEnabled && !isVariationWorkflow && !isAnyVideoWorkflow ? "Generate" : "Render"}
             </button>
           ) : (
             <button
@@ -3473,7 +3472,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
           </div>
         )}
 
-        {activeWorkflow && !isQwenReferenceWorkflow && !["pose", "refine", "krea_style"].includes(activeWorkflow.kind) && (
+        {activeWorkflow && promptPolicy.imageLoras && !isQwenReferenceWorkflow && !["pose", "refine", "krea_style"].includes(activeWorkflow.kind) && (
           <div data-mobile-tools="loras" className="mt-3 sm:mt-4">
             <UniversalLoraPicker
               workflow={activeWorkflow}
@@ -3648,11 +3647,11 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
               <div className="section-label">Generate · ready when you are</div>
               {photoConsistencyNotice}
               <CreationOutputControls compiler={activeRecipeStyle} workflows={selectableWorkflows} workflowId={workflowId} onWorkflow={changeGenerationWorkflow}
-                tier={qualityTier} onTier={applyQualityTier} count={poseAssistEnabled && !isVariationWorkflow ? 1 : renderCount} onCount={setRenderCount}
-                countLocked={poseAssistEnabled && !isVariationWorkflow}
+                tier={qualityTier} onTier={applyQualityTier} count={poseAssistEnabled && !isVariationWorkflow && !isAnyVideoWorkflow ? 1 : renderCount} onCount={setRenderCount}
+                countLocked={poseAssistEnabled && !isVariationWorkflow && !isAnyVideoWorkflow}
                 settings={renderSettings} onSettings={setChromaSettings} family={activeRecipeFamily}
                 fixedSampling={isKrea2 || isKrea2Aio || activeCompiler === "flux2_klein"} busy={dispatching || !!postRenderBusy} />
-              <details className="rounded-xl border hairline p-3">
+              {promptPolicy.imageLoras && <details className="rounded-xl border hairline p-3">
                 <summary className="cursor-pointer text-xs font-semibold text-zinc-300">Optional LoRAs</summary>
                 <div className="mt-3"><UniversalLoraPicker workflow={activeWorkflow} value={selectedLora}
                   onChange={setSelectedLora} slotLabel="LoRA 1" excludedNames={showSecondLora && secondaryLora.name ? [secondaryLora.name] : []} /></div>
@@ -3662,7 +3661,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
                   if (showSecondLora) setSecondaryLora({ name: "", strength: 0.8, triggerWords: [] });
                   setShowSecondLora(!showSecondLora);
                 }}>{showSecondLora ? "Remove second LoRA" : "Add second LoRA"}</button>
-              </details>
+              </details>}
               <div className="grid grid-cols-2 gap-3 text-sm">
                 <div><span className="text-zinc-500">Model</span><div className="font-semibold">{activeWorkflow?.name || "Select a model"}</div></div>
                 <div><span className="text-zinc-500">Output</span><div className="font-semibold">{qualityTier} · {activeRecipeFamily === "image" ? `${renderCount} image${renderCount === 1 ? "" : "s"}` : activeRecipeFamily}</div></div>
@@ -3851,7 +3850,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
             {plainLanguage.trim() && <p className="text-xs text-zinc-400">Workflow translation: {translatedPlainLanguage.text || "Describe motion for image-to-video; the source image supplies appearance."}</p>}
             {plainLanguage.trim() && !["qwen_edit", "wan_i2v"].includes(activeCompiler) && resolveReferenceNotes(plainLanguage, activeDna, subjects) !== plainLanguage.trim() && <p className="text-xs text-amber-300">Current controls replace labeled reference notes for body orientation, camera angle, pose, framing and expression in the submitted prompt. Your original notes remain saved here.</p>}
           </div>
-          {isVideoWorkflow || isVariationWorkflow ? <details data-mobile-tools="prompts" className="pane p-4" data-testid={isVideoWorkflow ? "video-motion-preview" : "variation-prompt-preview"}><summary className="cursor-pointer text-xs text-zinc-300">{isVideoWorkflow ? "Motion prompt sent to ComfyUI" : "Variation prompt sent to ComfyUI"}</summary>{isTextVideoWorkflow && <div className="mt-3"><PromptFormatControl formats={['detailed','scene']} value={promptFormat === 'scene' ? 'scene' : 'detailed'} onChange={changePromptFormat} meta={promptFormatMeta}/></div>}<SceneReviewPanel plan={compiledPrompt.sceneReview}/><p className="mt-3 whitespace-pre-wrap text-xs text-zinc-400">{finalPositive}</p></details> : <div className="mobile-tools-panel" data-mobile-tools="prompts">{!isImageFirst && <PromptFormatControl value={promptFormat} onChange={changePromptFormat} meta={promptFormatMeta} status={promptFormat === 'ollama' ? ollamaCompiled.reason : ''} />}<PromptPreview
+          {isAnyVideoWorkflow || isVariationWorkflow ? <details data-mobile-tools="prompts" className="pane p-4" data-testid={isAnyVideoWorkflow ? "video-motion-preview" : "variation-prompt-preview"}><summary className="cursor-pointer text-xs text-zinc-300">{isAnyVideoWorkflow ? "Motion prompt sent to ComfyUI" : "Variation prompt sent to ComfyUI"}</summary>{isTextVideoWorkflow && <div className="mt-3"><PromptFormatControl formats={['detailed','scene']} value={promptFormat === 'scene' ? 'scene' : 'detailed'} onChange={changePromptFormat} meta={promptFormatMeta}/></div>}<SceneReviewPanel plan={compiledPrompt.sceneReview}/><p className="mt-3 whitespace-pre-wrap text-xs text-zinc-400">{finalPositive}</p></details> : <div className="mobile-tools-panel" data-mobile-tools="prompts">{!isImageFirst && <PromptFormatControl value={promptFormat} onChange={changePromptFormat} meta={promptFormatMeta} status={promptFormat === 'ollama' ? ollamaCompiled.reason : ''} />}<PromptPreview
             learningPanel={learningPanel}
             aiProvider={aiProvider}
             positive={finalPositive}
@@ -4003,7 +4002,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
               </label>
             </div>
           )}
-          <div data-mobile-tools="loras" className={`${isImageFirst ? "!hidden" : mobileStudioMode === "advanced" ? "contents" : "hidden md:contents"}`}>
+          <div data-mobile-tools="loras" className={`${isImageFirst || isAnyVideoWorkflow ? "!hidden" : mobileStudioMode === "advanced" ? "contents" : "hidden md:contents"}`}>
             <LikenessLoraPanel
               workflowId={workflowId}
               subject={activeSubject}
