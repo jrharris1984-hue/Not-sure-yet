@@ -1287,8 +1287,20 @@ export function compileModelPrompts(options = {}) {
         promptWords:clean(positive).split(/\s+/).filter(Boolean).length,
         promptBudget:null, droppedClauses:[], omittedClauseCount:0};
     }
+    if (options.structuredVideo && compiler === 'wan_t2v') {
+      // Structured direction leads the shot. Build the scene separately so
+      // priority trimming cannot lose or duplicate an action/camera/audio choice.
+      const scene = buildSceneNarrative(resolvedSubjects, promptCatalog, compiler, options.raunch,
+        {video:true, motion:''});
+      const positive = [clean(options.videoInstruction), contract, scene.positive].filter(Boolean).join(' ');
+      prompts = {...prompts, positive, profile:'structured-video-v1', scenePlan:scene.scenePlan,
+        compactRequirements:scene.requirements, promptWords:clean(positive).split(/\s+/).filter(Boolean).length,
+        promptBudget:null, droppedClauses:[], omittedClauseCount:0};
+    }
     if (photographic) prompts = preserveWardrobeLayerGuidance(prompts, resolvedSubjects);
-    if (castPose.sharedPose) prompts = {...prompts, positive:`Shared pose for all ${castPose.subjects.length} adults: ${castPose.sharedPose}. ${prompts.positive}`} ;
+    if (castPose.sharedPose) prompts = {...prompts, positive:options.structuredVideo && compiler === 'wan_t2v'
+      ? `${prompts.positive} Initial shared pose for all ${castPose.subjects.length} adults: ${castPose.sharedPose}.`
+      : `Shared pose for all ${castPose.subjects.length} adults: ${castPose.sharedPose}. ${prompts.positive}`} ;
     const ruled = applyCatalogRules(prompts, options.workflowKind || 'image', promptCatalog);
     const final = {...ruled, positive:protectModelPromptOrder(ruled.positive, compiler)};
     const manifest = buildSelectionManifest({sources:auditSources, prepared:fidelitySubjects, resolved:resolvedSubjects,

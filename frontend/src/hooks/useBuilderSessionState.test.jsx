@@ -59,3 +59,12 @@ test("draft restoration remains centralized and preserves render session state",
   expect(api.activeRender.id).toBe("render-1");
   expect(api.selectedBatchRenderId).toBe("render-2");
 });
+
+test('video director restores draft choices and older drafts keep freeform mode',()=>{
+ act(()=>root.render(<Probe/>));
+ act(()=>api.restoreDraft({videoInstruction:'Extra notes',videoDirector:{enabled:true,action:'Walk along the path',camera:'follow',audio:'Birdsong'}}));
+ expect(api.videoDirector).toMatchObject({enabled:true,action:'Walk along the path',camera:'follow',audio:'Birdsong'});
+ expect(api.videoInstruction).toBe('Extra notes');
+ act(()=>api.restoreDraft({videoInstruction:'Original instruction'}));
+ expect(api.videoDirector.enabled).toBe(false);expect(api.videoInstruction).toBe('Original instruction');
+});

@@ -23,7 +23,7 @@ export function buildSceneNarrative(subjects, catalog, compiler, raunch, {motion
     return [
       sentence(`${count > 1 ? reference + ' is ' : ''}${person.identity}`),
       person.wardrobe && sentence(`${reference} wears ${person.wardrobe}`),
-      person.pose && sentence(`${reference} is posed and framed as follows: ${person.pose}`),
+      person.pose && sentence(`${reference} ${video ? "begins in this pose and framing" : "is posed and framed as follows"}: ${person.pose}`),
       person.appearance && sentence(`${reference}'s appearance includes ${person.appearance}`),
       person.details && sentence(`Further visible details for ${reference.toLowerCase()}: ${person.details}`),
     ].filter(Boolean).join(' ');
