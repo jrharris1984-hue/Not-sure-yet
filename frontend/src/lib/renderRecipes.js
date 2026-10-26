@@ -1,3 +1,5 @@
+import { mossWorkflowSettings } from './mossWorkflowSettings';
+
 const IMAGE_RECIPES = {
   flux1_dev: {
     draft: {width:768,height:768,steps:20,cfg:1,batchSize:1,sampler:"euler",note:"FLUX.1 Dev · guidance 3.5"},
@@ -132,17 +134,28 @@ export function recipeFamily(compiler = "standard") {
   return "image";
 }
 
-export function getRenderRecipe(compiler = "standard", tier = "balanced") {
+export function getRenderRecipe(compiler = "standard", tier = "balanced", workflow = null) {
+  if (compiler === 'moss_image' || workflow?.prompt_style === 'moss_image') {
+    const baseline = mossWorkflowSettings(workflow);
+    if (!baseline) return {tier,compiler:'moss_image',family:'image',unavailable:true,
+      note:'The workflow sampling defaults could not be read. Check this workflow in Settings.'};
+    const scale = tier === 'draft' ? 0.75 : tier === 'quality' ? 1.25 : 1;
+    const dimension = value => Math.max(256, Math.min(2048, Math.round(value * scale / 16) * 16));
+    return {tier,compiler:'moss_image',family:'image',...baseline,
+      width:dimension(baseline.width),height:dimension(baseline.height),
+      note:'Changes canvas size only; retains this workflow’s steps, CFG, sampler and scheduler.'};
+  }
   if (compiler === 'chroma_test') compiler = 'chroma';
   const collection = VIDEO_RECIPES[compiler] || EDIT_RECIPES[compiler] || IMAGE_RECIPES[compiler] || IMAGE_RECIPES.standard;
   return { tier, compiler, family: recipeFamily(compiler), ...(IMAGE_SCHEDULERS[compiler] ? { scheduler: IMAGE_SCHEDULERS[compiler] } : {}), ...(collection[tier] || collection.balanced) };
 }
 
 export function renderRecipeStyle(promptStyle, compiler) {
-  return ['flux1_dev', 'wan5b_t2v', 'kroma', 'krea2_aio', 'krea2_test', 'chroma_test', 'chroma_turbo', 'chroma_flash', 'ltx_t2v'].includes(promptStyle) ? promptStyle : compiler;
+  return ['moss_image', 'flux1_dev', 'wan5b_t2v', 'kroma', 'krea2_aio', 'krea2_test', 'chroma_test', 'chroma_turbo', 'chroma_flash', 'ltx_t2v'].includes(promptStyle) ? promptStyle : compiler;
 }
 
 export function recipeSummary(recipe = {}) {
+  if (recipe.unavailable) return "Workflow defaults unavailable";
   if (recipe.family === "video") return `${recipe.videoWidth}×${recipe.videoHeight} · ${recipe.videoFrames} frames · ${recipe.videoFps} fps`;
   if (recipe.family === "edit") return `Edit strength ${Math.round((recipe.repairStrength || 0) * 100)}%`;
   return `${recipe.width}×${recipe.height} · ${recipe.steps} steps · CFG ${recipe.cfg}`;

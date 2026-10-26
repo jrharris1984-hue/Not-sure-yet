@@ -118,3 +118,32 @@ test('new local model workflows retain their generation families and recipes', (
   expect(getRenderRecipe(renderRecipeStyle('flux1_dev','flux1_dev'))).toMatchObject({family:'image',steps:28,cfg:1,sampler:'euler',scheduler:'simple'});
   expect(getRenderRecipe(renderRecipeStyle('wan5b_t2v','wan_t2v'))).toMatchObject({family:'video',videoFrames:81,videoWidth:640,videoHeight:384});
 });
+
+describe('MOSS checkpoint sampling', () => {
+  const cases = [
+    ['moss_stardust_bf16',25,3,'er_sde'],
+    ['moss_jib_realistic_bf16',8,1,'euler'],
+    ['moss_finalcut_universal',6,2.5,'euler'],
+  ];
+  test.each(cases)('%s retains its own sampling at every canvas tier', (file,steps,cfg,sampler) => {
+    const graph = require(`../../../backend/seed_workflows/${file}.json`);
+    const workflow = {prompt_style:'moss_image',json_str:JSON.stringify(graph)};
+    const style=renderRecipeStyle(workflow.prompt_style,'standard');
+    expect(style).toBe('moss_image');
+    const recipes=['draft','balanced','quality'].map(tier=>getRenderRecipe(style,tier,workflow));
+    for(const recipe of recipes) {
+      expect(recipe).toMatchObject({steps,cfg,sampler,scheduler:'simple',family:'image'});
+      expect(recipe.width % 16).toBe(0);expect(recipe.height % 16).toBe(0);
+    }
+    expect(recipes[0].width).toBeLessThan(recipes[1].width);
+    expect(recipes[2].width).toBeGreaterThan(recipes[1].width);
+    expect(recipes[1].width).toBe(graph['6'].inputs.width);
+  });
+  test('invalid or absent MOSS graphs never fall back to generic sampling',()=>{
+    for (const workflow of [null,{prompt_style:'moss_image',json_str:'broken'}]) {
+      const recipe=getRenderRecipe('moss_image','balanced',workflow);
+      expect(recipe.unavailable).toBe(true);
+      expect(recipe.steps).toBeUndefined();expect(recipe.cfg).toBeUndefined();
+    }
+  });
+});

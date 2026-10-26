@@ -13,3 +13,9 @@ test('ignores other families, invalid JSON and linked sampler values', () => {
   const graph=JSON.parse(JSON.stringify(graphs[0][0]));graph['7'].inputs.steps=['other',0];
   expect(mossWorkflowSettings({prompt_style:'moss_image',json_str:JSON.stringify(graph)})).toBeNull();
 });
+test('rejects ambiguous graphs and invalid literal settings rather than guessing',()=>{
+  for (const change of [g=>g['7'].inputs.cfg=-1,g=>g['7'].inputs.steps=0,g=>g['6'].inputs.width=777,g=>g['7'].inputs.sampler_name='',g=>g.extra={...g['7']}]) {
+    const graph=JSON.parse(JSON.stringify(graphs[0][0]));change(graph);
+    expect(mossWorkflowSettings({prompt_style:'moss_image',json_str:JSON.stringify(graph)})).toBeNull();
+  }
+});

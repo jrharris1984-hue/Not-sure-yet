@@ -95,19 +95,20 @@ export default function MobileCreateReview({
       <div className="pane overflow-hidden" data-testid="mobile-create-quality">
         <div className="border-b hairline px-3 py-2.5">
           <div className="text-xs font-bold text-zinc-200">Quality</div>
-          <div className="mt-0.5 text-[9px] text-zinc-600">Choose how much time and detail you want.</div>
+          <div className="mt-0.5 text-[9px] text-zinc-600">{workflow?.prompt_style === 'moss_image' ? 'Choose a canvas size. Workflow sampling is retained.' : 'Choose how much time and detail you want.'}</div>
         </div>
         <div className="grid grid-cols-3 gap-2 p-2.5">
           {QUALITY_TIERS.map((tier) => {
-            const recipe = getRenderRecipe(compiler, tier.id);
+            const recipe = getRenderRecipe(compiler, tier.id, workflow);
             const Icon = QUALITY_ICONS[tier.id];
             const selected = qualityTier === tier.id;
-            const friendlyLabel = tier.id === "draft" ? "Fast" : tier.id === "quality" ? "Best" : "Balanced";
+            const friendlyLabel = workflow?.prompt_style === 'moss_image' ? ({draft:'Smaller',balanced:'Default',quality:'Larger'}[tier.id]) : tier.id === "draft" ? "Fast" : tier.id === "quality" ? "Best" : "Balanced";
             return (
               <button
                 key={tier.id}
                 type="button"
                 onClick={() => onQualityTier(tier.id)}
+                disabled={recipe.unavailable}
                 data-testid={`mobile-create-quality-${tier.id}`}
                 aria-pressed={selected}
                 className={`min-w-0 rounded-xl border px-2 py-3 text-center transition-colors ${
@@ -124,7 +125,7 @@ export default function MobileCreateReview({
           })}
         </div>
         <div className="border-t hairline px-3 py-2 text-[9px] text-zinc-600">
-          {getRenderRecipe(compiler, qualityTier).note}
+          {getRenderRecipe(compiler, qualityTier, workflow).note}
         </div>
       </div>
 
