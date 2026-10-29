@@ -1,3 +1,4 @@
+import DetailNavigator from './DetailNavigator';
 import {useEffect, useState} from 'react';
 import DnaSection from './DnaSection';
 import WardrobeOverview from './WardrobeOverview';
@@ -38,11 +39,7 @@ export default function WardrobeEditor({requestedField, ...props}) {
     <nav className="flex flex-wrap gap-2" aria-label="Wardrobe navigation">{groups.map(item=><button key={item.key} type="button" className={`chip min-h-11 ${item.key===group?.key?'active':''}`} aria-pressed={item.key===group?.key}
       onClick={()=>{setGroupKey(item.key);setFieldKey('');}}>{item.label}</button>)}</nav>
     {field ? <>
-      <label className="block text-sm font-semibold">Editing
-        <select className="studio-control-search mt-2 min-h-11 w-full" value={field.key} onChange={event=>setFieldKey(event.target.value)}>
-          {group.fields.map(item=><option key={item.key} value={item.key}>{item.label}{wardrobeFieldDisabled(item.key,props.value)?' · inactive':''}</option>)}
-        </select>
-      </label>
+      <DetailNavigator label="Editing" fields={group.fields.map(item=>({...item,label:`${item.label}${wardrobeFieldDisabled(item.key,props.value)?' · inactive':''}`}))} value={field.key} onChange={setFieldKey}/>
       <DnaSection {...props} focusedField={field.key} hideWardrobeOverview collapsed={false} simpleMode={false}/>
     </> : <p className="text-sm text-zinc-400">No controls available in this outfit mode.</p>}
   </div>;

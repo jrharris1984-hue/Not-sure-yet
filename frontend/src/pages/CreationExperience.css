@@ -1,0 +1,66 @@
+/* Creation experience: consistent hierarchy, detail navigation and visual choices. */
+:where(html[data-studio-theme=studio],html:not([data-studio-theme])) .studio-shell .design-workspace {
+  --design-canvas:#11151f;--design-panel:#1a2230;--design-edge:#354154;--design-text:#edf1fa;--design-muted:#aeb9cc;--design-accent:#93dfce;--design-control:#202b3b;
+  background:radial-gradient(ellipse at 90% 0,#6252a619,transparent 40%),var(--design-canvas);
+}
+.creation-section-heading {display:none}
+.creation-nav-heading {padding:12px 10px 20px}
+.creation-nav-heading span {display:block;font-size:23px;font-weight:650;letter-spacing:-.035em}
+.creation-nav-heading small {display:block;margin-top:4px;color:#98a8bf;font-size:12px}
+.creation-nav-group {margin-bottom:8px;border-radius:12px;padding:3px}
+.design-category-nav .creation-nav-group-button {display:flex;align-items:center;gap:10px;font-size:14px}
+.creation-nav-group-button>span {margin-left:auto;color:#9baac1}
+.design-category-nav .creation-nav-section {padding-left:38px;font-size:13px;animation:creation-nav-in 150ms ease-out}
+.design-category-nav .creation-nav-group[data-active=true]>.creation-nav-group-button {color:#c3baff;background:#a191f810}
+.design-category-nav .design-review-button {display:flex;align-items:center;justify-content:space-between}
+.detail-navigator {display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px;padding:12px 16px;border:1px solid #ffffff16;border-radius:14px;background:#ffffff03}
+.detail-navigator-select {display:flex;align-items:center;gap:12px;flex:1;min-width:0;font-size:12px;color:#9eacc1}
+.detail-navigator-select select {min-width:0;flex:1;min-height:44px;border:0;border-radius:8px;padding:8px 10px;background:#182231;color:#f0f4fc;font-size:16px;font-weight:600}
+.detail-navigator-actions {display:flex;align-items:center;gap:8px;color:#a9b7c9;font-size:12px}
+.detail-navigator-actions button,.creation-section-actions button {display:grid;place-items:center;min-width:40px;min-height:40px;border:1px solid #ffffff20;border-radius:10px;background:#ffffff04}
+.detail-navigator-actions button:disabled,.creation-section-actions button:disabled {opacity:.3;cursor:not-allowed}
+.detail-navigator .workspace-current-value {width:100%;margin:0;padding-left:0;color:#aeb9cc;font-size:13px}
+.detail-navigator select:focus-visible,.detail-navigator button:focus-visible,.creation-section-actions button:focus-visible {outline:2px solid #b7acff;outline-offset:3px}
+.choice-browser-toolbar {display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-bottom:14px}
+.choice-browser-search {min-width:0;flex:1}
+.choice-browser-search input {width:100%;min-height:44px;border:1px solid #ffffff20;border-radius:10px;padding:10px 12px;background:#111a27;color:#e8eff8;font-size:14px}
+.choice-browser-count {font-size:12px;color:#aeb9cc;white-space:nowrap}
+.design-workspace .selection-panel {border-radius:18px;padding:20px}
+.design-workspace .selection-panel>header {padding-bottom:12px;border-bottom:1px solid #ffffff12}
+.design-workspace .selection-panel fieldset>div>span {font-family:inherit;text-transform:none;letter-spacing:normal;font-size:14px}
+.design-workspace .desktop-detail-navigation .chip {font-size:13px;min-height:42px;border-radius:10px;padding:8px 14px}
+.design-workspace .workspace-preview-tools {margin-bottom:4px}
+.design-workspace .workspace-view-switch {background:#141b28;border-radius:12px}
+.design-workspace .workspace-view-switch button[aria-pressed=true] {background:#3b3557;color:#e4ddff}
+@media(min-width:768px) {
+  .creation-section-heading {display:flex;align-items:center;justify-content:space-between;gap:16px;padding:6px 0 12px}
+  .creation-section-heading p {color:#a8a1c5;font-size:12px;margin-bottom:4px}
+  .creation-section-heading h1 {font-size:28px;line-height:1.2;font-weight:650;letter-spacing:-.035em}
+  .creation-section-actions {display:flex;gap:8px}
+  .design-workspace #studio-sections {grid-template-columns:205px minmax(0,1fr);gap:26px}
+  .design-workspace .workspace-preview-layout {gap:18px}
+  .design-workspace .workspace-editor-content {min-width:0}
+}
+@media(min-width:768px) and (max-height:700px) {
+  .creation-section-heading {padding:0;}.creation-section-heading h1 {font-size:22px}.creation-section-heading p {display:none}
+  .design-workspace .selection-panel {padding:12px}.detail-navigator {padding:6px 10px}.visual-choice {min-height:48px;padding:9px 12px}
+  .choice-browser-toolbar {margin-bottom:8px}.creation-nav-heading {padding-bottom:10px}
+}
+@media(max-width:767px) {
+  .detail-navigator {padding:10px;gap:6px}.detail-navigator-select {width:100%;flex-basis:100%}
+  .detail-navigator-actions {margin-left:auto}.detail-navigator-actions button {min-width:44px;min-height:44px}
+  .design-workspace .selection-panel {padding:12px}.choice-browser-count {display:none}
+  .mobile-sheet-builder .sheet-field-card {border-radius:14px;min-height:76px;padding:14px}
+  .mobile-sheet-builder .sheet-field-card.has-selection {border-color:#8ad8ca;background:#234341}
+}
+@keyframes creation-nav-in {from {opacity:0;transform:translateX(-4px)}to {opacity:1;transform:none}}
+@media(prefers-reduced-motion:reduce) {.creation-nav-section {animation:none!important}}
+.choice-browser-shortcuts {display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.choice-browser-shortcuts button {min-height:36px;font-size:12px;padding:6px 10px;border:1px solid #ffffff18;border-radius:8px;color:#b8c5d8}
+.choice-browser-shortcuts button[aria-pressed=true] {border-color:#b7acff;background:#b7acff18;color:#ddd6ff}
+@media(max-width:767px) {.choice-browser-shortcuts button {min-height:44px}}
+/* New cards carry their own selected marker; suppress the previous corner badge. */
+.studio-shell .design-workspace .visual-choice[aria-pressed=true]::after {display:none}
+@media(max-width:767px) {
+  :where(html[data-studio-theme=studio],html:not([data-studio-theme])) .studio-shell .design-workspace :is(.primary-creation-sheet,.nested-creation-sheet) {background:var(--design-panel);border-color:var(--design-edge)}
+}

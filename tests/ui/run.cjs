@@ -107,6 +107,15 @@ async function check(browser,viewport) {
     await wardrobe.getByLabel('Editing',{exact:true}).selectOption('top');
     await wardrobe.getByLabel('Choice category',{exact:true}).selectOption('Everyday');
     await wardrobe.getByTestId('chip-wardrobe-top-t-shirt').click();
+    await wardrobe.getByRole('button',{name:'Favorite selected',exact:true}).click();
+    await wardrobe.getByRole('button',{name:'Favorites (1)',exact:true}).click();
+    assert.equal(await wardrobe.locator('.visual-choice').count(),1,'Favorites should narrow the picker without changing the selection');
+    assert.equal(await wardrobe.getByTestId('chip-wardrobe-top-t-shirt').getAttribute('aria-pressed'),'true');
+    await wardrobe.getByRole('button',{name:'Favorites (1)',exact:true}).click();
+    await wardrobe.getByRole('button',{name:'Next detail',exact:true}).click();
+    await wardrobe.getByRole('button',{name:'Previous detail',exact:true}).click();
+    assert.equal(await wardrobe.getByTestId('chip-wardrobe-top-t-shirt').getAttribute('aria-pressed'),'true','Previous/next detail navigation should retain choices');
+
     await wardrobe.getByRole('button',{name:'Shoes',exact:true}).click();
     await wardrobe.getByRole('button',{name:'Clothes',exact:true}).click();
     await wardrobe.getByLabel('Editing',{exact:true}).selectOption('top');
