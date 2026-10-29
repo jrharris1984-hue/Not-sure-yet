@@ -8,6 +8,7 @@ import { photoCastIssues, coherePhotoCast, preserveSubjectLocks } from '@/lib/ph
 import LearningHistoryPanel from '@/components/LearningHistoryPanel';
 import SceneReviewPanel from '@/components/SceneReviewPanel';
 import WorkspaceTools from '@/components/WorkspaceTools';
+import WorkspaceToolSections from '@/components/WorkspaceToolSections';
 import useWorkspaceOffsets from '@/hooks/useWorkspaceOffsets';
 import SelectedDetailsDrawer from '@/components/SelectedDetailsDrawer';
 import WorkspacePreviewLayout from '@/components/WorkspacePreviewLayout';
@@ -2839,8 +2840,8 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
               }}
             />;
 
-  const workspaceTools = !isImageFirst && <WorkspaceTools compact={!sheetViewport}>
-      {!isImageFirst && <details data-mobile-tools-container="presets prompts files" className="design-tool-panel pane p-3 sm:p-4 space-y-3" aria-label="Character tools" data-testid="builder-action-toolbar">
+  const workspaceTools = !isImageFirst && <WorkspaceTools compact={!sheetViewport}>{({close})=><>
+      {!isImageFirst && <details data-tool-id="character" data-tool-label="Character" data-mobile-tools-container="presets prompts files" className="design-tool-panel pane p-3 sm:p-4 space-y-3" aria-label="Character tools" data-testid="builder-action-toolbar">
         <summary className="design-tool-heading">Character tools <span>Presets, language, import & export</span></summary>
         <div className={isImageFirst ? "hidden" : mobileStudioStep === "start" ? "block" : "hidden md:block"}>
           <TagInput value={tags} onChange={setTags} placeholder="tag this character (mood, ethnicity, persona)…" testId="builder-tags" />
@@ -2934,15 +2935,15 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
         </div>
       </details>}
 
-      {!isImageFirst && <details className="design-tool-panel mobile-tools-panel pane p-3" data-mobile-tools="presets"><summary className="design-tool-heading">Randomize <span>Suites, individual details & saved randomizers</span></summary>{suiteRandomizers}<RandomSceneControls profile={randomProfile} onProfile={setRandomProfile} onRandomize={randomizeSceneMode} onPhotoRandomize={randomizePhoto} onCustomRandomize={randomizeCustomPhoto} issues={naturalPhotoIssues} busy={dispatching} /></details>}
-      {!isImageFirst && mobileStudioStep === "start" && <details className="design-tool-panel pane p-3" data-mobile-tools="none"><summary className="design-tool-heading">Creation mode <span>{studioProfile.title || studioMode}</span></summary><StudioModePicker value={studioMode} onChange={changeStudioMode} disabled={dispatching} /></details>}
-      {!isImageFirst && editMode !== "body_adjust" && <details className="design-tool-panel pane p-3" data-mobile-tools="none"><summary className="design-tool-heading">Pinned categories</summary><PinnedSectionControls
+      {!isImageFirst && <details data-tool-id="randomize" data-tool-label="Randomize" className="design-tool-panel mobile-tools-panel pane p-3" data-mobile-tools="presets"><summary className="design-tool-heading">Randomize <span>Suites, individual details & saved randomizers</span></summary>{suiteRandomizers}<RandomSceneControls profile={randomProfile} onProfile={setRandomProfile} onRandomize={randomizeSceneMode} onPhotoRandomize={randomizePhoto} onCustomRandomize={randomizeCustomPhoto} issues={naturalPhotoIssues} busy={dispatching} /></details>}
+      {!isImageFirst && mobileStudioStep === "start" && <details data-tool-id="mode" data-tool-label="Creation mode" className="design-tool-panel pane p-3" data-mobile-tools="none"><summary className="design-tool-heading">Creation mode <span>{studioProfile.title || studioMode}</span></summary><StudioModePicker value={studioMode} onChange={changeStudioMode} disabled={dispatching} /></details>}
+      {!isImageFirst && editMode !== "body_adjust" && <details data-tool-id="pins" data-tool-label="Pins" className="design-tool-panel pane p-3" data-mobile-tools="none"><summary className="design-tool-heading">Pinned categories</summary><PinnedSectionControls
         sections={SECTIONS} pinned={sectionPins.pinned} limit={sectionPins.limit}
         currentSection={quickReview || mobileStudioStep === "create" ? null : activeSection}
         activeSection={quickReview || mobileStudioStep === "create" ? null : activeSection}
-        onToggle={sectionPins.toggle} onSection={openPinnedSection}
+        onToggle={sectionPins.toggle} onSection={key=>{close();openPinnedSection(key);}}
       /></details>}
-      <div data-mobile-tools="prompts" className={isImageFirst ? "hidden" : mobileStudioStep === "start" ? "block" : "hidden md:block"}>
+      <div data-tool-id="assistant" data-tool-label="Assistant" data-mobile-tools="prompts" className={isImageFirst ? "hidden" : mobileStudioStep === "start" ? "block" : "hidden md:block"}>
         <AiAssistBar dna={activeDna} aiProvider={aiProvider}
           onApplyDna={(draft) => { setActiveDna(draft); setPlainLanguage(""); }}
           onApplySubjects={(draftSubjects) => {
@@ -2953,7 +2954,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
             setNegativePromptOverride("");
           }} />
       </div>
-  </WorkspaceTools>;
+  </>}</WorkspaceTools>;
 
   if (imageToolId && (!editorHydrated || workflowsLoading)) return <div className="mx-auto max-w-4xl p-6 text-zinc-400">Loading image tool…</div>;
   if (imageToolId && !workflows.some(workflow => workflow.id === imageToolId && IMAGE_TOOL_KINDS.includes(workflow.kind))) return <div className="mx-auto max-w-4xl p-6 text-zinc-400">This image tool is unavailable. <button type="button" onClick={() => nav('/')} className="text-cyan-300 underline">Return to the main screen</button> or refresh workflows in Settings.</div>;
@@ -3029,19 +3030,15 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
         subjects={subjects} activeId={activeSubjectId} onSubject={setActiveSubjectId}
         onPeople={() => goSection("scenario")}
         presetsControl={characterPresets}
-        workspaceControls={({close}) => <div className="space-y-3" data-testid="mobile-sheet-workspace-tools">
-          {suiteRandomizers}<RandomSceneControls profile={randomProfile} onProfile={setRandomProfile} onRandomize={randomizeSceneMode} onPhotoRandomize={randomizePhoto} onCustomRandomize={randomizeCustomPhoto} issues={naturalPhotoIssues} busy={dispatching} />
-          <CharacterHistoryControls canUndo={characterHistory.canUndo} canRedo={characterHistory.canRedo}
-            onUndo={characterHistory.undo} onRedo={characterHistory.redo} busy={dispatching || !!postRenderBusy} />
-          <PinnedSectionControls sections={SECTIONS} pinned={sectionPins.pinned} limit={sectionPins.limit}
-            currentSection={quickReview || mobileStudioStep === "create" ? null : activeSection}
-            activeSection={quickReview || mobileStudioStep === "create" ? null : activeSection}
-            onToggle={sectionPins.toggle} onSection={key => { openPinnedSection(key); close(); }} />
-          <CreateSectionFinder sections={SECTIONS} stages={studioSteps} activeSection={activeSection}
-            onSection={key => { openPinnedSection(key); close(); }} />
-          <CreateSetupSummary dna={activeDna} stages={studioSteps} sections={SECTIONS}
-            onSection={key => { beginReviewEdit(key); close(); }} />
-        </div>}
+        workspaceControls={({close}) => <div data-testid="mobile-sheet-workspace-tools"><WorkspaceToolSections>
+          <div data-tool-id="character" data-tool-label="Character">{characterPresets}<CharacterHistoryControls canUndo={characterHistory.canUndo} canRedo={characterHistory.canRedo}
+            onUndo={characterHistory.undo} onRedo={characterHistory.redo} busy={dispatching || !!postRenderBusy}/></div>
+          <div data-tool-id="randomize" data-tool-label="Randomize">{suiteRandomizers}<RandomSceneControls profile={randomProfile} onProfile={setRandomProfile} onRandomize={randomizeSceneMode} onPhotoRandomize={randomizePhoto} onCustomRandomize={randomizeCustomPhoto} issues={naturalPhotoIssues} busy={dispatching}/></div>
+          <div data-tool-id="pins" data-tool-label="Pins"><PinnedSectionControls sections={SECTIONS} pinned={sectionPins.pinned} limit={sectionPins.limit}
+            currentSection={activeSection} activeSection={activeSection} onToggle={sectionPins.toggle} onSection={key=>{close();openPinnedSection(key);}}/></div>
+          <div data-tool-id="find" data-tool-label="Find a section"><CreateSectionFinder sections={SECTIONS} stages={studioSteps} activeSection={activeSection} onSection={key=>{close();openPinnedSection(key);}}/></div>
+          <div data-tool-id="setup" data-tool-label="Your setup"><CreateSetupSummary dna={activeDna} stages={studioSteps} sections={SECTIONS} onSection={key=>{close();beginReviewEdit(key);}}/></div>
+        </WorkspaceToolSections></div>}
         reviewControls={({openOutput}) => reviewEditing ? <ReviewEditBanner
           sectionTitle={SECTIONS.find(item => item.key === activeSection)?.title}
           onReturn={() => { returnToReview(); openOutput(); }} /> : null}

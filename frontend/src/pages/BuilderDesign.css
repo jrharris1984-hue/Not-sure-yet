@@ -210,3 +210,20 @@
   .mobile-sheet-builder .selection-panel {box-shadow:none;border-color:#ffffff16}
   .mobile-sheet-builder .option-browser-results {max-height:none;overflow:visible}
 }
+
+/* Supporting tools share one panel navigator, in a desktop drawer or mobile sheet. */
+.workspace-tools-launcher>button {display:flex;align-items:center;gap:12px}
+.workspace-tools-launcher>button>span {font-size:12px;color:#a1aab8}
+.workspace-tools-drawer {position:fixed;inset:0 0 0 auto;margin:0;width:min(640px,100vw);max-width:100vw;height:100dvh;max-height:100dvh;padding:20px;background:#151d28;color:#edf2f7;border:1px solid #3c4d60;overflow-y:auto;overscroll-behavior:contain;scrollbar-gutter:stable}
+.workspace-tools-drawer::backdrop {background:#050a12b8}
+.workspace-tools-drawer>header {display:flex;align-items:center;justify-content:space-between;gap:16px;position:sticky;top:-20px;z-index:10;background:#151d28;padding:16px 0;border-bottom:1px solid #ffffff16}
+.workspace-tools-drawer h2 {font-size:20px;font-weight:600}
+.workspace-tools-drawer header p {font-size:12px;color:#a1aab8;margin-top:4px}
+.workspace-tool-navigation {display:flex;gap:6px;flex-wrap:wrap;padding:14px 0}
+.workspace-tool-navigation button {min-height:44px;border-radius:9px;padding:8px 12px;border:1px solid #ffffff20;font-size:13px}
+.workspace-tool-navigation button[aria-pressed=true] {background:#224344;border-color:#83d6c8;color:#d0f4ed}
+.workspace-tool-panel:not([hidden]) {display:grid;gap:16px;min-width:0}
+.workspace-tool-panel[hidden] {display:none!important}
+.workspace-tools-drawer button:focus-visible,.workspace-tool-navigation button:focus-visible {outline:2px solid #83d6c8;outline-offset:3px}
+.workspace-tools-drawer .option-browser-results {max-height:none;overflow:visible}
+@media(max-width:767px) {.workspace-tools-launcher>button>span {display:none}.workspace-tools-drawer {padding:16px}.workspace-tools-drawer>header {top:-16px}}
