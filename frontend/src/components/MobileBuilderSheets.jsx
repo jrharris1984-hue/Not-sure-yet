@@ -60,7 +60,7 @@ function Handle({ label, onStart, onDrag, onEnd, onClick }) {
 
 export default function MobileBuilderSheets({ sections, section, onSection, subjects, activeId, onSubject,
   onPeople, presetsControl, values, renderControls, preview, livePreview, renderStatus, renderError, outputControls, castPoseControls,
-  workspaceControls, resultControls, reviewControls, stages = [], mode = "advanced", onMode, simpleFieldKeys = [],
+  workspaceControls, resultControls, reviewControls, relatedControls, stages = [], mode = "advanced", onMode, simpleFieldKeys = [],
   onSave, onReset, saving, onGenerate, generating, canGenerate, issues = [], imageCount, onTools, selectedItems = [] }) {
   const feedback = renderFeedback(renderStatus, generating);
   const [guidedReview, setGuidedReview] = useState(false);
@@ -211,6 +211,7 @@ export default function MobileBuilderSheets({ sections, section, onSection, subj
           {!visibleFields.length && <p role="status" className="py-4 text-sm text-zinc-400">No controls match. Try another word or switch to Advanced.</p>}
           {mode === "simple" && essentialFields.length < section.fields.length && <button type="button" className="min-h-11 mt-3 w-full rounded-xl border border-dashed hairline p-3 text-xs text-cyan-200" onClick={() => { setFieldSearch(""); onMode?.("advanced"); }}>Show all {section.title.toLowerCase()} controls</button>}
           </>}
+          {relatedControls}
           {onMode && <div className="sheet-category-progress">
             <button type="button" disabled={categoryIndex <= 0} onClick={() => onSection(availableSections[categoryIndex - 1].key)}>Previous</button>
             <span>{categoryIndex + 1} of {availableSections.length}</span>

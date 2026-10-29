@@ -133,7 +133,7 @@ export default function GroupedChips({
         initial={reduceMotion ? false : { opacity: 0, y: 7 }}
         animate={{ opacity: 1, y: 0 }}
 
-        transition={{ duration: reduceMotion ? 0 : 0.12 }}>
+        transition={reduceMotion ? {duration:0} : {type:"spring",stiffness:420,damping:30,opacity:{duration:0.16}}}>
       {variant === "poses" ? (
         <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
           {visible.map((opt) => {

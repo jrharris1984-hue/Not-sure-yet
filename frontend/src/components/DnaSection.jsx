@@ -77,6 +77,7 @@ export default function DnaSection({
   controlNotes = [],
   focusedField = null,
   hideWardrobeOverview = false,
+  embedded = false,
 }) {
   const [presetFeedback, setPresetFeedback] = useState("");
   const [showLegacyAnatomy, setShowLegacyAnatomy] = useState(false);
@@ -110,7 +111,7 @@ export default function DnaSection({
       data-testid={`dna-section-${section.key}`}
       className="pane selection-panel p-3 sm:p-6 space-y-3 sm:space-y-4"
     >
-      <header className="flex flex-wrap items-start sm:items-center justify-between gap-2">
+      {!embedded && <header className="flex flex-wrap items-start sm:items-center justify-between gap-2">
         <button
           type="button"
           onClick={onToggleCollapsed}
@@ -166,7 +167,7 @@ export default function DnaSection({
             {locked ? <Lock className="h-4 w-4" /> : <LockOpen className="h-4 w-4" />}
           </button>
         </div>
-      </header>
+      </header>}
 
       {collapsed && <p className="text-xs text-zinc-400 break-words">{section.fields.flatMap(field => {
         const selected = value[field.key];

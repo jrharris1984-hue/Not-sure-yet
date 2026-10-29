@@ -104,6 +104,15 @@ async function check(browser,viewport) {
     assert.equal(await wardrobe.getByTestId('wardrobe-mode-controls').count(),1,'Wardrobe should show one mode selector');
     assert.equal(await wardrobe.locator('[data-testid^="desktop-edit-"]').count(),0,'Duplicate field cards should be absent');
     await wardrobe.getByTestId('wardrobe-mode-custom').click();
+    const detailPicker=wardrobe.getByRole('button',{name:'All details',exact:true});
+    await detailPicker.click();
+    await wardrobe.getByRole('group',{name:'Choose a detail',exact:true}).getByRole('button',{name:'Top',exact:true}).click();
+    assert.equal(await wardrobe.getByLabel('Editing',{exact:true}).inputValue(),'top','Detail map should navigate directly to the chosen control');
+    assert.equal(await detailPicker.evaluate(el=>el===document.activeElement),true,'Choosing a detail returns focus to the picker trigger');
+    await detailPicker.click();
+    await wardrobe.getByRole('group',{name:'Choose a detail',exact:true}).getByRole('button',{name:'Top',exact:true}).focus();
+    await page.keyboard.press('Escape');
+    assert.equal(await detailPicker.getAttribute('aria-expanded'),'false','Escape should dismiss the detail map');
     await wardrobe.getByLabel('Editing',{exact:true}).selectOption('top');
     await wardrobe.getByLabel('Choice category',{exact:true}).selectOption('Everyday');
     await wardrobe.getByTestId('chip-wardrobe-top-t-shirt').click();

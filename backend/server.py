@@ -12,6 +12,7 @@ from shoot_progress import refresh_shoot_progress
 from shoot_continuity import shoot_render_settings, shoot_base_dna
 from shoot_queue import load_shoot_renders, link_shoot_render
 from wardrobe_catalog_upgrade import upgrade_wardrobe_catalog
+from character_vibe_upgrade import upgrade_character_vibes
 from downloaded_models import resolve_downloaded_models, resolve_separate_image_models, SEPARATE_IMAGE_STYLES, patch_ltx_video
 from prompt_catalog import validate_prompt_catalog
 from qwen_test_models import resolve_qwen_test_models
@@ -174,6 +175,7 @@ class Settings(BaseModel):
     prompt_catalog: Dict[str, Any] = Field(default_factory=lambda: {"sections": []})
     custom_photoshoot_presets: List[Dict[str, Any]] = Field(default_factory=list)
     wardrobe_catalog_version: int = 2
+    character_vibe_version: int = 1
     workflows: List[WorkflowTemplate] = Field(default_factory=list)
     default_workflow_id: str = ""
     builder_hidden_workflow_ids: List[str] = Field(default_factory=list)
@@ -370,6 +372,10 @@ async def get_settings() -> Settings:
     if doc.get("wardrobe_catalog_version", 0) < 2:
         catalog = upgrade_wardrobe_catalog(doc.get("prompt_catalog"), doc.get("wardrobe_catalog_version", 0))
         await db.settings.update_one({"id": "singleton", "$or": [{"wardrobe_catalog_version": {"$exists": False}}, {"wardrobe_catalog_version": {"$lt": 2}}]}, {"$set": {"prompt_catalog": catalog, "wardrobe_catalog_version": 2}})
+        doc = await db.settings.find_one({"id": "singleton"}, {"_id": 0})
+    if doc.get("character_vibe_version", 0) < 1:
+        catalog = upgrade_character_vibes(doc.get("prompt_catalog"))
+        await db.settings.update_one({"id": "singleton", "$or": [{"character_vibe_version": {"$exists": False}}, {"character_vibe_version": {"$lt": 1}}]}, {"$set": {"prompt_catalog": catalog, "character_vibe_version": 1}})
         doc = await db.settings.find_one({"id": "singleton"}, {"_id": 0})
     # Older installs could save Qwen3-VL as the general text assistant. Clear
     # that legacy pairing so text auto-detection can choose a lightweight

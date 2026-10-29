@@ -35,3 +35,23 @@ test('section header navigates existing destinations without modifying character
   expect(container.querySelector('[aria-label="Previous category"]').disabled).toBe(true);
   act(()=>container.querySelector('[aria-label="Next category"]').click());expect(onSection).toHaveBeenCalledWith('custom');
 });
+test('all-details picker jumps to custom controls and returns focus without changing a selection itself',()=>{
+  document.body.appendChild(container);
+  const change=jest.fn(), fields=Array.from({length:5},(_,i)=>({key:`custom_${i}`,label:`Custom detail ${i}`}));
+  act(()=>root.render(<DetailNavigator fields={fields} value="custom_0" onChange={change}/>));
+  const trigger=container.querySelector('[aria-controls]');
+  act(()=>trigger.click());
+  expect(trigger.getAttribute('aria-expanded')).toBe('true');
+  const picker=container.querySelector('[aria-label="Choose a detail"]');
+  expect(picker.querySelectorAll('button')).toHaveLength(5);
+  act(()=>picker.querySelectorAll('button')[4].click());
+  expect(change).toHaveBeenCalledWith('custom_4');
+  expect(container.querySelector('[aria-label="Choose a detail"]')).toBeNull();
+  expect(document.activeElement).toBe(trigger);
+  act(()=>trigger.click());
+  act(()=>container.querySelector('[aria-label="Choose a detail"]').dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true})));
+  expect(trigger.getAttribute('aria-expanded')).toBe('false');
+  expect(change).toHaveBeenCalledTimes(1);
+  expect(document.activeElement).toBe(trigger);
+  container.remove();
+});
