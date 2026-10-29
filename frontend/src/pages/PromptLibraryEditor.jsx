@@ -1,3 +1,4 @@
+import WardrobePromptReview from "@/components/WardrobePromptReview";
 import {wardrobeGroups} from '@/lib/wardrobeLayout';
 import {COVERAGE_BEHAVIORS} from '@/lib/wardrobeNudity';
 import {simpleCoverageOptions} from '@/lib/simpleCoverage';
@@ -81,6 +82,7 @@ export default function PromptLibraryEditor() {
       <button className={buttonClass} disabled={busy} onClick={() => {setDraft({sections:[]});setSectionKey(LIBRARY_SECTIONS[0].key);setFieldKey(LIBRARY_SECTIONS[0].fields[0].key);setMessage('Default library staged. Save to apply this reset.');setSuggestion(null);}}>Restore defaults</button>
       <span className="self-center text-xs text-zinc-500">{dirty?'Unsaved changes':'Saved library'}</span>
     </div>
+    <WardrobePromptReview catalog={draft} disabled={busy} onChange={next=>{setDraft(next);setSuggestion(null);setPromptPreview(null);setMessage('Wardrobe wording updates staged. Save library to apply, or Discard edits to cancel.');}}/>
     <fieldset disabled={busy} className="grid gap-5 md:grid-cols-[240px_1fr]">
       <aside className={`pane space-y-3 p-4 ${browseLevel==='categories'?'block':'hidden md:block'}`}><h2 className="font-semibold">Categories</h2>
         <input aria-label="Find a prompt control" className={fieldClass} placeholder="Find a control, e.g. coverage…" value={controlSearch} onChange={event=>setControlSearch(event.target.value)}/>
