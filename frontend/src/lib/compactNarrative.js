@@ -51,7 +51,10 @@ const CONTEXT = {
   face: { eye_shape:'eyes', eye_color:'eyes', jawline:'jawline', nose:'nose', lips:'lips', expression:'expression' },
   hair: { color:'hair', length:'hair', style:'hairstyle', texture:'hair texture', bangs:'bangs' },
   skin: { tone:'skin', texture:'skin texture', freckles:'freckles', tattoos:'tattoos' },
-  wardrobe: { garment_color:'garment color', outfit_set_color:'outfit color', palette:'palette', fit:'fit',
+  wardrobe: { garment_color:'garment color', outfit_set_color:'outfit color', palette:'clothing palette', fit:'clothing fit',
+    material:'clothing material', garment_pattern:'garment pattern',
+    heel_color:'footwear color', heel_finish:'footwear finish', heel_height:'heel height',
+    hosiery_color:'hosiery color', hosiery_pattern:'hosiery pattern', hosiery_denier:'hosiery denier',
     nail_color:'fingernails', nail_shape:'fingernail shape', glasses_color:'glasses color' },
   pose: { action:'pose', angle:'view', distance:'framing', focus:'composition focus', hands:'hands', body_language:'body language' },
   scene: { environment:'setting', background:'background', era:'era', indoor_outdoor:'location' },
@@ -93,6 +96,7 @@ export function buildCompactNarrative(subjects, catalog = {sections:[]}, compile
         else if (option?.keywords?.trim() || key.startsWith('custom_') || field.startsWith('custom_')) phrase = clean(part);
         else if (CONTEXT[key]?.[field]) {
           const context = CONTEXT[key][field];
+          if (key === 'wardrobe' && field === 'material') part = expandPrompt(key,field,part,{dna,raunch});
           phrase = new RegExp(`\\b${context.split(' ')[0]}\\b`, 'i').test(clean(part)) ? clean(part) : `${clean(part)} ${context}`;
         } else if (key === 'identity' && field === 'ethnicity') phrase = `${clean(part)} heritage`;
         else phrase = clean(expandPrompt(key, field, part, {dna, raunch}));

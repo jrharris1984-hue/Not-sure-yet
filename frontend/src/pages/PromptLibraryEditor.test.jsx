@@ -282,3 +282,17 @@ test('simple coverage reset replaces only coverage and saves exactly 22 choices'
  expect(coverage.options.find(option=>option.label==='unbuttoned').value).toBe('custom_old');
  expect(coverage.options.some(option=>option.value==='custom_extra')).toBe(false);
 });
+test('wardrobe wording review stages old defaults only and requires Save library',async()=>{
+  const prompt_catalog={sections:[{key:'wardrobe',title:'Wardrobe',fields:[{key:'footwear',label:'Footwear',type:'chips',options:[
+    {value:'sneakers',label:'Sneakers',keywords:'trendy white sneakers',group:'Shoes'},
+    {value:'ankle boots',label:'Boots',keywords:'red suede ankle boots',group:'Shoes'}]}]}]};
+  endpoints.settings.mockResolvedValue({prompt_catalog});
+  await act(async()=>root.render(<PromptLibraryEditor/>));
+  const review=container.querySelector('[data-testid="wardrobe-prompt-review"]');
+  expect(review.textContent).toContain('1 updates · 1 customized');
+  act(()=>button('Stage unchanged defaults').click());
+  expect(endpoints.updateSettings).not.toHaveBeenCalled();
+  await act(async()=>button('Save library').click());
+  const options=endpoints.updateSettings.mock.calls[0][0].prompt_catalog.sections[0].fields[0].options;
+  expect(options[0].keywords).toBe('sneakers');expect(options[1].keywords).toBe('red suede ankle boots');
+});
