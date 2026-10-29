@@ -1,3 +1,4 @@
+import WardrobeEditor from './WardrobeEditor';
 import useTabPreference from '@/hooks/useTabPreference';
 import { useEffect, useState } from 'react';
 import DnaSection from './DnaSection';
@@ -36,6 +37,7 @@ export default function DesktopDnaEditor({ enabled, requestedField, ...props }) 
     // The request is an explicit navigation event, not a reaction to edits.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [requestedField]);
+  if (props.section.key === 'wardrobe') return <WardrobeEditor {...props} requestedField={requestedField}/>;
   if (!enabled || !simpleFields.length || !groups.length || props.focusedField) return <DnaSection {...props} />;
   const searchControl = <label className="block text-xs text-zinc-400">Find a detail
     <input type="search" className="studio-control-search mt-2" placeholder={`Search ${props.section.title.toLowerCase()}…`}

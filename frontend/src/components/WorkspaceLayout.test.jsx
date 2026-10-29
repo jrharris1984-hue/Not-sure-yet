@@ -27,5 +27,18 @@ it('shows only batch-local pending counts and exposes render errors and queue na
 it('provides first-use guidance before a render exists', () => {
   act(()=>root.render(<><WorkspaceRenderStatus /></>));
   expect(container.textContent).toContain('Ready to create');
-  expect(container.textContent).toContain('first image');
+  expect(container.textContent).toContain('Your image will appear after generation');
+});
+
+it('keeps empty previews collapsed and opens automatically when an image arrives', () => {
+  const render=hasPreview=>act(()=>root.render(<WorkspacePreviewLayout hasPreview={hasPreview} preview={<p>Image</p>}><input defaultValue="Draft"/></WorkspacePreviewLayout>));
+  render(false);
+  const input=container.querySelector('input');
+  expect(container.querySelector('.workspace-preview-content')).toBeNull();
+  render(true);
+  expect(container.querySelector('.workspace-preview-content')).not.toBeNull();
+  expect(container.querySelector('input:not([type=range])')).toBe(input);
+  act(()=>container.querySelector('button').click());
+  render(true);
+  expect(container.querySelector('.workspace-preview-content')).toBeNull();
 });

@@ -82,6 +82,7 @@ export default function DnaSection({
   onRequestAdvanced,
   controlNotes = [],
   focusedField = null,
+  hideWardrobeOverview = false,
 }) {
   const [presetFeedback, setPresetFeedback] = useState("");
   const [showLegacyAnatomy, setShowLegacyAnatomy] = useState(false);
@@ -183,7 +184,7 @@ export default function DnaSection({
       </div>}
       {!collapsed && (
       <div className="grid gap-5">
-        {section.key === 'wardrobe' && <WardrobeOverview value={value} fields={section.fields} disabled={!!locked || !!fieldLocks.outfit_mode}
+        {section.key === 'wardrobe' && !hideWardrobeOverview && <WardrobeOverview value={value} fields={section.fields} disabled={!!locked || !!fieldLocks.outfit_mode}
           onModeChange={mode=>set('outfit_mode',mode)} showInactive={showInactiveWardrobe} onShowInactive={setShowInactiveWardrobe}/>}
 
 
@@ -275,6 +276,7 @@ export default function DnaSection({
             {f.help && f.type !== "slider" && <p className="text-xs text-zinc-500 leading-relaxed">{f.help}</p>}
             {f.type === "chips_multi" && (
               <GroupedChips
+                compactCategories={section.key === "wardrobe"}
                 labels={f.optionLabels}
                 groups={f.groups || [{ name: "All", options: f.options || [] }]}
                 value={Array.isArray(value[f.key]) ? value[f.key] : []}
@@ -286,6 +288,7 @@ export default function DnaSection({
             )}
             {f.type === "chips" && f.groups && (
               <GroupedChips
+                compactCategories={section.key === "wardrobe"}
                 labels={f.optionLabels}
                 groups={f.groups.map(group => ({...group, options:group.options.filter(visibleChoice)})).filter(group => group.options.length)}
                 value={f.key === "exposure_mode" ? wardrobeExposure(value) : Array.isArray(value[f.key]) ? value[f.key].at(-1) || "" : value[f.key] || ""}
@@ -305,6 +308,7 @@ export default function DnaSection({
             )}
             {f.type === "pose_chips" && f.groups && (
               <GroupedChips
+                compactCategories={section.key === "wardrobe"}
                 labels={f.optionLabels}
                 groups={f.groups}
                 value={value[f.key] || ""}
