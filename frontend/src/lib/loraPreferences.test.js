@@ -22,3 +22,11 @@ test('storage errors are reported and malformed data is ignored', () => {
   expect(saveLoraPreference('portrait.safetensors',{triggerWords:['portrait']})).toBe(false);
   spy.mockRestore();
 });
+test('reviewed signed range reaches picker and invalid ranges fall back', () => {
+  const name='SDXL/light.safetensors';
+  const prefs={[loraFileKey(name)]:{family:'sdxl',minStrength:-2,defaultStrength:-.5,maxStrength:2}};
+  const entry=compatibleInstalledLoras({prompt_style:'sdxl'},[name],prefs)[0];
+  expect(entry).toMatchObject({minStrength:-2,defaultStrength:-.5,maxStrength:2,profileConfigured:true});
+  prefs[loraFileKey(name)].defaultStrength=NaN;
+  expect(compatibleInstalledLoras({prompt_style:'sdxl'},[name],prefs)[0].profileConfigured).toBeUndefined();
+});

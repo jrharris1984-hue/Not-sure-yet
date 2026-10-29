@@ -1,3 +1,4 @@
+from lora_library import file_key, record_id, metadata_profile, hash_profile, validate_profile, validate_hash_import, signed_strength
 from randomizer_presets import validate_randomizer
 from render_setup import graph_setup, correct_qwen_lightning, workflow_comparison_recipe, COMPARABLE_STYLES
 from learning_comparisons import ComparisonCreate, ComparisonPreference, comparison_recipe, comparison_output, supported_canvas, pair_error, comparison_summary
@@ -799,6 +800,100 @@ async def comfyui_loras():
     return {"loras": sorted(names, key=str.lower)}
 
 
+@api.get("/lora-library")
+async def lora_library_records():
+    records = await db.lora_library.find({}, {"_id": 0}).to_list(5000)
+    return {"records": records}
+
+
+@api.post("/lora-library/hashes")
+async def import_lora_hashes(body: Dict[str, Any] = Body(...)):
+    try:
+        entries = validate_hash_import(body)
+    except ValueError as exc:
+        raise HTTPException(422, str(exc))
+    installed = {file_key(name): name for name in (await comfyui_loras())["loras"]}
+    count = 0
+    invalidated = []
+    for entry in entries:
+        name = installed.get(file_key(entry["name"]))
+        if not name:
+            continue  # Never match a basename to a different subfolder.
+        old = await db.lora_library.find_one({"id": record_id(name)}) or {}
+        patch = {"name": name, "sha256": entry["sha256"]}
+        if old.get("sha256") != entry["sha256"]:
+            invalidated.append(name)
+            patch.update(detected={}, profile={}, lookup_status="File changed; scan and review again")
+        await db.lora_library.update_one({"id": record_id(name)}, {"$set": patch}, upsert=True)
+        count += 1
+    return {"imported": count, "unmatched": len(entries) - count, "invalidated": invalidated}
+
+
+@api.put("/lora-library/profile")
+async def save_lora_library_profile(body: Dict[str, Any] = Body(...)):
+    try:
+        rid = record_id(body.get("name"))
+        profile = validate_profile(body.get("profile"))
+    except ValueError as exc:
+        raise HTTPException(422, str(exc))
+    if body["name"] not in (await comfyui_loras())["loras"]:
+        raise HTTPException(404, "LoRA is not installed in the connected ComfyUI.")
+    await db.lora_library.update_one({"id": rid}, {"$set": {"name": body["name"], "profile": profile}}, upsert=True)
+    return {"profile": profile}
+
+
+@api.post("/lora-library/scan")
+async def scan_lora_library_file(body: Dict[str, Any] = Body(...)):
+    try:
+        rid = record_id(body.get("name"))
+    except ValueError as exc:
+        raise HTTPException(422, str(exc))
+    name = body["name"]
+    if name not in (await comfyui_loras())["loras"]:
+        raise HTTPException(404, "LoRA is not installed in the connected ComfyUI.")
+    settings = await get_settings()
+    old = await db.lora_library.find_one({"id": rid}) or {}
+    detected = old.get("detected") or {}
+    status = "No embedded metadata; needs review"
+    async with httpx.AsyncClient(timeout=15.0, follow_redirects=False) as hc:
+        try:
+            response = await hc.get(f"{settings.comfyui_url.rstrip('/')}/view_metadata/loras", params={"filename": name})
+            if response.status_code == 200:
+                candidate = metadata_profile(response.json())
+                if not detected.get("sourceUrl"):
+                    detected = candidate
+                status = "Metadata scanned; review settings"
+            elif response.status_code != 404:
+                status = f"Metadata unavailable ({response.status_code}); retry later"
+        except (httpx.HTTPError, ValueError):
+            status = "Metadata request failed; retry later"
+        # Explicit opt-in. Only a full-file hash is transmitted, never filenames or model files.
+        if body.get("online") is True:
+            digest = old.get("sha256", "")
+            if not re.fullmatch(r"[a-f0-9]{64}", digest):
+                status = "Import file hashes to enable exact online matching"
+            elif detected.get("sourceUrl"):
+                status = "Using cached hash match; review settings"
+            else:
+                try:
+                    response = await hc.get(f"https://civitai.com/api/v1/model-versions/by-hash/{digest}")
+                    if response.status_code == 200:
+                        detected = hash_profile(response.json(), digest)
+                        status = "Exact hash matched; strength range still needs review"
+                    elif response.status_code == 404:
+                        status = "No online match; embedded metadata retained"
+                    elif response.status_code == 429:
+                        raise HTTPException(429, "Online lookup rate limit reached. Stop and retry later.")
+                    else:
+                        status = f"Online lookup unavailable ({response.status_code}); metadata retained"
+                except (httpx.HTTPError, ValueError):
+                    status = "Online lookup failed or hash unconfirmed; metadata retained"
+    patch = {"name": name, "detected": detected, "lookup_status": status,
+             "scanned_at": datetime.now(timezone.utc).isoformat()}
+    await db.lora_library.update_one({"id": rid}, {"$set": patch}, upsert=True)
+    return {**{k: v for k, v in old.items() if k != "_id"}, **patch, "id": rid}
+
+
 @api.post("/workflows/reorder")
 async def reorder_workflows(body: Dict[str, List[str]] = Body(...)):
     """Reorder workflows. Body: {\"order\": [wid1, wid2, ...]}."""
@@ -1559,7 +1654,10 @@ async def _inject_selected_lora(
     if not targets:
         return None, 0, "The selected workflow has no supported terminal MODEL input for a user LoRA."
 
-    selected_strength = max(0.0, min(max_strength, float(strength)))
+    try:
+        selected_strength = signed_strength(strength, max_strength)
+    except ValueError as exc:
+        return None, 0, str(exc)
     by_source: Dict[tuple[str, int], str] = {}
     injected = 0
     for target_id, model_ref in targets:
@@ -2324,7 +2422,10 @@ async def _perform_dispatch(body: "DispatchBody", queue_id: Optional[str] = None
         return doc
     applied_loras = []
     for item in selected_loras:
-        strength = float(item.get("strength", 0.8))
+        try:
+            strength = signed_strength(item.get("strength", 0.8), 3.5 if is_krea else 2.0)
+        except ValueError as exc:
+            raise HTTPException(422, str(exc))
         resolved_lora, injected_count, lora_error = await _inject_selected_lora(
             workflow,
             s.comfyui_url,

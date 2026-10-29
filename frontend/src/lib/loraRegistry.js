@@ -1,3 +1,4 @@
+import {loraStrengthProfile} from './loraPreferences';
 // Ultra Studio LoRA registry.
 //
 // triggerWords are included only when the filename/purpose makes them reliable.
@@ -467,6 +468,7 @@ export function compatibleInstalledLoras(workflow = {}, installed = [], preferen
       defaultStrength: registered?.defaultStrength ?? 0.8,
       minStrength: registered?.minStrength ?? 0,
       maxStrength: registered?.maxStrength ?? 1.5,
+      ...loraStrengthProfile(preferences[normalizedName], inferredFamily),
       verified: !!registered?.verified,
       categories: registered?.categories || [],
     });
