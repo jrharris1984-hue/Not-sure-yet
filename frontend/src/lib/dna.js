@@ -1,3 +1,4 @@
+import { expandEverydayWardrobe } from './everydayWardrobe';
 import { HERITAGE_OUTFIT_GROUP, heritagePhotoOutfit } from './heritageStyling';
 import { NATURAL_POOLS, NATURAL_RANGES, enforcePhotoConsistency, preserveSubjectLocks } from './photoConsistency';
 import {SIMPLE_COVERAGE_OPTIONS} from './simpleCoverage';
@@ -464,7 +465,7 @@ export const SECTIONS = [
       { key: "extra", type: "text", label: "Extra style tokens" },
     ],
   },
-];
+].map(expandEverydayWardrobe);
 
 export const DEFAULT_DNA = SECTIONS.reduce((acc, s) => {
   acc[s.key] = {};
