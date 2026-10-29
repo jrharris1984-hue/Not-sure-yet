@@ -55,6 +55,10 @@ api.interceptors.response.use(response => {
 });
 
 export const endpoints = {
+  loraLibrary: () => api.get('/lora-library').then(r => r.data),
+  scanLora: (name, online = false) => api.post('/lora-library/scan', {name, online}, {timeout:60000}).then(r => r.data),
+  importLoraHashes: body => api.post('/lora-library/hashes', body).then(r => r.data),
+  saveLoraProfile: (name, profile) => api.put('/lora-library/profile', {name, profile}).then(r => r.data),
   researchConfig: () => api.get('/ai/research/config').then(r => r.data),
   saveResearchKey: api_key => api.put('/ai/research/config', {api_key}).then(r => r.data),
   removeResearchKey: () => api.delete('/ai/research/config').then(r => r.data),
