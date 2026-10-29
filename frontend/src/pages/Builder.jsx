@@ -1,3 +1,4 @@
+import CreationSectionHeader from '@/components/CreationSectionHeader';
 import { workflowPromptPolicy, builderLoraFields, generationPromptFields } from '@/lib/workflowPromptPolicy';
 import { mossWorkflowSettings } from "@/lib/mossWorkflowSettings";
 import RandomizerSuites from '@/components/RandomizerSuites';
@@ -17,6 +18,7 @@ import DesktopDnaEditor from '@/components/DesktopDnaEditor';
 import DesignCategoryNavigation from '@/components/DesignCategoryNavigation';
 import './BuilderDesign.css';
 import './StudioSurfaces.css';
+import './CreationExperience.css';
 import { useBuilderRenderPolling } from '@/hooks/useBuilderRenderPolling';
 import { useBuilderPromptFormatSettings } from '@/hooks/useBuilderPromptFormatSettings';
 import { selectSharedCastPose, editCastPose, sharedCastPose } from '@/lib/castPoseResolution';
@@ -3813,6 +3815,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
             <div><h2 className="text-sm font-semibold">Choose your starting point</h2><p className="mt-1 text-xs text-zinc-400">Use a character preset, or choose the details below. You can edit every choice.</p></div>
             {characterPresets}
           </section>}
+          <CreationSectionHeader section={SECTIONS[activeIdx]} sections={SECTIONS} stages={quickStages} onSection={openDesktopSection}/>
           <WorkspacePreviewLayout editTarget={`${activeSubjectId}:${activeSection}:${requestedDetail?.field || ""}`} hasPreview={!!(activeRender?.output_files?.[0] || referencePreview || character?.thumbnail || dispatching || activeRender?.status === "running")} preview={<GuidedCharacterPreview preview={activeRender?.output_files?.[0] || referencePreview || character?.thumbnail}
               renderStatus={activeRender?.status} submitting={dispatching} name={name} dna={activeDna} stages={quickStages} sections={SECTIONS} onSection={openDesktopSection}
               onReview={() => { setDesktopQuickMode(true); selectQuickStage(quickStages.length - 1); }} />}>

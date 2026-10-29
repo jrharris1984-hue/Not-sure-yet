@@ -1,3 +1,4 @@
+import DetailNavigator from './DetailNavigator';
 import WardrobeEditor from './WardrobeEditor';
 import useTabPreference from '@/hooks/useTabPreference';
 import { useEffect, useState } from 'react';
@@ -54,12 +55,8 @@ export default function DesktopDnaEditor({ enabled, requestedField, ...props }) 
         aria-pressed={group.key === item.key} onClick={() => { setGroupKey(item.key); setFieldKey(''); }}
         className={`chip ${group.key === item.key ? 'active' : ''}`}>{item.label}</button>)}</div>
     </nav>
-    {matchingGroups.length>0 && <label className="workspace-field-select">Editing
-      <select aria-label="Editing detail" value={active.key} onChange={event=>{setFieldKey(event.target.value);if(props.collapsed)props.onToggleCollapsed?.();}}>
-        {fields.map(field=><option key={field.key} value={field.key}>{field.label}{props.fieldLocks?.[field.key]?' · locked':''}</option>)}
-      </select>
-      <span className="workspace-current-value">{selectionSummary(active,props.value || {},props.section.key)}</span>
-    </label>}
+    {matchingGroups.length>0 && <DetailNavigator fields={fields.map(field=>({...field,label:`${field.label}${props.fieldLocks?.[field.key]?' · locked':''}`}))} value={active.key}
+      onChange={key=>{setFieldKey(key);if(props.collapsed)props.onToggleCollapsed?.();}} summary={selectionSummary(active,props.value || {},props.section.key)}/>}
     {matchingGroups.length ? <DnaSection {...props} focusedField={active.key} />
       : <p role="status" className="rounded-xl border hairline p-4 text-sm text-zinc-400">No matching details in this view. Clear your search{props.simpleMode ? ' or open all controls' : ''}.</p>}
     {props.simpleMode && simpleFields.length < props.section.fields.length && <button type="button"

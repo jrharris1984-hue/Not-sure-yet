@@ -1,3 +1,4 @@
+import VisualChoice from './VisualChoice';
 import WardrobeOverview from "./WardrobeOverview";
 import AnatomySelectionReview from "./AnatomySelectionReview";
 import { LEGACY_ANATOMY_FIELDS, selectAnatomyPreset, anatomyPresetDetails } from "@/lib/anatomyDetailControls";
@@ -17,20 +18,13 @@ import { physiqueControlStatus, SIZE_CONTROL_PAIRS, sizeControlMode, selectSizeC
 
 export function ChipRow({ options, value, onChange, testIdPrefix, labels = {} }) {
   return (
-    <OptionBrowser key={testIdPrefix} preferenceKey={testIdPrefix} options={options} value={value} labels={labels}>{visible => <div className="flex flex-wrap gap-2">
+    <OptionBrowser key={testIdPrefix} preferenceKey={testIdPrefix} alwaysSearch options={options} value={value} labels={labels}>{visible => <div className="visual-choice-grid">
       {visible.map((opt) => {
         const active = value === opt;
         return (
-          <button
-            key={opt}
-            type="button"
-            aria-pressed={active}
-            data-testid={`${testIdPrefix}-${opt.replace(/\s+/g, "-")}`}
-            className={`studio-choice chip ${active ? "active" : ""}`}
-            onClick={() => onChange(active ? "" : opt)}
-          >
-            {labels[opt] || opt}
-          </button>
+          <VisualChoice key={opt} value={opt} label={labels[opt] || opt} active={active} field={testIdPrefix}
+            testId={`${testIdPrefix}-${opt.replace(/\s+/g, "-")}`} onClick={()=>onChange(active ? "" : opt)}/>
+
         );
       })}
     </div>}</OptionBrowser>

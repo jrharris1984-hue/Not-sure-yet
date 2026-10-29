@@ -24,3 +24,14 @@ test('uses group names so reordering a library preserves the destination',()=>{
   render('straight',[groups[0]]);
   expect(tab('Loose').getAttribute('aria-pressed')).toBe('true');
 });
+test('search survives a selection from another group, while explicit category browsing clears it',()=>{
+  const choices=[{name:'First',options:Array.from({length:10},(_,i)=>`style ${i}`)},{name:'Second',options:['unique style']}];
+  const paint=value=>act(()=>root.render(<GroupedChips groups={choices} value={value} testIdPrefix="hair-style" onChange={jest.fn()}/>));
+  paint('style 0');
+  const input=container.querySelector('input[type=search]');
+  act(()=>{Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(input,'unique');input.dispatchEvent(new Event('input',{bubbles:true}));});
+  expect(container.querySelector('[data-testid="hair-style-unique-style"]')).not.toBeNull();
+  paint('unique style');
+  expect(container.querySelector('input[type=search]').value).toBe('unique');
+  act(()=>tab('First').click());expect(container.querySelector('input[type=search]').value).toBe('');
+});
