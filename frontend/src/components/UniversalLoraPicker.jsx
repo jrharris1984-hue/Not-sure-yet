@@ -1,3 +1,4 @@
+import LoraLibraryManager from "./LoraLibraryManager";
 import { useEffect, useMemo, useState } from "react";
 import { Check, Search, SlidersHorizontal, Sparkles } from "lucide-react";
 import { endpoints } from "@/lib/api";
@@ -5,6 +6,7 @@ import { readLoraPreferences, saveLoraPreference, loraFileKey, LORA_PREFERENCES_
 import { compatibleInstalledLoras, workflowFamily } from "@/lib/loraRegistry";
 
 export default function UniversalLoraPicker({ workflow, value, onChange, slotLabel = "LoRA", excludedNames = [] }) {
+  const [records, setRecords] = useState([]);
   const [preferences, setPreferences] = useState(readLoraPreferences);
   const [saveError, setSaveError] = useState("");
   const [savedTriggerFor, setSavedTriggerFor] = useState("");
@@ -17,7 +19,11 @@ export default function UniversalLoraPicker({ workflow, value, onChange, slotLab
   const family = workflowFamily(workflow || {});
 
   useEffect(() => {
-    const refresh = () => setPreferences(readLoraPreferences());
+    const refresh = () => {
+      setPreferences(readLoraPreferences());
+      endpoints.loraLibrary().then(result=>setRecords(result.records || [])).catch(()=>setSaveError("Could not load saved LoRA profiles. Check the backend connection and rebuild the backend after updating."));
+    };
+    refresh();
     window.addEventListener(LORA_PREFERENCES_CHANGED, refresh);
     window.addEventListener('storage', refresh);
     return () => {window.removeEventListener(LORA_PREFERENCES_CHANGED, refresh); window.removeEventListener('storage', refresh);};
@@ -32,10 +38,13 @@ export default function UniversalLoraPicker({ workflow, value, onChange, slotLab
   }, [workflow?.id]);
 
   const options = useMemo(
-    () => compatibleInstalledLoras(workflow || {}, installed, preferences).filter((entry) =>
+    () => compatibleInstalledLoras(workflow || {}, installed, Object.fromEntries([
+      ...Object.entries(preferences),
+      ...records.filter(r=>r.profile).map(r=>[loraFileKey(r.name), {...r.profile, ...preferences[loraFileKey(r.name)]}])
+    ])).filter((entry) =>
       !excludedNames.some((name) => String(name).replace(/\\/g, "/").toLowerCase() === entry.installedName.replace(/\\/g, "/").toLowerCase())
     ),
-    [workflow, installed, excludedNames, preferences]
+    [workflow, installed, excludedNames, preferences, records]
   );
 
   const normalizedFile = (name = "") => String(name).replace(/\\/g, "/").toLowerCase();
@@ -106,6 +115,8 @@ export default function UniversalLoraPicker({ workflow, value, onChange, slotLab
   const strength = Number(value?.strength ?? selected?.defaultStrength ?? 0.8);
   const minStrength = selected?.minStrength ?? 0;
   const maxStrength = selected?.maxStrength ?? 1.5;
+  const [strengthInput, setStrengthInput] = useState(String(strength));
+  useEffect(()=>setStrengthInput(String(strength)),[strength,value?.name]);
 
   return (
     <section className="pane overflow-hidden border-cyan-500/25" data-testid="universal-lora-picker">
@@ -126,6 +137,7 @@ export default function UniversalLoraPicker({ workflow, value, onChange, slotLab
       </div>
 
       <div className="space-y-3 p-4">
+        <LoraLibraryManager installed={installed} records={records} onRecords={setRecords}/>
         {options.length > 6 && (
           <label className="relative block">
             <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-zinc-600" />
@@ -230,6 +242,7 @@ export default function UniversalLoraPicker({ workflow, value, onChange, slotLab
             </div>
             <input
               type="range"
+              aria-label={`${slotLabel} model strength`}
               min={minStrength}
               max={maxStrength}
               step="0.05"
@@ -244,9 +257,19 @@ export default function UniversalLoraPicker({ workflow, value, onChange, slotLab
             />
             <div className="mt-1 flex justify-between text-[9px] font-mono text-zinc-600">
               <span>{minStrength.toFixed(2)}</span>
-              <span>recommended {Number(selected.defaultStrength ?? 0.8).toFixed(2)}</span>
+              <span>{selected.profileConfigured ? "saved default" : "app default"} {Number(selected.defaultStrength ?? 0.8).toFixed(2)}</span>
               <span>{maxStrength.toFixed(2)}</span>
             </div>
+            <div className="mt-2 flex flex-wrap items-end gap-2">
+              <label className="text-xs">Model strength
+                <input type="number" aria-label={`${slotLabel} numeric model strength`} min={minStrength} max={maxStrength} step="0.05" value={strengthInput}
+                  onChange={event=>{setStrengthInput(event.target.value); if(event.target.value === '') return; const number=Number(event.target.value); if(Number.isFinite(number) && number>=minStrength && number<=maxStrength) onChange({...value,strength:number});}}
+                  onBlur={()=>{const number=Number(strengthInput); const next=strengthInput !== '' && Number.isFinite(number) ? Math.max(minStrength,Math.min(maxStrength,number)) : strength; setStrengthInput(String(next)); if(next!==strength) onChange({...value,strength:next});}}
+                  className="ml-2 w-24 rounded border hairline bg-elevated p-2"/>
+              </label>
+              <button type="button" className="chip min-h-11" onClick={()=>onChange({...value,strength:selected.defaultStrength ?? 0.8})}>Reset strength</button>
+            </div>
+            <p className="mt-2 text-xs text-zinc-400">Model influence only. Use Scan &amp; manage to save a creator-specific range, including negative values. A saved range is user-confirmed, not independently verified.</p>
             <label className="mt-3 block text-[10px] text-zinc-400">
               Prompt trigger words (comma-separated)
               <input type="text" value={triggerInput} onChange={(event) => {setTriggerInput(event.target.value); setSavedTriggerFor("");}}
