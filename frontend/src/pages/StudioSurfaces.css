@@ -156,3 +156,29 @@
   :where(html[data-studio-theme="studio"], html:not([data-studio-theme])) .studio-shell .design-workspace .studio-choice[aria-pressed=true] {outline: 2px solid Highlight; outline-offset: -3px}
   :where(html[data-studio-theme="studio"], html:not([data-studio-theme])) .studio-shell .design-workspace .studio-choice[aria-pressed=true]::after {display: none}
 }
+
+/* Quiet shell surfaces: depth belongs to the editing panel and overlays. */
+:where(html[data-studio-theme="studio"], html:not([data-studio-theme])) .studio-shell .design-workspace {
+  --design-canvas:#10151c;
+  --design-panel:#181f29;
+  --design-edge:#33404e;
+  --design-control:#1c2631;
+  background:var(--design-canvas);
+}
+:where(html[data-studio-theme="studio"], html:not([data-studio-theme])) .studio-shell .design-workspace :is(.design-category-nav,.desktop-detail-navigation,.workspace-tools) {
+  background:transparent;box-shadow:none;border-color:#ffffff16!important;
+}
+:where(html[data-studio-theme="studio"], html:not([data-studio-theme])) .studio-shell .design-workspace #studio-model {
+  background:#141b24;box-shadow:none;border-color:#33404e;
+}
+:where(html[data-studio-theme="studio"], html:not([data-studio-theme])) .studio-shell .design-workspace :is(.chip,.sheet-field-card,.selected-detail-row) {
+  background:var(--design-control);box-shadow:none;
+}
+:where(html[data-studio-theme="studio"], html:not([data-studio-theme])) .studio-shell .design-workspace :is(.chip.active,.chip[aria-pressed=true]) {
+  background:#203f40;border-color:#77cdbf;color:#d0f4ed;box-shadow:none;
+}
+@media(hover:hover) and (pointer:fine) {
+  :where(html[data-studio-theme="studio"], html:not([data-studio-theme])) .studio-shell .design-workspace :is(.chip,.sheet-field-card,.selected-detail-row):not(:disabled):hover {
+    transform:none;box-shadow:none;border-color:#77cdbf;
+  }
+}
