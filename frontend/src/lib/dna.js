@@ -1,3 +1,4 @@
+import characterVibeOptions from './characterVibeOptions.json';
 import { expandEverydayWardrobe } from './everydayWardrobe';
 import { HERITAGE_OUTFIT_GROUP, heritagePhotoOutfit } from './heritageStyling';
 import { NATURAL_POOLS, NATURAL_RANGES, enforcePhotoConsistency, preserveSubjectLocks } from './photoConsistency';
@@ -23,7 +24,8 @@ export const SECTIONS = [
       { key: "gender", type: "chips", label: "Gender", options: ["female", "male"] },
       { key: "age", type: "slider", label: "Age (adult)", min: 18, max: 80, step: 1, defaultValue: 30, help: "Changing age updates skin texture automatically. New images use age-specific facial detail; hair color and cosmetic finishes stay separate." },
       { key: "ethnicity", type: "chips", label: "Ethnicity", groups: HERITAGE_GROUPS, optionLabels: HERITAGE_LABELS },
-      { key: "archetype", type: "chips", label: "Archetype (character theme)", groups: [
+      { key: "archetype", type: "chips", label: "Character vibe (optional)", help: "Choose a personality or mood, or leave this blank. Boudoir & portrait choices describe presence only. Older themed presets may also suggest styling.", optionLabels: Object.fromEntries(characterVibeOptions.map(option=>[option.value,option.label])), groups: [
+        { name: "Boudoir & portrait", options: characterVibeOptions.map(option=>option.value) },
         { name: "Everyday", options: ["girl next door", "athlete", "artist", "socialite", "scholar"] },
         { name: "Royal & cinematic", options: ["queen", "Bollywood princess", "Indian royal", "Arabian princess", "desert queen", "regal heroine"] },
         { name: "Fantasy & action", options: ["warrior", "pirate", "superheroine", "sorceress", "space explorer"] },

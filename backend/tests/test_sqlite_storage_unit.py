@@ -28,6 +28,7 @@ from sqlite_storage import SQLiteDatabase
 from storage_backend import open_storage
 from storage_paths import StoragePaths
 from wardrobe_catalog_upgrade import upgrade_wardrobe_catalog
+from character_vibe_upgrade import upgrade_character_vibes
 from prompt_catalog import validate_prompt_catalog
 
 

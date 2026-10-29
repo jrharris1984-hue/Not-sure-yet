@@ -1,0 +1,50 @@
+[
+  {
+    "value": "romantic muse",
+    "label": "Romantic muse",
+    "keywords": "romantic presence, gentle expressive warmth",
+    "group": "Boudoir & portrait"
+  },
+  {
+    "value": "natural confidence",
+    "label": "Natural confidence",
+    "keywords": "natural self-assurance, comfortable authentic presence",
+    "group": "Boudoir & portrait"
+  },
+  {
+    "value": "vintage glamour",
+    "label": "Vintage glamour",
+    "keywords": "classic screen-star charisma, nostalgic glamour",
+    "group": "Boudoir & portrait"
+  },
+  {
+    "value": "refined elegance",
+    "label": "Refined elegance",
+    "keywords": "refined elegance, composed graceful presence",
+    "group": "Boudoir & portrait"
+  },
+  {
+    "value": "playful charm",
+    "label": "Playful charm",
+    "keywords": "playful personality, lighthearted expressive charm",
+    "group": "Boudoir & portrait"
+  },
+  {
+    "value": "quiet mystery",
+    "label": "Quiet mystery",
+    "keywords": "quiet mysterious presence, subtle intrigue",
+    "group": "Boudoir & portrait"
+  },
+  {
+    "value": "bold confidence",
+    "label": "Bold confidence",
+    "keywords": "bold self-assured presence, expressive charisma",
+    "group": "Boudoir & portrait"
+  },
+  {
+    "value": "soft serenity",
+    "label": "Soft serenity",
+    "keywords": "serene gentle presence, calm introspective mood",
+    "group": "Boudoir & portrait"
+  }
+]
