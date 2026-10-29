@@ -193,3 +193,18 @@ test('reset is labeled in Simple mode and disabled for a locked section', () => 
     expect(onReset).toHaveBeenCalledTimes(1);
   } finally { act(() => root.unmount()); }
 });
+test('wardrobe hides inactive controls until requested and keeps focused inactive controls reachable',()=>{
+  global.IS_REACT_ACT_ENVIRONMENT=true;
+  const container=document.createElement('div'),root=createRoot(container),section=SECTIONS.find(s=>s.key==='wardrobe');
+  const value={outfit_mode:'full',outfit_set:'navy suit',top:'mesh top'};
+  try {
+    act(()=>root.render(<DnaSection section={section} value={value} onChange={()=>{}}/>));
+    const top=()=>container.querySelector('[data-testid="chip-wardrobe-top-mesh-top"]');
+    expect(top().closest('fieldset').parentElement.style.display).toBe('none');
+    act(()=>[...container.querySelectorAll('button')].find(button=>button.textContent.includes('Show inactive controls')).click());
+    expect(top().closest('fieldset').parentElement.style.display).not.toBe('none');
+    expect(top().closest('fieldset').disabled).toBe(true);
+    act(()=>root.render(<DnaSection key="focused" section={section} value={value} focusedField="top" onChange={()=>{}}/>));
+    expect(top().closest('fieldset').parentElement.style.display).not.toBe('none');
+  } finally {act(()=>root.unmount());}
+});
