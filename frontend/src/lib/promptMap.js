@@ -1,3 +1,4 @@
+import characterVibeOptions from './characterVibeOptions.json';
 import { EXPOSURE_PROMPTS } from "./wardrobeNudity";
 import { HERITAGE_PROFILES, heritagePrompt } from "./heritageProfiles";
 import { POSE_ACTION_PROMPTS } from "@/lib/photographyPoses";
@@ -16,6 +17,7 @@ export const PROMPT_MAP = {
     },
     ethnicity: Object.fromEntries(Object.entries(HERITAGE_PROFILES).map(([key, profile]) => [key, profile.description])),
     archetype: {
+      ...Object.fromEntries(characterVibeOptions.map(option=>[option.value,option.keywords])),
       "girl next door": "wholesome girl-next-door charm, natural approachable beauty, warm smile",
       "femme fatale": "seductive femme fatale, dangerous allure, mysterious dark energy, dominant presence",
       "warrior": "fierce warrior woman, battle-ready confident stance, powerful",
