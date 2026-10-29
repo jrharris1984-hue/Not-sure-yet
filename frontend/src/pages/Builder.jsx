@@ -1,3 +1,5 @@
+import RelatedFootControls from '@/components/RelatedFootControls';
+import {footAppearanceSection,footDestination,scopedFootEdit} from '@/lib/footControlPlacement';
 import CreationSectionHeader from '@/components/CreationSectionHeader';
 import { workflowPromptPolicy, builderLoraFields, generationPromptFields } from '@/lib/workflowPromptPolicy';
 import { mossWorkflowSettings } from "@/lib/mossWorkflowSettings";
@@ -1905,12 +1907,14 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
     reader.readAsText(file);
   };
 
-  const runSuggest = async (sectionKey) => {
+  const runSuggest = async (sectionKey, visibleFields) => {
+    if(locks[sectionKey])return;
     try {
       const res = await endpoints.aiSuggest(sectionKey, activeDna);
       const first = res.options?.[0];
       if (first) {
-        setSection(sectionKey, { ...(activeDna[sectionKey] || {}), ...first });
+        const suggested={...(activeDna[sectionKey] || {}),...first};
+        setSection(sectionKey,visibleFields?scopedFootEdit(activeDna[sectionKey] || {},suggested,visibleFields.filter(field=>!activeFieldLocks[sectionKey]?.[field.key])):suggested);
         toast.success(`Suggested ${sectionKey}`);
       }
     } catch (e) {
@@ -2744,7 +2748,9 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
       locked:!!locks[lockSection] || !!sectionLocks?.[lockSection]?.[field.key],
       note:selectionNotes.filter(note=>note.section===category.key && note.field===field.key).map(note=>note.text).join(' ')}];
   })), [SECTIONS, activeDna, primaryDna, subjects, activeFieldLocks, locks, selectionNotes]);
-  const editSelectedDetail = item => {
+  const editSelectedDetail = original => {
+    const destination=original.section==='feet' && studioMode!=='feet'?footDestination(original.field):original.section;
+    const item=destination!==original.section?{...original,section:destination,field:`feet:${original.field}`}:original;
     if (item.section === studioProfile.specialtySection) {
       const group = studioProfile.fieldGroups.findIndex(entry => entry.keys.includes(item.field));
       if (group >= 0) setSpecialtyTab(group);
@@ -2754,16 +2760,24 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
     setRequestedDetail({...item, token:Date.now()});
     openDesktopSection(item.section);
   };
+  const relatedFootControls = destination => studioMode==='feet'?null:<RelatedFootControls key={`${activeSubjectId}:${destination}`} destination={destination}
+    section={SECTIONS.find(section=>section.key==='feet')} value={activeDna.feet || {}} onChange={value=>setSection('feet',value)}
+    onOpenDestination={field=>editSelectedDetail({section:"feet",field})} onToggleSectionLock={()=>setLocks({...locks,feet:!locks.feet})}
+    locked={!!locks.feet} fieldLocks={activeFieldLocks.feet || {}} notes={selectionNotes}
+    requestedField={requestedDetail?.section===destination?requestedDetail:null}
+    onToggleFieldLock={key=>setActiveFieldLocks({...activeFieldLocks,feet:{...activeFieldLocks.feet,[key]:!activeFieldLocks.feet?.[key]}})}/>;
+  const scopedEditorValue = next => activeSection==='feet' && studioMode!=='feet'
+    ? scopedFootEdit(activeDna.feet || {},next,footAppearanceSection(SECTIONS[activeIdx]).fields):next;
   const renderDnaControls = (sheetField = null) => (
-<EditorPanelBoundary key={`${activeSubjectId}-${activeSection}-${sheetField || "all"}`}><DesktopDnaEditor requestedField={requestedDetail?.section === activeSection ? requestedDetail : null} enabled={!sheetViewport && !sheetField}
+<EditorPanelBoundary key={`${activeSubjectId}-${activeSection}-${sheetField || "all"}`}><DesktopDnaEditor requestedField={requestedDetail?.section === activeSection && !requestedDetail.field?.startsWith("feet:") ? requestedDetail : null} enabled={!sheetViewport && !sheetField}
             key={`${activeSubjectId}-${activeSection}`}
             section={!sheetField && studioProfile.specialtySection && activeSection === studioProfile.specialtySection
               ? { ...SECTIONS[activeIdx], fields: SECTIONS[activeIdx].fields.filter((field) => field.key === "composition_mode" || studioProfile.fieldGroups[specialtyTab]?.keys.includes(field.key)) }
               : activeSection === "scenario" ? { ...SECTIONS[activeIdx], fields: SECTIONS[activeIdx].fields.filter(field => {
                 if (!["cast_age_mode", "cast_age_gap", "cast_resemblance"].includes(field.key)) return true;
                 return subjects.length > 1 && (field.key !== "cast_age_gap" || primaryDna.scenario?.cast_age_mode === "age contrast");
-              }) } : SECTIONS[activeIdx]}
-            controlNotes={selectionNotes.filter(note => note.section === activeSection).map(note => note.text)}
+              }) } : footAppearanceSection(SECTIONS[activeIdx],studioMode==="feet",sheetField || (requestedDetail?.section==="feet"?requestedDetail.field:null))}
+            controlNotes={selectionNotes.filter(note => note.section === activeSection && (activeSection!=="feet" || studioMode==="feet" || footDestination(note.field)==="feet" || note.field===sheetField)).map(note => note.text)}
             value={builderSectionValue(activeSection, activeDna, primaryDna)}
             onChange={(v) => {
               const change = builderSectionChange(activeSection, v, primaryDna);
@@ -2771,17 +2785,17 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
             }}
             locked={!!locks[activeSection]}
             onToggleLock={() => setLocks({ ...locks, [activeSection]: !locks[activeSection] })}
-            onRandomize={() => setSection(activeSection, activeSection.startsWith("custom_")
+            onRandomize={() => !locks[activeSection] && setSection(activeSection, scopedEditorValue(activeSection.startsWith("custom_")
               ? Object.fromEntries(SECTIONS[activeIdx].fields.map(field => [field.key, activeFieldLocks[activeSection]?.[field.key] ? activeDna[activeSection]?.[field.key] : field.type === 'chips_multi' ? [] : field.options?.[Math.floor(Math.random() * field.options.length)] || '']))
-              : randomizeSection(activeSection, activeDna[activeSection] || {}, activeFieldLocks[activeSection] || {}, {profile:randomProfile}))}
+              : randomizeSection(activeSection, activeDna[activeSection] || {}, activeFieldLocks[activeSection] || {}, {profile:randomProfile})))}
             onReset={() => {
               if (locks[activeSection]) return;
               const source = activeSection === "scenario" ? subjects[0] : activeSubject;
               const next = resetSection(activeSection, source?.dna?.[activeSection] || {}, source?.field_locks?.[activeSection] || {});
-              setSection(activeSection, next);
+              setSection(activeSection, scopedEditorValue(next));
               toast.success(`${SECTIONS[activeIdx].title} reset`, { description: "Locked choices were kept. Use Undo to restore the previous setup." });
             }}
-            onSuggest={() => runSuggest(activeSection)}
+            onSuggest={() => runSuggest(activeSection,activeSection==="feet" && studioMode!=="feet"?footAppearanceSection(SECTIONS[activeIdx]).fields:undefined)}
             fieldLocks={activeSection === "pose" ? { ...activeFieldLocks.pose, explicit_level: !!locks.scenario || !!activeFieldLocks.scenario?.explicit_level } : activeFieldLocks[activeSection] || {}}
             onToggleFieldLock={(fieldKey) => {
               const sourceSection = activeSection === "pose" && fieldKey === "explicit_level" ? "scenario" : activeSection;
@@ -2793,7 +2807,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
             simpleMode={!sheetField && (sheetViewport ? mobileStudioMode === "simple" : desktopQuickMode)}
             focusedField={sheetField}
             collapsed={sheetField ? false : !!collapsed[activeSection]}
-            simpleFieldKeys={SIMPLE_FIELD_KEYS[activeSection] || []}
+            simpleFieldKeys={activeSection==="feet" && studioMode!=="feet"?[]:SIMPLE_FIELD_KEYS[activeSection] || []}
             onRequestAdvanced={() => sheetViewport ? setMobileStudioMode("advanced") : setDesktopQuickMode(false)}
           /></EditorPanelBoundary>
   );
@@ -3024,9 +3038,10 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
         {!activeRender && batchRenders.length === 0 && <section data-mobile-tools="results" className="pane p-4 text-sm text-zinc-400">Your generation progress and results will appear here.</section>}
       </>}
       {sheetViewport && !isImageFirst && editMode !== "body_adjust" && (mobileSheets ? <MobileBuilderSheets
-        sections={SECTIONS} section={SECTIONS[activeIdx]} onSection={goSection}
+        sections={SECTIONS} section={footAppearanceSection(SECTIONS[activeIdx],studioMode==="feet")} onSection={goSection}
+        relatedControls={relatedFootControls(activeSection)}
         stages={studioSteps} mode={mobileStudioMode} onMode={changeMobileStudioMode}
-        simpleFieldKeys={SIMPLE_FIELD_KEYS[activeSection] || []}
+        simpleFieldKeys={activeSection==="feet" && studioMode!=="feet"?[]:SIMPLE_FIELD_KEYS[activeSection] || []}
         selectedItems={selectedDetails}
         subjects={subjects} activeId={activeSubjectId} onSubject={setActiveSubjectId}
         onPeople={() => goSection("scenario")}
@@ -3820,6 +3835,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
               renderStatus={activeRender?.status} submitting={dispatching} name={name} dna={activeDna} stages={quickStages} sections={SECTIONS} onSection={openDesktopSection}
               onReview={() => { setDesktopQuickMode(true); selectQuickStage(quickStages.length - 1); }} />}>
             {renderDnaControls()}
+            {!sheetViewport && relatedFootControls(activeSection)}
           </WorkspacePreviewLayout>
           {sectionNavigation("bottom")}
           </div>
