@@ -1,14 +1,16 @@
+import VisualChoice from './VisualChoice';
 import useTabPreference from "@/hooks/useTabPreference";
-import { useMemo, useRef, useEffect } from "react";
+import { useMemo, useRef, useEffect, useState } from "react";
 import OptionBrowser from "./OptionBrowser";
 import PoseIcon from "@/components/PoseIcon";
 import { X } from "lucide-react";
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 
 // Grouped chip picker: category tabs + only the active category's chips.
 // Supports single-select (value=string) or multi-select (value=array of strings).
 export default function GroupedChips({
   groups,
+  compactCategories = false,
   value,
   onChange,
   testIdPrefix,
@@ -28,7 +30,8 @@ export default function GroupedChips({
   };
   const [groupName, setGroupName] = useTabPreference(testIdPrefix ? `ultra:choice-group:${testIdPrefix}` : null, groups[initialTab()]?.name || "");
   const tab = Math.max(0, groups.findIndex(group => group.name === groupName));
-  const setTab = index => setGroupName(groups[index]?.name || "");
+  const [browseVersion,setBrowseVersion]=useState(0);
+  const setTab = index => {setGroupName(groups[index]?.name || "");setBrowseVersion(version=>version+1);};
   const previousSelection = useRef({ key: testIdPrefix, value });
 
   useEffect(() => {
@@ -37,7 +40,7 @@ export default function GroupedChips({
     if (previous.key !== testIdPrefix || previous.value === value) return;
     if (!multi) {
       const i = findGroupOf(value);
-      if (i >= 0 && i !== tab) setTab(i);
+      if (i >= 0 && i !== tab) setGroupName(groups[i].name);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value, multi, testIdPrefix]);
@@ -94,7 +97,7 @@ export default function GroupedChips({
       )}
 
       {/* Category tabs */}
-      <div className="flex flex-wrap gap-1.5">
+      {compactCategories ? <label className="block text-sm text-zinc-300">Category<select aria-label="Choice category" className="studio-control-search mt-2 min-h-11 w-full" value={active.name} onChange={event=>setTab(groups.findIndex(group=>group.name===event.target.value))}>{groups.map(group=><option key={group.name} value={group.name}>{group.name}</option>)}</select></label> : <div className="flex flex-wrap gap-1.5">
         {groups.map((g, i) => {
           const isActive = i === tab;
           const cnt = countPerGroup[i];
@@ -123,15 +126,14 @@ export default function GroupedChips({
             </button>
           );
         })}
-      </div>
+      </div>}
 
-      <OptionBrowser key={`${testIdPrefix}:${active.name}`} preferenceKey={testIdPrefix} browseGroup={active.name} options={active.options} searchOptions={groups.flatMap(group => group.options)} value={value} labels={labels}>{visible => <>
-      <AnimatePresence mode="wait" initial={false}>
+      <OptionBrowser key={`${testIdPrefix}:${browseVersion}`} alwaysSearch preferenceKey={testIdPrefix} browseGroup={active.name} options={active.options} searchOptions={groups.flatMap(group => group.options)} value={value} labels={labels}>{visible => <>
       <motion.div key={`${testIdPrefix}-${active.name}`}
         initial={reduceMotion ? false : { opacity: 0, y: 7 }}
         animate={{ opacity: 1, y: 0 }}
-        exit={reduceMotion ? undefined : { opacity: 0, y: -5 }}
-        transition={{ duration: reduceMotion ? 0 : 0.16 }}>
+
+        transition={{ duration: reduceMotion ? 0 : 0.12 }}>
       {variant === "poses" ? (
         <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
           {visible.map((opt) => {
@@ -156,26 +158,12 @@ export default function GroupedChips({
           })}
         </div>
       ) : (
-        <div className="flex flex-wrap gap-2">
-          {visible.map((opt) => {
-            const isActive = has(opt);
-            return (
-              <button
-                key={opt}
-                type="button"
-                data-testid={`${testIdPrefix}-${opt.replace(/\s+/g, "-")}`}
-                className={`studio-choice chip ${isActive ? "active" : ""}`}
-                aria-pressed={isActive}
-                onClick={() => toggle(opt)}
-              >
-                {labels[opt] || opt}
-              </button>
-            );
-          })}
+        <div className="visual-choice-grid">
+          {visible.map(opt=><VisualChoice key={opt} value={opt} label={labels[opt] || opt} active={has(opt)} field={testIdPrefix}
+            testId={`${testIdPrefix}-${opt.replace(/\s+/g, "-")}`} onClick={()=>toggle(opt)}/>)}
         </div>
       )}
       </motion.div>
-      </AnimatePresence>
       </>}</OptionBrowser>
     </div>
   );

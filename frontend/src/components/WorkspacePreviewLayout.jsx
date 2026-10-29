@@ -1,16 +1,34 @@
+import {useEffect, useRef, useState} from 'react';
 import useTabPreference from '@/hooks/useTabPreference';
-export default function WorkspacePreviewLayout({ children, preview }) {
-  const [open, setOpen] = useTabPreference('ultra:preview-open', true);
+
+export default function WorkspacePreviewLayout({ children, preview, hasPreview = true, editTarget }) {
+  const [wide,setWide]=useState(()=>window.innerWidth>=1280);
+  useEffect(()=>{
+    const resize=()=>setWide(window.innerWidth>=1280);
+    window.addEventListener('resize',resize);
+    return ()=>window.removeEventListener('resize',resize);
+  },[]);
+  const [savedView,setView]=useTabPreference('ultra:workspace-view','auto');
+  const previousTarget=useRef(editTarget);
+  useEffect(()=>{
+    if(previousTarget.current!==editTarget) {setView('edit');previousTarget.current=editTarget;}
+    // Navigation into a detail should reveal its editor.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[editTarget]);
+  const requested=['edit','split','preview'].includes(savedView)?savedView:'auto';
+  const view=requested==='auto' ? hasPreview && wide ? 'split':'edit' : requested==='split' && !wide ? 'edit':requested;
   const [savedWidth, setWidth] = useTabPreference('ultra:preview-width', 320);
   const width = Math.max(260, Math.min(480, Number(savedWidth) || 320));
-  return <div className="workspace-preview-layout" data-preview-open={open} style={{'--workspace-preview-width':`${width}px`}}>
+  return <div className="workspace-preview-layout" data-workspace-mode={view} data-preview-open={view!=='edit'} style={{'--workspace-preview-width':`${width}px`}}>
     <div className="workspace-preview-tools">
-      <button type="button" className="chip" aria-expanded={open} onClick={() => setOpen(!open)}>{open ? 'Hide preview' : 'Show preview'}</button>
-      {open && <label className="workspace-preview-size">Preview width
+      <div className="workspace-view-switch" role="group" aria-label="Editor view">
+        {['edit',...(wide?['split']:[]),'preview'].map(mode=><button type="button" key={mode} aria-pressed={view===mode} onClick={()=>setView(mode)}>{mode[0].toUpperCase()+mode.slice(1)}</button>)}
+      </div>
+      {view==='split' && <details className="workspace-preview-options"><summary>Preview size</summary><label className="workspace-preview-size">Width
         <input type="range" min="260" max="480" step="20" value={width} onChange={event => setWidth(Number(event.target.value))} />
-      </label>}
+      </label></details>}
     </div>
-    <div className="workspace-editor-content">{children}</div>
-    {open && <div className="workspace-preview-content">{preview}</div>}
+    <div className="workspace-editor-content" hidden={view==='preview'}>{children}</div>
+    {view!=='edit' && <div className="workspace-preview-content">{preview}</div>}
   </div>;
 }

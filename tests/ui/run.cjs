@@ -49,6 +49,16 @@ async function check(browser,viewport) {
       await page.getByTestId('btn-desktop-studio-mode').click();
       await page.getByTestId('btn-desktop-studio-mode').click();
       assert.equal(await hairChoice.getAttribute('aria-pressed'),'true','Switching views must retain the selected choice');
+      const viewSwitch=page.getByRole('group',{name:'Editor view',exact:true});
+      await viewSwitch.getByRole('button',{name:'Preview',exact:true}).click();
+      assert.equal(await page.locator('.workspace-editor-content').isVisible(),false,'Preview should hide editing controls');
+      await viewSwitch.getByRole('button',{name:'Edit',exact:true}).click();
+      assert.equal(await hairChoice.getAttribute('aria-pressed'),'true','View changes must preserve selections');
+      const workflowMenu=page.locator('.workspace-workflow-menu');
+      await workflowMenu.locator('summary').click();
+      await page.getByLabel('Generation workflow',{exact:true}).waitFor({state:'visible'});
+      await page.keyboard.press('Escape');
+      assert.equal(await workflowMenu.evaluate(element=>element.open),false,'Escape should close workflow settings');
       const name=page.getByTestId('input-character-name');
       await name.fill('UI walkthrough');
       const drawerButton=page.getByRole('button',{name:/^Selected details \(/});
@@ -64,6 +74,7 @@ async function check(browser,viewport) {
       await page.waitForFunction(()=>document.body.textContent.includes('Ready to view'));
       assert.equal(fixture.dispatches,1,'Render should submit exactly once to the fixture');
       if(viewport.width>=1280) {
+        await page.getByRole('group',{name:'Editor view',exact:true}).getByRole('button',{name:'Split',exact:true}).click();
         const expand=page.locator('.workspace-preview-content').getByRole('button',{name:'View larger preview'});
         await expand.click();
         const enlarged=page.getByRole('dialog',{name:'Expanded character preview'});
@@ -87,6 +98,28 @@ async function check(browser,viewport) {
       const dock=await page.locator('.sheet-generation-dock').boundingBox();
       assert.ok(sheet.y+sheet.height<=dock.y+2,'Editing sheet overlaps the bottom action dock');
     }
+    await page.goto(`${baseURL}/character/new/s/wardrobe`,{waitUntil:'domcontentloaded'});
+    const wardrobe=page.locator('[data-testid="wardrobe-focused-editor"]:visible');
+    await wardrobe.waitFor({state:'visible'});
+    assert.equal(await wardrobe.getByTestId('wardrobe-mode-controls').count(),1,'Wardrobe should show one mode selector');
+    assert.equal(await wardrobe.locator('[data-testid^="desktop-edit-"]').count(),0,'Duplicate field cards should be absent');
+    await wardrobe.getByTestId('wardrobe-mode-custom').click();
+    await wardrobe.getByLabel('Editing',{exact:true}).selectOption('top');
+    await wardrobe.getByLabel('Choice category',{exact:true}).selectOption('Everyday');
+    await wardrobe.getByTestId('chip-wardrobe-top-t-shirt').click();
+    await wardrobe.getByRole('button',{name:'Favorite selected',exact:true}).click();
+    await wardrobe.getByRole('button',{name:'Favorites (1)',exact:true}).click();
+    assert.equal(await wardrobe.locator('.visual-choice').count(),1,'Favorites should narrow the picker without changing the selection');
+    assert.equal(await wardrobe.getByTestId('chip-wardrobe-top-t-shirt').getAttribute('aria-pressed'),'true');
+    await wardrobe.getByRole('button',{name:'Favorites (1)',exact:true}).click();
+    await wardrobe.getByRole('button',{name:'Next detail',exact:true}).click();
+    await wardrobe.getByRole('button',{name:'Previous detail',exact:true}).click();
+    assert.equal(await wardrobe.getByTestId('chip-wardrobe-top-t-shirt').getAttribute('aria-pressed'),'true','Previous/next detail navigation should retain choices');
+
+    await wardrobe.getByRole('button',{name:'Shoes',exact:true}).click();
+    await wardrobe.getByRole('button',{name:'Clothes',exact:true}).click();
+    await wardrobe.getByLabel('Editing',{exact:true}).selectOption('top');
+    assert.equal(await wardrobe.getByTestId('chip-wardrobe-top-t-shirt').getAttribute('aria-pressed'),'true','Wardrobe navigation should retain selections');
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+2),true,'Page has horizontal overflow');
     assert.deepEqual(errors,[],'Unexpected browser runtime errors');
     assert.deepEqual(blocked,[],'Fixture needs an explicit handler for these writes');

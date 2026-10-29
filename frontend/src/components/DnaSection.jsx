@@ -1,3 +1,4 @@
+import VisualChoice from './VisualChoice';
 import WardrobeOverview from "./WardrobeOverview";
 import AnatomySelectionReview from "./AnatomySelectionReview";
 import { LEGACY_ANATOMY_FIELDS, selectAnatomyPreset, anatomyPresetDetails } from "@/lib/anatomyDetailControls";
@@ -17,20 +18,13 @@ import { physiqueControlStatus, SIZE_CONTROL_PAIRS, sizeControlMode, selectSizeC
 
 export function ChipRow({ options, value, onChange, testIdPrefix, labels = {} }) {
   return (
-    <OptionBrowser key={testIdPrefix} preferenceKey={testIdPrefix} options={options} value={value} labels={labels}>{visible => <div className="flex flex-wrap gap-2">
+    <OptionBrowser key={testIdPrefix} preferenceKey={testIdPrefix} alwaysSearch options={options} value={value} labels={labels}>{visible => <div className="visual-choice-grid">
       {visible.map((opt) => {
         const active = value === opt;
         return (
-          <button
-            key={opt}
-            type="button"
-            aria-pressed={active}
-            data-testid={`${testIdPrefix}-${opt.replace(/\s+/g, "-")}`}
-            className={`studio-choice chip ${active ? "active" : ""}`}
-            onClick={() => onChange(active ? "" : opt)}
-          >
-            {labels[opt] || opt}
-          </button>
+          <VisualChoice key={opt} value={opt} label={labels[opt] || opt} active={active} field={testIdPrefix}
+            testId={`${testIdPrefix}-${opt.replace(/\s+/g, "-")}`} onClick={()=>onChange(active ? "" : opt)}/>
+
         );
       })}
     </div>}</OptionBrowser>
@@ -82,6 +76,7 @@ export default function DnaSection({
   onRequestAdvanced,
   controlNotes = [],
   focusedField = null,
+  hideWardrobeOverview = false,
 }) {
   const [presetFeedback, setPresetFeedback] = useState("");
   const [showLegacyAnatomy, setShowLegacyAnatomy] = useState(false);
@@ -183,7 +178,7 @@ export default function DnaSection({
       </div>}
       {!collapsed && (
       <div className="grid gap-5">
-        {section.key === 'wardrobe' && <WardrobeOverview value={value} fields={section.fields} disabled={!!locked || !!fieldLocks.outfit_mode}
+        {section.key === 'wardrobe' && !hideWardrobeOverview && <WardrobeOverview value={value} fields={section.fields} disabled={!!locked || !!fieldLocks.outfit_mode}
           onModeChange={mode=>set('outfit_mode',mode)} showInactive={showInactiveWardrobe} onShowInactive={setShowInactiveWardrobe}/>}
 
 
@@ -225,7 +220,7 @@ export default function DnaSection({
           const fLocked = !!fieldLocks?.[f.key];
           const canLock = f.type === "slider" || f.type === "chips" || f.type === "pose_chips";
           return (
-          <div key={f.key} style={section.key==='wardrobe' && (wardrobeGroupFor(f.key)!==activeGroup || (outfitDisabled && !showInactiveWardrobe && focusedField!==f.key)) ? {display:'none'} : undefined} className={`${section.key!=='wardrobe' && simpleMode && simpleFieldKeys.length && !simpleFieldKeys.includes(f.key) && !(section.key === 'intimate' && showLegacyAnatomy && LEGACY_ANATOMY_FIELDS.includes(f.key)) && !(isModeHeader && (simpleFieldKeys.includes(SIZE_CONTROL_PAIRS[preset][0]) || (preset === "bust" && simpleFieldKeys.includes("implant_volume")))) ? "hidden" : "block"} space-y-2 ${fLocked ? "opacity-70" : ""}`}>
+          <div key={f.key} data-field-key={f.key} style={section.key==='wardrobe' && (wardrobeGroupFor(f.key)!==activeGroup || (outfitDisabled && !showInactiveWardrobe && focusedField!==f.key)) ? {display:'none'} : undefined} className={`${section.key!=='wardrobe' && simpleMode && simpleFieldKeys.length && !simpleFieldKeys.includes(f.key) && !(section.key === 'intimate' && showLegacyAnatomy && LEGACY_ANATOMY_FIELDS.includes(f.key)) && !(isModeHeader && (simpleFieldKeys.includes(SIZE_CONTROL_PAIRS[preset][0]) || (preset === "bust" && simpleFieldKeys.includes("implant_volume")))) ? "hidden" : "block"} space-y-2 ${fLocked ? "opacity-70" : ""}`}>
             {isModeHeader && <div className="space-y-2" data-testid={`size-mode-${preset}`}>
               <div className="text-xs font-semibold text-zinc-300">{SIZE_CONTROL_PAIRS[preset][1]} · choose one control</div>
               <div className="flex gap-2" role="group" aria-label={`${SIZE_CONTROL_PAIRS[preset][1]} control`}>
@@ -275,6 +270,7 @@ export default function DnaSection({
             {f.help && f.type !== "slider" && <p className="text-xs text-zinc-500 leading-relaxed">{f.help}</p>}
             {f.type === "chips_multi" && (
               <GroupedChips
+                compactCategories={section.key === "wardrobe"}
                 labels={f.optionLabels}
                 groups={f.groups || [{ name: "All", options: f.options || [] }]}
                 value={Array.isArray(value[f.key]) ? value[f.key] : []}
@@ -286,6 +282,7 @@ export default function DnaSection({
             )}
             {f.type === "chips" && f.groups && (
               <GroupedChips
+                compactCategories={section.key === "wardrobe"}
                 labels={f.optionLabels}
                 groups={f.groups.map(group => ({...group, options:group.options.filter(visibleChoice)})).filter(group => group.options.length)}
                 value={f.key === "exposure_mode" ? wardrobeExposure(value) : Array.isArray(value[f.key]) ? value[f.key].at(-1) || "" : value[f.key] || ""}
@@ -305,6 +302,7 @@ export default function DnaSection({
             )}
             {f.type === "pose_chips" && f.groups && (
               <GroupedChips
+                compactCategories={section.key === "wardrobe"}
                 labels={f.optionLabels}
                 groups={f.groups}
                 value={value[f.key] || ""}

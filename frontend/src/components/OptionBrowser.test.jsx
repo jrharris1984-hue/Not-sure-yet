@@ -55,3 +55,13 @@ it('clears a failed search without losing the selected value', () => {
   expect(container.querySelector('input').value).toBe('');
   expect(button('Choice 59')).toBeTruthy();
 });
+it('favorites persist per field without changing the supplied selection',()=>{
+  const paint=(key,value='Choice 59')=>act(()=>root.render(<OptionBrowser preferenceKey={key} options={choices} value={value}>{renderOptions}</OptionBrowser>));
+  paint('hair');act(()=>button('Favorite selected').click());
+  act(()=>button('Favorites (1)').click());expect(button('Choice 59')).toBeTruthy();expect(button('Choice 0')).toBeUndefined();
+  act(()=>button('Unfavorite selected').click());expect(container.querySelector('[role="status"]').textContent).toContain('No matching favorites');
+  act(()=>button('Favorites (0)').click());expect(button('Choice 59')).toBeTruthy();
+  act(()=>button('Favorite selected').click());
+  act(()=>root.render(null));paint('other');expect(button('Favorites (0)')).toBeTruthy();
+  act(()=>root.render(null));paint('hair');expect(button('Favorites (1)')).toBeTruthy();
+});

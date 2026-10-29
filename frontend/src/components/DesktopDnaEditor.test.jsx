@@ -11,6 +11,7 @@ afterAll(() => { global.ResizeObserver = originalResizeObserver; });
 beforeEach(() => { global.IS_REACT_ACT_ENVIRONMENT = true; container = document.createElement('div'); document.body.appendChild(container); root = createRoot(container); });
 afterEach(() => { act(() => root.unmount()); container.remove(); });
 const render = component => act(() => root.render(component));
+const selectField = key => act(()=>{const select=container.querySelector('[aria-label="Editing detail"]');select.value=key;select.dispatchEvent(new Event('change',{bubbles:true}));});
 const click = label => act(() => [...container.querySelectorAll('button')].find(button => button.textContent === label).click());
 function Editor({ section = 'physique', enabled = true }) {
   const [value,setValue] = useState({ height:'tall',body_type:'athletic',waist:'slim',hair:'brown',outfit_mode:'full',outfit_set:'pantsuit',outfit_set_color:'ivory' });
@@ -21,12 +22,14 @@ test('desktop appearance opens one detail, keeps selected summaries, and retains
   expect(container.querySelector('[data-testid="chip-physique-height-tall"]')).not.toBeNull();
   expect(container.querySelector('[data-testid="chip-physique-body_type-athletic"]')).toBeNull();
   act(() => container.querySelector('[data-testid="chip-physique-height-short"]').click());
-  act(() => container.querySelector('[data-testid="desktop-edit-body_type"]').click());
+  selectField('body_type');
   expect(container.querySelector('[data-testid="chip-physique-height-tall"]')).toBeNull();
   expect(container.querySelector('[data-testid="chip-physique-body_type-athletic"]').getAttribute('aria-pressed')).toBe('true');
   click('Waist & hips'); click('Frame & build');
-  expect(container.querySelector('[data-testid="desktop-edit-height"]').textContent).toContain('short');
-  expect(container.querySelector('[data-testid="desktop-edit-body_type"]').textContent).toContain('athletic');
+  selectField('height');
+  expect(container.querySelector('.workspace-current-value').textContent).toContain('short');
+  selectField('body_type');
+  expect(container.querySelector('.workspace-current-value').textContent).toContain('athletic');
 });
 test('the desktop wrapper falls back to existing controls when disabled', () => {
   render(<Editor enabled={false} />);
@@ -43,12 +46,17 @@ test('every appearance and wardrobe field, including custom library fields, rema
     expect(new Set(grouped).size).toBe(grouped.length);
   }
 });
-test('wardrobe retains group navigation and outfit-mode availability messages', () => {
+test('wardrobe uses a single editor and hides inactive controls until requested', () => {
   render(<Editor section="wardrobe" />);
-  expect(container.querySelector('[data-testid="desktop-edit-top"]').textContent).toContain('Controlled by outfit mode');
-  click('Underneath layers');
-  expect(container.querySelector('[data-testid="desktop-edit-underwear"]')).not.toBeNull();
   expect(container.querySelector('[data-testid="desktop-edit-top"]')).toBeNull();
+  expect(container.querySelector('[data-testid="wardrobe-focused-editor"]')).not.toBeNull();
+  expect(container.querySelectorAll('[data-testid="wardrobe-mode-controls"]')).toHaveLength(1);
+  expect([...container.querySelectorAll('option')].some(option=>option.value==='top')).toBe(false);
+  act(()=>container.querySelector('[data-testid="wardrobe-mode-custom"]').click());
+  expect([...container.querySelectorAll('option')].some(option=>option.value==='top')).toBe(true);
+  click('Shoes');
+  expect(container.querySelector('[data-field-key="footwear"]')).not.toBeNull();
+  expect(container.querySelector('[data-field-key="top"]')).toBeNull();
 });
 test('persistent desktop navigation moves between sections and finishes once', () => {
   const sections=[{key:'a',title:'Appearance'},{key:'w',title:'Wardrobe'}], onSection=jest.fn(), onFinish=jest.fn();
@@ -70,8 +78,8 @@ test('Simple desktop shows essentials and offers an explicit path to all control
   const section = SECTIONS.find(item => item.key === 'hair');
   const onRequestAdvanced = jest.fn();
   render(<DesktopDnaEditor enabled section={section} value={{}} simpleMode simpleFieldKeys={['color']} onRequestAdvanced={onRequestAdvanced}/>);
-  expect(container.querySelector('[data-testid="desktop-edit-color"]')).not.toBeNull();
-  expect(container.querySelector('[data-testid="desktop-edit-texture"]')).toBeNull();
+  expect(container.querySelector('[aria-label="Editing detail"] option[value="color"]')).not.toBeNull();
+  expect(container.querySelector('[aria-label="Editing detail"] option[value="texture"]')).toBeNull();
   click('Show all hair controls');
   expect(onRequestAdvanced).toHaveBeenCalledTimes(1);
 });
@@ -80,8 +88,8 @@ test('desktop search filters detail cards and provides an empty state', () => {
   const input = container.querySelector('input[type="search"]');
   const setValue = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set;
   act(() => { setValue.call(input,'color'); input.dispatchEvent(new Event('input',{bubbles:true})); });
-  expect(container.querySelector('[data-testid="desktop-edit-color"]')).not.toBeNull();
-  expect(container.querySelector('[data-testid="desktop-edit-texture"]')).toBeNull();
+  expect(container.querySelector('[aria-label="Editing detail"] option[value="color"]')).not.toBeNull();
+  expect(container.querySelector('[aria-label="Editing detail"] option[value="texture"]')).toBeNull();
   act(() => { setValue.call(input,'no such detail'); input.dispatchEvent(new Event('input',{bubbles:true})); });
   expect(container.querySelector('[role="status"]').textContent).toContain('No matching details');
 });
@@ -89,7 +97,7 @@ test('desktop search filters detail cards and provides an empty state', () => {
 test('ordinary ungrouped categories open one field at a time and retain every field destination', () => {
   render(<Editor section="camera" />);
   const section=SECTIONS.find(item=>item.key==='camera');
-  for(const field of section.fields) expect(container.querySelector(`[data-testid="desktop-edit-${field.key}"]`)).not.toBeNull();
+  for(const field of section.fields) expect(container.querySelector(`[aria-label="Editing detail"] option[value="${field.key}"]`)).not.toBeNull();
   expect(container.querySelector('[data-testid="desktop-focused-editor"]')).not.toBeNull();
 });
 
@@ -98,6 +106,16 @@ beforeEach(() => sessionStorage.clear());
 test('a selected-detail navigation request opens its group and field', () => {
   const section=SECTIONS.find(item=>item.key==='hair');
   render(<DesktopDnaEditor enabled section={section} value={{color:'brown'}} requestedField={{field:'color'}} onChange={jest.fn()} />);
-  expect(container.querySelector('[data-testid="desktop-edit-color"]').getAttribute('aria-pressed')).toBe('true');
+  expect(container.querySelector('[aria-label="Editing detail"]').value).toBe('color');
   expect(container.querySelector('[data-testid="dna-section-hair"]')).not.toBeNull();
+});
+
+test('switching to Simple preserves the current optional detail',()=>{
+  const section=SECTIONS.find(item=>item.key==='hair');
+  const paint=simpleMode=>render(<DesktopDnaEditor enabled section={section} value={{}} simpleMode={simpleMode} simpleFieldKeys={['color']} onChange={jest.fn()}/>);
+  paint(false);
+  selectField('texture');
+  paint(true);
+  expect(container.querySelector('[aria-label="Editing detail"]').value).toBe('texture');
+  expect(container.querySelector('[data-field-key="texture"]')).not.toBeNull();
 });

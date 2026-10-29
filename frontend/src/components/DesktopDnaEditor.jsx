@@ -1,3 +1,5 @@
+import DetailNavigator from './DetailNavigator';
+import WardrobeEditor from './WardrobeEditor';
 import useTabPreference from '@/hooks/useTabPreference';
 import { useEffect, useState } from 'react';
 import DnaSection from './DnaSection';
@@ -17,15 +19,15 @@ function selectionSummary(field, value, section) {
 }
 
 export default function DesktopDnaEditor({ enabled, requestedField, ...props }) {
+  const [fieldKey, setFieldKey] = useTabPreference(`ultra:detail-field:${props.section.key}`, '');
   const simpleFields = props.simpleMode && props.simpleFieldKeys?.length
-    ? props.section.fields.filter(field => props.simpleFieldKeys.includes(field.key)) : props.section.fields;
+    ? props.section.fields.filter(field => props.simpleFieldKeys.includes(field.key) || desktopFieldTarget(props.section.key,field.key)===fieldKey) : props.section.fields;
   const configuredGroups = desktopEditingGroups({ ...props.section, fields: simpleFields });
   const groups = configuredGroups.length ? configuredGroups : [{key:"details",label:props.section.title,fields:simpleFields}];
   const [search, setSearch] = useState('');
   const matchingGroups = groups.map(group => ({ ...group, fields: group.fields.filter(field =>
     `${group.label} ${field.label} ${field.key}`.toLowerCase().includes(search.trim().toLowerCase())) })).filter(group => group.fields.length);
   const [groupKey, setGroupKey] = useTabPreference(`ultra:detail-group:${props.section.key}`, '');
-  const [fieldKey, setFieldKey] = useTabPreference(`ultra:detail-field:${props.section.key}`, '');
   useEffect(() => {
     if (!requestedField?.field) return;
     const target = desktopFieldTarget(props.section.key, requestedField.field);
@@ -36,6 +38,7 @@ export default function DesktopDnaEditor({ enabled, requestedField, ...props }) 
     // The request is an explicit navigation event, not a reaction to edits.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [requestedField]);
+  if (props.section.key === 'wardrobe') return <WardrobeEditor {...props} requestedField={requestedField}/>;
   if (!enabled || !simpleFields.length || !groups.length || props.focusedField) return <DnaSection {...props} />;
   const searchControl = <label className="block text-xs text-zinc-400">Find a detail
     <input type="search" className="studio-control-search mt-2" placeholder={`Search ${props.section.title.toLowerCase()}…`}
@@ -52,19 +55,8 @@ export default function DesktopDnaEditor({ enabled, requestedField, ...props }) 
         aria-pressed={group.key === item.key} onClick={() => { setGroupKey(item.key); setFieldKey(''); }}
         className={`chip ${group.key === item.key ? 'active' : ''}`}>{item.label}</button>)}</div>
     </nav>
-    <div className="grid grid-cols-2 xl:grid-cols-3 gap-2" aria-label={`${group.label} details`}>
-      {(matchingGroups.length ? fields : []).map(field => {
-        const unavailable = props.section.key === 'wardrobe' && wardrobeFieldDisabled(field.key, props.value);
-        return <button key={field.key} type="button" aria-pressed={active.key === field.key}
-          onClick={() => { setFieldKey(field.key); if (props.collapsed) props.onToggleCollapsed?.(); }} data-testid={`desktop-edit-${field.key}`}
-          className={`min-w-0 rounded-xl border p-3 text-left ${active.key === field.key ? 'border-cyan-400/60 bg-cyan-400/10' : 'border-white/10 bg-black/10'}`}>
-          <span className="block text-xs font-semibold text-white">{field.label}</span>
-          <span className="mt-1 block truncate text-xs text-zinc-400" title={selectionSummary(field, props.value || {}, props.section.key)}>{selectionSummary(field, props.value || {}, props.section.key)}</span>
-          {unavailable && <span className="mt-1 block text-[10px] text-amber-200">Controlled by outfit mode</span>}
-          {props.fieldLocks?.[field.key] && <span className="mt-1 block text-[10px] text-amber-200">Locked</span>}
-        </button>;
-      })}
-    </div>
+    {matchingGroups.length>0 && <DetailNavigator fields={fields.map(field=>({...field,label:`${field.label}${props.fieldLocks?.[field.key]?' · locked':''}`}))} value={active.key}
+      onChange={key=>{setFieldKey(key);if(props.collapsed)props.onToggleCollapsed?.();}} summary={selectionSummary(active,props.value || {},props.section.key)}/>}
     {matchingGroups.length ? <DnaSection {...props} focusedField={active.key} />
       : <p role="status" className="rounded-xl border hairline p-4 text-sm text-zinc-400">No matching details in this view. Clear your search{props.simpleMode ? ' or open all controls' : ''}.</p>}
     {props.simpleMode && simpleFields.length < props.section.fields.length && <button type="button"

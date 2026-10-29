@@ -10,7 +10,7 @@ export default function GuidedCharacterPreview({ preview, name, dna, stages, sec
       <div className="aspect-[4/5] min-h-0"><StudioPreviewMedia source={preview} status={renderStatus} submitting={submitting} alt="Last available character preview"/></div>
       <p className="p-3 text-xs text-zinc-500">Editing choices does not update this image automatically.</p>
     </section>
-    <CreateSetupSummary compact dna={dna} stages={stages} sections={sections} onSection={onSection}/>
+    <details className="pane rounded-xl p-3"><summary className="cursor-pointer text-sm font-semibold">Your setup</summary><CreateSetupSummary compact dna={dna} stages={stages} sections={sections} onSection={onSection}/></details>
     <button type="button" className="min-h-11 w-full rounded-xl bg-cyan-300 px-3 text-sm font-bold text-black" onClick={onReview}>Review & create</button>
   </aside>;
 }
