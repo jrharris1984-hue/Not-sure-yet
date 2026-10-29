@@ -1,3 +1,4 @@
+import WardrobeOverview from "./WardrobeOverview";
 import AnatomySelectionReview from "./AnatomySelectionReview";
 import { LEGACY_ANATOMY_FIELDS, selectAnatomyPreset, anatomyPresetDetails } from "@/lib/anatomyDetailControls";
 import OptionBrowser from "./OptionBrowser";
@@ -85,7 +86,8 @@ export default function DnaSection({
   const [presetFeedback, setPresetFeedback] = useState("");
   const [showLegacyAnatomy, setShowLegacyAnatomy] = useState(false);
   const [wardrobeGroup,setWardrobeGroup]=useState('outfit');
-  const groups=section.key==='wardrobe'?wardrobeGroups(section.fields):[];
+  const [showInactiveWardrobe,setShowInactiveWardrobe]=useState(false);
+  const groups=section.key==='wardrobe'?wardrobeGroups(section.fields).filter(group=>showInactiveWardrobe || group.fields.some(field=>!wardrobeFieldDisabled(field.key,value))):[];
   const activeGroup=focusedField && focusedField!=='all' ? wardrobeGroupFor(focusedField) : groups.some(group=>group.key===wardrobeGroup)?wardrobeGroup:groups[0]?.key;
   const sourceField=section.key==='watersports' ? section.fields.find(field=>field.key==='source') || catalogSections(SECTIONS).find(item=>item.key==='watersports')?.fields.find(field=>field.key==='source') : null;
   const set = (k, v) => {
@@ -181,10 +183,9 @@ export default function DnaSection({
       </div>}
       {!collapsed && (
       <div className="grid gap-5">
-        {section.key === 'wardrobe' && <div className="space-y-2" data-testid="wardrobe-mode-controls">
-          <div className="flex gap-2" role="group" aria-label="Outfit mode">{['full', 'custom'].map(mode => <button type="button" key={mode} className={`chip ${wardrobeMode(value) === mode ? 'active' : ''}`} aria-pressed={wardrobeMode(value) === mode} data-testid={`wardrobe-mode-${mode}`} disabled={!!fieldLocks.outfit_mode} onClick={() => set('outfit_mode', mode)}>{mode === 'full' ? 'Full set' : 'Custom'}</button>)}</div>
-          <p className="text-xs text-zinc-400">{wardrobeMode(value) === 'full' ? 'Choose one complete set and its color. The lingerie underneath is optional. Separate garments, shoes and accessories are disabled to avoid conflicts.' : 'Build your outfit from separate garments and accessories. Complete sets are inactive.'}</p>
-        </div>}
+        {section.key === 'wardrobe' && <WardrobeOverview value={value} fields={section.fields} disabled={!!locked || !!fieldLocks.outfit_mode}
+          onModeChange={mode=>set('outfit_mode',mode)} showInactive={showInactiveWardrobe} onShowInactive={setShowInactiveWardrobe}/>}
+
 
         {sourceField && <div className="space-y-2 rounded-lg border border-cyan-400/30 p-3" data-testid="watersports-source-status">
           <div className="flex items-center justify-between text-xs font-semibold"><span>Source · {value.source && value.source!=='none' ? 'Active' : 'Off'}</span>
@@ -224,7 +225,7 @@ export default function DnaSection({
           const fLocked = !!fieldLocks?.[f.key];
           const canLock = f.type === "slider" || f.type === "chips" || f.type === "pose_chips";
           return (
-          <div key={f.key} style={section.key==='wardrobe' && wardrobeGroupFor(f.key)!==activeGroup ? {display:'none'} : undefined} className={`${section.key!=='wardrobe' && simpleMode && simpleFieldKeys.length && !simpleFieldKeys.includes(f.key) && !(section.key === 'intimate' && showLegacyAnatomy && LEGACY_ANATOMY_FIELDS.includes(f.key)) && !(isModeHeader && (simpleFieldKeys.includes(SIZE_CONTROL_PAIRS[preset][0]) || (preset === "bust" && simpleFieldKeys.includes("implant_volume")))) ? "hidden" : "block"} space-y-2 ${fLocked ? "opacity-70" : ""}`}>
+          <div key={f.key} style={section.key==='wardrobe' && (wardrobeGroupFor(f.key)!==activeGroup || (outfitDisabled && !showInactiveWardrobe && focusedField!==f.key)) ? {display:'none'} : undefined} className={`${section.key!=='wardrobe' && simpleMode && simpleFieldKeys.length && !simpleFieldKeys.includes(f.key) && !(section.key === 'intimate' && showLegacyAnatomy && LEGACY_ANATOMY_FIELDS.includes(f.key)) && !(isModeHeader && (simpleFieldKeys.includes(SIZE_CONTROL_PAIRS[preset][0]) || (preset === "bust" && simpleFieldKeys.includes("implant_volume")))) ? "hidden" : "block"} space-y-2 ${fLocked ? "opacity-70" : ""}`}>
             {isModeHeader && <div className="space-y-2" data-testid={`size-mode-${preset}`}>
               <div className="text-xs font-semibold text-zinc-300">{SIZE_CONTROL_PAIRS[preset][1]} · choose one control</div>
               <div className="flex gap-2" role="group" aria-label={`${SIZE_CONTROL_PAIRS[preset][1]} control`}>
