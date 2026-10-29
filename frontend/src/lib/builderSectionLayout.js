@@ -1,5 +1,6 @@
 // Display placement changes must not migrate saved DNA fields.
 export function builderSectionLayout(sections) {
+  sections=sections.map(section=>section.key==='feet' && section.title==='Feet & styling'?{...section,title:'Foot appearance'}:section);
   const intensity = sections.find(section => section.key === 'scenario')?.fields.find(field => field.key === 'explicit_level');
   if (!intensity || !sections.some(section => section.key === 'pose')) return sections;
   return sections.map(section => section.key === 'scenario'
