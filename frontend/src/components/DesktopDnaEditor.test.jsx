@@ -43,12 +43,17 @@ test('every appearance and wardrobe field, including custom library fields, rema
     expect(new Set(grouped).size).toBe(grouped.length);
   }
 });
-test('wardrobe retains group navigation and outfit-mode availability messages', () => {
+test('wardrobe uses a single editor and hides inactive controls until requested', () => {
   render(<Editor section="wardrobe" />);
-  expect(container.querySelector('[data-testid="desktop-edit-top"]').textContent).toContain('Controlled by outfit mode');
-  click('Underneath layers');
-  expect(container.querySelector('[data-testid="desktop-edit-underwear"]')).not.toBeNull();
   expect(container.querySelector('[data-testid="desktop-edit-top"]')).toBeNull();
+  expect(container.querySelector('[data-testid="wardrobe-focused-editor"]')).not.toBeNull();
+  expect(container.querySelectorAll('[data-testid="wardrobe-mode-controls"]')).toHaveLength(1);
+  expect([...container.querySelectorAll('option')].some(option=>option.value==='top')).toBe(false);
+  act(()=>container.querySelector('[data-testid="wardrobe-mode-custom"]').click());
+  expect([...container.querySelectorAll('option')].some(option=>option.value==='top')).toBe(true);
+  click('Shoes');
+  expect(container.querySelector('[data-field-key="footwear"]')).not.toBeNull();
+  expect(container.querySelector('[data-field-key="top"]')).toBeNull();
 });
 test('persistent desktop navigation moves between sections and finishes once', () => {
   const sections=[{key:'a',title:'Appearance'},{key:'w',title:'Wardrobe'}], onSection=jest.fn(), onFinish=jest.fn();

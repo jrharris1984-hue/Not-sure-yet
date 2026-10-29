@@ -187,6 +187,7 @@ export default function MobileBuilderSheets({ sections, section, onSection, subj
             {resultControls && <button type="button" className="chip min-h-11" onClick={() => open("results")}>Results & actions</button>}
           </div>}
           <div className="flex justify-between items-center mb-3"><h2 className="font-semibold">{section.title}</h2><div className="flex gap-2"><button type="button" className="text-xs text-cyan-200" onClick={() => open("selected")}>Selected · {selectedItems.length}</button><button type="button" className="text-xs text-cyan-200" onClick={() => open("all")}>Open category</button></div></div>
+          {section.key === 'wardrobe' ? renderControls('all') : <>
           {onMode && <div className="mb-3 space-y-2">
             <p className="text-xs text-zinc-400">{mode === "simple" ? "Pick a few details; unselected options use the current defaults." : "All details are available. Search to find a control."}</p>
             <input type="search" aria-label="Find a control in this category" placeholder={`Find in ${section.title.toLowerCase()}…`} value={fieldSearch} onChange={event => setFieldSearch(event.target.value)} className="studio-control-search" />
@@ -209,6 +210,7 @@ export default function MobileBuilderSheets({ sections, section, onSection, subj
           </div>
           {!visibleFields.length && <p role="status" className="py-4 text-sm text-zinc-400">No controls match. Try another word or switch to Advanced.</p>}
           {mode === "simple" && essentialFields.length < section.fields.length && <button type="button" className="min-h-11 mt-3 w-full rounded-xl border border-dashed hairline p-3 text-xs text-cyan-200" onClick={() => { setFieldSearch(""); onMode?.("advanced"); }}>Show all {section.title.toLowerCase()} controls</button>}
+          </>}
           {onMode && <div className="sheet-category-progress">
             <button type="button" disabled={categoryIndex <= 0} onClick={() => onSection(availableSections[categoryIndex - 1].key)}>Previous</button>
             <span>{categoryIndex + 1} of {availableSections.length}</span>

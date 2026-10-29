@@ -2,7 +2,7 @@ import useTabPreference from "@/hooks/useTabPreference";
 import { useState } from "react";
 
 // Search includes every group; browsing retains the existing group organization.
-export default function OptionBrowser({ preferenceKey, browseGroup = "all", options = [], searchOptions = options, value, labels = {}, children }) {
+export default function OptionBrowser({ alwaysSearch = false, preferenceKey, browseGroup = "all", options = [], searchOptions = options, value, labels = {}, children }) {
   const [query, setQuery] = useState("");
   const [savedLimit, setLimit] = useTabPreference(preferenceKey ? `ultra:choice-limit:${preferenceKey}:${browseGroup}` : null, 24);
   const limit = Math.max(24, Math.floor(savedLimit));
@@ -14,7 +14,7 @@ export default function OptionBrowser({ preferenceKey, browseGroup = "all", opti
     !term || `${option} ${labels[option] || ""}`.toLowerCase().includes(term));
   const visible = [...new Set([...selected.filter(option => matches.includes(option)), ...matches.slice(0, limit)])];
   return <div className="option-browser space-y-3">
-    {large && <details className="option-browser-search"><summary>Search choices{term ? " · Filtered" : ""}</summary><label className="block text-xs text-zinc-400"><span className="sr-only">Search choices</span>
+    {(large || alwaysSearch) && <details open={alwaysSearch || undefined} className="option-browser-search"><summary>Search choices{term ? " · Filtered" : ""}</summary><label className="block text-xs text-zinc-400"><span className="sr-only">Search choices</span>
       <input type="search" className="studio-control-search mt-2" value={query}
         onChange={event => { setQuery(event.target.value); }} placeholder="Search all choices…" />
     </label>{query && <button type="button" className="chip min-h-11 mt-2" onClick={() => setQuery("")}>Clear search</button>}</details>}

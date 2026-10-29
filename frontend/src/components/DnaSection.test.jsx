@@ -130,7 +130,7 @@ test('full-set mode disables separate garments and Custom reactivates saved choi
     expect(value.top).toBe('corset'); expect(value.outfit_mode).toBe('custom');
     act(() => container.querySelector('[data-testid="chip-wardrobe-top-tube-top"]').click());
     expect(value.top).toBe('tube top');
-    expect(container.querySelector('[data-testid="chip-wardrobe-outfit_set_color-tab-Classic"]').closest('fieldset').disabled).toBe(true);
+    expect(container.querySelector('[data-testid="chip-wardrobe-outfit_set_color-grouped"] select').closest('fieldset').disabled).toBe(true);
   } finally { act(() => root.unmount()); container.remove(); }
 });
 

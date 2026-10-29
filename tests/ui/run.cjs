@@ -87,6 +87,19 @@ async function check(browser,viewport) {
       const dock=await page.locator('.sheet-generation-dock').boundingBox();
       assert.ok(sheet.y+sheet.height<=dock.y+2,'Editing sheet overlaps the bottom action dock');
     }
+    await page.goto(`${baseURL}/character/new/s/wardrobe`,{waitUntil:'domcontentloaded'});
+    const wardrobe=page.locator('[data-testid="wardrobe-focused-editor"]:visible');
+    await wardrobe.waitFor({state:'visible'});
+    assert.equal(await wardrobe.getByTestId('wardrobe-mode-controls').count(),1,'Wardrobe should show one mode selector');
+    assert.equal(await wardrobe.locator('[data-testid^="desktop-edit-"]').count(),0,'Duplicate field cards should be absent');
+    await wardrobe.getByTestId('wardrobe-mode-custom').click();
+    await wardrobe.getByLabel('Editing',{exact:true}).selectOption('top');
+    await wardrobe.getByLabel('Choice category',{exact:true}).selectOption('Everyday');
+    await wardrobe.getByTestId('chip-wardrobe-top-t-shirt').click();
+    await wardrobe.getByRole('button',{name:'Shoes',exact:true}).click();
+    await wardrobe.getByRole('button',{name:'Clothes',exact:true}).click();
+    await wardrobe.getByLabel('Editing',{exact:true}).selectOption('top');
+    assert.equal(await wardrobe.getByTestId('chip-wardrobe-top-t-shirt').getAttribute('aria-pressed'),'true','Wardrobe navigation should retain selections');
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+2),true,'Page has horizontal overflow');
     assert.deepEqual(errors,[],'Unexpected browser runtime errors');
     assert.deepEqual(blocked,[],'Fixture needs an explicit handler for these writes');

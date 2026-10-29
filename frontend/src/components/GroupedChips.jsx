@@ -9,6 +9,7 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 // Supports single-select (value=string) or multi-select (value=array of strings).
 export default function GroupedChips({
   groups,
+  compactCategories = false,
   value,
   onChange,
   testIdPrefix,
@@ -94,7 +95,7 @@ export default function GroupedChips({
       )}
 
       {/* Category tabs */}
-      <div className="flex flex-wrap gap-1.5">
+      {compactCategories ? <label className="block text-sm text-zinc-300">Category<select aria-label="Choice category" className="studio-control-search mt-2 min-h-11 w-full" value={active.name} onChange={event=>setGroupName(event.target.value)}>{groups.map(group=><option key={group.name} value={group.name}>{group.name}</option>)}</select></label> : <div className="flex flex-wrap gap-1.5">
         {groups.map((g, i) => {
           const isActive = i === tab;
           const cnt = countPerGroup[i];
@@ -123,9 +124,9 @@ export default function GroupedChips({
             </button>
           );
         })}
-      </div>
+      </div>}
 
-      <OptionBrowser key={`${testIdPrefix}:${active.name}`} preferenceKey={testIdPrefix} browseGroup={active.name} options={active.options} searchOptions={groups.flatMap(group => group.options)} value={value} labels={labels}>{visible => <>
+      <OptionBrowser key={`${testIdPrefix}:${active.name}`} alwaysSearch={compactCategories} preferenceKey={testIdPrefix} browseGroup={active.name} options={active.options} searchOptions={groups.flatMap(group => group.options)} value={value} labels={labels}>{visible => <>
       <AnimatePresence mode="wait" initial={false}>
       <motion.div key={`${testIdPrefix}-${active.name}`}
         initial={reduceMotion ? false : { opacity: 0, y: 7 }}
@@ -164,7 +165,7 @@ export default function GroupedChips({
                 key={opt}
                 type="button"
                 data-testid={`${testIdPrefix}-${opt.replace(/\s+/g, "-")}`}
-                className={`studio-choice chip ${isActive ? "active" : ""}`}
+                className={`studio-choice chip min-h-11 ${isActive ? "active" : ""}`}
                 aria-pressed={isActive}
                 onClick={() => toggle(opt)}
               >
