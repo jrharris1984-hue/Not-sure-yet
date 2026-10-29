@@ -3163,13 +3163,18 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
         <p role="status" className="text-xs text-zinc-400">{save.isPending ? "Saving character…" : save.isError ? "Character save failed — retry Save" : draftStatus}</p>
         <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
           <Input
+            aria-label="Character name"
             data-testid="input-character-name"
             value={name}
             onChange={(e) => setName(e.target.value)}
             className="bg-elevated border-hairline text-base sm:text-lg font-display font-bold"
           />
           <div className="flex flex-wrap gap-2">
+          <details className="workspace-workflow-menu" onKeyDown={event=>{if(event.key === "Escape"){event.currentTarget.open=false;event.currentTarget.querySelector("summary")?.focus();}}}>
+            <summary><span>Workflow</span><strong>{activeWorkflow?.name || 'Choose workflow'}</strong></summary>
+            <div className="workspace-workflow-panel"><label>Generation workflow
           <select
+            aria-label="Generation workflow"
             data-testid="select-workflow"
             value={workflowId}
             onChange={(e) => changeGenerationWorkflow(e.target.value)}
@@ -3187,6 +3192,8 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
               </optgroup>
             )}
           </select>
+            </label><p>Choose the model setup for your next render.</p></div>
+          </details>
           {!isImageFirst && <div className="hidden md:block"><SelectedDetailsDrawer items={selectedDetails} onEdit={editSelectedDetail} /></div>}
           {!isImageFirst && editMode !== "body_adjust" && <div className="hidden md:block"><CharacterHistoryControls compact
             canUndo={characterHistory.canUndo} canRedo={characterHistory.canRedo}
@@ -3806,7 +3813,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
             <div><h2 className="text-sm font-semibold">Choose your starting point</h2><p className="mt-1 text-xs text-zinc-400">Use a character preset, or choose the details below. You can edit every choice.</p></div>
             {characterPresets}
           </section>}
-          <WorkspacePreviewLayout hasPreview={!!(activeRender?.output_files?.[0] || referencePreview || character?.thumbnail || dispatching || activeRender?.status === "running")} preview={<GuidedCharacterPreview preview={activeRender?.output_files?.[0] || referencePreview || character?.thumbnail}
+          <WorkspacePreviewLayout editTarget={`${activeSubjectId}:${activeSection}:${requestedDetail?.field || ""}`} hasPreview={!!(activeRender?.output_files?.[0] || referencePreview || character?.thumbnail || dispatching || activeRender?.status === "running")} preview={<GuidedCharacterPreview preview={activeRender?.output_files?.[0] || referencePreview || character?.thumbnail}
               renderStatus={activeRender?.status} submitting={dispatching} name={name} dna={activeDna} stages={quickStages} sections={SECTIONS} onSection={openDesktopSection}
               onReview={() => { setDesktopQuickMode(true); selectQuickStage(quickStages.length - 1); }} />}>
             {renderDnaControls()}

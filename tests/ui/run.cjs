@@ -49,6 +49,16 @@ async function check(browser,viewport) {
       await page.getByTestId('btn-desktop-studio-mode').click();
       await page.getByTestId('btn-desktop-studio-mode').click();
       assert.equal(await hairChoice.getAttribute('aria-pressed'),'true','Switching views must retain the selected choice');
+      const viewSwitch=page.getByRole('group',{name:'Editor view',exact:true});
+      await viewSwitch.getByRole('button',{name:'Preview',exact:true}).click();
+      assert.equal(await page.locator('.workspace-editor-content').isVisible(),false,'Preview should hide editing controls');
+      await viewSwitch.getByRole('button',{name:'Edit',exact:true}).click();
+      assert.equal(await hairChoice.getAttribute('aria-pressed'),'true','View changes must preserve selections');
+      const workflowMenu=page.locator('.workspace-workflow-menu');
+      await workflowMenu.locator('summary').click();
+      await page.getByLabel('Generation workflow',{exact:true}).waitFor({state:'visible'});
+      await page.keyboard.press('Escape');
+      assert.equal(await workflowMenu.evaluate(element=>element.open),false,'Escape should close workflow settings');
       const name=page.getByTestId('input-character-name');
       await name.fill('UI walkthrough');
       const drawerButton=page.getByRole('button',{name:/^Selected details \(/});
@@ -64,6 +74,7 @@ async function check(browser,viewport) {
       await page.waitForFunction(()=>document.body.textContent.includes('Ready to view'));
       assert.equal(fixture.dispatches,1,'Render should submit exactly once to the fixture');
       if(viewport.width>=1280) {
+        await page.getByRole('group',{name:'Editor view',exact:true}).getByRole('button',{name:'Split',exact:true}).click();
         const expand=page.locator('.workspace-preview-content').getByRole('button',{name:'View larger preview'});
         await expand.click();
         const enlarged=page.getByRole('dialog',{name:'Expanded character preview'});
