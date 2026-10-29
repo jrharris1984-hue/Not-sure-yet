@@ -1,0 +1,91 @@
+{
+  "top": {
+    "Everyday": [
+      "t-shirt",
+      "crew-neck shirt",
+      "v-neck shirt",
+      "long-sleeve shirt",
+      "tank top",
+      "polo shirt",
+      "henley shirt"
+    ],
+    "Shirts & blouses": [
+      "button-down shirt",
+      "linen shirt",
+      "flannel shirt",
+      "chambray shirt",
+      "wrap blouse",
+      "peasant blouse",
+      "tunic"
+    ],
+    "Knitwear": [
+      "crew-neck sweater",
+      "v-neck sweater",
+      "turtleneck sweater",
+      "cardigan",
+      "hoodie",
+      "sweatshirt",
+      "knitted vest"
+    ]
+  },
+  "bottom": {
+    "Trousers & jeans": [
+      "straight-leg jeans",
+      "wide-leg jeans",
+      "bootcut jeans",
+      "relaxed jeans",
+      "tailored trousers",
+      "wide-leg trousers",
+      "chinos",
+      "linen trousers",
+      "cargo pants",
+      "corduroy trousers"
+    ],
+    "Shorts & casual": [
+      "bermuda shorts",
+      "tailored shorts",
+      "linen shorts",
+      "cargo shorts",
+      "joggers",
+      "track pants"
+    ],
+    "Skirts": [
+      "a-line skirt",
+      "pleated skirt",
+      "wrap skirt",
+      "midi skirt",
+      "maxi skirt",
+      "denim skirt"
+    ]
+  },
+  "footwear": {
+    "Everyday": [
+      "ballet flats",
+      "loafers",
+      "slip-on shoes",
+      "canvas shoes",
+      "walking shoes",
+      "running shoes",
+      "boat shoes"
+    ],
+    "Dress shoes": [
+      "oxford shoes",
+      "derby shoes",
+      "brogues",
+      "slingback heels",
+      "block heels",
+      "mary jane shoes"
+    ],
+    "Boots & sandals": [
+      "chelsea boots",
+      "hiking boots",
+      "riding boots",
+      "rain boots",
+      "flat sandals",
+      "espadrilles",
+      "clogs",
+      "mules",
+      "slides"
+    ]
+  }
+}

@@ -173,7 +173,7 @@ class Settings(BaseModel):
     ollama_vision_model: str = ""
     prompt_catalog: Dict[str, Any] = Field(default_factory=lambda: {"sections": []})
     custom_photoshoot_presets: List[Dict[str, Any]] = Field(default_factory=list)
-    wardrobe_catalog_version: int = 1
+    wardrobe_catalog_version: int = 2
     workflows: List[WorkflowTemplate] = Field(default_factory=list)
     default_workflow_id: str = ""
     builder_hidden_workflow_ids: List[str] = Field(default_factory=list)
@@ -367,9 +367,9 @@ async def get_settings() -> Settings:
             s.default_workflow_id = s.workflows[0].id
         await db.settings.insert_one(s.model_dump())
         return s
-    if doc.get("wardrobe_catalog_version", 0) < 1:
-        catalog = upgrade_wardrobe_catalog(doc.get("prompt_catalog"))
-        await db.settings.update_one({"id": "singleton", "$or": [{"wardrobe_catalog_version": {"$exists": False}}, {"wardrobe_catalog_version": {"$lt": 1}}]}, {"$set": {"prompt_catalog": catalog, "wardrobe_catalog_version": 1}})
+    if doc.get("wardrobe_catalog_version", 0) < 2:
+        catalog = upgrade_wardrobe_catalog(doc.get("prompt_catalog"), doc.get("wardrobe_catalog_version", 0))
+        await db.settings.update_one({"id": "singleton", "$or": [{"wardrobe_catalog_version": {"$exists": False}}, {"wardrobe_catalog_version": {"$lt": 2}}]}, {"$set": {"prompt_catalog": catalog, "wardrobe_catalog_version": 2}})
         doc = await db.settings.find_one({"id": "singleton"}, {"_id": 0})
     # Older installs could save Qwen3-VL as the general text assistant. Clear
     # that legacy pairing so text auto-detection can choose a lightweight

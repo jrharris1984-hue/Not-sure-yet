@@ -30,7 +30,7 @@ test('wardrobe groups keep all controls available and switch the visible panel',
     act(()=>root.render(<DnaSection section={section} simpleMode simpleFieldKeys={['top']} value={{outfit_mode:'custom'}} onChange={()=>{}}/>));
     const navigation=container.querySelector('[aria-label="Wardrobe control groups"]');
     expect(navigation.querySelectorAll('button')).toHaveLength(7);
-    const footwear=container.querySelector('[data-testid="chip-wardrobe-footwear-barefoot"]').closest('[style]');
+    const footwear=container.querySelector('[data-testid="chip-wardrobe-footwear-barefoot"]').closest('[data-field-key]');
     expect(footwear.style.display).toBe('none');
     act(()=>[...navigation.querySelectorAll('button')].find(b=>b.textContent==='Shoes & heels').click());
     expect(footwear.style.display).toBe('');
