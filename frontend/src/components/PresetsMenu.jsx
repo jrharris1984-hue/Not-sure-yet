@@ -1,6 +1,7 @@
+import ToolPortalContext from './ToolPortalContext';
 import { CHARACTER_TYPE_PRESETS, CHARACTER_TYPE_GROUPS, applyCharacterTypePreset } from '@/lib/characterTypePresets';
 import { WebPromptResearchOptions } from '@/components/WebPromptResearch';
-import { useState, useMemo } from "react";
+import { useState, useMemo, useContext, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Star, X, Search, Wand2, Save, Trash2, Loader2 } from "lucide-react";
@@ -29,11 +30,23 @@ const DNA_CATALOG = Object.fromEntries(SECTIONS.map((section) => [
 ]));
 
 export default function PresetsMenu({ onApply, currentDna, sectionLocks = {}, fieldLocks = {} }) {
+  const toolPortal=useContext(ToolPortalContext);
+  const presetTrigger=useRef(null);
   const [open, setOpen] = useState(false);
   const closeMenu = () => {
     setOpen(false);
+    presetTrigger.current?.focus();
     window.dispatchEvent(new CustomEvent("ultra-studio:overflow-close"));
   };
+  useEffect(()=>{
+    const host=toolPortal?.current;
+    if(!host || !open) return;
+    const cancel=event=>{event.preventDefault();setOpen(false);presetTrigger.current?.focus();};
+    const dismiss=()=>setOpen(false);
+    host.addEventListener('cancel',cancel);
+    host.addEventListener('close',dismiss);
+    return ()=>{host.removeEventListener('cancel',cancel);host.removeEventListener('close',dismiss);};
+  },[toolPortal,open]);
   const [q, setQ] = useState("");
   const [typeGroup, setTypeGroup] = useState("All");
   const [category, setCategory] = useState("types");
@@ -134,6 +147,7 @@ export default function PresetsMenu({ onApply, currentDna, sectionLocks = {}, fi
         type="button"
         onClick={() => setOpen(true)}
         data-overflow-stay-open
+        ref={presetTrigger}
         data-testid="btn-open-presets"
         className="shrink-0 inline-flex items-center gap-1.5 rounded-lg border border-rose-500/40 text-rose-200 hover:bg-rose-500/10 text-sm font-semibold px-3 py-2"
       >
@@ -325,7 +339,7 @@ export default function PresetsMenu({ onApply, currentDna, sectionLocks = {}, fi
             </div>
           </div>
         </div>,
-        document.body
+        toolPortal?.current || document.body
       )}
     </>
   );
