@@ -1,3 +1,4 @@
+import WardrobeOverview from "@/components/WardrobeOverview";
 import {useEffect, useRef, useState} from 'react';
 import {Link} from 'react-router-dom';
 import {ImagePlus, Images, UsersRound, WandSparkles, SlidersHorizontal, Layers, Settings, ListOrdered, Menu, Plus, Shuffle, ChevronRight, Download, Maximize2} from 'lucide-react';
@@ -38,6 +39,7 @@ export default function StudioWorkspace() {
   const [file,setFile]=useState(null), [sourceUrl,setSourceUrl]=useState('');
   const [panel,setPanel]=useState(initialDraft?.mode && initialDraft.mode!=='character'?'prompt':'character'), [category,setCategory]=useState('identity');
   const [bodyGroup,setBodyGroup]=useState('build'), [outfitGroup,setOutfitGroup]=useState('outfit'), [intimateGroup,setIntimateGroup]=useState('grooming');
+  const [showInactiveWardrobe,setShowInactiveWardrobe]=useState(false);
   const [detailQuery,setDetailQuery]=useState(''), [dialog,setDialog]=useState(null);
   const [query,setQuery]=useState(''), [choiceGroup,setChoiceGroup]=useState('All');
   const [returnToInspector,setReturnToInspector]=useState(false);
@@ -118,11 +120,11 @@ export default function StudioWorkspace() {
     </button>;
   }
   const allowed=panel==='scene'?sceneSections:characterSections;
-  const groups=category==='physique'?BODY_GROUPS:category==='intimate'?INTIMATE_DETAIL_GROUPS:category==='wardrobe'?wardrobeGroups(sectionFor('wardrobe').fields):[];
-  const groupKey=category==='physique'?bodyGroup:category==='intimate'?intimateGroup:outfitGroup;
+  const groups=category==='physique'?BODY_GROUPS:category==='intimate'?INTIMATE_DETAIL_GROUPS:category==='wardrobe'?wardrobeGroups(sectionFor('wardrobe').fields).filter(group=>showInactiveWardrobe || group.fields.some(field=>!wardrobeFieldDisabled(field.key,person.dna.wardrobe))):[];
+  const groupKey=category==='physique'?bodyGroup:category==='intimate'?intimateGroup:groups.some(group=>group.key===outfitGroup)?outfitGroup:groups[0]?.key;
   const activeFields=(sectionFor(category)?.fields || []).filter(field=>
     category==='identity'?field.key!=='name':category==='physique'?BODY_GROUPS.find(group=>group.key===bodyGroup)?.fields.includes(field.key):
-    category==='intimate'?INTIMATE_DETAIL_GROUPS.find(group=>group.key===intimateGroup)?.fields.includes(field.key):category==='wardrobe'?field.key==='outfit_mode' || groups.find(group=>group.key===outfitGroup)?.fields.some(f=>f.key===field.key):true);
+    category==='intimate'?INTIMATE_DETAIL_GROUPS.find(group=>group.key===intimateGroup)?.fields.includes(field.key):category==='wardrobe'?field.key!=='outfit_mode' && (showInactiveWardrobe || !wardrobeFieldDisabled(field.key,person.dna.wardrobe)) && groups.find(group=>group.key===groupKey)?.fields.some(f=>f.key===field.key):true);
   const matched=matchingWorkspaceFields(allowed.map(key=>({...sectionFor(key),title:sectionNames[key]})),detailQuery).filter(item=>item.section!=='identity' || item.field.key!=='name');
   const directory=studioCategoryDirectory().filter(item=>mode==='character' || item.panel==='scene');
   const navigationContent=<nav className="cs-navigation" aria-label="Studio navigation">{navigation.map(item=><Link key={item.to} to={item.to} aria-current={item.to==='/create'?'page':undefined}><item.icon size={21} strokeWidth={1.7}/><span>{item.label}</span></Link>)}<div className="cs-nav-extra"><Link to="/create/guided">Guided editor</Link><Link to="/character/new">Classic editor</Link></div></nav>;
@@ -150,7 +152,8 @@ export default function StudioWorkspace() {
         {!detailQuery && <>
           <div className="cs-category-grid" role="group" aria-label="Detail categories">{allowed.map(key=><button type="button" key={key} className={['physique','intimate'].includes(key)?'cs-feature-category':''} aria-pressed={category===key} onClick={()=>setCategory(key)}>{sectionNames[key]}</button>)}</div>
           {['physique','intimate'].includes(category)?<section className="cs-feature-groups" aria-label={`${sectionNames[category]} categories`}><h3>{sectionNames[category]}</h3><p className="cs-note">{category==='physique'?'Choose a body region to edit presets, shape and size sliders.':'Grooming and non-explicit anatomy details. Clothing coverage still controls which details enter the image prompt.'}</p><div role="group" aria-label="Feature groups">{groups.map(group=><button type="button" key={group.key} aria-pressed={groupKey===group.key} onClick={()=>category==='physique'?setBodyGroup(group.key):setIntimateGroup(group.key)}>{group.label}</button>)}</div></section>:!!groups.length && <label className="cs-label">Wardrobe category<select value={groupKey} onChange={event=>setOutfitGroup(event.target.value)}>{groups.map(group=><option key={group.key} value={group.key}>{group.label}</option>)}</select></label>}
-          {category==='wardrobe' && <p className="cs-note">Complete sets coordinate the outfit. Choose Custom in Outfit mode to edit separate garments, shoes and accessories.</p>}
+          {category==='wardrobe' && <WardrobeOverview value={person.dna.wardrobe} fields={sectionFor('wardrobe').fields} disabled={locked || !!person.locks.wardrobe || !!person.field_locks.wardrobe?.outfit_mode}
+            onModeChange={value=>changeField('wardrobe','outfit_mode',value)} showInactive={showInactiveWardrobe} onShowInactive={setShowInactiveWardrobe}/>}
         </>}
         <div className="cs-field-list">{detailQuery?matched.length?matched.map(item=>renderField(item.section,item.field)):<p className="cs-note" role="status">No matching details. Try another word.</p>:activeFields.map(field=>renderField(category,field))}</div>
       </>}
