@@ -65,3 +65,26 @@ it('favorites persist per field without changing the supplied selection',()=>{
   act(()=>root.render(null));paint('other');expect(button('Favorites (0)')).toBeTruthy();
   act(()=>root.render(null));paint('hair');expect(button('Favorites (1)')).toBeTruthy();
 });
+it('matches words in any order and ignores accents and separators',()=>{
+  act(()=>root.render(<OptionBrowser alwaysSearch options={choices} searchOptions={[...choices,'custom_blue_jacket']} labels={{custom_blue_jacket:'Bleu café jacket'}}>{renderOptions}</OptionBrowser>));
+  search('jacket cafe');expect(button('custom_blue_jacket')).toBeTruthy();
+  search('BLUE jacket');expect(button('custom_blue_jacket')).toBeTruthy();
+  expect(container.querySelector('.choice-browser-count').textContent).toBe('1 of 1 matches');
+});
+it('typing searches the full library even when Favorites or Selected was active',()=>{
+  act(()=>root.render(<OptionBrowser preferenceKey="search" options={choices} value="Choice 0">{renderOptions}</OptionBrowser>));
+  act(()=>button('Favorite selected').click());act(()=>button('Favorites (1)').click());
+  search('59');expect(button('Choice 59')).toBeTruthy();expect(button('Favorites (1)').getAttribute('aria-pressed')).toBe('false');
+  act(()=>button('Show selected').click());search('58');expect(button('Choice 58')).toBeTruthy();
+});
+it('Escape clears only the query and retains keyboard focus and selection',()=>{
+  act(()=>root.render(<OptionBrowser options={choices} value="Choice 59">{renderOptions}</OptionBrowser>));
+  search('missing');const input=container.querySelector('input');input.focus();
+  act(()=>input.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true,cancelable:true})));
+  expect(input.value).toBe('');expect(document.activeElement).toBe(input);expect(button('Choice 59')).toBeTruthy();
+});
+it('counts extra pinned selections accurately when offering more results',()=>{
+  act(()=>root.render(<OptionBrowser options={choices} value="Choice 59">{renderOptions}</OptionBrowser>));
+  expect(container.querySelector('.choice-browser-count').textContent).toBe('25 of 60 choices');
+  expect(button('Show more choices (35)')).toBeTruthy();
+});

@@ -1,3 +1,4 @@
+import {EXTRA_CAMERA_ANGLES,EXTRA_SUBJECT_VIEWS} from './cameraViewChoices';
 import characterVibeOptions from './characterVibeOptions.json';
 import { EXPOSURE_PROMPTS } from "./wardrobeNudity";
 import { HERITAGE_PROFILES, heritagePrompt } from "./heritageProfiles";
@@ -834,6 +835,7 @@ export const PROMPT_MAP = {
   pose: {
     action: POSE_ACTION_PROMPTS,
     angle: {
+      ...EXTRA_SUBJECT_VIEWS,
       "front": "front-facing view, straight on",
       "3/4": "three-quarter angle view",
       "profile": "side profile view",
@@ -1105,6 +1107,7 @@ export const PROMPT_MAP = {
 
   camera: {
     angle: {
+      ...EXTRA_CAMERA_ANGLES,
       "foot level": "camera positioned at foot level near the ground, looking upward",
     },
     lens: {
