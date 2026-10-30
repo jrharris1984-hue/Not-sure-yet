@@ -102,12 +102,36 @@ async function check(browser,viewport) {
         assert.equal(await expand.evaluate(el=>el===document.activeElement),true,'Closing the larger preview must restore focus');
         assert.equal(fixture.dispatches,1,'Viewing a preview must not submit another render');
       }
+      if(viewport.width>=1280){
+        await page.locator('.workspace-preview-options > summary').click();
+        await page.locator('.workspace-preview-size input').press('End');
+      }
+      const galleryLink=page.getByTestId(viewport.width>=1280?'nav-gallery':'nav-gallery-tablet');
+      const views=page.getByRole('group',{name:'Editor view',exact:true});
+      await views.getByRole('button',{name:'Preview',exact:true}).click();
+      for(const browserBack of [true,false]) {
+        await galleryLink.click();await page.waitForURL('**/gallery');
+        await page.getByRole('button',{name:'Back to editor',exact:true}).waitFor({state:'visible'});
+        if(browserBack)await page.goBack();
+        else await page.getByRole('button',{name:'Back to editor',exact:true}).click();
+        await page.getByTestId('input-character-name').waitFor();
+        await page.waitForFunction(()=>document.querySelector('[data-workspace-mode]')?.dataset.workspaceMode==='preview');
+        await page.locator('.workspace-preview-content img').waitFor({state:'visible'});
+        assert.equal(await page.getByTestId('input-character-name').inputValue(),'UI walkthrough');
+        assert.equal(fixture.dispatches,1,'Returning from Gallery must not render again');
+        if(viewport.width>=1280) assert.equal(await page.locator('[data-workspace-mode]').evaluate(el=>el.style.getPropertyValue('--workspace-preview-width')),'480px','Preview width should survive Gallery');
+
+      }
       await page.reload({waitUntil:'domcontentloaded'});
       assert.equal(await page.getByTestId('input-character-name').inputValue(),'UI walkthrough');
     } else {
       const nav=page.getByRole('navigation',{name:'Workspace views'});
       await nav.getByRole('button',{name:'Preview',exact:true}).click();
       assert.match(await page.getByTestId('primary-creation-sheet').getAttribute('class'),/sheet-peek/);
+      await page.getByTestId('nav-gallery-mobile').click();await page.waitForURL('**/gallery');
+      await page.goBack();
+      await page.getByTestId('primary-creation-sheet').waitFor();
+      assert.match(await page.getByTestId('primary-creation-sheet').getAttribute('class'),/sheet-peek/,'Mobile preview stays open after Gallery');
       await nav.getByRole('button',{name:'Results',exact:true}).click();
       await page.getByRole('dialog').getByText(/No results yet/).waitFor();
       await nav.getByRole('button',{name:'Edit',exact:true}).click();
@@ -117,6 +141,7 @@ async function check(browser,viewport) {
       assert.ok(sheet.y+sheet.height<=dock.y+2,'Editing sheet overlaps the bottom action dock');
     }
     await page.goto(`${baseURL}/character/new/s/wardrobe`,{waitUntil:'domcontentloaded'});
+    if(viewport.width>=768) await page.getByRole('group',{name:'Editor view',exact:true}).getByRole('button',{name:'Edit',exact:true}).click();
     const wardrobe=page.locator('[data-testid="wardrobe-focused-editor"]:visible');
     await wardrobe.waitFor({state:'visible'});
     assert.equal(await wardrobe.getByTestId('wardrobe-mode-controls').count(),1,'Wardrobe should show one mode selector');
