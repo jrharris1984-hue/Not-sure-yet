@@ -8,15 +8,15 @@ export default function WorkspacePreviewLayout({ children, preview, hasPreview =
     window.addEventListener('resize',resize);
     return ()=>window.removeEventListener('resize',resize);
   },[]);
-  const [savedView,setView]=useTabPreference('ultra:workspace-view','auto');
+  const [savedView,setView]=useTabPreference('ultra:workspace-view:split-studio','auto');
   const previousTarget=useRef(editTarget);
   useEffect(()=>{
-    if(previousTarget.current!==editTarget) {setView('edit');previousTarget.current=editTarget;}
+    if(previousTarget.current!==editTarget) {if(savedView==='preview')setView(wide?'split':'edit');previousTarget.current=editTarget;}
     // Navigation into a detail should reveal its editor.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   },[editTarget]);
   const requested=['edit','split','preview'].includes(savedView)?savedView:'auto';
-  const view=requested==='auto' ? hasPreview && wide ? 'split':'edit' : requested==='split' && !wide ? 'edit':requested;
+  const view=requested==='auto' ? wide ? 'split':'edit' : requested==='split' && !wide ? 'edit':requested;
   const [savedWidth, setWidth] = useTabPreference('ultra:preview-width', 320);
   const width = Math.max(260, Math.min(480, Number(savedWidth) || 320));
   return <div className="workspace-preview-layout" data-workspace-mode={view} data-preview-open={view!=='edit'} style={{'--workspace-preview-width':`${width}px`}}>

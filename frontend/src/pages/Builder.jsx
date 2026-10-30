@@ -1,3 +1,8 @@
+import useTabPreference from '@/hooks/useTabPreference';
+import StudioGenerationBar from '@/components/StudioGenerationBar';
+import StudioRenderReveal from '@/components/StudioRenderReveal';
+import {prepareStudioSurprise} from '@/lib/studioGeneration';
+import {useComfyWs} from '@/hooks/useComfyWs';
 import RelatedFootControls from '@/components/RelatedFootControls';
 import {footAppearanceSection,footDestination,scopedFootEdit} from '@/lib/footControlPlacement';
 import CreationSectionHeader from '@/components/CreationSectionHeader';
@@ -332,6 +337,9 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
     enabled: poseAssistEnabled,
     refetchInterval: poseAssistEnabled ? 15000 : false,
   });
+  const studioLive = useComfyWs(activeRender?.id, {enabled:!!activeRender && ['queued','pending','running','processing'].includes(activeRender.status)});
+  const dispatchInFlight = useRef(false);
+  const [studioModeBindings,setStudioModeBindings]=useTabPreference('ultra:studio-mode-workflows',{});
   const selectedWorkflowForStatus = workflows.find((workflow) => workflow.id === workflowId);
   const kreaStatusEnabled = selectedWorkflowForStatus?.prompt_style === "krea2";
   const { data: krea2Status } = useQuery({
@@ -1433,12 +1441,19 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
       budgetWords: batchCompiled.promptBudget,
     });
     return { positive: assembled.positive, negative: assembled.negative,
-      finalAssembly: assembled.assembly, sceneReview: batchCompiled.sceneReview };
+      finalAssembly: assembled.assembly, compilerMeta:{...batchCompiled,finalAssembly:assembled.assembly}, sceneReview: batchCompiled.sceneReview };
 
   };
 
-  const doDispatch = async () => {
-    if (dispatching) return;
+  const doDispatch = async (options) => {
+    if (dispatching || dispatchInFlight.current) return;
+    dispatchInFlight.current=true;
+    try {
+    const sourceSubjects=options?.studioSubjects || subjects;
+    const surprise=!!options?.studioSubjects;
+    if(surprise && (activeWorkflow?.kind!=='image' || poseAssistEnabled || promptFormat==='ollama' || promptOverride.trim() || negativePromptOverride.trim()))return;
+    const surprisePrompts=surprise?compileBatchVariationPrompts(sourceSubjects):null;
+    const dispatchAnalysis=surprise?analyzePromptQuality({positive:surprisePrompts.positive,dna:(sourceSubjects.find(s=>s.id===activeSubjectId)||sourceSubjects[0]).dna,workflow:activeWorkflow,context:preflightContext,compilerMeta:surprisePrompts.compilerMeta}):promptAnalysis;
     if (batchSeedMode === "smart" && smartShootPending) {
       toast.info("Your photoshoot is still in progress. Follow each shot in the director.");
       return;
@@ -1448,11 +1463,11 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
       toast.error("Pick a workflow first (Settings → Workflow library)");
       return;
     }
-    if (!isImageFirst && promptAnalysis.blockers.length) {
-      toast.error(promptAnalysis.blockers[0].message);
+    if (!isImageFirst && dispatchAnalysis.blockers.length) {
+      toast.error(dispatchAnalysis.blockers[0].message);
       return;
     }
-    const incompleteLikeness = subjects.find((subject) => subject?.likeness?.enabled && (!subject.likeness.node_id || !subject.likeness.lora_name));
+    const incompleteLikeness = sourceSubjects.find((subject) => subject?.likeness?.enabled && (!subject.likeness.node_id || !subject.likeness.lora_name));
     if (!isImageFirst && incompleteLikeness) {
       toast.error(`Finish the Likeness LoRA setup for Subject ${incompleteLikeness.label || "A"}`);
       return;
@@ -1645,14 +1660,15 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
       return;
     }
 
-    const isSmartShoot = activeRecipeFamily === "image" && renderCount > 1 && batchSeedMode === "smart";
+    if(surprise)setSubjects(sourceSubjects);
+    const isSmartShoot = !surprise && activeRecipeFamily === "image" && renderCount > 1 && batchSeedMode === "smart";
     setSmartShootRun(isSmartShoot ? {
       label: resolvePhotoshootPreset(smartBatchPreset, customPhotoshootPresets).label,
       shots: smartPhotoshootPlan.map(shot => ({ ...shot })), requests: [], queuing: true, error: '',
     } : null);
     setDispatching(true);
     try {
-      const requestedCount = activeRecipeFamily === "image" ? renderCount : 1;
+      const requestedCount = !surprise && activeRecipeFamily === "image" ? renderCount : 1;
       const baseSeed = activeRecipeFamily === "image" && chromaSettings.seed !== ""
         ? Number(chromaSettings.seed)
         : Math.floor(Math.random() * 2147483647);
@@ -1684,7 +1700,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
                 index: imageIndex,
                 seed: baseSeed,
               })
-            : { subjects, pose: null };
+            : { subjects:sourceSubjects, pose: null };
         const cameraVariation = smartVariation
           ? { subjects: smartVariation.subjects, camera: smartVariation.plan.camera || null }
           : useCameraVariation
@@ -1695,7 +1711,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
               })
             : { subjects: poseVariation.subjects, camera: null };
         const dispatchSubjects = smartVariation?.subjects || cameraVariation.subjects;
-        const hasBatchVariation = !!smartVariation?.changed || !!poseVariation.pose || !!cameraVariation.camera;
+        const hasBatchVariation = surprise || !!smartVariation?.changed || !!poseVariation.pose || !!cameraVariation.camera;
         const batchPrompts = hasBatchVariation
           ? compileBatchVariationPrompts(dispatchSubjects)
           : { positive: finalPositive, negative: finalNegative, sceneReview: compiledPrompt.sceneReview };
@@ -1792,6 +1808,8 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
       if (isSmartShoot) setSmartShootRun(current => ({ ...current, queuing: false }));
       setDispatching(false);
     }
+    } catch(error) { toast.error(error?.message || "Could not prepare the render"); }
+    finally { dispatchInFlight.current=false; }
   };
 
   const clearFinishedRenderSession = () => {
@@ -2768,6 +2786,15 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
     onToggleFieldLock={key=>setActiveFieldLocks({...activeFieldLocks,feet:{...activeFieldLocks.feet,[key]:!activeFieldLocks.feet?.[key]}})}/>;
   const scopedEditorValue = next => activeSection==='feet' && studioMode!=='feet'
     ? scopedFootEdit(activeDna.feet || {},next,footAppearanceSection(SECTIONS[activeIdx]).fields):next;
+  const surpriseReason = activeWorkflow?.kind!=='image' ? 'Choose a still-image workflow for Surprise.' : poseAssistEnabled ? 'Turn off Pose Assist to randomize the scene.' : promptFormat==='ollama' ? 'Use Compact or Structured prompts for one-click Surprise.' : promptOverride.trim() || negativePromptOverride.trim() ? 'Return to the compiled prompt before using Surprise.' : mobileCreateIssues[0] || '';
+  const generationShortcuts = <StudioGenerationBar bindings={studioModeBindings} onBindings={setStudioModeBindings} workflows={selectableWorkflows} activeId={workflowId} busy={dispatching || !!postRenderBusy} surpriseReason={surpriseReason}
+    onWorkflow={(workflow,sampling)=>{changeGenerationWorkflow(workflow.id);setChromaSettings(current=>({...current,...sampling,width:chromaSettings.width,height:chromaSettings.height}));setQualityTier('balanced');}}
+    onSurprise={async()=>{
+      if(dispatchInFlight.current || dispatching || surpriseReason)return;
+      const result=prepareStudioSurprise(subjects,locks);
+      if(result.issues.length){toast.warning('Randomized scene needs review',{description:result.issues.join(' ')});return;}
+      await doDispatch({studioSubjects:result.subjects});
+    }}/>
   const renderDnaControls = (sheetField = null) => (
 <EditorPanelBoundary key={`${activeSubjectId}-${activeSection}-${sheetField || "all"}`}><DesktopDnaEditor requestedField={requestedDetail?.section === activeSection && !requestedDetail.field?.startsWith("feet:") ? requestedDetail : null} enabled={!sheetViewport && !sheetField}
             key={`${activeSubjectId}-${activeSection}`}
@@ -3079,13 +3106,13 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
         preview={activeRender?.output_files?.[0] || referencePreview}
         renderStatus={activeRender?.status} renderError={activeRender?.error}
         livePreview={activeRender && ["queued", "running"].includes(activeRender.status)
-          ? <LivePreview clientId={activeRender.id} /> : null}
+          ? <StudioRenderReveal render={activeRender} live={studioLive} source={activeRender?.output_files?.[0] || referencePreview}/> : null}
         onSave={() => save.mutate()} saving={save.isPending}
         onReset={resetCharacter}
         onGenerate={doDispatch} generating={dispatching}
         canGenerate={!!workflowId && mobileCreateIssues.length === 0}
         issues={mobileCreateIssues} imageCount={poseAssistEnabled && !isVariationWorkflow && !isAnyVideoWorkflow ? 1 : renderCount}
-        outputControls={<>{photoConsistencyNotice}{learningPanel}<CreationOutputControls compiler={activeRecipeStyle} workflows={selectableWorkflows} workflowId={workflowId}
+        outputControls={<>{generationShortcuts}{photoConsistencyNotice}{learningPanel}<CreationOutputControls compiler={activeRecipeStyle} workflows={selectableWorkflows} workflowId={workflowId}
           onWorkflow={changeGenerationWorkflow} family={activeRecipeFamily} tier={qualityTier}
           onTier={applyQualityTier} count={poseAssistEnabled && !isVariationWorkflow && !isAnyVideoWorkflow ? 1 : renderCount} onCount={setRenderCount}
           countLocked={poseAssistEnabled && !isVariationWorkflow && !isAnyVideoWorkflow}
@@ -3832,9 +3859,10 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
           </section>}
           <CreationSectionHeader section={SECTIONS[activeIdx]} sections={SECTIONS} stages={quickStages} onSection={openDesktopSection}/>
           <WorkspacePreviewLayout editTarget={`${activeSubjectId}:${activeSection}:${requestedDetail?.field || ""}`} hasPreview={!!(activeRender?.output_files?.[0] || referencePreview || character?.thumbnail || dispatching || activeRender?.status === "running")} preview={<GuidedCharacterPreview preview={activeRender?.output_files?.[0] || referencePreview || character?.thumbnail}
-              renderStatus={activeRender?.status} submitting={dispatching} name={name} dna={activeDna} stages={quickStages} sections={SECTIONS} onSection={openDesktopSection}
+              renderStatus={activeRender?.status} render={activeRender} live={studioLive} submitting={dispatching} name={name} dna={activeDna} stages={quickStages} sections={SECTIONS} onSection={openDesktopSection}
               onReview={() => { setDesktopQuickMode(true); selectQuickStage(quickStages.length - 1); }} />}>
             {renderDnaControls()}
+            {generationShortcuts}
             {!sheetViewport && relatedFootControls(activeSection)}
           </WorkspacePreviewLayout>
           {sectionNavigation("bottom")}
@@ -4124,6 +4152,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
                 >
                   <LivePreview
                     clientId={activeRender.id}
+                    liveState={studioLive}
                     enabled
                     variant="card"
                     testId="render-live-preview"

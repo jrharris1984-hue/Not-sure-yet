@@ -29,6 +29,7 @@ function decodePreview(buffer) {
  */
 export function useComfyWs(clientId, { enabled = true } = {}) {
   const [state, setState] = useState({
+    clientId:null,
     connected: false,
     progress: 0, // 0..1
     step: 0,
@@ -42,7 +43,9 @@ export function useComfyWs(clientId, { enabled = true } = {}) {
   const lastUrlRef = useRef(null);
 
   useEffect(() => {
+    setState({clientId,connected:false,progress:0,step:0,max:0,previewUrl:null,node:null,status:'idle',error:null});
     if (!enabled || !clientId) return undefined;
+    let stopped=false;
     const configured = (process.env.REACT_APP_BACKEND_URL || "").replace(/\/$/, "");
     const base =
       window.location.protocol === "https:" && configured.startsWith("http:")
@@ -56,6 +59,7 @@ export function useComfyWs(clientId, { enabled = true } = {}) {
     socket.onopen = () => setState((s) => ({ ...s, connected: true, error: null }));
 
     socket.onmessage = (evt) => {
+      if(stopped)return;
       if (evt.data instanceof ArrayBuffer) {
         const url = decodePreview(evt.data);
         if (url) {
@@ -82,13 +86,14 @@ export function useComfyWs(clientId, { enabled = true } = {}) {
           }));
         } else if (type === "executing") {
           if (data.node) {
-            setState((s) => ({ ...s, node: data.node, status: "running" }));
+            setState((s) => ({ ...s, node: data.node, status: "running", step:0, max:0, progress:0 }));
           } else {
             // executing.node == null => finished
             setState((s) => ({ ...s, status: "done", progress: 1 }));
           }
         } else if (type === "executed") {
-          setState((s) => ({ ...s, status: "done", progress: 1, node: null }));
+          // executed means one node completed, not the entire graph.
+          setState((s) => ({ ...s, status: "running" }));
         } else if (type === "status") {
           // queue info — mostly ignore, but if queue_remaining == 0 flag idle
           const q = data.status?.exec_info?.queue_remaining;
@@ -105,6 +110,8 @@ export function useComfyWs(clientId, { enabled = true } = {}) {
     socket.onclose = () => setState((s) => ({ ...s, connected: false }));
 
     return () => {
+      stopped=true;
+      socket.onopen=socket.onclose=socket.onerror=socket.onmessage=null;
       try { socket.close(); } catch { /* ignore */ }
       if (lastUrlRef.current) {
         URL.revokeObjectURL(lastUrlRef.current);
@@ -113,5 +120,5 @@ export function useComfyWs(clientId, { enabled = true } = {}) {
     };
   }, [clientId, enabled]);
 
-  return state;
+  return enabled && state.clientId===clientId ? state : {connected:false,progress:0,step:0,max:0,previewUrl:null,node:null,status:"idle",error:null};
 }
