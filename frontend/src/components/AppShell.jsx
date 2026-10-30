@@ -39,7 +39,7 @@ export default function AppShell({ children }) {
   const isBuilder = loc.pathname.startsWith("/character");
   const isImageTool = loc.pathname.startsWith("/image-tools/");
   const isCreateWorkspace = isBuilder || isImageTool || loc.pathname === "/create" || loc.pathname.startsWith("/create/");
-  const galleryReturnTo = isBuilder || isImageTool ? loc.pathname : undefined;
+  const galleryReturnTo = isBuilder || isImageTool ? loc.pathname + loc.search + loc.hash : undefined;
   const showResearchWorkspace = loc.pathname === "/research";
   const mainRef = useRef(null);
   const pageGroup = loc.pathname.split("/")[1] || "library";

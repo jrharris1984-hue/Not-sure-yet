@@ -73,3 +73,13 @@ it('keeps Split while navigating between editable details',()=>{
   paint('hair');paint('wardrobe');
   expect(container.querySelector('[data-workspace-mode]').dataset.workspaceMode).toBe('split');
 });
+it('keeps restored Preview through hydration but reveals subsequent explicit edits',()=>{
+  sessionStorage.setItem('ultra:workspace-view:split-studio',JSON.stringify('preview'));
+  sessionStorage.setItem('ultra:preview-width',JSON.stringify(420));
+  const paint=editTarget=>act(()=>root.render(<WorkspacePreviewLayout editTarget={editTarget} preview={<p>Saved result</p>}><input/></WorkspacePreviewLayout>));
+  paint(undefined);paint('restored-subject:hair');
+  expect(container.querySelector('[data-workspace-mode]').dataset.workspaceMode).toBe('preview');
+  expect(container.querySelector('[data-workspace-mode]').style.getPropertyValue('--workspace-preview-width')).toBe('420px');
+  paint('restored-subject:wardrobe');
+  expect(container.querySelector('[data-workspace-mode]').dataset.workspaceMode).toBe('split');
+});
