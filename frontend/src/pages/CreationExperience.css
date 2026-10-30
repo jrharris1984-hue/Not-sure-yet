@@ -196,3 +196,44 @@
 .studio-shell .design-workspace .visual-choice.is-color-choice .visual-choice-swatch {width:40px;height:40px;border-width:3px}
 .studio-shell .design-workspace .visual-choice.is-color-choice[aria-pressed=true] .visual-choice-swatch {outline:2px solid var(--creation-color,#b7acff);outline-offset:3px}
 @media(max-width:767px) {.studio-shell .design-workspace .visual-choice.is-color-choice .visual-choice-swatch {width:32px;height:32px}}
+
+/* Keep navigation beside itself so the first editable choices stay in view. */
+@media(min-width:768px) {
+  .design-workspace [data-testid=desktop-focused-editor] {display:grid;grid-template-columns:minmax(160px,.8fr) minmax(240px,1.2fr);gap:10px;align-items:start}
+  .design-workspace [data-testid=desktop-focused-editor]>.desktop-detail-navigation {grid-column:1;grid-row:1}
+  .design-workspace [data-testid=desktop-focused-editor]>.detail-navigator {grid-column:2;grid-row:1}
+  .design-workspace [data-testid=desktop-focused-editor]>.selection-panel {grid-column:1/-1;grid-row:2}
+  .design-workspace [data-testid=desktop-focused-editor]>.desktop-detail-navigation>p {display:none}
+  .design-workspace .creation-section-heading {padding:4px 0 8px}
+  .design-workspace .creation-section-hint {display:none}
+  .design-workspace [data-testid=desktop-focused-editor] .option-browser {display:flex;flex-direction:column;gap:8px}
+  .design-workspace [data-testid=desktop-focused-editor] .option-browser>* {margin-top:0}
+  .design-workspace [data-testid=desktop-focused-editor] .choice-browser-shortcuts {order:2}
+}
+@media(min-width:768px) and (max-height:750px) {
+  .design-workspace .creation-section-heading {display:none}
+  .design-workspace [data-testid=desktop-focused-editor] {grid-template-columns:150px minmax(0,1fr)}
+  .design-workspace [data-testid=desktop-focused-editor]>.detail-navigator {grid-column:1;grid-row:2;padding:8px;gap:6px}
+  .design-workspace [data-testid=desktop-focused-editor]>.selection-panel {grid-column:2;grid-row:1 / span 3}
+  .design-workspace [data-testid=desktop-focused-editor] .detail-navigator-select {flex-basis:100%;flex-wrap:wrap;gap:4px}
+  .design-workspace [data-testid=desktop-focused-editor] .detail-navigator-select select {width:100%;flex-basis:100%}
+  .design-workspace [data-testid=desktop-focused-editor] .detail-navigator-actions {flex-wrap:wrap}
+  .design-workspace #studio-model .workspace-workflow-menu {max-width:180px}
+  .design-workspace #studio-model .workspace-workflow-menu strong {max-width:125px}
+  .design-workspace #studio-model button {padding-left:9px;padding-right:9px}
+  .design-workspace #studio-model .flex.flex-wrap {gap:6px}
+}
+@media(min-width:768px) and (max-height:750px) {
+  .design-workspace [data-testid=desktop-focused-editor]>.selection-panel {display:flex;flex-direction:column;gap:8px}
+  .design-workspace [data-testid=desktop-focused-editor]>.selection-panel>header {order:2;border-bottom:0;border-top:1px solid #ffffff12;padding-top:8px;padding-bottom:0}
+  .design-workspace #studio-model input[data-testid=input-character-name] {flex:0 1 100px;min-width:80px;max-width:100px}
+  .design-workspace #studio-model .workspace-workflow-menu {max-width:150px}
+  .design-workspace #studio-model .workspace-workflow-menu strong {max-width:95px}
+  .design-workspace #studio-model button {font-size:12px;padding-left:7px;padding-right:7px}
+  .design-workspace #studio-model > .flex {gap:6px}
+}
+@media(min-width:768px) and (max-height:750px) {
+  /* On shallow windows, offer the visible choices before optional filtering. */
+  .design-workspace [data-testid=desktop-focused-editor] .choice-browser-toolbar {order:2;margin-bottom:0}
+  .design-workspace [data-testid=desktop-focused-editor] .choice-browser-shortcuts {order:3}
+}
