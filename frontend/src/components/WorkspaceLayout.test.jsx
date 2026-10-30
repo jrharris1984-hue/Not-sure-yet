@@ -12,7 +12,7 @@ it('hides the preview without remounting the editor and remembers the choice', (
   act(()=>container.querySelector('button').click());
   expect(container.querySelector('input')).toBe(input);
   expect(container.querySelector('.workspace-preview-content')).toBeNull();
-  expect(sessionStorage.getItem('ultra:workspace-view')).toBe('"edit"');
+  expect(sessionStorage.getItem('ultra:workspace-view:split-studio')).toBe('"edit"');
   act(()=>[...container.querySelectorAll('button')].find(button=>button.textContent==='Split').click());
   expect(container.querySelector('.workspace-preview-content').textContent).toBe('Preview');
 });
@@ -30,11 +30,11 @@ it('provides first-use guidance before a render exists', () => {
   expect(container.textContent).toContain('Your image will appear after generation');
 });
 
-it('keeps empty previews collapsed and opens automatically when an image arrives', () => {
+it('keeps the reveal visible before and after the first image unless explicitly hidden', () => {
   const render=hasPreview=>act(()=>root.render(<WorkspacePreviewLayout hasPreview={hasPreview} preview={<p>Image</p>}><input defaultValue="Draft"/></WorkspacePreviewLayout>));
   render(false);
-  const input=container.querySelector('input');
-  expect(container.querySelector('.workspace-preview-content')).toBeNull();
+  const input=container.querySelector('input:not([type=range])');
+  expect(container.querySelector('.workspace-preview-content')).not.toBeNull();
   render(true);
   expect(container.querySelector('.workspace-preview-content')).not.toBeNull();
   expect(container.querySelector('input:not([type=range])')).toBe(input);
@@ -65,5 +65,11 @@ it('returns to editing when a different detail is requested from navigation',()=
   act(()=>[...container.querySelectorAll('button')].find(button=>button.textContent==='Preview').click());
   paint('wardrobe');
   expect(container.querySelector('.workspace-editor-content').hidden).toBe(false);
-  expect(container.querySelector('[data-workspace-mode]').dataset.workspaceMode).toBe('edit');
+  expect(container.querySelector('[data-workspace-mode]').dataset.workspaceMode).toBe('split');
+});
+
+it('keeps Split while navigating between editable details',()=>{
+  const paint=editTarget=>act(()=>root.render(<WorkspacePreviewLayout editTarget={editTarget} preview={<p>Reveal</p>}><input/></WorkspacePreviewLayout>));
+  paint('hair');paint('wardrobe');
+  expect(container.querySelector('[data-workspace-mode]').dataset.workspaceMode).toBe('split');
 });

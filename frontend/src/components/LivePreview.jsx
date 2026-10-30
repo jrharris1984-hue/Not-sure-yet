@@ -11,8 +11,9 @@ import { Loader2, WifiOff, Zap, Square } from "lucide-react";
  *   fallback  - a React node shown when no preview yet (usually a spinner/status)
  *   onCancel  - if provided, renders a Stop button that calls this handler
  */
-export default function LivePreview({ clientId, enabled = true, variant = "card", fallback = null, testId = "live-preview", onCancel = null }) {
-  const { connected, progress, step, max, previewUrl, status, error } = useComfyWs(clientId, { enabled });
+export default function LivePreview({ clientId, enabled = true, variant = "card", fallback = null, testId = "live-preview", onCancel = null, liveState }) {
+  const ownLive = useComfyWs(clientId, { enabled:enabled && !liveState });
+  const { connected, progress, step, max, previewUrl, status, error } = liveState || ownLive;
 
   if (variant === "compact") {
     return (
