@@ -1,3 +1,4 @@
+import StudioMoreActions from '@/components/StudioMoreActions';
 import useTabPreference from '@/hooks/useTabPreference';
 import StudioGenerationBar from '@/components/StudioGenerationBar';
 import StudioRenderReveal from '@/components/StudioRenderReveal';
@@ -3193,14 +3194,6 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
         </div>
       )}
       {/* Header */}
-      <div data-mobile-tools="none" className={`${isImageFirst ? "!hidden" : ""} hidden md:flex items-center gap-2 rounded-xl border border-cyan-400/20 bg-black/40 p-2 text-xs`} aria-label="Builder view">
-        <span className="px-2 font-semibold text-cyan-200">{desktopQuickMode ? "Simple view" : "Advanced view"}</span>
-        <span className="ml-auto hidden xl:inline pr-2 text-zinc-500">{desktopQuickMode ? "Start with the essentials. Your choices are kept when switching views." : "All controls available. Switch to Simple whenever you want."}</span>
-        <button type="button" onClick={() => { setDesktopQuickMode((value) => !value); setQuickReview(false); }}
-          data-testid="btn-desktop-studio-mode" className="ml-auto rounded-lg border border-cyan-400/40 px-3 py-2 font-semibold text-cyan-200 hover:bg-cyan-400/10">
-          {desktopQuickMode ? "Advanced view · all options" : "Simple view"}
-        </button>
-      </div>
       <div data-mobile-tools="none" id="studio-model" className="pane scroll-mt-24 p-2.5 sm:p-4 flex flex-col gap-2.5 sm:gap-3">
         {!isImageFirst && <WorkspaceRenderStatus render={activeRender} renders={batchRenders} dispatching={dispatching}
           onResults={() => { setDesktopQuickMode(false); window.requestAnimationFrame(() => { const panel = document.getElementById('workspace-render-result') || document.getElementById('studio-render'); panel?.scrollIntoView({behavior:'auto', block:'start'}); panel?.focus({preventScroll:true}); }); }} />}
@@ -3238,10 +3231,6 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
           </select>
             </label><p>Choose the model setup for your next render.</p></div>
           </details>
-          {!isImageFirst && <div className="hidden md:block"><SelectedDetailsDrawer items={selectedDetails} onEdit={editSelectedDetail} /></div>}
-          {!isImageFirst && editMode !== "body_adjust" && <div className="hidden md:block"><CharacterHistoryControls compact
-            canUndo={characterHistory.canUndo} canRedo={characterHistory.canRedo}
-            onUndo={characterHistory.undo} onRedo={characterHistory.redo} busy={dispatching || !!postRenderBusy} /></div>}
           <button
             onClick={() => save.mutate()}
             disabled={save.isPending}
@@ -3290,6 +3279,21 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
               compact
             />
           </div>}
+          {!isImageFirst && <div className="hidden md:block"><StudioMoreActions>
+            <div className="studio-more-section"><strong>View · {desktopQuickMode ? "Simple" : "Advanced"}</strong>
+              <button type="button" onClick={() => { setDesktopQuickMode(value => !value); setQuickReview(false); }}
+                data-testid="btn-desktop-studio-mode" className="rounded-lg border border-cyan-400/40 px-3 py-2 font-semibold text-cyan-200 hover:bg-cyan-400/10">
+                {desktopQuickMode ? "Advanced view · all options" : "Simple view"}
+              </button>
+            </div>
+            <div className="studio-more-section"><strong>Selections & history</strong>
+              <SelectedDetailsDrawer items={selectedDetails} onEdit={editSelectedDetail} />
+              {editMode !== "body_adjust" && <CharacterHistoryControls compact
+                canUndo={characterHistory.canUndo} canRedo={characterHistory.canRedo}
+                onUndo={characterHistory.undo} onRedo={characterHistory.redo} busy={dispatching || !!postRenderBusy} />}
+            </div>
+            <Link to="/settings/prompts" className="studio-more-library">Edit Prompt Library</Link>
+          </StudioMoreActions></div>}
           <button
             onClick={doDispatch}
             disabled={dispatching || ollamaRenderPending || !workflowId || kreaRenderBlocked || ((isImageFirst || activeRecipeFamily === "edit") && !referenceImage?.name) || (poseAssistEnabled && !isVariationWorkflow && !isAnyVideoWorkflow && (!poseAssistAvailable || !poseReferenceImage?.name || (poseAssistStatus && !poseAssistStatus.ready)))}
@@ -3849,16 +3853,14 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
               {group.label}
             </button>)}
           </div>}
-          <nav className="mb-3 flex flex-wrap gap-2" aria-label="Custom prompt categories">
-            <Link to="/settings/prompts" className="text-xs text-cyan-200 underline">Edit Prompt Library</Link>
+          <nav className="custom-prompt-navigation mb-3 flex flex-wrap gap-2" aria-label="Custom prompt categories">
             {SECTIONS.filter(section => section.key.startsWith('custom_')).map(section => <button type="button" key={section.key} onClick={() => goSection(section.key)} className="rounded-lg border hairline px-3 py-2 text-xs text-cyan-200">{section.title}</button>)}
           </nav>
           {desktopQuickMode && quickStageIndex === 0 && <section className="hidden md:flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-cyan-400/20 bg-cyan-500/[0.04] p-4">
             <div><h2 className="text-sm font-semibold">Choose your starting point</h2><p className="mt-1 text-xs text-zinc-400">Use a character preset, or choose the details below. You can edit every choice.</p></div>
             {characterPresets}
           </section>}
-          <CreationSectionHeader section={SECTIONS[activeIdx]} sections={SECTIONS} stages={quickStages} onSection={openDesktopSection}/>
-          <WorkspacePreviewLayout editTarget={`${activeSubjectId}:${activeSection}:${requestedDetail?.field || ""}`} hasPreview={!!(activeRender?.output_files?.[0] || referencePreview || character?.thumbnail || dispatching || activeRender?.status === "running")} preview={<GuidedCharacterPreview preview={activeRender?.output_files?.[0] || referencePreview || character?.thumbnail}
+          <WorkspacePreviewLayout heading={<CreationSectionHeader section={SECTIONS[activeIdx]} sections={SECTIONS} stages={quickStages} onSection={openDesktopSection}/>} editTarget={`${activeSubjectId}:${activeSection}:${requestedDetail?.field || ""}`} hasPreview={!!(activeRender?.output_files?.[0] || referencePreview || character?.thumbnail || dispatching || activeRender?.status === "running")} preview={<GuidedCharacterPreview preview={activeRender?.output_files?.[0] || referencePreview || character?.thumbnail}
               renderStatus={activeRender?.status} render={activeRender} live={studioLive} submitting={dispatching} name={name} dna={activeDna} stages={quickStages} sections={SECTIONS} onSection={openDesktopSection}
               onReview={() => { setDesktopQuickMode(true); selectQuickStage(quickStages.length - 1); }} />}>
             {renderDnaControls()}
