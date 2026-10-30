@@ -129,6 +129,17 @@ async function check(browser,viewport) {
     await wardrobe.getByRole('button',{name:'Clothes',exact:true}).click();
     await wardrobe.getByLabel('Editing',{exact:true}).selectOption('top');
     assert.equal(await wardrobe.getByTestId('chip-wardrobe-top-t-shirt').getAttribute('aria-pressed'),'true','Wardrobe navigation should retain selections');
+    if(viewport.width>=768){
+      const count=fixture.dispatches;
+      const surprise=page.getByRole('button',{name:'Surprise me & generate',exact:true}).filter({visible:true});
+      await surprise.click();
+      await page.waitForFunction(()=>document.querySelector('[data-testid="btn-dispatch-comfyui-render"]')?.disabled===false);
+      assert.equal(fixture.dispatches,count+1,'Surprise must submit exactly one image');
+      const sent=fixture.requests.at(-1);
+      assert.equal(sent.subjects[0].dna.wardrobe.top,'t-shirt','Surprise must preserve the selected outfit');
+      assert.equal(sent.batch_size,1);
+      assert.ok(sent.subjects[0].dna.scene,'Randomized scene must be included in the submitted snapshot');
+    }
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+2),true,'Page has horizontal overflow');
     assert.deepEqual(errors,[],'Unexpected browser runtime errors');
     assert.deepEqual(blocked,[],'Fixture needs an explicit handler for these writes');
