@@ -1,7 +1,7 @@
 import {useEffect, useRef, useState} from 'react';
 import useTabPreference from '@/hooks/useTabPreference';
 
-export default function WorkspacePreviewLayout({ children, preview, hasPreview = true, editTarget }) {
+export default function WorkspacePreviewLayout({ children, preview, hasPreview = true, editTarget, heading }) {
   const [wide,setWide]=useState(()=>window.innerWidth>=1280);
   useEffect(()=>{
     const resize=()=>setWide(window.innerWidth>=1280);
@@ -21,6 +21,7 @@ export default function WorkspacePreviewLayout({ children, preview, hasPreview =
   const width = Math.max(260, Math.min(480, Number(savedWidth) || 320));
   return <div className="workspace-preview-layout" data-workspace-mode={view} data-preview-open={view!=='edit'} style={{'--workspace-preview-width':`${width}px`}}>
     <div className="workspace-preview-tools">
+      {heading}
       <div className="workspace-view-switch" role="group" aria-label="Editor view">
         {['edit',...(wide?['split']:[]),'preview'].map(mode=><button type="button" key={mode} aria-pressed={view===mode} onClick={()=>setView(mode)}>{mode[0].toUpperCase()+mode.slice(1)}</button>)}
       </div>

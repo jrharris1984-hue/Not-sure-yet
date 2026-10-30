@@ -122,7 +122,7 @@ export default function DnaSection({
           <ChevronDown className={`h-4 w-4 text-zinc-500 group-hover:text-zinc-200 transition-transform ${collapsed ? "-rotate-90" : ""}`} />
           <div>
             <div className="section-label">{section.key}</div>
-            <h2 className="font-display font-bold text-lg sm:text-xl">{section.title}</h2>
+            <h2 className="font-display font-bold text-lg sm:text-xl">{focusedField ? "Section tools" : section.title}</h2>
           </div>
         </button>
         <div className="flex items-center gap-1">

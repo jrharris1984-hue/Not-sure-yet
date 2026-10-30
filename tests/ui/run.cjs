@@ -46,9 +46,19 @@ async function check(browser,viewport) {
       await categories.getByRole('button',{name:'Skin',exact:true}).click();
       await categories.getByRole('button',{name:'Hair',exact:true}).click();
       assert.equal(await hairChoice.getAttribute('aria-pressed'),'true','Category navigation must retain the selected choice');
+      if(!await page.locator('.studio-more-actions').evaluate(el=>el.open)) await page.locator('.studio-more-actions > summary').click();
       await page.getByTestId('btn-desktop-studio-mode').click();
       await page.getByTestId('btn-desktop-studio-mode').click();
       assert.equal(await hairChoice.getAttribute('aria-pressed'),'true','Switching views must retain the selected choice');
+      assert.equal(await page.locator('.studio-more-library').evaluate(link=>{
+        const box=link.getBoundingClientRect();
+        const hit=document.elementFromPoint(box.left+box.width/2,box.top+box.height/2);
+        return hit===link || link.contains(hit);
+      }),true,'More actions must appear above the editing controls');
+      await page.screenshot({path:path.join(output,`${viewport.name}-more.png`),fullPage:false});
+      await page.keyboard.press('Escape');
+      assert.equal(await page.locator('.studio-more-actions').evaluate(el=>el.open),false,'Escape should close More');
+      assert.equal(await page.locator('.studio-more-actions > summary').evaluate(el=>el===document.activeElement),true,'More should restore trigger focus');
       const viewSwitch=page.getByRole('group',{name:'Editor view',exact:true});
       await viewSwitch.getByRole('button',{name:'Preview',exact:true}).click();
       assert.equal(await page.locator('.workspace-editor-content').isVisible(),false,'Preview should hide editing controls');
@@ -62,6 +72,7 @@ async function check(browser,viewport) {
       const name=page.getByTestId('input-character-name');
       await name.fill('UI walkthrough');
       const drawerButton=page.getByRole('button',{name:/^Selected details \(/});
+      await page.locator('.studio-more-actions > summary').click();
       await drawerButton.click();
       const drawer=page.locator('dialog[open]');await drawer.waitFor();
       await drawer.getByRole('searchbox').fill('hair');
