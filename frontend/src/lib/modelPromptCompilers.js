@@ -1,3 +1,4 @@
+import {cameraViewPrompt,subjectViewPrompt} from './cameraViewChoices';
 import { normalizePromptStyle } from "./promptModelAliases";
 import { protectModelPromptOrder } from "./modelPromptOrder";
 import { buildSceneReview } from './sceneReview';
@@ -255,7 +256,7 @@ function chromaLeanSingleSubjectPrompt(dna = {}, primaryGuard = {}, sourceDna = 
 
   const framing = [
     pose.distance,
-    pose.angle,
+    subjectViewPrompt(pose.angle),
     photographyPosePrompt(pose.action),
     pose.body_language,
     pose.focus && pose.focus !== "full frame" ? `composition focus: ${pose.focus}` : "",
@@ -273,7 +274,7 @@ function chromaLeanSingleSubjectPrompt(dna = {}, primaryGuard = {}, sourceDna = 
     lighting.style,
     lighting.mood,
     lighting.source,
-    camera.angle && `${camera.angle} camera angle`,
+    cameraViewPrompt(camera.angle),
     camera.lens,
     style.render,
     style.artistic_tone,
@@ -809,7 +810,7 @@ function kreaSharedShotSentences(dna = {}) {
   const cameraSentence = kreaSentence("The camera uses ", [
     camera.lens && `${camera.lens} lens`,
     camera.aperture,
-    camera.angle && `${camera.angle} angle`,
+    cameraViewPrompt(camera.angle),
     camera.aspect_ratio && `${camera.aspect_ratio} aspect ratio`,
   ]);
   const styleSentence = kreaSentence("The overall finish is ", [
