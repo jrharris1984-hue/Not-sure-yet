@@ -237,3 +237,30 @@
   .design-workspace [data-testid=desktop-focused-editor] .choice-browser-toolbar {order:2;margin-bottom:0}
   .design-workspace [data-testid=desktop-focused-editor] .choice-browser-shortcuts {order:3}
 }
+
+/* One command bar; supporting actions stay available in a dismissible panel. */
+.studio-more-actions {position:relative}
+.studio-more-actions>summary {display:flex;align-items:center;justify-content:center;gap:6px;min-height:44px;padding:8px 12px;border:1px solid #ffffff20;border-radius:14px;cursor:pointer;list-style:none;color:var(--design-text,#eee)}
+.studio-more-actions>summary::-webkit-details-marker {display:none}
+.studio-more-actions[open]>summary {background:var(--creation-soft,#b5a0ff20);border-color:var(--creation-color,#b5a0ff)}
+.studio-more-panel {position:absolute;right:0;top:calc(100% + 8px);z-index:45;width:min(320px,80vw);padding:16px;border:1px solid #ffffff25;border-radius:20px;background:var(--design-panel,#221e30);box-shadow:0 16px 40px #0006;display:grid;gap:16px;max-height:65dvh;overflow-y:auto}
+.studio-more-section {display:grid;gap:8px}
+.studio-more-section>strong {font-size:12px;color:var(--design-muted,#aaa)}
+.studio-more-library {font-size:13px;color:var(--creation-color,#b5a0ff);min-height:36px;align-content:center}
+.studio-more-actions summary:focus-visible,.studio-more-library:focus-visible {outline:2px solid var(--creation-color,#b5a0ff);outline-offset:3px}
+.custom-prompt-navigation:empty {display:none}
+@media(min-width:768px) {
+  .design-workspace .workspace-preview-tools {flex-wrap:wrap;gap:8px 16px}
+  .design-workspace .workspace-preview-tools>.creation-section-heading {display:flex;flex:1;min-width:180px;padding:0;gap:12px}
+  .design-workspace .workspace-preview-tools .creation-section-heading h1 {font-size:24px}
+  .design-workspace .workspace-preview-tools .creation-section-heading p,.design-workspace .workspace-preview-tools .creation-section-emblem {display:none}
+  .design-workspace .workspace-preview-tools .creation-section-actions {gap:4px}
+  .design-workspace .workspace-preview-tools .creation-section-actions button {width:36px;height:36px;min-width:36px;min-height:36px}
+  .design-workspace [data-testid=desktop-focused-editor]>.selection-panel>header h2 {font-size:12px;font-weight:500;color:var(--design-muted,#aaa)}
+  .design-workspace #studio-model .studio-more-panel .flex.flex-wrap {gap:8px}
+  .design-workspace #studio-model .studio-more-panel button {font-size:13px}
+}
+@media(min-width:768px) and (max-height:750px) {
+  /* Stay in normal flow on shallow screens, but keep command popovers above editors. */
+  .design-workspace #studio-model {position:relative;top:auto;z-index:30}
+}
