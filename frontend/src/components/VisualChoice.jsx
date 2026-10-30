@@ -8,7 +8,7 @@ export function choiceSwatch(field,value) {
 }
 export default function VisualChoice({value,label=value,active,onClick,testId,field}) {
   const swatch=choiceSwatch(field,value);
-  return <button type="button" className={`studio-choice visual-choice ${active?'active':''} ${swatch?'is-color-choice':''}`} title={swatch?`${label} · approximate color`:undefined} aria-pressed={active} data-testid={testId} onClick={onClick}>
+  return <button type="button" className={`studio-choice visual-choice ${active?'active':''} ${swatch?'is-color-choice':''}`} title={`${label}${swatch?' · approximate color':''}${active?' · Selected; click again to clear':''}`} aria-pressed={active} data-testid={testId} onClick={onClick}>
     {swatch && <span className="visual-choice-swatch" aria-hidden="true" style={{backgroundColor:swatch}}/>}
     <span className="visual-choice-label">{label}</span>
     <span className="visual-choice-check" aria-hidden="true">{active && <Check size={14}/>}</span>

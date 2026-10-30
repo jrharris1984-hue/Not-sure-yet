@@ -1,3 +1,4 @@
+import {EXTRA_CAMERA_ANGLES,EXTRA_SUBJECT_VIEWS} from './cameraViewChoices';
 import characterVibeOptions from './characterVibeOptions.json';
 import { expandEverydayWardrobe } from './everydayWardrobe';
 import { HERITAGE_OUTFIT_GROUP, heritagePhotoOutfit } from './heritageStyling';
@@ -336,7 +337,7 @@ export const SECTIONS = [
         { name: "Squatting", options: ["squatting", "squatting spread", "squatting deep"] },
         { name: "Cinematic", options: ["over shoulder look", "arched on knees", "hands on knees", "hair flip", "dancing", "reverse view"] },
       ]},
-      { key: "angle", type: "chips", label: "Camera angle", options: ["front", "3/4", "profile", "back", "over-shoulder", "from above", "from below", "pov"] },
+      { key: "angle", type: "chips", label: "View of subject", options: ["front", "3/4", "profile", "back", "over-shoulder", "from above", "from below", "pov", ...Object.keys(EXTRA_SUBJECT_VIEWS)] },
       { key: "distance", type: "chips", label: "Framing", options: ["close-up", "portrait", "waist-up", "thigh-up", "knees-up", "full body", "wide shot", "detail shot"] },
       { key: "focus", type: "chips", label: "Composition priority", options: ["face", "body", "breasts", "butt", "hips", "legs", "feet", "hands", "full frame"] },
       { key: "hands", type: "chips", label: "Hand position (choose one)", options: ["at sides", "on hips", "in hair", "touching body", "on breasts", "between legs", "gripping something", "over head", "behind back", "behind head"] },
@@ -452,7 +453,7 @@ export const SECTIONS = [
     fields: [
       { key: "lens", type: "chips", label: "Lens", options: ["24mm", "35mm", "50mm", "85mm", "135mm", "macro"] },
       { key: "aperture", type: "chips", label: "Aperture", options: ["f/1.4", "f/1.8", "f/2.8", "f/4", "f/8"] },
-      { key: "angle", type: "chips", label: "Angle", options: ["eye-level", "low", "high", "foot level", "dutch", "birds-eye"] },
+      { key: "angle", type: "chips", label: "Camera height & tilt", options: ["eye-level", "low", "high", "foot level", "dutch", "birds-eye", ...Object.keys(EXTRA_CAMERA_ANGLES)] },
       { key: "aspect_ratio", type: "chips", label: "Aspect ratio", options: ["1:1", "4:5", "3:2", "16:9", "9:16", "2.35:1"] },
     ],
   },
@@ -1120,7 +1121,7 @@ function _veniceSharedBlock(dna = {}, opts = {}, subjectCount = 1) {
   const camStr = join([
     cam.lens && `shot on ${exp("camera", "lens")}`,
     exp("camera", "aperture"),
-    cam.angle && (cam.angle === "foot level" ? exp("camera", "angle") : `${cam.angle} camera angle`),
+    cam.angle && ((cam.angle === "foot level" || EXTRA_CAMERA_ANGLES[cam.angle]) ? exp("camera", "angle") : `${cam.angle} camera angle`),
     cam.aspect_ratio && `${cam.aspect_ratio} aspect ratio`,
   ]);
   const styleStr = join([

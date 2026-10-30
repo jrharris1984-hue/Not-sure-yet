@@ -1,3 +1,4 @@
+import {EXTRA_CAMERA_ANGLES} from './cameraViewChoices';
 import { normalizeAnatomyDetails } from "./anatomyDetailControls";
 import { POSE_ACTION_PROMPTS } from './photographyPoses';
 import { catalogSelection, catalogControl, getPromptCatalog } from './promptCatalog';
@@ -441,7 +442,7 @@ export function resolveBuilderControls(source = {}) {
       notes.push({ section: 'feet', field: 'toes', text: 'The selected foot pose controls toe position.' });
     }
   }
-  if (['from above', 'from below'].includes(choice('pose','angle')) && ['eye-level', 'low', 'high', 'foot level', 'birds-eye'].includes(choice('camera','angle'))) omit('camera', 'angle', 'Pose & framing already controls camera height. The separate Camera height is inactive.');
+  if (['from above', 'from below'].includes(choice('pose','angle')) && ['eye-level', 'low', 'high', 'foot level', 'birds-eye', ...Object.keys(EXTRA_CAMERA_ANGLES)].includes(choice('camera','angle'))) omit('camera', 'angle', 'Pose & framing already controls camera height. The separate Camera height is inactive.');
   const hairStyle=lower(choice('hair','style')),hairLength=choice('hair','length');
   if (/\bbald\b|(?:fully )?shaved head|head (?:fully )?shaved/.test(hairStyle)) for (const field of ['length', 'texture', 'bangs','color']) omit('hair', field, 'The selected bald hairstyle replaces this hair detail.');
   if (/\bbuzz cut\b/.test(hairStyle)) omit('hair','bangs','A buzz cut has no separate bangs.');

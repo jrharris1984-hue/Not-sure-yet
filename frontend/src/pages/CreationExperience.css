@@ -264,3 +264,14 @@
   /* Stay in normal flow on shallow screens, but keep command popovers above editors. */
   .design-workspace #studio-model {position:relative;top:auto;z-index:30}
 }
+
+/* Selection feedback keeps the card footprint stable while making the check unmistakable. */
+:where(html[data-studio-theme=studio],html:not([data-studio-theme])) .studio-shell .design-workspace .visual-choice[aria-pressed=true] {border-color:var(--creation-color);box-shadow:inset 3px 0 0 var(--creation-color),inset 0 0 0 1px var(--creation-soft);background:var(--creation-soft)}
+.design-workspace .visual-choice-check {width:22px;height:22px;border-radius:7px;border-width:2px}
+.design-workspace .visual-choice[aria-pressed=true] .visual-choice-check {background:var(--creation-color,#b5a0ff);border-color:var(--creation-color,#b5a0ff);color:#20182e}
+.design-workspace .visual-choice[aria-pressed=true] .visual-choice-check svg {stroke-width:3}
+.choice-browser-count {font-variant-numeric:tabular-nums}
+@media(prefers-reduced-motion:no-preference) {
+  .design-workspace [data-testid=desktop-focused-editor],.design-workspace [data-testid=wardrobe-focused-editor] {animation:studio-detail-reveal 140ms ease-out}
+}
+@keyframes studio-detail-reveal {from {opacity:.55} to {opacity:1}}

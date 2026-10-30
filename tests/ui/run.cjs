@@ -42,6 +42,13 @@ async function check(browser,viewport) {
       const hairChoice=page.getByTestId('chip-hair-style-straight');
       await hairChoice.click();
       assert.equal(await hairChoice.getAttribute('aria-pressed'),'true','Hair choice should be selected');
+      const choiceSearch=page.getByTestId('dna-section-hair').getByRole('searchbox',{name:'Search choices',exact:true});
+      await choiceSearch.fill('waves beach');
+      await page.getByTestId('chip-hair-style-beach-waves').waitFor({state:'visible'});
+      await choiceSearch.press('Escape');
+      assert.equal(await choiceSearch.inputValue(),'','Escape should clear choice search');
+      assert.equal(await hairChoice.getAttribute('aria-pressed'),'true','Searching must retain the selection');
+
       const categories=page.getByRole('navigation',{name:'Design categories'});
       await categories.getByRole('button',{name:'Skin',exact:true}).click();
       await categories.getByRole('button',{name:'Hair',exact:true}).click();
@@ -150,6 +157,13 @@ async function check(browser,viewport) {
       assert.equal(sent.subjects[0].dna.wardrobe.top,'t-shirt','Surprise must preserve the selected outfit');
       assert.equal(sent.batch_size,1);
       assert.ok(sent.subjects[0].dna.scene,'Randomized scene must be included in the submitted snapshot');
+    }
+    if(viewport.width>=768){
+      await page.goto(`${baseURL}/character/new/s/camera`,{waitUntil:'domcontentloaded'});
+      await page.getByLabel('Editing detail',{exact:true}).selectOption('angle');
+      const diagonal=page.getByTestId('chip-camera-angle-overhead-diagonal');
+      await diagonal.click();
+      assert.equal(await diagonal.getAttribute('aria-pressed'),'true','New camera angles must be selectable');
     }
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+2),true,'Page has horizontal overflow');
     assert.deepEqual(errors,[],'Unexpected browser runtime errors');
