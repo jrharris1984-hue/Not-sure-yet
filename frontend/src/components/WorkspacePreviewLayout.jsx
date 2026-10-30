@@ -11,7 +11,10 @@ export default function WorkspacePreviewLayout({ children, preview, hasPreview =
   const [savedView,setView]=useTabPreference('ultra:workspace-view:split-studio','auto');
   const previousTarget=useRef(editTarget);
   useEffect(()=>{
-    if(previousTarget.current!==editTarget) {if(savedView==='preview')setView(wide?'split':'edit');previousTarget.current=editTarget;}
+    if(previousTarget.current!==editTarget) {
+      if(previousTarget.current!==undefined && editTarget!==undefined && savedView==='preview')setView(wide?'split':'edit');
+      previousTarget.current=editTarget;
+    }
     // Navigation into a detail should reveal its editor.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   },[editTarget]);

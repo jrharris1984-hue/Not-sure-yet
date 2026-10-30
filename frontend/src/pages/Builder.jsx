@@ -317,20 +317,6 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
     nav("/character/new/s/identity", { replace: true, state: null });
   }, [draftId, editorHydrated, location.state, nav, setActiveSubjectId, setMediaImportSummary, setMobileStudioStep, setName, setNegativePromptOverride, setPlainLanguage, setPromptOverride, setSubjects, setTags]);
 
-  // Persist the latest render session so a refresh/reopen can reconnect to the
-  // same queued/running batch instead of making it disappear from Builder.
-  useEffect(() => {
-    if (!draftHydrated.current) return;
-    const existing = readBuilderDraft(draftId) || {};
-    writeBuilderDraft(draftId, {
-      ...existing,
-      activeRender,
-      batchRenders,
-      selectedBatchRenderId,
-      renderCount,
-    });
-  }, [activeRender, batchRenders, selectedBatchRenderId, renderCount, draftId]);
-
   const { data: workflows = [], isLoading: workflowsLoading } = useQuery({ queryKey: ["workflows"], queryFn: endpoints.listWorkflows });
   const { data: poseAssistStatus } = useQuery({
     queryKey: ["pose-assist-status"],
@@ -896,7 +882,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
   }, [character?.id]);
 
   useEffect(() => {
-    if (!draftHydrated.current) return undefined;
+    if (!editorHydrated) return undefined;
     setDraftStatus("Saving draft…");
     const snapshot = {
       name, subjects, activeSubjectId, locks, collapsed, tags, raunch, promptLanguage,
@@ -908,6 +894,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
       videoInstruction, videoFrames, videoFps, videoWidth, videoHeight,
       qualityTier, poseAssistEnabled, poseAssistStrength, poseAssistPolish,
       selectedLora, secondaryLora, showSecondLora, chromaSettings, activeRender,
+      batchRenders, selectedBatchRenderId, renderCount,
     };
     const flush = () => writeBuilderDraft(draftId, snapshot);
     const timer = window.setTimeout(() => {
@@ -916,7 +903,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
     window.addEventListener("pagehide", flush);
     return () => { window.clearTimeout(timer); window.removeEventListener("pagehide", flush); flush(); };
   }, [
-    draftId, name, subjects, activeSubjectId, locks, collapsed, tags, raunch, promptLanguage,
+    editorHydrated, draftId, name, subjects, activeSubjectId, locks, collapsed, tags, raunch, promptLanguage,
     promptOverride, plainLanguage, negativePromptOverride, workflowId, loraOverrides,
     editInstruction, preserveUnmentioned, repairTargets, repairInstruction,
     variationPrompt, variationDenoise, qwenCamera, qwenReferenceNotes,
@@ -925,15 +912,17 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
     videoInstruction, videoFrames, videoFps, videoWidth, videoHeight,
     qualityTier, poseAssistEnabled, poseAssistStrength, poseAssistPolish,
     selectedLora, secondaryLora, showSecondLora, chromaSettings, activeRender,
+    batchRenders, selectedBatchRenderId, renderCount,
   ]);
 
-  // Ensure active id is always valid.
+  // Validate only restored subjects, never the temporary first-render placeholder.
   useEffect(() => {
+    if (!editorHydrated) return;
     if (!subjects.length) return;
     if (!activeSubjectId || !subjects.find((s) => s.id === activeSubjectId)) {
       setActiveSubjectId(subjects[0].id);
     }
-  }, [subjects, activeSubjectId, setActiveSubjectId]);
+  }, [editorHydrated, subjects, activeSubjectId, setActiveSubjectId]);
 
   const activeSubjectIdx = Math.max(0, subjects.findIndex((s) => s.id === activeSubjectId));
   const activeSubject = subjects[activeSubjectIdx] || subjects[0];
@@ -3096,7 +3085,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
           onEdit={() => reuseFinishedRender("edit")} onAnimate={() => reuseFinishedRender("video")}
           canEdit={workflows.some(workflow => workflow.kind === "edit")}
           canAnimate={workflows.some(workflow => workflow.kind === "video")}
-          onGallery={() => nav(`/gallery?render=${encodeURIComponent(activeRender.render_id || activeRender.id)}&returnTo=${encodeURIComponent(location.pathname)}`)}
+          onGallery={() => nav(`/gallery?render=${encodeURIComponent(activeRender.render_id || activeRender.id)}&returnTo=${encodeURIComponent(location.pathname + location.search + location.hash)}`)}
           onDownload={url => downloadRenderImage(url, `render-${activeRender.render_id || activeRender.id}.${galleryIsVideo(url) ? "webm" : "png"}`)}
           busy={postRenderBusy} /> : null}
         values={builderSectionValue(activeSection, activeDna, primaryDna)}
@@ -3448,7 +3437,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
           onEdit={() => reuseFinishedRender("edit")}
           onAnimate={() => reuseFinishedRender("video")}
           onBackCharacter={returnToCharacterFromResult}
-          onGallery={() => nav(`/gallery?render=${encodeURIComponent(activeRender.render_id || activeRender.id)}&returnTo=${encodeURIComponent(location.pathname)}`)}
+          onGallery={() => nav(`/gallery?render=${encodeURIComponent(activeRender.render_id || activeRender.id)}&returnTo=${encodeURIComponent(location.pathname + location.search + location.hash)}`)}
           onTools={() => nav(`/tools?render=${encodeURIComponent(activeRender.render_id || activeRender.id)}`)}
           onDownload={(url) => downloadRenderImage(
             url,
@@ -3745,7 +3734,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
                 onEdit={() => reuseFinishedRender("edit")} onAnimate={() => reuseFinishedRender("video")}
                 canEdit={workflows.some((workflow) => workflow.kind === "edit")}
                 canAnimate={workflows.some((workflow) => workflow.kind === "video")}
-                onGallery={() => nav(`/gallery?render=${encodeURIComponent(activeRender?.render_id || activeRender?.id)}&returnTo=${encodeURIComponent(location.pathname)}`)}
+                onGallery={() => nav(`/gallery?render=${encodeURIComponent(activeRender?.render_id || activeRender?.id)}&returnTo=${encodeURIComponent(location.pathname + location.search + location.hash)}`)}
                 onDownload={(url) => downloadRenderImage(url, `render-${activeRender?.render_id || activeRender?.id}.${galleryIsVideo(url) ? "webm" : "png"}`)}
                 busy={postRenderBusy} />
             </div>
@@ -3860,7 +3849,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
             <div><h2 className="text-sm font-semibold">Choose your starting point</h2><p className="mt-1 text-xs text-zinc-400">Use a character preset, or choose the details below. You can edit every choice.</p></div>
             {characterPresets}
           </section>}
-          <WorkspacePreviewLayout heading={<CreationSectionHeader section={SECTIONS[activeIdx]} sections={SECTIONS} stages={quickStages} onSection={openDesktopSection}/>} editTarget={`${activeSubjectId}:${activeSection}:${requestedDetail?.field || ""}`} hasPreview={!!(activeRender?.output_files?.[0] || referencePreview || character?.thumbnail || dispatching || activeRender?.status === "running")} preview={<GuidedCharacterPreview preview={activeRender?.output_files?.[0] || referencePreview || character?.thumbnail}
+          <WorkspacePreviewLayout heading={<CreationSectionHeader section={SECTIONS[activeIdx]} sections={SECTIONS} stages={quickStages} onSection={openDesktopSection}/>} editTarget={editorHydrated ? `${activeSubjectId}:${activeSection}:${requestedDetail?.field || ""}` : undefined} hasPreview={!!(activeRender?.output_files?.[0] || referencePreview || character?.thumbnail || dispatching || activeRender?.status === "running")} preview={<GuidedCharacterPreview preview={activeRender?.output_files?.[0] || referencePreview || character?.thumbnail}
               renderStatus={activeRender?.status} render={activeRender} live={studioLive} submitting={dispatching} name={name} dna={activeDna} stages={quickStages} sections={SECTIONS} onSection={openDesktopSection}
               onReview={() => { setDesktopQuickMode(true); selectQuickStage(quickStages.length - 1); }} />}>
             {renderDnaControls()}
@@ -4191,7 +4180,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
                       Continue in Tools
                     </button>
                     <button type="button"
-                      onClick={() => nav(`/gallery?render=${encodeURIComponent(activeRender.render_id || activeRender.id)}&returnTo=${encodeURIComponent(location.pathname)}`)}
+                      onClick={() => nav(`/gallery?render=${encodeURIComponent(activeRender.render_id || activeRender.id)}&returnTo=${encodeURIComponent(location.pathname + location.search + location.hash)}`)}
                       className="rounded-lg bg-emerald-500 px-3 py-2 text-sm font-semibold text-zinc-950 hover:bg-emerald-400"
                       data-testid="btn-view-finished-render">
                       View in Gallery

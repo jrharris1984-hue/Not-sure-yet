@@ -1,3 +1,4 @@
+import useTabPreference from '@/hooks/useTabPreference';
 import SettingFinder from './SettingFinder';
 import SelectedDetails from "./SelectedDetails";
 import { wardrobeFieldDisabled, wardrobeMode } from "@/lib/wardrobeMode";
@@ -77,7 +78,8 @@ export default function MobileBuilderSheets({ sections, section, onSection, subj
   const essentialFields = section.fields.filter(field => mode !== "simple" || !simpleFieldKeys.length || simpleFieldKeys.includes(field.key) || (section.key === "wardrobe" && field.key === "outfit_mode"));
   const visibleFields = essentialFields.filter(field => `${field.label} ${field.key}`.toLowerCase().includes(fieldSearch.trim().toLowerCase()));
   useEffect(() => { setFieldSearch(""); setGuidedReview(false); if (fieldScroll.current) fieldScroll.current.scrollTop = 0; }, [section.key]);
-  const [height, setHeight] = useState("expanded");
+  const [savedHeight, setHeight] = useTabPreference("ultra:mobile-preview-height", "expanded");
+  const height = ["peek", "half", "expanded"].includes(savedHeight) ? savedHeight : "expanded";
   const [pendingDetail, setPendingDetail] = useState(null);
   const [detail, setDetail] = useState(null);
   const closeButton = useRef(null);
