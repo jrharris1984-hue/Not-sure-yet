@@ -41,7 +41,13 @@ async function check(browser,viewport) {
       assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1 && document.documentElement.scrollHeight<=innerHeight+1),'Builder should fit the viewport');
     };
     await root.waitFor();await fit();
-    await root.getByTestId('chip-hair-style-straight').click();
+    const choice=root.getByTestId('chip-hair-style-straight');
+    if(viewport.width<768 && viewport.height>viewport.width){
+      await choice.waitFor();
+      assert.ok(await choice.evaluate(el=>{const box=el.getBoundingClientRect(),pane=el.closest('.bench-scroll').getBoundingClientRect();return box.top>=pane.top && box.bottom<=pane.bottom && [box.top+2,box.bottom-2].every(y=>el.contains(document.elementFromPoint(box.x+box.width/2,y)));}),'A complete hair choice must be tappable before scrolling');
+      await page.screenshot({path:path.join(output,viewport.name+'-first-choice.png')});
+    }
+    await choice.click();
     await root.getByLabel('Category',{exact:true}).selectOption('wardrobe');
     const wardrobe=root.getByTestId('wardrobe-focused-editor');await wardrobe.getByTestId('wardrobe-mode-custom').click();
     await wardrobe.getByLabel('Editing',{exact:true}).selectOption('top');
