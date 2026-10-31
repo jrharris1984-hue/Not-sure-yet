@@ -139,3 +139,24 @@ body:has(.creation-bench){position:fixed;inset:0}
 .bench-detail-browser-group button{min-width:0;min-height:44px;padding:9px;border:1px solid #ffffff25;border-radius:9px;background:#302c3d;color:#f4f2ff;font-size:12px;text-align:left;overflow-wrap:anywhere}
 .bench-detail-browser-group button[aria-current=step]{background:#4d3b66;border-color:#c7a4ff;font-weight:700}
 }
+
+/* Guided mobile creation: progress and one focused category at a time. */
+.bench-guided-flow{display:none}
+@media(max-width:767px){
+.bench-guided-flow{display:grid;gap:10px;margin:0 0 12px}
+.bench-guided-heading{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.bench-guided-heading small{font-size:10px;letter-spacing:.08em;color:#c4bbd6}
+.bench-guided-heading h2{font-size:19px;font-weight:700;margin:3px 0}
+.bench-guided-heading>button{display:flex;align-items:center;gap:5px;min-height:44px;padding:7px 10px;border:1px solid #ffffff30;border-radius:9px;font-size:12px}
+.bench-guided-progress{display:flex;gap:4px}
+.bench-guided-progress button{flex:1;min-width:0;height:8px;border-radius:6px;background:#403b4e}
+.bench-guided-progress button.reached{background:#9673dc}
+.bench-guided-progress button[aria-current=step]{outline:2px solid #d5bbff;outline-offset:2px}
+.bench-guided-step-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;padding:8px;border:1px solid #ffffff25;border-radius:11px}
+.bench-guided-step-list button,.bench-guided-substeps button{min-width:0;min-height:44px;padding:8px 10px;border:1px solid #ffffff25;border-radius:9px;background:#282736;color:#f4f2ff;text-align:left;font-size:12px;overflow-wrap:anywhere}
+.bench-guided-step-list button[aria-current=step],.bench-guided-substeps button[aria-current=step]{background:#4d3b66;border-color:#c7a4ff;font-weight:700}
+.bench-guided-substeps{display:flex;gap:7px;overflow-x:auto;overscroll-behavior-x:contain;padding:3px 2px 8px}
+.bench-guided-substeps button{flex:0 0 auto;max-width:70vw;white-space:nowrap}
+.bench-category-navigation{position:sticky;bottom:0;z-index:5;padding:8px 0;background:#171824}
+.bench-category-navigation button{justify-content:center}
+}
