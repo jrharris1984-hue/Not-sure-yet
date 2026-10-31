@@ -160,3 +160,18 @@ body:has(.creation-bench){position:fixed;inset:0}
 .bench-category-navigation{position:sticky;bottom:0;z-index:5;padding:8px 0;background:#171824}
 .bench-category-navigation button{justify-content:center}
 }
+
+/* Mobile task-first ordering: keep editor visible before optional tools. */
+@media(max-width:767px){
+.bench-desktop-navigation{display:none!important}
+.bench-mobile-bottom-navigation{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:8px;margin:12px 0;padding:8px 0}
+.bench-mobile-bottom-navigation button{display:flex;align-items:center;justify-content:center;gap:5px;min-width:0;min-height:46px;padding:8px;border:1px solid #ffffff30;border-radius:10px;background:#2b2639;color:#f4f2ff;font-size:13px}
+.bench-mobile-bottom-navigation button:last-child{background:#c7a4ff;color:#21192c;font-weight:700}
+.bench-mobile-bottom-navigation button:disabled{opacity:.45}
+.bench-mobile-bottom-navigation span{font-size:11px;white-space:nowrap;color:#b8afc8}
+.bench-mobile-extras{margin:8px 0 14px;padding:0 10px;border:1px solid #ffffff25;border-radius:10px;background:#ffffff04}
+.bench-mobile-extras>summary{min-height:44px;display:flex;align-items:center;cursor:pointer;font-size:13px;color:#d9d2e8}
+.bench-mobile-extras[open]{padding-bottom:10px}
+.bench-mobile-extras .bench-mobile-mode{margin-bottom:8px}
+.bench-mobile-extras .bench-subject-switcher{margin-top:10px}
+}
