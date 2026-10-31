@@ -187,3 +187,12 @@ body:has(.creation-bench){position:fixed;inset:0}
 .creation-bench .bench-field-editor :is(input,select,textarea){max-width:100%;min-width:0}
 .creation-bench .bench-field-editor button:focus-visible,.creation-bench .bench-field-editor [role="slider"]:focus-visible{outline:2px solid #c7a4ff;outline-offset:2px}
 }
+
+/* Keep previous/next accessible above the persistent mobile task bar. */
+@media(max-width:767px){
+.creation-bench .bench-scroll{padding-bottom:18px;scroll-padding-bottom:90px}
+.creation-bench .bench-mobile-bottom-navigation{position:sticky;bottom:0;z-index:12;margin-bottom:0;padding:10px 4px max(10px,env(safe-area-inset-bottom));background:#171824;border-top:1px solid #ffffff30;box-shadow:0 -8px 20px #0006}
+.creation-bench .bench-mobile-bottom-navigation button{min-height:48px}
+.creation-bench .bench-mobile-bottom-navigation span{font-size:10px}
+.creation-bench .bench-guided-substeps{scrollbar-width:thin;scroll-padding-inline:10px}
+}
