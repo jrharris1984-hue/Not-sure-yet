@@ -45,14 +45,22 @@ export default function CreationWorkbench({compact=false,section,sections,stages
     <nav className="bench-nav" aria-label="Creation tasks">{pages.map(([key,label,Icon])=><button key={key} aria-current={key===page?'page':undefined} onClick={()=>setPage(key)}><Icon size={17}/>{label}</button>)}</nav>
     <div role="region" className="bench-scroll" ref={pane} aria-label={pages.find(p=>p[0]===page)[1]+' workspace'}>
       {page==='design'?<>
-        <div className="bench-context"><label className="bench-desktop-category">Category<select aria-label="Category" value={section} onChange={e=>onSection(e.target.value)}>{groups.map(g=><optgroup key={g.key||g.id} label={g.title}>{g.sections.map(key=>sections.find(s=>s.key===key)).filter(Boolean).map(s=><option key={s.key} value={s.key}>{s.title}</option>)}</optgroup>)}{custom.map(s=><option key={s.key} value={s.key}>{s.title}</option>)}</select></label>{!compact && utilities}{compact && <div className="bench-mobile-editing-tools"><div className="bench-mobile-mode" role="group" aria-label="Editing detail level"><button type="button" aria-pressed={mode==="simple"} onClick={()=>onMode("simple")}>Essentials</button><button type="button" aria-pressed={mode==="advanced"} onClick={()=>onMode("advanced")}>All details</button></div><details className="bench-mobile-find"><summary>Find a setting</summary><SettingFinder sections={sections} onSelect={onFind}/></details><details className="bench-mobile-presets"><summary>Character presets and people options</summary>{people}</details></div>}</div>
+        {!compact && <div className="bench-context"><label className="bench-desktop-category">Category<select aria-label="Category" value={section} onChange={e=>onSection(e.target.value)}>{groups.map(g=><optgroup key={g.key||g.id} label={g.title}>{g.sections.map(key=>sections.find(item=>item.key===key)).filter(Boolean).map(item=><option key={item.key} value={item.key}>{item.title}</option>)}</optgroup>)}{custom.map(item=><option key={item.key} value={item.key}>{item.title}</option>)}</select></label>{utilities}</div>}
         {!compact && <details className="bench-people"><summary>People &amp; presets <ChevronDown size={15}/></summary>{people}</details>}
-        {subjectSwitcher && <div className="bench-subject-switcher" aria-label="Edit individual subjects"><p className="px-3 pt-3 text-xs text-zinc-300" role="status">Editing {subjectCount} of {expectedSubjectCount} selected subjects · Choose a subject to edit its own appearance, clothing and pose.</p>{subjectSwitcher}</div>}
+        {!compact && subjectSwitcher && <div className="bench-subject-switcher" aria-label="Edit individual subjects">{subjectSwitcher}</div>}
         {compact && <div className="bench-guided-flow">
           <div className="bench-guided-heading"><div><small>CREATE · STEP {activeMobileStep+1} OF {mobileSteps.length}</small><h2>{mobileStep?.title||category}</h2></div><button type="button" onClick={()=>setMobileCategoryOpen(open=>!open)} aria-expanded={mobileCategoryOpen}>All steps <ChevronDown size={15}/></button></div>
           <div className="bench-guided-progress" aria-label="Creation progress">{mobileSteps.map((g,i)=><button type="button" key={g.key} aria-label={g.title} aria-current={i===activeMobileStep?'step':undefined} onClick={()=>onSection(g.sections[0])} className={i<=activeMobileStep?'reached':''}/>)}</div>
           {mobileCategoryOpen && <nav className="bench-guided-step-list" aria-label="Creation steps">{mobileSteps.map((g,i)=><button key={g.key} type="button" aria-current={i===activeMobileStep?'step':undefined} onClick={()=>{onSection(g.sections[0]);setMobileCategoryOpen(false);}}>{i+1}. {g.title}</button>)}</nav>}
           {mobileStepSections.length>1 && <nav className="bench-guided-substeps" aria-label={mobileStep?.title+' options'}>{mobileStepSections.map(item=><button type="button" key={item.key} aria-current={section===item.key?'step':undefined} onClick={()=>onSection(item.key)}>{item.title}</button>)}</nav>}
+        </div>}
+        {compact && <div className="bench-mobile-secondary">
+          <details className="bench-mobile-subjects"><summary>Subjects · {subjectCount} of {expectedSubjectCount}</summary>{subjectSwitcher}</details>
+          <details className="bench-mobile-customize"><summary>More options</summary>
+            <div className="bench-mobile-mode" role="group" aria-label="Editing detail level"><button type="button" aria-pressed={mode==='simple'} onClick={()=>onMode('simple')}>Essentials</button><button type="button" aria-pressed={mode==='advanced'} onClick={()=>onMode('advanced')}>All details</button></div>
+            <details className="bench-mobile-find"><summary>Find a setting</summary><SettingFinder sections={sections} onSelect={onFind}/></details>
+            <details className="bench-mobile-presets"><summary>Character presets</summary>{people}</details>
+          </details>
         </div>}
         {!compact && <nav className="bench-category-quicknav" aria-label="Jump to editing category">
           {groups.map(g=><div className="bench-category-group" key={g.key||g.id}>
@@ -61,12 +69,17 @@ export default function CreationWorkbench({compact=false,section,sections,stages
           </div>)}
           {custom.length>0 && <div className="bench-category-group"><span className="bench-category-group-title">More</span><div className="bench-category-group-items">{custom.map(item=><button key={item.key} type="button" aria-current={section===item.key?'step':undefined} onClick={()=>onSection(item.key)}>{item.title}</button>)}</div></div>}
         </nav>}
-        <div className="bench-category-navigation" aria-label="Category navigation">
+        <div className="bench-category-navigation bench-desktop-navigation" aria-label="Category navigation">
           <button type="button" disabled={!previous} onClick={()=>onSection(previous.key)}><ChevronLeft size={17}/> Previous</button>
           <span>{currentIndex+1} of {sections.length}</span>
           <button type="button" disabled={!next} onClick={()=>onSection(next.key)}>Next<ChevronRight size={17}/></button>
         </div>
         <article aria-label={category+' choices'}>{editor}</article>
+        {compact && <div className="bench-mobile-bottom-navigation" aria-label="Continue creation">
+          <button type="button" disabled={!previous} onClick={()=>onSection(previous.key)}><ChevronLeft size={17}/> Previous</button>
+          <span>{currentIndex+1} / {sections.length}</span>
+          <button type="button" disabled={!next} onClick={()=>onSection(next.key)}>Next <ChevronRight size={17}/></button>
+        </div>
       </>:page==='random'?<><h1>Randomize</h1><p className="bench-hint">Choose what to change. Generate when you like the selection.</p>{random}</>:page==='preview'?<><h1>Preview</h1>{preview}</>:<><h1>Generation settings</h1><label className="bench-setting-label">Settings menu<select aria-label="Settings menu" value={group} onChange={e=>setGroup(e.target.value)}>{Object.keys(settings).map(k=><option key={k}>{k}</option>)}</select></label>{typeof settings[group]==="function"?settings[group](()=>setPage("design")):settings[group]}</>}
     </div>
     {!compact && generationStarted && desktopPreviewOpen && <aside className="bench-desktop-preview" aria-label="Generated image preview">
