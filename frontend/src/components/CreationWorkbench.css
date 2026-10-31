@@ -73,3 +73,16 @@ body:has(.creation-bench){position:fixed;inset:0}
 .bench-footer-workflow select:focus-visible{outline:2px solid #67e8f9;outline-offset:2px}
 .bench-footer-workflow small{font-size:11px;color:#fbbf24;overflow-wrap:anywhere}
 @media(max-width:600px){.bench-footer{flex-wrap:wrap}.bench-footer-workflow{flex-basis:100%}.bench-footer>button{width:100%;justify-content:center}}
+
+/* Compact, scrollable workflow menu instead of the browser's full-height select. */
+.bench-footer-workflow{position:relative;max-width:340px}
+.bench-workflow-picker{position:relative;min-width:0}
+.bench-workflow-trigger{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;min-height:40px;padding:8px 10px;border:1px solid #ffffff30;border-radius:9px;background:#181b25;color:#f4f4f5;text-align:left;font-size:13px}
+.bench-workflow-trigger span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bench-workflow-popover{position:absolute;bottom:calc(100% + 8px);left:0;z-index:100;width:min(340px,calc(100vw - 32px));padding:8px;background:#1b1d29;border:1px solid #ffffff35;border-radius:12px;box-shadow:0 12px 40px #0009}
+.bench-workflow-popover input{box-sizing:border-box;width:100%;min-height:38px;padding:8px 10px;border:1px solid #ffffff35;border-radius:8px;background:#10121b;color:white}
+.bench-workflow-options{max-height:min(260px,40vh);overflow-y:auto;overscroll-behavior:contain;padding-top:5px}
+.bench-workflow-options button{display:block;width:100%;padding:9px 10px;border:0;border-radius:7px;background:transparent;color:#e4e4e7;text-align:left;font-size:12px;overflow-wrap:anywhere}
+.bench-workflow-options button:hover,.bench-workflow-options button[aria-selected=true]{background:#38304e;color:#fff}
+.bench-workflow-options p{padding:10px;color:#a1a1aa;font-size:12px}
+@media(max-width:600px){.bench-footer-workflow{max-width:none}.bench-workflow-popover{width:100%}}
