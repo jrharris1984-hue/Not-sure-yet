@@ -55,7 +55,7 @@ export default function DesktopDnaEditor({ enabled, requestedField, workbench=fa
           {menu.map(group=><optgroup key={group.key} label={group.label}>{group.fields.map(field=><option key={field.key} value={field.key}>{field.label}</option>)}</optgroup>)}
         </select></label>
         <details className="bench-detail-browser">
-          <summary>Browse details · {current.label}</summary>
+          <summary>Editing: {current.label} · Change detail</summary>
           <div className="bench-detail-browser-list">
             {menu.map(group=><div key={group.key} className="bench-detail-browser-group">
               <strong>{group.label}</strong>
