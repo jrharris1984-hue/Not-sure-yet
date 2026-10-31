@@ -92,7 +92,7 @@ import useSmartPhotoshootPlan from "@/hooks/useSmartPhotoshootPlan";
 import BatchVariationControl from "@/components/BatchVariationControl";
 import { resolveReferenceNotes, translatePlainLanguage } from "@/lib/plainLanguagePrompt";
 import { analyzePromptQuality } from "@/lib/promptQuality";
-import MobileBuilderSheets from "@/components/MobileBuilderSheets";
+import MobileBuilderSheets, { MobileGenerate } from "@/components/MobileBuilderSheets";
 import ImageSourceFlow from "@/components/ImageSourceFlow";
 import PromptPreview from "@/components/PromptPreview";
 import AiAssistBar from "@/components/AiAssistBar";
@@ -3011,7 +3011,8 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
   return (
     <div className={`mobile-builder-content ${!isImageFirst && editMode !== "body_adjust" ? "design-workspace" : ""} ${sheetViewport && !mobileSheets && !isImageFirst && editMode !== "body_adjust" ? "organized-mobile-tools" : ""} ${mobileSheets && !isImageFirst && editMode !== "body_adjust" ? "nested-mobile-builder" : ""} mx-auto max-w-[1600px] px-2.5 sm:px-6 py-3 sm:py-6 space-y-3 sm:space-y-4 ${desktopQuickMode && !isImageFirst ? "quick-create-mode" : ""}`} data-creation-tone={ ["scenario","identity"].includes(activeSection)?"people":["wardrobe"].includes(activeSection)?"wardrobe":["pose","camera","scene","lighting","style"].includes(activeSection)?"scene":"appearance"} data-mobile-tools-group={mobileToolsGroup} style={!sheetViewport && !isImageFirst ? { paddingBottom: "7rem" } : undefined}>
       {sheetViewport && !mobileSheets && !isImageFirst && editMode !== "body_adjust" && <>
-        <MobileToolsNavigation group={mobileToolsGroup} onGroup={group => { setMobileToolsGroup(group); window.scrollTo({ top: 0, behavior: "auto" }); }} onBack={() => setMobileSheets(true)} />
+        <MobileToolsNavigation group={mobileToolsGroup} onGroup={group => { setMobileToolsGroup(group); document.querySelector(".organized-mobile-tools")?.scrollTo(0, 0); }} onBack={() => setMobileSheets(true)} />
+        <footer className="mobile-tools-navigation mobile-tools-dock"><MobileGenerate generating={dispatching} canGenerate={!!workflowId && !mobileCreateIssues.length} onGenerate={doDispatch} imageCount={poseAssistEnabled && !isVariationWorkflow && !isAnyVideoWorkflow ? 1 : renderCount} issues={mobileCreateIssues} /></footer>
         <section data-mobile-tools="generation" className="pane p-4 space-y-4">
           <CreationOutputControls compiler={activeRecipeStyle} workflows={selectableWorkflows} workflowId={workflowId} onWorkflow={changeGenerationWorkflow}
             tier={qualityTier} onTier={applyQualityTier} count={poseAssistEnabled && !isVariationWorkflow && !isAnyVideoWorkflow ? 1 : renderCount}
@@ -3046,9 +3047,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
             />
             </div>
           )}
-          <button type="button" className="w-full rounded-xl bg-emerald-400 text-black py-3 font-bold disabled:opacity-40"
-            onClick={doDispatch} disabled={dispatching || !workflowId || mobileCreateIssues.length > 0}>{dispatching ? "Queuing…" : "Generate"}</button>
-          {mobileCreateIssues.length > 0 && <p className="text-xs text-amber-200">{mobileCreateIssues.join(" ")}</p>}
+
         </section>
         <section data-mobile-tools="presets" className="pane p-4"><label className="block text-xs text-zinc-300 space-y-2"><span>Character name</span><Input value={name} onChange={event => setName(event.target.value)} className="bg-elevated border-hairline" /></label></section>
         <section data-mobile-tools="files" className="pane p-4"><div className="section-label mb-3">Character tags</div><TagInput value={tags} onChange={setTags} placeholder="Tag this character…" testId="mobile-tools-tags" /></section>
