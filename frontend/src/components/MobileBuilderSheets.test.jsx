@@ -165,7 +165,7 @@ test('workspace features stay inside the visible sheet under the actual mobile h
     </div> });
     const hiddenSibling = document.createElement('div'); container.appendChild(hiddenSibling);
     expect(window.getComputedStyle(hiddenSibling).display).toBe('none');
-    click('Quick tools');
+    click('Randomize');
     const dialog = container.querySelector('[role="dialog"]');
     expect(dialog.closest('.mobile-sheet-builder')).not.toBeNull();
     let node = dialog;
@@ -215,18 +215,14 @@ test('category navigation advances and ends at generation settings', () => {
   click('Review & create');
   expect(container.querySelector('[role="dialog"]').textContent).toContain('Workflow settings');
 });
-test('guided Simple moves between stages and reviews before exposing generation', () => {
-  const onSection=jest.fn(), onGenerate=jest.fn();
-  const stages=[{id:'start',title:'People',sections:['hair'],simpleSections:['hair']},{id:'wardrobe',title:'Wardrobe',sections:['scenario'],simpleSections:['scenario']},{id:'create',title:'Create',sections:[]}];
-  paint({mode:'simple',stages,onSection,onGenerate,canGenerate:false});
-  expect(container.textContent).toContain('Step 1 of 3');
-  expect([...container.querySelectorAll('button')].some(b=>b.textContent==='Generate (2)')).toBe(false);
-  click('Continue');expect(onSection).toHaveBeenCalledWith('scenario');expect(onGenerate).not.toHaveBeenCalled();
-  paint({mode:'simple',stages,onSection,onGenerate,section:sections[1],canGenerate:false});
-  const action=container.querySelector('.sheet-generate-button');act(()=>action.click());
-  expect(container.querySelector('[role="dialog"]').textContent).toContain('Workflow settings');
-  expect(container.querySelector('.sheet-generate-button').textContent).toBe('Generate (2)');expect(container.querySelector('.sheet-generate-button').disabled).toBe(true);
-  expect(onGenerate).not.toHaveBeenCalled();
+test('Simple can generate directly from Randomize without losing the open options', () => {
+  const onGenerate = jest.fn();
+  const props = {mode:'simple', stages:[{id:'start', title:'People', sections:['hair']}], onGenerate, workspaceControls:<p>Random scene options</p>};
+  paint({...props, canGenerate:false}); click('Randomize');
+  expect(container.querySelector('.sheet-generate-button').disabled).toBe(true);
+  paint({...props, canGenerate:true}); click('Generate (2)');
+  expect(onGenerate).toHaveBeenCalledTimes(1);
+  expect(container.querySelector('[role="dialog"]').textContent).toContain('Random scene options');
 });
 test('guided first step exposes presets without requiring a category hunt', () => {
   const stages=[{id:'start',title:'People',sections:['hair'],simpleSections:['hair']},{id:'create',title:'Create',sections:[]}];

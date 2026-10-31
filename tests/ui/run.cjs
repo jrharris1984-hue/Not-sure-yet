@@ -134,11 +134,31 @@ async function check(browser,viewport) {
       assert.match(await page.getByTestId('primary-creation-sheet').getAttribute('class'),/sheet-peek/,'Mobile preview stays open after Gallery');
       await nav.getByRole('button',{name:'Results',exact:true}).click();
       await page.getByRole('dialog').getByText(/No results yet/).waitFor();
+      await nav.getByRole('button',{name:'Randomize',exact:true}).click();
+      const randomPanel=page.getByRole('dialog',{name:'Randomize & tools'});
+      await randomPanel.waitFor();
+      await randomPanel.getByRole("button",{name:"Scene only",exact:true}).click();
+      const randomScroll=randomPanel.locator('.sheet-detail-scroll');
+      assert.ok(await randomScroll.evaluate(el=>{el.scrollTop=el.scrollHeight;return el.scrollTop>0;}),'Randomizer options scroll inside their panel');
+      assert.ok(await page.evaluate(()=>{window.scrollTo(800,800);return !scrollX && !scrollY;}),'The builder page should stay stationary');
+      const count=fixture.dispatches;
+      await page.locator('.sheet-generation-dock .sheet-generate-button').click();
+      await page.waitForFunction(()=>!document.querySelector('.sheet-generation-dock .sheet-generate-button')?.disabled);
+      assert.equal(fixture.dispatches,count+1,'Generate directly from the Randomize panel');
       await nav.getByRole('button',{name:'Edit',exact:true}).click();
       await page.getByRole('dialog').waitFor({state:'hidden'});
       const sheet=await page.getByTestId('primary-creation-sheet').boundingBox();
       const dock=await page.locator('.sheet-generation-dock').boundingBox();
       assert.ok(sheet.y+sheet.height<=dock.y+2,'Editing sheet overlaps the bottom action dock');
+      await page.getByRole('button',{name:'More tools',exact:true}).click();
+      await page.getByTestId('mobile-tools-navigation').getByRole('button',{name:/Presets & people/}).click();
+      const toolsDock=page.locator('.mobile-tools-dock');
+      const before=await toolsDock.boundingBox();
+      await page.locator('.organized-mobile-tools').evaluate(el=>{el.scrollTop=el.scrollHeight;});
+      const after=await toolsDock.boundingBox();
+      assert.ok(before && after && Math.abs(before.y-after.y)<2 && after.y+after.height<=viewport.height,'Tools retain an on-screen Generate button while scrolling');
+      assert.ok(await toolsDock.getByRole('button',{name:/Generate/}).isEnabled());
+
     }
     await page.goto(`${baseURL}/character/new/s/wardrobe`,{waitUntil:'domcontentloaded'});
     if(viewport.width>=768) await page.getByRole('group',{name:'Editor view',exact:true}).getByRole('button',{name:'Edit',exact:true}).click();
