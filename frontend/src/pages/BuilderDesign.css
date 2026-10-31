@@ -215,3 +215,18 @@
 .related-foot-controls>summary>span {font-size:12px;color:#9eacc1;font-weight:400}
 .related-foot-controls[open] {border-color:#83d6c866}
 .related-foot-controls>summary:focus-visible {outline:2px solid #83d6c8;outline-offset:3px}
+
+@media (max-width:767px) {
+  html:has(.design-workspace:is(.nested-mobile-builder,.organized-mobile-tools)),
+  body:has(.design-workspace:is(.nested-mobile-builder,.organized-mobile-tools)) {overflow:hidden;overscroll-behavior:none}
+  .studio-shell:has(.design-workspace:is(.nested-mobile-builder,.organized-mobile-tools)) {height:100dvh;min-height:0;overflow:hidden}
+  .studio-main:has(.design-workspace:is(.nested-mobile-builder,.organized-mobile-tools)) {position:relative;min-height:0;overflow:hidden}
+  .nested-mobile-builder .mobile-sheet-builder,.design-workspace.organized-mobile-tools {position:absolute;inset:0;margin:0;max-width:100%;overflow:hidden}
+  .design-workspace.organized-mobile-tools {overflow-y:auto;overscroll-behavior:contain;padding-bottom:8rem}
+  .organized-mobile-tools .mobile-tools-dock {position:fixed;bottom:calc(4rem + env(safe-area-inset-bottom,0px));inset-inline:0;z-index:36;background:#191722;padding:8px 12px}
+  .mobile-generate-action {flex:1;min-width:0}
+  .mobile-generate-action p {max-height:3em;overflow:auto}
+  .mobile-sheet-builder .sheet-primary-content {overflow-y:auto;overscroll-behavior:contain}
+  .mobile-sheet-builder .sheet-field-scroll {flex:1 0 auto}
+  .mobile-sheet-builder .sheet-detail-scroll {overflow-x:hidden}
+}

@@ -59,6 +59,13 @@ function Handle({ label, onStart, onDrag, onEnd, onClick }) {
     onLostPointerCapture={event => { if (gesture.current) finish(event, true); }}><span /></button>;
 }
 
+export function MobileGenerate({generating, canGenerate, onGenerate, imageCount, issues = []}) {
+  return <div className="mobile-generate-action">
+    <button type="button" className="sheet-generate-button w-full rounded-xl bg-emerald-400 text-black py-3 text-sm font-bold disabled:opacity-40" disabled={generating || !canGenerate} onClick={onGenerate}>{generating ? "Queuing…" : `Generate (${imageCount})`}</button>
+    {issues.length > 0 && <p role="status" className="text-xs text-amber-200 mt-1">{issues.join(" ")}</p>}
+  </div>;
+}
+
 export default function MobileBuilderSheets({ sections, section, onSection, subjects, activeId, onSubject,
   onPeople, presetsControl, values, renderControls, preview, livePreview, renderStatus, renderError, outputControls, castPoseControls,
   workspaceControls, resultControls, reviewControls, relatedControls, stages = [], mode = "advanced", onMode, simpleFieldKeys = [],
@@ -127,7 +134,7 @@ export default function MobileBuilderSheets({ sections, section, onSection, subj
     if (next) onSection(next);
     else { setGuidedReview(true); open("output"); }
   };
-  const label = detail === "workspace" ? "Workspace tools" : detail === "results" ? "Render results" : detail === "selected" ? "Selected options" : detail === "output" ? "Generation settings" : detail === "cast-poses" ? `Poses for ${subjects.length} people` : section.fields.find(field => field.key === detail)?.label || section.title;
+  const label = detail === "workspace" ? "Randomize & tools" : detail === "results" ? "Render results" : detail === "selected" ? "Selected options" : detail === "output" ? "Generation settings" : detail === "cast-poses" ? `Poses for ${subjects.length} people` : section.fields.find(field => field.key === detail)?.label || section.title;
   return <section className="mobile-sheet-builder md:hidden" data-testid="mobile-sheet-builder" data-workspace-view={height === "peek" && !detail ? "preview" : "edit"} style={{...personStyle(subjects.findIndex(person => person.id === activeId)), "--workspace-dock-height":`${dockHeight}px`}}>
     <div className="sheet-workspace">
       <header className="flex items-center justify-between gap-2">
@@ -185,7 +192,7 @@ export default function MobileBuilderSheets({ sections, section, onSection, subj
             <button type="button" className="chip min-h-11 w-full" onClick={() => setGuidedReview(false)}>Back to editing</button>
           </div> : <>
           {(workspaceControls || resultControls) && <div className="mb-3 flex flex-wrap gap-2" aria-label="Workspace shortcuts">
-            {workspaceControls && <button type="button" className="chip min-h-11" onClick={() => open("workspace")}>Quick tools</button>}
+            {guided && !guidedReview && <button type="button" className="chip min-h-11" onClick={continueGuided}>{nextStage ? "Continue" : "Review settings"}</button>}
             {resultControls && <button type="button" className="chip min-h-11" onClick={() => open("results")}>Results & actions</button>}
           </div>}
           <div className="flex justify-between items-center mb-3"><h2 className="font-semibold">{section.title}</h2><div className="flex gap-2"><button type="button" className="text-xs text-cyan-200" onClick={() => open("selected")}>Selected · {selectedItems.length}</button><button type="button" className="text-xs text-cyan-200" onClick={() => open("all")}>Open category</button></div></div>
@@ -231,12 +238,7 @@ export default function MobileBuilderSheets({ sections, section, onSection, subj
         }} role="dialog" aria-modal="false" aria-labelledby="sheet-detail-title"
           onKeyDown={event => {
             if (event.key === "Escape") { event.stopPropagation(); close(); }
-            if (event.key === "Tab") {
-              const nodes = Array.from(event.currentTarget.querySelectorAll('button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex="0"]')).filter(node => !node.closest('[hidden]'));
-              const first = nodes[0], last = nodes[nodes.length - 1];
-              if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
-              else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
-            }
+
           }}>
           <Handle label="Dismiss detail panel" onClick={close}
             onStart={() => { setDetailInteracted(true); setDetailDragging(true); }} onDrag={delta => setDetailOffset(Math.max(0, delta))}
@@ -253,14 +255,14 @@ export default function MobileBuilderSheets({ sections, section, onSection, subj
     </div>
     <footer ref={dock} className="sheet-generation-dock">
       <nav className="workspace-mobile-navigation" aria-label="Workspace views">
-        <button type="button" aria-pressed={height !== 'peek' && detail !== 'results'} onClick={() => { setDetail(null); setClosing(false); setHeight('expanded'); }}>Edit</button>
+        <button type="button" aria-pressed={height !== 'peek' && !['workspace','results'].includes(detail)} onClick={() => { setDetail(null); setClosing(false); setHeight('expanded'); }}>Edit</button>
+        {workspaceControls && <button type="button" aria-pressed={detail === 'workspace'} onClick={() => {setHeight('expanded'); open('workspace');}}>Randomize</button>}
         <button type="button" aria-pressed={height === 'peek' && !detail} onClick={() => { setDetail(null); setClosing(false); setHeight('peek'); }}>Preview</button>
         <button type="button" aria-pressed={detail === 'results'} onClick={() => { setHeight('expanded'); open('results'); }}>Results</button>
       </nav>
-      <div className="flex gap-2"><button type="button" className="chip" onClick={() => {if (guided) setGuidedReview(true); open("output");}}>{guided ? "Review" : "Generation"}</button>
+      <div className="flex gap-2"><button type="button" className="chip" onClick={() => {if (guided) setGuidedReview(true); setHeight("expanded"); open("output");}}>{guided ? "Review" : "Generation"}</button>
         <button type="button" className="chip" onClick={onTools}>More tools</button>
-        <button type="button" className="sheet-generate-button flex-1 rounded-xl bg-emerald-400 text-black py-3 text-sm font-bold disabled:opacity-40" disabled={generating || ((!guided || guidedReview) && !canGenerate)} onClick={guided && !guidedReview ? continueGuided : onGenerate}>{generating ? "Queuing…" : guided && !guidedReview ? (nextStage ? "Continue" : "Review & create") : `Generate (${imageCount})`}</button></div>
-      {issues.length > 0 && (!guided || guidedReview) && <p className="text-xs text-amber-200 mt-1">{issues.join(" ")}</p>}
+        <MobileGenerate {...{generating, canGenerate, onGenerate, imageCount, issues}} /></div>
     </footer>
   </section>;
 }
