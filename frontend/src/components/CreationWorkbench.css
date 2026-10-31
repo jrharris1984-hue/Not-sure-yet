@@ -1,0 +1,59 @@
+.studio-shell:has(.creation-bench){height:100dvh;min-height:0;overflow:hidden}
+.studio-main:has(.creation-bench){display:flex;min-height:0;overflow:hidden}
+.creation-bench{--bench-line:#ffffff22;--bench-bg:var(--studio-surface,#171824);display:grid;grid-template:'title title' auto 'nav panel' minmax(0,1fr) 'footer footer' auto / clamp(144px,15vw,210px) minmax(0,1fr);flex:1;min-width:0;min-height:0;background:var(--bench-bg);color:var(--design-text,#f5f2ff)}
+.bench-title,.bench-footer,.bench-context,.bench-people summary{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.bench-title{grid-area:title;padding:10px clamp(12px,3vw,38px);border-bottom:1px solid var(--bench-line)}
+.bench-title div,.bench-footer div{display:grid;min-width:0}
+.bench-title small,.bench-footer small,.bench-context label,.bench-setting-label{font-size:11px;color:#c4bbd6}
+.bench-title input{background:transparent;border:0;font-size:clamp(16px,2vw,23px);font-weight:650;width:100%;min-width:0}
+.bench-title button,.bench-context button,.bench-context select,.bench-setting-label select{min-height:40px;padding:6px 12px;border:1px solid var(--bench-line);border-radius:12px;background:#282736;color:#f4f2ff}
+.bench-title button{white-space:nowrap}
+.bench-nav{grid-area:nav;padding:16px 8px;display:flex;flex-direction:column;gap:5px;border-right:1px solid var(--bench-line);overflow:auto}
+.bench-nav button,.bench-footer button{min-height:44px;display:flex;align-items:center;gap:9px;padding:8px 14px;border-radius:12px;font-size:14px}
+.bench-nav button[aria-current=page]{background:#393047;color:#f2deff;box-shadow:inset 3px 0 #cfabff}
+.bench-scroll{grid-area:panel;min-width:0;min-height:0;overflow:auto;overscroll-behavior:contain;padding:clamp(12px,2vw,30px);scrollbar-gutter:stable}
+.bench-scroll>*{max-width:1080px;margin-inline:auto}
+.bench-scroll h1{font-size:25px;font-weight:650;margin-bottom:10px}
+.bench-context{justify-content:flex-start;align-items:end;flex-wrap:wrap;margin-bottom:12px}
+.bench-context label,.bench-setting-label{display:grid;gap:3px}
+.bench-people{border-block:1px solid var(--bench-line);margin-bottom:12px}.bench-people summary{min-height:44px;cursor:pointer}
+.bench-footer{grid-area:footer;border-top:1px solid var(--bench-line);padding:8px clamp(12px,3vw,38px) max(8px,env(safe-area-inset-bottom));background:#211e2e}
+.bench-footer span{font-size:13px;overflow-wrap:anywhere;max-height:3.2em;overflow:auto}
+.bench-footer button{flex:none;justify-content:center;background:#cab4ff;color:#241831;font-weight:700;min-width:120px}.bench-footer button:disabled{opacity:.55}
+.bench-hint,.bench-setting-label{margin-bottom:12px}
+.creation-bench .desktop-detail-navigation{position:static}
+.creation-bench .bench-scroll :is(input,select,textarea,img,video){max-width:100%}
+.creation-bench .studio-preview-media{height:clamp(160px,43dvh,520px)}
+.creation-bench .bench-extra [data-mobile-tools],.creation-bench .bench-extra [data-mobile-tools-container]{display:block!important}
+.bench-extra>div:empty{display:none}
+@media(max-width:767px){.creation-bench{grid-template:'title' auto 'panel' minmax(0,1fr) 'nav' auto 'footer' auto / minmax(0,1fr)}
+.bench-nav{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:2px;padding:3px 6px;border:0;border-top:1px solid var(--bench-line)}
+.bench-nav button{flex-direction:column;justify-content:center;gap:1px;font-size:11px;padding:3px}.bench-nav button[aria-current=page]{box-shadow:inset 0 2px #cfabff}
+.bench-title{padding:5px 12px}.bench-context{display:grid;grid-template-columns:1fr 1fr;gap:5px}.bench-context label:first-child{grid-column:1/-1}.bench-context select,.bench-setting-label select{font-size:16px;width:100%;min-width:0}.bench-scroll{scrollbar-gutter:auto}.bench-title button{font-size:12px}}
+.creation-bench .bench-loras [data-mobile-tools]:not([data-mobile-tools=loras]),.creation-bench .bench-references [data-mobile-tools]:not([data-mobile-tools=references]),.creation-bench .bench-prompts [data-mobile-tools]:not([data-mobile-tools=prompts]){display:none!important}
+html:has(.creation-bench),body:has(.creation-bench){overflow:hidden;overscroll-behavior:none}
+body:has(.creation-bench){position:fixed;inset:0}
+.creation-bench [data-testid=desktop-focused-editor]>.desktop-detail-navigation{padding:8px;display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.creation-bench [data-testid=desktop-focused-editor]>.desktop-detail-navigation>p{display:none}
+@media(min-width:950px){.creation-bench [data-testid=desktop-focused-editor]{display:grid;grid-template-columns:minmax(150px,24%) minmax(0,1fr);align-items:start;gap:12px}
+.creation-bench [data-testid=desktop-focused-editor]>.desktop-detail-navigation,.creation-bench [data-testid=desktop-focused-editor]>.detail-navigator{grid-column:1}
+.creation-bench [data-testid=desktop-focused-editor]>.selection-panel{grid-column:2;grid-row:1/span 3;margin:0}
+.creation-bench .detail-navigator-select{flex-wrap:wrap}.creation-bench .detail-navigator-select select{min-width:0;width:100%}}
+.bench-field-editor .bench-setting-label{max-width:28rem;margin-inline:0}
+.bench-field-editor .selection-panel{min-width:0}
+@media(min-width:950px){.bench-field-editor{display:grid;grid-template-columns:minmax(150px,24%) minmax(0,1fr);gap:16px;align-items:start}}
+@media(max-width:767px) and (max-height:440px){.bench-title small{display:none}.bench-title{padding-block:2px}.bench-nav button{flex-direction:row;gap:5px}.bench-scroll{padding-block:6px}}
+@media(max-width:420px){.creation-bench [data-testid=prompt-format-control]>label{display:grid;gap:4px}.creation-bench [aria-label="Prompt format"]{width:100%;min-width:0}}
+@media(max-width:420px){.creation-bench [data-testid=random-scene-controls] label:has([aria-label="Random range"]){display:grid;width:100%;gap:4px}.creation-bench [aria-label="Random range"]{width:100%;min-width:0}}
+@media(max-width:767px){
+  .bench-context:has(.bench-mobile-options){display:flex;flex-wrap:wrap;gap:8px;align-items:end}
+  .bench-context:has(.bench-mobile-options)>label{flex:1;min-width:0}
+  .bench-mobile-options summary{cursor:pointer;align-content:center;min-height:44px;font-size:13px;padding:5px}
+  .bench-mobile-options[open]{flex-basis:100%}
+  .bench-mobile-options>div{display:grid;gap:8px}
+  .creation-bench .bench-field-editor .selection-panel{display:flex;flex-direction:column}
+  .creation-bench .bench-field-editor .selection-panel>header{order:2;margin-top:12px}
+  .creation-bench .bench-field-editor .option-browser{display:flex;flex-direction:column;gap:8px}
+  .creation-bench .bench-field-editor .option-browser>*{margin-top:0}
+  .creation-bench .bench-field-editor .choice-list{order:-1;max-height:none;overflow:visible}
+}

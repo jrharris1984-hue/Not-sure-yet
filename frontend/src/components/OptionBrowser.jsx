@@ -41,7 +41,7 @@ export default function OptionBrowser({ alwaysSearch = false, preferenceKey, bro
       <button type="button" className="chip min-h-11" aria-pressed={selectedOnly}
         onClick={() => { setSelectedOnly(current => !current); setFavoritesOnly(false); setQuery(""); }}>{selectedOnly ? "Browse all" : "Show selected"}</button>
     </div>}
-    <div className={large ? "option-browser-results" : undefined}>
+    <div className={large ? "choice-list option-browser-results" : "choice-list"}>
       {matches.length ? children(displayed) : <p role="status" className="text-sm text-zinc-400">{favoritesOnly ? "No matching favorites. Turn off Favorites to browse all choices." : selectedOnly ? "No selected choices. Choose Browse all to continue." : "No matching choices. Clear your search or try another term."}</p>}
     </div>
     {large && remaining > 0 && <button type="button" className="chip min-h-11" onClick={() => setLimit(current => current + 24)}>Show more choices ({remaining})</button>}

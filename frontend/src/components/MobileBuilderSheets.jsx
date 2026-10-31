@@ -1,17 +1,13 @@
 import useTabPreference from '@/hooks/useTabPreference';
-import SettingFinder from './SettingFinder';
+import DesignCategoryNavigation from './DesignCategoryNavigation';
 import SelectedDetails from "./SelectedDetails";
 import { wardrobeFieldDisabled, wardrobeMode } from "@/lib/wardrobeMode";
 import { useEffect, useRef, useState } from "react";
 import { clamp, sheetSnap, motionDuration } from "@/lib/dragMotion";
-import { UserRound, ScanFace, Scissors, Shirt, PersonStanding, Users, Palette, Sun, Camera, MapPin, Sparkles, Layers, Footprints, Droplets } from "lucide-react";
+
 import StudioPreviewMedia from "./StudioPreviewMedia";
 import {renderFeedback} from "@/lib/renderFeedback";
 import { SIZE_CONTROL_PAIRS, sizeControlSummary } from "@/lib/physiqueControlPriority";
-
-const CATEGORY_ICONS = { identity: UserRound, physique: PersonStanding, face: ScanFace, hair: Scissors,
-  wardrobe: Shirt, scenario: Users, skin: Palette, lighting: Sun, camera: Camera, scene: MapPin,
-  style: Sparkles, pose: PersonStanding, feet: Footprints, watersports: Droplets };
 
 const PERSON_TONES = [
   { accent: "#86efac", wash: "rgba(74, 222, 128, .13)", edge: "rgba(74, 222, 128, .48)" },
@@ -67,7 +63,7 @@ export function MobileGenerate({generating, canGenerate, onGenerate, imageCount,
 }
 
 export default function MobileBuilderSheets({ sections, section, onSection, subjects, activeId, onSubject,
-  onPeople, presetsControl, values, renderControls, preview, livePreview, renderStatus, renderError, outputControls, castPoseControls,
+  onPeople, presetsControl, values, renderControls, focusedEditor, preview, livePreview, renderStatus, renderError, outputControls, castPoseControls,
   workspaceControls, resultControls, reviewControls, relatedControls, stages = [], mode = "advanced", onMode, simpleFieldKeys = [],
   onSave, onReset, saving, onGenerate, generating, canGenerate, issues = [], imageCount, onTools, selectedItems = [] }) {
   const feedback = renderFeedback(renderStatus, generating);
@@ -80,7 +76,6 @@ export default function MobileBuilderSheets({ sections, section, onSection, subj
   const nextStage = stages.slice(stageIndex + 1).find(item => item.id !== "create" && item.sections.length);
   const availableSections = sections.filter(item => mode !== "simple" || !stages.length ||
     stages.some(group => group.simpleSections?.includes(item.key)) || item.key === section.key);
-  const categorySections = stage ? availableSections.filter(item => stage.sections.includes(item.key)) : availableSections;
   const categoryIndex = availableSections.findIndex(item => item.key === section.key);
   const essentialFields = section.fields.filter(field => mode !== "simple" || !simpleFieldKeys.length || simpleFieldKeys.includes(field.key) || (section.key === "wardrobe" && field.key === "outfit_mode"));
   const visibleFields = essentialFields.filter(field => `${field.label} ${field.key}`.toLowerCase().includes(fieldSearch.trim().toLowerCase()));
@@ -159,7 +154,7 @@ export default function MobileBuilderSheets({ sections, section, onSection, subj
         }} />
       <div className="sheet-primary-content" inert={!!detail} aria-hidden={detail ? true : undefined}>
         <div className="flex gap-2 items-center px-3 pb-2 overflow-x-auto">
-          <SettingFinder sections={sections} onSelect={item => {setGuidedReview(false);setHeight("expanded");setPendingDetail(item);onSection(item.section);}} />
+
           <button type="button" className="chip shrink-0" onClick={onPeople}>People · {subjects.length}</button>
           {subjects.map((person, index) => <button type="button" key={person.id} style={personStyle(index)} aria-pressed={person.id === activeId}
             className={`chip sheet-person-button shrink-0 ${person.id === activeId ? "active" : ""}`} onClick={() => onSubject(person.id)}><span className="studio-person-badge" aria-hidden="true" data-label={person.label} />Edit {person.label}</button>)}
@@ -170,18 +165,9 @@ export default function MobileBuilderSheets({ sections, section, onSection, subj
           <div className="studio-mode-switch" role="group" aria-label="Editing view">
             {[["simple", "Simple"], ["advanced", "Advanced"]].map(([value, title]) => <button key={value} type="button" aria-pressed={mode === value} onClick={() => onMode(value)}>{title}</button>)}
           </div>
-          <label className="sr-only" htmlFor="sheet-category-select">Choose a category</label>
-          <select id="sheet-category-select" value={section.key} onChange={event => {setGuidedReview(false); onSection(event.target.value);}} className="sheet-category-select">
-            {availableSections.map(item => <option key={item.key} value={item.key}>{item.title}</option>)}
-          </select>
         </div>}
-        <nav className="sheet-category-tabs" aria-label="Character categories">
-          {categorySections.map(item => {
-            const Icon = CATEGORY_ICONS[item.key] || Layers;
-            return <button type="button" key={item.key} aria-pressed={item.key === section.key}
-              className={`chip shrink-0 ${item.key === section.key ? "active" : ""}`} onClick={() => {setGuidedReview(false); onSection(item.key);}}><Icon className="h-4 w-4" aria-hidden="true" />{item.title}</button>;
-          })}
-        </nav>
+        <DesignCategoryNavigation compact stages={stages} sections={availableSections} searchSections={sections} activeSection={section.key}
+          onSection={key=>{setGuidedReview(false);onSection(key);}} onSetting={item=>{setHeight("expanded");setPendingDetail(item);onSection(item.section);}}/>
         <div ref={fieldScroll} className="sheet-field-scroll">
           {guided && guidedReview ? <div className="space-y-3" data-testid="mobile-guided-review">
             <h2 className="font-semibold">Ready for your first image?</h2>
@@ -196,7 +182,10 @@ export default function MobileBuilderSheets({ sections, section, onSection, subj
             {resultControls && <button type="button" className="chip min-h-11" onClick={() => open("results")}>Results & actions</button>}
           </div>}
           <div className="flex justify-between items-center mb-3"><h2 className="font-semibold">{section.title}</h2><div className="flex gap-2"><button type="button" className="text-xs text-cyan-200" onClick={() => open("selected")}>Selected · {selectedItems.length}</button><button type="button" className="text-xs text-cyan-200" onClick={() => open("all")}>Open category</button></div></div>
-          {section.key === 'wardrobe' ? renderControls('all') : <>
+          {focusedEditor ? <>
+            {section.key === "pose" && subjects.length > 1 && castPoseControls && <button type="button" className="chip" onClick={() => open("cast-poses")}>Poses for {subjects.length} people</button>}
+            {focusedEditor}
+          </> : section.key === 'wardrobe' ? renderControls('all') : <>
           {onMode && <div className="mb-3 space-y-2">
             <p className="text-xs text-zinc-400">{mode === "simple" ? "Pick a few details; unselected options use the current defaults." : "All details are available. Search to find a control."}</p>
             <input type="search" aria-label="Find a control in this category" placeholder={`Find in ${section.title.toLowerCase()}…`} value={fieldSearch} onChange={event => setFieldSearch(event.target.value)} className="studio-control-search" />
