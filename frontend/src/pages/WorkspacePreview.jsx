@@ -16,7 +16,7 @@ import UniversalLoraPicker from '@/components/UniversalLoraPicker';
 import './WorkspacePreview.css';
 
 export default function WorkspacePreview() {
-  const [mode,setMode]=useState(''),[step,setStep]=useState(0),[people,setPeople]=useState(()=>[previewPerson()]);
+  const [mode,setMode]=useState(()=>({describe:'describe',build:'character',image:'image'}[new URLSearchParams(window.location.search).get('start')] || '')),[step,setStep]=useState(0),[people,setPeople]=useState(()=>[previewPerson()]);
   const [active,setActive]=useState(0),[relationship,setRelationship]=useState('Choose later');
   const [description,setDescription]=useState(''),[instruction,setInstruction]=useState(''),[image,setImage]=useState('');
   const [imageName,setImageName]=useState(''),[dialog,setDialog]=useState(null),[query,setQuery]=useState('');
