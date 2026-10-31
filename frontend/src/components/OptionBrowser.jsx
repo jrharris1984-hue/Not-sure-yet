@@ -25,7 +25,10 @@ export default function OptionBrowser({ alwaysSearch = false, preferenceKey, bro
   const remaining = matches.filter(option=>!displayed.includes(option)).length;
   const knownSelected=selected.filter(option=>searchOptions.includes(option));
   const allFavorited=knownSelected.length>0 && knownSelected.every(option=>favorites.includes(option));
+  const hairTools=preferenceKey?.startsWith("chip-hair-");
   return <div className="option-browser space-y-3">
+    <details className={hairTools ? "choice-browser-hair-tools" : "choice-browser-standard-tools"} open={hairTools ? undefined : true}>
+      {hairTools && <summary>Search hairstyles &amp; favorites</summary>}
     {(large || (alwaysSearch && searchOptions.length>8)) && <div className="choice-browser-toolbar"><label className="choice-browser-search"><span className="sr-only">Search choices</span>
       <input type="search" className="studio-control-search" value={query} onChange={event=>{setQuery(event.target.value);setFavoritesOnly(false);setSelectedOnly(false);}}
         onKeyDown={event=>{if(event.key==='Escape' && query){event.preventDefault();event.stopPropagation();setQuery('');}}}
@@ -36,6 +39,7 @@ export default function OptionBrowser({ alwaysSearch = false, preferenceKey, bro
       <button type="button" aria-pressed={favoritesOnly} onClick={()=>{setFavoritesOnly(current=>!current);setSelectedOnly(false);setQuery('');}}>Favorites ({favorites.length})</button>
       {knownSelected.length>0 && <button type="button" onClick={()=>setFavorites(allFavorited?favorites.filter(option=>!knownSelected.includes(option)):[...new Set([...favorites,...knownSelected])])}>{allFavorited?'Unfavorite selected':'Favorite selected'}</button>}
     </div>}
+    </details>
     {large && (selected.length > 0 || selectedOnly) && <div className="flex flex-wrap items-center gap-2 text-xs text-cyan-200">
       <p className="min-w-0 break-words">Selected: {selected.map(option => labels[option] || option).join(", ") || "None"}</p>
       <button type="button" className="chip min-h-11" aria-pressed={selectedOnly}
