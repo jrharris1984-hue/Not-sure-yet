@@ -50,9 +50,20 @@ export default function DesktopDnaEditor({ enabled, requestedField, workbench=fa
     const current=menu.flatMap(group=>group.fields).find(field=>field.key===fieldKey)||menu[0]?.fields[0];
     if(!current)return <DnaSection {...props}/>;
     return <div className="bench-field-editor">
-      <label className="bench-setting-label">Detail<select aria-label="Character detail" value={current.key} onChange={e=>{setFieldKey(e.target.value);if(props.collapsed)props.onToggleCollapsed?.();}}>
-        {menu.map(group=><optgroup key={group.key} label={group.label}>{group.fields.map(field=><option key={field.key} value={field.key}>{field.label}</option>)}</optgroup>)}
-      </select></label>
+      <div className="bench-field-chooser">
+        <label className="bench-setting-label">Detail<select aria-label="Character detail" value={current.key} onChange={e=>{setFieldKey(e.target.value);if(props.collapsed)props.onToggleCollapsed?.();}}>
+          {menu.map(group=><optgroup key={group.key} label={group.label}>{group.fields.map(field=><option key={field.key} value={field.key}>{field.label}</option>)}</optgroup>)}
+        </select></label>
+        <details className="bench-detail-browser">
+          <summary>Browse details · {current.label}</summary>
+          <div className="bench-detail-browser-list">
+            {menu.map(group=><div key={group.key} className="bench-detail-browser-group">
+              <strong>{group.label}</strong>
+              <div>{group.fields.map(field=><button type="button" key={field.key} aria-current={field.key===current.key?'step':undefined} onClick={e=>{setFieldKey(field.key);e.currentTarget.closest('details')?.removeAttribute('open');if(props.collapsed)props.onToggleCollapsed?.();}}>{field.label}</button>)}</div>
+            </div>)}
+          </div>
+        </details>
+      </div>
       <DnaSection {...props} focusedField={current.key}/>
     </div>;
   }
