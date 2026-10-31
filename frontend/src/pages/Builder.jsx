@@ -3384,7 +3384,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
     const count = poseAssistEnabled && !isVariationWorkflow && !isAnyVideoWorkflow ? 1 : renderCount;
     const sharedMode=sheetViewport ? mobileStudioMode : desktopQuickMode ? "simple" : "advanced";
     const extras=kind=>{const nodes=workflowControls([modelExtras,renderExtras,workspaceTools.props.children],kind);return nodes.length?<div className="bench-extra">{nodes}</div>:<p>No matching controls for the selected workflow.</p>;};
-    return <CreationWorkbench compact={sheetViewport} section={activeSection} sections={SECTIONS} stages={studioSteps} onSection={goSection}
+    return <CreationWorkbench compact={sheetViewport} subjectCount={subjects.length} expectedSubjectCount={expectedCount} section={activeSection} sections={SECTIONS} stages={studioSteps} onSection={goSection}
       onFind={item=>{if(sheetViewport)setMobileStudioMode("advanced");editSelectedDetail(item);}}
       saveError={save.isError} name={name} onName={setName} onSave={()=>save.mutate()} saving={save.isPending}
       mode={sharedMode} onMode={m=>{setMobileStudioMode(m);setDesktopQuickMode(m==="simple");}}
