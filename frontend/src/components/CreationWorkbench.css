@@ -175,3 +175,15 @@ body:has(.creation-bench){position:fixed;inset:0}
 .bench-mobile-extras .bench-mobile-mode{margin-bottom:8px}
 .bench-mobile-extras .bench-subject-switcher{margin-top:10px}
 }
+
+/* Phase 4: mobile-only touch target and slider comfort improvements. */
+@media(max-width:767px){
+.creation-bench .bench-field-editor{min-width:0}
+.creation-bench .bench-field-editor .visual-choice-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.creation-bench .bench-field-editor .visual-choice-grid > *{min-width:0;min-height:48px}
+.creation-bench .bench-field-editor .visual-choice-grid button{min-height:48px;white-space:normal;overflow-wrap:anywhere}
+.creation-bench .bench-field-editor input[type="range"]{width:100%;min-height:36px;touch-action:pan-y}
+.creation-bench .bench-field-editor [role="slider"]{touch-action:none}
+.creation-bench .bench-field-editor :is(input,select,textarea){max-width:100%;min-width:0}
+.creation-bench .bench-field-editor button:focus-visible,.creation-bench .bench-field-editor [role="slider"]:focus-visible{outline:2px solid #c7a4ff;outline-offset:2px}
+}
