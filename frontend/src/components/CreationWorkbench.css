@@ -125,3 +125,17 @@ body:has(.creation-bench){position:fixed;inset:0}
 }
 
 @media(max-width:767px){.bench-desktop-category{display:none!important}.bench-context{display:block}.bench-mobile-editing-tools{display:grid;gap:8px}.bench-mobile-mode{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:4px;border:1px solid #ffffff22;border-radius:12px}.bench-mobile-mode button{min-height:44px;border-radius:9px;color:#c4bbd6}.bench-mobile-mode button[aria-pressed=true]{background:#4d3b66;color:white;font-weight:700}.bench-mobile-find,.bench-mobile-presets{border:1px solid #ffffff22;border-radius:10px;padding:0 10px}.bench-mobile-find summary,.bench-mobile-presets summary{min-height:44px;padding:12px 0;cursor:pointer}.bench-mobile-find[open],.bench-mobile-presets[open]{padding-bottom:10px}}
+
+/* Phase 4: mobile detail browser replaces the long native select list. */
+.bench-detail-browser{display:none}
+@media(max-width:767px){
+.bench-field-chooser>.bench-setting-label{display:none}
+.bench-detail-browser{display:block;margin:8px 0 12px;border:1px solid #ffffff30;border-radius:11px;background:#242233}
+.bench-detail-browser>summary{min-height:48px;padding:13px;cursor:pointer;font-size:13px;font-weight:600;color:#f4f2ff;overflow-wrap:anywhere}
+.bench-detail-browser-list{max-height:min(350px,48dvh);overflow-y:auto;overscroll-behavior:contain;padding:10px;border-top:1px solid #ffffff20}
+.bench-detail-browser-group{margin-bottom:12px}
+.bench-detail-browser-group strong{display:block;margin-bottom:7px;font-size:11px;color:#c4bbd6}
+.bench-detail-browser-group>div{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+.bench-detail-browser-group button{min-width:0;min-height:44px;padding:9px;border:1px solid #ffffff25;border-radius:9px;background:#302c3d;color:#f4f2ff;font-size:12px;text-align:left;overflow-wrap:anywhere}
+.bench-detail-browser-group button[aria-current=step]{background:#4d3b66;border-color:#c7a4ff;font-weight:700}
+}
