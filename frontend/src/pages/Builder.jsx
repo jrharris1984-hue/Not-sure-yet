@@ -961,9 +961,17 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
       setActiveSubjectId(subjects[0].id);
     }
     setSubjects(current => {
-      const next = applyScenarioSelection(current, scenario);
-      if (identity && next[0]) next[0] = { ...next[0], dna: { ...next[0].dna, identity } };
-      return applyCastAppearance(next, next[0]?.dna.scenario || scenario, locks);
+      const selected = applyScenarioSelection(current, scenario);
+      if (identity && selected[0]) selected[0] = { ...selected[0], dna: { ...selected[0].dna, identity } };
+      // Cast size is a subject count, not merely a prompt setting. Add missing
+      // editable subjects immediately; preserve existing subjects' individual DNA.
+      const primary = selected[0]?.dna || primaryDna;
+      const count = Math.min(MAX_SUBJECTS, expectedSubjectCount(primary));
+      const missing = Array.from({ length: Math.max(0, count - selected.length) }, (_, offset) => {
+        const index = selected.length + offset;
+        return makeSubject({ label: subjectLabel(index), dna: seedSubjectFromPairing(primary, index) });
+      });
+      return applyCastAppearance([...selected, ...missing], primary.scenario || scenario, locks);
     });
   };
 
