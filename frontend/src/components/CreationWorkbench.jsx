@@ -22,11 +22,13 @@ export default function CreationWorkbench({compact=false,section,sections,stages
   const [workflowSearch,setWorkflowSearch]=useState('');
   const [desktopPreviewOpen,setDesktopPreviewOpen]=useState(false);
   const [generationStarted,setGenerationStarted]=useState(false);
+  const [mobileCategoryOpen,setMobileCategoryOpen]=useState(false);
   const workflowMenu=useRef(null);
   const matchingWorkflows=workflows.filter(item=>(item.name || item.title || item.id || '').toLowerCase().includes(workflowSearch.toLowerCase()));
   const currentWorkflow=workflows.find(item=>item.id===workflowId);
   useEffect(()=>{if(!workflowOpen)return;const onPointer=e=>{if(workflowMenu.current && !workflowMenu.current.contains(e.target))setWorkflowOpen(false);};document.addEventListener('pointerdown',onPointer);return()=>document.removeEventListener('pointerdown',onPointer);},[workflowOpen]);
   useEffect(()=>{if(pane.current)pane.current.scrollTop=0;},[page,section,group]);
+  useEffect(()=>{setMobileCategoryOpen(false);},[section]);
   const groups=stages.filter(s=>s.sections?.length);
   const custom=sections.filter(s=>!groups.some(g=>g.sections.includes(s.key)));
   const category=sections.find(s=>s.key===section)?.title;
@@ -42,6 +44,18 @@ export default function CreationWorkbench({compact=false,section,sections,stages
         <div className="bench-context"><label>Category<select aria-label="Category" value={section} onChange={e=>onSection(e.target.value)}>{groups.map(g=><optgroup key={g.key||g.id} label={g.title}>{g.sections.map(key=>sections.find(s=>s.key===key)).filter(Boolean).map(s=><option key={s.key} value={s.key}>{s.title}</option>)}</optgroup>)}{custom.map(s=><option key={s.key} value={s.key}>{s.title}</option>)}</select></label>{!compact && utilities}{compact && <details className="bench-mobile-options"><summary>Editor options</summary><div>{utilities}<details className="bench-people"><summary>People &amp; presets</summary>{people}</details></div></details>}</div>
         {!compact && <details className="bench-people"><summary>People &amp; presets <ChevronDown size={15}/></summary>{people}</details>}
         {subjectSwitcher && <div className="bench-subject-switcher" aria-label="Edit individual subjects"><p className="px-3 pt-3 text-xs text-zinc-300" role="status">Editing {subjectCount} of {expectedSubjectCount} selected subjects · Choose a subject to edit its own appearance, clothing and pose.</p>{subjectSwitcher}</div>}
+        {compact && <div className="bench-mobile-category">
+          <button type="button" className="bench-mobile-category-trigger" aria-expanded={mobileCategoryOpen} aria-controls="bench-mobile-category-list" onClick={()=>setMobileCategoryOpen(open=>!open)}>
+            <span>Browse categories</span><ChevronDown size={17}/>
+          </button>
+          {mobileCategoryOpen && <nav id="bench-mobile-category-list" className="bench-mobile-category-list" aria-label="Choose an editing category">
+            {groups.map(g=><div className="bench-mobile-category-group" key={g.key||g.id}>
+              <strong>{g.title}</strong>
+              <div>{g.sections.map(key=>sections.find(item=>item.key===key)).filter(Boolean).map(item=><button type="button" key={item.key} aria-current={section===item.key?'step':undefined} onClick={()=>{onSection(item.key);setMobileCategoryOpen(false);}}>{item.title}</button>)}</div>
+            </div>)}
+            {custom.length>0 && <div className="bench-mobile-category-group"><strong>More</strong><div>{custom.map(item=><button type="button" key={item.key} aria-current={section===item.key?'step':undefined} onClick={()=>{onSection(item.key);setMobileCategoryOpen(false);}}>{item.title}</button>)}</div></div>}
+          </nav>}
+        </div>}
         {!compact && <nav className="bench-category-quicknav" aria-label="Jump to editing category">
           {groups.map(g=><div className="bench-category-group" key={g.key||g.id}>
             <span className="bench-category-group-title">{g.title}</span>
