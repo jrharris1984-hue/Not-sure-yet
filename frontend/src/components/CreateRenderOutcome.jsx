@@ -13,7 +13,7 @@ const statusMessages = {
 };
 
 export default function CreateRenderOutcome({ render, batch = [], mediaUrl = (url) => url,
-  onSelect, onNewSeed, onEdit, onAnimate, onGallery, onDownload,
+  onSelect, onNewSeed, onEdit, onAnimate, onGallery, onDownload, showMedia=true,
   canEdit = false, canAnimate = false, busy = "" }) {
   if (!render) return null;
   const output = render.output_files?.[0];
@@ -32,10 +32,10 @@ export default function CreateRenderOutcome({ render, batch = [], mediaUrl = (ur
     {render.error && <p className="break-words text-xs text-rose-300">{render.error}</p>}
     {batch.length > 1 && <p className="text-xs text-zinc-400">{completed.length} of {batch.length} results ready{batch.some((item) => failedStatuses.includes(item.status)) ? ` · ${batch.filter((item) => failedStatuses.includes(item.status)).length} failed or stopped` : ""}</p>}
     {done && <>
-      <div className="overflow-hidden rounded-xl border hairline bg-black/25">
+      {showMedia && <div className="overflow-hidden rounded-xl border hairline bg-black/25">
         {isVideo ? <video src={mediaUrl(output)} controls playsInline className="max-h-96 w-full object-contain" />
           : <img src={mediaUrl(output)} alt="Latest finished render" className="max-h-96 w-full object-contain" />}
-      </div>
+      </div>}
       {completed.length > 1 && <div className="flex gap-2 overflow-x-auto pb-1" aria-label="Finished batch results">
         {completed.map((item, index) => <button type="button" key={item.id || item.render_id}
           onClick={() => onSelect(item)} disabled={!!busy} aria-label={`Select result ${index + 1}`}

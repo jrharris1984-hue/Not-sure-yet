@@ -2,6 +2,7 @@ import { initializeStudioTheme } from "@/lib/studioThemes";
 import { WebPromptResearchOptions, PromptResearchNotes } from '@/components/WebPromptResearch';
 import { useAssistantResearch } from '@/lib/assistantResearch';
 import { useEffect, useRef } from "react";
+import "./StudioFrame.css";
 import MobileStudioNavigation, { StudioNavLinks } from "@/components/StudioNavigation";
 import { Link, useLocation } from "react-router-dom";
 import { Sparkles, Plus } from "lucide-react";
@@ -67,11 +68,9 @@ export default function AppShell({ children }) {
               18+
             </span>
           </Link>
-          <nav className="hidden xl:flex items-center gap-1 rounded-2xl border hairline bg-black/25 p-1" aria-label="Studio navigation">
-            <StudioNavLinks returnTo={galleryReturnTo} />
-          </nav>
           <div className="flex items-center gap-2">
             <ComfyStatus />
+            {isBuilder && <MobileStudioNavigation compactHeader returnTo={galleryReturnTo} />}
             {!isCreateWorkspace && (
               <Link
                 to="/create"
@@ -83,11 +82,12 @@ export default function AppShell({ children }) {
             )}
           </div>
         </div>
-        <nav className="hidden md:flex xl:hidden gap-1 overflow-x-auto scroll-fade border-t border-white/5 px-6 py-1.5" aria-label="Tablet studio navigation">
-          <StudioNavLinks compact returnTo={galleryReturnTo} />
-        </nav>
       </header>
-
+      <aside className="studio-app-rail" aria-label="Studio pages">
+        <div className="rail-brand"><Sparkles size={20}/> Ultra Studio</div>
+        <Link className="rail-create" to="/create"><Plus size={17}/> Create</Link>
+        <nav aria-label="Studio navigation"><StudioNavLinks returnTo={galleryReturnTo} /></nav>
+      </aside>
       <NowRenderingStrip />
       <main id="studio-main" ref={mainRef} tabIndex={-1} className="studio-main flex-1 min-w-0">
         {showResearchWorkspace && <div className="mx-auto max-w-4xl px-4 pt-3">
@@ -98,8 +98,7 @@ export default function AppShell({ children }) {
       </main>
       <PwaInstallPrompt />
 
-      <MobileStudioNavigation returnTo={galleryReturnTo} />
-      <div className="mobile-bottom-spacer h-16 md:h-0" />
+      {!isBuilder && <><MobileStudioNavigation returnTo={galleryReturnTo} /><div className="mobile-bottom-spacer h-16 md:h-0" /></>}
     </div>
   );
 }

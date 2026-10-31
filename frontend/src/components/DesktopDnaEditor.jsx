@@ -18,7 +18,7 @@ function selectionSummary(field, value, section) {
     : selected === undefined || selected === null || selected === '' ? 'Not selected' : label(selected);
 }
 
-export default function DesktopDnaEditor({ enabled, requestedField, ...props }) {
+export default function DesktopDnaEditor({ enabled, requestedField, workbench=false, ...props }) {
   const [fieldKey, setFieldKey] = useTabPreference(`ultra:detail-field:${props.section.key}`, '');
   const simpleFields = props.simpleMode && props.simpleFieldKeys?.length
     ? props.section.fields.filter(field => props.simpleFieldKeys.includes(field.key) || desktopFieldTarget(props.section.key,field.key)===fieldKey) : props.section.fields;
@@ -40,6 +40,22 @@ export default function DesktopDnaEditor({ enabled, requestedField, ...props }) 
   }, [requestedField]);
   if (props.section.key === 'wardrobe') return <WardrobeEditor {...props} requestedField={requestedField}/>;
   if (!enabled || !simpleFields.length || !groups.length || props.focusedField) return <DnaSection {...props} />;
+  if(workbench) {
+    const seen=new Set();
+    const menu=groups.map(group=>({...group, fields:group.fields.flatMap(field=>{
+      const key=desktopFieldTarget(props.section.key,field.key);
+      if(seen.has(key))return [];
+      seen.add(key);return [props.section.fields.find(item=>item.key===key)||field];
+    })})).filter(group=>group.fields.length);
+    const current=menu.flatMap(group=>group.fields).find(field=>field.key===fieldKey)||menu[0]?.fields[0];
+    if(!current)return <DnaSection {...props}/>;
+    return <div className="bench-field-editor">
+      <label className="bench-setting-label">Detail<select aria-label="Character detail" value={current.key} onChange={e=>{setFieldKey(e.target.value);if(props.collapsed)props.onToggleCollapsed?.();}}>
+        {menu.map(group=><optgroup key={group.key} label={group.label}>{group.fields.map(field=><option key={field.key} value={field.key}>{field.label}</option>)}</optgroup>)}
+      </select></label>
+      <DnaSection {...props} focusedField={current.key}/>
+    </div>;
+  }
   const searchControl = <label className="block text-xs text-zinc-400">Find a detail
     <input type="search" className="studio-control-search mt-2" placeholder={`Search ${props.section.title.toLowerCase()}…`}
       value={search} onChange={event => { setSearch(event.target.value); setFieldKey(''); }} /></label>;
