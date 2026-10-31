@@ -77,7 +77,7 @@ export default function CreationWorkbench({compact=false,section,sections,stages
           <details className="bench-mobile-find"><summary>Find a setting</summary><SettingFinder sections={sections} onSelect={onFind}/></details>
           <details className="bench-mobile-presets"><summary>Character presets and people options</summary>{people}</details>
           {subjectSwitcher && <div className="bench-subject-switcher" aria-label="Edit individual subjects">{subjectSwitcher}</div>}
-        </details>
+        </details>}
       </>:page==='random'?<><h1>Randomize</h1><p className="bench-hint">Choose what to change. Generate when you like the selection.</p>{random}</>:page==='preview'?<><h1>Preview</h1>{preview}</>:<><h1>Generation settings</h1><label className="bench-setting-label">Settings menu<select aria-label="Settings menu" value={group} onChange={e=>setGroup(e.target.value)}>{Object.keys(settings).map(k=><option key={k}>{k}</option>)}</select></label>{typeof settings[group]==="function"?settings[group](()=>setPage("design")):settings[group]}</>}
     </div>
     {!compact && generationStarted && desktopPreviewOpen && <aside className="bench-desktop-preview" aria-label="Generated image preview">
