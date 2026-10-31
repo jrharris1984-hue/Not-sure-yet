@@ -196,3 +196,10 @@ body:has(.creation-bench){position:fixed;inset:0}
 .creation-bench .bench-mobile-bottom-navigation span{font-size:10px}
 .creation-bench .bench-guided-substeps{scrollbar-width:thin;scroll-padding-inline:10px}
 }
+
+/* Hair choices first; optional search and favorites are collapsible. */
+.creation-bench .choice-browser-standard-tools{display:contents}
+.creation-bench .choice-browser-hair-tools{border:1px solid #ffffff25;border-radius:9px;padding:0 10px}
+.creation-bench .choice-browser-hair-tools>summary{cursor:pointer;min-height:44px;display:flex;align-items:center;color:#c4bbd6;font-size:12px}
+.creation-bench .choice-browser-hair-tools[open]{padding-bottom:10px}
+.creation-bench .choice-browser-hair-tools .choice-browser-toolbar{margin-bottom:8px}
