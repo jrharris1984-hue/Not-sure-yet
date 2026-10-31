@@ -6,7 +6,7 @@ const {createFixtures}=require('./fixtures.cjs');
 const baseURL=process.env.ULTRA_UI_URL || 'http://localhost:3000';
 const channel=process.env.ULTRA_UI_BROWSER || (process.platform==='win32' ? 'msedge' : 'chrome');
 const output=path.join(__dirname,'artifacts');
-const cases=[{name:'desktop',width:1440,height:1000},{name:'short-desktop',width:1024,height:650},{name:'mobile',width:390,height:844}];
+const cases=[{name:'desktop',width:1440,height:1000},{name:'short-desktop',width:1024,height:650},{name:'mobile',width:390,height:844},{name:'small-phone',width:320,height:568},{name:'landscape',width:740,height:360}];
 async function check(browser,viewport) {
   const fixture=createFixtures(), errors=[], blocked=[];
   const context=await browser.newContext({viewport:{width:viewport.width,height:viewport.height},serviceWorkers:'block',reducedMotion:'reduce'});
@@ -29,194 +29,35 @@ async function check(browser,viewport) {
   page.setDefaultTimeout(15000);
   try {
     await page.goto(`${baseURL}/character/new/s/hair`,{waitUntil:'domcontentloaded'});
-    if(viewport.width>=768) {
-      await page.getByTestId('dna-section-hair').waitFor({state:'visible'});
-      await page.screenshot({path:path.join(output,`${viewport.name}-initial.png`),fullPage:false});
-      const choiceVisible = await page.locator('[data-testid^="chip-hair-style-"]:not([data-testid*="-tab-"])').evaluateAll(buttons => buttons.some(button => {
-        const bounds=button.getBoundingClientRect();
-        if(button.disabled || bounds.width<=0 || bounds.height<=0 || bounds.top<0 || bounds.bottom>innerHeight) return false;
-        const hit=document.elementFromPoint(bounds.left+bounds.width/2,bounds.top+bounds.height/2);
-        return hit===button || button.contains(hit);
-      }));
-      assert.ok(choiceVisible,'No editable hair choice is visible before scrolling');
-      const hairChoice=page.getByTestId('chip-hair-style-straight');
-      await hairChoice.click();
-      assert.equal(await hairChoice.getAttribute('aria-pressed'),'true','Hair choice should be selected');
-      const choiceSearch=page.getByTestId('dna-section-hair').getByRole('searchbox',{name:'Search choices',exact:true});
-      await choiceSearch.fill('waves beach');
-      await page.getByTestId('chip-hair-style-beach-waves').waitFor({state:'visible'});
-      await choiceSearch.press('Escape');
-      assert.equal(await choiceSearch.inputValue(),'','Escape should clear choice search');
-      assert.equal(await hairChoice.getAttribute('aria-pressed'),'true','Searching must retain the selection');
-
-      const categories=page.getByRole('navigation',{name:'Design categories'});
-      await categories.getByRole('button',{name:'Skin',exact:true}).click();
-      await categories.getByRole('button',{name:'Hair',exact:true}).click();
-      assert.equal(await hairChoice.getAttribute('aria-pressed'),'true','Category navigation must retain the selected choice');
-      if(!await page.locator('.studio-more-actions').evaluate(el=>el.open)) await page.locator('.studio-more-actions > summary').click();
-      await page.getByTestId('btn-desktop-studio-mode').click();
-      await page.getByTestId('btn-desktop-studio-mode').click();
-      assert.equal(await hairChoice.getAttribute('aria-pressed'),'true','Switching views must retain the selected choice');
-      assert.equal(await page.locator('.studio-more-library').evaluate(link=>{
-        const box=link.getBoundingClientRect();
-        const hit=document.elementFromPoint(box.left+box.width/2,box.top+box.height/2);
-        return hit===link || link.contains(hit);
-      }),true,'More actions must appear above the editing controls');
-      await page.screenshot({path:path.join(output,`${viewport.name}-more.png`),fullPage:false});
-      await page.keyboard.press('Escape');
-      assert.equal(await page.locator('.studio-more-actions').evaluate(el=>el.open),false,'Escape should close More');
-      assert.equal(await page.locator('.studio-more-actions > summary').evaluate(el=>el===document.activeElement),true,'More should restore trigger focus');
-      const viewSwitch=page.getByRole('group',{name:'Editor view',exact:true});
-      await viewSwitch.getByRole('button',{name:'Preview',exact:true}).click();
-      assert.equal(await page.locator('.workspace-editor-content').isVisible(),false,'Preview should hide editing controls');
-      await viewSwitch.getByRole('button',{name:'Edit',exact:true}).click();
-      assert.equal(await hairChoice.getAttribute('aria-pressed'),'true','View changes must preserve selections');
-      const workflowMenu=page.locator('.workspace-workflow-menu');
-      await workflowMenu.locator('summary').click();
-      await page.getByLabel('Generation workflow',{exact:true}).waitFor({state:'visible'});
-      await page.keyboard.press('Escape');
-      assert.equal(await workflowMenu.evaluate(element=>element.open),false,'Escape should close workflow settings');
-      const name=page.getByTestId('input-character-name');
-      await name.fill('UI walkthrough');
-      const drawerButton=page.getByRole('button',{name:/^Selected details \(/});
-      await page.locator('.studio-more-actions > summary').click();
-      await drawerButton.click();
-      const drawer=page.locator('dialog[open]');await drawer.waitFor();
-      await drawer.getByRole('searchbox').fill('hair');
-      await drawer.getByRole('button',{name:'Close',exact:true}).focus();
-      await page.keyboard.press('Escape');await drawer.waitFor({state:'hidden'});
-      assert.equal(await drawerButton.evaluate(el=>el===document.activeElement),true,'Escape must restore focus');
-      await page.getByTestId('btn-save-character').click();
-      await page.waitForURL('**/character/ui-character/**');
-      await page.getByTestId('btn-dispatch-comfyui-render').click();
-      await page.waitForFunction(()=>document.body.textContent.includes('Ready to view'));
-      assert.equal(fixture.dispatches,1,'Render should submit exactly once to the fixture');
-      if(viewport.width>=1280) {
-        await page.getByRole('group',{name:'Editor view',exact:true}).getByRole('button',{name:'Split',exact:true}).click();
-        const expand=page.locator('.workspace-preview-content').getByRole('button',{name:'View larger preview'});
-        await expand.click();
-        const enlarged=page.getByRole('dialog',{name:'Expanded character preview'});
-        await enlarged.waitFor({state:'visible'});
-        await page.keyboard.press('Escape');
-        await enlarged.waitFor({state:'hidden'});
-        assert.equal(await expand.evaluate(el=>el===document.activeElement),true,'Closing the larger preview must restore focus');
-        assert.equal(fixture.dispatches,1,'Viewing a preview must not submit another render');
+    const root=page.getByRole('region',{name:'Creation workspace'});
+    const task=label=>root.getByRole('navigation',{name:'Creation tasks'}).getByRole('button',{name:label,exact:true});
+    const generate=root.getByRole('button',{name:'Generate',exact:true});
+    const fit=async()=>{
+      for(const item of [task('Design'),task('Preview'),generate]){
+        assert.ok(await item.evaluate(el=>{const b=el.getBoundingClientRect(),hit=document.elementFromPoint(b.x+b.width/2,b.y+b.height/2);return b.left>=0 && b.top>=0 && b.right<=innerWidth+1 && b.bottom<=innerHeight+1 && el.contains(hit);}), 'Task and Generate actions fit the viewport and receive taps');
       }
-      if(viewport.width>=1280){
-        await page.locator('.workspace-preview-options > summary').click();
-        await page.locator('.workspace-preview-size input').press('End');
-      }
-      const galleryLink=page.getByTestId('nav-gallery');
-      const views=page.getByRole('group',{name:'Editor view',exact:true});
-      await views.getByRole('button',{name:'Preview',exact:true}).click();
-      for(const browserBack of [true,false]) {
-        await galleryLink.click();await page.waitForURL('**/gallery');
-        await page.getByRole('button',{name:'Back to editor',exact:true}).waitFor({state:'visible'});
-        if(browserBack)await page.goBack();
-        else await page.getByRole('button',{name:'Back to editor',exact:true}).click();
-        await page.getByTestId('input-character-name').waitFor();
-        await page.waitForFunction(()=>document.querySelector('[data-workspace-mode]')?.dataset.workspaceMode==='preview');
-        await page.locator('.workspace-preview-content img').waitFor({state:'visible'});
-        assert.equal(await page.getByTestId('input-character-name').inputValue(),'UI walkthrough');
-        assert.equal(fixture.dispatches,1,'Returning from Gallery must not render again');
-        if(viewport.width>=1280) assert.equal(await page.locator('[data-workspace-mode]').evaluate(el=>el.style.getPropertyValue('--workspace-preview-width')),'480px','Preview width should survive Gallery');
-
-      }
-      await page.reload({waitUntil:'domcontentloaded'});
-      assert.equal(await page.getByTestId('input-character-name').inputValue(),'UI walkthrough');
-    } else {
-      const nav=page.getByRole('navigation',{name:'Workspace views'});
-      const editor=page.getByTestId('mobile-sheet-builder');
-      await editor.getByRole('navigation',{name:'Design categories'}).waitFor();
-      await editor.getByLabel('Editing detail',{exact:true}).selectOption('style');
-      await editor.getByTestId('chip-hair-style-straight').click();
-      assert.equal(await editor.getByTestId('chip-hair-style-straight').getAttribute('aria-pressed'),'true','Mobile edits the same focused hair control as desktop');
-      await page.screenshot({path:path.join(output,"mobile-editor.png")});
-      await nav.getByRole('button',{name:'Preview',exact:true}).click();
-      assert.match(await page.getByTestId('primary-creation-sheet').getAttribute('class'),/sheet-peek/);
-      await page.getByTestId('nav-gallery-mobile').click();await page.waitForURL('**/gallery');
-      await page.goBack();
-      await page.getByTestId('primary-creation-sheet').waitFor();
-      assert.match(await page.getByTestId('primary-creation-sheet').getAttribute('class'),/sheet-peek/,'Mobile preview stays open after Gallery');
-      await nav.getByRole('button',{name:'Results',exact:true}).click();
-      await page.getByRole('dialog').getByText(/No results yet/).waitFor();
-      await nav.getByRole('button',{name:'Randomize',exact:true}).click();
-      const randomPanel=page.getByRole('dialog',{name:'Randomize & tools'});
-      await randomPanel.waitFor();
-      await randomPanel.getByRole("button",{name:"Scene only",exact:true}).click();
-      const randomScroll=randomPanel.locator('.sheet-detail-scroll');
-      assert.ok(await randomScroll.evaluate(el=>{el.scrollTop=el.scrollHeight;return el.scrollTop>0;}),'Randomizer options scroll inside their panel');
-      assert.ok(await page.evaluate(()=>{window.scrollTo(800,800);return !scrollX && !scrollY;}),'The builder page should stay stationary');
-      const count=fixture.dispatches;
-      await page.locator('.sheet-generation-dock .sheet-generate-button').click();
-      await page.waitForFunction(()=>!document.querySelector('.sheet-generation-dock .sheet-generate-button')?.disabled);
-      assert.equal(fixture.dispatches,count+1,'Generate directly from the Randomize panel');
-      await nav.getByRole('button',{name:'Edit',exact:true}).click();
-      await page.getByRole('dialog').waitFor({state:'hidden'});
-      const sheet=await page.getByTestId('primary-creation-sheet').boundingBox();
-      const dock=await page.locator('.sheet-generation-dock').boundingBox();
-      assert.ok(sheet.y+sheet.height<=dock.y+2,'Editing sheet overlaps the bottom action dock');
-      await page.getByRole('button',{name:'More tools',exact:true}).click();
-      await page.getByTestId('mobile-tools-navigation').getByRole('button',{name:/Presets & people/}).click();
-      const toolsDock=page.locator('.mobile-tools-dock');
-      const before=await toolsDock.boundingBox();
-      await page.locator('.organized-mobile-tools').evaluate(el=>{el.scrollTop=el.scrollHeight;});
-      const after=await toolsDock.boundingBox();
-      assert.ok(before && after && Math.abs(before.y-after.y)<2 && after.y+after.height<=viewport.height,'Tools retain an on-screen Generate button while scrolling');
-      assert.ok(await toolsDock.getByRole('button',{name:/Generate/}).isEnabled());
-
-    }
-    await page.goto(`${baseURL}/character/new/s/wardrobe`,{waitUntil:'domcontentloaded'});
-    if(viewport.width>=768) await page.getByRole('group',{name:'Editor view',exact:true}).getByRole('button',{name:'Edit',exact:true}).click();
-    const wardrobe=page.locator('[data-testid="wardrobe-focused-editor"]:visible');
-    await wardrobe.waitFor({state:'visible'});
-    assert.equal(await wardrobe.getByTestId('wardrobe-mode-controls').count(),1,'Wardrobe should show one mode selector');
-    assert.equal(await wardrobe.locator('[data-testid^="desktop-edit-"]').count(),0,'Duplicate field cards should be absent');
-    await wardrobe.getByTestId('wardrobe-mode-custom').click();
-    const detailPicker=wardrobe.getByRole('button',{name:'All details',exact:true});
-    await detailPicker.click();
-    await wardrobe.getByRole('group',{name:'Choose a detail',exact:true}).getByRole('button',{name:'Top',exact:true}).click();
-    assert.equal(await wardrobe.getByLabel('Editing',{exact:true}).inputValue(),'top','Detail map should navigate directly to the chosen control');
-    assert.equal(await detailPicker.evaluate(el=>el===document.activeElement),true,'Choosing a detail returns focus to the picker trigger');
-    await detailPicker.click();
-    await wardrobe.getByRole('group',{name:'Choose a detail',exact:true}).getByRole('button',{name:'Top',exact:true}).focus();
-    await page.keyboard.press('Escape');
-    assert.equal(await detailPicker.getAttribute('aria-expanded'),'false','Escape should dismiss the detail map');
+      const panel=root.locator('.bench-scroll');
+      assert.ok(await panel.evaluate(el=>el.scrollWidth<=el.clientWidth+1),'Current task must fit the panel width');
+      assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1 && document.documentElement.scrollHeight<=innerHeight+1),'Builder should fit the viewport');
+    };
+    await root.waitFor();await fit();
+    await root.getByTestId('chip-hair-style-straight').click();
+    await root.getByLabel('Category',{exact:true}).selectOption('wardrobe');
+    const wardrobe=root.getByTestId('wardrobe-focused-editor');await wardrobe.getByTestId('wardrobe-mode-custom').click();
     await wardrobe.getByLabel('Editing',{exact:true}).selectOption('top');
     await wardrobe.getByLabel('Choice category',{exact:true}).selectOption('Everyday');
     await wardrobe.getByTestId('chip-wardrobe-top-t-shirt').click();
-    await wardrobe.getByRole('button',{name:'Favorite selected',exact:true}).click();
-    await wardrobe.getByRole('button',{name:'Favorites (1)',exact:true}).click();
-    assert.equal(await wardrobe.locator('.visual-choice').count(),1,'Favorites should narrow the picker without changing the selection');
-    assert.equal(await wardrobe.getByTestId('chip-wardrobe-top-t-shirt').getAttribute('aria-pressed'),'true');
-    await wardrobe.getByRole('button',{name:'Favorites (1)',exact:true}).click();
-    await wardrobe.getByRole('button',{name:'Next detail',exact:true}).click();
-    await wardrobe.getByRole('button',{name:'Previous detail',exact:true}).click();
-    assert.equal(await wardrobe.getByTestId('chip-wardrobe-top-t-shirt').getAttribute('aria-pressed'),'true','Previous/next detail navigation should retain choices');
-
-    await wardrobe.getByRole('button',{name:'Shoes',exact:true}).click();
-    await wardrobe.getByRole('button',{name:'Clothes',exact:true}).click();
-    await wardrobe.getByLabel('Editing',{exact:true}).selectOption('top');
-    assert.equal(await wardrobe.getByTestId('chip-wardrobe-top-t-shirt').getAttribute('aria-pressed'),'true','Wardrobe navigation should retain selections');
-    if(viewport.width>=768){
-      const count=fixture.dispatches;
-      const surprise=page.getByRole('button',{name:'Surprise me & generate',exact:true}).filter({visible:true});
-      await surprise.click();
-      await page.waitForFunction(()=>document.querySelector('[data-testid="btn-dispatch-comfyui-render"]')?.disabled===false);
-      assert.equal(fixture.dispatches,count+1,'Surprise must submit exactly one image');
-      const sent=fixture.requests.at(-1);
-      assert.equal(sent.subjects[0].dna.wardrobe.top,'t-shirt','Surprise must preserve the selected outfit');
-      assert.equal(sent.batch_size,1);
-      assert.ok(sent.subjects[0].dna.scene,'Randomized scene must be included in the submitted snapshot');
-    }
-    if(viewport.width>=768){
-      await page.goto(`${baseURL}/character/new/s/camera`,{waitUntil:'domcontentloaded'});
-      await page.getByLabel('Editing detail',{exact:true}).selectOption('angle');
-      const diagonal=page.getByTestId('chip-camera-angle-overhead-diagonal');
-      await diagonal.click();
-      assert.equal(await diagonal.getAttribute('aria-pressed'),'true','New camera angles must be selectable');
-    }
-    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+2),true,'Page has horizontal overflow');
+    await root.getByLabel('Character name').fill('UI walkthrough');
+    await root.getByRole('button',{name:'Save character'}).click();await page.waitForURL('**/character/ui-character/**');
+    await task('Settings').click();await fit();await root.getByLabel('Settings menu').selectOption('Prompts');await fit();
+    await task('Randomize').click();await root.getByRole('button',{name:'Scene only',exact:true}).click();
+    await fit();await generate.click();
+    await task('Preview').click();await root.getByTestId('studio-preview-media').locator('img').waitFor();
+    assert.equal(fixture.dispatches,1);assert.equal(fixture.requests[0].subjects[0].dna.wardrobe.top,'t-shirt');
+    await page.getByTestId(viewport.width>=768?'nav-gallery':'nav-gallery-mobile').click();await page.waitForURL('**/gallery');await page.goBack();
+    await root.getByTestId('studio-preview-media').locator('img').waitFor();
+    await task('Design').click();await root.getByLabel('Category',{exact:true}).selectOption('hair');
+    assert.equal(await root.getByTestId('chip-hair-style-straight').getAttribute('aria-pressed'),'true');await fit();
     assert.deepEqual(errors,[],'Unexpected browser runtime errors');
     assert.deepEqual(blocked,[],'Fixture needs an explicit handler for these writes');
     await page.screenshot({path:path.join(output,`${viewport.name}.png`),fullPage:true});
