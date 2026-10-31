@@ -49,7 +49,7 @@ export default function CreationWorkbench({compact=false,section,sections,stages
         {!compact && <details className="bench-people"><summary>People &amp; presets <ChevronDown size={15}/></summary>{people}</details>}
         {!compact && subjectSwitcher && <div className="bench-subject-switcher" aria-label="Edit individual subjects">{subjectSwitcher}</div>}
         {compact && <div className="bench-guided-flow">
-          <div className="bench-guided-heading"><div><small>CREATE · STEP {activeMobileStep+1} OF {mobileSteps.length}</small><h2>{mobileStep?.title||category}</h2></div><button type="button" onClick={()=>setMobileCategoryOpen(open=>!open)} aria-expanded={mobileCategoryOpen}>All steps <ChevronDown size={15}/></button></div>
+          <div className="bench-guided-heading"><div><small>CREATE · STAGE {activeMobileStep+1} OF {mobileSteps.length}</small><h2>{mobileStep?.title||category}</h2></div><button type="button" onClick={()=>setMobileCategoryOpen(open=>!open)} aria-expanded={mobileCategoryOpen}>Change stage <ChevronDown size={15}/></button></div>
           <div className="bench-guided-progress" aria-label="Creation progress">{mobileSteps.map((g,i)=><button type="button" key={g.key} aria-label={g.title} aria-current={i===activeMobileStep?'step':undefined} onClick={()=>onSection(g.sections[0])} className={i<=activeMobileStep?'reached':''}/>)}</div>
           {mobileCategoryOpen && <nav className="bench-guided-step-list" aria-label="Creation steps">{mobileSteps.map((g,i)=><button key={g.key} type="button" aria-current={i===activeMobileStep?'step':undefined} onClick={()=>{onSection(g.sections[0]);setMobileCategoryOpen(false);}}>{i+1}. {g.title}</button>)}</nav>}
           {mobileStepSections.length>1 && <nav className="bench-guided-substeps" aria-label={mobileStep?.title+' options'}>{mobileStepSections.map(item=><button type="button" key={item.key} aria-current={section===item.key?'step':undefined} onClick={()=>onSection(item.key)}>{item.title}</button>)}</nav>}
@@ -69,7 +69,7 @@ export default function CreationWorkbench({compact=false,section,sections,stages
         <article aria-label={category+' choices'}>{editor}</article>
         {compact && <div className="bench-mobile-bottom-navigation" aria-label="Continue creation">
           <button type="button" disabled={!previous} onClick={()=>onSection(previous.key)}><ChevronLeft size={17}/> Previous</button>
-          <span>{currentIndex+1} / {sections.length}</span>
+          <span aria-label={`Detail ${currentIndex+1} of ${sections.length}`}>Detail {currentIndex+1} of {sections.length}</span>
           <button type="button" disabled={!next} onClick={()=>onSection(next.key)}>Next <ChevronRight size={17}/></button>
         </div>}
         {compact && <details className="bench-mobile-extras"><summary>Additional options</summary>
