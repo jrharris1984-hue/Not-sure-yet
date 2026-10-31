@@ -13,7 +13,7 @@ export function workflowControls(nodes, kind) {
   });
 }
 const pages=[['design','Design',ScanFace],['random','Randomize',Shuffle],['output','Settings',SlidersHorizontal],['preview','Preview',Picture]];
-export default function CreationWorkbench({compact=false,section,sections,stages,onSection,onFind,name,onName,onSave,saving,saveError,people,subjectSwitcher,editor,random,settings,preview,renderStatus,workflow,count,onGenerate,busy,issues,ready,mode,onMode}) {
+export default function CreationWorkbench({compact=false,section,sections,stages,onSection,onFind,name,onName,onSave,saving,saveError,people,subjectSwitcher,subjectCount=1,expectedSubjectCount=1,editor,random,settings,preview,renderStatus,workflow,count,onGenerate,busy,issues,ready,mode,onMode}) {
   const [saved,setPage]=useTabPreference('ultra:creation-workbench-page','design');
   const page=pages.some(([key])=>key===saved)?saved:'design';
   const pane=useRef(null);
@@ -33,7 +33,7 @@ export default function CreationWorkbench({compact=false,section,sections,stages
       {page==='design'?<>
         <div className="bench-context"><label>Category<select aria-label="Category" value={section} onChange={e=>onSection(e.target.value)}>{groups.map(g=><optgroup key={g.key||g.id} label={g.title}>{g.sections.map(key=>sections.find(s=>s.key===key)).filter(Boolean).map(s=><option key={s.key} value={s.key}>{s.title}</option>)}</optgroup>)}{custom.map(s=><option key={s.key} value={s.key}>{s.title}</option>)}</select></label>{!compact && utilities}{compact && <details className="bench-mobile-options"><summary>Editor options</summary><div>{utilities}<details className="bench-people"><summary>People &amp; presets</summary>{people}</details></div></details>}</div>
         {!compact && <details className="bench-people"><summary>People &amp; presets <ChevronDown size={15}/></summary>{people}</details>}
-        {subjectSwitcher && <div className="bench-subject-switcher" aria-label="Edit individual subjects">{subjectSwitcher}</div>}
+        {subjectSwitcher && <div className="bench-subject-switcher" aria-label="Edit individual subjects"><p className="px-3 pt-3 text-xs text-zinc-300" role="status">Editing {subjectCount} of {expectedSubjectCount} selected subjects · Choose a subject to edit its own appearance, clothing and pose.</p>{subjectSwitcher}</div>}
         <div className="bench-category-navigation" aria-label="Category navigation">
           <button type="button" disabled={!previous} onClick={()=>onSection(previous.key)}><ChevronLeft size={17}/> Previous{previous ? ': '+previous.title : ''}</button>
           <span>{currentIndex+1} of {sections.length}</span>
