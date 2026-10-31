@@ -18,6 +18,12 @@ export default function CreationWorkbench({compact=false,section,sections,stages
   const page=pages.some(([key])=>key===saved)?saved:'design';
   const pane=useRef(null);
   const [group,setGroup]=useState('Workflow');
+  const [workflowOpen,setWorkflowOpen]=useState(false);
+  const [workflowSearch,setWorkflowSearch]=useState('');
+  const workflowMenu=useRef(null);
+  const matchingWorkflows=workflows.filter(item=>(item.name || item.title || item.id || '').toLowerCase().includes(workflowSearch.toLowerCase()));
+  const currentWorkflow=workflows.find(item=>item.id===workflowId);
+  useEffect(()=>{if(!workflowOpen)return;const onPointer=e=>{if(workflowMenu.current && !workflowMenu.current.contains(e.target))setWorkflowOpen(false);};document.addEventListener('pointerdown',onPointer);return()=>document.removeEventListener('pointerdown',onPointer);},[workflowOpen]);
   useEffect(()=>{if(pane.current)pane.current.scrollTop=0;},[page,section,group]);
   const groups=stages.filter(s=>s.sections?.length);
   const custom=sections.filter(s=>!groups.some(g=>g.sections.includes(s.key)));
@@ -44,10 +50,18 @@ export default function CreationWorkbench({compact=false,section,sections,stages
     </div>
     <footer className="bench-footer"><div className="bench-footer-workflow">
       <label htmlFor="bench-workflow-select">Generation workflow</label>
-      <select id="bench-workflow-select" aria-label="Generation workflow" value={workflowId || ''} disabled={busy || !onWorkflow || workflows.length===0} onChange={e=>onWorkflow(e.target.value)}>
-        {!workflowId && <option value="">Choose a workflow</option>}
-        {workflows.map(item=><option key={item.id} value={item.id}>{item.name || item.title || item.id}</option>)}
-      </select>
+      <div className="bench-workflow-picker" ref={workflowMenu}>
+        <button id="bench-workflow-select" type="button" className="bench-workflow-trigger" aria-label="Generation workflow" aria-expanded={workflowOpen} aria-controls="bench-workflow-options" disabled={busy || !onWorkflow || workflows.length===0} onClick={()=>{setWorkflowOpen(open=>!open);setWorkflowSearch('');}}>
+          <span>{currentWorkflow?.name || currentWorkflow?.title || workflow || 'Choose a workflow'}</span><ChevronDown size={16}/>
+        </button>
+        {workflowOpen && <div id="bench-workflow-options" className="bench-workflow-popover">
+          <input aria-label="Search workflows" placeholder="Search workflows…" value={workflowSearch} onChange={e=>setWorkflowSearch(e.target.value)} onKeyDown={e=>{if(e.key==='Escape')setWorkflowOpen(false);}} autoFocus/>
+          <div className="bench-workflow-options" role="listbox" aria-label="Available workflows">
+            {matchingWorkflows.map(item=><button type="button" role="option" aria-selected={item.id===workflowId} key={item.id} onClick={()=>{onWorkflow(item.id);setWorkflowOpen(false);}}>{item.name || item.title || item.id}</button>)}
+            {!matchingWorkflows.length && <p>No matching workflows</p>}
+          </div>
+        </div>}
+      </div>
       {issues?.[0] && <small role="status">{issues[0]}</small>}
       {renderStatus && <small>Render: {renderStatus}</small>}
     </div><button type="button" disabled={busy||!ready} onClick={onGenerate}><Play size={16}/>{busy?'Queuing…':count>1?`Generate (${count})`:'Generate'}</button></footer>
