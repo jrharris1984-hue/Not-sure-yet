@@ -106,7 +106,7 @@ async function check(browser,viewport) {
         await page.locator('.workspace-preview-options > summary').click();
         await page.locator('.workspace-preview-size input').press('End');
       }
-      const galleryLink=page.getByTestId(viewport.width>=1280?'nav-gallery':'nav-gallery-tablet');
+      const galleryLink=page.getByTestId('nav-gallery');
       const views=page.getByRole('group',{name:'Editor view',exact:true});
       await views.getByRole('button',{name:'Preview',exact:true}).click();
       for(const browserBack of [true,false]) {
@@ -126,6 +126,12 @@ async function check(browser,viewport) {
       assert.equal(await page.getByTestId('input-character-name').inputValue(),'UI walkthrough');
     } else {
       const nav=page.getByRole('navigation',{name:'Workspace views'});
+      const editor=page.getByTestId('mobile-sheet-builder');
+      await editor.getByRole('navigation',{name:'Design categories'}).waitFor();
+      await editor.getByLabel('Editing detail',{exact:true}).selectOption('style');
+      await editor.getByTestId('chip-hair-style-straight').click();
+      assert.equal(await editor.getByTestId('chip-hair-style-straight').getAttribute('aria-pressed'),'true','Mobile edits the same focused hair control as desktop');
+      await page.screenshot({path:path.join(output,"mobile-editor.png")});
       await nav.getByRole('button',{name:'Preview',exact:true}).click();
       assert.match(await page.getByTestId('primary-creation-sheet').getAttribute('class'),/sheet-peek/);
       await page.getByTestId('nav-gallery-mobile').click();await page.waitForURL('**/gallery');

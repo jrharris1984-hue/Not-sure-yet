@@ -2786,7 +2786,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
       await doDispatch({studioSubjects:result.subjects});
     }}/>
   const renderDnaControls = (sheetField = null) => (
-<EditorPanelBoundary key={`${activeSubjectId}-${activeSection}-${sheetField || "all"}`}><DesktopDnaEditor requestedField={requestedDetail?.section === activeSection && !requestedDetail.field?.startsWith("feet:") ? requestedDetail : null} enabled={!sheetViewport && !sheetField}
+<EditorPanelBoundary key={`${activeSubjectId}-${activeSection}-${sheetField || "all"}`}><DesktopDnaEditor requestedField={requestedDetail?.section === activeSection && !requestedDetail.field?.startsWith("feet:") ? requestedDetail : null} enabled={!sheetField}
             key={`${activeSubjectId}-${activeSection}`}
             section={!sheetField && studioProfile.specialtySection && activeSection === studioProfile.specialtySection
               ? { ...SECTIONS[activeIdx], fields: SECTIONS[activeIdx].fields.filter((field) => field.key === "composition_mode" || studioProfile.fieldGroups[specialtyTab]?.keys.includes(field.key)) }
@@ -3088,7 +3088,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
           onDownload={url => downloadRenderImage(url, `render-${activeRender.render_id || activeRender.id}.${galleryIsVideo(url) ? "webm" : "png"}`)}
           busy={postRenderBusy} /> : null}
         values={builderSectionValue(activeSection, activeDna, primaryDna)}
-        renderControls={renderDnaControls}
+        renderControls={renderDnaControls} focusedEditor={renderDnaControls()}
         castPoseControls={<CastPoseOptions count={subjects.length} value={sharedCastPose(subjects, promptCatalog)}
           onSelect={pose => setSubjects(current => selectSharedCastPose(current, pose))}
           onClear={() => setSubjects(current => editCastPose(current, current[0].id, {...current[0].dna.pose, action:""}, promptCatalog))} />}

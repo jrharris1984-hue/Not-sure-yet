@@ -24,12 +24,12 @@ export function StudioNavLinks({ compact = false, returnTo }) {
   </NavLink>);
 }
 
-export default function MobileStudioNavigation({ returnTo }) {
+export default function MobileStudioNavigation({ returnTo, compactHeader = false }) {
   const location = useLocation();
   const [open, setOpen] = useState(false);
   useEffect(() => { setOpen(false); }, [location.pathname]);
-  const secondary = STUDIO_NAV.filter((item) => ["/media", "/shoots", "/queue", "/settings"].includes(item.to));
-  const secondaryActive = secondary.some((item) => location.pathname.startsWith(item.to)) || location.pathname.startsWith("/shoot/");
+  const secondary = STUDIO_NAV.filter((item) => compactHeader ? item.to !== "/gallery" : ["/media", "/shoots", "/queue", "/settings"].includes(item.to));
+  const secondaryActive = secondary.some((item) => item.to === "/" ? location.pathname === "/" : location.pathname.startsWith(item.to)) || location.pathname.startsWith("/shoot/");
   const primary = STUDIO_NAV.filter((item) => ["/", "/gallery", "/tools"].includes(item.to));
   const itemClass = (active) => `studio-mobile-link flex min-h-16 flex-col items-center justify-center gap-1 text-[11px] ${active ? "text-cyan-200 studio-mobile-link-active" : "text-zinc-400"}`;
   const navItem = (item) => <NavLink key={item.to} to={item.to} end={item.to === "/"}
@@ -37,21 +37,24 @@ export default function MobileStudioNavigation({ returnTo }) {
     data-testid={`${item.testId}-mobile`} className={({ isActive }) => itemClass(isActive || (item.to === "/tools" && location.pathname.startsWith("/image-tools/")))}>
     <item.icon className="h-5 w-5" />{item.label}
   </NavLink>;
-  return <nav aria-label="Mobile studio navigation" className="mobile-bottom-nav glass md:hidden fixed bottom-0 inset-x-0 z-40 border-t border-white/10">
-    <div className="grid grid-cols-5">
+  return <nav aria-label="Mobile studio navigation" className={compactHeader ? "studio-header-navigation md:hidden" : "mobile-bottom-nav glass md:hidden fixed bottom-0 inset-x-0 z-40 border-t border-white/10"}>
+    <div className={compactHeader ? "flex" : "grid grid-cols-5"}>
+      {!compactHeader && <>
       {navItem(primary[0])}
       <Link to="/create" data-testid="btn-new-character-mobile" className={`${itemClass(location.pathname === "/create" || location.pathname.startsWith("/create/") || location.pathname.startsWith("/character"))} text-lime-300`}>
         <Plus className="h-5 w-5" />Create
       </Link>
-      {primary.slice(1).map(navItem)}
+      {primary.slice(1).map(navItem)}</>}
+      {compactHeader && navItem(primary.find(item=>item.to === "/gallery"))}
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetTrigger asChild><button type="button" className={itemClass(secondaryActive)} data-testid="nav-more-mobile">
-          <MoreHorizontal className="h-5 w-5" />More
+          <MoreHorizontal className="h-5 w-5" />{compactHeader ? "Pages" : "More"}
         </button></SheetTrigger>
         <SheetContent side="bottom" className="studio-more-sheet rounded-t-3xl px-5 pt-6 pb-8">
           <SheetTitle>Studio pages</SheetTitle>
           <SheetDescription className="mt-1">Your media, photo shoots, render queue, and studio settings.</SheetDescription>
           <div className="mt-5 grid gap-2">
+            {compactHeader && <SheetClose asChild><Link to="/create" className="rail-create"><Plus size={18}/> Create</Link></SheetClose>}
             {secondary.map((item) => <SheetClose key={item.to} asChild><Link to={item.to} data-testid={`${item.testId}-mobile`}
               className="flex min-h-14 items-center gap-3 rounded-xl border hairline bg-elevated px-4 py-3 text-sm text-zinc-200">
               <item.icon className="h-5 w-5 text-cyan-300" />{item.label}
