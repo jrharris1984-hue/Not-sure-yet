@@ -65,3 +65,11 @@ body:has(.creation-bench){position:fixed;inset:0}
 .bench-category-navigation button:disabled{opacity:.35;cursor:not-allowed}
 .bench-category-navigation span{color:#a1a1aa;font-size:11px;white-space:nowrap}
 @media(max-width:600px){.bench-category-navigation{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.bench-category-navigation span{grid-column:1/-1;grid-row:1;text-align:center}.bench-category-navigation button{font-size:11px;padding:8px 6px}}
+
+/* Quick workflow selection stays alongside Generate in the bottom bar. */
+.bench-footer-workflow{display:flex;flex-direction:column;gap:4px;flex:1 1 190px;min-width:0}
+.bench-footer-workflow label{font-size:11px;color:#a1a1aa}
+.bench-footer-workflow select{width:100%;min-width:0;min-height:44px;padding:8px 32px 8px 10px;border:1px solid #ffffff30;border-radius:9px;background:#181b25;color:#f4f4f5;font-size:13px}
+.bench-footer-workflow select:focus-visible{outline:2px solid #67e8f9;outline-offset:2px}
+.bench-footer-workflow small{font-size:11px;color:#fbbf24;overflow-wrap:anywhere}
+@media(max-width:600px){.bench-footer{flex-wrap:wrap}.bench-footer-workflow{flex-basis:100%}.bench-footer>button{width:100%;justify-content:center}}

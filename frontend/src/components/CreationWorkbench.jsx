@@ -13,7 +13,7 @@ export function workflowControls(nodes, kind) {
   });
 }
 const pages=[['design','Design',ScanFace],['random','Randomize',Shuffle],['output','Settings',SlidersHorizontal],['preview','Preview',Picture]];
-export default function CreationWorkbench({compact=false,section,sections,stages,onSection,onFind,name,onName,onSave,saving,saveError,people,subjectSwitcher,subjectCount=1,expectedSubjectCount=1,editor,random,settings,preview,renderStatus,workflow,count,onGenerate,busy,issues,ready,mode,onMode}) {
+export default function CreationWorkbench({compact=false,section,sections,stages,onSection,onFind,name,onName,onSave,saving,saveError,people,subjectSwitcher,subjectCount=1,expectedSubjectCount=1,editor,random,settings,preview,renderStatus,workflow,workflows=[],workflowId,onWorkflow,count,onGenerate,busy,issues,ready,mode,onMode}) {
   const [saved,setPage]=useTabPreference('ultra:creation-workbench-page','design');
   const page=pages.some(([key])=>key===saved)?saved:'design';
   const pane=useRef(null);
@@ -42,6 +42,14 @@ export default function CreationWorkbench({compact=false,section,sections,stages
         <article aria-label={category+' choices'}>{editor}</article>
       </>:page==='random'?<><h1>Randomize</h1><p className="bench-hint">Choose what to change. Generate when you like the selection.</p>{random}</>:page==='preview'?<><h1>Preview</h1>{preview}</>:<><h1>Generation settings</h1><label className="bench-setting-label">Settings menu<select aria-label="Settings menu" value={group} onChange={e=>setGroup(e.target.value)}>{Object.keys(settings).map(k=><option key={k}>{k}</option>)}</select></label>{typeof settings[group]==="function"?settings[group](()=>setPage("design")):settings[group]}</>}
     </div>
-    <footer className="bench-footer"><div><small>{issues?.[0]?'Needs attention':renderStatus ? 'Render: '+renderStatus : 'Workflow'}</small><span title={issues?.join(' ')||workflow}>{issues?.[0]||workflow||'Choose a workflow in Settings'}</span></div><button type="button" disabled={busy||!ready} onClick={onGenerate}><Play size={16}/>{busy?'Queuing…':count>1?`Generate (${count})`:'Generate'}</button></footer>
+    <footer className="bench-footer"><div className="bench-footer-workflow">
+      <label htmlFor="bench-workflow-select">Generation workflow</label>
+      <select id="bench-workflow-select" aria-label="Generation workflow" value={workflowId || ''} disabled={busy || !onWorkflow || workflows.length===0} onChange={e=>onWorkflow(e.target.value)}>
+        {!workflowId && <option value="">Choose a workflow</option>}
+        {workflows.map(item=><option key={item.id} value={item.id}>{item.name || item.title || item.id}</option>)}
+      </select>
+      {issues?.[0] && <small role="status">{issues[0]}</small>}
+      {renderStatus && <small>Render: {renderStatus}</small>}
+    </div><button type="button" disabled={busy||!ready} onClick={onGenerate}><Play size={16}/>{busy?'Queuing…':count>1?`Generate (${count})`:'Generate'}</button></footer>
   </section>
 }
