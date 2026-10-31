@@ -5,7 +5,7 @@ const groups = [
   { title: "Image", icon: Image, entries: [
     { label: "Create an image", description: "Start from an idea or build visually", to: "/create/image-start" },
     { label: "Edit an image", description: "Change an existing image", to: "/create/guided?start=image", icon: Pencil },
-    { label: "Make variations", description: "Explore new versions of an image", to: "/image-tools/variations", icon: Copy },
+    { label: "Make variations", description: "Explore new versions of an image", to: "/create/tools", icon: Copy },
   ] },
   { title: "Character & shoots", icon: UserRound, entries: [
     { label: "Create a character", description: "Build and save a character", to: "/character/new" },
