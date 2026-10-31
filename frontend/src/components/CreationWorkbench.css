@@ -57,3 +57,11 @@ body:has(.creation-bench){position:fixed;inset:0}
   .creation-bench .bench-field-editor .option-browser>*{margin-top:0}
   .creation-bench .bench-field-editor .choice-list{order:-1;max-height:none;overflow:visible}
 }
+
+/* Category navigation belongs to the visible workbench, not the legacy builder. */
+.bench-category-navigation{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;padding:10px 12px;border-bottom:1px solid #ffffff20;background:#171923}
+.bench-category-navigation button{display:inline-flex;align-items:center;justify-content:center;gap:5px;min-height:44px;min-width:0;padding:8px 12px;border:1px solid #ffffff30;border-radius:9px;color:#f4f4f5;font-size:12px}
+.bench-category-navigation button:last-child{background:#d8b4fe;color:#18121f;font-weight:650}
+.bench-category-navigation button:disabled{opacity:.35;cursor:not-allowed}
+.bench-category-navigation span{color:#a1a1aa;font-size:11px;white-space:nowrap}
+@media(max-width:600px){.bench-category-navigation{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.bench-category-navigation span{grid-column:1/-1;grid-row:1;text-align:center}.bench-category-navigation button{font-size:11px;padding:8px 6px}}

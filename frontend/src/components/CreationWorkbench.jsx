@@ -1,5 +1,5 @@
 import {Children,Fragment,isValidElement,useEffect,useRef,useState} from 'react';
-import {SlidersHorizontal,Shuffle,Image as Picture,ScanFace,ChevronDown,Play} from 'lucide-react';
+import {SlidersHorizontal,Shuffle,Image as Picture,ScanFace,ChevronDown,ChevronLeft,ChevronRight,Play} from 'lucide-react';
 import useTabPreference from '@/hooks/useTabPreference';
 import SettingFinder from './SettingFinder';
 import './CreationWorkbench.css';
@@ -22,6 +22,9 @@ export default function CreationWorkbench({compact=false,section,sections,stages
   const groups=stages.filter(s=>s.sections?.length);
   const custom=sections.filter(s=>!groups.some(g=>g.sections.includes(s.key)));
   const category=sections.find(s=>s.key===section)?.title;
+  const currentIndex=sections.findIndex(s=>s.key===section);
+  const previous=sections[currentIndex-1];
+  const next=sections[currentIndex+1];
   const utilities=<><SettingFinder sections={sections} onSelect={onFind}/><label>Controls<select aria-label="Controls" value={mode} onChange={e=>onMode(e.target.value)}><option value="simple">Essentials</option><option value="advanced">All details</option></select></label></>;
   return <section className="creation-bench" aria-label="Creation workspace">
     <header className="bench-title"><div><small>CREATION STUDIO</small><input aria-label="Character name" value={name} placeholder="Untitled character" onChange={e=>onName(e.target.value)}/></div><button onClick={onSave} disabled={saving}>{saving?'Saving…':saveError?'Retry save':'Save character'}</button></header>
@@ -30,6 +33,11 @@ export default function CreationWorkbench({compact=false,section,sections,stages
       {page==='design'?<>
         <div className="bench-context"><label>Category<select aria-label="Category" value={section} onChange={e=>onSection(e.target.value)}>{groups.map(g=><optgroup key={g.key||g.id} label={g.title}>{g.sections.map(key=>sections.find(s=>s.key===key)).filter(Boolean).map(s=><option key={s.key} value={s.key}>{s.title}</option>)}</optgroup>)}{custom.map(s=><option key={s.key} value={s.key}>{s.title}</option>)}</select></label>{!compact && utilities}{compact && <details className="bench-mobile-options"><summary>Editor options</summary><div>{utilities}<details className="bench-people"><summary>People &amp; presets</summary>{people}</details></div></details>}</div>
         {!compact && <details className="bench-people"><summary>People &amp; presets <ChevronDown size={15}/></summary>{people}</details>}
+        <div className="bench-category-navigation" aria-label="Category navigation">
+          <button type="button" disabled={!previous} onClick={()=>onSection(previous.key)}><ChevronLeft size={17}/> Previous{previous ? ': '+previous.title : ''}</button>
+          <span>{currentIndex+1} of {sections.length}</span>
+          <button type="button" disabled={!next} onClick={()=>onSection(next.key)}>Next{next ? ': '+next.title : ''}<ChevronRight size={17}/></button>
+        </div>
         <article aria-label={category+' choices'}>{editor}</article>
       </>:page==='random'?<><h1>Randomize</h1><p className="bench-hint">Choose what to change. Generate when you like the selection.</p>{random}</>:page==='preview'?<><h1>Preview</h1>{preview}</>:<><h1>Generation settings</h1><label className="bench-setting-label">Settings menu<select aria-label="Settings menu" value={group} onChange={e=>setGroup(e.target.value)}>{Object.keys(settings).map(k=><option key={k}>{k}</option>)}</select></label>{typeof settings[group]==="function"?settings[group](()=>setPage("design")):settings[group]}</>}
     </div>
