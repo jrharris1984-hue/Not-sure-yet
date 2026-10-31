@@ -25,10 +25,17 @@ export default function OptionBrowser({ alwaysSearch = false, preferenceKey, bro
   const remaining = matches.filter(option=>!displayed.includes(option)).length;
   const knownSelected=selected.filter(option=>searchOptions.includes(option));
   const allFavorited=knownSelected.length>0 && knownSelected.every(option=>favorites.includes(option));
-  const hairTools=preferenceKey?.startsWith("chip-hair-");
+  const compactToolLabels = [
+    ["chip-hair-", "Search hairstyles & favorites"],
+    ["chip-face-", "Search face options & favorites"],
+    ["chip-physique-", "Search body options & favorites"],
+    ["chip-wardrobe-", "Search clothing options & favorites"],
+  ];
+  const compactToolLabel = compactToolLabels.find(([prefix]) => preferenceKey?.startsWith(prefix))?.[1];
+  const compactTools = !!compactToolLabel && (searchOptions.length > 8 || favorites.length > 0);
   return <div className="option-browser space-y-3">
-    <details className={hairTools ? "choice-browser-hair-tools" : "choice-browser-standard-tools"} open={hairTools ? undefined : true}>
-      {hairTools && <summary>Search hairstyles &amp; favorites</summary>}
+    <details className={compactTools ? "choice-browser-hair-tools" : "choice-browser-standard-tools"} open={compactTools ? undefined : true}>
+      {compactTools && <summary>{compactToolLabel}</summary>}
     {(large || (alwaysSearch && searchOptions.length>8)) && <div className="choice-browser-toolbar"><label className="choice-browser-search"><span className="sr-only">Search choices</span>
       <input type="search" className="studio-control-search" value={query} onChange={event=>{setQuery(event.target.value);setFavoritesOnly(false);setSelectedOnly(false);}}
         onKeyDown={event=>{if(event.key==='Escape' && query){event.preventDefault();event.stopPropagation();setQuery('');}}}
