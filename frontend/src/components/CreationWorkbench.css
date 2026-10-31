@@ -57,3 +57,8 @@ body:has(.creation-bench){position:fixed;inset:0}
   .creation-bench .bench-field-editor .option-browser>*{margin-top:0}
   .creation-bench .bench-field-editor .choice-list{order:-1;max-height:none;overflow:visible}
 }
+.mobile-detail-path{position:sticky;top:0;z-index:2;display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:6px;padding:4px;background:var(--bench-bg,#171824);border:1px solid var(--bench-line);border-radius:12px;margin-bottom:8px}
+.mobile-detail-path button{min-height:44px;padding:4px 8px;color:#e1cbff;font-size:13px}
+.mobile-detail-path button:disabled{opacity:.4}
+.mobile-detail-path label{display:grid;min-width:0}.mobile-detail-path small{font-size:10px;color:#c7bed4}
+.mobile-detail-path select{width:100%;min-width:0;background:#2a2637;color:white;border-radius:5px;font-size:16px}

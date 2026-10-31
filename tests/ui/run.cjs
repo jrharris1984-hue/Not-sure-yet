@@ -48,6 +48,18 @@ async function check(browser,viewport) {
       await page.screenshot({path:path.join(output,viewport.name+'-first-choice.png')});
     }
     await choice.click();
+    if(viewport.width<768){
+      const field=root.getByLabel('Character detail',{exact:true});
+      const original=await field.inputValue();
+      await root.getByLabel('Next editing step').click();await root.getByLabel('Previous editing step').click();
+      assert.equal(await field.inputValue(),original);
+      const last=await field.locator('option').last().getAttribute('value');
+      await field.selectOption(last);await root.getByLabel('Next editing step').click();
+      assert.notEqual(await root.getByLabel('Category',{exact:true}).inputValue(),'hair');
+      await root.getByLabel('Previous editing step').click();
+      assert.equal(await root.getByLabel('Category',{exact:true}).inputValue(),'hair');
+      assert.equal(await field.inputValue(),last);await field.selectOption(original);
+    }
     await root.getByLabel('Category',{exact:true}).selectOption('wardrobe');
     const wardrobe=root.getByTestId('wardrobe-focused-editor');await wardrobe.getByTestId('wardrobe-mode-custom').click();
     await wardrobe.getByLabel('Editing',{exact:true}).selectOption('top');

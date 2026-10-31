@@ -1,3 +1,4 @@
+import MobileDetailPath from "./MobileDetailPath";
 import DetailNavigator from './DetailNavigator';
 import {useEffect, useState} from 'react';
 import DnaSection from './DnaSection';
@@ -12,7 +13,7 @@ const navigation = [
   {key:'accessories',label:'Accessories',groups:['accessories']},
   {key:'styling',label:'Styling',groups:['fabric','coverage','other']},
 ];
-export default function WardrobeEditor({requestedField, ...props}) {
+export default function WardrobeEditor({requestedField, path=null, ...props}) {
   const [groupKey,setGroupKey]=useState('clothes');
   const [fieldKey,setFieldKey]=useState('');
   const [showInactive,setShowInactive]=useState(false);
@@ -36,10 +37,10 @@ export default function WardrobeEditor({requestedField, ...props}) {
     <WardrobeOverview value={props.value} fields={props.section.fields} disabled={!!props.locked || !!props.fieldLocks?.outfit_mode}
       onModeChange={mode=>props.onChange(editWardrobeField(props.value,'outfit_mode',mode))}
       showInactive={showInactive} onShowInactive={setShowInactive}/>
-    <nav className="flex flex-wrap gap-2" aria-label="Wardrobe navigation">{groups.map(item=><button key={item.key} type="button" className={`chip min-h-11 ${item.key===group?.key?'active':''}`} aria-pressed={item.key===group?.key}
-      onClick={()=>{setGroupKey(item.key);setFieldKey('');}}>{item.label}</button>)}</nav>
+    {path?<MobileDetailPath groups={groups} path={path} label="Editing" value={field?.key} onChange={key=>{setGroupKey(groups.find(g=>g.fields.some(f=>f.key===key))?.key);setFieldKey(key);}}/>:<nav className="flex flex-wrap gap-2" aria-label="Wardrobe navigation">{groups.map(item=><button key={item.key} type="button" className={`chip min-h-11 ${item.key===group?.key?'active':''}`} aria-pressed={item.key===group?.key}
+      onClick={()=>{setGroupKey(item.key);setFieldKey('');}}>{item.label}</button>)}</nav>}
     {field ? <>
-      <DetailNavigator label="Editing" fields={group.fields.map(item=>({...item,label:`${item.label}${wardrobeFieldDisabled(item.key,props.value)?' · inactive':''}`}))} value={field.key} onChange={setFieldKey}/>
+      {!path && <DetailNavigator label="Editing" fields={group.fields.map(item=>({...item,label:`${item.label}${wardrobeFieldDisabled(item.key,props.value)?' · inactive':''}`}))} value={field.key} onChange={setFieldKey}/>}
       <DnaSection {...props} focusedField={field.key} hideWardrobeOverview collapsed={false} simpleMode={false}/>
     </> : <p className="text-sm text-zinc-400">No controls available in this outfit mode.</p>}
   </div>;

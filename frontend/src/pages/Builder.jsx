@@ -2785,8 +2785,8 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
       if(result.issues.length){toast.warning('Randomized scene needs review',{description:result.issues.join(' ')});return;}
       await doDispatch({studioSubjects:result.subjects});
     }}/>
-  const renderDnaControls = (sheetField = null, workbench = false) => (
-<EditorPanelBoundary key={`${activeSubjectId}-${activeSection}-${sheetField || "all"}`}><DesktopDnaEditor workbench={workbench} requestedField={requestedDetail?.section === activeSection && !requestedDetail.field?.startsWith("feet:") ? requestedDetail : null} enabled={!sheetField}
+  const renderDnaControls = (sheetField = null, workbench = false, path = null) => (
+<EditorPanelBoundary key={`${activeSubjectId}-${activeSection}-${sheetField || "all"}`}><DesktopDnaEditor path={path} workbench={workbench} requestedField={requestedDetail?.section === activeSection && !requestedDetail.field?.startsWith("feet:") ? requestedDetail : null} enabled={!sheetField}
             key={`${activeSubjectId}-${activeSection}`}
             section={!sheetField && studioProfile.specialtySection && activeSection === studioProfile.specialtySection
               ? { ...SECTIONS[activeIdx], fields: SECTIONS[activeIdx].fields.filter((field) => field.key === "composition_mode" || studioProfile.fieldGroups[specialtyTab]?.keys.includes(field.key)) }
@@ -3376,13 +3376,18 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
     const count = poseAssistEnabled && !isVariationWorkflow && !isAnyVideoWorkflow ? 1 : renderCount;
     const sharedMode=sheetViewport ? mobileStudioMode : desktopQuickMode ? "simple" : "advanced";
     const extras=kind=>{const nodes=workflowControls([modelExtras,renderExtras,workspaceTools.props.children],kind);return nodes.length?<div className="bench-extra">{nodes}</div>:<p>No matching controls for the selected workflow.</p>;};
+    const ordered=[...new Set([...studioSteps.flatMap(step=>step.sections || []),...SECTIONS.map(s=>s.key)])].filter(key=>SECTIONS.some(s=>s.key===key));
+    const pos=ordered.indexOf(activeSection);
+    const path=sheetViewport ? {category:SECTIONS[activeIdx].title,previous:ordered[pos-1],next:ordered[pos+1],
+      entry:requestedDetail?.section===activeSection && requestedDetail.edge ? requestedDetail : null,
+      consume:()=>setRequestedDetail(null),cross:direction=>{const section=ordered[pos+direction];if(section){setRequestedDetail({section,edge:direction<0?'last':'first'});goSection(section);}}}:null;
     return <CreationWorkbench compact={sheetViewport} section={activeSection} sections={SECTIONS} stages={studioSteps} onSection={goSection}
       onFind={item=>{if(sheetViewport)setMobileStudioMode("advanced");editSelectedDetail(item);}}
       saveError={save.isError} name={name} onName={setName} onSave={()=>save.mutate()} saving={save.isPending}
       mode={sharedMode} onMode={m=>{setMobileStudioMode(m);setDesktopQuickMode(m==="simple");}}
       people={<><SubjectSwitcher subjects={subjects} activeId={activeSubjectId} expectedCount={expectedCount} primaryLabel={subjects[0]?.label || "A"} onSelect={setActiveSubjectId}
         onAdd={addSubject} onRemove={removeSubject} onCopyFromPrimary={copyPrimaryToActive} onRandomizeActive={randomizeActive} showAddForSingle/>{characterPresets}</>}
-      editor={<>{workbenchNotices}{specialtyPresets}{specialtyControls}{renderDnaControls(null,true)}{relatedFootControls(activeSection)}{activeSection==="pose" && subjects.length>1 && <CastPoseOptions count={expectedCount} value={sharedCastPose(subjects,promptCatalog)} onSelect={pose=>setSubjects(current=>selectSharedCastPose(current,pose))} onClear={()=>setSubjects(current=>editCastPose(current,current[0].id,{...current[0].dna.pose,action:""},promptCatalog))}/>}</>}
+      editor={<>{workbenchNotices}{specialtyPresets}{specialtyControls}{renderDnaControls(null,true,path)}{relatedFootControls(activeSection)}{activeSection==="pose" && subjects.length>1 && <CastPoseOptions count={expectedCount} value={sharedCastPose(subjects,promptCatalog)} onSelect={pose=>setSubjects(current=>selectSharedCastPose(current,pose))} onClear={()=>setSubjects(current=>editCastPose(current,current[0].id,{...current[0].dna.pose,action:""},promptCatalog))}/>}</>}
       random={<><RandomSceneControls profile={randomProfile} onProfile={setRandomProfile} onRandomize={randomizeSceneMode} onPhotoRandomize={randomizePhoto} onCustomRandomize={randomizeCustomPhoto} issues={naturalPhotoIssues} busy={dispatching}/>{suiteRandomizers}<CharacterHistoryControls canUndo={characterHistory.canUndo} canRedo={characterHistory.canRedo} onUndo={characterHistory.undo} onRedo={characterHistory.redo}/></>}
       settings={{Workflow:benchOutput,LoRAs:extras("loras"),References:extras("references"),Prompts:extras("prompts"),"Character & files":back=><div className="space-y-3">{extras("files")}<TagInput value={tags} onChange={setTags} placeholder="Character tags"/><button className="chip" onClick={resetCharacter}>Reset character</button><StudioModePicker value={studioMode} onChange={changeStudioMode} disabled={dispatching}/><SelectedDetailsDrawer items={selectedDetails} onEdit={item=>{editSelectedDetail(item);back();}}/><PinnedSectionControls sections={SECTIONS} pinned={sectionPins.pinned} limit={sectionPins.limit} currentSection={activeSection} activeSection={activeSection} onToggle={sectionPins.toggle} onSection={key=>{goSection(key);back();}}/></div>}}
       preview={<>{activeRender && ["queued","running"].includes(activeRender.status)?<StudioRenderReveal render={activeRender} live={studioLive}/>:<StudioPreviewMedia source={activeRender?.output_files?.[0] || referencePreview || character?.thumbnail} status={activeRender?.status} submitting={dispatching}/>}
