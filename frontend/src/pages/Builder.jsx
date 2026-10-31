@@ -2296,18 +2296,18 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
     }));
   };
 
-  const sectionNavigation = (position) => !sheetViewport || desktopQuickMode ? null : (
-    <div className="hidden md:flex items-center justify-between gap-2" aria-label={`${position} section navigation`}>
-      <button type="button" onClick={() => activeIdx > 0 && goSection(SECTIONS[activeIdx - 1].key)}
+  const sectionNavigation = (position) => isImageFirst || editMode === "body_adjust" || quickReview ? null : (
+    <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-white/10 bg-[#12141c] p-3" aria-label={`${position} section navigation`}>
+      <button type="button" onClick={() => activeIdx > 0 && openDesktopSection(SECTIONS[activeIdx - 1].key)}
         disabled={activeIdx === 0} data-testid={`btn-section-prev${position === "top" ? "-top" : ""}`}
         className="inline-flex items-center gap-1.5 rounded-lg border hairline px-4 py-2.5 text-sm text-zinc-200 hover:bg-white/5 disabled:opacity-30">
-        <ChevronLeft className="h-4 w-4" /> {activeIdx > 0 ? SECTIONS[activeIdx - 1].title : "Prev"}
+        <ChevronLeft className="h-4 w-4" /> Previous{activeIdx > 0 ? `: ${SECTIONS[activeIdx - 1].title}` : ""}
       </button>
       {(activeIdx < SECTIONS.length - 1) ? (
-        <button type="button" onClick={() => goSection(SECTIONS[activeIdx + 1].key)}
+        <button type="button" onClick={() => openDesktopSection(SECTIONS[activeIdx + 1].key)}
           data-testid={`btn-section-next${position === "top" ? "-top" : ""}`}
           className="inline-flex items-center gap-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-black text-sm font-semibold px-4 py-2.5">
-          {SECTIONS[activeIdx + 1].title} <ChevronRight className="h-4 w-4" />
+          Next: {SECTIONS[activeIdx + 1].title} <ChevronRight className="h-4 w-4" />
         </button>
       ) : (
         <button type="button" onClick={() => save.mutate()}
