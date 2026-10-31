@@ -42,6 +42,13 @@ export default function CreationWorkbench({compact=false,section,sections,stages
         <div className="bench-context"><label>Category<select aria-label="Category" value={section} onChange={e=>onSection(e.target.value)}>{groups.map(g=><optgroup key={g.key||g.id} label={g.title}>{g.sections.map(key=>sections.find(s=>s.key===key)).filter(Boolean).map(s=><option key={s.key} value={s.key}>{s.title}</option>)}</optgroup>)}{custom.map(s=><option key={s.key} value={s.key}>{s.title}</option>)}</select></label>{!compact && utilities}{compact && <details className="bench-mobile-options"><summary>Editor options</summary><div>{utilities}<details className="bench-people"><summary>People &amp; presets</summary>{people}</details></div></details>}</div>
         {!compact && <details className="bench-people"><summary>People &amp; presets <ChevronDown size={15}/></summary>{people}</details>}
         {subjectSwitcher && <div className="bench-subject-switcher" aria-label="Edit individual subjects"><p className="px-3 pt-3 text-xs text-zinc-300" role="status">Editing {subjectCount} of {expectedSubjectCount} selected subjects · Choose a subject to edit its own appearance, clothing and pose.</p>{subjectSwitcher}</div>}
+        {!compact && <nav className="bench-category-quicknav" aria-label="Jump to editing category">
+          {groups.map(g=><div className="bench-category-group" key={g.key||g.id}>
+            <span className="bench-category-group-title">{g.title}</span>
+            <div className="bench-category-group-items">{g.sections.map(key=>sections.find(item=>item.key===key)).filter(Boolean).map(item=><button key={item.key} type="button" aria-current={section===item.key?'step':undefined} onClick={()=>onSection(item.key)}>{item.title}</button>)}</div>
+          </div>)}
+          {custom.length>0 && <div className="bench-category-group"><span className="bench-category-group-title">More</span><div className="bench-category-group-items">{custom.map(item=><button key={item.key} type="button" aria-current={section===item.key?'step':undefined} onClick={()=>onSection(item.key)}>{item.title}</button>)}</div></div>}
+        </nav>}
         <div className="bench-category-navigation" aria-label="Category navigation">
           <button type="button" disabled={!previous} onClick={()=>onSection(previous.key)}><ChevronLeft size={17}/> Previous{previous ? ': '+previous.title : ''}</button>
           <span>{currentIndex+1} of {sections.length}</span>

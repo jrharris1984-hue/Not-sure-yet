@@ -97,3 +97,13 @@ body:has(.creation-bench){position:fixed;inset:0}
 .bench-desktop-preview-content{min-height:0;overflow:auto;flex:1;padding:12px}
 .bench-desktop-preview-content img,.bench-desktop-preview-content video{max-width:100%;height:auto;object-fit:contain}
 }
+
+/* Phase 3: one-click grouped categories, with no additional nested menus. */
+.bench-category-quicknav{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:flex-start;padding:12px;margin-bottom:12px;border:1px solid var(--bench-line);border-radius:12px;background:#ffffff05}
+.bench-category-group{display:flex;flex-direction:column;gap:6px;min-width:0}
+.bench-category-group-title{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:#b8afc8}
+.bench-category-group-items{display:flex;flex-wrap:wrap;gap:5px}
+.bench-category-group-items button{min-height:34px;padding:6px 10px;border:1px solid #ffffff25;border-radius:8px;background:#282736;color:#e9e3f5;font-size:12px;white-space:nowrap}
+.bench-category-group-items button[aria-current=step]{background:#4d3b66;border-color:#c7a4ff;color:white;font-weight:650}
+.bench-category-group-items button:focus-visible{outline:2px solid #c7a4ff;outline-offset:2px}
+@media(max-width:767px){.bench-category-quicknav{display:none}}
