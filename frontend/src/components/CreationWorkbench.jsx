@@ -20,6 +20,8 @@ export default function CreationWorkbench({compact=false,section,sections,stages
   const [group,setGroup]=useState('Workflow');
   const [workflowOpen,setWorkflowOpen]=useState(false);
   const [workflowSearch,setWorkflowSearch]=useState('');
+  const [desktopPreviewOpen,setDesktopPreviewOpen]=useState(false);
+  const [generationStarted,setGenerationStarted]=useState(false);
   const workflowMenu=useRef(null);
   const matchingWorkflows=workflows.filter(item=>(item.name || item.title || item.id || '').toLowerCase().includes(workflowSearch.toLowerCase()));
   const currentWorkflow=workflows.find(item=>item.id===workflowId);
@@ -48,6 +50,10 @@ export default function CreationWorkbench({compact=false,section,sections,stages
         <article aria-label={category+' choices'}>{editor}</article>
       </>:page==='random'?<><h1>Randomize</h1><p className="bench-hint">Choose what to change. Generate when you like the selection.</p>{random}</>:page==='preview'?<><h1>Preview</h1>{preview}</>:<><h1>Generation settings</h1><label className="bench-setting-label">Settings menu<select aria-label="Settings menu" value={group} onChange={e=>setGroup(e.target.value)}>{Object.keys(settings).map(k=><option key={k}>{k}</option>)}</select></label>{typeof settings[group]==="function"?settings[group](()=>setPage("design")):settings[group]}</>}
     </div>
+    {!compact && generationStarted && desktopPreviewOpen && <aside className="bench-desktop-preview" aria-label="Generated image preview">
+      <div className="bench-desktop-preview-header"><strong>Generation preview</strong><button type="button" onClick={()=>setDesktopPreviewOpen(false)} aria-label="Close preview">Close</button></div>
+      <div className="bench-desktop-preview-content">{preview}</div>
+    </aside>}
     <footer className="bench-footer"><div className="bench-footer-workflow">
       <label htmlFor="bench-workflow-select">Generation workflow</label>
       <div className="bench-workflow-picker" ref={workflowMenu}>
@@ -64,6 +70,6 @@ export default function CreationWorkbench({compact=false,section,sections,stages
       </div>
       {issues?.[0] && <small role="status">{issues[0]}</small>}
       {renderStatus && <small>Render: {renderStatus}</small>}
-    </div><button type="button" disabled={busy||!ready} onClick={onGenerate}><Play size={16}/>{busy?'Queuing…':count>1?`Generate (${count})`:'Generate'}</button></footer>
+    </div>{!compact && generationStarted && !desktopPreviewOpen && <button type="button" onClick={()=>setDesktopPreviewOpen(true)}>Show preview</button>}<button type="button" disabled={busy||!ready} onClick={()=>{if(!compact){setGenerationStarted(true);setDesktopPreviewOpen(true);}onGenerate();}}><Play size={16}/>{busy?'Queuing…':count>1?`Generate (${count})`:'Generate'}</button></footer>
   </section>
 }
