@@ -123,3 +123,5 @@ body:has(.creation-bench){position:fixed;inset:0}
 .bench-category-navigation button{min-width:0;min-height:44px;font-size:12px;overflow-wrap:anywhere}
 .bench-category-navigation span{white-space:nowrap;font-size:11px}
 }
+
+@media(max-width:767px){.bench-desktop-category{display:none!important}.bench-context{display:block}.bench-mobile-editing-tools{display:grid;gap:8px}.bench-mobile-mode{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:4px;border:1px solid #ffffff22;border-radius:12px}.bench-mobile-mode button{min-height:44px;border-radius:9px;color:#c4bbd6}.bench-mobile-mode button[aria-pressed=true]{background:#4d3b66;color:white;font-weight:700}.bench-mobile-find,.bench-mobile-presets{border:1px solid #ffffff22;border-radius:10px;padding:0 10px}.bench-mobile-find summary,.bench-mobile-presets summary{min-height:44px;padding:12px 0;cursor:pointer}.bench-mobile-find[open],.bench-mobile-presets[open]{padding-bottom:10px}}
