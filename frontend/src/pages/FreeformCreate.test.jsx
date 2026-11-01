@@ -4,13 +4,14 @@ import { createRoot } from 'react-dom/client';
 import FreeformCreate from './FreeformCreate';
 import { endpoints } from '@/lib/api';
 jest.mock('react-router-dom', () => ({ Link: ({to,children,...props}) => <a href={to} {...props}>{children}</a> }), {virtual:true});
-jest.mock('@/lib/api', () => ({ endpoints: {comfyLoras:jest.fn(),settings:jest.fn(),listWorkflows:jest.fn(),aiImproveGeneratedPrompt:jest.fn(),aiVideoPrompt:jest.fn(),dispatchRender:jest.fn(),uploadReferenceImage:jest.fn()} }));
+jest.mock('@/lib/api', () => ({ endpoints: {comfyLoras:jest.fn(),loraLibrary:jest.fn(),settings:jest.fn(),listWorkflows:jest.fn(),aiImproveGeneratedPrompt:jest.fn(),aiVideoPrompt:jest.fn(),dispatchRender:jest.fn(),uploadReferenceImage:jest.fn()} }));
 let container, root;
 beforeEach(() => {
   updateAssistantResearch({enabled:false,focus:'',result:null});
   localStorage.clear();
   global.IS_REACT_ACT_ENVIRONMENT=true; jest.clearAllMocks();
   endpoints.comfyLoras.mockResolvedValue({loras:[]});
+  endpoints.loraLibrary.mockResolvedValue({loras:[]});
   endpoints.settings.mockResolvedValue({ai_provider:'ollama'});
   endpoints.listWorkflows.mockResolvedValue([{id:'image',name:'Image',kind:'image',prompt_style:'chroma'},{id:'video',name:'Animate',kind:'video'},{id:'text_video',name:'Video',kind:'text_video'}]);
   endpoints.dispatchRender.mockResolvedValue({id:'job',status:'queued'});
