@@ -27,4 +27,4 @@ jobs:
       - name: Navigation regression tests
         run: CI=true yarn test --watch=false --runInBand src/components/StudioNavigation.test.jsx src/components/AppShell.test.jsx
       - name: Production build
-        run: yarn build
+        run: CI=false yarn build
