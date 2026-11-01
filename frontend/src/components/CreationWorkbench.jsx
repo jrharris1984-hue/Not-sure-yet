@@ -26,6 +26,9 @@ export default function CreationWorkbench({compact=false,section,sections,stages
   const workflowMenu=useRef(null);
   const matchingWorkflows=workflows.filter(item=>(item.name || item.title || item.id || '').toLowerCase().includes(workflowSearch.toLowerCase()));
   const currentWorkflow=workflows.find(item=>item.id===workflowId);
+  const [workflowFavorites,setWorkflowFavorites]=useState([]);
+  const [workflowFavoritesOnly,setWorkflowFavoritesOnly]=useState(false);
+  const displayedWorkflows=matchingWorkflows.filter(item=>!workflowFavoritesOnly||workflowFavorites.includes(item.id));
   useEffect(()=>{if(!workflowOpen)return;const onPointer=e=>{if(workflowMenu.current && !workflowMenu.current.contains(e.target))setWorkflowOpen(false);};document.addEventListener('pointerdown',onPointer);return()=>document.removeEventListener('pointerdown',onPointer);},[workflowOpen]);
   useEffect(()=>{if(pane.current)pane.current.scrollTop=0;},[page,section,group]);
   useEffect(()=>{setMobileCategoryOpen(false);},[section]);
@@ -92,9 +95,10 @@ export default function CreationWorkbench({compact=false,section,sections,stages
         </button>
         {workflowOpen && <div id="bench-workflow-options" className="bench-workflow-popover">
           <input aria-label="Search workflows" placeholder="Search workflows…" value={workflowSearch} onChange={e=>setWorkflowSearch(e.target.value)} onKeyDown={e=>{if(e.key==='Escape')setWorkflowOpen(false);}} autoFocus/>
+          <div className="bench-workflow-filter"><button type="button" aria-pressed={!workflowFavoritesOnly} onClick={()=>setWorkflowFavoritesOnly(false)}>All workflows</button><button type="button" aria-pressed={workflowFavoritesOnly} onClick={()=>setWorkflowFavoritesOnly(true)}>Favorites ({workflowFavorites.length})</button></div>
           <div className="bench-workflow-options" role="listbox" aria-label="Available workflows">
-            {matchingWorkflows.map(item=><button type="button" role="option" aria-selected={item.id===workflowId} key={item.id} onClick={()=>{onWorkflow(item.id);setWorkflowOpen(false);}}>{item.name || item.title || item.id}</button>)}
-            {!matchingWorkflows.length && <p>No matching workflows</p>}
+            {displayedWorkflows.map(item=><div className="bench-workflow-row" key={item.id}><button type="button" role="option" aria-selected={item.id===workflowId} onClick={()=>{onWorkflow(item.id);setWorkflowOpen(false);}}>{item.name || item.title || item.id}</button><button type="button" className="bench-workflow-star" aria-label={`${workflowFavorites.includes(item.id)?"Remove":"Add"} favorite ${item.name || item.title || item.id}`} aria-pressed={workflowFavorites.includes(item.id)} onClick={()=>setWorkflowFavorites(current=>current.includes(item.id)?current.filter(id=>id!==item.id):[...current,item.id])}>{workflowFavorites.includes(item.id)?"★":"☆"}</button></div>)}
+            {!displayedWorkflows.length && <p>{workflowFavoritesOnly?"No favorite workflows yet":"No matching workflows"}</p>}
           </div>
         </div>}
       </div>
