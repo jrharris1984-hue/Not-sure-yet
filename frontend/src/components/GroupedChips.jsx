@@ -96,7 +96,17 @@ export default function GroupedChips({
         </div>
       )}
 
+      {/* Pose filters are optional on narrow screens; thumbnails remain primary. */}
+      {variant === "poses" && <details className="pose-mobile-filters">
+        <summary>Filter poses · {active.name}</summary>
+        <label className="block text-sm text-zinc-300">Pose category
+          <select aria-label="Pose category" className="studio-control-search mt-2 min-h-11 w-full" value={active.name} onChange={event=>setTab(groups.findIndex(group=>group.name===event.target.value))}>
+            {groups.map(group=><option key={group.name} value={group.name}>{group.name}</option>)}
+          </select>
+        </label>
+      </details>}
       {/* Category tabs */}
+      <div className={variant === "poses" ? "pose-desktop-filters" : undefined}>
       {compactCategories ? <label className="block text-sm text-zinc-300">Category<select aria-label="Choice category" className="studio-control-search mt-2 min-h-11 w-full" value={active.name} onChange={event=>setTab(groups.findIndex(group=>group.name===event.target.value))}>{groups.map(group=><option key={group.name} value={group.name}>{group.name}</option>)}</select></label> : <div className="flex flex-wrap gap-1.5">
         {groups.map((g, i) => {
           const isActive = i === tab;
@@ -127,6 +137,8 @@ export default function GroupedChips({
           );
         })}
       </div>}
+
+      </div>
 
       <OptionBrowser key={`${testIdPrefix}:${browseVersion}`} alwaysSearch preferenceKey={testIdPrefix} browseGroup={active.name} options={active.options} searchOptions={groups.flatMap(group => group.options)} value={value} labels={labels}>{visible => <>
       <motion.div key={`${testIdPrefix}-${active.name}`}
