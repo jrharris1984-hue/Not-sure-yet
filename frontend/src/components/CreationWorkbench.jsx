@@ -38,6 +38,7 @@ export default function CreationWorkbench({compact=false,section,sections,stages
   useEffect(()=>{if(!workflowOpen)return;const onPointer=e=>{if(workflowMenu.current && !workflowMenu.current.contains(e.target))setWorkflowOpen(false);};document.addEventListener('pointerdown',onPointer);return()=>document.removeEventListener('pointerdown',onPointer);},[workflowOpen]);
   useEffect(()=>{if(pane.current)pane.current.scrollTop=0;},[page,section,group]);
   useEffect(()=>{setMobileCategoryOpen(false);},[section]);
+  useEffect(()=>{if(compact && generationStarted && ['queued','running','done','failed','error'].includes(renderStatus))setPage('preview');},[compact,generationStarted,renderStatus,setPage]);
   const groups=stages.filter(s=>s.sections?.length);
   const custom=sections.filter(s=>!groups.some(g=>g.sections.includes(s.key)));
   const category=sections.find(s=>s.key===section)?.title;
@@ -81,6 +82,7 @@ export default function CreationWorkbench({compact=false,section,sections,stages
           <span aria-label={`Detail ${currentIndex+1} of ${sections.length}`}>Detail {currentIndex+1} of {sections.length}</span>
           <button type="button" disabled={!next} onClick={()=>onSection(next.key)}>Next <ChevronRight size={17}/></button>
         </div>}
+        {compact && generationStarted && <button type="button" className="bench-view-preview" onClick={()=>setPage('preview')}>View generation preview</button>}
         {compact && <details className="bench-mobile-extras"><summary>Additional options</summary>
           <div className="bench-mobile-mode" role="group" aria-label="Editing detail level"><button type="button" aria-pressed={mode==='simple'} onClick={()=>onMode('simple')}>Essentials</button><button type="button" aria-pressed={mode==='advanced'} onClick={()=>onMode('advanced')}>All details</button></div>
           <details className="bench-mobile-find"><summary>Find a setting</summary><SettingFinder sections={sections} onSelect={onFind}/></details>
