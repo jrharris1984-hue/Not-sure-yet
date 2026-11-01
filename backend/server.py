@@ -370,6 +370,16 @@ async def get_settings() -> Settings:
             s.default_workflow_id = s.workflows[0].id
         await db.settings.insert_one(s.model_dump())
         return s
+    # Add the new HyperMoss seed to existing installs without replacing user-edited workflows.
+    hypermoss_name = "MOSS Image · HyperMoss Lush Turbo INT8 (8 Step)"
+    if not any(w.get("name") == hypermoss_name for w in doc.get("workflows", [])):
+        seed = next((w for w in _load_seed_workflows() if w.name == hypermoss_name), None)
+        if seed:
+            await db.settings.update_one(
+                {"id": "singleton", "workflows.name": {"$ne": hypermoss_name}},
+                {"$push": {"workflows": seed.model_dump()}}
+            )
+            doc = await db.settings.find_one({"id": "singleton"}, {"_id": 0})
     if doc.get("wardrobe_catalog_version", 0) < 2:
         catalog = upgrade_wardrobe_catalog(doc.get("prompt_catalog"), doc.get("wardrobe_catalog_version", 0))
         await db.settings.update_one({"id": "singleton", "$or": [{"wardrobe_catalog_version": {"$exists": False}}, {"wardrobe_catalog_version": {"$lt": 2}}]}, {"$set": {"prompt_catalog": catalog, "wardrobe_catalog_version": 2}})
