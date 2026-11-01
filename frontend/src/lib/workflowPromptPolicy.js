@@ -8,8 +8,10 @@ export function workflowPromptPolicy({workflowKind = '', promptStyle = '', compi
   const video = ['video','text_video'].includes(kind) || ['wan_i2v','wan_t2v'].includes(style);
   const reference = ['flux2_klein_edit','qwen_reference'].includes(promptStyle);
   const edit = ['edit','enhance'].includes(kind) || style === 'qwen_edit' || reference;
+  // MOSS understands direct descriptive sentences; avoid forcing photo-only quality prefixes
+  // and a generic negative exclusion list onto every MOSS image style.
   return {task:video ? 'video' : edit ? 'edit' : 'image',
-    photographic:!video && !edit, imageLoras:!video && !reference};
+    photographic:!video && !edit && style !== 'moss_image', imageLoras:!video && !reference};
 }
 
 export function builderLoraFields(policy, {primary = {}, secondary = null, overrides = {}} = {}) {

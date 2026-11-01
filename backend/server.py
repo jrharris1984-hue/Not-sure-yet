@@ -256,6 +256,7 @@ def _detect_prompt_nodes(wf: Dict[str, Any]) -> Dict[str, str]:
 
 
 SEED_WORKFLOWS = [
+    {"file": "moss_hypermoss_lush_turbo_int8.json", "name": "MOSS Image · HyperMoss Lush Turbo INT8 (8 Step)", "kind": "image", "prompt_style": "moss_image", "notes": "Uses hypermossLushTurbo_int8V1.safetensors (INT8 ConvRot) with the existing MOSS Qwen3.5 9B encoder and FLUX.2 small VAE. Model-card baseline: 8 steps, CFG 1, Euler sampler, Simple scheduler; MOSS scheduler is also recommended if installed. Natural-language descriptive sentences are preferred; TAG-style prompts remain supported. No additional DMD Turbo LoRA should be loaded because the checkpoint already includes its acceleration. Confirm local filename and loader compatibility in ComfyUI. Manual settings can override defaults."},
     {"file": "moss_stardust_bf16.json", "name": "MOSS Image · Lox Stardust Mix v1.0 BF16 (Test)", "kind": "image", "prompt_style": "moss_image", "notes": "Uses loxsStardustMixMoss_v10_bf16.safetensors with Qwen3.5 9B W4A8 encoder and FLUX.2 small VAE. Creator baseline from the supplied model card: 25 steps, CFG 3, ER-SDE / simple, 1024x1024, batch 1. Creator ranges: 25-50 steps, CFG 3-5, 1-2 MP. No added speed LoRA. Optional creator detailers and SeedVR2 are not bundled. BF16 may require CPU offloading on 12 GB VRAM. Existing manual generation settings can override template values. Model card limits use to personal, non-commercial generation; see the creator license."},
     {"file": "moss_jib_realistic_bf16.json", "name": "MOSS Image · Jib Mix Realistic v1 BF16 (8-Step Test)", "kind": "image", "prompt_style": "moss_image", "notes": "Uses jibMixMossRealistic_v1OneToOne_bf16.safetensors with Qwen3.5 9B W4A8 encoder and FLUX.2 small VAE. Creator announcement says an 8-step LoRA is merged; no additional speed LoRA is loaded. Adjustable starting test: 8 steps, CFG 1, Euler / simple, 768x1024, batch 1. CFG and sampler are assumptions, not verified version-specific recommendations. BF16 may require CPU offloading on 12 GB VRAM. Existing manual generation settings can override template values."},
     {"file": "krea2_realistic_photography.json", "name": "Krea 2 · Realistic Photography (Baseline)", "kind": "image", "prompt_style": "krea2_test", "notes": "Assumes realisticPhotography_krea2Turbo.safetensors is a full diffusion model in diffusion_models. Reuses Qwen3-VL 4B and Qwen Image VAE. Adjustable 8-step Euler / simple / CFG 1 baseline; creator recipe and file tensor format were not independently verified. If this download is a LoRA instead, use it through the Krea2 LoRA picker rather than this workflow."},
@@ -369,6 +370,16 @@ async def get_settings() -> Settings:
             s.default_workflow_id = s.workflows[0].id
         await db.settings.insert_one(s.model_dump())
         return s
+    # Add the new HyperMoss seed to existing installs without replacing user-edited workflows.
+    hypermoss_name = "MOSS Image · HyperMoss Lush Turbo INT8 (8 Step)"
+    if not any(w.get("name") == hypermoss_name for w in doc.get("workflows", [])):
+        seed = next((w for w in _load_seed_workflows() if w.name == hypermoss_name), None)
+        if seed:
+            await db.settings.update_one(
+                {"id": "singleton", "workflows.name": {"$ne": hypermoss_name}},
+                {"$push": {"workflows": seed.model_dump()}}
+            )
+            doc = await db.settings.find_one({"id": "singleton"}, {"_id": 0})
     if doc.get("wardrobe_catalog_version", 0) < 2:
         catalog = upgrade_wardrobe_catalog(doc.get("prompt_catalog"), doc.get("wardrobe_catalog_version", 0))
         await db.settings.update_one({"id": "singleton", "$or": [{"wardrobe_catalog_version": {"$exists": False}}, {"wardrobe_catalog_version": {"$lt": 2}}]}, {"$set": {"prompt_catalog": catalog, "wardrobe_catalog_version": 2}})
