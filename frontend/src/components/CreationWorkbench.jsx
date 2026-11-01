@@ -38,7 +38,7 @@ export default function CreationWorkbench({compact=false,section,sections,stages
   useEffect(()=>{if(!workflowOpen)return;const onPointer=e=>{if(workflowMenu.current && !workflowMenu.current.contains(e.target))setWorkflowOpen(false);};document.addEventListener('pointerdown',onPointer);return()=>document.removeEventListener('pointerdown',onPointer);},[workflowOpen]);
   useEffect(()=>{if(pane.current)pane.current.scrollTop=0;},[page,section,group]);
   useEffect(()=>{setMobileCategoryOpen(false);},[section]);
-  useEffect(()=>{if(compact && generationStarted && ['queued','running','done','failed','error'].includes(renderStatus))setPage('preview');},[compact,generationStarted,renderStatus,setPage]);
+  useEffect(()=>{if(compact && generationStarted && ['queued','running','done','failed','error'].includes(renderStatus))setPage('preview');},[compact,generationStarted,renderStatus]);
   const groups=stages.filter(s=>s.sections?.length);
   const custom=sections.filter(s=>!groups.some(g=>g.sections.includes(s.key)));
   const category=sections.find(s=>s.key===section)?.title;
