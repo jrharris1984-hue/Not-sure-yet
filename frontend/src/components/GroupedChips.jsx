@@ -147,7 +147,7 @@ export default function GroupedChips({
 
         transition={reduceMotion ? {duration:0} : {type:"spring",stiffness:420,damping:30,opacity:{duration:0.16}}}>
       {variant === "poses" ? (
-        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
+        <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-2.5">
           {visible.map((opt) => {
             const isActive = has(opt);
             return (
@@ -157,13 +157,13 @@ export default function GroupedChips({
                 data-testid={`${testIdPrefix}-${opt.replace(/\s+/g, "-")}`}
                 aria-pressed={isActive}
                 onClick={() => toggle(opt)}
-                className={`studio-choice flex flex-col items-center justify-center gap-1 rounded-xl border p-2 text-[10px] leading-tight text-center min-h-[108px] transition-all ${
+                className={`studio-choice flex flex-col items-center justify-center gap-1 rounded-xl border p-2 text-[10px] leading-tight text-center min-h-[148px] sm:min-h-[108px] transition-all ${
                   isActive
                     ? "border-amber-500 bg-amber-500/10 text-amber-100 shadow-[0_0_20px_rgba(245,158,11,0.15)]"
                     : "border-[#222634] bg-[#12141C] text-zinc-300 hover:border-zinc-600 hover:bg-[#1A1D28]"
                 }`}
               >
-                <PoseIcon name={opt} size={56} active={isActive} />
+                <PoseIcon name={opt} size={72} active={isActive} />
                 <span className="font-mono uppercase tracking-tight">{labels[opt] || opt}</span>
               </button>
             );
