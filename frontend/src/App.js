@@ -10,6 +10,7 @@ import { BrowserRouter, Routes, Route, Navigate, useParams } from "react-router-
 import { Toaster } from "sonner";
 import AppShell from "@/components/AppShell";
 import Library from "@/pages/Library";
+import Projects from "@/pages/Projects";
 import MediaLibrary from "@/pages/MediaLibrary";
 import Builder from "@/pages/Builder";
 import CharacterPreviewLab from "@/pages/CharacterPreviewLab";
@@ -45,6 +46,7 @@ function App() {
           <Routes>
             <Route path="/" element={<CreationHome />} />
             <Route path="/library" element={<Library />} />
+            <Route path="/projects" element={<Projects />} />
             <Route path="/create/image-start" element={<CreationHome chooseImage />} />
             <Route path="/research" element={<div className="mx-auto max-w-4xl p-6"><AIResearchPanel open /></div>} />
             <Route path="/create" element={<Suspense fallback={<div className="p-8">Loading workspace…</div>}><StudioWorkspace /></Suspense>} />
