@@ -10,7 +10,7 @@ const changeSelect=(element,value)=>act(()=>{element.value=value;element.dispatc
 test('browsing groups, fields and categories does not alter saved character data',()=>{
   const onChange=jest.fn();
   act(()=>root.render(<WardrobeEditor section={section} value={{outfit_mode:'custom',top:'t-shirt'}} onChange={onChange}/>));
-  changeSelect(container.querySelector('select'),'top');
+  changeSelect(container.querySelector('select[aria-label="Editing"]'),'top');
   expect(container.querySelectorAll('[data-field-key]')).toHaveLength(1);
   expect(container.querySelector('[data-field-key="top"]')).not.toBeNull();
   changeSelect(container.querySelector('[aria-label="Choice category"]'),'Knitwear');
