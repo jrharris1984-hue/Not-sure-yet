@@ -24,7 +24,7 @@ function DestinationLink({ item, returnTo, mobile = false, onClick }) {
     <NavLink to={item.path} state={state} onClick={onClick}
       data-testid={`nav-${item.id}${mobile ? "-mobile" : ""}`}
       aria-current={active ? "page" : undefined}
-      className={`studio-nav-link flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm ${active ? "studio-nav-link-active" : "text-zinc-400"}`}>
+      className={mobile ? `studio-mobile-link flex min-h-16 min-w-0 flex-col items-center justify-center gap-1 px-1 text-[11px] ${active ? "studio-mobile-link-active text-cyan-200" : "text-zinc-400"}` : `studio-nav-link flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm ${active ? "studio-nav-link-active" : "text-zinc-400"}`}>
       <Icon size={18} aria-hidden="true" /><span>{item.label}</span>
     </NavLink>
   );
