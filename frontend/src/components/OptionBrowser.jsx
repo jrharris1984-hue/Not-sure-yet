@@ -9,7 +9,7 @@ export function normalizeChoiceSearch(value) {
 export default function OptionBrowser({ alwaysSearch = false, preferenceKey, browseGroup = "all", options = [], searchOptions = options, value, labels = {}, children }) {
   const [query, setQuery] = useState("");
   const [wardrobePage,setWardrobePage]=useState(0);
-  const pagedWardrobe=preferenceKey?.startsWith("chip-wardrobe-");
+  const pagedWardrobe=preferenceKey?.startsWith("chip-wardrobe-") && typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches;
   const wardrobePageSize=12;
   const [savedLimit, setLimit] = useTabPreference(preferenceKey ? `ultra:choice-limit:${preferenceKey}:${browseGroup}` : null, 24);
   const limit = Math.max(24, Math.floor(savedLimit));
