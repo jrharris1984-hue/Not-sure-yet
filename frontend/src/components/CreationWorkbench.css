@@ -242,3 +242,14 @@ body:has(.creation-bench){position:fixed;inset:0}
 .creation-bench .bench-wardrobe-editor .wardrobe-focused-section>header>.wardrobe-section-actions{display:block}
 .creation-bench .bench-wardrobe-editor .wardrobe-focused-section>header>.wardrobe-section-actions>summary{min-height:42px;display:flex;align-items:center}
 }
+
+/* Mobile pose gallery: compact category filter and unobscured thumbnails. */
+.pose-mobile-filters{display:none}
+@media(max-width:767px){
+.creation-bench .pose-mobile-filters{display:block;border:1px solid #ffffff30;border-radius:9px;padding:0 10px}
+.creation-bench .pose-mobile-filters>summary{display:flex;align-items:center;min-height:44px;cursor:pointer;font-size:12px;color:#d8c9f0}
+.creation-bench .pose-mobile-filters[open]{padding-bottom:12px}
+.creation-bench .pose-desktop-filters{display:none}
+.creation-bench .bench-scroll:has([data-testid^="pose-pose-"]) .bench-mobile-bottom-navigation{position:relative;bottom:auto;z-index:auto;margin-top:14px;box-shadow:none}
+.creation-bench .bench-scroll:has([data-testid^="pose-pose-"]){padding-bottom:110px;scroll-padding-bottom:120px}
+}
