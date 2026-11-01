@@ -30,3 +30,7 @@
 @media(max-width:767px){.wp-progress {gap:8px;}.wp-mobile-progress {min-width:0;max-width:62%;}.wp-top {gap:12px;}.wp-step-heading h1 {line-height:1.25;}.wp-detail-row {grid-template-columns:minmax(0,.85fr) minmax(0,1fr) 68px;}.wp-detail-row>span:first-child {font-size:13px;}.wp-footer {box-shadow:0 -8px 28px #0003;}.wp-footer .wp-button {min-height:48px;}}
 @media(prefers-reduced-motion:reduce){.workspace-preview button,.workspace-preview a {transition:none;}}
 .wp-skip { position:fixed; top:-100px; left:16px; z-index:100; padding:12px 18px; border-radius:10px; background:#9bdfde; color:#112225; }.wp-skip:focus { top:12px; }
+
+/* Guided editor: keep step position visible without crowding mobile actions. */
+.wp-footer-status { flex:1; text-align:center; color:var(--wp-muted); font-size:12px; }
+@media(max-width:767px) { .wp-footer-status { display:none; } .wp-footer .wp-button { padding-inline:12px; } }
