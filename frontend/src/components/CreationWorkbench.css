@@ -234,3 +234,11 @@ body:has(.creation-bench){position:fixed;inset:0}
 .creation-bench .bench-scroll:has(.bench-wardrobe-editor){padding-bottom:110px;scroll-padding-bottom:120px;overscroll-behavior:contain}
 .creation-bench .bench-wardrobe-editor .selection-panel{padding-bottom:18px}
 }
+
+/* Wardrobe mobile: one tools label, without hiding the actual editing fields. */
+@media(max-width:767px){
+.creation-bench .bench-wardrobe-editor .wardrobe-focused-section>header{display:block}
+.creation-bench .bench-wardrobe-editor .wardrobe-focused-section>header>button[data-testid="btn-collapse-wardrobe"]{display:none}
+.creation-bench .bench-wardrobe-editor .wardrobe-focused-section>header>.wardrobe-section-actions{display:block}
+.creation-bench .bench-wardrobe-editor .wardrobe-focused-section>header>.wardrobe-section-actions>summary{min-height:42px;display:flex;align-items:center}
+}

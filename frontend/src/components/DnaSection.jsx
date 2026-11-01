@@ -109,7 +109,7 @@ export default function DnaSection({
   return (
     <section
       data-testid={`dna-section-${section.key}`}
-      className="pane selection-panel p-3 sm:p-6 space-y-3 sm:space-y-4"
+      className={`pane selection-panel p-3 sm:p-6 space-y-3 sm:space-y-4${section.key === "wardrobe" && focusedField ? " wardrobe-focused-section" : ""}`}
     >
       {!embedded && <header className="flex flex-wrap items-start sm:items-center justify-between gap-2">
         <button
@@ -126,7 +126,7 @@ export default function DnaSection({
           </div>
         </button>
         <details className="wardrobe-section-actions" open={section.key !== 'wardrobe' || (typeof window !== 'undefined' && window.matchMedia('(min-width: 768px)').matches)}>
-          <summary>Section tools</summary>
+          <summary>Wardrobe tools</summary>
           <div className="flex items-center gap-1">
           {onSuggest && <button
             type="button"
