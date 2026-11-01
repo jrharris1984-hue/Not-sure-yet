@@ -26,7 +26,7 @@ function Choice({ to, icon: Icon, title, description }) {
 }
 
 export default function CreationHome({ chooseImage = false }) {
-  return <div className="mx-auto w-full max-w-5xl px-4 pb-24 pt-8 sm:px-8 sm:pt-12" data-testid={chooseImage ? "image-start-screen" : "creation-home"}>
+  return <div className="mx-auto w-full max-w-7xl px-4 pb-24 pt-8 sm:px-8 sm:pt-12" data-testid={chooseImage ? "image-start-screen" : "creation-home"}>
     <div className="mb-7 flex flex-wrap items-center justify-between gap-3">
       <span className="text-xs font-semibold uppercase tracking-[0.2em] text-amber-300">Ultra Studio · Create</span>
       <Link className="inline-flex items-center gap-2 text-sm text-zinc-300 underline-offset-4 hover:underline" to="/library"><LibraryIcon size={16}/> Character library</Link>
@@ -42,7 +42,7 @@ export default function CreationHome({ chooseImage = false }) {
     </> : <>
       <h1 className="font-display text-3xl font-bold tracking-tight sm:text-4xl">What would you like to create?</h1>
       <p className="mb-8 mt-3 text-zinc-400">Choose a starting point. The details come later.</p>
-      <div className="grid gap-5 lg:grid-cols-2">
+      <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
         {groups.map(group => <section key={group.title} className="rounded-2xl border border-white/10 bg-zinc-900/60 p-4 sm:p-5">
           <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold"><group.icon size={20} className="text-amber-300"/>{group.title}</h2>
           <div className="space-y-2">{group.entries.map(entry => <Choice key={entry.label} to={entry.to} icon={entry.icon || group.icon} title={entry.label} description={entry.description}/>)}</div>
