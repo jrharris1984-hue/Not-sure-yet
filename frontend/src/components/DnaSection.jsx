@@ -125,7 +125,9 @@ export default function DnaSection({
             <h2 className="font-display font-bold text-lg sm:text-xl">{focusedField ? "Section tools" : section.title}</h2>
           </div>
         </button>
-        <div className="flex items-center gap-1">
+        <details className="wardrobe-section-actions" open={section.key !== 'wardrobe' || (typeof window !== 'undefined' && window.matchMedia('(min-width: 768px)').matches)}>
+          <summary>Section tools</summary>
+          <div className="flex items-center gap-1">
           {onSuggest && <button
             type="button"
             title="AI suggest"
@@ -166,7 +168,8 @@ export default function DnaSection({
           >
             {locked ? <Lock className="h-4 w-4" /> : <LockOpen className="h-4 w-4" />}
           </button>
-        </div>
+          </div>
+        </details>
       </header>}
 
       {collapsed && <p className="text-xs text-zinc-400 break-words">{section.fields.flatMap(field => {
