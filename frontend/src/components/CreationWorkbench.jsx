@@ -26,8 +26,14 @@ export default function CreationWorkbench({compact=false,section,sections,stages
   const workflowMenu=useRef(null);
   const matchingWorkflows=workflows.filter(item=>(item.name || item.title || item.id || '').toLowerCase().includes(workflowSearch.toLowerCase()));
   const currentWorkflow=workflows.find(item=>item.id===workflowId);
-  const [workflowFavorites,setWorkflowFavorites]=useState([]);
+  const [workflowFavorites,setWorkflowFavorites]=useState(()=>{
+    try {
+      const stored=JSON.parse(window.localStorage.getItem('ultra:favorite-generation-workflows')||'[]');
+      return Array.isArray(stored)?stored.filter(id=>typeof id==='string'):[];
+    } catch { return []; }
+  });
   const [workflowFavoritesOnly,setWorkflowFavoritesOnly]=useState(false);
+  useEffect(()=>{try{window.localStorage.setItem('ultra:favorite-generation-workflows',JSON.stringify(workflowFavorites));}catch{/* Storage unavailable; keep session favorites. */}},[workflowFavorites]);
   const displayedWorkflows=matchingWorkflows.filter(item=>!workflowFavoritesOnly||workflowFavorites.includes(item.id));
   useEffect(()=>{if(!workflowOpen)return;const onPointer=e=>{if(workflowMenu.current && !workflowMenu.current.contains(e.target))setWorkflowOpen(false);};document.addEventListener('pointerdown',onPointer);return()=>document.removeEventListener('pointerdown',onPointer);},[workflowOpen]);
   useEffect(()=>{if(pane.current)pane.current.scrollTop=0;},[page,section,group]);
