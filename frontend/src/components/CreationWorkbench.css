@@ -203,3 +203,15 @@ body:has(.creation-bench){position:fixed;inset:0}
 .creation-bench .choice-browser-hair-tools>summary{cursor:pointer;min-height:44px;display:flex;align-items:center;color:#c4bbd6;font-size:12px}
 .creation-bench .choice-browser-hair-tools[open]{padding-bottom:10px}
 .creation-bench .choice-browser-hair-tools .choice-browser-toolbar{margin-bottom:8px}
+
+/* Wardrobe-only mobile refinement: never cover garment options with navigation. */
+@media(max-width:767px){
+.creation-bench .bench-scroll:has(.bench-wardrobe-editor) .bench-mobile-bottom-navigation{
+  position:relative;bottom:auto;z-index:auto;box-shadow:none;
+  margin-top:14px;margin-bottom:10px;
+}
+.creation-bench .bench-wardrobe-editor{min-width:0}
+.creation-bench .bench-wardrobe-editor :is(button,select,input){max-width:100%}
+.creation-bench .bench-wardrobe-editor .visual-choice-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.creation-bench .bench-wardrobe-editor .visual-choice-grid button{min-height:48px;white-space:normal;overflow-wrap:anywhere}
+}

@@ -66,7 +66,7 @@ export default function CreationWorkbench({compact=false,section,sections,stages
           <span>{currentIndex+1} of {sections.length}</span>
           <button type="button" disabled={!next} onClick={()=>onSection(next.key)}>Next<ChevronRight size={17}/></button>
         </div>
-        <article aria-label={category+' choices'}>{editor}</article>
+        <article className={section==='wardrobe' ? 'bench-wardrobe-editor' : undefined} aria-label={category+' choices'}>{editor}</article>
         {compact && <div className="bench-mobile-bottom-navigation" aria-label="Continue creation">
           <button type="button" disabled={!previous} onClick={()=>onSection(previous.key)}><ChevronLeft size={17}/> Previous</button>
           <span aria-label={`Detail ${currentIndex+1} of ${sections.length}`}>Detail {currentIndex+1} of {sections.length}</span>
