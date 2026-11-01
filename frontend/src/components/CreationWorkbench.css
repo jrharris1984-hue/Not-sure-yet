@@ -223,3 +223,14 @@ body:has(.creation-bench){position:fixed;inset:0}
 .creation-bench .wardrobe-mobile-detail-nav{display:flex;flex-direction:column;gap:7px;font-size:12px;font-weight:600;color:#d9d2e8}
 .creation-bench .wardrobe-mobile-detail-nav select{width:100%;min-height:46px;min-width:0;padding:10px 12px;border:1px solid #ffffff35;border-radius:10px;background:#202737;color:#f4f2ff;font-size:16px}
 }
+
+/* Mobile wardrobe: keep actions available without pushing choices downward. */
+.wardrobe-section-actions>summary{display:none}
+.wardrobe-section-actions[open]>div{display:flex;flex-wrap:wrap;gap:4px}
+@media(max-width:767px){
+.creation-bench .bench-wardrobe-editor .wardrobe-section-actions{width:100%}
+.creation-bench .bench-wardrobe-editor .wardrobe-section-actions>summary{display:block;cursor:pointer;padding:9px 10px;border:1px solid #ffffff30;border-radius:9px;color:#d9d2e8;font-size:12px}
+.creation-bench .bench-wardrobe-editor .wardrobe-section-actions[open]>div{padding-top:10px}
+.creation-bench .bench-scroll:has(.bench-wardrobe-editor){padding-bottom:110px;scroll-padding-bottom:120px;overscroll-behavior:contain}
+.creation-bench .bench-wardrobe-editor .selection-panel{padding-bottom:18px}
+}
