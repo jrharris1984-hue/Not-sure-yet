@@ -215,3 +215,11 @@ body:has(.creation-bench){position:fixed;inset:0}
 .creation-bench .bench-wardrobe-editor .visual-choice-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
 .creation-bench .bench-wardrobe-editor .visual-choice-grid button{min-height:48px;white-space:normal;overflow-wrap:anywhere}
 }
+
+/* Wardrobe: one clear detail picker on phones, existing rich navigator on desktop. */
+.wardrobe-mobile-detail-nav{display:none}
+@media(max-width:767px){
+.creation-bench .wardrobe-desktop-detail-nav{display:none}
+.creation-bench .wardrobe-mobile-detail-nav{display:flex;flex-direction:column;gap:7px;font-size:12px;font-weight:600;color:#d9d2e8}
+.creation-bench .wardrobe-mobile-detail-nav select{width:100%;min-height:46px;min-width:0;padding:10px 12px;border:1px solid #ffffff35;border-radius:10px;background:#202737;color:#f4f2ff;font-size:16px}
+}
