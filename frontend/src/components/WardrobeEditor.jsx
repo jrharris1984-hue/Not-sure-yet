@@ -36,8 +36,13 @@ export default function WardrobeEditor({requestedField, ...props}) {
     <WardrobeOverview value={props.value} fields={props.section.fields} disabled={!!props.locked || !!props.fieldLocks?.outfit_mode}
       onModeChange={mode=>props.onChange(editWardrobeField(props.value,'outfit_mode',mode))}
       showInactive={showInactive} onShowInactive={setShowInactive}/>
-    <nav className="flex flex-wrap gap-2" aria-label="Wardrobe navigation">{groups.map(item=><button key={item.key} type="button" className={`chip min-h-11 ${item.key===group?.key?'active':''}`} aria-pressed={item.key===group?.key}
+    <nav className="wardrobe-category-tabs flex flex-wrap gap-2" aria-label="Wardrobe navigation">{groups.map(item=><button key={item.key} type="button" className={`chip min-h-11 ${item.key===group?.key?'active':''}`} aria-pressed={item.key===group?.key}
       onClick={()=>{setGroupKey(item.key);setFieldKey('');}}>{item.label}</button>)}</nav>
+    <label className="wardrobe-mobile-category">Clothing category
+      <select aria-label="Clothing category" value={group?.key || ''} onChange={event=>{setGroupKey(event.target.value);setFieldKey('');}}>
+        {groups.map(item=><option key={item.key} value={item.key}>{item.label}</option>)}
+      </select>
+    </label>
     {field ? <>
       <div className="wardrobe-desktop-detail-nav"><DetailNavigator label="Editing" fields={group.fields.map(item=>({...item,label:`${item.label}${wardrobeFieldDisabled(item.key,props.value)?' · inactive':''}`}))} value={field.key} onChange={setFieldKey}/></div>
       <label className="wardrobe-mobile-detail-nav">Customize
