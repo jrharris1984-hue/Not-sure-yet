@@ -34,3 +34,25 @@
 /* Guided editor: keep step position visible without crowding mobile actions. */
 .wp-footer-status { flex:1; text-align:center; color:var(--wp-muted); font-size:12px; }
 @media(max-width:767px) { .wp-footer-status { display:none; } .wp-footer .wp-button { padding-inline:12px; } }
+
+/* Phase 2 mobile layout: prevent horizontal clipping and keep controls reachable. */
+@media (max-width:767px) {
+  .workspace-preview { min-width:0; width:100%; overflow-x:clip; }
+  .wp-top, .wp-progress, .wp-workspace { min-width:0; max-width:100%; }
+  .wp-progress { flex-wrap:wrap; align-items:stretch; padding:12px 16px; }
+  .wp-progress > .wp-text-button { flex:0 0 auto; }
+  .wp-mobile-progress { flex:1 1 150px; max-width:none; min-width:0; }
+  .wp-mobile-progress select { width:100%; }
+  .wp-workspace { padding:12px 16px 140px; }
+  .wp-step-heading { flex-wrap:wrap; gap:12px; }
+  .wp-step-heading > div:first-child { flex:1 1 100%; min-width:0; }
+  .wp-detail-row { grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:8px 12px; }
+  .wp-detail-row > span:last-child { grid-column:2; max-width:none; text-align:left; }
+  .wp-detail-row strong { min-width:0; overflow-wrap:anywhere; }
+  .wp-person-switch { flex-wrap:wrap; }
+  .wp-footer { padding:10px 16px max(12px,env(safe-area-inset-bottom)); gap:10px; }
+  .wp-footer .wp-button { flex:1 1 0; min-width:0; white-space:normal; text-align:center; }
+  .wp-footer .wp-primary { margin-left:0; }
+  .wp-dialog { max-width:calc(100vw - 24px); }
+  .wp-review-settings { gap:12px; flex-wrap:wrap; }
+}
