@@ -85,8 +85,7 @@ export default function AppShell({ children }) {
       </header>
       <aside className="studio-app-rail" aria-label="Studio pages">
         <div className="rail-brand"><Sparkles size={20}/> Ultra Studio</div>
-        <Link className="rail-create" to="/create"><Plus size={17}/> Create</Link>
-        <nav aria-label="Studio navigation"><StudioNavLinks returnTo={galleryReturnTo} /></nav>
+        <nav aria-label="Studio navigation"><StudioNavLinks compact returnTo={galleryReturnTo} /></nav>
       </aside>
       <NowRenderingStrip />
       <main id="studio-main" ref={mainRef} tabIndex={-1} className="studio-main flex-1 min-w-0">
