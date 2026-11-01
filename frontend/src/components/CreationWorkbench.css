@@ -280,3 +280,20 @@ body:has(.creation-bench){position:fixed;inset:0}
 .bench-workflow-row>button:first-child{flex:1;min-width:0}
 .bench-workflow-options .bench-workflow-star{flex:0 0 36px;width:36px;min-height:36px;text-align:center;font-size:20px;color:#d4c3ef;padding:4px}
 .bench-workflow-options .bench-workflow-star[aria-pressed=true]{color:#f4cc72}
+
+/* Phase 5 mobile usability: short wardrobe pages, stable scroll and explicit preview. */
+.wardrobe-mobile-category{display:none}
+@media(max-width:767px){
+.creation-bench .wardrobe-category-tabs{display:none}
+.creation-bench .wardrobe-mobile-category{display:flex;flex-direction:column;gap:7px;color:#d9d2e8;font-size:12px;font-weight:600}
+.creation-bench .wardrobe-mobile-category select{width:100%;min-height:46px;padding:10px 12px;border:1px solid #ffffff35;border-radius:10px;background:#202737;color:#f4f2ff;font-size:16px}
+.creation-bench .bench-scroll{overscroll-behavior:contain;-webkit-overflow-scrolling:touch;scroll-padding-bottom:120px;padding-bottom:100px}
+.creation-bench .bench-mobile-bottom-navigation{position:relative;bottom:auto;z-index:auto;box-shadow:none;margin:16px 0 12px}
+.creation-bench .bench-view-preview{display:block;width:100%;min-height:44px;margin:10px 0;padding:10px;border:1px solid #bda1f5;border-radius:10px;background:#393047;color:#f5ecff;text-align:center}
+.creation-bench .bench-preview-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+.creation-bench .bench-preview-heading button{min-height:44px;padding:9px 12px;border:1px solid #ffffff35;border-radius:9px}
+.creation-bench .wardrobe-choice-pages{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:7px;margin:12px 0 20px}
+.creation-bench .wardrobe-choice-pages button{min-width:0;min-height:44px;padding:8px;border:1px solid #ffffff35;border-radius:9px;background:#30283f;color:#f3eaff;font-size:12px}
+.creation-bench .wardrobe-choice-pages button:disabled{opacity:.4}
+.creation-bench .wardrobe-choice-pages span{font-size:11px;color:#c9bfd6;white-space:nowrap}
+}
