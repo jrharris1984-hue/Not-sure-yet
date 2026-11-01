@@ -271,3 +271,12 @@ body:has(.creation-bench){position:fixed;inset:0}
 .creation-bench .bench-scroll:has([data-testid="pose-pose-pose-grouped"]){padding-bottom:140px;scroll-padding-bottom:140px}
 .creation-bench .bench-scroll:has([data-testid="pose-pose-pose-grouped"]) .bench-mobile-bottom-navigation{position:relative;bottom:auto;z-index:auto;margin-top:18px;margin-bottom:14px;box-shadow:none}
 }
+
+/* Phase 4: compact workflow picker favorites without changing approved editors. */
+.bench-workflow-filter{display:flex;gap:6px;margin:8px 0 4px}
+.bench-workflow-filter button{flex:1;min-height:34px;border:1px solid #ffffff30;border-radius:8px;background:#202331;color:#d8d3e3;font-size:12px}
+.bench-workflow-filter button[aria-pressed=true]{background:#4d3b66;border-color:#bd9df5;color:#fff}
+.bench-workflow-row{display:flex;align-items:center;gap:4px}
+.bench-workflow-row>button:first-child{flex:1;min-width:0}
+.bench-workflow-options .bench-workflow-star{flex:0 0 36px;width:36px;min-height:36px;text-align:center;font-size:20px;color:#d4c3ef;padding:4px}
+.bench-workflow-options .bench-workflow-star[aria-pressed=true]{color:#f4cc72}
