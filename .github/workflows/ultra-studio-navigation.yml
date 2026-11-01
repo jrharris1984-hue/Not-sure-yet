@@ -22,10 +22,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
-          cache: yarn
-          cache-dependency-path: frontend/yarn.lock
       - run: corepack enable
-      - run: yarn install --frozen-lockfile
+      - run: yarn install --non-interactive --no-lockfile
       - name: Navigation regression tests
         run: CI=true yarn test --watch=false --runInBand src/components/StudioNavigation.test.jsx src/components/AppShell.test.jsx
       - name: Production build
