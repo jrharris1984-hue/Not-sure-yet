@@ -31,7 +31,7 @@ export default function OptionBrowser({ alwaysSearch = false, preferenceKey, bro
     ["chip-physique-", "Search body options & favorites"],
     ["chip-wardrobe-", "Search clothing options & favorites"],
     ["chip-scene-", "More scene options"],
-    ["chip-pose-", "More pose options"],
+    ["pose-pose-", "More pose options"],
   ];
   const compactToolLabel = compactToolLabels.find(([prefix]) => preferenceKey?.startsWith(prefix))?.[1];
   const compactTools = !!compactToolLabel && (searchOptions.length > 8 || favorites.length > 0);
