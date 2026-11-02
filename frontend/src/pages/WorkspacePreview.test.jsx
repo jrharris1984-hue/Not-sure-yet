@@ -28,18 +28,18 @@ test('relationship controls appear only for multiple people and disappear when r
 });
 test('description is required and survives step navigation; generation becomes available after review',async()=>{
   await paint();await click('Describe an image');
-  const next=()=>[...container.querySelectorAll('button')].find(b=>b.textContent==='Continue');
+  const next=()=>[...container.querySelectorAll('button')].find(b=>b.textContent==='Next');
   expect(next().disabled).toBe(true);
   act(()=>{const input=container.querySelector('textarea');Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,'value').set.call(input,'A bright studio portrait');input.dispatchEvent(new Event('input',{bubbles:true}));});
-  expect(next().disabled).toBe(false);await click('Continue');await click('Back');
+  expect(next().disabled).toBe(false);await click('Next');await click('Previous');
   expect(container.querySelector('textarea').value).toBe('A bright studio portrait');
-  await click('Continue');await click('Review image');
+  await click('Next');await click('Review image');
   expect([...container.querySelectorAll('button')].find(b=>b.textContent.includes('Generate')).disabled).toBe(false);
 });
 test('saved character locks disable editing and source DNA is copied',async()=>{
   const source={id:'a',name:'Alex',dna:{identity:{age:36},hair:{style:'bob',color:'black'},face:{eye_color:'brown'}},locks:{hair:true}};
   endpoints.listCharacters.mockResolvedValue([source]);await paint();await click('Create a new character');await click('Choose character');await click('Alex');
-  await click('Continue');expect([...container.querySelectorAll('button')].find(b=>b.textContent.includes('Hair style')).disabled).toBe(true);
+  await click('Next');expect([...container.querySelectorAll('button')].find(b=>b.textContent.includes('Hair style')).disabled).toBe(true);
   const copy=previewPerson(source);copy.dna.identity.age=40;expect(source.dna.identity.age).toBe(36);
 });
 test('flow requirements and option data use existing editor choices',()=>{
@@ -61,7 +61,7 @@ test('new-character creation exposes identity choices and browsable appearance d
   await paint();await click('Create a new character');
   expect(container.textContent).toContain('Heritage');expect(container.textContent).toContain('Character theme');
   expect(endpoints.listCharacters).not.toHaveBeenCalled();
-  await click('Continue');await click('Face');expect(container.textContent).toContain('Eye shape');
+  await click('Next');await click('Face');expect(container.textContent).toContain('Eye shape');
   expect(container.textContent).toContain('Jawline');expect(container.textContent).not.toContain('Hair length');
   await click('Skin');await click('Tattoos');
   const input=document.querySelector('input[aria-label="Tattoos"]');
@@ -74,13 +74,13 @@ test('new-character creation exposes identity choices and browsable appearance d
 });
 
 test('body categories expose size sliders and the original glute maximum',async()=>{
-  await paint();await click('Create a new character');await click('Continue');await click('Body build');await click('Glutes');
+  await paint();await click('Create a new character');await click('Next');await click('Body build');await click('Glutes');
   await click('Glute size (slider)');expect(document.querySelector('input[type="range"]').max).toBe('300');await click('Done');
   await click('Waist & hips');expect(container.textContent).toContain('Hip width (slider)');
   await click('Bust');expect(container.textContent).toContain('Bust shape');
 });
 test('complete outfits are searchable beyond the heritage list and wardrobe has individual garment categories',async()=>{
-  await paint();await click('Create a new character');await click('Continue');await click('Continue');await click('Browse outfit choices');
+  await paint();await click('Create a new character');await click('Next');await click('Next');await click('Browse outfit choices');
   const select=document.querySelector('select[aria-label="Option category"]');
   act(()=>{select.value='Costume sets';select.dispatchEvent(new Event('change',{bubbles:true}));});
   expect(document.querySelector('[role="dialog"]').textContent).toContain('superheroine');
@@ -101,14 +101,14 @@ test('guided character flow opens the suite library and requires an explicit app
 });
 
 test('completed stages can be revisited without repeatedly clicking Continue',async()=>{
-  await paint();await click('Create a new character');await click('Continue');await click('Continue');await click('Back');await click('Back');
+  await paint();await click('Create a new character');await click('Next');await click('Next');await click('Previous');await click('Previous');
   const select=container.querySelector('select[aria-label="Jump to a visited step"]');
   expect(select.options[2].disabled).toBe(false);expect(select.options[4].disabled).toBe(true);
   act(()=>{select.value='2';select.dispatchEvent(new Event('change',{bubbles:true}));});
   expect(container.querySelector('h1').textContent).toBe('What are they wearing?');
 });
 test('detail search finds controls outside the current appearance category',async()=>{
-  await paint();await click('Create a new character');await click('Continue');
+  await paint();await click('Create a new character');await click('Next');
   const input=container.querySelector('input[aria-label="Find a character detail"]');
   act(()=>{Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(input,'hip');input.dispatchEvent(new Event('input',{bubbles:true}));});
   expect(container.querySelector('.wp-search-results').textContent).toContain('Hip width');

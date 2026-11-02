@@ -1,0 +1,30 @@
+name: Ultra Studio navigation checks
+
+on:
+  pull_request:
+    paths:
+      - "frontend/src/components/StudioNavigation*"
+      - "frontend/src/components/AppShell*"
+      - "frontend/src/lib/studioNavigationV2.js"
+      - "frontend/src/pages/Projects.jsx"
+      - "frontend/src/App.js"
+      - ".github/workflows/ultra-studio-navigation.yml"
+  workflow_dispatch:
+
+jobs:
+  navigation:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - run: corepack enable
+      - run: yarn install --non-interactive --no-lockfile
+      - name: Navigation regression tests
+        run: CI=true yarn test --watch=false --runInBand src/components/StudioNavigation.test.jsx src/components/AppShell.test.jsx
+      - name: Production build
+        run: CI=false yarn build

@@ -20,6 +20,7 @@ import { resolvePhysiqueControls, bustShapePrompt, photographicPrompt } from "./
 import { preserveGeneralSelections, subjectPromptText } from "./selectionFidelity";
 import { applyCastAppearance, castAppearancePrompt } from "./castAppearance";
 import { photographyPosePrompt } from "@/lib/photographyPoses";
+import { breastShapePrompt } from "@/lib/breastControls";
 import { gluteSizePrompt, gluteShapePrompt } from "@/lib/gluteControls";
 import { SECTIONS, buildPrompts, buildMultiVenicePrompts, buildChromaPrompts, buildMultiChromaPrompts, selfStreamContinuityCue, selectedSectionPrompt } from "@/lib/dna";
 import { buildPonyPrompts, buildMultiPonyPrompts } from "@/lib/ponyPrompts";
@@ -125,6 +126,9 @@ function chromaBodyPriority(dna = {}) {
       "compact rounded, minimal volume", "compact rounded, light volume", "rounded, modest volume", "rounded, moderate volume", "rounded, noticeable volume",
       "rounded, moderately strong volume", "rounded, strong volume", "rounded, very strong volume", "rounded, pronounced volume", "rounded, maximum volume emphasis",
     ]));
+  }
+  if (ph.bust_shape) {
+    clauses.push(`BREAST SHAPE: ${breastShapePrompt(ph.bust_shape)}; make this contour visibly distinct at the selected volume`);
   }
   if (Number(ph.butt_scale) > 0) {
     clauses.push(gluteSizePrompt(ph.butt_scale, { intensity: true }));
