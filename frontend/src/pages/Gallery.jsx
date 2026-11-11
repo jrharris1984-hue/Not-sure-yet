@@ -745,6 +745,18 @@ export default function Gallery() {
               <Info className="h-4 w-4" /> {showDetails ? "Hide details" : "Details"}
             </button>
 
+            {!isVideoUrl(primaryOutput(lightbox)) && !showDetails && (
+              <button type="button"
+                onClick={() => reuseAsReference.mutate({ render: lightbox, targetKind: "video" })}
+                disabled={reuseAsReference.isPending}
+                data-testid="btn-lightbox-animate-mobile"
+                className="md:hidden absolute right-3 bottom-[calc(4.75rem+env(safe-area-inset-bottom,0px))] z-30 inline-flex min-h-11 items-center gap-2 rounded-full border border-cyan-400/50 bg-cyan-950/90 px-4 text-sm font-semibold text-cyan-100 shadow-lg disabled:opacity-40"
+                aria-label="Animate this image"
+              >
+                <Film className="h-4 w-4" /> {reuseAsReference.isPending ? "Preparing…" : "Animate"}
+              </button>
+            )}
+
             {displayedOutput.length > 1 && lightboxIndex >= 0 && (
               <>
                 <button type="button" onClick={() => showAdjacent(-1)}
