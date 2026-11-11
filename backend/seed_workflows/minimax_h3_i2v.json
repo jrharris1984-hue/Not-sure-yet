@@ -32,9 +32,9 @@
         0
       ],
       "prompt": "A cinematic landscape, soft clouds drifting slowly across a mountain valley.",
-      "width": 384,
-      "height": 224,
-      "length": 22,
+      "width": 480,
+      "height": 864,
+      "length": 124,
       "first_frame": [
         "11",
         0
@@ -68,7 +68,7 @@
         "5",
         0
       ],
-      "seed": 42,
+      "seed": 353024177783368,
       "steps": 4,
       "cfg": 1,
       "sampler_name": "euler",
@@ -118,14 +118,14 @@
         "9",
         0
       ],
-      "filename_prefix": "UltraStudio_MiniMaxH3_I2V",
+      "filename_prefix": "UltraStudio_MiniMaxH3_ImageToVideo",
       "format": "auto"
     }
   },
   "11": {
     "class_type": "LoadImage",
     "inputs": {
-      "image": "replace_with_uploaded_image.png"
+      "image": "17887.png"
     }
   }
 }
