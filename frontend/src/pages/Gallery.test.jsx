@@ -254,3 +254,16 @@ test("Gallery saves feedback against the opened render and retains it when reope
   act(()=>container.querySelector('[data-testid="gallery-thumb-0"] .gallery-poster-open').click());
   expect(container.querySelector('[aria-label="Pose result"]').value).toBe('matched');
 });
+
+test("mobile Gallery exposes Animate without opening Details and transfers the image", async () => {
+  endpoints.prepareRenderReference.mockResolvedValue({name:"a.png"});
+  await render("/gallery?render=a");
+  const animate = container.querySelector('[data-testid="btn-lightbox-animate-mobile"]');
+  expect(animate).not.toBeNull();
+  expect(container.querySelector('[data-testid="btn-lightbox-animate"]')).not.toBeNull();
+  await act(async () => animate.click());
+  expect(endpoints.prepareRenderReference).toHaveBeenCalledWith("a", "a.png");
+  expect(mockNavigate).toHaveBeenCalledWith("/create/video", {
+    state: expect.objectContaining({sourceRenderId:"a", galleryReference:{name:"a.png"}}),
+  });
+});
