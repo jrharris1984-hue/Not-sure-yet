@@ -817,6 +817,15 @@ export default function Gallery() {
                       onEdit={(instruction) => reuseAsReference.mutate({ render: lightbox, targetKind: "edit", instruction })}
                       onRecover={(body) => recoverImage.mutate({ id: lightbox.id,
                         body: { ...body, output_url: primaryOutput(lightbox) } })} />
+                    <button type="button"
+                      onClick={() => reuseAsReference.mutate({ render: lightbox, targetKind: "video" })}
+                      disabled={reuseAsReference.isPending}
+                      data-testid="btn-lightbox-animate"
+                      className="w-full inline-flex items-center justify-center gap-2 rounded-lg border border-cyan-400/50 bg-cyan-400/15 px-3 py-2 text-sm font-semibold text-cyan-100 hover:bg-cyan-400/25 disabled:opacity-40"
+                      title="Animate this Gallery image in Image to Video"
+                    >
+                      <Film className="h-4 w-4" /> {reuseAsReference.isPending ? "Preparing image…" : "Animate · Image to Video"}
+                    </button>
                     <button onClick={() => downloadImage(primaryOutput(lightbox), `${lightbox.workflow_name || "render"}-${lightbox.id.slice(0, 8)}-enhanced.png`)}
                       data-testid="btn-lightbox-download" className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-amber-500 text-black text-sm font-semibold px-3 py-2">
                       <Download className="h-4 w-4" /> Download
