@@ -283,6 +283,10 @@ export default function Gallery() {
       return { render, targetKind, referenceMode, instruction, reference, saved, previewUrl };
     },
     onSuccess: ({ render, targetKind, referenceMode, instruction, reference, saved, previewUrl }) => {
+      if (targetKind === "video") {
+        nav("/create/video", { state: { galleryReference: reference, previewUrl, sourceRenderId: render.id } });
+        return;
+      }
       const path = render.character_id ? `/character/${render.character_id}` : "/character/new";
       nav(path, {
         state: {

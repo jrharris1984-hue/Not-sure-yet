@@ -1,6 +1,6 @@
 import { useAssistantResearch, updateAssistantResearch } from '@/lib/assistantResearch';
 import { useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { endpoints } from '@/lib/api';
 import UniversalLoraPicker from '@/components/UniversalLoraPicker';
 import VideoModeLinks from '@/components/VideoModeLinks';
@@ -16,6 +16,11 @@ export default function FreeformCreate({ mode = 'image' }) {
 
 function FreeformWorkspace({ mode }) {
   const config = FREEFORM_MODES[mode];
+  const location = useLocation();
+  const galleryInitial = mode === 'video' ? location.state?.galleryReference : null;
+  const [galleryOpen,setGalleryOpen] = useState(false);
+  const [galleryImages,setGalleryImages] = useState([]);
+  const [galleryLoading,setGalleryLoading] = useState(false);
   const [aiProvider, setAiProvider] = useState('AI');
   useEffect(() => {
     let live = true;
@@ -24,7 +29,7 @@ function FreeformWorkspace({ mode }) {
   }, []);
   const [workflows, setWorkflows] = useState([]), [workflowId, setWorkflowId] = useState('');
   const [prompt, setPrompt] = useState(''), [negative, setNegative] = useState('');
-  const [source, setSource] = useState(null), [preview, setPreview] = useState('');
+  const [source, setSource] = useState(galleryInitial || null), [preview, setPreview] = useState(mode === 'video' ? location.state?.previewUrl || '' : '');
   const [suggestion, setSuggestion] = useState(null), [busy, setBusy] = useState('');
   const [error, setError] = useState(''), [queued, setQueued] = useState(false), [loading, setLoading] = useState(true);
   const [seed, setSeed] = useState(''), [width, setWidth] = useState(640), [height, setHeight] = useState(640);
@@ -73,6 +78,24 @@ function FreeformWorkspace({ mode }) {
       previewRef.current = URL.createObjectURL(file); setPreview(previewRef.current); setSource(uploaded); setQueued(false);
     });
   };
+  const openGallery = async () => {
+    setGalleryOpen(true);setGalleryLoading(true);setError('');
+    try {
+      const items=await endpoints.listRenders();
+      setGalleryImages(items.filter(item=>item.status==='done' && (item.output_variants?.enhanced?.[0] || item.output_files?.[0]) && !/\\.(mp4|webm|mov)(?:\\?|$)/i.test(item.output_variants?.enhanced?.[0] || item.output_files?.[0])));
+    }catch(error){setError(error.response?.data?.detail || 'Unable to load Gallery images.');}
+    finally{setGalleryLoading(false);}
+  };
+  const chooseGalleryImage = render => run('Gallery',async()=>{
+    const original=render.output_variants?.enhanced?.[0] || render.output_files?.[0];
+    const prepared=await endpoints.prepareRenderReference(render.id,original);
+    if(!mounted.current)return;
+    if(previewRef.current){URL.revokeObjectURL(previewRef.current);previewRef.current='';}
+    const url=new URL(original,window.location.origin);
+    const query=url.searchParams;
+    const display=query.has('filename') ? `${window.location.origin}/api/comfyui/media?${new URLSearchParams({filename:query.get('filename'),subfolder:query.get('subfolder')||'',type:query.get('type')||'output'})}` : original;
+    setSource(prepared);setPreview(display);setGalleryOpen(false);setQueued(false);
+  });
   const generate = () => run('Generate', async () => {
     setQueued(false);
     const result = await endpoints.dispatchRender(freeformPayload({ mode, workflow, prompt, negative, source, seed, width, height, frames, fps, loras: [firstLora, ...(showSecondLora ? [secondLora] : [])] }));
@@ -89,8 +112,8 @@ function FreeformWorkspace({ mode }) {
         {workflows.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}
       </select></label>
       {loading ? <p>Loading workflows…</p> : !workflows.length && <p>No compatible workflow is available. <Link to="/settings" className="text-cyan-300 underline">Refresh bundled workflows in Settings</Link>.</p>}
-      {mode === 'video' && <div className="space-y-2"><label className="block">Starting image<input aria-label="Starting image" type="file" accept="image/png,image/jpeg,image/webp" disabled={!!busy} onChange={upload} className="block mt-2 text-sm"/></label>
-        {preview && <><img src={preview} alt="Starting frame" className="max-h-64 rounded-lg object-contain"/><button disabled={!!busy} onClick={() => { URL.revokeObjectURL(previewRef.current); previewRef.current = ''; setPreview(''); setSource(null); }}>Remove image</button></>}</div>}
+      {mode === 'video' && <div className="space-y-2"><button type="button" className="rounded-lg border border-cyan-400/40 px-3 py-2 text-sm text-cyan-200" disabled={!!busy} onClick={openGallery}>Choose from Gallery</button>{galleryOpen && <div className="rounded-lg border hairline p-3 space-y-3"><div className="flex justify-between"><strong className="text-sm">Select a Gallery image</strong><button type="button" onClick={()=>setGalleryOpen(false)}>Close</button></div>{galleryLoading?<p>Loading images…</p>:<div className="grid max-h-72 grid-cols-3 gap-2 overflow-y-auto sm:grid-cols-4">{galleryImages.map(render=>{const original=render.output_variants?.enhanced?.[0] || render.output_files?.[0];let display=original;try{const u=new URL(original,window.location.origin);if(u.searchParams.has("filename"))display=`${window.location.origin}/api/comfyui/media?${new URLSearchParams({filename:u.searchParams.get("filename"),subfolder:u.searchParams.get("subfolder")||"",type:u.searchParams.get("type")||"output"})}`;}catch{}return <button type="button" key={render.id} disabled={!!busy} onClick={()=>chooseGalleryImage(render)} className="overflow-hidden rounded-lg border hairline"><img src={display} alt="Gallery render" loading="lazy" className="aspect-square w-full object-cover"/></button>;})}</div>}{!galleryLoading&&!galleryImages.length&&<p className="text-xs text-zinc-400">No completed images found.</p>}</div>}<label className="block">Starting image<input aria-label="Starting image" type="file" accept="image/png,image/jpeg,image/webp" disabled={!!busy} onChange={upload} className="block mt-2 text-sm"/></label>
+        {preview && <><img src={preview} alt="Starting frame" className="max-h-64 rounded-lg object-contain"/><button disabled={!!busy} onClick={() => { if(previewRef.current) URL.revokeObjectURL(previewRef.current); previewRef.current = ''; setPreview(''); setSource(null); }}>Remove image</button></>}</div>}
       <label className="block space-y-1">{mode === 'video' ? 'Movement and camera prompt' : 'Your prompt'}<textarea aria-label="Your prompt" className={field} rows={7} value={prompt} disabled={!!busy} onChange={e => { setPrompt(e.target.value); setSuggestion(null); setQueued(false); }} placeholder={mode === 'video' ? 'Describe how the subject moves and how the camera follows.' : 'Describe the scene, subjects, style, lighting, and composition.'}/></label>
       {mode !== 'image' && <VideoPromptBuilder mode={mode} disabled={!!busy} onApply={value => {setPrompt(value);setSuggestion(null);setQueued(false);}}/>}
       {mode === 'image' && workflow && <details><summary className="cursor-pointer text-zinc-300">Optional LoRAs · up to two</summary>
