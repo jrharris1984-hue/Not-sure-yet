@@ -3,8 +3,8 @@ import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import FreeformCreate from './FreeformCreate';
 import { endpoints } from '@/lib/api';
-jest.mock('react-router-dom', () => ({ Link: ({to,children,...props}) => <a href={to} {...props}>{children}</a> }), {virtual:true});
-jest.mock('@/lib/api', () => ({ endpoints: {comfyLoras:jest.fn(),loraLibrary:jest.fn(),settings:jest.fn(),listWorkflows:jest.fn(),aiImproveGeneratedPrompt:jest.fn(),aiVideoPrompt:jest.fn(),dispatchRender:jest.fn(),uploadReferenceImage:jest.fn()} }));
+jest.mock('react-router-dom', () => ({ useLocation: () => ({ state: null, key: 'test' }), Link: ({to,children,...props}) => <a href={to} {...props}>{children}</a> }), {virtual:true});
+jest.mock('@/lib/api', () => ({ endpoints: {comfyLoras:jest.fn(),loraLibrary:jest.fn(),settings:jest.fn(),listWorkflows:jest.fn(),aiImproveGeneratedPrompt:jest.fn(),aiVideoPrompt:jest.fn(),dispatchRender:jest.fn(),uploadReferenceImage:jest.fn(),listRenders:jest.fn(),prepareRenderReference:jest.fn()} }));
 let container, root;
 beforeEach(() => {
   updateAssistantResearch({enabled:false,focus:'',result:null});
@@ -189,4 +189,15 @@ test('a late upload cannot leak an object URL into a different creation mode', a
   await act(async () => resolve({name:'frame.png'}));
   expect(URL.createObjectURL).not.toHaveBeenCalled();
   expect(container.querySelector('img[alt="Starting frame"]')).toBeNull();
+});
+
+test('image-to-video Gallery picker excludes completed video files', async () => {
+  endpoints.listRenders.mockResolvedValue([
+    {id:'photo',status:'done',output_files:['photo.png']},
+    {id:'movie',status:'done',output_files:['clip.mp4']},
+    {id:'movie-query',status:'done',output_files:['clip.webm?download=1']},
+  ]);
+  await act(async () => root.render(<FreeformCreate mode="video"/>));
+  await act(async () => button('Choose from Gallery').click());
+  expect(container.querySelectorAll('img[alt="Gallery render"]')).toHaveLength(1);
 });
