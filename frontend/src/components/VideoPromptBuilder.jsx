@@ -3,6 +3,7 @@ import { endpoints } from '@/lib/api';
 import { VIDEO_LIBRARY, VIDEO_PRESETS, videoDefaults, videoOptions, composeVideoPrompt } from '@/lib/videoPromptLibrary';
 const FIELD='w-full rounded-lg border hairline bg-elevated px-3 py-2 text-sm';
 const clean=value=>String(value||'').trim();
+const readPresets=catalog=>(catalog?.sections?.find(section=>section.key==='video_saved_presets')?.fields?.find(field=>field.key==='choices')?.options||[]).flatMap(item=>{try{const parsed=JSON.parse(item.keywords);return [{...parsed,id:item.value,label:item.label}];}catch{return [];}});
 const makeKey=()=> 'custom_'+(globalThis.crypto?.randomUUID?.() || Date.now().toString(36)).replace(/-/g,'');
 export default function VideoPromptBuilder({mode,onApply,disabled=false}) {
   const [catalog,setCatalog]=useState({sections:[]}),[loading,setLoading]=useState(true);
@@ -13,7 +14,7 @@ export default function VideoPromptBuilder({mode,onApply,disabled=false}) {
   const [newLabel,setNewLabel]=useState(''),[newKeywords,setNewKeywords]=useState('');
   const [presetName,setPresetName]=useState(''),[userPresets,setUserPresets]=useState([]);
   const [busy,setBusy]=useState(false),[message,setMessage]=useState('');
-  useEffect(()=>{let live=true;endpoints.settings().then(settings=>{if(!live)return;setCatalog(settings.prompt_catalog||{sections:[]});setUserPresets(Array.isArray(settings.prompt_catalog?.video_presets)?settings.prompt_catalog.video_presets:[]);}).catch(()=>live&&setMessage('Saved catalog unavailable; built-in choices are available.')).finally(()=>live&&setLoading(false));return()=>{live=false;};},[]);
+  useEffect(()=>{let live=true;endpoints.settings().then(settings=>{if(!live)return;setCatalog(settings.prompt_catalog||{sections:[]});setUserPresets(readPresets(settings.prompt_catalog));}).catch(()=>live&&setMessage('Saved catalog unavailable; built-in choices are available.')).finally(()=>live&&setLoading(false));return()=>{live=false;};},[]);
   const sharedChoices=useMemo(()=> (catalog.sections||[]).filter(section=>!section.key.startsWith('video_')&&['scenario','pose','wardrobe','lighting','camera'].includes(section.key)).flatMap(section=>(section.fields||[]).flatMap(field=>(field.options||[]).map(option=>({id:[section.key,field.key,option.value].join(':'),label:[section.title,field.label,option.label].join(' / '),keywords:clean(option.keywords)||clean(option.label)})))).filter(item=>item.keywords),[catalog]);
   const preview=composeVideoPrompt({mode,scene,shared:sharedChoices.find(item=>item.id===shared)?.keywords||'',selected,catalog,steps,intensity,custom});
   const saveCatalog=async modify=>{
@@ -24,7 +25,7 @@ export default function VideoPromptBuilder({mode,onApply,disabled=false}) {
       const updated=modify(original);
       const result=await endpoints.updateSettings({prompt_catalog:updated});
       const saved=result.prompt_catalog||updated;
-      setCatalog(saved);setUserPresets(Array.isArray(saved.video_presets)?saved.video_presets:[]);
+      setCatalog(saved);setUserPresets(readPresets(saved));
       setMessage('Saved to the shared prompt library.');
     }catch(error){setMessage(error.response?.data?.detail||error.message||'Unable to save. Existing choices were not reset.');}
     finally{setBusy(false);}
@@ -44,7 +45,7 @@ export default function VideoPromptBuilder({mode,onApply,disabled=false}) {
   const savePreset=()=>{
     if(!clean(presetName)){setMessage('Name your video preset first.');return;}
     const preset={id:makeKey(),label:clean(presetName),choices:{...selected},intensity,steps:[...steps],custom};
-    saveCatalog(original=>({...original,video_presets:[...(Array.isArray(original.video_presets)?original.video_presets:[]),preset]}));
+    saveCatalog(original=>{const key='video_saved_presets';const existing=original.sections?.find(section=>section.key===key);const options=existing?.fields?.find(field=>field.key==='choices')?.options||[];const section={key,title:'Saved Video Presets',exact_fields:true,fields:[{key:'choices',label:'Presets',type:'chips',options:[...options,{value:preset.id,label:preset.label,keywords:JSON.stringify(preset),group:'Custom'}]}]};return {...original,sections:[...(original.sections||[]).filter(item=>item.key!==key),section]};});
     setPresetName('');
   };
   const applyPreset=preset=>{setSelected(current=>({...current,...preset.choices}));setIntensity(preset.intensity||'subtle');setSteps(preset.steps||[]);setCustom(preset.custom||'');setMessage('Preset loaded. Review the prompt before applying.');};
