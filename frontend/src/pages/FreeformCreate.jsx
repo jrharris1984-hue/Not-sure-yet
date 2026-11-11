@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { endpoints } from '@/lib/api';
 import UniversalLoraPicker from '@/components/UniversalLoraPicker';
 import VideoModeLinks from '@/components/VideoModeLinks';
+import VideoPromptBuilder from '@/components/VideoPromptBuilder';
 import AIResearchPanel from '@/components/AIResearchPanel';
 import { WebPromptResearchOptions, PromptResearchNotes } from '@/components/WebPromptResearch';
 import { FREEFORM_MODES, freeformPayload, freeformWorkflows } from '@/lib/freeformGeneration';
@@ -91,6 +92,7 @@ function FreeformWorkspace({ mode }) {
       {mode === 'video' && <div className="space-y-2"><label className="block">Starting image<input aria-label="Starting image" type="file" accept="image/png,image/jpeg,image/webp" disabled={!!busy} onChange={upload} className="block mt-2 text-sm"/></label>
         {preview && <><img src={preview} alt="Starting frame" className="max-h-64 rounded-lg object-contain"/><button disabled={!!busy} onClick={() => { URL.revokeObjectURL(previewRef.current); previewRef.current = ''; setPreview(''); setSource(null); }}>Remove image</button></>}</div>}
       <label className="block space-y-1">{mode === 'video' ? 'Movement and camera prompt' : 'Your prompt'}<textarea aria-label="Your prompt" className={field} rows={7} value={prompt} disabled={!!busy} onChange={e => { setPrompt(e.target.value); setSuggestion(null); setQueued(false); }} placeholder={mode === 'video' ? 'Describe how the subject moves and how the camera follows.' : 'Describe the scene, subjects, style, lighting, and composition.'}/></label>
+      {mode !== 'image' && <VideoPromptBuilder mode={mode} disabled={!!busy} onApply={value => {setPrompt(value);setSuggestion(null);setQueued(false);}}/>}
       {mode === 'image' && workflow && <details><summary className="cursor-pointer text-zinc-300">Optional LoRAs · up to two</summary>
         <fieldset disabled={!!busy} className="mt-3 space-y-3">
           <UniversalLoraPicker workflow={workflow} value={firstLora} onChange={setFirstLora} slotLabel="LoRA 1" excludedNames={secondLora.name ? [secondLora.name] : []}/>
