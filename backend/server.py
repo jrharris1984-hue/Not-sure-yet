@@ -256,6 +256,8 @@ def _detect_prompt_nodes(wf: Dict[str, Any]) -> Dict[str, str]:
 
 
 SEED_WORKFLOWS = [
+    {"file": "minimax_h3_t2v.json", "name": "MiniMax H3 · Text → Video", "kind": "text_video", "prompt_style": "minimax_h3", "notes": "Tested locally at 384x224, 22 frames, 4 steps. Higher settings require validation."},
+    {"file": "minimax_h3_i2v.json", "name": "MiniMax H3 · Image → Video", "kind": "video", "prompt_style": "minimax_h3", "notes": "Uses a source image as first_frame. New integration: validate output and image adherence locally."},
     {"file": "moss_realism_sft_bf16_lightning.json", "name": "MOSS Image · Realism SFT BF16 (8-Step Lightning)", "kind": "image", "prompt_style": "moss_image", "notes": "MOSS_Realism_sft_bf16.safetensors with required MOSS/MOSS_Realism_8Step_Lightning.safetensors model-only LoRA at strength 1.0. Creator recipe: 8 steps, CFG 1.5-2.5 (default 2), Euler/simple initial sampler assumptions. Uses existing MOSS Qwen3.5 9B encoder and FLUX.2 small VAE. BF16 may require offloading on 12 GB VRAM; test ComfyUI loader compatibility and the actual installed LoRA filename before production use."},
     {"file": "moss_hypermoss_lush_turbo_int8.json", "name": "MOSS Image · HyperMoss Lush Turbo INT8 (8 Step)", "kind": "image", "prompt_style": "moss_image", "notes": "Uses hypermossLushTurbo_int8V1.safetensors (INT8 ConvRot) with the existing MOSS Qwen3.5 9B encoder and FLUX.2 small VAE. Model-card baseline: 8 steps, CFG 1, Euler sampler, Simple scheduler; MOSS scheduler is also recommended if installed. Natural-language descriptive sentences are preferred; TAG-style prompts remain supported. No additional DMD Turbo LoRA should be loaded because the checkpoint already includes its acceleration. Confirm local filename and loader compatibility in ComfyUI. Manual settings can override defaults."},
     {"file": "moss_stardust_bf16.json", "name": "MOSS Image · Lox Stardust Mix v1.0 BF16 (Test)", "kind": "image", "prompt_style": "moss_image", "notes": "Uses loxsStardustMixMoss_v10_bf16.safetensors with Qwen3.5 9B W4A8 encoder and FLUX.2 small VAE. Creator baseline from the supplied model card: 25 steps, CFG 3, ER-SDE / simple, 1024x1024, batch 1. Creator ranges: 25-50 steps, CFG 3-5, 1-2 MP. No added speed LoRA. Optional creator detailers and SeedVR2 are not bundled. BF16 may require CPU offloading on 12 GB VRAM. Existing manual generation settings can override template values. Model card limits use to personal, non-commercial generation; see the creator license."},
@@ -381,6 +383,14 @@ async def get_settings() -> Settings:
                 {"$push": {"workflows": seed.model_dump()}}
             )
             doc = await db.settings.find_one({"id": "singleton"}, {"_id": 0})
+    # Install new MiniMax video seeds once, without replacing any existing workflow.
+    minimax_names = {"MiniMax H3 · Text → Video", "MiniMax H3 · Image → Video"}
+    existing_names = {w.get("name") for w in doc.get("workflows", [])}
+    new_seeds = [w.model_dump() for w in _load_seed_workflows()
+                 if w.name in minimax_names and w.name not in existing_names]
+    if new_seeds:
+        await db.settings.update_one({"id": "singleton"}, {"$push": {"workflows": {"$each": new_seeds}}})
+        doc = await db.settings.find_one({"id": "singleton"}, {"_id": 0})
     if doc.get("wardrobe_catalog_version", 0) < 2:
         catalog = upgrade_wardrobe_catalog(doc.get("prompt_catalog"), doc.get("wardrobe_catalog_version", 0))
         await db.settings.update_one({"id": "singleton", "$or": [{"wardrobe_catalog_version": {"$exists": False}}, {"wardrobe_catalog_version": {"$lt": 2}}]}, {"$set": {"prompt_catalog": catalog, "wardrobe_catalog_version": 2}})
@@ -2340,10 +2350,13 @@ async def _perform_dispatch(body: "DispatchBody", queue_id: Optional[str] = None
             doc.pop("_id", None)
             return doc
 
+        is_minimax = wf_template.prompt_style == "minimax_h3"
         is_ltx = wf_template.prompt_style == "ltx_t2v"
-        requested_frames = max(41, min(241, int(body.video_frames)))
-        # WAN uses frame counts in the 4n+1 family.
-        frames = ((requested_frames - 1) // 4) * 4 + 1
+        requested_frames = max(1, min(241, int(body.video_frames)))
+        # WAN uses 4n+1; MiniMax H3 uses 17n+5 (22, 39, ... 124).
+        frames = ((max(41, requested_frames) - 1) // 4) * 4 + 1
+        if is_minimax:
+            frames = 5 + 17 * max(1, min(7, round((requested_frames - 5) / 17)))
         fps = max(8, min(30, int(body.video_fps)))
         image_patched = False
         latent_patched = False
@@ -2357,6 +2370,12 @@ async def _perform_dispatch(body: "DispatchBody", queue_id: Optional[str] = None
                 continue
             inputs = node.get("inputs", {})
             class_type = node.get("class_type")
+
+            if is_minimax and class_type == "MiniMaxH3ImageToVideo":
+                inputs["length"] = frames
+                inputs["width"] = max(256, min(1280, int(body.video_width))) // 32 * 32
+                inputs["height"] = max(192, min(1280, int(body.video_height))) // 32 * 32
+                latent_patched = True
 
             if wf_template.kind == "video":
                 if class_type == "LoadImage" and "image" in inputs:
@@ -2388,14 +2407,14 @@ async def _perform_dispatch(body: "DispatchBody", queue_id: Optional[str] = None
         if wf_template.kind == "video":
             if not body.reference_image:
                 r.status = "failed"
-                r.error = "Select and upload a starting image before using WAN Image to Video."
+                r.error = "Select and upload a starting image before generating video."
                 doc = r.model_dump()
                 await db.renders.insert_one(doc)
                 doc.pop("_id", None)
                 return doc
             if not image_patched or not latent_patched:
                 r.status = "failed"
-                r.error = "The selected WAN workflow is missing its LoadImage or image-to-video latent node."
+                r.error = "The selected workflow is missing its image loader or video latent node."
                 doc = r.model_dump()
                 await db.renders.insert_one(doc)
                 doc.pop("_id", None)
@@ -2409,6 +2428,10 @@ async def _perform_dispatch(body: "DispatchBody", queue_id: Optional[str] = None
             return doc
 
         positive_text = instruction
+        if is_minimax:
+            pos_id = next((str(nid) for nid, node in workflow.items()
+                           if isinstance(node, dict) and node.get("class_type") == "MiniMaxH3ImageToVideo"), "")
+            neg_id = ""
 
     # ComfyUI's SaveImage counter can reuse names after files are moved or
     # deleted. Give every render a unique filename prefix so Gallery records
