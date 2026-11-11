@@ -40,6 +40,13 @@ function FreeformWorkspace({ mode }) {
   const {enabled:useWebResearch,focus:researchFocus}=useAssistantResearch();
   const setUseWebResearch=value=>updateAssistantResearch({enabled:value,result:null});
   const setResearchFocus=value=>updateAssistantResearch({focus:value,result:null});
+  // A new Gallery selection can arrive while the video workspace stays mounted.
+  useEffect(() => {
+    if (mode !== 'video' || !location.state?.galleryReference) return;
+    setSource(location.state.galleryReference);
+    setPreview(location.state.previewUrl || '');
+    setQueued(false);
+  }, [mode, location.key, location.state?.galleryReference, location.state?.previewUrl]);
   const previewRef = useRef('');
   const mounted = useRef(false);
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
@@ -82,7 +89,7 @@ function FreeformWorkspace({ mode }) {
     setGalleryOpen(true);setGalleryLoading(true);setError('');
     try {
       const items=await endpoints.listRenders();
-      setGalleryImages(items.filter(item=>item.status==='done' && (item.output_variants?.enhanced?.[0] || item.output_files?.[0]) && !/\\.(mp4|webm|mov)(?:\\?|$)/i.test(item.output_variants?.enhanced?.[0] || item.output_files?.[0])));
+      setGalleryImages(items.filter(item=>item.status==='done' && (item.output_variants?.enhanced?.[0] || item.output_files?.[0]) && !/\.(mp4|webm|mov)(?:\?|$)/i.test(item.output_variants?.enhanced?.[0] || item.output_files?.[0])));
     }catch(error){setError(error.response?.data?.detail || 'Unable to load Gallery images.');}
     finally{setGalleryLoading(false);}
   };
