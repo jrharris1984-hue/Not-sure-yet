@@ -1,94 +1,75 @@
 import { useEffect, useMemo, useState } from 'react';
 import { endpoints } from '@/lib/api';
-
-const FIELD = 'w-full rounded-lg border hairline bg-elevated px-3 py-2 text-sm';
-const DEFAULTS = {
-  motion: [{value:'shift',label:'Shift weight',keywords:'shifts weight naturally from one leg to the other'},{value:'walk',label:'Walk',keywords:'walks forward at a relaxed pace'},{value:'turn',label:'Turn',keywords:'slowly turns toward the camera'},{value:'pose',label:'Change pose',keywords:'changes position in a relaxed, natural way'}],
-  expression: [{value:'neutral',label:'Relaxed',keywords:'maintains a relaxed expression'},{value:'smile',label:'Smile',keywords:'gradually smiles'},{value:'glance',label:'Look aside',keywords:'briefly glances to the side'}],
-  camera: [{value:'still',label:'Stationary',keywords:'The camera remains stationary'},{value:'track',label:'Tracking',keywords:'The camera tracks the subject smoothly'},{value:'orbit',label:'Slow orbit',keywords:'The camera slowly orbits the subject'}],
-  environment: [{value:'none',label:'No added movement',keywords:''},{value:'breeze',label:'Gentle breeze',keywords:'A gentle breeze moves hair and loose clothing'},{value:'light',label:'Changing light',keywords:'Ambient light changes subtly'}],
-};
-const VIDEO_KEYS = {motion:'video_motion',expression:'video_expression',camera:'video_camera',environment:'video_environment'};
-const SECTION_LABELS = {motion:'Body movement',expression:'Expression',camera:'Camera movement',environment:'Environment'};
-const clean = value => String(value || '').trim();
-function savedOptions(catalog, key) {
-  const section = catalog?.sections?.find(item => item.key === VIDEO_KEYS[key]);
-  const field = section?.fields?.find(item => item.key === 'choices');
-  return Array.isArray(field?.options) ? field.options.filter(item => item?.value && item?.label).map(item => ({...item,keywords:clean(item.keywords) || item.label})) : null;
-}
-function sharedChoices(catalog) {
-  return (catalog?.sections || []).filter(section => !section.key.startsWith('video_') && ['scenario','pose','wardrobe','lighting','camera'].includes(section.key)).flatMap(section =>
-    (section.fields || []).flatMap(field => (field.options || []).slice(0,40).map(option => ({
-      id:section.key+':'+field.key+':'+option.value,
-      label:section.title+' / '+field.label+' / '+option.label,
-      text:clean(option.keywords) || clean(option.label),
-    })))).filter(option => option.text);
-}
-export function compileVideoPrompt({mode,scene,motion,expression,camera,environment,intensity,custom}) {
-  const pieces = [];
-  if (mode === 'text_video' && clean(scene)) pieces.push(clean(scene).replace(/[. ]+$/, '') + '.');
-  pieces.push(mode === 'video' ? 'Animate the subject in the supplied image.' : 'Create a continuous photorealistic video.');
-  if (clean(motion)) pieces.push('The subject '+clean(motion).replace(/[. ]+$/, '')+'.');
-  if (clean(expression)) pieces.push(clean(expression).replace(/[. ]+$/, '')+'.');
-  if (clean(camera)) pieces.push(clean(camera).replace(/[. ]+$/, '')+'.');
-  if (clean(environment)) pieces.push(clean(environment).replace(/[. ]+$/, '')+'.');
-  pieces.push('Movement is '+intensity+', smooth, and physically realistic.');
-  if (clean(custom)) pieces.push(clean(custom).replace(/[. ]+$/, '')+'.');
-  if (mode === 'video') pieces.push('Preserve the original subject identity, appearance, clothing, proportions, background, and lighting.');
-  pieces.push('Keep the action continuous with no abrupt scene changes.');
-  return pieces.join(' ');
-}
+import { VIDEO_LIBRARY, VIDEO_PRESETS, videoDefaults, videoOptions, composeVideoPrompt } from '@/lib/videoPromptLibrary';
+const FIELD='w-full rounded-lg border hairline bg-elevated px-3 py-2 text-sm';
+const clean=value=>String(value||'').trim();
+const makeKey=()=> 'custom_'+(globalThis.crypto?.randomUUID?.() || Date.now().toString(36)).replace(/-/g,'');
 export default function VideoPromptBuilder({mode,onApply,disabled=false}) {
-  const [catalog,setCatalog] = useState({sections:[]});
-  const [loading,setLoading] = useState(true);
-  const [selection,setSelection] = useState({motion:'shift',expression:'neutral',camera:'still',environment:'none'});
-  const [intensity,setIntensity] = useState('subtle');
-  const [shared,setShared] = useState('');
-  const [scene,setScene] = useState('');
-  const [custom,setCustom] = useState('');
-  const [category,setCategory] = useState('motion');
-  const [newLabel,setNewLabel] = useState('');
-  const [newKeywords,setNewKeywords] = useState('');
-  const [busy,setBusy] = useState(false);
-  const [message,setMessage] = useState('');
-  useEffect(()=>{let active=true;endpoints.settings().then(result=>{if(active)setCatalog(result.prompt_catalog || {sections:[]});}).catch(()=>{if(active)setMessage('Saved library unavailable; built-in video choices remain available.');}).finally(()=>{if(active)setLoading(false);});return()=>{active=false;};},[]);
-  const options = useMemo(()=>Object.fromEntries(Object.keys(DEFAULTS).map(key=>[key,savedOptions(catalog,key) || DEFAULTS[key]])),[catalog]);
-  const sharedOptions = useMemo(()=>sharedChoices(catalog),[catalog]);
-  const picked = key => options[key].find(item=>item.value===selection[key]) || options[key][0];
-  const preview = compileVideoPrompt({mode,scene: [scene,sharedOptions.find(item=>item.id===shared)?.text].filter(Boolean).join('. '),motion:picked('motion')?.keywords,expression:picked('expression')?.keywords,camera:picked('camera')?.keywords,environment:picked('environment')?.keywords,intensity,custom});
-  const saveChoice = async () => {
-    if (!clean(newLabel) || !clean(newKeywords)) {setMessage('Enter a name and movement instructions.');return;}
+  const [catalog,setCatalog]=useState({sections:[]}),[loading,setLoading]=useState(true);
+  const [selected,setSelected]=useState(videoDefaults),[intensity,setIntensity]=useState('subtle');
+  const [scene,setScene]=useState(''),[custom,setCustom]=useState(''),[shared,setShared]=useState('');
+  const [steps,setSteps]=useState([]),[stepText,setStepText]=useState('');
+  const [search,setSearch]=useState(''),[category,setCategory]=useState('motion');
+  const [newLabel,setNewLabel]=useState(''),[newKeywords,setNewKeywords]=useState('');
+  const [presetName,setPresetName]=useState(''),[userPresets,setUserPresets]=useState([]);
+  const [busy,setBusy]=useState(false),[message,setMessage]=useState('');
+  useEffect(()=>{let live=true;endpoints.settings().then(settings=>{if(!live)return;setCatalog(settings.prompt_catalog||{sections:[]});setUserPresets(Array.isArray(settings.prompt_catalog?.video_presets)?settings.prompt_catalog.video_presets:[]);}).catch(()=>live&&setMessage('Saved catalog unavailable; built-in choices are available.')).finally(()=>live&&setLoading(false));return()=>{live=false;};},[]);
+  const sharedChoices=useMemo(()=> (catalog.sections||[]).filter(section=>!section.key.startsWith('video_')&&['scenario','pose','wardrobe','lighting','camera'].includes(section.key)).flatMap(section=>(section.fields||[]).flatMap(field=>(field.options||[]).map(option=>({id:[section.key,field.key,option.value].join(':'),label:[section.title,field.label,option.label].join(' / '),keywords:clean(option.keywords)||clean(option.label)})))).filter(item=>item.keywords),[catalog]);
+  const preview=composeVideoPrompt({mode,scene,shared:sharedChoices.find(item=>item.id===shared)?.keywords||'',selected,catalog,steps,intensity,custom});
+  const saveCatalog=async modify=>{
     setBusy(true);setMessage('');
     try {
-      // Re-read to preserve edits made in the existing image prompt library.
-      const latest = await endpoints.settings();
-      const original = latest.prompt_catalog || {sections:[]};
-      const key = VIDEO_KEYS[category];
-      const existing = original.sections.find(item=>item.key===key);
-      const base = existing?.fields?.find(item=>item.key==='choices')?.options || DEFAULTS[category];
-      const value = 'custom_'+Date.now().toString(36);
-      const updated = {key,title:SECTION_LABELS[category],exact_fields:true,fields:[{key:'choices',label:'Choices',type:'chips',options:[...base,{value,label:clean(newLabel),keywords:clean(newKeywords),group:'Custom'}]}]};
-      const next = {...original,sections:[...original.sections.filter(item=>item.key!==key),updated]};
-      const response = await endpoints.updateSettings({prompt_catalog:next});
-      setCatalog(response.prompt_catalog || next);
-      setSelection(prev=>({...prev,[category]:value}));
-      setNewLabel('');setNewKeywords('');setMessage('Saved to your existing prompt library.');
-    } catch(error) {setMessage(error.response?.data?.detail || 'Could not save this preset. Your existing library was not reset.');}
-    finally {setBusy(false);}
+      const latest=await endpoints.settings();
+      const original=latest.prompt_catalog||{sections:[]};
+      const updated=modify(original);
+      const result=await endpoints.updateSettings({prompt_catalog:updated});
+      const saved=result.prompt_catalog||updated;
+      setCatalog(saved);setUserPresets(Array.isArray(saved.video_presets)?saved.video_presets:[]);
+      setMessage('Saved to the shared prompt library.');
+    }catch(error){setMessage(error.response?.data?.detail||error.message||'Unable to save. Existing choices were not reset.');}
+    finally{setBusy(false);}
   };
+  const saveChoice=()=>{
+    if(!clean(newLabel)||!clean(newKeywords)){setMessage('Enter a preset name and instructions.');return;}
+    const key='video_'+category,value=makeKey();
+    saveCatalog(original=>{
+      const section=original.sections?.find(item=>item.key===key);
+      const field=section?.fields?.find(item=>item.key==='choices');
+      const options=field?.options||[];
+      const next={key,title:VIDEO_LIBRARY[category].title,exact_fields:true,fields:[{key:'choices',label:'Choices',type:'chips',options:[...options,{value,label:clean(newLabel),keywords:clean(newKeywords),group:'Custom'}]}]};
+      return {...original,sections:[...(original.sections||[]).filter(item=>item.key!==key),next]};
+    });
+    setSelected(current=>({...current,[category]:value}));setNewLabel('');setNewKeywords('');
+  };
+  const savePreset=()=>{
+    if(!clean(presetName)){setMessage('Name your video preset first.');return;}
+    const preset={id:makeKey(),label:clean(presetName),choices:{...selected},intensity,steps:[...steps],custom};
+    saveCatalog(original=>({...original,video_presets:[...(Array.isArray(original.video_presets)?original.video_presets:[]),preset]}));
+    setPresetName('');
+  };
+  const applyPreset=preset=>{setSelected(current=>({...current,...preset.choices}));setIntensity(preset.intensity||'subtle');setSteps(preset.steps||[]);setCustom(preset.custom||'');setMessage('Preset loaded. Review the prompt before applying.');};
   return <details className="rounded-xl border hairline bg-elevated/40 p-4" data-testid="video-prompt-builder">
-    <summary className="cursor-pointer font-semibold text-cyan-200">Video Prompt Library · guided builder</summary>
-    <p className="mt-2 text-xs text-zinc-400">Uses the existing image prompt library for scene details and stores video movement choices alongside it. Nothing is added to your prompt until you apply it.</p>
-    {loading ? <p className="mt-3 text-sm">Loading library…</p> : <div className="mt-4 space-y-4">
-      {mode==='text_video' && <label className="block space-y-1 text-sm">Scene / subject description<textarea className={FIELD} rows={2} value={scene} onChange={event=>setScene(event.target.value)} placeholder="Describe the subject, wardrobe and location…"/></label>}
-      {sharedOptions.length>0 && <label className="block space-y-1 text-sm">Reuse an existing image-library choice (optional)<select className={FIELD} value={shared} onChange={event=>setShared(event.target.value)}><option value="">No shared choice</option>{sharedOptions.map(item=><option key={item.id} value={item.id}>{item.label}</option>)}</select></label>}
-      <div className="grid gap-3 sm:grid-cols-2">{Object.keys(DEFAULTS).map(key=><label key={key} className="block space-y-1 text-sm">{SECTION_LABELS[key]}<select className={FIELD} value={selection[key]} onChange={event=>setSelection(prev=>({...prev,[key]:event.target.value}))}>{options[key].map(item=><option key={item.value} value={item.value}>{item.label}</option>)}</select></label>)}</div>
-      <label className="block space-y-1 text-sm">Motion intensity<select className={FIELD} value={intensity} onChange={event=>setIntensity(event.target.value)}>{['subtle','natural','dynamic'].map(item=><option key={item}>{item}</option>)}</select></label>
-      <label className="block space-y-1 text-sm">Additional instructions<textarea className={FIELD} rows={2} value={custom} onChange={event=>setCustom(event.target.value)} placeholder="Optional timing, gestures, or other details…"/></label>
-      <div className="rounded-lg border hairline p-3"><p className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-400">Preview</p><p className="text-sm whitespace-pre-wrap">{preview}</p></div>
-      <button type="button" className="rounded-lg bg-cyan-400 px-4 py-2 text-sm font-semibold text-black disabled:opacity-40" disabled={disabled} onClick={()=>onApply(preview)}>Use this prompt</button>
-      <details className="border-t border-zinc-700/50 pt-3"><summary className="cursor-pointer text-sm text-cyan-200">Save a custom video choice</summary><div className="mt-3 grid gap-2"><label className="text-sm">Category<select className={FIELD} value={category} onChange={event=>setCategory(event.target.value)}>{Object.keys(DEFAULTS).map(key=><option value={key} key={key}>{SECTION_LABELS[key]}</option>)}</select></label><input className={FIELD} aria-label="Preset name" placeholder="Preset name" value={newLabel} onChange={event=>setNewLabel(event.target.value)}/><textarea className={FIELD} aria-label="Preset instructions" placeholder="What should happen in the video?" value={newKeywords} onChange={event=>setNewKeywords(event.target.value)}/><button type="button" className="rounded-lg border hairline px-3 py-2 text-sm text-cyan-200 disabled:opacity-40" disabled={busy||disabled} onClick={saveChoice}>{busy?'Saving…':'Save to prompt library'}</button></div></details>
-      {message && <p role="status" className="text-xs text-zinc-300">{message}</p>}
+    <summary className="cursor-pointer font-semibold text-cyan-200">Video Prompt Studio · guided builder</summary>
+    <p className="mt-2 text-xs text-zinc-400">Build motion, camera, and scene instructions. Reuse image-library choices, save your own video presets, then apply the preview.</p>
+    {loading?<p className="mt-3 text-sm">Loading library…</p>:<div className="mt-4 space-y-4">
+      <div className="space-y-2"><p className="text-sm font-medium">Quick video presets</p><div className="flex flex-wrap gap-2">{[...VIDEO_PRESETS,...userPresets].map(preset=><button type="button" key={preset.id} disabled={disabled} onClick={()=>applyPreset(preset)} className="rounded-lg border hairline px-3 py-2 text-xs text-cyan-200">{preset.label}</button>)}</div></div>
+      {mode==='text_video'&&<label className="block text-sm">Scene and subject<textarea className={FIELD} rows={2} value={scene} onChange={event=>setScene(event.target.value)} placeholder="Subject, wardrobe, lighting, and location"/></label>}
+      {!!sharedChoices.length&&<label className="block text-sm">Existing image-library detail (optional)<select className={FIELD} value={shared} onChange={event=>setShared(event.target.value)}><option value="">No additional detail</option>{sharedChoices.map(item=><option key={item.id} value={item.id}>{item.label}</option>)}</select></label>}
+      <label className="block text-sm">Search video categories and choices<input className={FIELD} value={search} onChange={event=>setSearch(event.target.value)} placeholder="Walking, dolly, fabric, expression…"/></label>
+      <div className="grid gap-3 sm:grid-cols-2">{Object.entries(VIDEO_LIBRARY).map(([key,section])=>{
+        const choices=videoOptions(catalog,key);
+        const matches=choices.filter(item=>(section.title+' '+item.label+' '+item.keywords).toLowerCase().includes(search.toLowerCase()));
+        if(search&&!matches.length)return null;
+        return <label key={key} className="block text-sm">{section.title}<select className={FIELD} value={selected[key]} onChange={event=>setSelected(current=>({...current,[key]:event.target.value}))}>{choices.map(item=><option key={item.value} value={item.value}>{item.label}</option>)}</select></label>;
+      })}</div>
+      <label className="block text-sm">Motion intensity<select className={FIELD} value={intensity} onChange={event=>setIntensity(event.target.value)}>{['very subtle','subtle','natural','dynamic','highly dynamic'].map(value=><option key={value}>{value}</option>)}</select></label>
+      <div className="space-y-2"><p className="text-sm font-medium">Action sequence (optional)</p><p className="text-xs text-zinc-400">When set, these ordered actions replace the single body movement choice.</p>{steps.map((step,index)=><div className="flex items-center gap-2" key={index}><span className="min-w-0 flex-1 text-sm">{index+1}. {step}</span><button type="button" className="text-xs text-cyan-200" onClick={()=>setSteps(current=>current.filter((_,i)=>i!==index))}>Remove</button></div>)}<div className="flex gap-2"><input className={FIELD} aria-label="Next action" value={stepText} onChange={event=>setStepText(event.target.value)} placeholder="Next action…"/><button type="button" className="rounded-lg border hairline px-3 text-sm text-cyan-200" onClick={()=>{if(clean(stepText)){setSteps(current=>[...current,clean(stepText)]);setStepText('');}}}>Add</button></div></div>
+      <label className="block text-sm">Additional instructions<textarea className={FIELD} rows={2} value={custom} onChange={event=>setCustom(event.target.value)} placeholder="Timing, gestures, model-specific notes…"/></label>
+      <div className="rounded-lg border hairline p-3"><p className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-400">Compiled prompt preview</p><p className="whitespace-pre-wrap text-sm">{preview}</p></div>
+      <button type="button" disabled={disabled} className="rounded-lg bg-cyan-400 px-4 py-2 text-sm font-semibold text-black disabled:opacity-40" onClick={()=>onApply(preview)}>Use this video prompt</button>
+      <details className="border-t border-zinc-700/50 pt-3"><summary className="cursor-pointer text-sm text-cyan-200">Save complete video preset</summary><div className="mt-2 flex gap-2"><input aria-label="Video preset name" className={FIELD} value={presetName} onChange={event=>setPresetName(event.target.value)} placeholder="My video preset"/><button type="button" disabled={busy||disabled} className="rounded-lg border hairline px-3 text-sm text-cyan-200" onClick={savePreset}>Save</button></div></details>
+      <details className="border-t border-zinc-700/50 pt-3"><summary className="cursor-pointer text-sm text-cyan-200">Add a custom choice to the database</summary><div className="mt-3 space-y-2"><label className="block text-sm">Category<select className={FIELD} value={category} onChange={event=>setCategory(event.target.value)}>{Object.entries(VIDEO_LIBRARY).map(([key,value])=><option key={key} value={key}>{value.title}</option>)}</select></label><input aria-label="Custom choice name" className={FIELD} value={newLabel} onChange={event=>setNewLabel(event.target.value)} placeholder="Choice name"/><textarea aria-label="Custom choice instructions" className={FIELD} value={newKeywords} onChange={event=>setNewKeywords(event.target.value)} placeholder="Describe the action"/><button type="button" disabled={busy||disabled} className="rounded-lg border hairline px-3 py-2 text-sm text-cyan-200" onClick={saveChoice}>Save choice</button></div></details>
+      {message&&<p role="status" className="text-xs text-zinc-300">{message}</p>}
     </div>}
   </details>;
 }
