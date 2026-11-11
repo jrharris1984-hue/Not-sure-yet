@@ -2352,12 +2352,11 @@ async def _perform_dispatch(body: "DispatchBody", queue_id: Optional[str] = None
 
         is_minimax = wf_template.prompt_style == "minimax_h3"
         is_ltx = wf_template.prompt_style == "ltx_t2v"
-        requested_frames = max(41, min(241, int(body.video_frames)))
-        # WAN uses frame counts in the 4n+1 family.
-        frames = ((requested_frames - 1) // 4) * 4 + 1
+        requested_frames = max(1, min(241, int(body.video_frames)))
+        # WAN uses 4n+1; MiniMax H3 uses 17n+5 (22, 39, ... 124).
+        frames = ((max(41, requested_frames) - 1) // 4) * 4 + 1
         if is_minimax:
-            # MiniMax H3 uses 5 + 17*n frames. Keep UI defaults within model limits.
-            frames = max(22, min(243, 5 + 17 * max(1, round((int(body.video_frames) - 5) / 17))))
+            frames = 5 + 17 * max(1, min(7, round((requested_frames - 5) / 17)))
         fps = max(8, min(30, int(body.video_fps)))
         image_patched = False
         latent_patched = False
