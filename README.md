@@ -5,8 +5,10 @@ FastAPI + React + MongoDB. Character data and renders are stored locally; option
 
 Windows desktop packaging is in progress. See [the desktop milestones and data
 migration instructions](docs/windows-desktop.md). Docker uses MongoDB by default.
-An optional SQLite provider and explicit snapshot import are available for desktop
-testing; the Windows installer is a subsequent milestone.
+An optional SQLite provider, explicit snapshot import, and a Windows setup
+preview are available for testing. The setup executable offers existing services
+or managed NVIDIA ComfyUI with an optional SDXL starter model. Additional workflow
+packs and automatic Ollama installation remain subsequent milestones.
 
 ---
 
