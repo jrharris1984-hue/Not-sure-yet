@@ -5,7 +5,7 @@ import sqlite3
 import sys
 import tempfile
 import unittest
-from contextlib import redirect_stdout
+from contextlib import closing, redirect_stdout
 import io
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -18,11 +18,11 @@ class StoragePathTests(unittest.TestCase):
     def test_docker_defaults_keep_the_existing_render_volume(self):
         with tempfile.TemporaryDirectory() as root:
             paths = resolve_storage_paths(root, environ={})
-            self.assertEqual(paths.renders_dir, Path(root) / 'renders')
+            self.assertEqual(paths.renders_dir, Path(root).resolve() / 'renders')
 
     def test_windows_desktop_data_is_outside_installation_and_survives_reinitialization(self):
         with tempfile.TemporaryDirectory() as root:
-            root = Path(root)
+            root = Path(root).resolve()
             env = {'ULTRA_STUDIO_DESKTOP': '1', 'LOCALAPPDATA': str(root / 'user data')}
             paths = resolve_storage_paths(root / 'Program Files', environ=env, platform='win32')
             self.assertEqual(paths.data_dir, root / 'user data' / 'UltraStudio')
@@ -37,9 +37,9 @@ class StoragePathTests(unittest.TestCase):
     def test_explicit_data_folder_and_missing_windows_environment(self):
         with tempfile.TemporaryDirectory() as root:
             paths = resolve_storage_paths('/resources', environ={'ULTRA_STUDIO_DATA_DIR': root})
-            self.assertEqual(paths.data_dir, Path(root))
+            self.assertEqual(paths.data_dir, Path(root).resolve())
             paths = resolve_storage_paths('/resources', environ={'ULTRA_STUDIO_DESKTOP': '1'}, platform='win32', home=root)
-            self.assertEqual(paths.data_dir, Path(root) / 'AppData' / 'Local' / 'UltraStudio')
+            self.assertEqual(paths.data_dir, Path(root).resolve() / 'AppData' / 'Local' / 'UltraStudio')
         with self.assertRaises(ValueError):
             resolve_storage_paths('/resources', environ={'ULTRA_STUDIO_DATA_DIR': 'relative'})
 
@@ -61,7 +61,7 @@ class DesktopSnapshotTests(unittest.TestCase):
             result = write_snapshot(source.items(), destination, 'ultra_studio')
             self.assertEqual(result['documents'], 4)
             self.assertEqual(inspect_snapshot(destination)['collections'], {name: len(items) for name, items in source.items()})
-            with sqlite3.connect(destination) as connection:
+            with closing(sqlite3.connect(destination)) as connection, connection:
                 for name, documents in source.items():
                     restored = [json_util.loads(payload) for payload, in connection.execute('SELECT document_json FROM documents WHERE collection_name = ?', (name,))]
                     self.assertEqual(json_util.dumps(restored, json_options=json_util.CANONICAL_JSON_OPTIONS), json_util.dumps(documents, json_options=json_util.CANONICAL_JSON_OPTIONS))
@@ -102,7 +102,7 @@ class DesktopSnapshotTests(unittest.TestCase):
         for patch in [('collection_counts', '{}'), ('schema_version', '999')]:
             with tempfile.TemporaryDirectory() as root:
                 destination = Path(root) / 'snapshot.sqlite3'; write_snapshot(self.source().items(), destination)
-                with sqlite3.connect(destination) as connection:
+                with closing(sqlite3.connect(destination)) as connection, connection:
                     connection.execute('UPDATE metadata SET value = ? WHERE key = ?', (patch[1], patch[0]))
                 with self.assertRaises(ValueError):
                     inspect_snapshot(destination)
