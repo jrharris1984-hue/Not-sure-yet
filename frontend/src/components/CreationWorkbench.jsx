@@ -72,6 +72,11 @@ export default function CreationWorkbench({compact=false,section,sections,stages
   const openCategory=(item)=>{const target=item.items.find(x=>x.key===lastSectionByCategory[item.key])||item.items[0];if(!target)return;setDesignView('editor');onSection(target.key);};
   const selectSection=(key)=>{const owner=categories.find(item=>item.items.some(x=>x.key===key));if(owner)setLastSectionByCategory(previous=>({...previous,[owner.key]:key}));onSection(key);};
   const backToDashboard=()=>{setDesignView('dashboard');onDashboard?.();};
+  const activeCategory=categories.find(item=>item.items.some(entry=>entry.key===section));
+  const categorySections=activeCategory?.items || [];
+  const categoryIndex=categorySections.findIndex(item=>item.key===section);
+  const categoryPrevious=categorySections[categoryIndex-1];
+  const categoryNext=categorySections[categoryIndex+1];
   const utilities=<><SettingFinder sections={sections} onSelect={onFind}/><label>Controls<select aria-label="Controls" value={mode} onChange={e=>onMode(e.target.value)}><option value="simple">Essentials</option><option value="advanced">All details</option></select></label></>;
   return <section className="creation-bench" aria-label="Creation workspace">
     <header className="bench-title"><div><small>CREATION STUDIO</small><input aria-label="Character name" value={name} placeholder="Untitled character" onChange={e=>onName(e.target.value)}/></div><button onClick={onSave} disabled={saving}>{saving?'Saving…':saveError?'Retry save':'Save character'}</button></header>
@@ -88,11 +93,10 @@ export default function CreationWorkbench({compact=false,section,sections,stages
         {!compact && <div className="bench-context"><label className="bench-desktop-category">Category<select aria-label="Category" value={section} onChange={e=>onSection(e.target.value)}>{sections.map(item=><option key={item.key} value={item.key}>{item.title}</option>)}</select></label>{utilities}</div>}
         {!compact && <details className="bench-people"><summary>People &amp; presets <ChevronDown size={15}/></summary>{people}</details>}
         {!compact && subjectSwitcher && <div className="bench-subject-switcher" aria-label="Edit individual subjects">{subjectSwitcher}</div>}
-        {compact && <div className="bench-guided-flow">
-          <div className="bench-guided-heading"><div><small>CREATE · STAGE {activeMobileStep+1} OF {mobileSteps.length}</small><h2>{mobileStep?.title||category}</h2></div><button type="button" onClick={()=>setMobileCategoryOpen(open=>!open)} aria-expanded={mobileCategoryOpen}>Change stage <ChevronDown size={15}/></button></div>
-          <div className="bench-guided-progress" aria-label="Creation progress">{mobileSteps.map((g,i)=><button type="button" key={g.key} aria-label={g.title} aria-current={i===activeMobileStep?'step':undefined} onClick={()=>selectSection(g.sections[0])} className={i<=activeMobileStep?'reached':''}/>)}</div>
-          {mobileCategoryOpen && <nav className="bench-guided-step-list" aria-label="Creation steps">{mobileSteps.map((g,i)=><button key={g.key} type="button" aria-current={i===activeMobileStep?'step':undefined} onClick={()=>{selectSection(g.sections[0]);setMobileCategoryOpen(false);}}>{i+1}. {g.title}</button>)}</nav>}
-          {mobileStepSections.length>1 && <nav className="bench-guided-substeps" aria-label={mobileStep?.title+' options'}>{mobileStepSections.map(item=><button type="button" key={item.key} aria-current={section===item.key?'step':undefined} onClick={()=>selectSection(item.key)}>{item.title}</button>)}</nav>}
+        {compact && <div className="bench-focused-navigation" aria-label="Current editing category">
+          <label>Category<select aria-label="Choose editing category" value={activeCategory?.key || ''} onChange={e=>{const chosen=categories.find(item=>item.key===e.target.value);if(chosen)openCategory(chosen);}}>{categories.map(item=><option key={item.key} value={item.key}>{item.title}</option>)}</select></label>
+          {categorySections.length>1 && <label>Section<select aria-label="Choose section within category" value={section} onChange={e=>selectSection(e.target.value)}>{categorySections.map(item=><option key={item.key} value={item.key}>{item.title}</option>)}</select></label>}
+          <span className="bench-focused-counter">{categorySections.length?categoryIndex+1:0} of {categorySections.length} in {activeCategory?.title || 'category'}</span>
         </div>}
         {!compact && <nav className="bench-category-quicknav" aria-label="Jump to editing category">
           {groups.map(g=><div className="bench-category-group" key={g.key||g.id}>
@@ -107,10 +111,10 @@ export default function CreationWorkbench({compact=false,section,sections,stages
           <button type="button" disabled={!next} onClick={()=>selectSection(next.key)}>Next<ChevronRight size={17}/></button>
         </div>
         <article className={section==='wardrobe' ? 'bench-wardrobe-editor' : undefined} aria-label={category+' choices'}>{editor}</article>
-        {compact && <div className="bench-mobile-bottom-navigation" aria-label="Continue creation">
-          <button type="button" disabled={!previous} onClick={()=>onSection(previous.key)}><ChevronLeft size={17}/> Previous</button>
-          <span aria-label={`Detail ${currentIndex+1} of ${sections.length}`}>Detail {currentIndex+1} of {sections.length}</span>
-          <button type="button" disabled={!next} onClick={()=>onSection(next.key)}>Next <ChevronRight size={17}/></button>
+        {compact && <div className="bench-mobile-bottom-navigation" aria-label="Continue category">
+          <button type="button" disabled={!categoryPrevious} onClick={()=>selectSection(categoryPrevious.key)}><ChevronLeft size={17}/> Previous</button>
+          <span aria-label={`Section ${categoryIndex+1} of ${categorySections.length}`}>{categoryIndex+1} / {categorySections.length}</span>
+          {categoryNext?<button type="button" onClick={()=>selectSection(categoryNext.key)}>Next <ChevronRight size={17}/></button>:<button type="button" onClick={backToDashboard}>Categories <ChevronRight size={17}/></button>}
         </div>}
         {compact && generationStarted && <button type="button" className="bench-view-preview" onClick={()=>setPage('preview')}>View generation preview</button>}
         {compact && <details className="bench-mobile-extras"><summary>Additional options</summary>
