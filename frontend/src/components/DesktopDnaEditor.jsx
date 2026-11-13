@@ -47,10 +47,13 @@ export default function DesktopDnaEditor({ enabled, requestedField, workbench=fa
       if(seen.has(key))return [];
       seen.add(key);return [props.section.fields.find(item=>item.key===key)||field];
     })})).filter(group=>group.fields.length);
+    const filteredMenu=menu.map(group=>({...group,fields:group.fields.filter(field=>`${group.label} ${field.label} ${field.key}`.toLowerCase().includes(search.trim().toLowerCase()))})).filter(group=>group.fields.length);
     const current=menu.flatMap(group=>group.fields).find(field=>field.key===fieldKey)||menu[0]?.fields[0];
     if(!current)return <DnaSection {...props}/>;
     return <div className="bench-field-editor">
       <div className="bench-field-chooser">
+        <label className="bench-setting-label">Find a detail<input type="search" className="bench-detail-search-input" placeholder={`Search ${props.section.title.toLowerCase()} settings…`} value={search} onChange={event=>setSearch(event.target.value)}/></label>
+        {search.trim() && <div className="bench-detail-search-results" role="group" aria-label="Matching character details">{filteredMenu.flatMap(group=>group.fields.map(field=><button type="button" key={`${group.key}-${field.key}`} onClick={()=>{setFieldKey(field.key);setSearch('');}}>{group.label} · {field.label}</button>))}{!filteredMenu.length && <p role="status">No matching details. Try another search.</p>}</div>}
         <label className="bench-setting-label">Detail<select aria-label="Character detail" value={current.key} onChange={e=>{setFieldKey(e.target.value);if(props.collapsed)props.onToggleCollapsed?.();}}>
           {menu.map(group=><optgroup key={group.key} label={group.label}>{group.fields.map(field=><option key={field.key} value={field.key}>{field.label}</option>)}</optgroup>)}
         </select></label>
