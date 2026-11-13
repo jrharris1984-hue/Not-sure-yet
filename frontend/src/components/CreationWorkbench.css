@@ -297,3 +297,23 @@ body:has(.creation-bench){position:fixed;inset:0}
 .creation-bench .wardrobe-choice-pages button:disabled{opacity:.4}
 .creation-bench .wardrobe-choice-pages span{font-size:11px;color:#c9bfd6;white-space:nowrap}
 }
+
+/* Mobile category dashboard: only the compact character workbench is affected. */
+@media(max-width:767px){
+.creation-bench .bench-dashboard{display:flex;flex-direction:column;gap:14px;padding-bottom:24px}
+.creation-bench .bench-dashboard h1{margin:0;font-size:23px}
+.creation-bench .bench-dashboard .bench-hint{margin:0}
+.creation-bench .bench-dashboard-search{display:flex;flex-direction:column;gap:6px;font-size:12px;color:#d4c7e5}
+.creation-bench .bench-dashboard-search input{width:100%;min-height:46px;padding:10px 12px;border:1px solid #ffffff35;border-radius:11px;background:#20212e;color:#fff;font-size:16px}
+.creation-bench .bench-dashboard-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.creation-bench .bench-dashboard-card{display:flex;flex-direction:column;align-items:flex-start;text-align:left;gap:8px;min-width:0;min-height:120px;padding:14px 12px;border:1px solid #ffffff30;border-radius:14px;background:#252333;color:#f6f0ff;overflow-wrap:anywhere}
+.creation-bench .bench-dashboard-card:active{background:#403552}
+.creation-bench .bench-dashboard-card:focus-visible,.creation-bench .bench-dashboard-return button:focus-visible{outline:2px solid #d5bbff;outline-offset:2px}
+.creation-bench .bench-dashboard-card strong{font-size:15px}
+.creation-bench .bench-dashboard-card span{font-size:12px;color:#c7bfd1;line-height:1.35}
+.creation-bench .bench-dashboard-card small{margin-top:auto;color:#ad9cc8;font-size:11px}
+.creation-bench .bench-dashboard-review{min-height:48px;padding:12px;border:1px solid #c7a4ff;border-radius:11px;background:#423457;color:#fff;font-weight:650}
+.creation-bench .bench-dashboard-return{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px}
+.creation-bench .bench-dashboard-return button{display:inline-flex;align-items:center;gap:5px;min-height:44px;padding:8px 10px;border:1px solid #ffffff35;border-radius:10px;background:#30293e;color:#f5ecff}
+.creation-bench .bench-dashboard-return span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#c8bed8;font-size:12px}
+}
