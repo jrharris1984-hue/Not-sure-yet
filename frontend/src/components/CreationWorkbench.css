@@ -329,3 +329,14 @@ body:has(.creation-bench){position:fixed;inset:0}
 .creation-bench .bench-dashboard-return{position:relative;z-index:1}
 }
 @media(max-width:390px){.creation-bench .bench-focused-navigation{grid-template-columns:minmax(0,1fr)}}
+
+/* Phase 3: compact focused-editor search and readable detail controls. */
+@media(max-width:767px){
+.creation-bench .bench-field-chooser{min-width:0;display:grid;gap:10px}
+.creation-bench .bench-detail-search-input{display:block;width:100%;min-width:0;min-height:46px;margin-top:7px;padding:10px 12px;border:1px solid #ffffff40;border-radius:10px;background:#211f2d;color:#fff;font-size:16px}
+.creation-bench .bench-detail-search-results{display:grid;grid-template-columns:minmax(0,1fr);gap:7px;max-height:260px;overflow:auto;padding:9px;border:1px solid #ffffff25;border-radius:10px;background:#252333}
+.creation-bench .bench-detail-search-results button{min-height:44px;padding:10px;text-align:left;border:1px solid #ffffff30;border-radius:9px;background:#302c40;color:#f4edff;overflow-wrap:anywhere}
+.creation-bench .bench-detail-search-results p{margin:6px;color:#c8bfd5}
+.creation-bench .bench-field-editor,.creation-bench .bench-wardrobe-editor{min-width:0;max-width:100%}
+.creation-bench .bench-detail-browser-list{max-height:55dvh;overflow:auto;overscroll-behavior:contain}
+}
