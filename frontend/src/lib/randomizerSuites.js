@@ -81,7 +81,7 @@ export function proposeRandomizer(people,id,{active=0,target='active',keepIdenti
       if(spec?.fields)for(const section of spec.sections)for(const field of SECTIONS.find(s=>s.key===section)?.fields || [])if(!spec.fields[section]?.includes(field.key))fieldLocks[section]={...fieldLocks[section],[field.key]:true};
       p={...p,locks,field_locks:fieldLocks};
       if(custom){const proposed=applyCustomRandomizer([{...p,id:String(index),label:`Person ${index+1}`}],custom,locks);issues.push(...proposed.issues);return {...p,dna:proposed.subjects[0].dna};}
-      for(const section of spec.sections)if(!locks[section])p.dna[section]=randomizeSection(section,p.dna[section],fieldLocks[section],{profile:'natural',avoidCurrent:true});
+      for(const section of spec.sections)if(!locks[section])p.dna[section]=randomizeSection(section,p.dna[section],fieldLocks[section],{profile:spec.id.startsWith('focused-')?'adventurous':'natural',avoidCurrent:true});
       const set=(section,field,value)=>{p=updateWorkspaceField(p,section,field,value);};
       if(spec.outfit && !locks.wardrobe){
         let choices=HERITAGE_OUTFIT_GROUP.options;
