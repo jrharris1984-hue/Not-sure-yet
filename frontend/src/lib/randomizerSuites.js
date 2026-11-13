@@ -35,6 +35,31 @@ export const RANDOMIZER_SUITES=[
   suite('camera','Lens & composition','Photography',['camera'],'Vary photographic lens and composition.',{shared:true}),
   suite('footwear','Footwear focus','Photography',['pose','feet','camera'],'A natural footwear composition; retain the outfit.',{shared:true,footwear:true}),
 ];
+// Category-scoped suites are derived from the live character editor schema.
+// New supported fields appear automatically without maintaining a second option catalog.
+const FOCUSED_RANDOMIZER_GROUPS=[
+  {section:'wardrobe',category:'Wardrobe details',title:'Wardrobe',groups:[
+    ['outfit','Outfit sets & styles',/outfit|dress|top|bottom|skirt|pants|lingerie|swim|style/i],
+    ['shoes','Shoes & hosiery',/footwear|shoe|heel|boot|sock|hosiery|stocking/i],
+    ['accessories','Accessories & finishing',/accessor|jewel|bag|hat|glove|fabric|color|material/i]]},
+  {section:'feet',category:'Feet focus',title:'Feet',groups:[
+    ['appearance','Foot appearance',/foot|toe|arch|sole|size|shape/i],
+    ['styling','Pedicure & styling',/pedicure|nail|polish|groom/i],
+    ['framing','Foot framing & composition',/framing|composition|focus|pose|presentation|angle/i]]},
+  {section:'physique',category:'Body type & shape',title:'Body',groups:[
+    ['build','Height & overall build',/height|body_type|muscular/i],
+    ['upper','Upper-body proportions',/bust|breast|chest|shoulder/i],
+    ['waist','Waist & hips',/waist|hip|belly|abdomen/i],
+    ['lower','Legs & lower-body shape',/butt|glute|thigh|leg|calf/i]]},
+];
+export const FOCUSED_RANDOMIZER_SUITES=FOCUSED_RANDOMIZER_GROUPS.flatMap(group=>{
+  const fields=SECTIONS.find(section=>section.key===group.section)?.fields || [];
+  const eligible=fields.filter(field=>['chips','pose_chips','chips_multi','slider'].includes(field.type));
+  const make=(id,label,selected)=>suite(id,label,group.category,[group.section],`Randomize unlocked ${label.toLowerCase()} settings from the existing ${group.title} editor.`,{fields:{[group.section]:selected.map(field=>field.key)}});
+  const subgroups=group.groups.map(([key,label,pattern])=>make(`focused-${group.section}-${key}`,label,eligible.filter(field=>pattern.test(field.key)))).filter(item=>item.fields[group.section].length);
+  return [make(`focused-${group.section}-all`,`All ${group.title} details`,eligible),...subgroups];
+});
+RANDOMIZER_SUITES.push(...FOCUSED_RANDOMIZER_SUITES);
 const copy=value=>JSON.parse(JSON.stringify(value));
 const pick=(values,old)=>{const pool=values.filter(v=>v!==old);const list=pool.length?pool:values;return list[Math.floor(Math.random()*list.length)];};
 export function randomizerChanges(before,after) {
