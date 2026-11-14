@@ -163,15 +163,21 @@
 }
 .studio-shell .studio-page img{max-width:100%;height:auto}
 .studio-shell .studio-page :is(.gallery-poster,.aspect-video) img{height:100%;width:100%;object-fit:cover}
-.studio-shell .studio-page :is(.gallery-poster,.aspect-video){contain:layout paint}
 .studio-shell .studio-page :is(button,a){-webkit-tap-highlight-color:transparent}
 .studio-shell .studio-page button:not(:disabled):active{filter:brightness(1.1)}
 @media(max-width:767px){
  .studio-shell .studio-render-status{max-height:min(45dvh,420px)}
  .studio-shell .studio-page{scroll-margin-top:64px}
- .studio-shell .studio-page :is(.gallery-poster,.aspect-video){content-visibility:auto;contain-intrinsic-size:auto 210px}
 }
 @media(prefers-reduced-motion:reduce){
  .studio-shell .studio-loading-dot,.studio-shell .studio-skeleton{animation:none}
  .studio-shell .studio-page button:active{filter:none}
+}
+
+/* Phase 5 QA corrections: preserve gallery visibility and usable bottom navigation. */
+@media(max-width:767px){
+ .studio-shell .mobile-bottom-nav>div{grid-template-columns:repeat(5,minmax(0,1fr))}
+ .studio-shell .mobile-bottom-nav .studio-mobile-link{width:100%;padding-inline:2px;min-width:0}
+ .studio-shell .mobile-bottom-nav .studio-mobile-link span{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+ .studio-shell .studio-page .gallery-poster img{display:block;width:100%;height:100%;object-fit:cover}
 }
