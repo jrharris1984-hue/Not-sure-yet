@@ -90,6 +90,7 @@ export default function CreationWorkbench({compact=false,section,sections,stages
         <button type="button" className="bench-dashboard-review" onClick={()=>setPage('output')}>Review generation settings</button>
       </div>:page==='design'?<>
         {compact && <div className="bench-dashboard-return"><button type="button" onClick={backToDashboard}><ChevronLeft size={17}/> Back to Categories</button><span>{category}</span></div>}
+        {compact && <div className="bench-editor-actions" aria-label="Character editor actions"><label>Editing mode<select aria-label="Editing detail level" value={mode} onChange={e=>onMode(e.target.value)}><option value="simple">Essentials</option><option value="advanced">All details</option></select></label><button type="button" onClick={()=>setPage('preview')}>Preview character</button></div>}
         {!compact && <div className="bench-context"><label className="bench-desktop-category">Category<select aria-label="Category" value={section} onChange={e=>onSection(e.target.value)}>{sections.map(item=><option key={item.key} value={item.key}>{item.title}</option>)}</select></label>{utilities}</div>}
         {!compact && <details className="bench-people"><summary>People &amp; presets <ChevronDown size={15}/></summary>{people}</details>}
         {!compact && subjectSwitcher && <div className="bench-subject-switcher" aria-label="Edit individual subjects">{subjectSwitcher}</div>}
