@@ -16,6 +16,7 @@ export default function WardrobeEditor({requestedField, ...props}) {
   const [groupKey,setGroupKey]=useState('clothes');
   const [fieldKey,setFieldKey]=useState('');
   const [showInactive,setShowInactive]=useState(false);
+  const [search,setSearch]=useState('');
   const source=wardrobeGroups(props.section.fields);
   const groups=navigation.map(group=>({...group,fields:source.filter(item=>group.groups.includes(item.key)).flatMap(item=>item.fields)
     .filter(field=>field.key!=='outfit_mode' && (showInactive || !wardrobeFieldDisabled(field.key,props.value)))})).filter(group=>group.fields.length);
@@ -36,6 +37,8 @@ export default function WardrobeEditor({requestedField, ...props}) {
     <WardrobeOverview value={props.value} fields={props.section.fields} disabled={!!props.locked || !!props.fieldLocks?.outfit_mode}
       onModeChange={mode=>props.onChange(editWardrobeField(props.value,'outfit_mode',mode))}
       showInactive={showInactive} onShowInactive={setShowInactive}/>
+    <label className="wardrobe-smart-search">Find wardrobe detail<input type="search" value={search} onChange={event=>setSearch(event.target.value)} placeholder="Search outfits, shoes, fabric…" /></label>
+    {search.trim() && <div className="wardrobe-smart-results" role="group" aria-label="Wardrobe search results">{source.flatMap(item=>item.fields.filter(field=>`${item.key} ${field.label} ${field.key}`.toLowerCase().includes(search.trim().toLowerCase())).map(field=><button key={field.key} type="button" onClick={()=>{const target=navigation.find(nav=>nav.groups.includes(item.key));if(target)setGroupKey(target.key);setFieldKey(field.key);if(wardrobeFieldDisabled(field.key,props.value))setShowInactive(true);setSearch('');}}>{field.label}{wardrobeFieldDisabled(field.key,props.value)?' · inactive':''}</button>))}</div>}
     <nav className="wardrobe-category-tabs flex flex-wrap gap-2" aria-label="Wardrobe navigation">{groups.map(item=><button key={item.key} type="button" className={`chip min-h-11 ${item.key===group?.key?'active':''}`} aria-pressed={item.key===group?.key}
       onClick={()=>{setGroupKey(item.key);setFieldKey('');}}>{item.label}</button>)}</nav>
     <label className="wardrobe-mobile-category">Clothing category
