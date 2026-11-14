@@ -69,14 +69,27 @@ export default function CreationWorkbench({compact=false,section,sections,stages
     {key:'camera',title:'Camera',description:'Angles and composition',keys:['camera']},
     {key:'advanced',title:'Advanced',description:'Additional character controls',keys:['intimate','watersports']},
   ];
+  // Guided mode groups the same underlying sections into a few approachable choices.
+  // Advanced mode keeps the original categories and every editor available.
+  const guidedCategoryDefinitions=[
+    {key:'person',title:'Person & Appearance',description:'Identity, face, body and hair',keys:['scenario','identity','physique','feet','face','skin','hair']},
+    {key:'outfit',title:'Clothing & Accessories',description:'Choose an outfit and accessories',keys:['wardrobe']},
+    {key:'framing',title:'Pose & Camera',description:'Position, framing and viewpoint',keys:['pose','camera']},
+    {key:'environment',title:'Scene & Lighting',description:'Background, lighting and style',keys:['scene','lighting','style']},
+  ];
+  const guidedAssigned=new Set(guidedCategoryDefinitions.flatMap(item=>item.keys));
+  const guidedCategories=guidedCategoryDefinitions.map(item=>({...item,items:item.keys.map(key=>sections.find(section=>section.key===key)).filter(Boolean)})).filter(item=>item.items.length);
+  const guidedExtras=sections.filter(item=>!guidedAssigned.has(item.key));
+  if(guidedExtras.length)guidedCategories.push({key:'additional',title:'More Customization',description:'Additional settings and options',items:guidedExtras});
   const assigned=new Set(dashboardCategories.flatMap(item=>item.keys));
   const unmatched=sections.filter(item=>!assigned.has(item.key));
   const categories=dashboardCategories.map(item=>({...item,items:item.keys.map(key=>sections.find(section=>section.key===key)).filter(Boolean)})).filter(item=>item.items.length);
   if(unmatched.length)categories.push({key:'more',title:'More',description:'Other available settings',items:unmatched});
+  const visibleCategories=guided?guidedCategories:categories;
   const openCategory=(item)=>{const target=item.items.find(x=>x.key===lastSectionByCategory[item.key])||item.items[0];if(!target)return;setDesignView('editor');onSection(target.key);};
-  const selectSection=(key)=>{const owner=categories.find(item=>item.items.some(x=>x.key===key));if(owner)setLastSectionByCategory(previous=>({...previous,[owner.key]:key}));onSection(key);};
+  const selectSection=(key)=>{const owner=visibleCategories.find(item=>item.items.some(x=>x.key===key));if(owner)setLastSectionByCategory(previous=>({...previous,[owner.key]:key}));onSection(key);};
   const backToDashboard=()=>{setDesignView('dashboard');onDashboard?.();};
-  const activeCategory=categories.find(item=>item.items.some(entry=>entry.key===section));
+  const activeCategory=visibleCategories.find(item=>item.items.some(entry=>entry.key===section));
   const categorySections=activeCategory?.items || [];
   const categoryIndex=categorySections.findIndex(item=>item.key===section);
   const categoryPrevious=categorySections[categoryIndex-1];
@@ -95,11 +108,11 @@ export default function CreationWorkbench({compact=false,section,sections,stages
         <button type="button" disabled={busy||!ready} onClick={()=>{setGenerationStarted(true);if(compact)setPage('preview');else setDesktopPreviewOpen(true);onGenerate();}}>{busy?'Queuing…':'Generate now'}</button>
       </div>}
       {page==='design' && compact && designView==='dashboard'?<div className="bench-dashboard" data-testid="character-category-dashboard">
-        <h1>Design your character</h1><p className="bench-hint">Choose a category to customize. Your existing selections are preserved.</p>
+        <h1>Design your character</h1><p className="bench-hint">{guided?"Choose what you want to change, or continue with the defaults. Your selections are saved as you move between sections.":"Choose a category to customize. Your existing selections are preserved."}</p>
         <label className="bench-dashboard-search">Find a category or setting<input type="search" value={dashboardSearch} onChange={e=>setDashboardSearch(e.target.value)} placeholder="Search character settings" /></label>
-        <div className="bench-dashboard-grid">{categories.filter(item=>`${item.title} ${item.description} ${item.items.map(x=>x.title).join(' ')}`.toLowerCase().includes(dashboardSearch.toLowerCase())).map(item=><button type="button" className="bench-dashboard-card" key={item.key} onClick={()=>openCategory(item)}><strong>{item.title}</strong><span>{item.description}</span><small>{item.items.length} {item.items.length===1?'section':'sections'}</small></button>)}</div>
-        {!categories.some(item=>`${item.title} ${item.description} ${item.items.map(x=>x.title).join(' ')}`.toLowerCase().includes(dashboardSearch.toLowerCase()))&&<p>No matching categories.</p>}
-        <button type="button" className="bench-dashboard-review" onClick={()=>setPage('output')}>Review generation settings</button>
+        <div className="bench-dashboard-grid">{visibleCategories.filter(item=>`${item.title} ${item.description} ${item.items.map(x=>x.title).join(' ')}`.toLowerCase().includes(dashboardSearch.toLowerCase())).map(item=><button type="button" className="bench-dashboard-card" key={item.key} onClick={()=>openCategory(item)}><strong>{item.title}</strong><span>{item.description}</span><small>{item.items.length} {item.items.length===1?'section':'sections'}</small></button>)}</div>
+        {!visibleCategories.some(item=>`${item.title} ${item.description} ${item.items.map(x=>x.title).join(' ')}`.toLowerCase().includes(dashboardSearch.toLowerCase()))&&<p>No matching categories.</p>}
+        <button type="button" className="bench-dashboard-review" onClick={()=>setPage(guided?'review':'output')}>{guided?'Review & generate':'Review generation settings'}</button>
       </div>:page==='design'?<>
         {compact && <div className="bench-dashboard-return"><button type="button" onClick={backToDashboard}><ChevronLeft size={17}/> Back to Categories</button><span>{category}</span></div>}
         {compact && <div className="bench-editor-actions" aria-label="Character editor actions"><label>Editing mode<select aria-label="Editing detail level" value={mode} onChange={e=>onMode(e.target.value)}><option value="simple">Essentials</option><option value="advanced">All details</option></select></label><button type="button" onClick={()=>setPage('preview')}>Preview character</button></div>}
@@ -107,7 +120,7 @@ export default function CreationWorkbench({compact=false,section,sections,stages
         {!compact && <details className="bench-people"><summary>People &amp; presets <ChevronDown size={15}/></summary>{people}</details>}
         {!compact && subjectSwitcher && <div className="bench-subject-switcher" aria-label="Edit individual subjects">{subjectSwitcher}</div>}
         {compact && <div className="bench-focused-navigation" aria-label="Current editing category">
-          <label>Category<select aria-label="Choose editing category" value={activeCategory?.key || ''} onChange={e=>{const chosen=categories.find(item=>item.key===e.target.value);if(chosen)openCategory(chosen);}}>{categories.map(item=><option key={item.key} value={item.key}>{item.title}</option>)}</select></label>
+          <label>Category<select aria-label="Choose editing category" value={activeCategory?.key || ''} onChange={e=>{const chosen=visibleCategories.find(item=>item.key===e.target.value);if(chosen)openCategory(chosen);}}>{visibleCategories.map(item=><option key={item.key} value={item.key}>{item.title}</option>)}</select></label>
           {categorySections.length>1 && <label>Section<select aria-label="Choose section within category" value={section} onChange={e=>selectSection(e.target.value)}>{categorySections.map(item=><option key={item.key} value={item.key}>{item.title}</option>)}</select></label>}
           <span className="bench-focused-counter">{categorySections.length?categoryIndex+1:0} of {categorySections.length} in {activeCategory?.title || 'category'}</span>
         </div>}
