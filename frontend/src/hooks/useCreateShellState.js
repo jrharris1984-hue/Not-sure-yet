@@ -4,6 +4,7 @@ import { createSectionsForStep, createStepForSection } from "@/lib/createJourney
 
 export function useCreateShellState({ activeSection, studioSteps, nav, sectionUrl }) {
   const [mobileStudioStep, setMobileStudioStep] = useState(() => createStepForSection(activeSection, studioSteps));
+  const [experienceMode, setExperienceMode] = useTabPreference("ultra:creation-experience", "guided");
   const [mobileStudioMode, setMobileStudioMode] = useTabPreference("ultra:mobile-view", "simple");
   const [mobileSheets, setMobileSheets] = useState(true);
   const [mobileToolsGroup, setMobileToolsGroup] = useState("overview");
@@ -11,6 +12,12 @@ export function useCreateShellState({ activeSection, studioSteps, nav, sectionUr
     window.matchMedia?.("(max-width: 767px)").matches ?? window.innerWidth < 768
   );
   const [desktopQuickMode, setDesktopQuickMode] = useTabPreference("ultra:desktop-simple", true);
+  const changeExperienceMode = next => {
+    const guided = next !== "advanced";
+    setExperienceMode(guided ? "guided" : "advanced");
+    setMobileStudioMode(guided ? "simple" : "advanced");
+    setDesktopQuickMode(guided);
+  };
   const [specialtyTab, setSpecialtyTab] = useState(0);
   const [quickReview, setQuickReview] = useState(false);
   const [reviewEditing, setReviewEditing] = useState(false);
@@ -77,6 +84,7 @@ export function useCreateShellState({ activeSection, studioSteps, nav, sectionUr
 
   return {
     mobileStudioStep, setMobileStudioStep,
+    experienceMode, changeExperienceMode,
     mobileStudioMode, setMobileStudioMode,
     mobileSheets, setMobileSheets,
     mobileToolsGroup, setMobileToolsGroup,
