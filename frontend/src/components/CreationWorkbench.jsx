@@ -24,7 +24,23 @@ export default function CreationWorkbench({compact=false,section,sections,stages
   const pane=useRef(null);
   const location=useLocation();
   const [designView,setDesignView]=useState(()=>location.pathname.includes('/s/')?'editor':'dashboard');
-  const [lastSectionByCategory,setLastSectionByCategory]=useState({});
+  // Navigation-only session state: scoped to the creation route, never character DNA.
+  const navigationKey='ultra:workbench-navigation:'+location.pathname.replace(/\\/s\\/[^/]+$/, '');
+  const [categoryMemory,setCategoryMemory]=useState(()=>{
+    try {
+      const saved=JSON.parse(window.sessionStorage.getItem(navigationKey)||'{}');
+      return {key:navigationKey,sections:saved&&typeof saved.sections==='object'&&!Array.isArray(saved.sections)?saved.sections:{}};
+    } catch {return {key:navigationKey,sections:{}};}
+  });
+  const lastSectionByCategory=categoryMemory.key===navigationKey?categoryMemory.sections:{};
+  const setLastSectionByCategory=update=>setCategoryMemory(previous=>{
+    const current=previous.key===navigationKey?previous.sections:{};
+    return {key:navigationKey,sections:typeof update==='function'?update(current):update};
+  });
+  useEffect(()=>{
+    if(categoryMemory.key!==navigationKey)return;
+    try {window.sessionStorage.setItem(navigationKey,JSON.stringify({sections:categoryMemory.sections}));}catch{/* Navigation persistence is optional. */}
+  },[navigationKey,categoryMemory]);
   const [dashboardSearch,setDashboardSearch]=useState('');
   const [group,setGroup]=useState('Workflow');
   const [workflowOpen,setWorkflowOpen]=useState(false);
