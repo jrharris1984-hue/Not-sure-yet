@@ -33,6 +33,9 @@ export default function WardrobeEditor({requestedField, ...props}) {
   },[requested,requestedField]);
   const group=groups.find(item=>item.key===groupKey) || groups[0];
   const field=group?.fields.find(item=>item.key===fieldKey) || group?.fields[0];
+  const allDetails=groups.flatMap(item=>item.fields.map(detail=>({detail,group:item.key})));
+  const detailIndex=allDetails.findIndex(item=>item.group===group?.key && item.detail.key===field?.key);
+  const moveDetail=offset=>{const target=allDetails[detailIndex+offset];if(target){setGroupKey(target.group);setFieldKey(target.detail.key);setSearch('');}};
   return <div className="space-y-4 min-w-0" data-testid="wardrobe-focused-editor">
     <WardrobeOverview value={props.value} fields={props.section.fields} disabled={!!props.locked || !!props.fieldLocks?.outfit_mode}
       onModeChange={mode=>props.onChange(editWardrobeField(props.value,'outfit_mode',mode))}
@@ -54,6 +57,11 @@ export default function WardrobeEditor({requestedField, ...props}) {
         </select>
       </label>
       <DnaSection {...props} focusedField={field.key} hideWardrobeOverview collapsed={false} simpleMode={false}/>
+      <nav className="bench-detail-stepper" aria-label="Navigate every wardrobe detail">
+        <button type="button" disabled={detailIndex<=0} onClick={()=>moveDetail(-1)}>← Previous detail</button>
+        <span aria-live="polite">{detailIndex+1} of {allDetails.length}<small>{field.label}</small></span>
+        <button type="button" disabled={detailIndex>=allDetails.length-1} onClick={()=>moveDetail(1)}>Next detail →</button>
+      </nav>
     </> : <p className="text-sm text-zinc-400">No controls available in this outfit mode.</p>}
   </div>;
 }
