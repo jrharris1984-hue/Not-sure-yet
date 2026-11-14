@@ -20,6 +20,22 @@ const groups = {
 };
 export function desktopEditingGroups(section) {
   if (section.key === 'wardrobe') return wardrobeGroups(section.fields);
+  if (section.key === 'feet') {
+    const definitions=[
+      ['appearance','Foot appearance',/foot|toe|arch|sole|heel|shape|size/i],
+      ['pedicure','Pedicure & grooming',/pedicure|nail|polish|groom|skin|color/i],
+      ['presentation','Pose & presentation',/pose|angle|focus|camera|framing|presentation|position/i],
+      ['styling','Foot styling',/shoe|sock|stocking|hosiery|footwear|accessor/i],
+    ];
+    const remaining=[...section.fields];
+    const result=definitions.map(([key,label,pattern])=>{
+      const fields=remaining.filter(field=>pattern.test(`${field.key} ${field.label}`));
+      fields.forEach(field=>remaining.splice(remaining.indexOf(field),1));
+      return {key,label,fields};
+    }).filter(group=>group.fields.length);
+    if(remaining.length)result.push({key:'other',label:'Other foot details',fields:remaining});
+    return result;
+  }
   const definitions = groups[section.key];
   if (!definitions) return [];
   const known = new Set(definitions.flatMap(([, , fields]) => fields));
