@@ -1,4 +1,5 @@
 import DetailNavigator from './DetailNavigator';
+import useTabPreference from '@/hooks/useTabPreference';
 import {useEffect, useState} from 'react';
 import DnaSection from './DnaSection';
 import WardrobeOverview from './WardrobeOverview';
@@ -13,8 +14,10 @@ const navigation = [
   {key:'styling',label:'Styling',groups:['fabric','coverage','other']},
 ];
 export default function WardrobeEditor({requestedField, ...props}) {
-  const [groupKey,setGroupKey]=useState('clothes');
-  const [fieldKey,setFieldKey]=useState('');
+  const preferenceKey=`ultra:wardrobe-position:${props.subjectId || 'primary'}`;
+  const [groupKey,setGroupKey]=useTabPreference(`${preferenceKey}:group`,'clothes');
+  const [fieldKey,setFieldKey]=useTabPreference(`${preferenceKey}:detail`,'');
+  const [mobilePanel,setMobilePanel]=useState('detail');
   const [showInactive,setShowInactive]=useState(false);
   const [search,setSearch]=useState('');
   const source=wardrobeGroups(props.section.fields);
@@ -43,23 +46,27 @@ export default function WardrobeEditor({requestedField, ...props}) {
   const field=group?.fields.find(item=>item.key===fieldKey) || group?.fields[0];
   const allDetails=groups.flatMap(item=>item.fields.map(detail=>({detail,group:item.key})));
   const detailIndex=allDetails.findIndex(item=>item.group===group?.key && item.detail.key===field?.key);
-  const moveDetail=offset=>{const target=allDetails[detailIndex+offset];if(target){setGroupKey(target.group);setFieldKey(target.detail.key);setSearch('');}else if(props.onSectionAdvance)props.onSectionAdvance(offset);};
+  const selectDetail=(category,detail)=>{setGroupKey(category);setFieldKey(detail);setSearch('');setMobilePanel('detail');};
+  const moveDetail=offset=>{const target=allDetails[detailIndex+offset];if(target){selectDetail(target.group,target.detail.key);}else if(props.onSectionAdvance)props.onSectionAdvance(offset);};
   return <div className="space-y-4 min-w-0" data-testid="wardrobe-focused-editor">
+    <div className="wardrobe-mobile-guide">
+      <div className="wardrobe-mobile-location"><span>WARDROBE / {group?.label || 'Clothes'}</span><strong>{field?.label || 'Choose a detail'}</strong><small>{detailIndex>=0?detailIndex+1:0} of {allDetails.length} details</small></div>
+      <div className="wardrobe-mobile-actions"><button type="button" aria-expanded={mobilePanel==='categories'} onClick={()=>setMobilePanel(mobilePanel==='categories'?'detail':'categories')}>Categories</button><button type="button" aria-expanded={mobilePanel==='search'} onClick={()=>setMobilePanel(mobilePanel==='search'?'detail':'search')}>Find a setting</button></div>
+      {mobilePanel==='categories' && <div className="wardrobe-mobile-picker" aria-label="Wardrobe categories">{groups.map(item=><button type="button" key={item.key} onClick={()=>selectDetail(item.key,item.fields[0]?.key)}><strong>{item.label}</strong><small>{item.fields.length} details</small></button>)}</div>}
+      {mobilePanel==='search' && <div className="wardrobe-mobile-search"><label>Find a wardrobe setting<input type="search" autoFocus value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search outfits, shoes, fabric…" /></label><div className="wardrobe-smart-results">{source.flatMap(item=>item.fields.filter(f=>f.key!=='outfit_mode' && `${item.key} ${f.label} ${f.key}`.toLowerCase().includes(search.trim().toLowerCase())).map(f=><button key={f.key} type="button" onClick={()=>{const target=navigation.find(nav=>nav.groups.includes(item.key));if(wardrobeFieldDisabled(f.key,props.value))setShowInactive(true);selectDetail(target?.key || 'clothes',f.key);}}>{f.label}{wardrobeFieldDisabled(f.key,props.value)?' · inactive':''}</button>))}</div></div>}
+    </div>
+    <div className="wardrobe-existing-navigation">
     <WardrobeOverview value={props.value} fields={props.section.fields} disabled={!!props.locked || !!props.fieldLocks?.outfit_mode}
       onModeChange={mode=>props.onChange(editWardrobeField(props.value,'outfit_mode',mode))}
       showInactive={showInactive} onShowInactive={setShowInactive}/>
     <label className="wardrobe-smart-search">Find wardrobe detail<input type="search" value={search} onChange={event=>setSearch(event.target.value)} placeholder="Search outfits, shoes, fabric…" /></label>
-    {search.trim() && <div className="wardrobe-smart-results" role="group" aria-label="Wardrobe search results">{source.flatMap(item=>item.fields.filter(field=>`${item.key} ${field.label} ${field.key}`.toLowerCase().includes(search.trim().toLowerCase())).map(field=><button key={field.key} type="button" onClick={()=>{const target=navigation.find(nav=>nav.groups.includes(item.key));if(target)setGroupKey(target.key);setFieldKey(field.key);if(wardrobeFieldDisabled(field.key,props.value))setShowInactive(true);setSearch('');}}>{field.label}{wardrobeFieldDisabled(field.key,props.value)?' · inactive':''}</button>))}</div>}
-    <nav className="wardrobe-category-tabs flex flex-wrap gap-2" aria-label="Wardrobe navigation">{groups.map(item=><button key={item.key} type="button" className={`chip min-h-11 ${item.key===group?.key?'active':''}`} aria-pressed={item.key===group?.key}
-      onClick={()=>{setGroupKey(item.key);setFieldKey('');}}>{item.label}</button>)}</nav>
-    <label className="wardrobe-mobile-category">Clothing category
-      <select aria-label="Clothing category" value={group?.key || ''} onChange={event=>{setGroupKey(event.target.value);setFieldKey('');}}>
-        {groups.map(item=><option key={item.key} value={item.key}>{item.label}</option>)}
-      </select>
-    </label>
+    {search.trim() && <div className="wardrobe-smart-results">{source.flatMap(item=>item.fields.filter(f=>f.key!=='outfit_mode' && `${item.key} ${f.label} ${f.key}`.toLowerCase().includes(search.trim().toLowerCase())).map(f=><button type="button" key={f.key} onClick={()=>{const target=navigation.find(nav=>nav.groups.includes(item.key));if(wardrobeFieldDisabled(f.key,props.value))setShowInactive(true);selectDetail(target?.key || 'clothes',f.key);}}>{f.label}</button>))}</div>}
+    <nav className="wardrobe-category-tabs flex flex-wrap gap-2" aria-label="Wardrobe navigation">{groups.map(item=><button key={item.key} type="button" className={`chip min-h-11 ${item.key===group?.key?'active':''}`} aria-pressed={item.key===group?.key} onClick={()=>selectDetail(item.key,item.fields[0]?.key)}>{item.label}</button>)}</nav>
+    <label className="wardrobe-mobile-category">Clothing category<select aria-label="Clothing category" value={group?.key || ''} onChange={e=>selectDetail(e.target.value,groups.find(g=>g.key===e.target.value)?.fields[0]?.key)}>{groups.map(item=><option key={item.key} value={item.key}>{item.label}</option>)}</select></label>
+    </div>
     {field ? <>
       <div className="wardrobe-desktop-detail-nav"><DetailNavigator label="Editing" fields={group.fields.map(item=>({...item,label:`${item.label}${wardrobeFieldDisabled(item.key,props.value)?' · inactive':''}`}))} value={field.key} onChange={setFieldKey}/></div>
-      <label className="wardrobe-mobile-detail-nav">Customize
+      <label className="wardrobe-mobile-detail-nav wardrobe-existing-navigation">Customize
         <select aria-label="Wardrobe detail" value={field.key} onChange={event=>setFieldKey(event.target.value)}>
           {group.fields.map(item=><option key={item.key} value={item.key}>{item.label}{wardrobeFieldDisabled(item.key,props.value)?' · inactive':''}</option>)}
         </select>
