@@ -1,4 +1,4 @@
-import { Film, Pencil, PersonStanding, ScanFace, SlidersHorizontal, Wrench } from "lucide-react";
+import { Camera, Film, Pencil, PersonStanding, ScanFace, SlidersHorizontal, Wrench } from "lucide-react";
 
 export default function PostGenerationActions({
   onEdit,
@@ -6,6 +6,7 @@ export default function PostGenerationActions({
   onAnimate,
   onReference,
   onBody,
+  onPhotoshoot,
   onTools,
   busy = false,
   compact = false,
@@ -13,6 +14,7 @@ export default function PostGenerationActions({
   const actions = [
     { key: "edit", label: "Edit image", description: "Change or repair this image.", icon: Pencil, onClick: onEdit, testId: "post-action-edit" },
     { key: "pose", label: "New pose", description: "Keep the source while changing pose.", icon: PersonStanding, onClick: onPose, testId: "post-action-pose" },
+    { key: "photoshoot", label: "Start photoshoot", description: "Create a shoot from this image.", icon: Camera, onClick: onPhotoshoot, testId: "post-action-photoshoot" },
     { key: "animate", label: "Animate", description: "Use this image as a video starting frame.", icon: Film, onClick: onAnimate, testId: "post-action-animate" },
     { key: "reference", label: "Face reference", description: "Restore character details and preserve identity.", icon: ScanFace, onClick: onReference, testId: "post-action-reference" },
     { key: "body", label: "Change body setup", description: "Return to body controls with the original setup.", icon: SlidersHorizontal, onClick: onBody, testId: "post-action-body" },
