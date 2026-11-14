@@ -3,6 +3,7 @@ import WardrobeEditor from './WardrobeEditor';
 import useTabPreference from '@/hooks/useTabPreference';
 import { useEffect, useState } from 'react';
 import DnaSection from './DnaSection';
+import CameraOrbitPicker from './CameraOrbitPicker';
 import { desktopEditingGroups, desktopFieldTarget } from '@/lib/desktopEditingGroups';
 import { sizeControlSummary } from '@/lib/physiqueControlPriority';
 import { wardrobeFieldDisabled } from '@/lib/wardrobeMode';
@@ -80,6 +81,7 @@ export default function DesktopDnaEditor({ enabled, requestedField, workbench=fa
           </div>
         </details>
       </div>
+      {props.section.key==='pose' && current.key==='angle' && <CameraOrbitPicker value={props.value?.angle||''} disabled={props.locked||!!props.fieldLocks?.angle} onChange={angle=>props.onChange({...props.value,angle})}/>}
       <DnaSection {...props} focusedField={current.key}/>
       <nav className="bench-detail-stepper" aria-label="Navigate every character detail">
         <button type="button" disabled={detailIndex<=0 && !props.hasPreviousSection} onClick={()=>moveDetail(-1)}>← Previous detail</button>
