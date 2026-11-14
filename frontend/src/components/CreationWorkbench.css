@@ -441,3 +441,15 @@ body:has(.creation-bench){position:static;inset:auto}
 .creation-bench .wardrobe-coverage-current{margin:0;font-size:12px;color:#d3c9e0}
 .creation-bench .wardrobe-coverage-help summary{cursor:pointer;font-size:12px}
 @media(min-width:900px){.creation-bench .wardrobe-coverage-levels{grid-template-columns:repeat(4,minmax(0,1fr))}}
+
+/* Layer controls use the existing exposure recipe without clearing garment selections. */
+.creation-bench .wardrobe-layer-picker{display:grid;gap:12px;padding:14px;border:1px solid #ffffff30;border-radius:14px;background:#242133;color:#f5edff;min-width:0}
+.creation-bench .wardrobe-layer-picker>div:first-child{display:grid;gap:4px}
+.creation-bench .wardrobe-layer-picker>div:first-child p,.creation-bench .wardrobe-layer-note{margin:0;font-size:12px;line-height:1.5;color:#d3c9e0}
+.creation-bench .wardrobe-layer-options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.creation-bench .wardrobe-layer-options button{display:grid;align-content:start;gap:5px;text-align:left;min-width:0;min-height:66px;padding:10px;border:1px solid #ffffff40;border-radius:10px;background:#30293e;color:#f5edff}
+.creation-bench .wardrobe-layer-options button[aria-pressed=true]{background:#574477;border-color:#d3b6ff}
+.creation-bench .wardrobe-layer-options button:disabled{opacity:.45}
+.creation-bench .wardrobe-layer-options strong{font-size:12px;line-height:1.35}
+.creation-bench .wardrobe-layer-options small{font-size:11px;line-height:1.35;color:#d3c9e0}
+@media(min-width:900px){.creation-bench .wardrobe-layer-options{grid-template-columns:repeat(3,minmax(0,1fr))}}
