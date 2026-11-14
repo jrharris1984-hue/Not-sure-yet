@@ -398,7 +398,11 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
       : null;
     const target = requestedMode === "body_adjust"
       ? workflows.find((workflow) => workflow.kind === "variation" && workflow.prompt_style === "chroma")
-      : selectedImageTool || workflows.find((workflow) => workflow.kind === requestedKind);
+      : requestedMode === "photoshoot_image"
+        ? workflows.find((workflow) => workflow.kind === "variation") || workflows.find((workflow) => workflow.kind === "edit" && !["pose","camera"].includes(workflow.edit_variant))
+        : requestedMode === "photoshoot_character"
+          ? workflows.find((workflow) => workflow.kind === "face") || workflows.find((workflow) => workflow.kind === "edit" && !["pose","camera"].includes(workflow.edit_variant))
+          : selectedImageTool || workflows.find((workflow) => workflow.kind === requestedKind);
     if (!target) {
       const label = requestedKind === "video" ? "image-to-video" : requestedKind === "face" ? "face-preserve" : "image-edit";
       toast.error(`No ${label} workflow is configured. Add one in Settings first.`);
@@ -453,7 +457,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
       setVideoInstruction("");
     } else if (requestedKind === "edit") {
       setVideoInstruction("");
-      if (location.state?.referenceMode === "new_pose" || requestedMode === "photoshoot_character") {
+      if (location.state?.referenceMode === "new_pose" || requestedMode === "photoshoot_character" || requestedMode === "photoshoot_image") {
         setEditMode("new_pose");
         setPreserveUnmentioned(true);
         setEditInstruction("");
@@ -1664,14 +1668,14 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
     }
 
     if(surprise)setSubjects(sourceSubjects);
-    const isSmartShoot = !surprise && activeRecipeFamily === "image" && renderCount > 1 && batchSeedMode === "smart";
+    const isSmartShoot = !surprise && (activeRecipeFamily === "image" || isFaceWorkflow || isEditWorkflow || isVariationWorkflow) && renderCount > 1 && batchSeedMode === "smart";
     setSmartShootRun(isSmartShoot ? {
       label: resolvePhotoshootPreset(smartBatchPreset, customPhotoshootPresets).label,
       shots: smartPhotoshootPlan.map(shot => ({ ...shot })), requests: [], queuing: true, error: '',
     } : null);
     setDispatching(true);
     try {
-      const requestedCount = !surprise && activeRecipeFamily === "image" ? renderCount : 1;
+      const requestedCount = !surprise && (activeRecipeFamily === "image" || (batchSeedMode === "smart" && (isFaceWorkflow || isEditWorkflow || isVariationWorkflow))) ? renderCount : 1;
       const baseSeed = activeRecipeFamily === "image" && chromaSettings.seed !== ""
         ? Number(chromaSettings.seed)
         : Math.floor(Math.random() * 2147483647);
@@ -1753,7 +1757,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
         cfg: activeRecipeFamily === "image" ? renderSettings.cfg : undefined,
         sampler_name: activeRecipeFamily === "image" ? renderSettings.sampler : undefined,
         scheduler: activeRecipeFamily === "image" ? renderSettings.scheduler : undefined,
-        seed: activeRecipeFamily === "image" || isQwenReferenceWorkflow ? uniqueSeed : undefined,
+        seed: activeRecipeFamily === "image" || isQwenReferenceWorkflow || isSmartShoot ? uniqueSeed : undefined,
         reference_image: (isFaceWorkflow || isEditWorkflow || isEnhanceWorkflow || isVideoWorkflow || isVariationWorkflow) ? referenceImage?.name : undefined,
         reference_source_render_id: referenceImage?.source_render_id || undefined,
         pose_reference_image: isQwenReferenceWorkflow && qwenEditVariant === "pose" ? poseReferenceImage?.name : undefined,
