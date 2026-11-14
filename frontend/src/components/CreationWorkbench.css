@@ -425,3 +425,19 @@ body:has(.creation-bench){position:static;inset:auto}
 .creation-bench .camera-orbit-picker label{display:grid;gap:7px;font-size:13px}
 .creation-bench .camera-orbit-picker select{min-height:46px;min-width:0;width:100%;padding:8px;border:1px solid #ffffff40;border-radius:9px;background:#30293e;color:#f5edff}
 @media(min-width:900px){.creation-bench .camera-orbit-directions{grid-template-columns:repeat(4,minmax(0,1fr))}}
+
+/* Wardrobe Coverage Studio: eight readable presets, no new DNA schema. */
+.creation-bench .wardrobe-coverage-studio{display:grid;gap:12px;padding:14px;border:1px solid #ffffff30;border-radius:14px;background:#242133;color:#f5edff}
+.creation-bench .wardrobe-coverage-title strong{font-size:16px}
+.creation-bench .wardrobe-coverage-title p,.creation-bench .wardrobe-coverage-help p{margin:5px 0 0;font-size:13px;line-height:1.5;color:#d3c9e0}
+.creation-bench .wardrobe-coverage-levels{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.creation-bench .wardrobe-coverage-choice{display:flex;align-items:flex-start;gap:8px;min-width:0;min-height:68px;text-align:left;padding:10px;border:1px solid #ffffff40;border-radius:10px;background:#30293e;color:#f5edff}
+.creation-bench .wardrobe-coverage-choice[aria-pressed=true]{background:#574477;border-color:#d3b6ff}
+.creation-bench .wardrobe-coverage-choice:disabled{opacity:.45}
+.creation-bench .wardrobe-coverage-choice span:last-child{display:grid;gap:4px;min-width:0}
+.creation-bench .wardrobe-coverage-choice strong{font-size:12px;line-height:1.35}
+.creation-bench .wardrobe-coverage-choice small{font-size:11px;line-height:1.35;color:#d3c9e0}
+.creation-bench .wardrobe-coverage-index{display:grid;place-items:center;flex:none;width:21px;height:21px;border-radius:50%;background:#ffffff22;font-size:11px}
+.creation-bench .wardrobe-coverage-current{margin:0;font-size:12px;color:#d3c9e0}
+.creation-bench .wardrobe-coverage-help summary{cursor:pointer;font-size:12px}
+@media(min-width:900px){.creation-bench .wardrobe-coverage-levels{grid-template-columns:repeat(4,minmax(0,1fr))}}
