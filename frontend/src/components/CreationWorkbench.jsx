@@ -14,9 +14,12 @@ export function workflowControls(nodes, kind) {
   });
 }
 const pages=[['design','Design',ScanFace],['random','Randomize',Shuffle],['output','Settings',SlidersHorizontal],['preview','Preview',Picture]];
+const guidedPages=[['design','Customize',ScanFace],['review','Review',SlidersHorizontal],['preview','Results',Picture]];
 export default function CreationWorkbench({compact=false,section,sections,stages,onSection,onFind,name,onName,onSave,saving,saveError,people,subjectSwitcher,subjectCount=1,expectedSubjectCount=1,editor,random,settings,preview,renderStatus,workflow,workflows=[],workflowId,onWorkflow,count,onGenerate,busy,issues,ready,mode,onMode,onDashboard}) {
   const [saved,setPage]=useTabPreference('ultra:creation-workbench-page','design');
-  const page=pages.some(([key])=>key===saved)?saved:'design';
+  const page=[...pages,...guidedPages].some(([key])=>key===saved)?saved:'design';
+  const guided=mode!=='advanced';
+  const visiblePages=guided?guidedPages:pages;
   const pane=useRef(null);
   const location=useLocation();
   const [designView,setDesignView]=useState(()=>location.pathname.includes('/s/')?'editor':'dashboard');
@@ -80,8 +83,16 @@ export default function CreationWorkbench({compact=false,section,sections,stages
   const utilities=<><SettingFinder sections={sections} onSelect={onFind}/><label>Controls<select aria-label="Controls" value={mode} onChange={e=>onMode(e.target.value)}><option value="simple">Essentials</option><option value="advanced">All details</option></select></label></>;
   return <section className="creation-bench" aria-label="Creation workspace">
     <header className="bench-title"><div><small>CREATION STUDIO</small><input aria-label="Character name" value={name} placeholder="Untitled character" onChange={e=>onName(e.target.value)}/></div><button onClick={onSave} disabled={saving}>{saving?'Saving…':saveError?'Retry save':'Save character'}</button></header>
-    <nav className="bench-nav" aria-label="Creation tasks">{pages.map(([key,label,Icon])=><button key={key} aria-current={key===page?'page':undefined} onClick={()=>setPage(key)}><Icon size={17}/>{label}</button>)}</nav>
-    <div role="region" className="bench-scroll" ref={pane} aria-label={pages.find(p=>p[0]===page)[1]+' workspace'}>
+    <nav className="bench-nav" aria-label="Creation tasks">{visiblePages.map(([key,label,Icon])=><button key={key} aria-current={key===page?'page':undefined} onClick={()=>setPage(key)}><Icon size={17}/>{label}</button>)}</nav>
+    <div role="region" className="bench-scroll" ref={pane} aria-label={(visiblePages.find(p=>p[0]===page)?.[1]||pages.find(p=>p[0]===page)?.[1]||'Creation')+' workspace'}>
+      {guided && page==='review' && <div className="bench-guided-review" aria-label="Review before generation">
+        <h1>Ready to create?</h1>
+        <p className="bench-hint">Your character choices are preserved. Review the generation setup before starting.</p>
+        <dl><dt>Character</dt><dd>{name||'Untitled character'}</dd><dt>Editing category</dt><dd>{category||'Character design'}</dd><dt>Workflow</dt><dd>{currentWorkflow?.name||currentWorkflow?.title||workflow||'Not selected'}</dd><dt>Images</dt><dd>{count||1}</dd></dl>
+        {issues?.length>0 && <p role="status">{issues[0]}</p>}
+        <button type="button" onClick={()=>{setPage('design');if(compact)setDesignView('dashboard');}}>Continue customizing</button>
+        <button type="button" disabled={busy||!ready} onClick={()=>{setGenerationStarted(true);if(compact)setPage('preview');else setDesktopPreviewOpen(true);onGenerate();}}>{busy?'Queuing…':'Generate now'}</button>
+      </div>}
       {page==='design' && compact && designView==='dashboard'?<div className="bench-dashboard" data-testid="character-category-dashboard">
         <h1>Design your character</h1><p className="bench-hint">Choose a category to customize. Your existing selections are preserved.</p>
         <label className="bench-dashboard-search">Find a category or setting<input type="search" value={dashboardSearch} onChange={e=>setDashboardSearch(e.target.value)} placeholder="Search character settings" /></label>
@@ -147,6 +158,6 @@ export default function CreationWorkbench({compact=false,section,sections,stages
       </div>
       {issues?.[0] && <small role="status">{issues[0]}</small>}
       {renderStatus && <small>Render: {renderStatus}</small>}
-    </div>{!compact && generationStarted && !desktopPreviewOpen && <button type="button" onClick={()=>setDesktopPreviewOpen(true)}>Show preview</button>}<button type="button" disabled={busy||!ready} onClick={()=>{setGenerationStarted(true);if(compact){setPage('preview');}else{setDesktopPreviewOpen(true);}onGenerate();}}><Play size={16}/>{busy?'Queuing…':count>1?`Generate (${count})`:'Generate'}</button></footer>
+    </div>{!compact && generationStarted && !desktopPreviewOpen && <button type="button" onClick={()=>setDesktopPreviewOpen(true)}>Show preview</button>}<button type="button" disabled={busy||(guided?false:!ready)} onClick={()=>{if(guided){setPage('review');return;}setGenerationStarted(true);if(compact){setPage('preview');}else{setDesktopPreviewOpen(true);}onGenerate();}}><Play size={16}/>{guided?'Review & generate':busy?'Queuing…':count>1?`Generate (${count})`:'Generate'}</button></footer>
   </section>
 }
