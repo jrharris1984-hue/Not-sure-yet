@@ -396,3 +396,12 @@ body:has(.creation-bench){position:static;inset:auto}
 .creation-bench .wardrobe-mobile-search input{width:100%;min-width:0;min-height:48px;padding:10px;border:1px solid #ffffff40;border-radius:10px;background:#211f2d;color:#fff;font-size:16px}
 .creation-bench .wardrobe-mobile-search .wardrobe-smart-results{max-height:45dvh}
 }
+
+/* Phase 6E: focused mobile location and reachable navigation. */
+@media(max-width:767px){
+.creation-bench .bench-guided-location{display:flex;align-items:center;justify-content:space-between;gap:10px;min-width:0;margin:0 0 12px;padding:10px 12px;border:1px solid #ffffff2d;border-radius:10px;background:#252235}
+.creation-bench .bench-guided-location strong{min-width:0;overflow-wrap:anywhere;font-size:14px;color:#f5edff}
+.creation-bench .bench-guided-location span{flex-shrink:0;font-size:11px;color:#cfc4de;text-align:right}
+.creation-bench .bench-mobile-bottom-navigation{position:sticky;bottom:0;z-index:5;padding:10px 6px max(10px,env(safe-area-inset-bottom));background:#211e2d;box-shadow:0 -6px 18px #0005}
+.creation-bench .bench-mobile-bottom-navigation button{min-height:48px}
+}
