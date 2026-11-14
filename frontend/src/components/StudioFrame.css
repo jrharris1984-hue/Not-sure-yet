@@ -85,3 +85,58 @@
  .studio-shell .studio-main{overflow-x:clip}
  .studio-shell .studio-more-sheet{padding-bottom:max(24px,env(safe-area-inset-bottom))}
 }
+
+/* Phase 3: shared workspace rhythm for Gallery, Photoshoots and Video/Image. */
+.studio-shell .studio-page{
+ width:100%;min-width:0;max-width:1400px;
+ color:var(--studio-text);
+}
+.studio-shell .studio-page :is(header,h1,h2,h3){min-width:0}
+.studio-shell .studio-page h1{letter-spacing:-.025em;line-height:1.2}
+.studio-shell .studio-page :is(.pane,.gallery-shelf){
+ border-color:var(--studio-outline);
+ border-radius:var(--studio-radius);
+ background-color:var(--studio-surface);
+}
+.studio-shell .studio-page :is(input:not([type=checkbox]):not([type=radio]),select,textarea){
+ min-width:0;max-width:100%;border-radius:var(--studio-radius);
+}
+.studio-shell .studio-page :is(button,a,summary,input,select,textarea):focus-visible{
+ outline:2px solid var(--studio-accent);outline-offset:2px;
+}
+.studio-shell .studio-page button:disabled{cursor:not-allowed;opacity:.6}
+.studio-shell .studio-page :is(.gallery-poster,.pane){
+ transition:border-color var(--studio-motion) ease,box-shadow var(--studio-motion) ease,background-color var(--studio-motion) ease;
+}
+.studio-shell .studio-page :is(.gallery-poster,.pane):hover{
+ border-color:#76679c;box-shadow:0 10px 28px #0003;
+}
+.studio-shell .studio-page :is(.gallery-poster img,.pane img){
+ display:block;max-width:100%;
+}
+.studio-shell .studio-page .gallery-poster{overflow:hidden;border-radius:var(--studio-radius)}
+.studio-shell .studio-page-shoots .pane .aspect-video{overflow:hidden;background:var(--studio-elevated)}
+.studio-shell .studio-page-freeform{max-width:1024px}
+.studio-shell .studio-page-freeform section{
+ min-width:0;border-color:var(--studio-outline);border-radius:var(--studio-radius);
+}
+.studio-shell .studio-page-freeform :is(input,textarea,select){background-color:var(--studio-elevated);color:var(--studio-text);border-color:var(--studio-outline)}
+.studio-shell .studio-page-freeform button.bg-cyan-400{
+ background:var(--studio-accent);color:var(--studio-canvas);
+}
+.studio-shell .studio-page-freeform button.bg-cyan-400:hover:not(:disabled){background:var(--studio-accent-hover)}
+@media(min-width:768px){
+ .studio-shell .studio-page{padding-top:clamp(24px,3vw,44px);padding-bottom:44px}
+ .studio-shell .studio-page-freeform{padding-inline:clamp(24px,3vw,44px)}
+}
+@media(max-width:767px){
+ .studio-shell .studio-page{padding-top:16px;padding-bottom:calc(96px + env(safe-area-inset-bottom));overflow-x:clip}
+ .studio-shell .studio-page :is(button,select,input:not([type=checkbox]):not([type=radio])){min-height:40px}
+ .studio-shell .studio-page .gallery-poster{border-radius:10px}
+ .studio-shell .studio-page-freeform{padding-inline:14px}
+ .studio-shell .studio-page-freeform :is(input,textarea,select){font-size:16px}
+ .studio-shell .studio-page-freeform :is(.grid,.flex)>*{min-width:0}
+}
+@media(prefers-reduced-motion:reduce){
+ .studio-shell .studio-page :is(.gallery-poster,.pane){transition:none}
+}
