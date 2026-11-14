@@ -57,12 +57,12 @@ export default function AppShell({ children }) {
       <header className="glass studio-app-header sticky top-0 z-40 border-b border-white/10">
         <div className="mx-auto flex max-w-[1600px] items-center justify-between px-3 py-2 sm:px-6 sm:py-3">
           <Link to="/" className="flex items-center gap-2" data-testid="brand-home">
-            <div className="h-8 w-8 sm:h-9 sm:w-9 rounded-xl bg-gradient-to-br from-amber-500/20 to-cyan-500/10 border border-amber-400/50 grid place-items-center shadow-[0_0_18px_rgba(166,255,38,0.16)]">
-              <Sparkles className="h-4 w-4 text-amber-400" />
+            <div className="h-8 w-8 sm:h-9 sm:w-9 rounded-xl bg-gradient-to-br from-violet-500/20 to-slate-500/10 border border-violet-400/40 grid place-items-center shadow-[0_0_18px_rgba(155,131,245,0.12)]">
+              <Sparkles className="h-4 w-4 text-violet-300" />
             </div>
             <div className="leading-tight">
               <div className="font-display font-extrabold text-sm sm:text-base tracking-tight">Ultra Studio</div>
-              <div className="text-[10px] font-mono uppercase tracking-widest text-cyan-300/80">Create · Refine · Render</div>
+              <div className="text-[10px] font-mono uppercase tracking-widest text-violet-200/80">Create · Refine · Render</div>
             </div>
             <span className="hidden sm:inline-flex items-center rounded-md border border-rose-500/50 bg-rose-500/10 px-1.5 py-0.5 text-[9px] font-mono font-bold uppercase tracking-widest text-rose-300 ml-1">
               18+
@@ -75,7 +75,7 @@ export default function AppShell({ children }) {
               <Link
                 to="/create"
                 data-testid="btn-new-character"
-                className="hidden sm:inline-flex items-center gap-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-black text-sm font-semibold px-3 py-2 transition-colors"
+                className="hidden sm:inline-flex items-center gap-1.5 rounded-lg bg-violet-400 hover:bg-violet-300 text-slate-950 text-sm font-semibold px-3 py-2 transition-colors"
               >
                 <Plus className="h-4 w-4" /> Create
               </Link>
