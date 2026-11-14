@@ -39,7 +39,7 @@ export default function Shoots() {
   const emptyCount = shoots.length - shoots.filter((shoot) => (shoot.rendered_count ?? 0) > 0 || !["done", "failed"].includes(shoot.status)).length;
 
   return (
-    <div className="mx-auto max-w-[1400px] px-4 sm:px-6 py-6 sm:py-10 space-y-6">
+    <div className="studio-page studio-page-shoots mx-auto max-w-[1400px] px-4 sm:px-6 py-6 sm:py-10 space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-end gap-4 sm:gap-6">
         <div>
           <div className="section-label flex items-center gap-2"><Camera className="h-3 w-3" /> Shoots</div>
