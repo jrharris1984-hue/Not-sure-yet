@@ -464,3 +464,17 @@ body:has(.creation-bench){position:static;inset:auto}
 .creation-bench .wardrobe-independent-grid label strong{font-size:13px}
 .creation-bench .wardrobe-independent-grid label small{font-size:11px;color:#d3c9e0;overflow-wrap:anywhere}
 @media(min-width:900px){.creation-bench .wardrobe-independent-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* Wardrobe live summary and actionable conflict review */
+.creation-bench .wardrobe-live-review{display:grid;gap:11px;min-width:0;padding:14px;border:1px solid #ffffff30;border-radius:14px;background:#242133;color:#f5edff}
+.creation-bench .wardrobe-live-review-heading{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.creation-bench .wardrobe-live-review-heading span{font-size:11px;color:#d3c9e0}
+.creation-bench .wardrobe-live-review p{margin:0;font-size:12px;line-height:1.5;color:#d3c9e0}
+.creation-bench .wardrobe-live-lists{display:grid;grid-template-columns:1fr;gap:10px}
+.creation-bench .wardrobe-live-lists>div{padding:10px;border:1px solid #ffffff25;border-radius:10px;min-width:0}
+.creation-bench .wardrobe-live-lists strong,.creation-bench .wardrobe-live-warnings strong{font-size:12px}
+.creation-bench .wardrobe-live-review ul{margin:6px 0 0;padding-left:18px;font-size:12px;line-height:1.6;overflow-wrap:anywhere}
+.creation-bench .wardrobe-live-warnings{padding:10px;border:1px solid #f3c66d70;border-radius:10px;background:#4d3b2144}
+.creation-bench .wardrobe-live-reset{min-height:44px;padding:10px;border:1px solid #ffffff50;border-radius:9px;background:#30293e;color:#f5edff;text-align:center}
+.creation-bench .wardrobe-live-reset:disabled{opacity:.45}
+@media(min-width:900px){.creation-bench .wardrobe-live-lists{grid-template-columns:repeat(2,minmax(0,1fr))}}
