@@ -7,7 +7,7 @@ export const DESKTOP_WORKSPACES = [
   { id: "library", label: "Library", path: "/gallery" },
 ];
 
-export const MOBILE_WORKSPACES = ["home", "create", "projects", "library"];
+export const MOBILE_WORKSPACES = ["home", "create", "shoots", "library"];
 export const EDITOR_CATEGORIES = ["Cast", "Appearance", "Wardrobe", "Pose", "Scene", "Camera", "Lighting", "Style"];
 export const SECONDARY_DESTINATIONS = [
   { id: "media", label: "Media", path: "/media" },
