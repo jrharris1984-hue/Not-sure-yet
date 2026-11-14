@@ -140,3 +140,38 @@
 @media(prefers-reduced-motion:reduce){
  .studio-shell .studio-page :is(.gallery-poster,.pane){transition:none}
 }
+
+/* Phase 4 — loading, responsive media and stable interaction feedback. */
+.studio-shell .studio-loading-dot{background:var(--studio-accent);box-shadow:0 0 0 4px #9b83f520;animation:studio-status-pulse 1.6s ease-in-out infinite}
+.studio-shell .studio-skeleton{
+ background:linear-gradient(105deg,var(--studio-surface) 20%,#343a49 45%,var(--studio-surface) 70%);
+ background-size:220% 100%;
+ border:1px solid var(--studio-outline);
+ border-radius:var(--studio-radius);
+ animation:studio-skeleton-sweep 1.7s linear infinite;
+}
+@keyframes studio-skeleton-sweep{to{background-position-x:-220%}}
+@keyframes studio-status-pulse{50%{opacity:.45;box-shadow:0 0 0 7px #9b83f510}}
+.studio-shell .studio-render-status{
+ background:var(--studio-surface);
+ border:1px solid #7564a1;
+ border-radius:var(--studio-radius);
+ box-shadow:0 16px 48px #0007;
+}
+.studio-shell .studio-render-status :is(button,a):focus-visible{
+ outline:2px solid var(--studio-accent);outline-offset:2px;
+}
+.studio-shell .studio-page img{max-width:100%;height:auto}
+.studio-shell .studio-page :is(.gallery-poster,.aspect-video) img{height:100%;width:100%;object-fit:cover}
+.studio-shell .studio-page :is(.gallery-poster,.aspect-video){contain:layout paint}
+.studio-shell .studio-page :is(button,a){-webkit-tap-highlight-color:transparent}
+.studio-shell .studio-page button:not(:disabled):active{filter:brightness(1.1)}
+@media(max-width:767px){
+ .studio-shell .studio-render-status{max-height:min(45dvh,420px)}
+ .studio-shell .studio-page{scroll-margin-top:64px}
+ .studio-shell .studio-page :is(.gallery-poster,.aspect-video){content-visibility:auto;contain-intrinsic-size:auto 210px}
+}
+@media(prefers-reduced-motion:reduce){
+ .studio-shell .studio-loading-dot,.studio-shell .studio-skeleton{animation:none}
+ .studio-shell .studio-page button:active{filter:none}
+}
