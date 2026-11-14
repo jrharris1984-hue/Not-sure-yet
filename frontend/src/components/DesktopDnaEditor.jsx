@@ -54,6 +54,7 @@ export default function DesktopDnaEditor({ enabled, requestedField, workbench=fa
       <div className="bench-field-chooser">
         <label className="bench-setting-label">Find a detail<input type="search" className="bench-detail-search-input" placeholder={`Search ${props.section.title.toLowerCase()} settings…`} value={search} onChange={event=>setSearch(event.target.value)}/></label>
         {search.trim() && <div className="bench-detail-search-results" role="group" aria-label="Matching character details">{filteredMenu.flatMap(group=>group.fields.map(field=><button type="button" key={`${group.key}-${field.key}`} onClick={()=>{setFieldKey(field.key);setSearch('');}}>{group.label} · {field.label}</button>))}{!filteredMenu.length && <p role="status">No matching details. Try another search.</p>}</div>}
+        <nav className="bench-smart-groups" aria-label={`${props.section.title} detail groups`}>{menu.map(group=><button key={group.key} type="button" aria-pressed={group.fields.some(field=>field.key===current.key)} onClick={()=>{setFieldKey(group.fields[0].key);setSearch('');}}>{group.label}</button>)}</nav>
         <label className="bench-setting-label">Detail<select aria-label="Character detail" value={current.key} onChange={e=>{setFieldKey(e.target.value);if(props.collapsed)props.onToggleCollapsed?.();}}>
           {menu.map(group=><optgroup key={group.key} label={group.label}>{group.fields.map(field=><option key={field.key} value={field.key}>{field.label}</option>)}</optgroup>)}
         </select></label>
