@@ -86,6 +86,8 @@ export default function CreationWorkbench({compact=false,section,sections,stages
   const categories=dashboardCategories.map(item=>({...item,items:item.keys.map(key=>sections.find(section=>section.key===key)).filter(Boolean)})).filter(item=>item.items.length);
   if(unmatched.length)categories.push({key:'more',title:'More',description:'Other available settings',items:unmatched});
   const visibleCategories=guided?guidedCategories:categories;
+  // Remember the current section even when users arrive via Back, Next, or a deep link.
+  useEffect(()=>{const owner=visibleCategories.find(item=>item.items.some(entry=>entry.key===section));if(owner)setLastSectionByCategory(previous=>previous[owner.key]===section?previous:{...previous,[owner.key]:section});},[section,mode]);
   const openCategory=(item)=>{const target=item.items.find(x=>x.key===lastSectionByCategory[item.key])||item.items[0];if(!target)return;setDesignView('editor');onSection(target.key);};
   const selectSection=(key)=>{const owner=visibleCategories.find(item=>item.items.some(x=>x.key===key));if(owner)setLastSectionByCategory(previous=>({...previous,[owner.key]:key}));onSection(key);};
   const backToDashboard=()=>{setDesignView('dashboard');onDashboard?.();};
@@ -114,12 +116,13 @@ export default function CreationWorkbench({compact=false,section,sections,stages
         {!visibleCategories.some(item=>`${item.title} ${item.description} ${item.items.map(x=>x.title).join(' ')}`.toLowerCase().includes(dashboardSearch.toLowerCase()))&&<p>No matching categories.</p>}
         <button type="button" className="bench-dashboard-review" onClick={()=>setPage(guided?'review':'output')}>{guided?'Review & generate':'Review generation settings'}</button>
       </div>:page==='design'?<>
-        {compact && <div className="bench-dashboard-return"><button type="button" onClick={backToDashboard}><ChevronLeft size={17}/> Back to Categories</button><span>{category}</span></div>}
+        {compact && <div className="bench-dashboard-return"><button type="button" onClick={backToDashboard}><ChevronLeft size={17}/> {guided?'All categories':'Back to Categories'}</button><span>{guided?activeCategory?.title||category:category}</span></div>}
+        {compact && guided && <div className="bench-guided-location" aria-live="polite"><strong>{category||'Character settings'}</strong><span>{categoryIndex+1} of {categorySections.length} in {activeCategory?.title||'Customization'}</span></div>}
         {compact && <div className="bench-editor-actions" aria-label="Character editor actions"><label>Editing mode<select aria-label="Editing detail level" value={mode} onChange={e=>onMode(e.target.value)}><option value="simple">Essentials</option><option value="advanced">All details</option></select></label><button type="button" onClick={()=>setPage('preview')}>Preview character</button></div>}
         {!compact && <div className="bench-context"><label className="bench-desktop-category">Category<select aria-label="Category" value={section} onChange={e=>onSection(e.target.value)}>{sections.map(item=><option key={item.key} value={item.key}>{item.title}</option>)}</select></label>{utilities}</div>}
         {!compact && <details className="bench-people"><summary>People &amp; presets <ChevronDown size={15}/></summary>{people}</details>}
         {!compact && subjectSwitcher && <div className="bench-subject-switcher" aria-label="Edit individual subjects">{subjectSwitcher}</div>}
-        {compact && <div className="bench-focused-navigation" aria-label="Current editing category">
+        {compact && !guided && <div className="bench-focused-navigation" aria-label="Current editing category">
           <label>Category<select aria-label="Choose editing category" value={activeCategory?.key || ''} onChange={e=>{const chosen=visibleCategories.find(item=>item.key===e.target.value);if(chosen)openCategory(chosen);}}>{visibleCategories.map(item=><option key={item.key} value={item.key}>{item.title}</option>)}</select></label>
           {categorySections.length>1 && <label>Section<select aria-label="Choose section within category" value={section} onChange={e=>selectSection(e.target.value)}>{categorySections.map(item=><option key={item.key} value={item.key}>{item.title}</option>)}</select></label>}
           <span className="bench-focused-counter">{categorySections.length?categoryIndex+1:0} of {categorySections.length} in {activeCategory?.title || 'category'}</span>
@@ -140,10 +143,10 @@ export default function CreationWorkbench({compact=false,section,sections,stages
         {compact && <div className="bench-mobile-bottom-navigation" aria-label="Continue category">
           <button type="button" disabled={!categoryPrevious} onClick={()=>selectSection(categoryPrevious.key)}><ChevronLeft size={17}/> Previous</button>
           <span aria-label={`Section ${categoryIndex+1} of ${categorySections.length}`}>{categoryIndex+1} / {categorySections.length}</span>
-          {categoryNext?<button type="button" onClick={()=>selectSection(categoryNext.key)}>Next <ChevronRight size={17}/></button>:<button type="button" onClick={backToDashboard}>Categories <ChevronRight size={17}/></button>}
+          {categoryNext?<button type="button" onClick={()=>selectSection(categoryNext.key)}>Next <ChevronRight size={17}/></button>:<button type="button" onClick={backToDashboard}>{guided?'Finish category':'Categories'} <ChevronRight size={17}/></button>}
         </div>}
         {compact && generationStarted && <button type="button" className="bench-view-preview" onClick={()=>setPage('preview')}>View generation preview</button>}
-        {compact && <details className="bench-mobile-extras"><summary>Additional options</summary>
+        {compact && !guided && <details className="bench-mobile-extras"><summary>Additional options</summary>
           <div className="bench-mobile-mode" role="group" aria-label="Editing detail level"><button type="button" aria-pressed={mode==='simple'} onClick={()=>onMode('simple')}>Essentials</button><button type="button" aria-pressed={mode==='advanced'} onClick={()=>onMode('advanced')}>All details</button></div>
           <details className="bench-mobile-find"><summary>Find a setting</summary><SettingFinder sections={sections} onSelect={onFind}/></details>
           <details className="bench-mobile-presets"><summary>Character presets and people options</summary>{people}</details>
