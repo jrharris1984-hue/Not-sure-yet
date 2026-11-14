@@ -22,6 +22,14 @@ export default function WardrobeEditor({requestedField, ...props}) {
     .filter(field=>field.key!=='outfit_mode' && (showInactive || !wardrobeFieldDisabled(field.key,props.value)))})).filter(group=>group.fields.length);
   const requested=requestedField?.field || props.focusedField;
   useEffect(()=>{
+    if(!props.entryDirection || requested)return;
+    const all=groups.flatMap(group=>group.fields.map(field=>({group:group.key,field:field.key})));
+    const target=props.entryDirection<0?all[all.length-1]:all[0];
+    if(target){setGroupKey(target.group);setFieldKey(target.field);}
+    // Only handle entry into this section.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[props.section.key]);
+  useEffect(()=>{
     if (!requested || requested==='all') return;
     const sourceGroup=source.find(group=>group.fields.some(field=>field.key===requested));
     const target=navigation.find(group=>group.groups.includes(sourceGroup?.key));
