@@ -17,7 +17,7 @@ export function wardrobeLiveSummary(value={}){
  if(full&&selected.some(layer=>!layer.visible))warnings.push('Individual visibility overrides are saved but do not apply to complete outfit sets.');
  if(!full&&present(value.outfit_preset)&&selected.some(layer=>!layer.visible))warnings.push('An outfit preset can include multiple garments; select individual pieces for precise layer control.');
  if(!full&&present(value.dress_style)&&((present(value.top)&&layerVisible(value,'upper'))||(present(value.bottom)&&layerVisible(value,'lower'))))warnings.push('A dress and separate top or bottom are selected. The dress takes priority in the generated outfit.');
- if(!full&&present(value.skirt_style)&&present(value.bottom)&&layerVisible(value,'lower'))warnings.push('Skirt and bottoms are both selected. The existing compiler prioritizes the skirt.');
+ if(!full&&present(value.skirt_style)&&present(value.bottom)&&layerVisible(value,'lower'))warnings.push('Skirt and bottoms are both selected. Both may be sent to the prompt; remove one selection for a predictable result.');
  if(exposure.suppressClothing&&active.some(layer=>!['accessories','hosiery'].includes(layer.key)))warnings.push('The selected coverage mode suppresses clothing even when individual garment switches are on.');
  if(exposure.mode==='lingerie only'&&active.some(layer=>['upper','lower','dress'].includes(layer.key)))warnings.push('Lingerie-only coverage overrides outer garment selections.');
  if(exposure.mode==='nude'&&active.length)warnings.push('Nude coverage overrides clothing selections; saved items can be restored by changing coverage.');
