@@ -534,3 +534,39 @@ body:has(.creation-bench){position:static;inset:auto}
  .creation-bench .bench-nav button{font-size:10px;padding-inline:1px}
  .creation-bench .wardrobe-guided-steps{gap:3px}
 }
+
+/* Desktop finish pass: calm workspace hierarchy and consistent interaction. */
+@media(min-width:1024px){
+ .creation-bench{min-width:0}
+ .creation-bench .bench-title{min-height:70px;gap:20px}
+ .creation-bench .bench-title>div{min-width:0;flex:1}
+ .creation-bench .bench-title input{max-width:580px;line-height:1.35}
+ .creation-bench .bench-title button{min-height:42px;padding-inline:18px}
+ .creation-bench .bench-nav{padding:18px 10px;gap:7px}
+ .creation-bench .bench-nav button{width:100%;min-width:0;min-height:46px;text-align:left;border:1px solid transparent;transition:background .16s ease,border-color .16s ease}
+ .creation-bench .bench-nav button:hover{background:#ffffff0d;border-color:#ffffff20}
+ .creation-bench .bench-nav button[aria-current=page]{border-color:#ad8cdb55;background:#453650}
+ .creation-bench .bench-scroll{padding:clamp(20px,2.2vw,36px);scroll-padding-top:20px}
+ .creation-bench .bench-scroll>*{max-width:1120px}
+ .creation-bench .bench-scroll h1{line-height:1.25;letter-spacing:-.015em}
+ .creation-bench .bench-footer{min-height:76px;gap:16px}
+ .creation-bench .bench-footer-workflow{min-width:220px;max-width:min(45vw,480px);flex:1}
+ .creation-bench .bench-workflow-picker{min-width:0}
+ .creation-bench .bench-workflow-trigger{width:100%;min-width:0}
+ .creation-bench .bench-workflow-trigger span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+ .creation-bench .bench-workflow-popover{max-height:min(65dvh,530px);overflow:auto}
+ .creation-bench .bench-footer>button{min-height:46px}
+ .creation-bench .bench-preview-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;flex-wrap:wrap}
+ .creation-bench .bench-preview-heading>div{min-width:0;flex:1}
+ .creation-bench .bench-preview-heading>button{min-height:42px;white-space:nowrap}
+ .creation-bench .bench-desktop-preview-header{flex-wrap:wrap;align-items:center;gap:12px}
+ .creation-bench .bench-desktop-preview-content{padding:clamp(12px,1.5vw,22px);overscroll-behavior:contain}
+ .creation-bench :is(button,input,select,textarea):focus-visible{outline:2px solid #c7a4ff;outline-offset:2px}
+}
+@media(min-width:768px) and (max-width:1199px){
+ .creation-bench:has(.bench-desktop-preview){grid-template:'title title' auto 'nav panel' minmax(0,1fr) 'footer footer' auto / clamp(144px,15vw,210px) minmax(0,1fr)}
+ .creation-bench .bench-desktop-preview{position:fixed;z-index:50;top:70px;right:12px;bottom:86px;width:min(420px,calc(100vw - 190px));border:1px solid #ffffff30;border-radius:14px;box-shadow:0 20px 60px #0009;overflow:hidden}
+}
+@media(prefers-reduced-motion:reduce){
+ .creation-bench .bench-nav button{transition:none}
+}
