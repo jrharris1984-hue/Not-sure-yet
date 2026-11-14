@@ -375,3 +375,24 @@ body:has(.creation-bench){position:static;inset:auto}
 .creation-bench .bench-scroll :is(.bench-detail-browser-list,.bench-detail-search-results,.wardrobe-smart-results){overflow-y:auto;overflow-x:hidden;overscroll-behavior-y:contain;-webkit-overflow-scrolling:touch;touch-action:pan-y}
 .creation-bench .bench-detail-stepper{grid-template-columns:minmax(0,1fr) 70px minmax(0,1fr)}
 }
+
+/* Phase 5: compact wardrobe navigation without removing any controls. */
+.creation-bench .wardrobe-mobile-guide{display:none}
+@media(max-width:767px){
+.creation-bench .wardrobe-mobile-guide{display:grid;gap:12px;margin-bottom:14px}
+.creation-bench .wardrobe-existing-navigation,.creation-bench .wardrobe-category-tabs,.creation-bench .wardrobe-mobile-category{display:none!important}
+.creation-bench .wardrobe-mobile-location{display:grid;gap:5px;padding:14px;border:1px solid #ffffff30;border-radius:12px;background:#252235;min-width:0}
+.creation-bench .wardrobe-mobile-location span{font-size:11px;letter-spacing:.06em;color:#c7a4ff}
+.creation-bench .wardrobe-mobile-location strong{font-size:17px;overflow-wrap:anywhere}
+.creation-bench .wardrobe-mobile-location small{font-size:12px;color:#c8bdd7}
+.creation-bench .wardrobe-mobile-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.creation-bench .wardrobe-mobile-actions button,.creation-bench .wardrobe-mobile-picker button{min-height:48px;padding:10px 12px;border:1px solid #ffffff3b;border-radius:10px;background:#302a41;color:#f5edff;text-align:left}
+.creation-bench .wardrobe-mobile-actions button[aria-expanded=true]{border-color:#c7a4ff;background:#413451}
+.creation-bench .wardrobe-mobile-picker{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.creation-bench .wardrobe-mobile-picker button{display:grid;gap:4px}
+.creation-bench .wardrobe-mobile-picker small{color:#c6bbd4;font-size:11px}
+.creation-bench .wardrobe-mobile-search{display:grid;gap:8px;min-width:0}
+.creation-bench .wardrobe-mobile-search label{display:grid;gap:7px;font-size:12px;color:#cfc4de}
+.creation-bench .wardrobe-mobile-search input{width:100%;min-width:0;min-height:48px;padding:10px;border:1px solid #ffffff40;border-radius:10px;background:#211f2d;color:#fff;font-size:16px}
+.creation-bench .wardrobe-mobile-search .wardrobe-smart-results{max-height:45dvh}
+}
