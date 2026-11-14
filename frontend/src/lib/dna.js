@@ -1,4 +1,4 @@
-import {EXTRA_CAMERA_ANGLES,EXTRA_SUBJECT_VIEWS} from './cameraViewChoices';
+import {EXTRA_CAMERA_ANGLES,EXTRA_SUBJECT_VIEWS,SPHERICAL_SUBJECT_VIEWS} from './cameraViewChoices';
 import characterVibeOptions from './characterVibeOptions.json';
 import { expandEverydayWardrobe } from './everydayWardrobe';
 import { HERITAGE_OUTFIT_GROUP, heritagePhotoOutfit } from './heritageStyling';
@@ -337,7 +337,7 @@ export const SECTIONS = [
         { name: "Squatting", options: ["squatting", "squatting spread", "squatting deep"] },
         { name: "Cinematic", options: ["over shoulder look", "arched on knees", "hands on knees", "hair flip", "dancing", "reverse view"] },
       ]},
-      { key: "angle", type: "chips", label: "View of subject", options: ["front", "3/4", "profile", "back", "over-shoulder", "from above", "from below", "pov", ...Object.keys(EXTRA_SUBJECT_VIEWS)] },
+      { key: "angle", type: "chips", label: "View of subject", options: ["front", "3/4", "profile", "back", "over-shoulder", "from above", "from below", "pov", ...Object.keys(EXTRA_SUBJECT_VIEWS), ...Object.keys(SPHERICAL_SUBJECT_VIEWS)] },
       { key: "distance", type: "chips", label: "Framing", options: ["close-up", "portrait", "waist-up", "thigh-up", "knees-up", "full body", "wide shot", "detail shot"] },
       { key: "focus", type: "chips", label: "Composition priority", options: ["face", "body", "breasts", "butt", "hips", "legs", "feet", "hands", "full frame"] },
       { key: "hands", type: "chips", label: "Hand position (choose one)", options: ["at sides", "on hips", "in hair", "touching body", "on breasts", "between legs", "gripping something", "over head", "behind back", "behind head"] },
