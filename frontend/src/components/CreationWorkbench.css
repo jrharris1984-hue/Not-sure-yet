@@ -351,3 +351,11 @@ body:has(.creation-bench){position:fixed;inset:0}
 .creation-bench .wardrobe-smart-results{display:grid;grid-template-columns:minmax(0,1fr);gap:7px;max-height:260px;overflow:auto;padding:9px;border:1px solid #ffffff25;border-radius:10px;background:#252333}
 .creation-bench .wardrobe-smart-results button{min-height:44px;padding:10px;text-align:left;border:1px solid #ffffff30;border-radius:9px;background:#302c40;color:#f4edff}
 }
+
+/* Phase 4: direct mobile mode switch and preview action. */
+@media(max-width:767px){
+.creation-bench .bench-editor-actions{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;align-items:end;margin:0 0 14px}
+.creation-bench .bench-editor-actions label{display:grid;gap:5px;min-width:0;color:#cfc4de;font-size:12px}
+.creation-bench .bench-editor-actions select,.creation-bench .bench-editor-actions button{width:100%;min-width:0;min-height:46px;padding:9px;border:1px solid #ffffff40;border-radius:10px;background:#30293e;color:#f4edff;font-size:14px}
+.creation-bench .bench-editor-actions button{background:#c7a4ff;color:#21192c;font-weight:700}
+}
