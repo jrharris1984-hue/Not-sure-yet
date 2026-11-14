@@ -1,4 +1,5 @@
 import {EXTRA_CAMERA_ANGLES,EXTRA_SUBJECT_VIEWS,SPHERICAL_SUBJECT_VIEWS} from './cameraViewChoices';
+import {layerVisible} from './wardrobeLayerOverrides';
 import characterVibeOptions from './characterVibeOptions.json';
 import { expandEverydayWardrobe } from './everydayWardrobe';
 import { HERITAGE_OUTFIT_GROUP, heritagePhotoOutfit } from './heritageStyling';
@@ -1277,16 +1278,16 @@ function _veniceSubjectBlock(dna = {}, opts = {}) {
   if (!nudity.suppressClothing && wd.outfit_set) outfitPieces.push(`${wd.outfit_set_color ? `${wd.outfit_set_color} ` : ""}${wd.outfit_set}`);
   if (!nudity.suppressClothing && !wd.outfit_set) {
   if (!wd.outfit_set && wd.outfit_preset && !wd.dress_style && !wd.skirt_style) outfitPieces.push(exp("wardrobe", "outfit_preset"));
-  if (wd.dress_style) outfitPieces.push(wd.dress_style);
-  if (wd.skirt_style) outfitPieces.push(wd.skirt_style);
-  if (!wd.dress_style && wd.top && wd.top !== "none") outfitPieces.push(exp("wardrobe", "top"));
-  if (!wd.dress_style && !wd.skirt_style && wd.bottom && wd.bottom !== "none") outfitPieces.push(exp("wardrobe", "bottom"));
-  if (wd.underwear && wd.underwear !== "none") outfitPieces.push(exp("wardrobe", "underwear"));
-  if (!wd.heel_type && wd.footwear && wd.footwear !== "barefoot") outfitPieces.push(exp("wardrobe", "footwear"));
-  if (wd.hosiery_type) outfitPieces.push(`${wd.hosiery_color ? `${wd.hosiery_color} ` : ""}${wd.hosiery_denier ? `${wd.hosiery_denier} ` : ""}${wd.hosiery_pattern && wd.hosiery_pattern !== "plain" ? `${wd.hosiery_pattern} ` : ""}${wd.hosiery_type}`);
-  if (wd.heel_type) outfitPieces.push(`${wd.heel_color ? `${wd.heel_color} ` : ""}${wd.heel_finish ? `${wd.heel_finish} ` : ""}${wd.heel_type}${wd.heel_height ? `, ${wd.heel_height} heel` : ""}`);
-  if (wd.glasses_style) outfitPieces.push(`${wd.glasses_color ? `${wd.glasses_color} ` : ""}${wd.glasses_style}`);
-  if (wd.accessories) {
+  if (layerVisible(wd,"dress") && wd.dress_style) outfitPieces.push(wd.dress_style);
+  if (layerVisible(wd,"lower") && wd.skirt_style) outfitPieces.push(wd.skirt_style);
+  if (layerVisible(wd,"upper") && !wd.dress_style && wd.top && wd.top !== "none") outfitPieces.push(exp("wardrobe", "top"));
+  if (layerVisible(wd,"lower") && !wd.dress_style && !wd.skirt_style && wd.bottom && wd.bottom !== "none") outfitPieces.push(exp("wardrobe", "bottom"));
+  if (layerVisible(wd,"underwear") && wd.underwear && wd.underwear !== "none") outfitPieces.push(exp("wardrobe", "underwear"));
+  if (layerVisible(wd,"shoes") && !wd.heel_type && wd.footwear && wd.footwear !== "barefoot") outfitPieces.push(exp("wardrobe", "footwear"));
+  if (layerVisible(wd,"hosiery") && wd.hosiery_type) outfitPieces.push(`${wd.hosiery_color ? `${wd.hosiery_color} ` : ""}${wd.hosiery_denier ? `${wd.hosiery_denier} ` : ""}${wd.hosiery_pattern && wd.hosiery_pattern !== "plain" ? `${wd.hosiery_pattern} ` : ""}${wd.hosiery_type}`);
+  if (layerVisible(wd,"shoes") && wd.heel_type) outfitPieces.push(`${wd.heel_color ? `${wd.heel_color} ` : ""}${wd.heel_finish ? `${wd.heel_finish} ` : ""}${wd.heel_type}${wd.heel_height ? `, ${wd.heel_height} heel` : ""}`);
+  if (layerVisible(wd,"accessories") && wd.glasses_style) outfitPieces.push(`${wd.glasses_color ? `${wd.glasses_color} ` : ""}${wd.glasses_style}`);
+  if (layerVisible(wd,"accessories") && wd.accessories) {
     const accs = Array.isArray(wd.accessories) ? wd.accessories : [wd.accessories];
     accs.filter((a) => a && a !== "none").forEach((a) => outfitPieces.push(exp("wardrobe", "accessories") ? expandPrompt("wardrobe", "accessories", a) : a));
   }
