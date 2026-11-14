@@ -446,7 +446,7 @@ export default function Gallery() {
     : [];
 
   return (
-    <div className="mx-auto max-w-[1400px] px-3 sm:px-6 py-4 sm:py-10 space-y-3 sm:space-y-6">
+    <div className="studio-page studio-page-gallery mx-auto max-w-[1400px] px-3 sm:px-6 py-4 sm:py-10 space-y-3 sm:space-y-6">
       <div className="flex items-end justify-between gap-4 flex-wrap">
         <div>
           <div className="section-label hidden sm:block">Gallery</div>
