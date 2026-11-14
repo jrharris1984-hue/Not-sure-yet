@@ -6,6 +6,7 @@ import WardrobeOverview from './WardrobeOverview';
 import WardrobeCoverageStudio from './WardrobeCoverageStudio';
 import WardrobeLayerPicker from './WardrobeLayerPicker';
 import WardrobeIndependentLayers from './WardrobeIndependentLayers';
+import WardrobeLiveReview from './WardrobeLiveReview';
 import {wardrobeGroups} from '@/lib/wardrobeLayout';
 import {editWardrobeField, wardrobeFieldDisabled} from '@/lib/wardrobeMode';
 
@@ -55,6 +56,7 @@ export default function WardrobeEditor({requestedField, ...props}) {
     <WardrobeCoverageStudio value={props.value} disabled={!!props.locked || !!props.fieldLocks?.exposure_mode} onChange={props.onChange}/>
     <WardrobeLayerPicker value={props.value} disabled={!!props.locked || !!props.fieldLocks?.exposure_mode} onChange={props.onChange}/>
     <WardrobeIndependentLayers value={props.value} disabled={!!props.locked} onChange={props.onChange}/>
+    <WardrobeLiveReview value={props.value} disabled={!!props.locked || !!props.fieldLocks?.exposure_mode} onChange={props.onChange}/>
     <div className="wardrobe-mobile-guide">
       <div className="wardrobe-mobile-location"><span>WARDROBE / {group?.label || 'Clothes'}</span><strong>{field?.label || 'Choose a detail'}</strong><small>{detailIndex>=0?detailIndex+1:0} of {allDetails.length} details</small></div>
       <div className="wardrobe-mobile-actions"><button type="button" aria-expanded={mobilePanel==='categories'} onClick={()=>setMobilePanel(mobilePanel==='categories'?'detail':'categories')}>Categories</button><button type="button" aria-expanded={mobilePanel==='search'} onClick={()=>setMobilePanel(mobilePanel==='search'?'detail':'search')}>Find a setting</button></div>
