@@ -497,3 +497,8 @@ body:has(.creation-bench){position:static;inset:auto}
 .creation-bench .wardrobe-guided-footer button{min-height:44px;padding:10px 14px;border:1px solid #ffffff40;border-radius:9px}
 .creation-bench .wardrobe-guided-footer button:disabled{opacity:.4}
 .creation-bench .wardrobe-guided-footer span{font-size:12px;color:#a1a1aa}
+
+/* Desktop preview: direct return to the existing editor */
+.creation-bench .bench-desktop-preview-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.creation-bench .bench-desktop-preview-actions button{min-height:40px}
+.creation-bench .bench-desktop-preview-actions .bench-back-to-edit{border:1px solid #bda3e6;border-radius:8px;padding:8px 12px;background:#624785;color:#fff;font-weight:600}
