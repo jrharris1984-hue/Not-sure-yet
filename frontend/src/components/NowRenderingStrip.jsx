@@ -52,7 +52,7 @@ export default function NowRenderingStrip() {
       data-testid="now-rendering-strip"
       className="relative z-20 mx-3 my-2 md:fixed md:z-30 md:m-0 md:left-auto md:right-4 md:w-[420px] md:bottom-4 pointer-events-none"
     >
-      <div className="pane glass pointer-events-auto shadow-2xl border-amber-500/30 overflow-y-auto max-h-[45vh] md:max-h-none">
+      <div className="studio-render-status pane glass pointer-events-auto shadow-2xl overflow-y-auto max-h-[45vh] md:max-h-none">
         <header className="flex items-center gap-2 px-3 py-2 border-b hairline">
           <div className="relative">
             <Zap className="h-3.5 w-3.5 text-amber-300" />
@@ -63,7 +63,7 @@ export default function NowRenderingStrip() {
             type="button"
             onClick={() => setExpanded((v) => !v)}
             data-testid="btn-now-rendering-toggle"
-            className="ml-auto h-6 w-6 grid place-items-center rounded-md text-zinc-400 hover:bg-white/5"
+            className="ml-auto min-h-10 min-w-10 grid place-items-center rounded-md text-zinc-300 hover:bg-white/5"
             title={expanded ? "Collapse" : "Expand"}
           >
             {expanded ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
@@ -72,7 +72,7 @@ export default function NowRenderingStrip() {
             type="button"
             onClick={() => setDismissed(true)}
             data-testid="btn-now-rendering-dismiss"
-            className="h-6 w-6 grid place-items-center rounded-md text-zinc-400 hover:bg-white/5"
+            className="min-h-10 min-w-10 grid place-items-center rounded-md text-zinc-300 hover:bg-white/5"
             title="Dismiss (until next render starts)"
           >
             <X className="h-4 w-4" />
