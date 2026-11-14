@@ -1312,7 +1312,7 @@ function _veniceSubjectBlock(dna = {}, opts = {}) {
   const pose = dna.pose || {};
   const poseCore = exp("pose", "action");
   const poseFraming = join([
-    exp("pose", "angle"),
+    SPHERICAL_SUBJECT_VIEWS[pose.angle] || exp("pose", "angle"),
     exp("pose", "distance"),
     pose.focus && pose.focus !== "full frame" && exp("pose", "focus"),
   ]);
