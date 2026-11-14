@@ -453,3 +453,14 @@ body:has(.creation-bench){position:static;inset:auto}
 .creation-bench .wardrobe-layer-options strong{font-size:12px;line-height:1.35}
 .creation-bench .wardrobe-layer-options small{font-size:11px;line-height:1.35;color:#d3c9e0}
 @media(min-width:900px){.creation-bench .wardrobe-layer-options{grid-template-columns:repeat(3,minmax(0,1fr))}}
+
+/* Independent layer visibility controls */
+.creation-bench .wardrobe-independent-layers{display:grid;gap:12px;padding:14px;border:1px solid #ffffff30;border-radius:14px;background:#242133;color:#f5edff}
+.creation-bench .wardrobe-independent-layers p,.creation-bench .wardrobe-independent-layers>small{margin:0;font-size:12px;line-height:1.5;color:#d3c9e0}
+.creation-bench .wardrobe-independent-grid{display:grid;grid-template-columns:repeat(1,minmax(0,1fr));gap:8px}
+.creation-bench .wardrobe-independent-grid label{display:flex;align-items:center;gap:12px;min-height:54px;padding:10px;border:1px solid #ffffff30;border-radius:10px;background:#30293e}
+.creation-bench .wardrobe-independent-grid input{width:20px;height:20px;flex:none;accent-color:#b39adf}
+.creation-bench .wardrobe-independent-grid label span{display:grid;gap:3px;min-width:0}
+.creation-bench .wardrobe-independent-grid label strong{font-size:13px}
+.creation-bench .wardrobe-independent-grid label small{font-size:11px;color:#d3c9e0;overflow-wrap:anywhere}
+@media(min-width:900px){.creation-bench .wardrobe-independent-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
