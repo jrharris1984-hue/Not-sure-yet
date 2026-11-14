@@ -205,7 +205,9 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
   const basePath = isNew ? "/character/new" : `/character/${id}`;
   const studioSearch = studioMode === "standard" ? "" : `?mode=${encodeURIComponent(studioMode)}`;
   const sectionUrl = (key) => `${basePath}/s/${key}${studioSearch}`;
-  const goSection = (key) => nav(sectionUrl(key));
+  const sectionEntryDirection = useRef(null);
+  const goSection = (key) => {sectionEntryDirection.current=null;nav(sectionUrl(key));};
+  const advanceSection = direction => {const next=SECTIONS[activeIdx+direction];if(!next)return;sectionEntryDirection.current={section:next.key,direction};nav(sectionUrl(next.key));};
   const changeStudioMode = (nextMode) => {
     const normalized = normalizeStudioMode(nextMode);
     const params = new URLSearchParams(location.search);
@@ -2794,7 +2796,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
       await doDispatch({studioSubjects:result.subjects});
     }}/>
   const renderDnaControls = (sheetField = null, workbench = false) => (
-<EditorPanelBoundary key={`${activeSubjectId}-${activeSection}-${sheetField || "all"}`}><DesktopDnaEditor onSectionAdvance={workbench ? direction=>{const next=SECTIONS[activeIdx+direction];if(next)goSection(next.key);} : undefined} hasPreviousSection={activeIdx>0} hasNextSection={activeIdx<SECTIONS.length-1} workbench={workbench} requestedField={requestedDetail?.section === activeSection && !requestedDetail.field?.startsWith("feet:") ? requestedDetail : null} enabled={!sheetField}
+<EditorPanelBoundary key={`${activeSubjectId}-${activeSection}-${sheetField || "all"}`}><DesktopDnaEditor onSectionAdvance={workbench ? advanceSection : undefined} entryDirection={workbench && sectionEntryDirection.current?.section===activeSection ? sectionEntryDirection.current.direction : 0} hasPreviousSection={activeIdx>0} hasNextSection={activeIdx<SECTIONS.length-1} workbench={workbench} requestedField={requestedDetail?.section === activeSection && !requestedDetail.field?.startsWith("feet:") ? requestedDetail : null} enabled={!sheetField}
             key={`${activeSubjectId}-${activeSection}`}
             section={!sheetField && studioProfile.specialtySection && activeSection === studioProfile.specialtySection
               ? { ...SECTIONS[activeIdx], fields: SECTIONS[activeIdx].fields.filter((field) => field.key === "composition_mode" || studioProfile.fieldGroups[specialtyTab]?.keys.includes(field.key)) }
