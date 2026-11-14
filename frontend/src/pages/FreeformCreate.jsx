@@ -109,7 +109,7 @@ function FreeformWorkspace({ mode }) {
     if (['failed', 'offline'].includes(result.status)) throw new Error(result.error || 'Generation could not start.');
     setQueued(true);
   });
-  return <div className="mx-auto max-w-4xl space-y-5 p-4 sm:p-6" data-testid="freeform-create">
+  return <div className="studio-page studio-page-freeform mx-auto max-w-4xl space-y-5 p-4 sm:p-6" data-testid="freeform-create">
     <Link to="/create" className="text-sm text-cyan-300">← Create</Link>
     <header><h1 className="font-display text-3xl font-bold">{config.title}</h1><p className="mt-2 text-zinc-400">{config.description} Write freely or let AI help refine your prompt.</p></header>
     {mode !== 'image' && <VideoModeLinks mode={mode}/>}
