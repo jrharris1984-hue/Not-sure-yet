@@ -31,6 +31,12 @@ export default function CreationWorkbench({compact=false,section,sections,stages
   const [workflowSearch,setWorkflowSearch]=useState('');
   const [desktopPreviewOpen,setDesktopPreviewOpen]=useState(false);
   const [generationStarted,setGenerationStarted]=useState(false);
+  const [submittedRender,setSubmittedRender]=useState(false);
+  const renderPhase=String(renderStatus||'').toLowerCase();
+  const renderFailed=/fail|error|cancel|reject/.test(renderPhase);
+  const renderFinished=/complete|success|finish|done/.test(renderPhase);
+  const renderPending=busy||/queue|pending|run|process|generat|start/.test(renderPhase);
+  const startGeneration=()=>{if(busy||!ready)return;setSubmittedRender(true);setGenerationStarted(true);setPage('preview');if(!compact)setDesktopPreviewOpen(true);onGenerate();};
   const [mobileCategoryOpen,setMobileCategoryOpen]=useState(false);
   const workflowMenu=useRef(null);
   const matchingWorkflows=workflows.filter(item=>(item.name || item.title || item.id || '').toLowerCase().includes(workflowSearch.toLowerCase()));
@@ -107,7 +113,7 @@ export default function CreationWorkbench({compact=false,section,sections,stages
         <dl><dt>Character</dt><dd>{name||'Untitled character'}</dd><dt>Editing category</dt><dd>{category||'Character design'}</dd><dt>Workflow</dt><dd>{currentWorkflow?.name||currentWorkflow?.title||workflow||'Not selected'}</dd><dt>Images</dt><dd>{count||1}</dd></dl>
         {issues?.length>0 && <p role="status">{issues[0]}</p>}
         <button type="button" onClick={()=>{setPage('design');if(compact)setDesignView('dashboard');}}>Continue customizing</button>
-        <button type="button" disabled={busy||!ready} onClick={()=>{setGenerationStarted(true);if(compact)setPage('preview');else setDesktopPreviewOpen(true);onGenerate();}}>{busy?'Queuing…':'Generate now'}</button>
+        <button type="button" disabled={busy||!ready} onClick={startGeneration}>{busy?'Queuing…':'Generate now'}</button>
       </div>}
       {page==='design' && compact && designView==='dashboard'?<div className="bench-dashboard" data-testid="character-category-dashboard">
         <h1>Design your character</h1><p className="bench-hint">{guided?"Choose what you want to change, or continue with the defaults. Your selections are saved as you move between sections.":"Choose a category to customize. Your existing selections are preserved."}</p>
@@ -152,7 +158,7 @@ export default function CreationWorkbench({compact=false,section,sections,stages
           <details className="bench-mobile-presets"><summary>Character presets and people options</summary>{people}</details>
           {subjectSwitcher && <div className="bench-subject-switcher" aria-label="Edit individual subjects">{subjectSwitcher}</div>}
         </details>}
-      </>:page==='random'?<><h1>Randomize</h1><p className="bench-hint">Choose what to change. Generate when you like the selection.</p>{random}</>:page==='preview'?<><div className="bench-preview-heading"><div><h1>Generation preview</h1><p className="bench-hint">{busy?'Your generation request is being processed.':renderStatus?`Render status: ${renderStatus}`:'Review your generated images or check the render queue.'}</p></div><button type="button" onClick={()=>setPage('design')}>Back to editing</button></div>{preview}</>:<><h1>Generation settings</h1><label className="bench-setting-label">Settings menu<select aria-label="Settings menu" value={group} onChange={e=>setGroup(e.target.value)}>{Object.keys(settings).map(k=><option key={k}>{k}</option>)}</select></label>{typeof settings[group]==="function"?settings[group](()=>setPage("design")):settings[group]}</>}
+      </>:page==='random'?<><h1>Randomize</h1><p className="bench-hint">Choose what to change. Generate when you like the selection.</p>{random}</>:page==='preview'?<><div className="bench-preview-heading"><div><h1>{guided?'Your creation':'Generation preview'}</h1><p className="bench-hint" role="status" aria-live="polite">{renderFailed?'Generation did not complete. Your character settings are still available.':renderPending?'Your image is being generated. You can return to editing while it runs.':renderFinished?'Generation finished. Review your result below.':submittedRender?'Check the render queue for the latest status.':'Your latest preview appears below when available.'}</p>{renderStatus&&<small>Render status: {renderStatus}</small>}</div><button type="button" onClick={()=>setPage('design')}>Back to editing</button></div>{renderFailed&&<div className="bench-render-recovery" role="alert"><p>Review your workflow and settings, then try again.</p><button type="button" onClick={()=>setPage('review')}>Review & retry</button></div>}{preview}</>:<><h1>Generation settings</h1><label className="bench-setting-label">Settings menu<select aria-label="Settings menu" value={group} onChange={e=>setGroup(e.target.value)}>{Object.keys(settings).map(k=><option key={k}>{k}</option>)}</select></label>{typeof settings[group]==="function"?settings[group](()=>setPage("design")):settings[group]}</>}
     </div>
     {!compact && generationStarted && desktopPreviewOpen && <aside className="bench-desktop-preview" aria-label="Generated image preview">
       <div className="bench-desktop-preview-header"><strong>Generation preview</strong><button type="button" onClick={()=>setDesktopPreviewOpen(false)} aria-label="Close preview">Close</button></div>
@@ -175,6 +181,6 @@ export default function CreationWorkbench({compact=false,section,sections,stages
       </div>
       {issues?.[0] && <small role="status">{issues[0]}</small>}
       {renderStatus && <small>Render: {renderStatus}</small>}
-    </div>{!compact && generationStarted && !desktopPreviewOpen && <button type="button" onClick={()=>setDesktopPreviewOpen(true)}>Show preview</button>}<button type="button" disabled={busy||((!guided||page==='review')&&!ready)} onClick={()=>{if(guided && page!=='review'){setPage('review');return;}setGenerationStarted(true);if(compact){setPage('preview');}else{setDesktopPreviewOpen(true);}onGenerate();}}><Play size={16}/>{guided && page!=='review'?'Review & generate':busy?'Queuing…':count>1?`Generate (${count})`:'Generate'}</button></footer>
+    </div>{!compact && generationStarted && !desktopPreviewOpen && <button type="button" onClick={()=>setDesktopPreviewOpen(true)}>Show preview</button>}<button type="button" disabled={busy||((!guided||page==='review')&&!ready)} onClick={()=>{if(guided && page!=='review'){setPage('review');return;}startGeneration();}}><Play size={16}/>{guided && page!=='review'?'Review & generate':busy?'Queuing…':count>1?`Generate (${count})`:'Generate'}</button></footer>
   </section>
 }
