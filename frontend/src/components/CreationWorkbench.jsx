@@ -20,6 +20,7 @@ export default function CreationWorkbench({compact=false,section,sections,stages
   const page=[...pages,...guidedPages].some(([key])=>key===saved)?saved:'design';
   const guided=mode!=='advanced';
   const visiblePages=guided?guidedPages:pages;
+  useEffect(()=>{if(!guided && page==='review')setPage('design');},[guided,page,setPage]);
   const pane=useRef(null);
   const location=useLocation();
   const [designView,setDesignView]=useState(()=>location.pathname.includes('/s/')?'editor':'dashboard');
@@ -158,6 +159,6 @@ export default function CreationWorkbench({compact=false,section,sections,stages
       </div>
       {issues?.[0] && <small role="status">{issues[0]}</small>}
       {renderStatus && <small>Render: {renderStatus}</small>}
-    </div>{!compact && generationStarted && !desktopPreviewOpen && <button type="button" onClick={()=>setDesktopPreviewOpen(true)}>Show preview</button>}<button type="button" disabled={busy||(guided?false:!ready)} onClick={()=>{if(guided){setPage('review');return;}setGenerationStarted(true);if(compact){setPage('preview');}else{setDesktopPreviewOpen(true);}onGenerate();}}><Play size={16}/>{guided?'Review & generate':busy?'Queuing…':count>1?`Generate (${count})`:'Generate'}</button></footer>
+    </div>{!compact && generationStarted && !desktopPreviewOpen && <button type="button" onClick={()=>setDesktopPreviewOpen(true)}>Show preview</button>}<button type="button" disabled={busy||((!guided||page==='review')&&!ready)} onClick={()=>{if(guided && page!=='review'){setPage('review');return;}setGenerationStarted(true);if(compact){setPage('preview');}else{setDesktopPreviewOpen(true);}onGenerate();}}><Play size={16}/>{guided && page!=='review'?'Review & generate':busy?'Queuing…':count>1?`Generate (${count})`:'Generate'}</button></footer>
   </section>
 }
