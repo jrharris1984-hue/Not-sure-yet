@@ -1277,11 +1277,11 @@ function _veniceSubjectBlock(dna = {}, opts = {}) {
   const outfitPieces = [];
   if (!nudity.suppressClothing && wd.outfit_set) outfitPieces.push(`${wd.outfit_set_color ? `${wd.outfit_set_color} ` : ""}${wd.outfit_set}`);
   if (!nudity.suppressClothing && !wd.outfit_set) {
-  if (!wd.outfit_set && wd.outfit_preset && !wd.dress_style && !wd.skirt_style) outfitPieces.push(exp("wardrobe", "outfit_preset"));
+  if (!wd.outfit_set && wd.outfit_preset && !wd.dress_style && !wd.skirt_style && !Object.values(wd._layerVisibility || {}).some(visible=>visible===false)) outfitPieces.push(exp("wardrobe", "outfit_preset"));
   if (layerVisible(wd,"dress") && wd.dress_style) outfitPieces.push(wd.dress_style);
   if (layerVisible(wd,"lower") && wd.skirt_style) outfitPieces.push(wd.skirt_style);
-  if (layerVisible(wd,"upper") && !wd.dress_style && wd.top && wd.top !== "none") outfitPieces.push(exp("wardrobe", "top"));
-  if (layerVisible(wd,"lower") && !wd.dress_style && !wd.skirt_style && wd.bottom && wd.bottom !== "none") outfitPieces.push(exp("wardrobe", "bottom"));
+  if (layerVisible(wd,"upper") && (!layerVisible(wd,"dress") || !wd.dress_style) && wd.top && wd.top !== "none") outfitPieces.push(exp("wardrobe", "top"));
+  if (layerVisible(wd,"lower") && (!layerVisible(wd,"dress") || !wd.dress_style) && !wd.skirt_style && wd.bottom && wd.bottom !== "none") outfitPieces.push(exp("wardrobe", "bottom"));
   if (layerVisible(wd,"underwear") && wd.underwear && wd.underwear !== "none") outfitPieces.push(exp("wardrobe", "underwear"));
   if (layerVisible(wd,"shoes") && !wd.heel_type && wd.footwear && wd.footwear !== "barefoot") outfitPieces.push(exp("wardrobe", "footwear"));
   if (layerVisible(wd,"hosiery") && wd.hosiery_type) outfitPieces.push(`${wd.hosiery_color ? `${wd.hosiery_color} ` : ""}${wd.hosiery_denier ? `${wd.hosiery_denier} ` : ""}${wd.hosiery_pattern && wd.hosiery_pattern !== "plain" ? `${wd.hosiery_pattern} ` : ""}${wd.hosiery_type}`);
