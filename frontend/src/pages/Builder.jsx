@@ -220,6 +220,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
 
   const {
     mobileStudioStep, setMobileStudioStep,
+    experienceMode, changeExperienceMode,
     mobileStudioMode, setMobileStudioMode, mobileSheets, setMobileSheets,
     mobileToolsGroup, setMobileToolsGroup, sheetViewport,
     desktopQuickMode, setDesktopQuickMode, specialtyTab, setSpecialtyTab,
@@ -3384,12 +3385,12 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
   </>;
   if (!isImageFirst && editMode !== "body_adjust") {
     const count = poseAssistEnabled && !isVariationWorkflow && !isAnyVideoWorkflow ? 1 : renderCount;
-    const sharedMode=sheetViewport ? mobileStudioMode : desktopQuickMode ? "simple" : "advanced";
+    const sharedMode=experienceMode==="advanced" ? "advanced" : "simple";
     const extras=kind=>{const nodes=workflowControls([modelExtras,renderExtras,workspaceTools.props.children],kind);return nodes.length?<div className="bench-extra">{nodes}</div>:<p>No matching controls for the selected workflow.</p>;};
     return <CreationWorkbench onDashboard={()=>nav(basePath+studioSearch)} compact={sheetViewport} subjectCount={subjects.length} expectedSubjectCount={expectedCount} section={activeSection} sections={SECTIONS} stages={studioSteps} onSection={goSection}
       onFind={item=>{if(sheetViewport)setMobileStudioMode("advanced");editSelectedDetail(item);}}
       saveError={save.isError} name={name} onName={setName} onSave={()=>save.mutate()} saving={save.isPending}
-      mode={sharedMode} onMode={m=>{setMobileStudioMode(m);setDesktopQuickMode(m==="simple");}}
+      mode={sharedMode} onMode={m=>changeExperienceMode(m==="advanced"?"advanced":"guided")}
       subjectSwitcher={<SubjectSwitcher subjects={subjects} activeId={activeSubjectId} expectedCount={expectedCount} primaryLabel={subjects[0]?.label || "A"} onSelect={setActiveSubjectId}
         onAdd={addSubject} onRemove={removeSubject} onCopyFromPrimary={copyPrimaryToActive} onRandomizeActive={randomizeActive} showAddForSingle/>}
       people={characterPresets}
