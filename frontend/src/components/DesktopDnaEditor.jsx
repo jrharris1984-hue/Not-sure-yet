@@ -50,6 +50,9 @@ export default function DesktopDnaEditor({ enabled, requestedField, workbench=fa
     const filteredMenu=menu.map(group=>({...group,fields:group.fields.filter(field=>`${group.label} ${field.label} ${field.key}`.toLowerCase().includes(search.trim().toLowerCase()))})).filter(group=>group.fields.length);
     const current=menu.flatMap(group=>group.fields).find(field=>field.key===fieldKey)||menu[0]?.fields[0];
     if(!current)return <DnaSection {...props}/>;
+    const allDetails=menu.flatMap(group=>group.fields);
+    const detailIndex=allDetails.findIndex(field=>field.key===current.key);
+    const moveDetail=offset=>{const target=allDetails[detailIndex+offset];if(target){setFieldKey(target.key);setSearch('');}};
     return <div className="bench-field-editor">
       <div className="bench-field-chooser">
         <label className="bench-setting-label">Find a detail<input type="search" className="bench-detail-search-input" placeholder={`Search ${props.section.title.toLowerCase()} settings…`} value={search} onChange={event=>setSearch(event.target.value)}/></label>
@@ -69,6 +72,11 @@ export default function DesktopDnaEditor({ enabled, requestedField, workbench=fa
         </details>
       </div>
       <DnaSection {...props} focusedField={current.key}/>
+      <nav className="bench-detail-stepper" aria-label="Navigate every character detail">
+        <button type="button" disabled={detailIndex<=0} onClick={()=>moveDetail(-1)}>← Previous detail</button>
+        <span aria-live="polite">{detailIndex+1} of {allDetails.length}<small>{current.label}</small></span>
+        <button type="button" disabled={detailIndex>=allDetails.length-1} onClick={()=>moveDetail(1)}>Next detail →</button>
+      </nav>
     </div>;
   }
   const searchControl = <label className="block text-xs text-zinc-400">Find a detail
