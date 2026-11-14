@@ -273,11 +273,17 @@ export default function Gallery() {
     onError: (error) => toast.error(error?.response?.data?.detail || "Could not queue improved render"),
   });
 
+  const [photoshootSource,setPhotoshootSource]=useState(null);
+  const startPhotoshoot = (render, mode) => {
+    setPhotoshootSource(null);
+    reuseAsReference.mutate({render,targetKind:"edit",referenceMode:mode==="character"?"photoshoot_character":"photoshoot_image"});
+  };
+
   const reuseAsReference = useMutation({
     mutationFn: async ({ render, targetKind, referenceMode, instruction }) => {
       const previewUrl = primaryOutput(render);
       const reference = await endpoints.prepareRenderReference(render.id, previewUrl);
-      const saved = referenceMode === "keep_character"
+      const saved = (referenceMode === "keep_character" || referenceMode === "photoshoot_character")
         ? await endpoints.getRenderRecipe(render.id)
         : null;
       return { render, targetKind, referenceMode, instruction, reference, saved, previewUrl };
@@ -288,7 +294,8 @@ export default function Gallery() {
         return;
       }
       const path = render.character_id ? `/character/${render.character_id}` : "/character/new";
-      nav(path, {
+      const isPhotoshoot = referenceMode === "photoshoot_character" || referenceMode === "photoshoot_image";
+      nav(isPhotoshoot ? `${path}?shoot=smart` : path, {
         state: {
           galleryReference: reference,
           editInstruction: instruction,
@@ -296,6 +303,7 @@ export default function Gallery() {
           targetKind,
           referenceMode,
           characterRecipe: saved?.recipe,
+          photoshootSourceMode: isPhotoshoot ? referenceMode : undefined,
         },
       });
     },
@@ -1072,6 +1080,13 @@ export default function Gallery() {
                         onClick={() => { setSelected([lightbox.parent_render_id, lightbox.id]); setCompareOpen(true); }}
                         className="w-full rounded-lg border hairline px-3 py-2 text-xs font-semibold text-cyan-100"
                         data-testid="btn-compare-with-source">Compare with source</button>}
+                    {photoshootSource?.id === lightbox.id && <div className="rounded-xl border border-cyan-500/40 bg-cyan-500/5 p-3 space-y-2" data-testid="photoshoot-source-choice">
+                      <strong className="block text-sm">Start photoshoot from this image</strong>
+                      <p className="text-xs text-zinc-400">Choose how to use the original photo. Your source image will not be changed.</p>
+                      <button type="button" disabled={reuseAsReference.isPending} className="w-full rounded-lg border hairline p-3 text-left text-sm" onClick={()=>startPhotoshoot(lightbox,"character")}><strong className="block">Character reference</strong><span className="block text-xs text-zinc-400">Preserve the person’s appearance while exploring new poses and scenes.</span></button>
+                      <button type="button" disabled={reuseAsReference.isPending} className="w-full rounded-lg border hairline p-3 text-left text-sm" onClick={()=>startPhotoshoot(lightbox,"image")}><strong className="block">Image reference</strong><span className="block text-xs text-zinc-400">Use the full photo as the starting reference for variations.</span></button>
+                      <button type="button" className="text-xs underline" onClick={()=>setPhotoshootSource(null)}>Cancel</button>
+                    </div>}
                     <PostGenerationActions
                       compact
                       busy={reuseAsReference.isPending || openBodyCreation.isPending}
@@ -1079,6 +1094,7 @@ export default function Gallery() {
                       onEdit={() => reuseAsReference.mutate({ render: lightbox, targetKind: "edit" })}
                       onPose={() => reuseAsReference.mutate({ render: lightbox, targetKind: "edit", referenceMode: "new_pose" })}
                       onAnimate={() => reuseAsReference.mutate({ render: lightbox, targetKind: "video" })}
+                      onPhotoshoot={() => setPhotoshootSource(lightbox)}
                       onReference={() => reuseAsReference.mutate({ render: lightbox, targetKind: "face", referenceMode: "keep_character" })}
                       onTools={() => nav(`/tools?render=${encodeURIComponent(lightbox.id)}`)}
                     />
