@@ -73,7 +73,7 @@ export default function MobileStudioNavigation({ returnTo, compactHeader = false
         <Sheet open={open} onOpenChange={setOpen}>
           <SheetTrigger asChild>
             <button type="button" data-testid="nav-more-mobile"
-              className={`studio-mobile-link flex min-h-16 flex-col items-center justify-center gap-1 text-[11px] ${moreActive ? "studio-mobile-link-active text-cyan-200" : "text-zinc-400"}`}
+              className={`studio-mobile-link flex items-center justify-center ${compactHeader ? "min-h-11 flex-row gap-1 px-2 text-xs" : "min-h-16 flex-col gap-1 text-[11px]"} ${moreActive ? "studio-mobile-link-active text-violet-200" : "text-zinc-400"}`}
               aria-label="More studio pages">
               <MoreHorizontal size={20} /><span>{compactHeader ? "Pages" : "More"}</span>
             </button>
