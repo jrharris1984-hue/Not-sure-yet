@@ -28,6 +28,15 @@ export default function DesktopDnaEditor({ enabled, requestedField, workbench=fa
   const matchingGroups = groups.map(group => ({ ...group, fields: group.fields.filter(field =>
     `${group.label} ${field.label} ${field.key}`.toLowerCase().includes(search.trim().toLowerCase())) })).filter(group => group.fields.length);
   const [groupKey, setGroupKey] = useTabPreference(`ultra:detail-group:${props.section.key}`, '');
+  useEffect(()=>{
+    if(!workbench || !props.entryDirection || requestedField?.field)return;
+    const seen=new Set();
+    const details=groups.flatMap(group=>group.fields).map(field=>desktopFieldTarget(props.section.key,field.key)).filter(key=>{if(seen.has(key))return false;seen.add(key);return true;});
+    const target=props.entryDirection<0?details[details.length-1]:details[0];
+    if(target)setFieldKey(target);
+    // Entry direction is used on section transitions, not on edits.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[props.section.key]);
   useEffect(() => {
     if (!requestedField?.field) return;
     const target = desktopFieldTarget(props.section.key, requestedField.field);
