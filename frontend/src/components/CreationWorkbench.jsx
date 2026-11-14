@@ -25,7 +25,7 @@ export default function CreationWorkbench({compact=false,section,sections,stages
   const location=useLocation();
   const [designView,setDesignView]=useState(()=>location.pathname.includes('/s/')?'editor':'dashboard');
   // Navigation-only session state: scoped to the creation route, never character DNA.
-  const navigationKey='ultra:workbench-navigation:'+location.pathname.replace(/\\/s\\/[^/]+$/, '');
+  const navigationKey='ultra:workbench-navigation:'+location.pathname.replace(/\/s\/[^/]+$/, '');
   const [categoryMemory,setCategoryMemory]=useState(()=>{
     try {
       const saved=JSON.parse(window.sessionStorage.getItem(navigationKey)||'{}');
