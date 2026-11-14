@@ -41,3 +41,24 @@
   .mobile-sheet-builder [data-testid=desktop-focused-editor]>.desktop-detail-navigation {position:static}
   .mobile-sheet-builder [data-testid=desktop-focused-editor] {min-width:0}
 }
+
+/* Ultra Studio 2.0 visual foundation — shared desktop/mobile design tokens. */
+.studio-shell{
+  --studio-canvas:#101218;
+  --studio-surface:#1c202a;
+  --studio-elevated:#292f3c;
+  --studio-accent:#9b83f5;
+  --studio-accent-hover:#b09cfb;
+  --studio-text:#f2f4f8;
+  --studio-muted:#aeb6c7;
+  --studio-outline:#424958;
+  --studio-radius:12px;
+  --studio-motion:180ms;
+  color:var(--studio-text);
+}
+.studio-shell .studio-app-rail{background:var(--studio-surface);border-color:var(--studio-outline)}
+.studio-shell .rail-create{background:var(--studio-accent);color:#101218;border-radius:var(--studio-radius)}
+.studio-shell .rail-create:hover{background:var(--studio-accent-hover)}
+.studio-shell :is(.studio-nav-link,.rail-create){transition:background-color var(--studio-motion) ease,color var(--studio-motion) ease,border-color var(--studio-motion) ease}
+.studio-shell :is(.studio-nav-link,.rail-create):focus-visible{outline:2px solid var(--studio-accent);outline-offset:2px}
+@media(prefers-reduced-motion:reduce){.studio-shell :is(.studio-nav-link,.rail-create){transition:none}}
