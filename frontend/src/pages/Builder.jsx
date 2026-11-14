@@ -2794,7 +2794,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
       await doDispatch({studioSubjects:result.subjects});
     }}/>
   const renderDnaControls = (sheetField = null, workbench = false) => (
-<EditorPanelBoundary key={`${activeSubjectId}-${activeSection}-${sheetField || "all"}`}><DesktopDnaEditor workbench={workbench} requestedField={requestedDetail?.section === activeSection && !requestedDetail.field?.startsWith("feet:") ? requestedDetail : null} enabled={!sheetField}
+<EditorPanelBoundary key={`${activeSubjectId}-${activeSection}-${sheetField || "all"}`}><DesktopDnaEditor onSectionAdvance={workbench ? direction=>{const next=SECTIONS[activeIdx+direction];if(next)goSection(next.key);} : undefined} hasPreviousSection={activeIdx>0} hasNextSection={activeIdx<SECTIONS.length-1} workbench={workbench} requestedField={requestedDetail?.section === activeSection && !requestedDetail.field?.startsWith("feet:") ? requestedDetail : null} enabled={!sheetField}
             key={`${activeSubjectId}-${activeSection}`}
             section={!sheetField && studioProfile.specialtySection && activeSection === studioProfile.specialtySection
               ? { ...SECTIONS[activeIdx], fields: SECTIONS[activeIdx].fields.filter((field) => field.key === "composition_mode" || studioProfile.fieldGroups[specialtyTab]?.keys.includes(field.key)) }
