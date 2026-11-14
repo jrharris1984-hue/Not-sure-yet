@@ -17,11 +17,13 @@ const pages=[['design','Design',ScanFace],['random','Randomize',Shuffle],['outpu
 const guidedPages=[['design','Customize',ScanFace],['review','Review',SlidersHorizontal],['preview','Results',Picture]];
 export default function CreationWorkbench({compact=false,section,sections,stages,onSection,onFind,name,onName,onSave,saving,saveError,people,subjectSwitcher,subjectCount=1,expectedSubjectCount=1,editor,random,settings,preview,renderStatus,workflow,workflows=[],workflowId,onWorkflow,count,onGenerate,busy,issues,ready,mode,onMode,onDashboard}) {
   const [saved,setPage]=useTabPreference('ultra:creation-workbench-page','design');
-  const page=[...pages,...guidedPages].some(([key])=>key===saved)?saved:'design';
   const guided=mode!=='advanced';
   const visiblePages=guided?guidedPages:pages;
+  const page=visiblePages.some(([key])=>key===saved)?saved:'design';
   useEffect(()=>{if(!guided && page==='review')setPage('design');},[guided,page,setPage]);
   const pane=useRef(null);
+  // Keep each workspace at its beginning when changing tabs, including on phones.
+  useEffect(()=>{if(pane.current)pane.current.scrollTop=0;},[page]);
   const location=useLocation();
   const [designView,setDesignView]=useState(()=>location.pathname.includes('/s/')?'editor':'dashboard');
   // Navigation-only session state: scoped to the creation route, never character DNA.
