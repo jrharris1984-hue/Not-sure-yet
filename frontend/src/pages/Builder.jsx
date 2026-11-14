@@ -1776,7 +1776,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
         faceid_v2_strength: faceIdV2Strength,
         edit_instruction: isEnhanceWorkflow
           ? (repairInstruction.trim() || "Correct the selected technical defects naturally.")
-          : isEditWorkflow ? finalPositive : undefined,
+          : isEditWorkflow ? (isSmartShoot ? batchPrompts.positive : finalPositive) : undefined,
         preserve_unmentioned: preserveUnmentioned,
         repair_targets: isEnhanceWorkflow ? repairTargets : [],
         repair_strength: repairStrength,
