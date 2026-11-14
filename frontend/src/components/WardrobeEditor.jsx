@@ -7,6 +7,7 @@ import WardrobeCoverageStudio from './WardrobeCoverageStudio';
 import WardrobeLayerPicker from './WardrobeLayerPicker';
 import WardrobeIndependentLayers from './WardrobeIndependentLayers';
 import WardrobeLiveReview from './WardrobeLiveReview';
+import WardrobeGuided from './WardrobeGuided';
 import {wardrobeGroups} from '@/lib/wardrobeLayout';
 import {editWardrobeField, wardrobeFieldDisabled} from '@/lib/wardrobeMode';
 
@@ -24,6 +25,7 @@ export default function WardrobeEditor({requestedField, ...props}) {
   const [mobilePanel,setMobilePanel]=useState('detail');
   const [showInactive,setShowInactive]=useState(false);
   const [search,setSearch]=useState('');
+  const [wardrobeView,setWardrobeView]=useTabPreference(`${preferenceKey}:view`,'guided');
   const source=wardrobeGroups(props.section.fields);
   const groups=navigation.map(group=>({...group,fields:source.filter(item=>group.groups.includes(item.key)).flatMap(item=>item.fields)
     .filter(field=>field.key!=='outfit_mode' && (showInactive || !wardrobeFieldDisabled(field.key,props.value)))})).filter(group=>group.fields.length);
@@ -52,7 +54,9 @@ export default function WardrobeEditor({requestedField, ...props}) {
   const detailIndex=allDetails.findIndex(item=>item.group===group?.key && item.detail.key===field?.key);
   const selectDetail=(category,detail)=>{setGroupKey(category);setFieldKey(detail);setSearch('');setMobilePanel('detail');};
   const moveDetail=offset=>{const target=allDetails[detailIndex+offset];if(target){selectDetail(target.group,target.detail.key);}else if(props.onSectionAdvance)props.onSectionAdvance(offset);};
+  if(wardrobeView!=='advanced') return <WardrobeGuided props={props} onAdvanced={()=>setWardrobeView('advanced')}/>;
   return <div className="space-y-4 min-w-0" data-testid="wardrobe-focused-editor">
+    <div className="wardrobe-advanced-header"><strong>Advanced wardrobe</strong><button type="button" onClick={()=>setWardrobeView('guided')}>Back to guided wardrobe</button></div>
     <WardrobeCoverageStudio value={props.value} disabled={!!props.locked || !!props.fieldLocks?.exposure_mode} onChange={props.onChange}/>
     <WardrobeLayerPicker value={props.value} disabled={!!props.locked || !!props.fieldLocks?.exposure_mode} onChange={props.onChange}/>
     <WardrobeIndependentLayers value={props.value} disabled={!!props.locked} onChange={props.onChange}/>
