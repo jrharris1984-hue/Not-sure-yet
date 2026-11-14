@@ -478,3 +478,22 @@ body:has(.creation-bench){position:static;inset:auto}
 .creation-bench .wardrobe-live-reset{min-height:44px;padding:10px;border:1px solid #ffffff50;border-radius:9px;background:#30293e;color:#f5edff;text-align:center}
 .creation-bench .wardrobe-live-reset:disabled{opacity:.45}
 @media(min-width:900px){.creation-bench .wardrobe-live-lists{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* Guided wardrobe: one active stage, all controls remain in Advanced. */
+.creation-bench .wardrobe-guided{display:grid;gap:14px;min-width:0}
+.creation-bench .wardrobe-guided-header,.creation-bench .wardrobe-advanced-header{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.creation-bench .wardrobe-guided-header strong,.creation-bench .wardrobe-advanced-header strong{font-size:17px}
+.creation-bench .wardrobe-guided-header p,.creation-bench .wardrobe-guided-step-title p{font-size:12px;color:#a1a1aa;margin:4px 0 0}
+.creation-bench .wardrobe-guided-header button,.creation-bench .wardrobe-advanced-header button{min-height:44px;border:1px solid #ffffff40;border-radius:9px;padding:9px 12px}
+.creation-bench .wardrobe-guided-steps{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px}
+.creation-bench .wardrobe-guided-steps button{display:grid;justify-items:center;align-content:center;gap:5px;min-width:0;min-height:62px;padding:6px 2px;border:1px solid #ffffff30;border-radius:9px;font-size:11px;overflow-wrap:anywhere}
+.creation-bench .wardrobe-guided-steps button[aria-current=step]{border-color:#c4a5f5;background:#8d65bf30}
+.creation-bench .wardrobe-guided-steps button span{display:grid;place-items:center;width:21px;height:21px;border-radius:50%;background:#ffffff20}
+.creation-bench .wardrobe-guided-panel{display:grid;gap:14px;min-width:0}
+.creation-bench .wardrobe-guided-step-title strong{font-size:15px}
+.creation-bench .wardrobe-guided-outfit-controls{display:grid;gap:12px;min-width:0}
+.creation-bench .wardrobe-guided-outfit-controls details summary{cursor:pointer;min-height:44px;padding:10px;border:1px solid #ffffff30;border-radius:9px}
+.creation-bench .wardrobe-guided-footer{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.creation-bench .wardrobe-guided-footer button{min-height:44px;padding:10px 14px;border:1px solid #ffffff40;border-radius:9px}
+.creation-bench .wardrobe-guided-footer button:disabled{opacity:.4}
+.creation-bench .wardrobe-guided-footer span{font-size:12px;color:#a1a1aa}
