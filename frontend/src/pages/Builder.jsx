@@ -420,7 +420,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
     setSourceRenderId(incoming.source_render_id || null);
     setReferencePreview(location.state?.previewUrl || "");
 
-    if (location.state?.referenceMode === "keep_character") {
+    if (location.state?.referenceMode === "keep_character" || requestedMode === "photoshoot_character") {
       const saved = location.state.characterRecipe || {};
       const restored = Array.isArray(saved.subjects) && saved.subjects.length
         ? saved.subjects.map((subject, index) => makeSubject({
@@ -453,7 +453,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
       setVideoInstruction("");
     } else if (requestedKind === "edit") {
       setVideoInstruction("");
-      if (location.state?.referenceMode === "new_pose") {
+      if (location.state?.referenceMode === "new_pose" || requestedMode === "photoshoot_character") {
         setEditMode("new_pose");
         setPreserveUnmentioned(true);
         setEditInstruction("");
@@ -472,7 +472,9 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
       setVideoInstruction("");
     }
 
-    const message = requestedKind === "video"
+    const message = requestedMode?.startsWith("photoshoot_")
+      ? "Source image loaded. Smart Photoshoot is ready for planning; verify the reference workflow before generating."
+      : requestedKind === "video"
       ? "Gallery image loaded for animation"
       : requestedKind === "face"
         ? location.state?.referenceMode === "keep_character"
