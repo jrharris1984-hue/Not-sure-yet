@@ -359,3 +359,19 @@ body:has(.creation-bench){position:fixed;inset:0}
 .creation-bench .bench-editor-actions select,.creation-bench .bench-editor-actions button{width:100%;min-width:0;min-height:46px;padding:9px;border:1px solid #ffffff40;border-radius:10px;background:#30293e;color:#f4edff;font-size:14px}
 .creation-bench .bench-editor-actions button{background:#c7a4ff;color:#21192c;font-weight:700}
 }
+
+/* Detail-by-detail navigation and mobile scrolling recovery. */
+.creation-bench .bench-detail-stepper{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:8px;margin:18px 0 10px;padding:12px 0;border-top:1px solid #ffffff30}
+.creation-bench .bench-detail-stepper button{min-width:0;min-height:48px;padding:8px;border:1px solid #ffffff40;border-radius:10px;background:#30293e;color:#f5edff;font-weight:600}
+.creation-bench .bench-detail-stepper button:last-child{background:#c7a4ff;color:#21192c}
+.creation-bench .bench-detail-stepper button:disabled{opacity:.4}
+.creation-bench .bench-detail-stepper span{text-align:center;font-size:12px;white-space:nowrap}
+.creation-bench .bench-detail-stepper small{display:block;max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#cfc4de;font-size:10px}
+@media(max-width:767px){
+html:has(.creation-bench),body:has(.creation-bench){height:100%;overscroll-behavior:auto}
+body:has(.creation-bench){position:static;inset:auto}
+.studio-shell:has(.creation-bench){height:100dvh;min-height:0}
+.creation-bench .bench-scroll{min-height:0;min-width:0;overflow-y:auto!important;overflow-x:hidden!important;overscroll-behavior-y:contain;-webkit-overflow-scrolling:touch;touch-action:pan-y;scrollbar-gutter:auto}
+.creation-bench .bench-scroll :is(.bench-detail-browser-list,.bench-detail-search-results,.wardrobe-smart-results){overflow-y:auto;overflow-x:hidden;overscroll-behavior-y:contain;-webkit-overflow-scrolling:touch;touch-action:pan-y}
+.creation-bench .bench-detail-stepper{grid-template-columns:minmax(0,1fr) 70px minmax(0,1fr)}
+}
