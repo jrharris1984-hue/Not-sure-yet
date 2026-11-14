@@ -405,3 +405,9 @@ body:has(.creation-bench){position:static;inset:auto}
 .creation-bench .bench-mobile-bottom-navigation{position:sticky;bottom:0;z-index:5;padding:10px 6px max(10px,env(safe-area-inset-bottom));background:#211e2d;box-shadow:0 -6px 18px #0005}
 .creation-bench .bench-mobile-bottom-navigation button{min-height:48px}
 }
+
+/* Phase 6F: render recovery is readable on both desktop and mobile. */
+.creation-bench .bench-render-recovery{display:grid;gap:10px;margin:12px 0;padding:14px;border:1px solid #c7a4ff75;border-radius:12px;background:#30273f;color:#f5edff}
+.creation-bench .bench-render-recovery p{margin:0;line-height:1.5}
+.creation-bench .bench-render-recovery button{min-height:44px;width:fit-content;max-width:100%;padding:9px 14px;border:1px solid #c7a4ff;border-radius:9px;background:#c7a4ff;color:#21192c;font-weight:700}
+@media(max-width:767px){.creation-bench .bench-render-recovery button{width:100%}}
