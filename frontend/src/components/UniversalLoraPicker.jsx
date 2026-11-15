@@ -5,6 +5,26 @@ import { endpoints } from "@/lib/api";
 import { readLoraPreferences, saveLoraPreference, loraFileKey, LORA_PREFERENCES_CHANGED } from "@/lib/loraPreferences";
 import { compatibleInstalledLoras, workflowFamily } from "@/lib/loraRegistry";
 
+
+const LORA_CATEGORIES = ["All", "Favorites", "Style", "Realism", "Lighting", "Character", "Body", "Pose", "Clothing", "Camera", "Detail", "Utility", "Other"];
+const categoryFor = (entry) => {
+  const tags = (entry.categories || []).map(tag=>String(tag).toLowerCase());
+  const slot = String(entry.slot || "").toLowerCase();
+  const name = String(entry.label || "").toLowerCase();
+  const matches = (words) => words.some(word => tags.includes(word) || name.includes(word));
+  if (matches(["lighting","light"])) return "Lighting";
+  if (matches(["wardrobe","clothing","outfit","fashion","uniform"])) return "Clothing";
+  if (matches(["camera","selfie","pov","lens"])) return "Camera";
+  if (matches(["pose","action","movement"]) || slot === "action") return "Pose";
+  if (matches(["realism","realistic","photoreal"])) return "Realism";
+  if (matches(["detail","texture","sharpness","feet"])) return "Detail";
+  if (matches(["character","identity","person","face","portrait"]) || slot === "identity") return "Character";
+  if (matches(["body","physique","shape"]) || slot === "body") return "Body";
+  if (matches(["style","editorial","retro","aesthetic","art"]) || slot === "quality") return "Style";
+  if (matches(["utility","turbo","speed","accelerat"]) || slot === "required") return "Utility";
+  return "Other";
+};
+
 export default function UniversalLoraPicker({ workflow, value, onChange, slotLabel = "LoRA", excludedNames = [] }) {
   const [records, setRecords] = useState([]);
   const [preferences, setPreferences] = useState(readLoraPreferences);
@@ -12,6 +32,7 @@ export default function UniversalLoraPicker({ workflow, value, onChange, slotLab
   const [savedTriggerFor, setSavedTriggerFor] = useState("");
   const [installed, setInstalled] = useState([]);
   const [query, setQuery] = useState("");
+  const [category, setCategory] = useState("All");
   const [expanded, setExpanded] = useState(false);
   const [browseOpen, setBrowseOpen] = useState(false);
   const [favorites, setFavorites] = useState(() => { try { return JSON.parse(localStorage.getItem("ultra:lora-favorites") || "[]"); } catch { return []; } });
@@ -57,14 +78,12 @@ export default function UniversalLoraPicker({ workflow, value, onChange, slotLab
     );
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase();
-    if (!needle) return options;
-    return options.filter((entry) =>
-      [entry.label, entry.installedName, entry.slot, ...(entry.categories || [])]
-        .join(" ")
-        .toLowerCase()
-        .includes(needle)
-    );
-  }, [options, query]);
+    return options.filter(entry => {
+      if (category === "Favorites" && !favorites.includes(entry.installedName)) return false;
+      if (category !== "All" && category !== "Favorites" && categoryFor(entry) !== category) return false;
+      return !needle || [entry.label,entry.installedName,entry.slot,...(entry.categories || [])].join(" ").toLowerCase().includes(needle);
+    });
+  }, [options, query, category, favorites]);
   const ranked = [...filtered].sort((a,b)=>Number(favorites.includes(b.installedName))-Number(favorites.includes(a.installedName)));
   const visibleOptions = query.trim() || expanded ? ranked : ranked.slice(0, 8);
 
@@ -147,6 +166,9 @@ export default function UniversalLoraPicker({ workflow, value, onChange, slotLab
         </div>
         {browseOpen && <>
         <LoraLibraryManager installed={installed} records={records} onRecords={setRecords}/>
+        <div className="flex flex-wrap gap-1.5" role="group" aria-label="LoRA categories">
+          {LORA_CATEGORIES.map(item => <button key={item} type="button" aria-pressed={category === item} onClick={()=>{setCategory(item);setExpanded(false);}} className={`rounded-full border px-3 py-2 text-xs ${category===item ? "border-violet-400 bg-violet-500/20 text-violet-100" : "border-white/15 text-zinc-300 hover:bg-white/5"}`}>{item}{item === "Favorites" ? ` (${options.filter(entry=>favorites.includes(entry.installedName)).length})` : ""}</button>)}
+        </div>
         {options.length > 6 && (
           <label className="relative block">
             <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-zinc-600" />
@@ -206,17 +228,18 @@ export default function UniversalLoraPicker({ workflow, value, onChange, slotLab
           })}
         </div>
 
-        {!query.trim() && options.length > 8 && (
+        {!query.trim() && filtered.length > 8 && (
           <button
             type="button"
             onClick={() => setExpanded((current) => !current)}
             className="w-full rounded-lg border hairline px-3 py-2 text-[10px] font-mono uppercase tracking-widest text-zinc-400 hover:bg-white/5 hover:text-zinc-200"
             data-testid="lora-show-more"
           >
-            {expanded ? "Show fewer LoRAs" : `Show ${options.length - 8} more LoRAs`}
+            {expanded ? "Show fewer LoRAs" : `Show ${filtered.length - 8} more LoRAs`}
           </button>
         )}
 
+        {loadState === "ready" && filtered.length === 0 && options.length > 0 && <p className="text-xs text-zinc-400">No LoRAs in this category. Try All or another category.</p>}
         {loadState === "ready" && installed.length > 0 && <details className="rounded-lg border hairline p-3">
           <summary className="cursor-pointer text-xs text-cyan-200">Missing a LoRA? Set its model family</summary>
           <p className="my-2 text-xs text-zinc-400">All files reported by ComfyUI are listed here. Assign the training family from the model page; this does not convert a LoRA to another model.</p>
@@ -281,6 +304,16 @@ export default function UniversalLoraPicker({ workflow, value, onChange, slotLab
               </label>
               <button type="button" className="chip min-h-11" onClick={()=>onChange({...value,strength:selected.defaultStrength ?? 0.8})}>Reset strength</button>
             </div>
+            <label className="mt-3 block text-xs text-zinc-300">Library category
+              <select className="mt-1 w-full rounded border border-white/20 bg-zinc-800 p-2" value={categoryFor(selected)}
+                onChange={event=>{
+                  const next = event.target.value;
+                  const saved = saveLoraPreference(selected.installedName,{categories: next === "Other" ? [] : [next.toLowerCase()]});
+                  if (!saved) setSaveError("Could not save category in this browser.");
+                }}>
+                {LORA_CATEGORIES.filter(item=>item!=="All"&&item!=="Favorites").map(item=><option key={item} value={item}>{item}</option>)}
+              </select>
+            </label>
             <p className="mt-2 text-xs text-zinc-400">Model influence only. Use Scan &amp; manage to save a creator-specific range, including negative values. A saved range is user-confirmed, not independently verified.</p>
             <label className="mt-3 block text-[10px] text-zinc-400">
               Prompt trigger words (comma-separated)
