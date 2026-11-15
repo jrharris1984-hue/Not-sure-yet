@@ -470,7 +470,7 @@ export function compatibleInstalledLoras(workflow = {}, installed = [], preferen
       maxStrength: registered?.maxStrength ?? 1.5,
       ...loraStrengthProfile(preferences[normalizedName], inferredFamily),
       verified: !!registered?.verified,
-      categories: registered?.categories || [],
+      categories: preferences[normalizedName]?.categories ?? registered?.categories ?? [],
     });
   });
 
