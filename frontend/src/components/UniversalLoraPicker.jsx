@@ -200,7 +200,7 @@ export default function UniversalLoraPicker({ workflow, value, onChange, slotLab
                   {entry.slot === "manual" ? "local" : entry.slot}
                   {entry.triggerWords?.length ? " · trigger" : ""}
                 </span>
-                <span role="button" tabIndex={0} aria-label={`${favorites.includes(entry.installedName) ? "Remove favorite" : "Favorite"} ${entry.label}`} onClick={event=>{event.stopPropagation();toggleFavorite(entry.installedName);}} onKeyDown={event=>{if(event.key==="Enter"||event.key===" "){event.preventDefault();event.stopPropagation();toggleFavorite(entry.installedName);}}} className="mt-1 inline-block text-xs text-violet-300">{favorites.includes(entry.installedName) ? "★ Favorite" : "☆ Favorite"}</span>
+
               </button>
             );
           })}
@@ -250,6 +250,7 @@ export default function UniversalLoraPicker({ workflow, value, onChange, slotLab
               <SlidersHorizontal className="h-4 w-4 text-fuchsia-300" />
               <span className="min-w-0 flex-1 truncate text-xs font-semibold text-zinc-200">{selected.label}</span>
               <span className="font-mono text-xs text-fuchsia-200">{strength.toFixed(2)}</span>
+              <button type="button" className="chip min-h-10 text-xs" onClick={()=>toggleFavorite(selected.installedName)}>{favorites.includes(selected.installedName) ? "★ Favorited" : "☆ Add favorite"}</button>
             </div>
             <input
               type="range"
