@@ -13,6 +13,9 @@ export default function UniversalLoraPicker({ workflow, value, onChange, slotLab
   const [installed, setInstalled] = useState([]);
   const [query, setQuery] = useState("");
   const [expanded, setExpanded] = useState(false);
+  const [browseOpen, setBrowseOpen] = useState(false);
+  const [favorites, setFavorites] = useState(() => { try { return JSON.parse(localStorage.getItem("ultra:lora-favorites") || "[]"); } catch { return []; } });
+  const toggleFavorite = (name) => { const next = favorites.includes(name) ? favorites.filter(item => item !== name) : [...favorites,name]; setFavorites(next); try { localStorage.setItem("ultra:lora-favorites",JSON.stringify(next)); } catch {} };
   const [loadState, setLoadState] = useState("loading");
   const [triggerInput, setTriggerInput] = useState("");
   const [editedTriggerFor, setEditedTriggerFor] = useState("");
@@ -62,7 +65,8 @@ export default function UniversalLoraPicker({ workflow, value, onChange, slotLab
         .includes(needle)
     );
   }, [options, query]);
-  const visibleOptions = query.trim() || expanded ? filtered : filtered.slice(0, 8);
+  const ranked = [...filtered].sort((a,b)=>Number(favorites.includes(b.installedName))-Number(favorites.includes(a.installedName)));
+  const visibleOptions = query.trim() || expanded ? ranked : ranked.slice(0, 8);
 
   useEffect(() => {
     if (!value?.name || !installed.length) return;
@@ -137,6 +141,11 @@ export default function UniversalLoraPicker({ workflow, value, onChange, slotLab
       </div>
 
       <div className="space-y-3 p-4">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="min-w-0 truncate text-xs text-zinc-300">{selected ? `Active: ${selected.label}` : "No LoRA selected"}</p>
+          <button type="button" className="chip min-h-10" aria-expanded={browseOpen} onClick={()=>setBrowseOpen(open=>!open)}>{browseOpen ? "Hide library" : "Browse LoRAs"}</button>
+        </div>
+        {browseOpen && <>
         <LoraLibraryManager installed={installed} records={records} onRecords={setRecords}/>
         {options.length > 6 && (
           <label className="relative block">
@@ -191,6 +200,7 @@ export default function UniversalLoraPicker({ workflow, value, onChange, slotLab
                   {entry.slot === "manual" ? "local" : entry.slot}
                   {entry.triggerWords?.length ? " · trigger" : ""}
                 </span>
+                <span role="button" tabIndex={0} aria-label={`${favorites.includes(entry.installedName) ? "Remove favorite" : "Favorite"} ${entry.label}`} onClick={event=>{event.stopPropagation();toggleFavorite(entry.installedName);}} onKeyDown={event=>{if(event.key==="Enter"||event.key===" "){event.preventDefault();event.stopPropagation();toggleFavorite(entry.installedName);}}} className="mt-1 inline-block text-xs text-violet-300">{favorites.includes(entry.installedName) ? "★ Favorite" : "☆ Favorite"}</span>
               </button>
             );
           })}
@@ -233,6 +243,7 @@ export default function UniversalLoraPicker({ workflow, value, onChange, slotLab
           </div>
         )}
 
+        </>}
         {selected && (
           <div className="rounded-lg border border-fuchsia-500/20 bg-fuchsia-500/5 p-3">
             <div className="mb-2 flex items-center gap-2">
