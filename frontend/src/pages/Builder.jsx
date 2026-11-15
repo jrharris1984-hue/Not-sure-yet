@@ -3097,6 +3097,34 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
           </div>
         )}
 
+        {activeWorkflow?.prompt_style === "moss_image" && (() => {
+          const baseline = mossWorkflowSettings(activeWorkflow);
+          const currentSteps = Number(chromaSettings.steps) || baseline?.steps || 6;
+          return <section className="pane mt-3 space-y-3 p-4" data-testid="moss-step-control">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div><h3 className="text-sm font-semibold text-zinc-100">Generation steps</h3>
+                <p className="text-xs text-zinc-400">Workflow default: {baseline?.steps ?? "unknown"} · Current: {currentSteps}</p></div>
+              <label className="flex items-center gap-2 text-xs text-zinc-300">Steps
+                <input aria-label="MOSS generation steps" type="number" min="1" max="100" step="1"
+                  className="w-20 rounded-lg border border-white/20 bg-zinc-800 p-2 text-zinc-100"
+                  value={chromaSettings.steps ?? ""} onChange={event => {
+                    const n = Number(event.target.value);
+                    if (event.target.value !== "" && Number.isInteger(n) && n >= 1 && n <= 100)
+                      setChromaSettings(previous => ({...previous,steps:n}));
+                  }}/></label>
+            </div>
+            <input aria-label="MOSS steps slider" type="range" min="1" max="50" step="1"
+              value={Math.min(50,Math.max(1,currentSteps))}
+              onChange={event=>setChromaSettings(previous=>({...previous,steps:Number(event.target.value)}))}
+              className="w-full accent-violet-400"/>
+            <div className="flex flex-wrap gap-2">
+              {[6,26].map(n=><button key={n} type="button" className="chip min-h-10" onClick={()=>setChromaSettings(previous=>({...previous,steps:n}))}>{n} steps</button>)}
+              {baseline && <button type="button" className="chip min-h-10" onClick={()=>setChromaSettings(previous=>({...previous,steps:baseline.steps}))}>Reset to workflow default</button>}
+            </div>
+            {baseline && currentSteps !== baseline.steps && <p className="text-xs text-amber-200">Custom step count active. Some distilled MOSS models are tuned for fewer steps.</p>}
+          </section>;
+        })()}
+
         {activeWorkflow && promptPolicy.imageLoras && !isQwenReferenceWorkflow && !["pose", "refine", "krea_style"].includes(activeWorkflow.kind) && (
           <div data-mobile-tools="loras" className="mt-3 sm:mt-4">
             <UniversalLoraPicker
