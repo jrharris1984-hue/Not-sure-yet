@@ -1,4 +1,5 @@
 import StudioMoreActions from '@/components/StudioMoreActions';
+import GenerationPresetPicker from '@/components/GenerationPresetPicker';
 import CreationWorkbench, { workflowControls } from '@/components/CreationWorkbench';
 import StudioPreviewMedia from '@/components/StudioPreviewMedia';
 import useTabPreference from '@/hooks/useTabPreference';
@@ -3096,6 +3097,31 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
             />
           </div>
         )}
+
+        {activeWorkflow && <GenerationPresetPicker
+          workflowId={workflowId}
+          steps={chromaSettings.steps}
+          sampler={chromaSettings.sampler}
+          scheduler={chromaSettings.scheduler}
+          selectedLora={selectedLora}
+          secondaryLora={showSecondLora ? secondaryLora : null}
+          onApply={preset => {
+            if (!workflows.some(item => item.id === preset.workflowId)) {
+              window.alert("This preset's workflow is no longer available.");
+              return;
+            }
+            setWorkflowId(preset.workflowId);
+            setChromaSettings(previous => ({
+              ...previous,
+              steps: Math.max(1, Math.min(100, Number(preset.steps) || 6)),
+              ...(preset.sampler ? {sampler: preset.sampler} : {}),
+              ...(preset.scheduler ? {scheduler: preset.scheduler} : {}),
+            }));
+            setSelectedLora(preset.selectedLora || {name:"",strength:0.8,triggerWords:[]});
+            setSecondaryLora(preset.secondaryLora || {name:"",strength:0.8,triggerWords:[]});
+            setShowSecondLora(Boolean(preset.secondaryLora?.name));
+          }}
+        />}
 
         {activeWorkflow?.prompt_style === "moss_image" && (() => {
           const baseline = mossWorkflowSettings(activeWorkflow);
