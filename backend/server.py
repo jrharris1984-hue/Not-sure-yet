@@ -1624,6 +1624,35 @@ def _resolve_installed_lora(requested: str, installed: List[str]) -> Optional[st
     return basename_matches[0] if len(basename_matches) == 1 else None
 
 
+async def _normalize_workflow_lora_paths(workflow: Dict[str, Any], comfyui_url: str) -> None:
+    """Use the exact per-node LoRA option spelling advertised by ComfyUI.
+
+    A workflow may contain forward slashes while Windows ComfyUI enumerates
+    backslash-separated names. Only update unambiguous, exact normalized matches.
+    """
+    nodes = [
+        node for node in workflow.values()
+        if isinstance(node, dict) and isinstance(node.get("inputs"), dict)
+        and isinstance(node["inputs"].get("lora_name"), str)
+        and node["inputs"]["lora_name"].strip()
+    ]
+    if not nodes:
+        return
+    try:
+        async with httpx.AsyncClient(timeout=8.0) as client:
+            response = await client.get(f"{comfyui_url.rstrip('/')}/object_info")
+            response.raise_for_status()
+            object_info = response.json()
+    except (httpx.HTTPError, ValueError):
+        return  # Let ComfyUI report its normal error if discovery is unavailable.
+    for node in nodes:
+        requested = node["inputs"]["lora_name"]
+        options = _combo_options(object_info, str(node.get("class_type", "")), "lora_name")
+        matches = [name for name in options if _normalized_lora_name(name) == _normalized_lora_name(requested)]
+        if len(matches) == 1:
+            node["inputs"]["lora_name"] = matches[0]
+
+
 def _next_workflow_node_id(workflow: Dict[str, Any]) -> str:
     numeric = [int(str(key)) for key in workflow.keys() if str(key).isdigit()]
     candidate = max(numeric + [900000]) + 1
@@ -2615,6 +2644,7 @@ async def _perform_dispatch(body: "DispatchBody", queue_id: Optional[str] = None
     doc["operation"] = body.operation
     doc["hidden_from_gallery"] = bool(body.hidden_from_gallery)
     async def post_prompt():
+        await _normalize_workflow_lora_paths(workflow, s.comfyui_url)
         async with httpx.AsyncClient(timeout=8.0) as hc:
             return await hc.post(f"{s.comfyui_url.rstrip('/')}/prompt",
                                  json={"prompt": workflow, "client_id": r.id})
