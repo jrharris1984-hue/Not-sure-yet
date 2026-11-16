@@ -8,6 +8,8 @@ const person=['physique','face','hair','skin'];
 const photo=['pose','scene','lighting','camera','style'];
 const scene=(id,label,environment,source)=>suite(id,label,'Scenes',['scene','lighting','camera','style'],`Coordinate ${environment}, light and camera.`,{shared:true,setting:{environment,source}});
 export const RANDOMIZER_SUITES=[
+  suite('full-character','Create complete character','Whole setups',['identity','physique','face','hair','skin','feet','wardrobe','pose','scene','lighting','camera','style'],'Build an entire character and photo setup using the existing Studio categories. Preview every change before applying.',{shared:true,outfit:'everyday'}),
+  suite('full-appearance','Complete character appearance','Whole setups',['identity','physique','face','hair','skin','feet'],'Randomize character identity, body, face, hair, skin and foot details; keep wardrobe and photography unchanged.'),
   suite('whole','Complete photo setup','Whole setups',[...person,'wardrobe',...photo],'Appearance, coordinated clothing, pose and scene.',{shared:true,outfit:'everyday'}),
   suite('person','Fresh character look','Whole setups',person,'New appearance; keep outfit and scene.'),
   suite('portrait','Portrait session','Whole setups',[...person,...photo],'New look in a softly lit studio.',{shared:true,setting:{environment:'studio',source:'softbox'},framing:'waist-up'}),
