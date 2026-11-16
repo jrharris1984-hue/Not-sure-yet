@@ -2018,7 +2018,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
     toast.success(`Subject ${activeSubject.label} randomized · outfit and scene kept`);
   };
   const randomizerPromptBackup = useRef(null);
-  const suiteRandomizers = <details className="rs-builder-panel"><summary>Randomize · suite library</summary><RandomizerSuites
+  const suiteRandomizers = <details className="rs-builder-panel" open><summary>Randomizer Studio · full characters, categories & saved suites</summary><RandomizerSuites
     people={subjects.map(subject=>({...subject,locks:{...subject.locks,...Object.fromEntries(Object.entries(locks).filter(([,value])=>value))}}))} active={activeSubjectIdx} busy={dispatching || !!postRenderBusy}
     onApply={(next,meta)=>{
       if(meta.undo){if(randomizerPromptBackup.current && !promptOverride && !negativePromptOverride){setPromptOverride(randomizerPromptBackup.current.positive);setNegativePromptOverride(randomizerPromptBackup.current.negative);}}
