@@ -1,0 +1,13 @@
+{
+  "name": "ultra-studio-desktop-prototype",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Isolated Windows desktop launcher prototype",
+  "main": "main.cjs",
+  "scripts": {
+    "start": "electron ."
+  },
+  "devDependencies": {
+    "electron": "^33.4.11"
+  }
+}
