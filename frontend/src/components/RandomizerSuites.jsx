@@ -26,7 +26,12 @@ export default function RandomizerSuites({people,active=0,onApply,busy=false}) {
   return <section className="randomizer-suites" aria-label="Randomizer suites"><p className="rs-intro">{RANDOMIZER_SUITES.length} suites · preview changes before applying. Natural-photo rules and character locks stay active. No images are queued.</p>
     <fieldset disabled={busy}>
       <details className="rs-preferences"><summary>Keep & scope <span>{target==='all'?'Everyone':`Person ${active+1}`} · {keepIdentity?'identity kept':'identity may change'}</span></summary><div className="rs-options"><label>Apply to<select value={target} onChange={e=>{setTarget(e.target.value);invalidate();}}><option value="active">Selected person ({active+1})</option><option value="all">Everyone</option></select></label><label className="rs-check"><input type="checkbox" checked={keepIdentity} onChange={e=>{setKeepIdentity(e.target.checked);invalidate();}}/>Keep identity & age</label><label className="rs-check"><input type="checkbox" checked={keepBody} onChange={e=>{setKeepBody(e.target.checked);invalidate();}}/>Keep body build</label></div>
-      <p className="rs-note">Scene and camera suites apply to everyone so the photo shares one setting. Names, cast size and free-form notes are kept.</p></details>
+      <p className="rs-note">For a completely new character identity, uncheck Keep identity &amp; age. Full character setup also coordinates the scene across a multi-person cast. Names, cast size and free-form notes are kept.</p></details>
+      <div className="rs-quick-start" style={{display:'flex',flexWrap:'wrap',gap:10,alignItems:'center',margin:'12px 0'}}>
+        <button type="button" className="rs-apply" onClick={()=>preview('full-character')}>Create full character →</button>
+        <button type="button" onClick={()=>preview('full-appearance')}>Randomize appearance only</button>
+        <span style={{fontSize:12,opacity:.8}}>Respects your locks · previews before applying · no render started</span>
+      </div>
       <label className="rs-search">Find a suite<input type="search" value={query} onChange={e=>setQuery(e.target.value)} placeholder="Hair, studio, outfit…"/></label>
       <p className="rs-result-count" role="status">{category==='My randomizers' && !query?'Your saved collections':`${available.length} suites ${query?'matching your search':'in this category'}`}</p><div className="rs-categories" role="group" aria-label="Randomizer categories">{categories.map(c=><button type="button" key={c} aria-pressed={category===c && !query} onClick={()=>{setCategory(c);setQuery('');}}>{c}</button>)}</div>
 
