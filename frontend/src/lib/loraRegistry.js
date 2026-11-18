@@ -255,11 +255,13 @@ export const LORA_STRENGTH_BUDGETS = {
 };
 const installedMatch = (entry, installed) => {
   const expected = normalized(entry.file);
-  return installed.find((name) => {
-    const actual = normalized(name);
-    return actual === expected || actual.endsWith("/" + expected) ||
-      actual.endsWith("/" + expected.split("/").pop()) || actual === expected.split("/").pop();
-  });
+  const exact = installed.find(name => normalized(name) === expected);
+  if (exact) return exact;
+  // A registered basename is safe only when it resolves to one installed file.
+  // Otherwise do not silently choose a different subfolder's copy.
+  const basename = expected.split("/").pop();
+  const candidates = installed.filter(name => normalized(name).split("/").pop() === basename);
+  return candidates.length === 1 ? candidates[0] : undefined;
 };
 
 const SLOT_PRIORITY = { action: 3, body: 2, quality: 1 };
@@ -462,7 +464,7 @@ export function compatibleInstalledLoras(workflow = {}, installed = [], preferen
     const registered = registryByInstalled.get(normalizedName) ||
       LORA_REGISTRY.find((entry) => installedMatch(entry, [installedName]) && allowedFamilies.has(entry.family));
     const assignedFamily = preferences[normalizedName]?.family;
-    const inferredFamily = assignedFamily || folderFamilyForInstalled(installedName) || registered?.family || inferredFamilyForInstalled(installedName);
+    const inferredFamily = assignedFamily || registered?.family || folderFamilyForInstalled(installedName) || inferredFamilyForInstalled(installedName);
     if (!allowedFamilies.has(inferredFamily)) return;
     if (registered && ["required", "identity"].includes(registered.slot)) return;
     results.push({
@@ -481,28 +483,13 @@ export function compatibleInstalledLoras(workflow = {}, installed = [], preferen
     });
   });
 
-  // The same file can exist in both the root LoRA folder and a family
-  // subfolder. Show it only once, preferring the family-subfolder copy.
-  const deduped = new Map();
-  results.forEach((entry) => {
-    const normalizedPath = normalized(entry.installedName);
-    const basename = normalizedPath
-      .split("/").pop()
-      .replace(/\s*\(\d+\)(?=\.safetensors$)/, "");
-    const existing = deduped.get(basename);
-    const entryRegistered = !String(entry.id || "").startsWith("local:");
-    const existingRegistered = existing && !String(existing.id || "").startsWith("local:");
-    const entryInFamilyFolder = allowedFamilies.has(folderFamilyForInstalled(entry.installedName));
-    const existingInFamilyFolder = existing && allowedFamilies.has(folderFamilyForInstalled(existing.installedName));
-    if (
-      !existing ||
-      (!existingRegistered && entryRegistered) ||
-      (entryRegistered === existingRegistered && entryInFamilyFolder && !existingInFamilyFolder)
-    ) {
-      deduped.set(basename, entry);
-    }
-  });
-  return [...deduped.values()].sort((a, b) => a.label.localeCompare(b.label));
+  // Keep distinct subfolder paths distinct. ComfyUI treats these as separate
+  // installed choices even when their basenames match.
+  const byPath = new Map();
+  results.forEach(entry => byPath.set(normalized(entry.installedName), entry));
+  return [...byPath.values()].sort((a, b) =>
+    a.label.localeCompare(b.label) || a.installedName.localeCompare(b.installedName)
+  );
 }
 
 export function registryForInstalled(installed = []) {
