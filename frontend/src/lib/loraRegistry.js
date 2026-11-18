@@ -166,7 +166,9 @@ export function workflowFamily(workflow = {}) {
   if (/ltx/.test(text)) return "ltx";
   if (/minimax/.test(text)) return "minimax";
   if (/wan/.test(text) || /video/.test(text)) return "wan22";
-  if (/qwen|edit|enhance/.test(text)) return "qwen_edit";
+  if (/qwen.*(?:image[ _-]?edit|edit|2511)|(?:image[ _-]?edit|edit).*qwen/.test(text)) return "qwen_edit";
+  if (/qwen/.test(text)) return "qwen_image";
+  // Generic edit/enhance labels are not evidence of a Qwen Edit architecture.
   if (/flux/.test(text)) return "flux";
   if (/sd[ ._-]?1[ ._-]?5|face/.test(text)) return "sd15";
   return "unknown";
@@ -403,8 +405,13 @@ function folderFamilyForInstalled(name = "") {
   };
   for (const folder of folders.reverse()) {
     const key = folder.replace(/[ ._-]/g, "");
+    // Generic parent folders can contain distinct architectures; specific filenames win.
+    if (key === "qwen" || key === "qwenimage") {
+      if (/qwen.*edit|qwen.*2511|image[-_ ]edit/.test(normalized(name))) return "qwen_edit";
+      return "qwen_image";
+    }
+    if (key === "flux" || key === "flux2") return /flux[. _-]?2.*klein|klein/.test(normalized(name)) ? "flux2_klein" : "flux";
     if (aliases[key]) return aliases[key];
-    if (key === "flux") return /flux[. _-]?2.*klein/.test(normalized(name)) ? "flux2_klein" : "flux";
   }
   return "";
 }
