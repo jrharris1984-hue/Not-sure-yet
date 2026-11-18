@@ -41,6 +41,7 @@ export default function UniversalLoraPicker({ workflow, value, onChange, slotLab
   const [triggerInput, setTriggerInput] = useState("");
   const [editedTriggerFor, setEditedTriggerFor] = useState("");
   const family = workflowFamily(workflow || {});
+  const [showAllInstalled, setShowAllInstalled] = useState(false);
 
   useEffect(() => {
     const refresh = () => {
@@ -72,6 +73,7 @@ export default function UniversalLoraPicker({ workflow, value, onChange, slotLab
   );
 
   const normalizedFile = (name = "") => String(name).replace(/\\/g, "/").toLowerCase();
+  const matchedPaths = new Set(options.map(entry => String(entry.installedName).replace(/\\\\/g, "/").toLowerCase()));
   const selected = options.find((entry) => entry.installedName === value?.name)
     || options.find((entry) =>
       normalizedFile(entry.installedName).split("/").pop() === normalizedFile(value?.name).split("/").pop()
@@ -165,6 +167,22 @@ export default function UniversalLoraPicker({ workflow, value, onChange, slotLab
           <button type="button" className="chip min-h-10" aria-expanded={browseOpen} onClick={()=>setBrowseOpen(open=>!open)}>{browseOpen ? "Hide library" : "Browse LoRAs"}</button>
         </div>
         {browseOpen && <>
+        <div className="rounded-lg border border-white/10 bg-black/10 p-3 text-xs text-zinc-300">
+          <p>{installed.length} discovered by ComfyUI · {options.length} matched to this workflow family.</p>
+          <p className="mt-1 text-zinc-500">Family matching is inferred, not proof of training compatibility. Confirm the LoRA base model before generating.</p>
+          <button type="button" className="mt-2 min-h-10 text-cyan-200 underline" onClick={() => setShowAllInstalled(open => !open)} aria-expanded={showAllInstalled}>
+            {showAllInstalled ? "Hide installed inventory" : "Show all installed files, including unmatched"}
+          </button>
+          {showAllInstalled && <div className="mt-2 max-h-48 overflow-y-auto rounded border border-white/10 p-2">
+            {installed.map(name => {
+              const matched = matchedPaths.has(String(name).replace(/\\\\/g, "/").toLowerCase());
+              return <div key={name} className="flex gap-2 border-b border-white/5 py-1 last:border-0">
+                <span className="min-w-0 flex-1 break-all">{name}</span>
+                <span className={matched ? "text-cyan-300" : "text-amber-300"}>{matched ? "Family match" : "Needs review"}</span>
+              </div>;
+            })}
+          </div>}
+        </div>
         <LoraLibraryManager installed={installed} records={records} onRecords={setRecords}/>
         <div className="flex flex-wrap gap-1.5" role="group" aria-label="LoRA categories">
           {LORA_CATEGORIES.map(item => <button key={item} type="button" aria-pressed={category === item} onClick={()=>{setCategory(item);setExpanded(false);}} className={`rounded-full border px-3 py-2 text-xs ${category===item ? "border-violet-400 bg-violet-500/20 text-violet-100" : "border-white/15 text-zinc-300 hover:bg-white/5"}`}>{item}{item === "Favorites" ? ` (${options.filter(entry=>favorites.includes(entry.installedName)).length})` : ""}</button>)}
