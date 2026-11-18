@@ -42,6 +42,7 @@ export default function UniversalLoraPicker({ workflow, value, onChange, slotLab
   const [editedTriggerFor, setEditedTriggerFor] = useState("");
   const family = workflowFamily(workflow || {});
   const [showAllInstalled, setShowAllInstalled] = useState(false);
+  const [activeFolder, setActiveFolder] = useState("");
 
   useEffect(() => {
     const refresh = () => {
@@ -73,19 +74,30 @@ export default function UniversalLoraPicker({ workflow, value, onChange, slotLab
   );
 
   const normalizedFile = (name = "") => String(name).replace(/\\/g, "/").toLowerCase();
-  const matchedPaths = new Set(options.map(entry => String(entry.installedName).replace(/\\\\/g, "/").toLowerCase()));
+  const matchedPaths = new Set(options.map(entry => normalizedFile(entry.installedName)));
   const selected = options.find((entry) => entry.installedName === value?.name)
-    || options.find((entry) =>
-      normalizedFile(entry.installedName).split("/").pop() === normalizedFile(value?.name).split("/").pop()
-    );
+    || (options.filter(entry => normalizedFile(entry.installedName).split("/").pop() === normalizedFile(value?.name).split("/").pop()).length === 1
+      ? options.find(entry => normalizedFile(entry.installedName).split("/").pop() === normalizedFile(value?.name).split("/").pop()) : undefined);
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase();
     return options.filter(entry => {
+      const path = String(entry.installedName).replace(/\\/g, "/");
+      if (!needle && activeFolder && !path.startsWith(`${activeFolder}/`)) return false;
       if (category === "Favorites" && !favorites.includes(entry.installedName)) return false;
       if (category !== "All" && category !== "Favorites" && categoryFor(entry) !== category) return false;
       return !needle || [entry.label,entry.installedName,entry.slot,...(entry.categories || [])].join(" ").toLowerCase().includes(needle);
     });
-  }, [options, query, category, favorites]);
+  }, [options, query, category, favorites, activeFolder]);
+  const folders = useMemo(() => {
+    const paths = new Set();
+    options.forEach(entry => {
+      const parts = String(entry.installedName).replace(/\\/g, "/").split("/").slice(0, -1);
+      parts.forEach((_, index) => paths.add(parts.slice(0, index + 1).join("/")));
+    });
+    return [...paths].sort((a, b) => a.localeCompare(b));
+  }, [options]);
+  const childFolders = folders.filter(path => (activeFolder ? path.startsWith(`${activeFolder}/`) : true) && path.slice(activeFolder ? activeFolder.length + 1 : 0).indexOf("/") === -1);
+  const folderCount = path => options.filter(entry => String(entry.installedName).replace(/\\/g, "/").startsWith(`${path}/`)).length;
   const ranked = [...filtered].sort((a,b)=>Number(favorites.includes(b.installedName))-Number(favorites.includes(a.installedName)));
   const visibleOptions = query.trim() || expanded ? ranked : ranked.slice(0, 8);
 
@@ -184,6 +196,26 @@ export default function UniversalLoraPicker({ workflow, value, onChange, slotLab
           </div>}
         </div>
         <LoraLibraryManager installed={installed} records={records} onRecords={setRecords}/>
+        <div className="rounded-lg border border-white/10 p-3" data-testid="lora-folder-browser">
+          <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+            <p className="text-xs font-semibold text-zinc-200">Browse folders</p>
+            <button type="button" className="text-xs text-cyan-200 underline" onClick={() => {setActiveFolder("");setQuery("");setExpanded(false);}}>All folders</button>
+          </div>
+          <div className="mb-2 flex flex-wrap items-center gap-2 text-xs">
+            <button type="button" className="text-cyan-200 underline" onClick={() => {setActiveFolder("");setExpanded(false);}}>LoRAs</button>
+            {activeFolder.split("/").filter(Boolean).map((part, index, parts) => <span key={index} className="flex min-w-0 items-center gap-2">
+              <span className="text-zinc-600">/</span>
+              <button type="button" className="max-w-40 truncate text-cyan-200 underline" onClick={() => {setActiveFolder(parts.slice(0,index+1).join("/"));setExpanded(false);}}>{part}</button>
+            </span>)}
+          </div>
+          {childFolders.length > 0 && <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            {childFolders.map(path => <button type="button" key={path} onClick={() => {setActiveFolder(path);setQuery("");setExpanded(false);}} className="flex min-h-11 items-center justify-between gap-2 rounded-lg border border-white/10 px-3 py-2 text-left text-xs text-zinc-200 hover:bg-white/5">
+              <span className="min-w-0 truncate">📁 {path.split("/").pop()}</span><span className="shrink-0 text-zinc-500">{folderCount(path)}</span>
+            </button>)}
+          </div>}
+          {activeFolder && <p className="mt-2 break-all text-[10px] text-zinc-500">Folder: {activeFolder} · Includes nested folders</p>}
+          {query.trim() && <p className="mt-2 text-[10px] text-zinc-500">Searching all folders; clear search to return to the selected folder.</p>}
+        </div>
         <div className="flex flex-wrap gap-1.5" role="group" aria-label="LoRA categories">
           {LORA_CATEGORIES.map(item => <button key={item} type="button" aria-pressed={category === item} onClick={()=>{setCategory(item);setExpanded(false);}} className={`rounded-full border px-3 py-2 text-xs ${category===item ? "border-violet-400 bg-violet-500/20 text-violet-100" : "border-white/15 text-zinc-300 hover:bg-white/5"}`}>{item}{item === "Favorites" ? ` (${options.filter(entry=>favorites.includes(entry.installedName)).length})` : ""}</button>)}
         </div>
