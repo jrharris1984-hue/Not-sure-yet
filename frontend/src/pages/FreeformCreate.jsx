@@ -3,6 +3,8 @@ import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { endpoints } from '@/lib/api';
 import UniversalLoraPicker from '@/components/UniversalLoraPicker';
+import {planLoras, compatibleInstalledLoras} from '@/lib/loraRegistry';
+import {readLoraPreferences} from '@/lib/loraPreferences';
 import VideoModeLinks from '@/components/VideoModeLinks';
 import VideoPromptBuilder from '@/components/VideoPromptBuilder';
 import AIResearchPanel from '@/components/AIResearchPanel';
@@ -36,6 +38,9 @@ function FreeformWorkspace({ mode }) {
   const [firstLora, setFirstLora] = useState({name:'',strength:0.8,triggerWords:[]});
   const [secondLora, setSecondLora] = useState({name:'',strength:0.8,triggerWords:[]});
   const [showSecondLora, setShowSecondLora] = useState(false);
+  const [smartMode, setSmartMode] = useState('recommend');
+  const [installedLoras, setInstalledLoras] = useState([]);
+  const [loraInventoryError, setLoraInventoryError] = useState('');
   const [frames, setFrames] = useState(81), [fps, setFps] = useState(24);
   const {enabled:useWebResearch,focus:researchFocus}=useAssistantResearch();
   const setUseWebResearch=value=>updateAssistantResearch({enabled:value,result:null});
@@ -62,6 +67,30 @@ function FreeformWorkspace({ mode }) {
   }, [mode]);
   useEffect(() => () => { if (previewRef.current) URL.revokeObjectURL(previewRef.current); }, []);
   const workflow = workflows.find(item => item.id === workflowId);
+  useEffect(() => {
+    if (mode !== 'image') return;
+    let live = true;
+    setInstalledLoras([]);
+    setLoraInventoryError('');
+    endpoints.comfyLoras().then(result => {
+      if (live) setInstalledLoras(result.loras || []);
+    }).catch(() => {
+      if (live) setLoraInventoryError('Could not load installed LoRAs from ComfyUI.');
+    });
+    return () => { live = false; };
+  }, [mode, workflowId]);
+  const smartPlan = planLoras({workflow: workflow || {}, dna: {scenario: prompt}, installed: installedLoras});
+  const compatiblePaths = new Set(compatibleInstalledLoras(workflow || {}, installedLoras, readLoraPreferences()).map(entry => entry.installedName.replace(/\\/g, '/').toLowerCase()));
+  const recommended = smartPlan.matches.filter(entry => compatiblePaths.has(entry.installedName.replace(/\\/g, '/').toLowerCase()));
+  const recommendedChoice = recommended[0];
+  const smartSelection = recommendedChoice ? {name:recommendedChoice.installedName, strength:recommendedChoice.defaultStrength, triggerWords:recommendedChoice.triggerWords || []} : null;
+  const applySmartSelection = () => {
+    if (!smartSelection) return;
+    setFirstLora(smartSelection);
+    setSecondLora({name:'',strength:0.8,triggerWords:[]});
+    setShowSecondLora(false);
+    setQueued(false);
+  };
   const run = async (action, task) => {
     setBusy(action); setError('');
     try { await task(); } catch (err) { setError(err.response?.data?.detail || err.message || 'The request failed.'); }
@@ -105,7 +134,9 @@ function FreeformWorkspace({ mode }) {
   });
   const generate = () => run('Generate', async () => {
     setQueued(false);
-    const result = await endpoints.dispatchRender(freeformPayload({ mode, workflow, prompt, negative, source, seed, width, height, frames, fps, loras: [firstLora, ...(showSecondLora ? [secondLora] : [])] }));
+    const chosenLoras = smartMode === 'auto' && smartSelection
+      ? [smartSelection] : [firstLora, ...(showSecondLora ? [secondLora] : [])];
+    const result = await endpoints.dispatchRender(freeformPayload({ mode, workflow, prompt, negative, source, seed, width, height, frames, fps, loras: chosenLoras }));
     if (['failed', 'offline'].includes(result.status)) throw new Error(result.error || 'Generation could not start.');
     setQueued(true);
   });
@@ -123,6 +154,29 @@ function FreeformWorkspace({ mode }) {
         {preview && <><img src={preview} alt="Starting frame" className="max-h-64 rounded-lg object-contain"/><button disabled={!!busy} onClick={() => { if(previewRef.current) URL.revokeObjectURL(previewRef.current); previewRef.current = ''; setPreview(''); setSource(null); }}>Remove image</button></>}</div>}
       <label className="block space-y-1">{mode === 'video' ? 'Movement and camera prompt' : 'Your prompt'}<textarea aria-label="Your prompt" className={field} rows={7} value={prompt} disabled={!!busy} onChange={e => { setPrompt(e.target.value); setSuggestion(null); setQueued(false); }} placeholder={mode === 'video' ? 'Describe how the subject moves and how the camera follows.' : 'Describe the scene, subjects, style, lighting, and composition.'}/></label>
       {mode !== 'image' && <VideoPromptBuilder mode={mode} disabled={!!busy} onApply={value => {setPrompt(value);setSuggestion(null);setQueued(false);}}/>}
+      {mode === 'image' && workflow && <section className="rounded-lg border border-cyan-500/25 p-3 space-y-3" aria-label="Smart LoRA">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="text-sm font-semibold text-cyan-200">Smart LoRA</h2>
+          <label className="text-xs text-zinc-300">Mode
+            <select className="ml-2 rounded border hairline bg-elevated p-2" value={smartMode} disabled={!!busy} onChange={e => setSmartMode(e.target.value)}>
+              <option value="off">Off · Manual</option>
+              <option value="recommend">Recommend</option>
+              <option value="auto">Auto apply on Generate</option>
+            </select>
+          </label>
+        </div>
+        {smartMode !== 'off' && <>
+          <p className="text-xs text-zinc-400">Recommendations use prompt keywords and registered model families. They are suggestions, not verified model compatibility.</p>
+          {loraInventoryError && <p role="alert" className="text-xs text-amber-300">{loraInventoryError}</p>}
+          {recommendedChoice ? <div className="rounded border hairline p-3 space-y-2">
+            <p className="break-all text-sm text-zinc-200">{recommendedChoice.label} <span className="text-zinc-500">· {recommendedChoice.defaultStrength.toFixed(2)}</span></p>
+            <p className="text-xs text-zinc-400">{recommendedChoice.reason || 'Matched your prompt'} · {recommendedChoice.installedName}</p>
+            {smartMode === 'recommend'
+              ? <button type="button" disabled={!!busy} className="chip min-h-11" onClick={applySmartSelection}>Apply recommendation</button>
+              : <p className="text-xs text-cyan-200">This LoRA will be applied when you generate. Switch to Recommend or Off to use manual selections.</p>}
+          </div> : <p className="text-xs text-zinc-400">No eligible recommendation for this prompt and workflow. {smartMode === 'auto' ? 'Manual selections will be used instead.' : 'You can still choose a LoRA manually.'}</p>}
+        </>}
+      </section>}
       {mode === 'image' && workflow && <details><summary className="cursor-pointer text-zinc-300">Optional LoRAs · up to two</summary>
         <fieldset disabled={!!busy} className="mt-3 space-y-3">
           <UniversalLoraPicker workflow={workflow} value={firstLora} onChange={setFirstLora} slotLabel="LoRA 1" excludedNames={secondLora.name ? [secondLora.name] : []}/>
