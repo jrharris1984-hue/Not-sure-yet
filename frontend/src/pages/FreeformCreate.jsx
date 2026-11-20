@@ -32,6 +32,10 @@ function FreeformWorkspace({ mode }) {
   }, []);
   const [workflows, setWorkflows] = useState([]), [workflowId, setWorkflowId] = useState('');
   const [prompt, setPrompt] = useState(''), [negative, setNegative] = useState('');
+  const [promptStyle, setPromptStyle] = useState('auto');
+  const [narrative, setNarrative] = useState({scene:'',subjects:'',composition:'',lighting:''});
+  const [showNarrative, setShowNarrative] = useState(true);
+
   const [source, setSource] = useState(galleryInitial || null), [preview, setPreview] = useState(mode === 'video' ? location.state?.previewUrl || '' : '');
   const [suggestion, setSuggestion] = useState(null), [busy, setBusy] = useState('');
   const [error, setError] = useState(''), [queued, setQueued] = useState(false), [loading, setLoading] = useState(true);
@@ -68,6 +72,18 @@ function FreeformWorkspace({ mode }) {
   }, [mode]);
   useEffect(() => () => { if (previewRef.current) URL.revokeObjectURL(previewRef.current); }, []);
   const workflow = workflows.find(item => item.id === workflowId);
+  const effectivePromptStyle = promptStyle === 'auto' ? (workflow?.name?.includes('SNOFS') ? 'narrative' : 'manual') : promptStyle;
+  const narrativeParts = [narrative.scene, narrative.subjects, narrative.composition, narrative.lighting].map(value => value.trim()).filter(Boolean);
+  const composedPrompt = effectivePromptStyle === 'keywords'
+    ? narrativeParts.join(', ')
+    : narrativeParts.map(value => /[.!?]$/.test(value) ? value : value + '.').join(' ');
+  const applyComposedPrompt = () => {
+    if (!composedPrompt.trim()) return;
+    setPrompt(composedPrompt);
+    setSuggestion(null);
+    setQueued(false);
+  };
+
   useEffect(() => {
     if (mode !== 'image') return;
     let live = true;
@@ -153,6 +169,41 @@ function FreeformWorkspace({ mode }) {
       {loading ? <p>Loading workflows…</p> : !workflows.length && <p>No compatible workflow is available. <Link to="/settings" className="text-cyan-300 underline">Refresh bundled workflows in Settings</Link>.</p>}
       {mode === 'video' && <div className="space-y-2"><button type="button" className="rounded-lg border border-cyan-400/40 px-3 py-2 text-sm text-cyan-200" disabled={!!busy} onClick={openGallery}>Choose from Gallery</button>{galleryOpen && <div className="rounded-lg border hairline p-3 space-y-3"><div className="flex justify-between"><strong className="text-sm">Select a Gallery image</strong><button type="button" onClick={()=>setGalleryOpen(false)}>Close</button></div>{galleryLoading?<p>Loading images…</p>:<div className="grid max-h-72 grid-cols-3 gap-2 overflow-y-auto sm:grid-cols-4">{galleryImages.map(render=>{const original=render.output_variants?.enhanced?.[0] || render.output_files?.[0];let display=original;try{const u=new URL(original,window.location.origin);if(u.searchParams.has("filename"))display=`${window.location.origin}/api/comfyui/media?${new URLSearchParams({filename:u.searchParams.get("filename"),subfolder:u.searchParams.get("subfolder")||"",type:u.searchParams.get("type")||"output"})}`;}catch{}return <button type="button" key={render.id} disabled={!!busy} onClick={()=>chooseGalleryImage(render)} className="overflow-hidden rounded-lg border hairline"><img src={display} alt="Gallery render" loading="lazy" className="aspect-square w-full object-cover"/></button>;})}</div>}{!galleryLoading&&!galleryImages.length&&<p className="text-xs text-zinc-400">No completed images found.</p>}</div>}<label className="block">Starting image<input aria-label="Starting image" type="file" accept="image/png,image/jpeg,image/webp" disabled={!!busy} onChange={upload} className="block mt-2 text-sm"/></label>
         {preview && <><img src={preview} alt="Starting frame" className="max-h-64 rounded-lg object-contain"/><button disabled={!!busy} onClick={() => { if(previewRef.current) URL.revokeObjectURL(previewRef.current); previewRef.current = ''; setPreview(''); setSource(null); }}>Remove image</button></>}</div>}
+      {mode === 'image' && <section className="rounded-lg border border-cyan-500/25 p-3 space-y-3" aria-label="Prompt composer">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="text-sm font-semibold text-cyan-200">Prompt Composer</h2>
+          <button type="button" className="text-xs text-cyan-300 underline" onClick={() => setShowNarrative(value => !value)}>{showNarrative ? 'Collapse' : 'Expand'}</button>
+        </div>
+        <label className="block text-xs text-zinc-300">Writing style
+          <select className={field + ' mt-1'} value={promptStyle} disabled={!!busy} onChange={event => setPromptStyle(event.target.value)}>
+            <option value="auto">Automatic · narrative for SNOFS</option>
+            <option value="narrative">Narrative · complete sentences</option>
+            <option value="keywords">Keywords · comma-separated</option>
+            <option value="manual">Manual · edit prompt directly</option>
+          </select>
+        </label>
+        <p className="text-xs text-zinc-400">{effectivePromptStyle === 'manual' ? 'Write directly in Your prompt below. Existing prompts remain unchanged.' : 'Build a description from separate fields. Preview and apply it before generating; nothing is sent automatically.'}</p>
+        {showNarrative && effectivePromptStyle !== 'manual' && <>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {[
+              ['scene','Scene and environment','Describe the room, setting, and background.'],
+              ['subjects','Adult subjects and appearance','Describe each adult subject, clothing, and distinctive features.'],
+              ['composition','Positioning and interaction','Describe placement, poses, camera framing, and non-explicit interactions.'],
+              ['lighting','Lighting and photographic style','Describe light, lens, atmosphere, and texture.'],
+            ].map(([key,label,placeholder]) => <label key={key} className="block text-xs text-zinc-300">{label}
+              <textarea className={field + ' mt-1'} rows={3} value={narrative[key]} disabled={!!busy} placeholder={placeholder} onChange={event => setNarrative(current => ({...current,[key]:event.target.value}))}/>
+            </label>)}
+          </div>
+          <label className="block text-xs text-zinc-300">Preview
+            <textarea className={field + ' mt-1'} rows={5} readOnly value={composedPrompt} aria-label="Composed prompt preview"/>
+          </label>
+          <div className="flex flex-wrap gap-2">
+            <button type="button" className="chip min-h-11" disabled={!!busy || !composedPrompt.trim()} onClick={applyComposedPrompt}>Use this prompt</button>
+            <button type="button" className="chip min-h-11" disabled={!!busy || !composedPrompt.trim()} onClick={() => {setPrompt(current => [current.trim(),composedPrompt].filter(Boolean).join('\\n'));setSuggestion(null);setQueued(false);}}>Append to prompt</button>
+            <button type="button" className="chip min-h-11" disabled={!!busy} onClick={() => setNarrative({scene:'',subjects:'',composition:'',lighting:''})}>Clear builder</button>
+          </div>
+        </>}
+      </section>}
       <label className="block space-y-1">{mode === 'video' ? 'Movement and camera prompt' : 'Your prompt'}<textarea aria-label="Your prompt" className={field} rows={7} value={prompt} disabled={!!busy} onChange={e => { setPrompt(e.target.value); setSuggestion(null); setQueued(false); }} placeholder={mode === 'video' ? 'Describe how the subject moves and how the camera follows.' : 'Describe the scene, subjects, style, lighting, and composition.'}/></label>
       {mode === 'image' && workflow?.name?.includes('SNOFS') && <details className="rounded-lg border border-cyan-500/20 p-3" data-testid="snofs-trained-concepts">
         <summary className="cursor-pointer text-sm text-cyan-200">SNOFS trained concepts · prompt reference</summary>
