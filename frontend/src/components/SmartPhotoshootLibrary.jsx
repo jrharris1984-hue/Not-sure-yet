@@ -31,7 +31,7 @@ export default function SmartPhotoshootLibrary() {
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
   const [search, setSearch] = useState('');
-  const [scope, setScope] = useState('saved');
+  const [scope, setScope] = useState('all');
   const save = async preset => {
     const latest = await endpoints.settings();
     const updated = await endpoints.updateSettings({ custom_photoshoot_presets: [...(latest.custom_photoshoot_presets || []).filter(item => item.key !== preset.key), preset] });
