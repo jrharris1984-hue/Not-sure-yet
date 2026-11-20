@@ -69,7 +69,7 @@
     "inputs": {
       "seed": 123456789,
       "steps": 15,
-      "cfg": 1,
+      "cfg": 4,
       "sampler_name": "euler",
       "scheduler": "simple",
       "denoise": 1,
@@ -92,7 +92,7 @@
     },
     "class_type": "KSampler",
     "_meta": {
-      "title": "SNOFS MOSS v1 SFT: 15-step baseline (CFG 1 remains adjustable)"
+      "title": "SNOFS MOSS v1 SFT: 15 steps / CFG 4 (user-supplied metadata)"
     }
   },
   "8": {
