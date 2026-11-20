@@ -2,6 +2,7 @@ import { useAssistantResearch, updateAssistantResearch } from '@/lib/assistantRe
 import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { endpoints } from '@/lib/api';
+import {SNOFS_MOSS_CONCEPTS, SNOFS_MOSS_PROMPT_GUIDANCE} from '@/lib/snofsMossConcepts';
 import UniversalLoraPicker from '@/components/UniversalLoraPicker';
 import {planLoras, compatibleInstalledLoras} from '@/lib/loraRegistry';
 import {readLoraPreferences} from '@/lib/loraPreferences';
@@ -153,6 +154,15 @@ function FreeformWorkspace({ mode }) {
       {mode === 'video' && <div className="space-y-2"><button type="button" className="rounded-lg border border-cyan-400/40 px-3 py-2 text-sm text-cyan-200" disabled={!!busy} onClick={openGallery}>Choose from Gallery</button>{galleryOpen && <div className="rounded-lg border hairline p-3 space-y-3"><div className="flex justify-between"><strong className="text-sm">Select a Gallery image</strong><button type="button" onClick={()=>setGalleryOpen(false)}>Close</button></div>{galleryLoading?<p>Loading images…</p>:<div className="grid max-h-72 grid-cols-3 gap-2 overflow-y-auto sm:grid-cols-4">{galleryImages.map(render=>{const original=render.output_variants?.enhanced?.[0] || render.output_files?.[0];let display=original;try{const u=new URL(original,window.location.origin);if(u.searchParams.has("filename"))display=`${window.location.origin}/api/comfyui/media?${new URLSearchParams({filename:u.searchParams.get("filename"),subfolder:u.searchParams.get("subfolder")||"",type:u.searchParams.get("type")||"output"})}`;}catch{}return <button type="button" key={render.id} disabled={!!busy} onClick={()=>chooseGalleryImage(render)} className="overflow-hidden rounded-lg border hairline"><img src={display} alt="Gallery render" loading="lazy" className="aspect-square w-full object-cover"/></button>;})}</div>}{!galleryLoading&&!galleryImages.length&&<p className="text-xs text-zinc-400">No completed images found.</p>}</div>}<label className="block">Starting image<input aria-label="Starting image" type="file" accept="image/png,image/jpeg,image/webp" disabled={!!busy} onChange={upload} className="block mt-2 text-sm"/></label>
         {preview && <><img src={preview} alt="Starting frame" className="max-h-64 rounded-lg object-contain"/><button disabled={!!busy} onClick={() => { if(previewRef.current) URL.revokeObjectURL(previewRef.current); previewRef.current = ''; setPreview(''); setSource(null); }}>Remove image</button></>}</div>}
       <label className="block space-y-1">{mode === 'video' ? 'Movement and camera prompt' : 'Your prompt'}<textarea aria-label="Your prompt" className={field} rows={7} value={prompt} disabled={!!busy} onChange={e => { setPrompt(e.target.value); setSuggestion(null); setQueued(false); }} placeholder={mode === 'video' ? 'Describe how the subject moves and how the camera follows.' : 'Describe the scene, subjects, style, lighting, and composition.'}/></label>
+      {mode === 'image' && workflow?.name?.includes('SNOFS') && <details className="rounded-lg border border-cyan-500/20 p-3" data-testid="snofs-trained-concepts">
+        <summary className="cursor-pointer text-sm text-cyan-200">SNOFS trained concepts · prompt reference</summary>
+        <p className="mt-2 text-xs text-zinc-400">{SNOFS_MOSS_PROMPT_GUIDANCE}</p>
+        <p className="mt-1 text-xs text-zinc-500">Creator-reported concepts, not guaranteed outputs or special trigger words. Select a concept to add it to your prompt, then edit the sentence as needed.</p>
+        <div className="mt-3 space-y-3">{SNOFS_MOSS_CONCEPTS.map(group => <div key={group.group}>
+          <h3 className="mb-2 text-xs font-semibold text-zinc-200">{group.group}</h3>
+          <div className="flex flex-wrap gap-2">{group.concepts.map(concept => <button key={concept} type="button" disabled={!!busy} className="rounded-full border border-white/15 px-3 py-2 text-xs text-zinc-300 hover:bg-white/5" onClick={() => {setPrompt(current => `${current.trim()}${current.trim() ? '\\n' : ''}The scene includes ${concept}.`);setSuggestion(null);setQueued(false);}}>{concept}</button>)}</div>
+        </div>)}</div>
+      </details>}
       {mode !== 'image' && <VideoPromptBuilder mode={mode} disabled={!!busy} onApply={value => {setPrompt(value);setSuggestion(null);setQueued(false);}}/>}
       {mode === 'image' && workflow && <section className="rounded-lg border border-cyan-500/25 p-3 space-y-3" aria-label="Smart LoRA">
         <div className="flex flex-wrap items-center justify-between gap-2">
