@@ -151,6 +151,30 @@ export const SMART_SHOOT_CATEGORIES = [
         ],
       },
       {
+        key: "playboy_glamour",
+        label: "Playboy-Inspired Glamour",
+        description: "Classic magazine-inspired adult glamour photography with elegant studio lighting, confident poses and tasteful styling.",
+        sequence: [
+          shot("Magazine cover", /portrait standing|portrait/i, "full body", /front|3\/4/i, "smoldering"),
+          shot("Beauty close-up", /portrait standing|portrait seated|portrait/i, "portrait", /eye-level|3\/4/i, "smirk"),
+          shot("Lounge portrait", /portrait seated|seated/i, "thigh-up", /3\/4|eye-level/i, "sultry"),
+          shot("Over the shoulder", /angles|portrait standing|portrait/i, "waist-up", /over-shoulder|3\/4/i, "smoldering"),
+          shot("Editorial finale", /portrait standing|relaxed leaning|portrait/i, "full body", /front|low angle/i, "smile"),
+        ],
+      },
+      {
+        key: "artistic_nude",
+        label: "Artistic Nude",
+        description: "Adult fine-art figure photography with sculptural poses, soft light, considered composition and a non-explicit editorial approach.",
+        sequence: [
+          shot("Fine-art silhouette", /portrait standing|portrait/i, "full body", /profile|3\/4/i, "neutral"),
+          shot("Sculptural seated", /portrait seated|seated/i, "full body", /eye-level|3\/4/i, "neutral"),
+          shot("Soft side light", /portrait standing|relaxed leaning|portrait/i, "full body", /profile|eye-level/i, "serious"),
+          shot("Reclining composition", /relaxed leaning|portrait seated|portrait/i, "full body", /high angle|3\/4/i, "neutral"),
+          shot("Figure study finale", /portrait standing|portrait/i, "full body", /front|3\/4/i, "neutral"),
+        ],
+      },
+      {
         key: "boudoir",
         label: "Boudoir",
         description: "Soft, intimate editorial coverage with elegant seated, reclining and close portrait direction.",
