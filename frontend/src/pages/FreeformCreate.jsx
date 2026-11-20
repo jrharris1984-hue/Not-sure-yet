@@ -160,7 +160,7 @@ function FreeformWorkspace({ mode }) {
         <p className="mt-1 text-xs text-zinc-500">Creator-reported concepts, not guaranteed outputs or special trigger words. Select a concept to add it to your prompt, then edit the sentence as needed.</p>
         <div className="mt-3 space-y-3">{SNOFS_MOSS_CONCEPTS.map(group => <div key={group.group}>
           <h3 className="mb-2 text-xs font-semibold text-zinc-200">{group.group}</h3>
-          <div className="flex flex-wrap gap-2">{group.concepts.map(concept => <button key={concept} type="button" disabled={!!busy} className="rounded-full border border-white/15 px-3 py-2 text-xs text-zinc-300 hover:bg-white/5" onClick={() => {setPrompt(current => `${current.trim()}${current.trim() ? '\\n' : ''}The scene includes ${concept}.`);setSuggestion(null);setQueued(false);}}>{concept}</button>)}</div>
+          <div className="flex flex-wrap gap-2">{group.concepts.map(concept => <button key={concept} type="button" disabled={!!busy} className="rounded-full border border-white/15 px-3 py-2 text-xs text-zinc-300 hover:bg-white/5" onClick={() => {setPrompt(current => `${current.trim()}${current.trim() ? '\n' : ''}The scene includes ${concept}.`);setSuggestion(null);setQueued(false);}}>{concept}</button>)}</div>
         </div>)}</div>
       </details>}
       {mode !== 'image' && <VideoPromptBuilder mode={mode} disabled={!!busy} onApply={value => {setPrompt(value);setSuggestion(null);setQueued(false);}}/>}
