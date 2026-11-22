@@ -50,29 +50,39 @@ export function promptLibrarySections(base = []) {
 }
 
 export function sharedPoseGroups(count = 2, config = catalog) {
-  const section = catalogSections([SHARED_POSE_SECTION], config)[0];
-  const field = section.fields.find(item => item.key === (count === 2 ? 'two_people' : 'group'));
-  if (!field) return [];
-  const options = new Map((field.options || []).map(value => [value, {
-    value,
-    label: field.optionLabels?.[value] || value,
-  }]));
+  const baseField = SHARED_POSE_SECTION.fields.find(item => item.key === (count === 2 ? 'two_people' : 'group'));
+  if (!baseField) return [];
   const savedSection = config.sections?.find(item => item.key === SHARED_POSE_SECTION.key);
-  const savedField = savedSection?.fields?.find(item => item.key === field.key);
+  const savedField = savedSection?.fields?.find(item => item.key === baseField.key);
   const savedOptions = new Map((savedField?.options || []).map(option => [option.value, option]));
-  const groups = field.groups?.length ? field.groups : [{name:'Choices',options:field.options || []}];
-  return groups.map(group => ({
+  const seen = new Set();
+  const groups = baseField.groups.map(group => ({
     label: group.name,
     poses: group.options.map(value => {
-      const display = options.get(value) || { value, label:value };
       const saved = savedOptions.get(value);
-      return {
-        value,
-        label: saved?.label || display.label,
-        prompt: saved?.keywords?.trim() || value,
-      };
-    }),
+      if (saved?.group && saved.group !== group.name) return null;
+      seen.add(value);
+      return { value, label: saved?.label || value, prompt: saved?.keywords?.trim() || value };
+    }).filter(Boolean),
   }));
+  // Keep shipped presets accessible even when an older saved library contains
+  // only a subset. Preserve custom entries and their authored keywords.
+  for (const option of savedField?.options || []) {
+    if (seen.has(option.value)) continue;
+    seen.add(option.value);
+    const label = option.group || 'Custom poses';
+    let group = groups.find(item => item.label === label);
+    if (!group) {
+      group = { label, poses: [] };
+      groups.push(group);
+    }
+    group.poses.push({
+      value: option.value,
+      label: option.label || option.value,
+      prompt: option.keywords?.trim() || option.value,
+    });
+  }
+  return groups;
 }
 
 let catalog = {sections:[]};
