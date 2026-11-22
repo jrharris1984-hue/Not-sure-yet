@@ -59,10 +59,11 @@ export function sharedPoseGroups(count = 2, config = catalog) {
   const groups = baseField.groups.map(group => ({
     label: group.name,
     poses: group.options.map(value => {
-      seen.add(value);
       const saved = savedOptions.get(value);
+      if (saved?.group && saved.group !== group.name) return null;
+      seen.add(value);
       return { value, label: saved?.label || value, prompt: saved?.keywords?.trim() || value };
-    }),
+    }).filter(Boolean),
   }));
   // Keep shipped presets accessible even when an older saved library contains
   // only a subset. Preserve custom entries and their authored keywords.
