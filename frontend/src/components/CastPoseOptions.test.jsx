@@ -78,3 +78,26 @@ test('an active shared pose has an explicit clear control',()=>{
   expect(onClear).toHaveBeenCalledTimes(1);
  } finally {act(()=>root.unmount());}
 });
+
+test('saved partial libraries retain shipped group poses and custom additions for four people', () => {
+  global.IS_REACT_ACT_ENVIRONMENT = true;
+  setPromptCatalog({sections:[{
+    key:'shared_poses', title:'Shared Poses', fields:[{
+      key:'group', label:'3–4 people', type:'pose_chips', options:[
+        {value:'group portrait',label:'My Group Portrait',keywords:'four adults arranged in a group portrait',group:'Group composition'},
+        {value:'custom_circle',label:'Circle formation',keywords:'four adults standing in a circle',group:'My Poses'},
+      ],
+    }],
+  }]});
+  const container=document.createElement('div'),root=createRoot(container),onSelect=jest.fn();
+  try {
+    act(()=>root.render(<CastPoseOptions count={4} value="" onSelect={onSelect}/>));
+    expect(container.textContent).toContain('staggered lineup');
+    expect(container.textContent).toContain('casual candid group');
+    expect(container.textContent).toContain('Circle formation');
+    act(()=>[...container.querySelectorAll('button')].find(button=>button.textContent==='Circle formation').click());
+    expect(onSelect).toHaveBeenCalledWith('four adults standing in a circle');
+    act(()=>[...container.querySelectorAll('button')].find(button=>button.textContent==='My Group Portrait').click());
+    expect(onSelect).toHaveBeenCalledWith('four adults arranged in a group portrait');
+  } finally {act(()=>root.unmount());}
+});
