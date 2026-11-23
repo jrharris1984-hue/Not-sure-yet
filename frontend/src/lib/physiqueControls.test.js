@@ -179,7 +179,7 @@ describe('Physique 2.0 expanded range compatibility', () => {
   it('keeps the previous glute scale interpretation at 300', () => {
     const dna = recipe();
     dna.physique = {...dna.physique, butt_scale:300};
-    expect(compileModelPrompts({promptStyle:'moss',dna}).positive).toMatch(/glute volume intensity 300\/2000/);
+    expect(compileModelPrompts({promptStyle:'moss',dna}).positive).toMatch(/size intensity 300\/2000/);
   });
 });
 
