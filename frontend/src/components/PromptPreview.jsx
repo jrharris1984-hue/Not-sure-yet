@@ -1,3 +1,4 @@
+import MossRenderComparisonLab from './MossRenderComparisonLab';
 import MossPromptInspector from './MossPromptInspector';
 import SceneReviewPanel from './SceneReviewPanel';
 import SelectionPromptAudit from './SelectionPromptAudit';
@@ -111,6 +112,7 @@ export default function PromptPreview({ learningPanel, positive, negative, dna, 
       </section>}
       <SelectionPromptAudit positive={positive} manifest={compilerMeta?.selectionManifest}/>
       <MossPromptInspector positive={positive} compilerMeta={compilerMeta} />
+      <MossRenderComparisonLab positive={positive} workflow={workflow} recipe={recipe} compilerMeta={compilerMeta} />
       <details className="rounded-lg border hairline bg-black/20 p-3 text-xs text-zinc-400" data-testid="prompt-length-review">
         <summary className="cursor-pointer">Length & selection review · ~{tokens} tokens · {String(positive || "").length} characters</summary>
         <p className="mt-2">App guidance for {quality.profileLabel}: about {quality.warningTokens} tokens. This is an estimate, not a confirmed encoder limit. Sending more text does not guarantee the model uses every detail.</p>
