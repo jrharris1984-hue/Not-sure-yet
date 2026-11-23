@@ -1,3 +1,4 @@
+import { physiqueDetailPrompt, PHYSIQUE_DETAIL_KEYS } from './physiqueDetails';
 import { physiqueScalePrompt } from './physiqueScalePrompts';
 import {EXTRA_CAMERA_ANGLES,EXTRA_SUBJECT_VIEWS,SPHERICAL_SUBJECT_VIEWS} from './cameraViewChoices';
 import {layerVisible} from './wardrobeLayerOverrides';
@@ -46,11 +47,11 @@ export const SECTIONS = [
       { key: "body_type", type: "chips", label: "Body type", options: ["slim", "athletic", "curvy", "voluptuous", "plus size", "hourglass", "pear", "apple", "bombshell", "amazonian"] },
       { key: "muscularity", type: "slider", label: "Muscularity", min: 0, max: 100, step: 1 },
       { key: "bust", type: "chips", label: "Bust size", options: ["flat", "small", "medium", "large", "very large", "huge", "enormous", "hyper"] },
-      { key: "bust_scale", type: "slider", label: "Bust size", min: 0, max: 1000, step: 1, defaultValue: 0 },
+      { key: "bust_scale", type: "slider", label: "Bust size", min: 0, max: 2000, step: 1, defaultValue: 0 },
       { key: "bust_shape", type: "chips", label: "Bust shape", options: ["natural", "perky", "round", "teardrop", "athletic", "augmented", "gravity-defying"] },
       { key: "implant_volume", type: "slider", label: "Implant visual size (cc reference; 0 = none)", min: 0, max: 5000, step: 50, defaultValue: 0, help: "Prompts include the selected visual-size value and projection description. This is a visual reference, not a medical measurement." },
       { key: "butt", type: "chips", label: "Butt", options: ["flat", "small", "toned", "round", "bubble", "large", "very large", "huge", "hyper"] },
-      { key: "butt_scale", type: "slider", label: "Glute size", min: 0, max: GLUTE_SIZE_MAX, step: 1, defaultValue: 0, help: "0 keeps the Butt preset. 1–100 sets size; 101–300 retains the original fantasy scale; 301–500 adds surreal fantasy volume; 501–1000 enables Beyond Extreme. Shape is controlled separately. A rear or three-quarter view makes the silhouette easier to see." },
+      { key: "butt_scale", type: "slider", label: "Glute size", min: 0, max: 2000, step: 1, defaultValue: 0, help: "0 keeps the Butt preset. 1–100 sets size; 101–300 retains the original fantasy scale; 301–500 adds surreal fantasy volume; 501–1000 enables Beyond Extreme. Shape is controlled separately. A rear or three-quarter view makes the silhouette easier to see." },
       { key: "glute_shape", type: "chips", label: "Glute shape / augmentation look", groups: [
         { name: "Natural", options: ["natural rounded", "athletic lifted", "soft pear-shaped", "heart-shaped"] },
         { name: "Enhanced", options: ["BBL-style fuller glutes", "high round projection", "pronounced upper shelf", "dramatic side projection"] },
@@ -59,7 +60,7 @@ export const SECTIONS = [
       { key: "thighs", type: "chips", label: "Thighs", options: ["slim", "toned", "athletic", "thick", "very thick", "massive"] },
       { key: "thigh_scale", type: "slider", label: "Thigh size", min: 0, max: 750, step: 1, defaultValue: 0 },
       { key: "hips", type: "chips", label: "Hips", options: ["narrow", "average", "wide", "very wide", "extreme"] },
-      { key: "hip_scale", type: "slider", label: "Hip width", min: 0, max: 750, step: 1, defaultValue: 0 },
+      { key: "hip_scale", type: "slider", label: "Hip width", min: 0, max: 2000, step: 1, defaultValue: 0 },
       { key: "waist", type: "chips", label: "Waist", options: ["thick", "average", "slim", "cinched", "tiny", "wasp-thin"] },
       { key: "waist_scale", type: "slider", label: "Waist width", min: 0, max: 500, step: 1, defaultValue: 0 },
       { key: "bust_projection", type: "slider", label: "Bust forward projection", min: 0, max: 100, step: 1, defaultValue: 0, help: "Independent of bust volume. Zero leaves projection unspecified." },
@@ -67,6 +68,7 @@ export const SECTIONS = [
       { key: "hip_flare", type: "slider", label: "Outer hip flare", min: 0, max: 100, step: 1, defaultValue: 0 },
       { key: "thigh_fullness", type: "slider", label: "Thigh lateral fullness", min: 0, max: 100, step: 1, defaultValue: 0 },
       { key: "waist_narrowness", type: "slider", label: "Waist narrowness", min: 0, max: 100, step: 1, defaultValue: 0, help: "Narrowness is independent of the waist width control; avoid setting both to maximum." },
+      ...PHYSIQUE_DETAIL_KEYS.map(key=>({key,type:"slider",label:key.replace(/_/g," "),min:0,max:100,step:1,defaultValue:0})),
       { key: "shoulders", type: "chips", label: "Shoulders", options: ["narrow", "average", "broad", "athletic"] },
       { key: "legs", type: "chips", label: "Legs", options: ["short", "average", "long", "endless"] },
       { key: "proportions", type: "text", label: "Extra proportions notes" },
@@ -1269,13 +1271,14 @@ function _veniceSubjectBlock(dna = {}, opts = {}) {
     bodyProfile,
     height,
     musc,
-    ph.implant_volume > 0 ? "" : ph.bust_scale ? physiqueScalePrompt("bust",ph.bust_scale,1000) : exp("physique", "bust") || (ph.bust && `${ph.bust} breasts`),
+    ph.implant_volume > 0 ? "" : ph.bust_scale ? physiqueScalePrompt("bust",ph.bust_scale,2000) : exp("physique", "bust") || (ph.bust && `${ph.bust} breasts`),
     ph.implant_volume > 0 ? "round augmented breast shape" : bustShapePrompt(ph.bust_shape),
     implantVisualPrompt(ph.implant_volume),
-    ph.butt_scale ? physiqueScalePrompt("butt",ph.butt_scale,GLUTE_SIZE_MAX) : regionalPhysiquePrompt("butt", ph.butt),
+    ph.butt_scale ? physiqueScalePrompt("butt",ph.butt_scale,2000) : regionalPhysiquePrompt("butt", ph.butt),
     ph.glute_shape,
+    physiqueDetailPrompt(ph),
     ph.thigh_scale ? physiqueScalePrompt("thighs",ph.thigh_scale,750) : regionalPhysiquePrompt("thighs",ph.thighs),
-    ph.hip_scale ? physiqueScalePrompt("hips",ph.hip_scale,750) : regionalPhysiquePrompt("hips",ph.hips),
+    ph.hip_scale ? physiqueScalePrompt("hips",ph.hip_scale,2000) : regionalPhysiquePrompt("hips",ph.hips),
     ph.waist_scale ? expandedWaistPrompt(ph.waist_scale) : exp("physique", "waist"),
     ph.bust_projection > 0 && `independent bust forward projection: ${Number(ph.bust_projection) > 70 ? 'extraordinary forward depth' : Number(ph.bust_projection) > 35 ? 'pronounced forward depth' : 'subtle forward depth'} (projection intensity ${ph.bust_projection}/100)`,
     ph.glute_projection > 0 && `independent rearward glute projection: ${Number(ph.glute_projection) > 70 ? 'monumental rearward depth' : Number(ph.glute_projection) > 35 ? 'pronounced rearward depth' : 'subtle rearward depth'} (projection intensity ${ph.glute_projection}/100)`,
