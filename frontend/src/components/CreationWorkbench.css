@@ -613,3 +613,22 @@ body:has(.creation-bench){position:static;inset:auto}
     flex-shrink:0;
   }
 }
+
+
+/* The focused editor has three children: chooser, control panel and stepper.
+   Keep navigation on its own full-width row instead of squeezing it into a third grid column. */
+@media (min-width:950px) {
+  .creation-bench .bench-field-editor {
+    grid-template-columns:minmax(220px,28%) minmax(0,1fr);
+  }
+  .creation-bench .bench-field-editor > .bench-detail-stepper {
+    grid-column:1 / -1;
+  }
+}
+.creation-bench .bench-field-editor > .bench-field-chooser,
+.creation-bench .bench-field-editor > .selection-panel {
+  min-width:0;
+}
+.creation-bench .bench-field-editor .bench-detail-stepper {
+  width:100%;
+}
