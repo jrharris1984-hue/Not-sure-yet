@@ -6,6 +6,8 @@ import DnaSection from './DnaSection';
 import CameraOrbitPicker from './CameraOrbitPicker';
 import { desktopEditingGroups, desktopFieldTarget } from '@/lib/desktopEditingGroups';
 import { sizeControlSummary } from '@/lib/physiqueControlPriority';
+import { gluteShapePrompt, gluteSizePrompt } from '@/lib/gluteControls';
+import { regionalPhysiquePrompt } from '@/lib/physiqueControls';
 import { wardrobeFieldDisabled } from '@/lib/wardrobeMode';
 
 function selectionSummary(field, value, section) {
@@ -17,6 +19,26 @@ function selectionSummary(field, value, section) {
   const label = option => field.optionLabels?.[option] || String(option).replace(/^custom_/, '').replace(/_/g, ' ');
   return Array.isArray(selected) ? selected.map(label).join(', ') || 'Not selected'
     : selected === undefined || selected === null || selected === '' ? 'Not selected' : label(selected);
+}
+
+function PhysiquePromptEffect({section, field, value = {}}) {
+  if (section !== 'physique' || !field) return null;
+  const selected = value[field.key];
+  let phrase = '';
+  if (field.key === 'glute_shape') phrase = selected ? gluteShapePrompt(selected) : '';
+  else if (field.key === 'butt_scale') phrase = Number(selected) > 0 ? gluteSizePrompt(selected) : '';
+  else if (field.key === 'hip_scale') phrase = Number(selected) > 0 ? regionalPhysiquePrompt('hips', value.hips, selected) : '';
+  else if (field.key === 'thigh_scale') phrase = Number(selected) > 0 ? regionalPhysiquePrompt('thighs', value.thighs, selected) : '';
+  else return null;
+  const preset = field.key === 'butt_scale' ? 'butt' : field.key === 'hip_scale' ? 'hips' : field.key === 'thigh_scale' ? 'thighs' : null;
+  const fallback = preset ? regionalPhysiquePrompt(preset, value[preset]) : '';
+  return <aside className="mt-3 rounded-xl border border-cyan-400/20 bg-cyan-400/5 p-3" aria-live="polite" aria-label="Physique prompt effect">
+    <div className="text-sm font-semibold text-cyan-200">Prompt effect · {field.label}</div>
+    <p className="mt-1 text-xs text-zinc-400">Updates with your selection. This is the physique wording before model-specific compilation, not a live image preview.</p>
+    <p className="mt-2 break-words text-sm text-zinc-100">{phrase || fallback || 'No specific value selected; the model uses the remaining character settings.'}</p>
+    {field.key === 'glute_shape' && <p className="mt-2 text-xs text-zinc-400">Shape changes contour; use Glute size separately to change volume.</p>}
+    {preset && Number(selected) > 0 && <p className="mt-2 text-xs text-zinc-400">The slider takes priority over the {preset} preset.</p>}
+  </aside>;
 }
 
 export default function DesktopDnaEditor({ enabled, requestedField, workbench=false, ...props }) {
@@ -83,6 +105,7 @@ export default function DesktopDnaEditor({ enabled, requestedField, workbench=fa
       </div>
       {props.section.key==='pose' && current.key==='angle' && <CameraOrbitPicker value={props.value?.angle||''} disabled={props.locked||!!props.fieldLocks?.angle} onChange={angle=>props.onChange({...props.value,angle})}/>}
       <DnaSection {...props} focusedField={current.key}/>
+      <PhysiquePromptEffect section={props.section.key} field={current} value={props.value}/>
       <nav className="bench-detail-stepper" aria-label="Navigate every character detail">
         <button type="button" disabled={detailIndex<=0 && !props.hasPreviousSection} onClick={()=>moveDetail(-1)}>← Previous detail</button>
         <span aria-live="polite">{detailIndex+1} of {allDetails.length}<small>{current.label}</small></span>
@@ -107,7 +130,7 @@ export default function DesktopDnaEditor({ enabled, requestedField, workbench=fa
     </nav>
     {matchingGroups.length>0 && <DetailNavigator fields={fields.map(field=>({...field,label:`${field.label}${props.fieldLocks?.[field.key]?' · locked':''}`}))} value={active.key}
       onChange={key=>{setFieldKey(key);if(props.collapsed)props.onToggleCollapsed?.();}} summary={selectionSummary(active,props.value || {},props.section.key)}/>}
-    {matchingGroups.length ? <DnaSection {...props} focusedField={active.key} />
+    {matchingGroups.length ? <><DnaSection {...props} focusedField={active.key} /><PhysiquePromptEffect section={props.section.key} field={active} value={props.value}/></>
       : <p role="status" className="rounded-xl border hairline p-4 text-sm text-zinc-400">No matching details in this view. Clear your search{props.simpleMode ? ' or open all controls' : ''}.</p>}
     {props.simpleMode && simpleFields.length < props.section.fields.length && <button type="button"
       className="min-h-11 w-full rounded-xl border border-dashed hairline p-3 text-sm text-cyan-200"
