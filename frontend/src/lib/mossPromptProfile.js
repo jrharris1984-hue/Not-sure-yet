@@ -58,6 +58,19 @@ export function inspectMossPhysique(dna = {}) {
   return { warnings, priority: mossVisualPriority(dna), geometry: mossBodyGeometry(dna) };
 }
 
+// Remove only identical repeated semicolon clauses; preserve wording and order.
+export function dedupeMossClauses(value = '') {
+  const seen = new Set(), removed = [];
+  const retained = String(value || '').split(';').filter(clause => {
+    const normalized = clause.replace(/\s+/g, ' ').trim().toLowerCase();
+    if (!normalized) return false;
+    if (seen.has(normalized)) { removed.push(clause.trim()); return false; }
+    seen.add(normalized);
+    return true;
+  });
+  return { positive: retained.map(clause => clause.trim()).join('; '), removed };
+}
+
 export function composeMossPrompt(basePositive, subjects = []) {
   const priorities = subjects.map((subject, index) => {
     const priority = mossVisualPriority(subject.dna || {});
@@ -65,7 +78,10 @@ export function composeMossPrompt(basePositive, subjects = []) {
       ? `Subject ${subject.label || String.fromCharCode(65 + index)}: ${priority}`
       : priority;
   }).filter(Boolean);
-  const positive = [priorities.join(' '), String(basePositive || '').trim()].filter(Boolean).join(' ');
+  const combined = [priorities.join(' '), String(basePositive || '').trim()].filter(Boolean).join(' ');
+  const deduped = dedupeMossClauses(combined);
+  const positive = deduped.positive;
   return { positive, promptWords: positive.split(/\s+/).filter(Boolean).length,
+    mossRemovedDuplicates: deduped.removed,
     mossDiagnostics: subjects.map(subject => inspectMossPhysique(subject.dna || {})) };
 }
