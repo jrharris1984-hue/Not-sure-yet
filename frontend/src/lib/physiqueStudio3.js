@@ -15,7 +15,7 @@ export const PHYSIQUE_REGIONS=[
 export const regionFields=name=>{
  const region=PHYSIQUE_REGIONS.find(r=>r.name===name);
  const detail=PHYSIQUE_DETAIL_GROUPS.find(g=>g.name===name);
- return [...new Set([region?.key,...(detail?.controls||[]).map(([key])=>key)].filter(Boolean));
+ return [...new Set([region?.key,...(detail?.controls||[]).map(([key])=>key)].filter(Boolean))];
 };
 export const physiqueRegionSnapshot=(dna={},name)=>Object.fromEntries(regionFields(name).map(key=>[key,Number(dna[key]||0)]));
 export const applyPhysiquePreset=(dna={},name,preset,fieldLocks={})=>{
