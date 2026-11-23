@@ -1,3 +1,4 @@
+import {validateShotFrames} from "@/lib/shotValidation3";
 import ShotStoryboard3 from "@/components/ShotStoryboard3";
 import {createShotPlan,activeShots} from "@/lib/shotPlan3";
 import { SHOOT_TEMPLATES, SHOOT_TEMPLATE_CATEGORIES } from "@/lib/shootTemplates";
@@ -187,6 +188,23 @@ export default function ShootSetup() {
     });
   }, [orderedSetsEnabled, orderedShots, sequenceEnabled, coverageFrames, poseMode, packKey, manualPoses, count, outfits, expressions, shotScript, character, shootWorkflow, aiFrames, lockScenario, setControls, identityMode, settings?.builder_prompt_format, studio3Plan]);
 
+  const studio3Frames=studio3Plan ? previewFrames.filter((_,i)=>studio3Plan.shots[i]?.enabled) : [];
+  const studio3Warnings=studio3Plan ? validateShotFrames(studio3Plan,studio3Frames) : [];
+  const studio3StorageKey=`ultrastudio3:shotplan:${characterId}`;
+  useEffect(()=>{
+    if(!characterId)return;
+    try{
+      const raw=window.localStorage.getItem(studio3StorageKey);
+      if(!raw)return;
+      const parsed=JSON.parse(raw);
+      if(parsed?.version===1 && parsed.characterId===characterId && Array.isArray(parsed.shots) && parsed.shots.length>0 && parsed.shots.length<=48) setStudio3Plan(parsed);
+    }catch(error){console.warn('Could not restore 3.0 shot plan',error);}
+  },[characterId,studio3StorageKey]);
+  useEffect(()=>{
+    if(!studio3Plan)return;
+    try{window.localStorage.setItem(studio3StorageKey,JSON.stringify(studio3Plan));}catch(error){console.warn('Could not save 3.0 shot plan',error);}
+  },[studio3Plan,studio3StorageKey]);
+
   const create = useMutation({
     mutationFn: async () => {
       if(studio3Plan && !activeShots(studio3Plan).length) throw new Error("Enable at least one shot before queuing");
@@ -195,7 +213,7 @@ export default function ShootSetup() {
         character_id: characterId,
         workflow_id: workflowId,
         count: studio3Plan ? activeShots(studio3Plan).length : count,
-        frames: studio3Plan ? previewFrames.filter((_,i)=>studio3Plan.shots[i]?.enabled) : previewFrames,
+        frames: studio3Plan ? studio3Frames : previewFrames,
         lora_overrides: identityMode === "reference" ? {} : { ...loraOverrides, ...savedLikenessOverrides },
         source_render_id: identityMode === "reference" ? shootContext?.render_id : null,
         set_overrides: setControls,
@@ -286,6 +304,7 @@ export default function ShootSetup() {
       </section>
       <section className="pane p-4 space-y-3" data-testid="studio3-entry"><div className="flex flex-wrap items-center justify-between gap-2"><div><h2 className="font-semibold">Ultra Studio 3.0 · Shot Director (Preview)</h2><p className="text-xs text-zinc-400">Independent shot edits, rear camera views, and per-frame overrides.</p></div><button type="button" className="chip active" onClick={()=>{if(studio3Plan){setStudio3Plan(null);return;}const template=SHOOT_TEMPLATES.find(t=>t.id===selectedTemplate);setOrderedSetsEnabled(false);setSequenceEnabled(false);setAiFrames(null);setStudio3Plan(createShotPlan({template,count:manualCount,characterId}));}}>{studio3Plan?'Exit 3.0 director':'Open 3.0 director'}</button></div></section>
       {studio3Plan&&<ShotStoryboard3 plan={studio3Plan} onChange={setStudio3Plan} outfitOptions={OUTFIT_GROUPS.flatMap(group=>group.options)}/>}
+      {studio3Plan&&<section className="pane p-3 space-y-2" aria-label="Studio 3 preflight"><div className="flex flex-wrap items-center justify-between gap-2"><span className="font-semibold text-sm">3.0 Preflight · {studio3Frames.length} enabled frames</span><button type="button" className="chip" onClick={()=>{if(window.confirm('Discard the saved 3.0 shot plan for this character?')){setStudio3Plan(null);window.localStorage.removeItem(studio3StorageKey);}}}>Discard saved plan</button></div>{studio3Warnings.length? <div role="status" className="text-xs text-amber-300 space-y-1">{studio3Warnings.map((warning,i)=><p key={i}>{warning}</p>)}</div>:<p className="text-xs text-emerald-300">Frame count and selected camera overrides passed preflight checks. Model output still requires visual verification.</p>}</section>}
       <section ref={shootNavigation} className="pane scroll-mt-24 p-3 sm:p-4 space-y-3" aria-label="Shoot plan">
         <div className="flex flex-wrap items-center gap-2 text-xs text-zinc-300"><span className="chip">{identityMode === "reference" ? "Saved photo reference" : "Text-based identity"}</span><span>{count} shots</span><span>·</span><span>{shootWorkflow?.name || "Choose workflow"}</span></div>
         <nav className="flex gap-2 overflow-x-auto pb-1" aria-label="Shoot setup sections">
