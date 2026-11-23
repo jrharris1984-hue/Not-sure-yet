@@ -9,7 +9,8 @@ export function mapMediaTraits(incoming = {}) {
     const hairColorOptions = SECTIONS.find(s=>s.key==="hair")?.fields.find(f=>f.key==="color")?.groups?.flatMap(g=>g.options) || [];
     const hairLengthOptions = SECTIONS.find(s=>s.key==="hair")?.fields.find(f=>f.key==="length")?.options || [];
     const hairStyleOptions = SECTIONS.find(s=>s.key==="hair")?.fields.find(f=>f.key==="style")?.groups?.flatMap(g=>g.options) || [];
-    const bodyOptions = SECTIONS.find(s=>s.key==="physique")?.fields.find(f=>f.key==="body_type")?.options || [];
+    const bodyField = SECTIONS.find(s=>s.key==="physique")?.fields.find(f=>f.key==="body_type");
+    const bodyOptions = bodyField?.groups?.flatMap(group=>group.options) || bodyField?.options || [];
     const poseOptions = SECTIONS.find(s=>s.key==="pose")?.fields.find(f=>f.key==="action")?.groups?.flatMap(g=>g.options) || [];
     const framingOptions = SECTIONS.find(s=>s.key==="pose")?.fields.find(f=>f.key==="distance")?.options || [];
     const angleOptions = SECTIONS.find(s=>s.key==="pose")?.fields.find(f=>f.key==="angle")?.options || [];
