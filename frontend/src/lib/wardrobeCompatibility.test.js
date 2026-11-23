@@ -100,3 +100,12 @@ test.each(['standard','chroma','krea2','pony','sdxl','qwen_image','zimage'])('%s
   expect(result.positive).toMatch(/unbuttoned|buttons undone|open/i);
   expect(source.wardrobe.state).toBe('unbuttoned');
 });
+
+test.each(['standard','chroma','krea2','pony','sdxl','qwen_image','zimage'])('%s applies individual garment visibility to the rendered outfit',promptStyle=>{
+  const source=dna({top:'WARDROBE_VISIBILITY_MARKER_BLOUSE',bottom:'tailored trousers',_layerVisibility:{upper:false}});
+  const result=compileModelPrompts({promptStyle,dna:source});
+  expect(result.positive).not.toContain('WARDROBE_VISIBILITY_MARKER_BLOUSE');
+  expect(result.positive).toContain('tailored trousers');
+  expect(result.wardrobeLayers[0].layers[2].items.map(item=>item.text)).toEqual(['tailored trousers']);
+  expect(source.wardrobe.top).toBe('WARDROBE_VISIBILITY_MARKER_BLOUSE');
+});
