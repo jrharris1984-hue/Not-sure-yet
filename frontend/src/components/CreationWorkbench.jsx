@@ -1,4 +1,4 @@
-import {Children,Fragment,isValidElement,useEffect,useRef,useState} from 'react';
+import {Children,Fragment,isValidElement,useCallback,useEffect,useMemo,useRef,useState} from 'react';
 import {SlidersHorizontal,Shuffle,Image as Picture,ScanFace,ChevronDown,ChevronLeft,ChevronRight,Play} from 'lucide-react';
 import useTabPreference from '@/hooks/useTabPreference';
 import {useLocation} from 'react-router-dom';
@@ -35,10 +35,11 @@ export default function CreationWorkbench({compact=false,section,sections,stages
     } catch {return {key:navigationKey,sections:{}};}
   });
   const lastSectionByCategory=categoryMemory.key===navigationKey?categoryMemory.sections:{};
-  const setLastSectionByCategory=update=>setCategoryMemory(previous=>{
+  const setLastSectionByCategory=useCallback(update=>setCategoryMemory(previous=>{
     const current=previous.key===navigationKey?previous.sections:{};
-    return {key:navigationKey,sections:typeof update==='function'?update(current):update};
-  });
+    const sections=typeof update==='function'?update(current):update;
+    return previous.key===navigationKey && sections===current ? previous : {key:navigationKey,sections};
+  }),[navigationKey]);
   useEffect(()=>{
     if(categoryMemory.key!==navigationKey)return;
     try {window.sessionStorage.setItem(navigationKey,JSON.stringify({sections:categoryMemory.sections}));}catch{/* Navigation persistence is optional. */}
@@ -83,35 +84,44 @@ export default function CreationWorkbench({compact=false,section,sections,stages
   const activeMobileStep=Math.max(0,mobileSteps.findIndex(g=>g.sections.includes(section)));
   const mobileStep=mobileSteps[activeMobileStep];
   const mobileStepSections=mobileStep?.sections.map(key=>sections.find(item=>item.key===key)).filter(Boolean)||[];
-  const dashboardCategories=[
-    {key:'identity',title:'Identity',description:'People and presets',keys:['scenario','identity']},
-    {key:'appearance',title:'Appearance',description:'Body, face and skin',keys:['physique','feet','face','skin']},
-    {key:'hair',title:'Hair',description:'Styles and colors',keys:['hair']},
-    {key:'wardrobe',title:'Wardrobe',description:'Clothing and accessories',keys:['wardrobe']},
-    {key:'pose',title:'Pose',description:'Position and framing',keys:['pose']},
-    {key:'scene',title:'Scene',description:'Setting, lighting and style',keys:['scene','lighting','style']},
-    {key:'camera',title:'Camera',description:'Angles and composition',keys:['camera']},
-    {key:'advanced',title:'Advanced',description:'Additional character controls',keys:['intimate','watersports']},
-  ];
   // Guided mode groups the same underlying sections into a few approachable choices.
   // Advanced mode keeps the original categories and every editor available.
-  const guidedCategoryDefinitions=[
-    {key:'person',title:'Person & Appearance',description:'Identity, face, body and hair',keys:['scenario','identity','physique','feet','face','skin','hair']},
-    {key:'outfit',title:'Clothing & Accessories',description:'Choose an outfit and accessories',keys:['wardrobe']},
-    {key:'framing',title:'Pose & Camera',description:'Position, framing and viewpoint',keys:['pose','camera']},
-    {key:'environment',title:'Scene & Lighting',description:'Background, lighting and style',keys:['scene','lighting','style']},
-  ];
-  const guidedAssigned=new Set(guidedCategoryDefinitions.flatMap(item=>item.keys));
-  const guidedCategories=guidedCategoryDefinitions.map(item=>({...item,items:item.keys.map(key=>sections.find(section=>section.key===key)).filter(Boolean)})).filter(item=>item.items.length);
-  const guidedExtras=sections.filter(item=>!guidedAssigned.has(item.key));
-  if(guidedExtras.length)guidedCategories.push({key:'additional',title:'More Customization',description:'Additional settings and options',items:guidedExtras});
-  const assigned=new Set(dashboardCategories.flatMap(item=>item.keys));
-  const unmatched=sections.filter(item=>!assigned.has(item.key));
-  const categories=dashboardCategories.map(item=>({...item,items:item.keys.map(key=>sections.find(section=>section.key===key)).filter(Boolean)})).filter(item=>item.items.length);
-  if(unmatched.length)categories.push({key:'more',title:'More',description:'Other available settings',items:unmatched});
-  const visibleCategories=guided?guidedCategories:categories;
+  const guidedCategories=useMemo(()=>{
+    const definitions=[
+      {key:'person',title:'Person & Appearance',description:'Identity, face, body and hair',keys:['scenario','identity','physique','feet','face','skin','hair']},
+      {key:'outfit',title:'Clothing & Accessories',description:'Choose an outfit and accessories',keys:['wardrobe']},
+      {key:'framing',title:'Pose & Camera',description:'Position, framing and viewpoint',keys:['pose','camera']},
+      {key:'environment',title:'Scene & Lighting',description:'Background, lighting and style',keys:['scene','lighting','style']},
+    ];
+    const assigned=new Set(definitions.flatMap(item=>item.keys));
+    const result=definitions.map(item=>({...item,items:item.keys.map(key=>sections.find(section=>section.key===key)).filter(Boolean)})).filter(item=>item.items.length);
+    const extras=sections.filter(item=>!assigned.has(item.key));
+    if(extras.length)result.push({key:'additional',title:'More Customization',description:'Additional settings and options',items:extras});
+    return result;
+  },[sections]);
+  const categories=useMemo(()=>{
+    const definitions=[
+      {key:'identity',title:'Identity',description:'People and presets',keys:['scenario','identity']},
+      {key:'appearance',title:'Appearance',description:'Body, face and skin',keys:['physique','feet','face','skin']},
+      {key:'hair',title:'Hair',description:'Styles and colors',keys:['hair']},
+      {key:'wardrobe',title:'Wardrobe',description:'Clothing and accessories',keys:['wardrobe']},
+      {key:'pose',title:'Pose',description:'Position and framing',keys:['pose']},
+      {key:'scene',title:'Scene',description:'Setting, lighting and style',keys:['scene','lighting','style']},
+      {key:'camera',title:'Camera',description:'Angles and composition',keys:['camera']},
+      {key:'advanced',title:'Advanced',description:'Additional character controls',keys:['intimate','watersports']},
+    ];
+    const assigned=new Set(definitions.flatMap(item=>item.keys));
+    const unmatched=sections.filter(item=>!assigned.has(item.key));
+    const result=definitions.map(item=>({...item,items:item.keys.map(key=>sections.find(section=>section.key===key)).filter(Boolean)})).filter(item=>item.items.length);
+    if(unmatched.length)result.push({key:'more',title:'More',description:'Other available settings',items:unmatched});
+    return result;
+  },[sections]);
+  const visibleCategories=useMemo(()=>guided?guidedCategories:categories,[guided,guidedCategories,categories]);
   // Remember the current section even when users arrive via Back, Next, or a deep link.
-  useEffect(()=>{const owner=visibleCategories.find(item=>item.items.some(entry=>entry.key===section));if(owner)setLastSectionByCategory(previous=>previous[owner.key]===section?previous:{...previous,[owner.key]:section});},[section,mode]);
+  useEffect(()=>{
+    const owner=visibleCategories.find(item=>item.items.some(entry=>entry.key===section));
+    if(owner)setLastSectionByCategory(previous=>previous[owner.key]===section?previous:{...previous,[owner.key]:section});
+  },[section,visibleCategories,setLastSectionByCategory]);
   const openCategory=(item)=>{const target=item.items.find(x=>x.key===lastSectionByCategory[item.key])||item.items[0];if(!target)return;setDesignView('editor');onSection(target.key);};
   const selectSection=(key)=>{const owner=visibleCategories.find(item=>item.items.some(x=>x.key===key));if(owner)setLastSectionByCategory(previous=>({...previous,[owner.key]:key}));onSection(key);};
   const backToDashboard=()=>{setDesignView('dashboard');onDashboard?.();};

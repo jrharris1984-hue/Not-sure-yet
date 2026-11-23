@@ -11,7 +11,7 @@ This document distinguishes implemented code from product readiness. Do not merg
 | 5 — Local AI director | Editable shot-plan draft utilities | Ollama endpoint integration, schema validation, approval/review UI |
 | 6 — Video studio | Timeline draft, clip duration utilities | Existing video workflow integration, render status, editing/export UI |
 | 7 — Generation engine | Image/video workflow-kind checks, optional seed validation, ComfyUI offline warning, and required source-image checks in shared preflight logic | Registry lookup, model/workflow graph capability checks, GPU scheduling, and live ComfyUI validation |
-| 8 — Premium responsive UX | Guided navigation model | Route/UI integration, accessibility and mobile usability tests |
+| 8 — Premium responsive UX | Guided navigation model; category memory effect uses stable callbacks and memoized category lists | Route/UI integration, accessibility and mobile usability tests |
 
 ## Release blockers
 1. Run frontend install, targeted Jest suite and production build. Fix failures.
@@ -31,4 +31,4 @@ corepack yarn build
 ```
 
 ## Status
-Development foundations and selected UI features are committed. The shared generation preflight now rejects image/video workflow mismatches and missing source images for image-to-video, with unit coverage added. End-to-end product phases 3–8 remain **incomplete**; the preflight does not inspect workflow graphs, installed models, or GPU capacity. Frontend tests, production builds, and ComfyUI validation have not been run for this increment; treat the code as unverified until the release blockers above pass.
+Development foundations and selected UI features are committed. The shared generation preflight now rejects image/video workflow mismatches and missing source images for image-to-video, with unit coverage added. The CreationWorkbench section-memory effect now uses stable dependencies to resolve the recorded hooks-lint build blocker. End-to-end product phases 3–8 remain **incomplete**; the preflight does not inspect workflow graphs, installed models, or GPU capacity. Frontend tests, production builds, and ComfyUI validation have not been run for this increment; treat the code as unverified until the release blockers above pass.
