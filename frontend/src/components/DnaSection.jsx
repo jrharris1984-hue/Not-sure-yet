@@ -1,3 +1,4 @@
+import { INTIMATE_GROUPS, intimateGroupFor } from '@/lib/intimateAppearance';
 import PhysiqueStudio from './PhysiqueStudio';
 import { PHYSIQUE_DETAIL_KEYS } from '@/lib/physiqueDetails';
 import VisualChoice from './VisualChoice';
@@ -83,6 +84,7 @@ export default function DnaSection({
 }) {
   const [presetFeedback, setPresetFeedback] = useState("");
   const [showLegacyAnatomy, setShowLegacyAnatomy] = useState(false);
+  const [intimateGroup,setIntimateGroup]=useState('Breast & Nipple Details');
   const [wardrobeGroup,setWardrobeGroup]=useState('outfit');
   const [showInactiveWardrobe,setShowInactiveWardrobe]=useState(false);
   const groups=section.key==='wardrobe'?wardrobeGroups(section.fields).filter(group=>showInactiveWardrobe || group.fields.some(field=>!wardrobeFieldDisabled(field.key,value))):[];
@@ -199,6 +201,10 @@ export default function DnaSection({
         {section.key==='wardrobe' && groups.length>1 && (!focusedField || focusedField==='all') && <div className="flex flex-wrap gap-2" role="group" aria-label="Wardrobe control groups">
           {groups.map(group=><button type="button" key={group.key} className={`chip ${activeGroup===group.key?'active':''}`} aria-pressed={activeGroup===group.key} onClick={()=>setWardrobeGroup(group.key)}>{group.label}</button>)}
         </div>}
+        {section.key === 'intimate' && (!focusedField || focusedField==='all') && <div className="space-y-2" aria-label="Intimate appearance categories">
+          <p className="text-xs text-zinc-400">Select a category to edit its appearance settings. Existing selections in other categories remain saved.</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">{INTIMATE_GROUPS.map(group=><button type="button" key={group.name} aria-pressed={intimateGroup===group.name} onClick={()=>setIntimateGroup(group.name)} className={`min-h-11 rounded-lg border px-3 py-2 text-left text-sm ${intimateGroup===group.name?'border-amber-400 bg-amber-500/10 text-amber-100':'border-zinc-700 text-zinc-300'}`}>{group.name}</button>)}</div>
+        </div>}
         {section.key === 'intimate' && presetFeedback && <p role="status" className="text-xs text-cyan-200">{presetFeedback}</p>}
         {section.key === 'intimate' && <AnatomySelectionReview value={value} catalog={getPromptCatalog()} fields={section.fields} locks={fieldLocks} locked={locked} onChange={onChange} />}
         {section.key === 'intimate' && <div className="space-y-2 text-xs text-zinc-400">
@@ -208,6 +214,7 @@ export default function DnaSection({
         {section.key==='physique' && (!focusedField || focusedField==='all') && <PhysiqueStudio value={value} onChange={onChange} locked={locked} fieldLocks={fieldLocks}/>}
         {section.fields.map((f) => {
           if (section.key==='physique' && PHYSIQUE_DETAIL_KEYS.includes(f.key) && focusedField!==f.key) return null;
+          if (section.key === 'intimate' && (!focusedField || focusedField==='all') && intimateGroupFor(f.key)!==intimateGroup) return null;
           if (section.key === 'intimate' && LEGACY_ANATOMY_FIELDS.includes(f.key) && !showLegacyAnatomy && focusedField !== f.key) return null;
           if ((section.key === "wardrobe" && f.key === "outfit_mode") || (sourceField && f.key === "source")) return null;
           const outfitDisabled = section.key === "wardrobe" && wardrobeFieldDisabled(f.key, value);
