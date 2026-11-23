@@ -87,3 +87,13 @@ it.each(['natural', 'enhanced', 'extreme'])('preserves explicitly selected extre
   expect(result.positive).toMatch(/hyper|fantasy-scale|extreme|massive|oversized/i);
   expect(JSON.stringify(dna)).toBe(original);
 });
+
+
+it.each(['pony', 'krea2'])('uses consistent regional slider descriptions in %s', promptStyle => {
+  const dna = recipe();
+  dna.physique = { ...dna.physique, hip_scale: 92, thigh_scale: 87, butt_scale: 225 };
+  const positive = compileModelPrompts({ promptStyle, dna }).positive;
+  expect(positive).toMatch(/lateral hip width intensity 92\/100/);
+  expect(positive).toMatch(/upper-thigh volume intensity 87\/100/);
+  expect(positive).toMatch(/glute volume intensity 225\/300/);
+});
