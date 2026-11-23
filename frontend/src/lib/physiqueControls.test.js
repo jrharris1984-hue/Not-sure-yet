@@ -97,3 +97,14 @@ it.each(['pony', 'krea2'])('uses consistent regional slider descriptions in %s',
   expect(positive).toMatch(/upper-thigh volume intensity 87\/100/);
   expect(positive).toMatch(/glute volume intensity 225\/300/);
 });
+
+
+it('does not shrink Hyper and Huge physique presets in Z-Image normalization', () => {
+  const dna = recipe();
+  dna.style = { ...dna.style, anatomy_mode: 'natural' };
+  dna.physique = { ...dna.physique, bust: 'hyper', butt: 'hyper', hips: 'extreme' };
+  const positive = compileModelPrompts({ promptStyle: 'zimage', dna }).positive;
+  expect(positive).toMatch(/hyper-scale bust|hyper.*bust/i);
+  expect(positive).toMatch(/fantasy-scale hyper glute|hyper.*glute/i);
+  expect(positive).not.toMatch(/very large breasts with believable weight|extremely full rounded buttocks/i);
+});
