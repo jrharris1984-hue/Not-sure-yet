@@ -910,7 +910,7 @@ export const WARDROBE_ITEMS = [
     "sorceress"
   ],
   "version": 1
-}
+},
   {
     "id": "activewear-movement-studio-set",
     "category": "Activewear & Movement",
