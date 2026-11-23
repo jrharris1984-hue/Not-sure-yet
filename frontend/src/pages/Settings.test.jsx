@@ -1,10 +1,10 @@
 import { act } from "react";
 import { createRoot } from "react-dom/client";
+import { endpoints } from "@/lib/api";
 import Settings from "./Settings";
 jest.mock('react-router-dom', () => ({Link: ({to, children, ...props}) => <a href={to} {...props}>{children}</a>}), {virtual: true});
 jest.mock('@/components/WebResearchSettings', () => () => <div>Optional web research</div>);
-const mockValidateWorkflow = jest.fn();
-jest.mock('@/lib/api', () => ({ endpoints: { validateWorkflow: (...args) => mockValidateWorkflow(...args) } }));
+jest.mock('@/lib/api', () => ({ endpoints: { validateWorkflow: jest.fn() } }));
 
 const mockMutate = jest.fn();
 let mockOllamaModels = [];
@@ -98,7 +98,7 @@ test("Settings exposes a compact navigator for the major configuration areas", (
 
 test("saved workflow can be checked against the connected ComfyUI schema", async () => {
   global.IS_REACT_ACT_ENVIRONMENT = true;
-  mockValidateWorkflow.mockResolvedValueOnce({
+  endpoints.validateWorkflow.mockResolvedValueOnce({
     compatible: true,
     checked_nodes: 4,
     issues: [],
@@ -112,7 +112,7 @@ test("saved workflow can be checked against the connected ComfyUI schema", async
     container.querySelector('[data-testid="btn-workflow-validate-base"]').click();
     await Promise.resolve();
   });
-  expect(mockValidateWorkflow).toHaveBeenCalledWith("base");
+  expect(endpoints.validateWorkflow).toHaveBeenCalledWith("base");
   expect(container.querySelector('[data-testid="workflow-validation-base"]').textContent).toContain("Graph compatible · 4 nodes checked");
   act(() => root.unmount());
 });
