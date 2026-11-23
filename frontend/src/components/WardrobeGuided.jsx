@@ -4,6 +4,7 @@ import WardrobeLayerPicker from './WardrobeLayerPicker';
 import WardrobeIndependentLayers from './WardrobeIndependentLayers';
 import WardrobeLiveReview from './WardrobeLiveReview';
 import WardrobeOverview from './WardrobeOverview';
+import WardrobeBrowser from './WardrobeBrowser';
 import DnaSection from './DnaSection';
 import {editWardrobeField,wardrobeMode} from '@/lib/wardrobeMode';
 
@@ -27,11 +28,14 @@ export default function WardrobeGuided({props,onAdvanced}){
   {step===0&&<>
    <WardrobeOverview value={props.value} fields={props.section.fields} disabled={outfitLocked} onModeChange={changeMode}/>
    <div className="wardrobe-guided-outfit-controls">
+    {mode==='full'&&<WardrobeBrowser value={props.value} onChange={props.onChange} disabled={locked||!!props.fieldLocks?.outfit_set}/>}
+    <details className="rounded-lg border border-zinc-700 p-3"><summary className="cursor-pointer text-sm font-medium">All existing wardrobe controls</summary>
     {mode==='full'?<DnaSection {...props} focusedField="outfit_set" hideWardrobeOverview collapsed={false} simpleMode={false}/>:<>
       <DnaSection {...props} focusedField="top" hideWardrobeOverview collapsed={false} simpleMode={false}/>
       <DnaSection {...props} focusedField="bottom" hideWardrobeOverview collapsed={false} simpleMode={false}/>
       <details><summary>More clothing choices</summary><DnaSection {...props} focusedField="dress_style" hideWardrobeOverview collapsed={false} simpleMode={false}/><DnaSection {...props} focusedField="underwear" hideWardrobeOverview collapsed={false} simpleMode={false}/></details>
     </>}
+    </details>
    </div>
   </>}
   {step===1&&<WardrobeCoverageStudio value={props.value} disabled={exposureLocked} onChange={props.onChange}/>}
