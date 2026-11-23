@@ -13,7 +13,7 @@ export const normalizeGenerationKind3 = value => {
 
 export const workflowCompatibility3 = (workflow, requestedKind = 'image') => {
   const requested = normalizeGenerationKind3(requestedKind);
-  const actual = normalizeGenerationKind3(workflow?.kind);
+  const actual = String(workflow?.kind || '').trim() ? normalizeGenerationKind3(workflow.kind) : '';
   if (!actual) return { compatible: true, requested, actual: '', reason: '' };
   const expectsVideo = VIDEO_WORKFLOW_KINDS.has(requested);
   const isVideo = VIDEO_WORKFLOW_KINDS.has(actual);

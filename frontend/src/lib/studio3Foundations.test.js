@@ -30,6 +30,7 @@ test('video workflow kinds are compatible only with video generation',()=>{
  expect(workflowCompatibility3({kind:'text_video'},'text-to-video').compatible).toBe(true);
  expect(workflowCompatibility3({kind:'video'},'i2v').compatible).toBe(true);
  expect(workflowCompatibility3({kind:'image'},'text_video').compatible).toBe(false);
+ expect(workflowCompatibility3({id:'legacy'},'text_video').compatible).toBe(true);
  expect(generationPreflight3({workflow:{id:'i2v',kind:'video'},kind:'image-to-video'}).errors).toContain('Choose a starting image for image-to-video generation.');
  expect(generationPreflight3({workflow:{id:'i2v',kind:'video'},kind:'image-to-video',sourceImage:'input/start.png'}).ready).toBe(true);
 });
