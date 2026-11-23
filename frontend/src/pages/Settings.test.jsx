@@ -8,6 +8,11 @@ jest.mock('@/lib/api', () => ({ endpoints: { validateWorkflow: jest.fn() } }));
 
 const mockMutate = jest.fn();
 let mockOllamaModels = [];
+let mockComfyResources = {
+  devices: [{ index: 0, name: "RTX 4070 SUPER", type: "cuda", vram_total: 12 * 1024 ** 3,
+    vram_free: 8 * 1024 ** 3, vram_used: 4 * 1024 ** 3, vram_used_percent: 33.3, pressure: "normal" }],
+  queue: { active_jobs: 1, queued_jobs: 2 },
+};
 const mockWorkflows = [
   { id: "base", name: "Krea 2 Turbo", kind: "image", prompt_style: "krea2", json_str: "{}" },
   { id: "style", name: "Krea 2 Turbo · Private Magazine", kind: "krea_style", prompt_style: "krea2", json_str: "{}" },
@@ -16,6 +21,7 @@ const mockWorkflows = [
 jest.mock("@tanstack/react-query", () => ({
   useQuery: ({ queryKey }) => ({
     data: queryKey[0] === "workflows" ? mockWorkflows
+      : queryKey[0] === "comfy-resources" ? mockComfyResources
       : queryKey[0] === "settings" ? { default_workflow_id: "base", comfyui_url: "http://localhost:8188", ai_provider: "ollama" }
         : { online: true, models: mockOllamaModels },
     refetch: jest.fn(),
@@ -114,6 +120,17 @@ test("saved workflow can be checked against the connected ComfyUI schema", async
   });
   expect(endpoints.validateWorkflow).toHaveBeenCalledWith("base");
   expect(container.querySelector('[data-testid="workflow-validation-base"]').textContent).toContain("Graph compatible · 4 nodes checked");
+  act(() => root.unmount());
+});
+
+test("Settings reports GPU memory and serialized queue status from ComfyUI", () => {
+  global.IS_REACT_ACT_ENVIRONMENT = true;
+  const container = document.createElement("div");
+  const root = createRoot(container);
+  act(() => root.render(<Settings />));
+  expect(container.querySelector('[data-testid="comfy-resource-panel"]').textContent).toContain("RTX 4070 SUPER");
+  expect(container.querySelector('[data-testid="comfy-resource-panel"]').textContent).toContain("8.0 GB free");
+  expect(container.querySelector('[data-testid="comfy-resource-panel"]').textContent).toContain("1 active · 2 waiting");
   act(() => root.unmount());
 });
 

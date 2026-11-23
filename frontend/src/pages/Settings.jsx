@@ -182,6 +182,7 @@ export default function Settings() {
   const visibleWorkflows = showSupportingWorkflows
     ? [...catalog.primary, ...catalog.internal, ...catalog.redundant] : catalog.primary;
   const { data: health } = useQuery({ queryKey: ["comfy-health"], queryFn: endpoints.comfyHealth, refetchInterval: 10000 });
+  const comfyResources = useQuery({ queryKey: ["comfy-resources"], queryFn: endpoints.comfyResources, refetchInterval: 30000, enabled: !!settings });
   const { data: ollama, refetch: checkOllama } = useQuery({ queryKey: ["ollama-models", settings?.ollama_url], queryFn: endpoints.ollamaModels, enabled: !!settings });
 
   const mediaHealth = useQuery({ queryKey: ["media-library-health"], queryFn: endpoints.mediaLibraryHealth });
@@ -289,6 +290,25 @@ export default function Settings() {
           >
             <Save className="h-4 w-4" /> Save server
           </button>
+        </div>
+        <div className="rounded-lg border hairline bg-elevated/40 p-4 space-y-3" data-testid="comfy-resource-panel">
+          <div className="flex items-center gap-2">
+            <div className="text-xs font-semibold uppercase tracking-widest text-zinc-300">GPU memory & queue</div>
+            <button type="button" onClick={() => comfyResources.refetch()} className="ml-auto text-xs text-cyan-200 underline" data-testid="btn-refresh-comfy-resources">Refresh</button>
+          </div>
+          {comfyResources.data?.devices?.length ? <div className="grid sm:grid-cols-2 gap-2">
+            {comfyResources.data.devices.map((device) => <div key={`${device.type}-${device.index}`} className="rounded-md border hairline p-3 space-y-2">
+              <div className="flex items-start justify-between gap-2"><span className="text-sm text-zinc-100">{device.name}</span>
+                <span className={`text-[10px] uppercase tracking-wider ${device.pressure === "high" ? "text-rose-300" : device.pressure === "elevated" ? "text-amber-200" : "text-emerald-300"}`}>{device.pressure === "unknown" ? "memory unknown" : `${device.pressure} pressure`}</span></div>
+              {device.vram_total ? <>
+                <progress className="w-full h-2 accent-cyan-400" max="100" value={device.vram_used_percent || 0} aria-label={`${device.name} VRAM usage`} />
+                <p className="text-[11px] font-mono text-zinc-400">{(device.vram_used / 1024 ** 3).toFixed(1)} GB used · {(device.vram_free / 1024 ** 3).toFixed(1)} GB free · {(device.vram_total / 1024 ** 3).toFixed(1)} GB total</p>
+              </> : <p className="text-[11px] text-zinc-500">ComfyUI did not report VRAM totals for this device.</p>}
+            </div>)}
+          </div> : <p className="text-xs text-zinc-500">{comfyResources.isFetching ? "Reading ComfyUI device status…" : "No GPU device details were reported by ComfyUI."}</p>}
+          <p className="text-xs text-zinc-400">Ultra Studio dispatches one queued job at a time. Current free VRAM is a snapshot and cannot predict a workflow’s peak memory or force ComfyUI to use a specific GPU.</p>
+          {comfyResources.data?.queue && <p className="text-[11px] font-mono text-zinc-500">Queue: {comfyResources.data.queue.active_jobs} active · {comfyResources.data.queue.queued_jobs} waiting</p>}
+          {comfyResources.isError && <p className="text-xs text-amber-200">GPU status is unavailable. Check that ComfyUI is online, then refresh.</p>}
         </div>
       </section>
 

@@ -78,6 +78,7 @@ export const endpoints = {
   ollamaModels: () => api.get("/ollama/models").then((r) => r.data),
   updateSettings: (body) => api.put("/settings", body).then((r) => r.data),
   comfyHealth: () => api.get("/comfyui/health").then((r) => r.data),
+  comfyResources: () => api.get("/comfyui/resources").then((r) => r.data),
   listCharacters: (params = {}) => api.get("/characters", { params }).then((r) => r.data),
   listCharacterTags: () => api.get("/characters/tags").then((r) => r.data),
   createCharacter: (body) => api.post("/characters", body).then((r) => r.data),

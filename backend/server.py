@@ -19,6 +19,7 @@ from qwen_test_models import resolve_qwen_test_models
 from assistant_research import AssistantResearchMiddleware, enrich_assistant_request
 from qwen_reference_edit import configure_reference_edit, resolve_reference_models, configure_camera_strength
 from workflow_compatibility import validate_workflow_graph
+from gpu_resources import summarize_comfy_resources
 from ai_research import research_sources, research_messages, research_response, prompt_research_query, prompt_research_messages, prompt_research_metadata
 """Ultra Studio Character DNA Builder — FastAPI backend."""
 from fastapi import FastAPI, APIRouter, HTTPException, Body, BackgroundTasks, WebSocket, WebSocketDisconnect, Query, UploadFile, File, Form
@@ -1069,6 +1070,30 @@ async def comfyui_health():
             "last_response_at": comfy_health_state.get("last_response_at"),
             "error": str(e),
         }
+
+
+@api.get("/comfyui/resources")
+async def comfyui_resources():
+    """Read GPU memory and Ultra Studio queue counts for scheduling visibility."""
+    s = await get_settings()
+    try:
+        async with httpx.AsyncClient(timeout=8.0) as hc:
+            response = await hc.get(f"{s.comfyui_url.rstrip('/')}/system_stats")
+        response.raise_for_status()
+        resources = summarize_comfy_resources(response.json())
+    except Exception as exc:
+        raise HTTPException(502, f"Could not read ComfyUI GPU resources: {exc}")
+    active = await db.render_queue.count_documents({"status": {"$in": ["dispatching", "running"]}})
+    queued = await db.render_queue.count_documents({"status": "queued"})
+    return {
+        **resources,
+        "sampled_at": now_iso(),
+        "queue": {
+            "active_jobs": active,
+            "queued_jobs": queued,
+            "dispatch_policy": "one Ultra Studio job at a time",
+        },
+    }
 
 
 @api.get("/comfyui/media")
