@@ -1,5 +1,6 @@
 import {validateShotFrames} from "@/lib/shotValidation3";
 import ShotStoryboard3 from "@/components/ShotStoryboard3";
+import Studio3DirectorAssistant from "@/components/Studio3DirectorAssistant";
 import {createShotPlan,activeShots} from "@/lib/shotPlan3";
 import { SHOOT_TEMPLATES, SHOOT_TEMPLATE_CATEGORIES } from "@/lib/shootTemplates";
 import { QUICK_SHOOT_STYLES, QUICK_SHOOT_COUNTS } from "@/lib/quickShootStyles";
@@ -303,6 +304,7 @@ export default function ShootSetup() {
         </div>}
       </section>
       <section className="pane p-4 space-y-3" data-testid="studio3-entry"><div className="flex flex-wrap items-center justify-between gap-2"><div><h2 className="font-semibold">Ultra Studio 3.0 · Shot Director (Preview)</h2><p className="text-xs text-zinc-400">Independent shot edits, rear camera views, and per-frame overrides.</p></div><button type="button" className="chip active" onClick={()=>{if(studio3Plan){setStudio3Plan(null);return;}const template=SHOOT_TEMPLATES.find(t=>t.id===selectedTemplate);setOrderedSetsEnabled(false);setSequenceEnabled(false);setAiFrames(null);setStudio3Plan(createShotPlan({template,count:manualCount,characterId}));}}>{studio3Plan?'Exit 3.0 director':'Open 3.0 director'}</button></div></section>
+      {studio3Plan&&<Studio3DirectorAssistant characterId={characterId} workflow={shootWorkflow} plan={studio3Plan} lockScenario={lockScenario} outfitOptions={OUTFIT_GROUPS.flatMap(group=>group.options)} onApply={setStudio3Plan}/>}
       {studio3Plan&&<ShotStoryboard3 plan={studio3Plan} onChange={setStudio3Plan} outfitOptions={OUTFIT_GROUPS.flatMap(group=>group.options)}/>}
       {studio3Plan&&<section className="pane p-3 space-y-2" aria-label="Studio 3 preflight"><div className="flex flex-wrap items-center justify-between gap-2"><span className="font-semibold text-sm">3.0 Preflight · {studio3Frames.length} enabled frames</span><button type="button" className="chip" onClick={()=>{if(window.confirm('Discard the saved 3.0 shot plan for this character?')){setStudio3Plan(null);window.localStorage.removeItem(studio3StorageKey);}}}>Discard saved plan</button></div>{studio3Warnings.length? <div role="status" className="text-xs text-amber-300 space-y-1">{studio3Warnings.map((warning,i)=><p key={i}>{warning}</p>)}</div>:<p className="text-xs text-emerald-300">Frame count and selected camera overrides passed preflight checks. Model output still requires visual verification.</p>}</section>}
       <section ref={shootNavigation} className="pane scroll-mt-24 p-3 sm:p-4 space-y-3" aria-label="Shoot plan">

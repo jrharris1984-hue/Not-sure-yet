@@ -1,5 +1,5 @@
 import {createLook3,applyLook3,compareLooks3} from './studio3WardrobeScenes';
-import {directorPlan3,directorApplySuggestion3} from './studio3Director';
+import {directorPlan3,directorApplySuggestion3,directorFramesFromPlan3,directorFramesToPlan3} from './studio3Director';
 import {videoTimeline3,addVideoClip3,timelineDuration3} from './studio3VideoTimeline';
 import {generationPreflight3,workflowCompatibility3} from './studio3GenerationPreflight';
 import {STUDIO3_STEPS,nextStudio3Step} from './studio3Navigation';
@@ -16,6 +16,14 @@ test('director suggestion updates only one shot',()=>{
  const next=directorApplySuggestion3(p,'director-1',{scene:{location:'loft'}});
  expect(next.shots[0].scene.location).toBe('loft');
  expect(next.shots[1].scene.location).toBeUndefined();
+});
+test('director frames adapt to Studio 3 shots without changing disabled or unsupported controls',()=>{
+ const plan={shots:[{id:'a',enabled:true,pose:'standing',subjectView:null,cameraAngle:null,outfit:null,scene:{environment:'studio'},lighting:{style:'soft'}},{id:'b',enabled:false,pose:'walking',scene:{},lighting:{}}]};
+ expect(directorFramesFromPlan3(plan)).toHaveLength(1);
+ const next=directorFramesToPlan3(plan,[{pose_action:'walking',view:'back',camera_height:'low',outfit_preset:'jacket',environment:'loft',lighting_source:'window'}],{choices:{poses:['walking'],views:['back'],cameras:['low'],outfits:['jacket']}});
+ expect(next.shots[0]).toMatchObject({pose:'walking',subjectView:'back',cameraAngle:'low',outfit:'jacket',scene:{environment:'loft'},lighting:{style:'soft',source:'window'}});
+ expect(next.shots[1]).toEqual(plan.shots[1]);
+ expect(plan.shots[0].pose).toBe('standing');
 });
 test('video timeline computes duration without modifying source',()=>{
  const t=videoTimeline3({fps:24});
