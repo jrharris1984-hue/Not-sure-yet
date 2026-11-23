@@ -542,6 +542,6 @@ export const WARDROBE_ITEMS = [
 export const WARDROBE_CATEGORY_GROUPS = Object.entries(WARDROBE_ITEMS.reduce((acc, item) => { (acc[item.category] ||= []).push(item); return acc; }, {})).map(([name, items]) => ({ name, options: items.map(item => item.prompt) }));
 export const WARDROBE_ITEM_LABELS = Object.fromEntries(WARDROBE_ITEMS.map(item => [item.prompt, item.label]));
 export function searchWardrobe(query = '', category = '') {
-  const terms = String(query).trim().toLowerCase().split(/\\s+/).filter(Boolean);
+  const terms = String(query).trim().toLowerCase().split(/\s+/).filter(Boolean);
   return WARDROBE_ITEMS.filter(item => (!category || item.category === category) && terms.every(term => [item.label, item.category, item.prompt, ...item.tags].join(' ').toLowerCase().includes(term)));
 }
