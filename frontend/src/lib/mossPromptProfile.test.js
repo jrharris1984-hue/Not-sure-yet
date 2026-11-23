@@ -1,4 +1,4 @@
-import { composeMossPrompt, inspectMossPhysique, mossVisualPriority, mossBodyGeometry, dedupeMossClauses } from './mossPromptProfile';
+import { composeMossPrompt, inspectMossPhysique, mossVisualPriority, mossBodyGeometry, dedupeMossClauses, detectMossPromptConflicts } from './mossPromptProfile';
 
 test('explicit extreme selections get a concise silhouette priority', () => {
   const dna = { physique: { hips: 'extreme', thighs: 'massive', butt: 'hyper' } };
@@ -61,4 +61,33 @@ test('MOSS composition reports removed duplicates without changing custom wordin
   expect(result.positive).toContain('my custom phrase');
   expect(result.mossRemovedDuplicates).toEqual(['studio portrait']);
   expect(result.promptWords).toBe(result.positive.split(/\s+/).filter(Boolean).length);
+});
+
+test('flags opposing hip language without deleting user wording', () => {
+  const dna = { physique: { hips: 'extreme' } };
+  const prompt = 'Portrait with narrow hips; dramatic studio lighting';
+  const result = composeMossPrompt(prompt, [{ dna }]);
+  expect(result.positive).toContain('narrow hips');
+  expect(result.mossPromptConflicts).toEqual([
+    expect.objectContaining({ region: 'hips', selected: 'wide', conflictingDescription: 'narrow' }),
+  ]);
+});
+
+test('does not mistake the compiler priority lead for a conflict', () => {
+  const dna = { physique: { hips: 'extreme', thighs: 'massive' } };
+  expect(composeMossPrompt('wide hips; thick upper thighs', [{ dna }]).mossPromptConflicts).toEqual([]);
+});
+
+test('slider overrides preset when evaluating semantic conflicts', () => {
+  const dna = { physique: { hips: 'extreme', hip_scale: 10 } };
+  expect(detectMossPromptConflicts('dramatically broad hip silhouette', dna))
+    .toEqual([expect.objectContaining({ region: 'hips', selected: 'narrow' })]);
+});
+
+test('avoids cross-subject semantic conflict guesses', () => {
+  const result = composeMossPrompt('Subject A: narrow hips; Subject B: wide hips', [
+    { label: 'A', dna: { physique: { hips: 'narrow' } } },
+    { label: 'B', dna: { physique: { hips: 'wide' } } },
+  ]);
+  expect(result.mossPromptConflicts).toEqual([]);
 });
