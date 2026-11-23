@@ -30,7 +30,7 @@ export default function PhysiqueComparison3({baseline,current,region}){
    const payloads=comparisonDispatches(plan,character,selectedWorkflow);
    const results=[];
    for(let i=0;i<payloads.length;i++){
-    try{const job=await endpoints.dispatchRender(payloads[i]);results.push({label:plan.frames[i].label,id:job.id,status:job.status||'queued'});}
+    try{const job=await endpoints.dispatchRender(payloads[i]);results.push({label:plan.frames[i].label,id:job.id,status:job.status||'queued',dna:payloads[i].dna});}
     catch(error){results.push({label:plan.frames[i].label,error:error?.response?.data?.detail||error.message});break;}
    }
    setJobs(results);
@@ -61,7 +61,7 @@ export default function PhysiqueComparison3({baseline,current,region}){
   <button type="button" onClick={copy} className="rounded-lg border border-amber-500 px-3 py-2 text-sm text-amber-200">Copy A/B comparison recipe</button>
   </div>
   {jobs.length>0&&<div className="mt-2 rounded-lg border border-zinc-700 p-2 text-xs space-y-1">{jobs.map((job,i)=><p key={i}>{job.label}: {job.error||`Job ${job.id} · ${job.status}`}</p>)}</div>}
-  {jobs.some(job=>job.id)&&<PhysiqueResults3 jobs={jobs.filter(job=>job.id)}/>}
+  {jobs.some(job=>job.id)&&<PhysiqueResults3 jobs={jobs.filter(job=>job.id)} character={selectedCharacter} region={region}/>}
   {status&&<p role="status" className="text-xs">{status}</p>}
   <details className="mt-2"><summary className="cursor-pointer text-xs text-zinc-400">View comparison JSON</summary><textarea readOnly rows={8} className="w-full mt-2 rounded-lg bg-zinc-950 border border-zinc-700 text-xs p-2" value={JSON.stringify(plan,null,2)}/></details>
  </details>;
