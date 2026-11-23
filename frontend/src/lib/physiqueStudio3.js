@@ -5,6 +5,9 @@ export const PHYSIQUE_REGIONS=[
  {name:'Waist',key:'waist_scale',max:500},
  {name:'Glutes',key:'butt_scale',max:2000},
  {name:'Thighs',key:'thigh_scale',max:750},
+ {name:'Shoulders',key:'shoulder_width',max:100},
+ {name:'Arms',key:'upper_arm_fullness',max:100},
+ {name:'Calves',key:'calf_fullness',max:100},
 ];
 export const regionFields=name=>{
  const region=PHYSIQUE_REGIONS.find(r=>r.name===name);
