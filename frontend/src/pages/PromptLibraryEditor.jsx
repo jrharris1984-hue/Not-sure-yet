@@ -1,3 +1,4 @@
+import { createContentPack, mergeContentPack } from '@/lib/contentPacks';
 import WardrobePromptReview from "@/components/WardrobePromptReview";
 import {wardrobeGroups} from '@/lib/wardrobeLayout';
 import {COVERAGE_BEHAVIORS} from '@/lib/wardrobeNudity';
@@ -55,6 +56,25 @@ export default function PromptLibraryEditor() {
       setSuggestion({value:option.value,label:option.label,keywords:result.keywords,target});
     }catch(err){setError(err.response?.data?.detail || err.message || 'The assistant is unavailable.');}finally{setBusy(false);}
   };
+  const downloadPack = () => {
+    try {
+      const pack=createContentPack(section);
+      const blob=new Blob([JSON.stringify(pack,null,2)],{type:'application/json'});
+      const url=URL.createObjectURL(blob), link=document.createElement('a');
+      link.href=url;link.download=`ultrastudio-${section.key}-pack.json`;link.click();
+      URL.revokeObjectURL(url);
+    } catch(err) {setError(err.message || 'Could not export content pack.');}
+  };
+  const importPack = async event => {
+    const file=event.target.files?.[0];event.target.value='';if(!file)return;
+    try {
+      if(file.size>PROMPT_LIBRARY_FILE_LIMIT)throw new Error('Content pack is too large (maximum 2 MB).');
+      const pack=JSON.parse(await file.text());
+      const result=mergeContentPack(draft,pack);
+      setDraft(result.catalog);setPromptPreview(null);setSuggestion(null);setError('');
+      setMessage(`Pack staged: ${result.added} new choices added, ${result.skipped} existing choices preserved. Review and Save library to apply.`);
+    } catch(err) {setError(err.message || 'Could not import content pack.');}
+  };
   const backup = () => {const blob=new Blob([JSON.stringify(exportPromptLibrary(LIBRARY_SECTIONS,draft),null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const link=document.createElement('a');link.href=url;link.download='ultra-studio-prompt-library.json';link.click();URL.revokeObjectURL(url);};
   const restore = async event => {const file=event.target.files?.[0];event.target.value='';if(!file)return;
     try {if(file.size>PROMPT_LIBRARY_FILE_LIMIT)throw new Error('Backup is too large (maximum 2 MB).');const config=parsePromptLibraryBackup(await file.text(),file.size);
@@ -79,6 +99,8 @@ export default function PromptLibraryEditor() {
       <button className={buttonClass} disabled={busy || !dirty} onClick={save}>Save library</button>
       <button className={buttonClass} disabled={busy || !dirty} onClick={() => {setDraft(saved);chooseSection(LIBRARY_SECTIONS[0].key);setMessage('Unsaved edits discarded.');setSuggestion(null);}}>Discard edits</button>
       <button className={buttonClass} disabled={busy} onClick={backup}>Download backup</button>
+      <button className={buttonClass} disabled={busy} onClick={downloadPack}>Export category pack</button>
+      <label className={buttonClass}>Import content pack<input aria-label="Import content pack" type="file" accept="application/json,.json" disabled={busy} onChange={importPack} className="hidden"/></label>
       <label className={buttonClass}>Restore backup<input aria-label="Restore backup" type="file" accept="application/json,.json" disabled={busy} onChange={restore} className="hidden"/></label>
       <button className={buttonClass} disabled={busy} onClick={() => {setDraft({sections:[]});setSectionKey(LIBRARY_SECTIONS[0].key);setFieldKey(LIBRARY_SECTIONS[0].fields[0].key);setMessage('Default library staged. Save to apply this reset.');setSuggestion(null);}}>Restore defaults</button>
       <span className="self-center text-xs text-zinc-500">{dirty?'Unsaved changes':'Saved library'}</span>
