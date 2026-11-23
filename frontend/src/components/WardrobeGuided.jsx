@@ -16,6 +16,7 @@ const steps=[
 ];
 export default function WardrobeGuided({props,onAdvanced}){
  const [step,setStep]=useState(0);
+ const [browserOpen,setBrowserOpen]=useState(false);
  const mode=wardrobeMode(props.value);
  const locked=!!props.locked;
  const exposureLocked=locked||!!props.fieldLocks?.exposure_mode;
@@ -28,7 +29,7 @@ export default function WardrobeGuided({props,onAdvanced}){
   {step===0&&<>
    <WardrobeOverview value={props.value} fields={props.section.fields} disabled={outfitLocked} onModeChange={changeMode}/>
    <div className="wardrobe-guided-outfit-controls">
-    {mode==='full'&&<WardrobeBrowser value={props.value} onChange={props.onChange} disabled={locked||!!props.fieldLocks?.outfit_set}/>}
+    {mode==='full'&&<><button type="button" onClick={()=>setBrowserOpen(true)} className="md:hidden w-full min-h-12 rounded-xl border border-amber-500 bg-amber-500/10 font-semibold">Open Wardrobe Browser</button><div className="hidden md:block"><WardrobeBrowser value={props.value} onChange={props.onChange} disabled={locked||!!props.fieldLocks?.outfit_set}/></div>{browserOpen&&<div className="fixed inset-0 z-[100] bg-zinc-950 flex flex-col p-3 overflow-y-auto md:hidden" role="dialog" aria-modal="true" aria-label="Wardrobe Browser"><WardrobeBrowser value={props.value} onChange={props.onChange} disabled={locked||!!props.fieldLocks?.outfit_set} onClose={()=>setBrowserOpen(false)}/></div>}</>}
     <details className="rounded-lg border border-zinc-700 p-3"><summary className="cursor-pointer text-sm font-medium">All existing wardrobe controls</summary>
     {mode==='full'?<DnaSection {...props} focusedField="outfit_set" hideWardrobeOverview collapsed={false} simpleMode={false}/>:<>
       <DnaSection {...props} focusedField="top" hideWardrobeOverview collapsed={false} simpleMode={false}/>
