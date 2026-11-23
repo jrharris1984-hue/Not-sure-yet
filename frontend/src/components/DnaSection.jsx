@@ -1,3 +1,5 @@
+import PhysiqueStudio from './PhysiqueStudio';
+import { PHYSIQUE_DETAIL_KEYS } from '@/lib/physiqueDetails';
 import VisualChoice from './VisualChoice';
 import WardrobeOverview from "./WardrobeOverview";
 import AnatomySelectionReview from "./AnatomySelectionReview";
@@ -203,7 +205,9 @@ export default function DnaSection({
           <p>Choose one option per individual control. Selecting a recognized older preset fills its unlocked controls directly. Custom presets keep their authored text.</p>
           <button type="button" className="chip" aria-expanded={showLegacyAnatomy} onClick={() => setShowLegacyAnatomy(open => !open)} data-testid="toggle-legacy-anatomy">{showLegacyAnatomy ? 'Hide' : 'Show'} older combined presets{LEGACY_ANATOMY_FIELDS.some(key => value[key]) ? ' · saved choices active' : ''}</button>
         </div>}
+        {section.key==='physique' && (!focusedField || focusedField==='all') && <PhysiqueStudio value={value} onChange={onChange} locked={locked} fieldLocks={fieldLocks}/>}
         {section.fields.map((f) => {
+          if (section.key==='physique' && PHYSIQUE_DETAIL_KEYS.includes(f.key) && focusedField!==f.key) return null;
           if (section.key === 'intimate' && LEGACY_ANATOMY_FIELDS.includes(f.key) && !showLegacyAnatomy && focusedField !== f.key) return null;
           if ((section.key === "wardrobe" && f.key === "outfit_mode") || (sourceField && f.key === "source")) return null;
           const outfitDisabled = section.key === "wardrobe" && wardrobeFieldDisabled(f.key, value);
