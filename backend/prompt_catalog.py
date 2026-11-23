@@ -52,6 +52,11 @@ def validate_prompt_catalog(value):
                     if reference and (not reference.startswith('https://') or re.search(r'\\s', reference)):
                         raise ValueError('Reference image URL must use HTTPS.')
                     clean_options[-1]['reference_url'] = reference
+                if 'reference_media_id' in option:
+                    media_id = text(option, 'reference_media_id', 200, True)
+                    if media_id and not re.fullmatch(r'[A-Za-z0-9_-]+', media_id):
+                        raise ValueError('Invalid library media identifier.')
+                    clean_options[-1]['reference_media_id'] = media_id
                 if 'notes' in option:
                     clean_options[-1]['notes'] = text(option, 'notes', 1000, True)
                 for compact_key in ('short', 'short_tags'):
