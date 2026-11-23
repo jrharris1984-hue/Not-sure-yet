@@ -1,4 +1,4 @@
-import { composeMossPrompt, inspectMossPhysique, mossVisualPriority, mossBodyGeometry, dedupeMossClauses, detectMossPromptConflicts } from './mossPromptProfile';
+import { composeMossPrompt, inspectMossPhysique, mossVisualPriority, mossBodyGeometry, dedupeMossClauses, detectMossPromptConflicts, resolveMossProfile } from './mossPromptProfile';
 
 test('explicit extreme selections get a concise silhouette priority', () => {
   const dna = { physique: { hips: 'extreme', thighs: 'massive', butt: 'hyper' } };
@@ -90,4 +90,23 @@ test('avoids cross-subject semantic conflict guesses', () => {
     { label: 'B', dna: { physique: { hips: 'wide' } } },
   ]);
   expect(result.mossPromptConflicts).toEqual([]);
+});
+
+test('identifies MOSS variants by workflow name', () => {
+  expect(resolveMossProfile('Moss Image FinalCut Universal FP8')).toBe('finalcut');
+  expect(resolveMossProfile('HyperMoss Lush Turbo int8 V1')).toBe('hypermoss');
+  expect(resolveMossProfile('Other MOSS checkpoint')).toBe('generic');
+});
+
+test('workflow-specific wording keeps the same selected geometry', () => {
+  const subjects = [{ dna: { physique: { hips: 'extreme' } } }];
+  const finalcut = composeMossPrompt('studio portrait', subjects, 'Moss Image FinalCut Universal FP8');
+  const hypermoss = composeMossPrompt('studio portrait', subjects, 'HyperMoss Lush Turbo int8 V1');
+  expect(finalcut.mossProfile).toBe('finalcut');
+  expect(hypermoss.mossProfile).toBe('hypermoss');
+  expect(finalcut.positive).toContain('dramatically broad lateral hip silhouette');
+  expect(hypermoss.positive).toContain('dramatically broad lateral hip silhouette');
+  expect(finalcut.positive).not.toBe(hypermoss.positive);
+  expect(finalcut.positive).toContain('studio portrait');
+  expect(hypermoss.positive).toContain('studio portrait');
 });
