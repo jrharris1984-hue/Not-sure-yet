@@ -8,6 +8,7 @@ const regions=[
  {name:'Glutes',key:'butt_scale',axis:'butt',max:2000},
  {name:'Thighs',key:'thigh_scale',axis:'thighs',max:750},
 ];
+const shapeKeys=['roundness','thickness','side_fullness','outer_curve','front_profile','projection_profile','taper'];
 const modes=[['Natural',1,100],['Enhanced',101,300],['Extreme',301,600],['Fantasy',601,1000],['Beyond fantasy',1001,2000]];
 export default function PhysiqueStudio({value,onChange,locked=false,fieldLocks={}}){
  const [active,setActive]=useState('Breasts');
@@ -26,6 +27,6 @@ export default function PhysiqueStudio({value,onChange,locked=false,fieldLocks={
    <input type="range" aria-label={`${active} volume`} min="0" max={region.max} step="1" value={amount} disabled={locked||fieldLocks[region.key]} onChange={e=>change(region.key,Number(e.target.value))} className="w-full accent-amber-500 min-h-11"/>
    <p className="text-xs text-zinc-400">{region.axis?physiqueScalePrompt(region.axis,amount,region.max)||'Uses existing preset':amount?'Independent waist width adjustment':'Uses existing waist preset'}</p>
   </div>
-  <details className="rounded-lg border border-zinc-700 p-3"><summary className="cursor-pointer min-h-9 font-medium">Shape and contour details</summary><div className="space-y-4 pt-3">{group.controls.map(([key,label])=><label key={key} className="block"><span className="flex justify-between text-sm"><span>{label}</span><span className="text-amber-300">{value[key]||0}</span></span><input type="range" min="0" max="100" step="1" value={value[key]||0} disabled={locked||fieldLocks[key]} onChange={e=>change(key,Number(e.target.value))} className="w-full min-h-11 accent-amber-500"/><span className="text-xs text-zinc-500">0 = unchanged</span></label>)}</div></details>
+  <details className="rounded-lg border border-zinc-700 p-3"><summary className="cursor-pointer min-h-9 font-medium">Shape, thickness and contour details</summary><div className="space-y-4 pt-3">{[...group.controls].sort(([a],[b])=>Number(shapeKeys.some(k=>b.endsWith(k)))-Number(shapeKeys.some(k=>a.endsWith(k)))).map(([key,label])=><label key={key} className="block"><span className="flex justify-between text-sm"><span>{label}</span><span className="text-amber-300">{value[key]||0}</span></span><input type="range" min="0" max="100" step="1" value={value[key]||0} disabled={locked||fieldLocks[key]} onChange={e=>change(key,Number(e.target.value))} className="w-full min-h-11 accent-amber-500"/><span className="text-xs text-zinc-500">0 = unchanged</span></label>)}</div></details>
  </section>;
 }
