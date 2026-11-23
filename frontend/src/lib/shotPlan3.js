@@ -28,7 +28,7 @@ export const reorderShot=(plan,from,to)=>{
 export const duplicateShot=(plan,id)=>{
   const index=plan.shots.findIndex(s=>s.id===id);if(index<0)return plan;
   const shots=[...plan.shots];const source=shots[index];
-  const nextId=`shot-${Math.max(0,...shots.map(s=>Number(s.id.match(/^shot-(\\d+)$/)?.[1])||0))+1}`;
+  const nextId=`shot-${Math.max(0,...shots.map(s=>Number(s.id.match(/^shot-([0-9]+)$/)?.[1])||0))+1}`;
   shots.splice(index+1,0,{...source,id:nextId,label:`${source.label} copy`,scene:{...source.scene},lighting:{...source.lighting}});
   return {...plan,shots};
 };
