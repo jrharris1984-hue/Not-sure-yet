@@ -58,6 +58,41 @@ export function inspectMossPhysique(dna = {}) {
   return { warnings, priority: mossVisualPriority(dna), geometry: mossBodyGeometry(dna) };
 }
 
+// Report only high-confidence contradictions in a single-subject positive
+// prompt. Never remove a phrase: user-authored wording may be intentional.
+const MOSS_OPPOSITES = {
+  hips: {
+    narrow: /\\b(?:narrow|slim|very narrow) (?:hips?|pelvic silhouette)\\b/i,
+    wide: /\\b(?:wide|broad|extremely wide|dramatically broad) (?:hips?|hip silhouette|lateral hip silhouette)\\b/i,
+  },
+  thighs: {
+    narrow: /\\b(?:slim|slender|narrow|very slender) (?:upper )?thighs?\\b/i,
+    wide: /\\b(?:thick|massive|extremely thick|extremely broad) (?:upper )?thighs?\\b/i,
+  },
+};
+export function detectMossPromptConflicts(positive = '', dna = {}) {
+  const ph = dna.physique || {};
+  const warnings = [];
+  for (const [region, patterns] of Object.entries(MOSS_OPPOSITES)) {
+    const slider = Number(ph[region === 'hips' ? 'hip_scale' : 'thigh_scale']);
+    const preset = String(ph[region] || '').toLowerCase();
+    const desired = slider > 0
+      ? (slider <= 20 ? 'narrow' : slider >= 80 ? 'wide' : '')
+      : (region === 'hips'
+        ? ({ narrow: 'narrow', wide: 'wide', 'very wide': 'wide', extreme: 'wide' })[preset]
+        : ({ slim: 'narrow', thick: 'wide', 'very thick': 'wide', massive: 'wide' })[preset]);
+    if (!desired) continue;
+    const opposing = desired === 'wide' ? 'narrow' : 'wide';
+    if (patterns[opposing].test(positive)) {
+      warnings.push({
+        region, selected: desired, conflictingDescription: opposing,
+        message: `Selected ${region} are ${desired}, but the prompt also describes ${opposing} ${region}`,
+      });
+    }
+  }
+  return warnings;
+}
+
 // Remove only identical repeated semicolon clauses; preserve wording and order.
 export function dedupeMossClauses(value = '') {
   const seen = new Set(), removed = [];
@@ -83,5 +118,7 @@ export function composeMossPrompt(basePositive, subjects = []) {
   const positive = deduped.positive;
   return { positive, promptWords: positive.split(/\s+/).filter(Boolean).length,
     mossRemovedDuplicates: deduped.removed,
+    mossPromptConflicts: subjects.length === 1
+      ? detectMossPromptConflicts(basePositive, subjects[0].dna || {}) : [],
     mossDiagnostics: subjects.map(subject => inspectMossPhysique(subject.dna || {})) };
 }
