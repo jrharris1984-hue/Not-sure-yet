@@ -5,6 +5,7 @@ import {resolveBuilderControls} from './builderControlResolution';
 import {editWardrobeField} from './wardrobeMode';
 import {compileModelPrompts} from './modelPromptCompilers';
 import {catalogSections,exportPromptLibrary} from './promptCatalog';
+import {coverageControlsClothingState} from './wardrobeNudity';
 const dna=wardrobe=>({...DEFAULT_DNA,wardrobe:{outfit_mode:'custom',exposure_mode:'use selected outfit',...wardrobe}});
 test('groups every wardrobe field once and retains custom fields',()=>{
   const fields=SECTIONS.find(s=>s.key==='wardrobe').fields;
@@ -58,12 +59,16 @@ test('the direct prompt builder also ignores old Kink selections',()=>{
   expect(buildPrompts({...dna({}),kink:{restraint:['retired restraint marker']}}).positive).not.toContain('retired restraint');
 });
 
-test.each(SIMPLE_COVERAGE_OPTIONS.map(option => [option.label, option.value]))('%s coverage overrides saved clothing state before garment resolution', (label, exposure_mode) => {
+test.each(SIMPLE_COVERAGE_OPTIONS.map(option => [option.label, option.value]))('%s coverage resolves clothing state consistently before garment resolution', (label, exposure_mode) => {
   const source = dna({ bottom: 'jeans', top: 'cotton blouse', state: 'riding up', exposure_mode });
   const original = JSON.stringify(source);
   const result = resolveBuilderControls(source);
-  expect(result.dna.wardrobe.state).toBe('');
-  expect(result.notes.some(note => note.field === 'state' && note.text.includes('Clothing coverage overrides Clothing state'))).toBe(true);
+  if (coverageControlsClothingState(result.dna.wardrobe)) {
+    expect(result.dna.wardrobe.state).toBe('');
+    expect(result.notes.some(note => note.field === 'state' && note.text.includes('controls garment position or removal'))).toBe(true);
+  } else {
+    expect(result.dna.wardrobe.state).toContain('trouser hems');
+  }
   expect(JSON.stringify(source)).toBe(original);
 });
 test.each(['compact','detailed'])('active coverage suppresses authored state across image compilers in %s format', promptFormat => {
@@ -83,4 +88,15 @@ test('cleared coverage restores compatible clothing state without editing the sa
   const source = dna({ bottom: 'jeans', state: 'riding up', exposure_mode: '' });
   expect(resolveBuilderControls(source).dna.wardrobe.state).toContain('trouser hems');
   expect(source.wardrobe.state).toBe('riding up');
+});
+
+test.each(['standard','chroma','krea2','pony','sdxl','qwen_image','zimage'])('%s combines appearance-only coverage with compatible clothing state',promptStyle=>{
+  const promptCatalog={sections:[{key:'wardrobe',title:'Wardrobe',fields:[{key:'exposure_mode',label:'Coverage',type:'chips',options:[
+    {value:'custom_wet',label:'Wet',keywords:'wet fabric clinging to clothing',coverage_mode:'use selected outfit'},
+  ]}]}]};
+  const source=dna({bottom:'jeans',top:'cotton blouse',state:'unbuttoned',exposure_mode:'custom_wet'});
+  const result=compileModelPrompts({promptStyle,dna:source,promptCatalog});
+  expect(result.positive).toContain('wet fabric clinging to clothing');
+  expect(result.positive).toMatch(/unbuttoned|buttons undone|open/i);
+  expect(source.wardrobe.state).toBe('unbuttoned');
 });
