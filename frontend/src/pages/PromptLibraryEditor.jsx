@@ -23,8 +23,9 @@ export default function PromptLibraryEditor() {
   const [controlSearch,setControlSearch]=useState('');
   const [browseLevel,setBrowseLevel]=useState('categories');
   const [optionKey,setOptionKey]=useState('');
-  const [previewStyle,setPreviewStyle]=useState('qwen_image');
+  const [previewStyle,setPreviewStyle]=useState('moss');
   const [promptPreview,setPromptPreview]=useState(null);
+  const [previewWorkflow,setPreviewWorkflow]=useState('Moss Image FinalCut Universal FP8');
   const [provider,setProvider]=useState('AI'), [suggestion,setSuggestion]=useState(null);
   useEffect(() => {let live=true; endpoints.settings().then(settings => {
     if(!live)return;
@@ -65,7 +66,7 @@ export default function PromptLibraryEditor() {
   if(!loaded)return <div className="p-6"><p role="alert">{error}</p><Link to="/settings">Return to Settings</Link></div>;
   return <div className="mx-auto max-w-6xl space-y-5 p-4 sm:p-6">
     <Link to="/settings" className="text-sm text-cyan-200">← Settings</Link>
-    <header><h1 className="font-display text-3xl font-bold">Prompt Library editor</h1><p className="mt-2 text-zinc-400">Edit categories and choices without coding. Display names appear in the builder; keywords describe what you want the image model to produce. Wardrobe → Clothing coverage lets you edit coverage instructions. Preview compiled prompt to review a selection before saving; Studio’s final prompt preview shows the full request sent to ComfyUI. Download backup includes built-in choices and original wording in base_keywords; edit keywords to override it. Numeric sliders retain their generated behavior.</p></header>
+    <header><h1 className="font-display text-3xl font-bold">Studio Content Manager</h1><p className="mt-2 text-zinc-400">Edit categories and choices without coding. Display names appear in the builder; keywords describe what you want the image model to produce. Wardrobe → Clothing coverage lets you edit coverage instructions. Preview compiled prompt to review a selection before saving; Studio’s final prompt preview shows the full request sent to ComfyUI. Download backup includes built-in choices and original wording in base_keywords; edit keywords to override it. Numeric sliders retain their generated behavior.</p></header>
     {error && <p role="alert" className="text-red-200">{error}</p>}{message && <p role="status" className="text-emerald-200">{message}</p>}
     <nav aria-label="Prompt library folders" className="flex flex-wrap items-center gap-2 text-sm">
       <button className={buttonClass} onClick={() => {setBrowseLevel('categories');setPromptPreview(null);}}>Categories</button>
@@ -82,6 +83,16 @@ export default function PromptLibraryEditor() {
       <button className={buttonClass} disabled={busy} onClick={() => {setDraft({sections:[]});setSectionKey(LIBRARY_SECTIONS[0].key);setFieldKey(LIBRARY_SECTIONS[0].fields[0].key);setMessage('Default library staged. Save to apply this reset.');setSuggestion(null);}}>Restore defaults</button>
       <span className="self-center text-xs text-zinc-500">{dirty?'Unsaved changes':'Saved library'}</span>
     </div>
+    <section className="pane space-y-2 p-4" aria-label="Content manager quick start">
+      <h2 className="text-sm font-semibold text-cyan-200">Add your own poses and clothing</h2>
+      <p className="text-xs text-zinc-400">Choose a category, open a subcategory, and select Add choice. Give it a display name and describe the visual result in Prompt keywords. Use Group to organize options into tabs. Save library when finished; new selections appear in the builder without changing application code.</p>
+      <div className="flex flex-wrap gap-2">
+        <button className={buttonClass} onClick={() => chooseSection('pose')}>Browse pose options</button>
+        <button className={buttonClass} onClick={() => chooseSection('wardrobe')}>Browse wardrobe options</button>
+        <button className={buttonClass} onClick={() => chooseSection('shared_poses')}>Browse multi-person poses</button>
+      </div>
+      <p className="text-[11px] text-zinc-500">Back up your library before large edits. New custom choices can be saved and exported; built-in numeric sliders retain their existing behavior.</p>
+    </section>
     <WardrobePromptReview catalog={draft} disabled={busy} onChange={next=>{setDraft(next);setSuggestion(null);setPromptPreview(null);setMessage('Wardrobe wording updates staged. Save library to apply, or Discard edits to cancel.');}}/>
     <fieldset disabled={busy} className="grid gap-5 md:grid-cols-[240px_1fr]">
       <aside className={`pane space-y-3 p-4 ${browseLevel==='categories'?'block':'hidden md:block'}`}><h2 className="font-semibold">Categories</h2>
@@ -126,8 +137,9 @@ export default function PromptLibraryEditor() {
     </section>}
               <p className="text-xs text-zinc-400">{option.keywords ? 'Your custom wording' : 'Current base wording'}: {option.keywords || defaultKeywords(option)}</p>
               <button className={buttonClass} onClick={() => changeOption(option.value,{keywords:''})}>Use default wording</button>
-              <div className="flex flex-wrap gap-2"><label className="text-xs">Preview model<select aria-label="Preview model" className={fieldClass} value={previewStyle} onChange={event => {setPreviewStyle(event.target.value);setPromptPreview(null);}}>{[['qwen_image','Qwen Image / AGQI'],['qwen_rapid','Qwen Rapid AIO'],['chroma','Chroma'],['zimage','Z-Image'],['krea2','Krea 2'],['pony','Pony'],['sdxl','SDXL'],['flux2_klein','FLUX.2 Klein']].map(([key,label]) => <option key={key} value={key}>{label}</option>)}</select></label>
-              <button className={buttonClass} onClick={() => {const dna=JSON.parse(JSON.stringify(DEFAULT_DNA));dna[sectionKey]={...dna[sectionKey],[fieldKey]:selectedField.type==='chips_multi'?[option.value]:option.value};setPromptPreview({value:option.value,...compileModelPrompts({dna,promptStyle:previewStyle,workflowKind:'image',promptCatalog:draft})});}}>Preview compiled prompt</button><button className={buttonClass} onClick={() => {const dna=JSON.parse(JSON.stringify(DEFAULT_DNA));dna[sectionKey]={...dna[sectionKey],[fieldKey]:selectedField.type==='chips_multi'?[option.value]:option.value};setPromptPreview({value:option.value,...compileModelPrompts({dna,promptStyle:previewStyle,workflowKind:'image',promptFormat:'compact',promptCatalog:draft})});}}>Preview compact prompt</button></div>
+              <div className="flex flex-wrap gap-2"><label className="text-xs">Preview model<select aria-label="Preview model" className={fieldClass} value={previewStyle} onChange={event => {setPreviewStyle(event.target.value);setPromptPreview(null);}}>{[['moss','MOSS FinalCut / HyperMoss'],['qwen_image','Qwen Image / AGQI'],['qwen_rapid','Qwen Rapid AIO'],['chroma','Chroma'],['zimage','Z-Image'],['krea2','Krea 2'],['pony','Pony'],['sdxl','SDXL'],['flux2_klein','FLUX.2 Klein']].map(([key,label]) => <option key={key} value={key}>{label}</option>)}</select></label>
+              {previewStyle==='moss' && <label className="text-xs">MOSS workflow<select aria-label="MOSS preview workflow" className={fieldClass} value={previewWorkflow} onChange={event => {setPreviewWorkflow(event.target.value);setPromptPreview(null);}}><option value="Moss Image FinalCut Universal FP8">FinalCut</option><option value="HyperMoss Lush Turbo int8 V1">HyperMoss</option></select></label>}
+              <button className={buttonClass} onClick={() => {const dna=JSON.parse(JSON.stringify(DEFAULT_DNA));dna[sectionKey]={...dna[sectionKey],[fieldKey]:selectedField.type==='chips_multi'?[option.value]:option.value};setPromptPreview({value:option.value,...compileModelPrompts({dna,promptStyle:previewStyle,workflowName:previewStyle==='moss'?previewWorkflow:'',workflowKind:'image',promptCatalog:draft})});}}>Preview compiled prompt</button><button className={buttonClass} onClick={() => {const dna=JSON.parse(JSON.stringify(DEFAULT_DNA));dna[sectionKey]={...dna[sectionKey],[fieldKey]:selectedField.type==='chips_multi'?[option.value]:option.value};setPromptPreview({value:option.value,...compileModelPrompts({dna,promptStyle:previewStyle,workflowName:previewStyle==='moss'?previewWorkflow:'',workflowKind:'image',promptFormat:'compact',promptCatalog:draft})});}}>Preview compact prompt</button></div>
               {promptPreview?.value===option.value && <details open className="rounded-lg border hairline p-3"><summary className="text-sm text-cyan-200">Compiled prompt preview</summary><p className="my-2 text-xs text-zinc-400">Uses a default character and your draft library. Other selections and model-specific priorities can change the final wording.</p><textarea aria-label="Compiled positive preview" className={fieldClass} rows={5} readOnly value={promptPreview.positive}/>{promptPreview.negative && <textarea aria-label="Compiled negative preview" className={fieldClass} rows={3} readOnly value={promptPreview.negative}/>}</details>}
               <div className="flex gap-2"><button className={buttonClass} disabled={!option.label.trim()} onClick={() => assist(option)}>Improve keywords with {provider}</button><button className={buttonClass} disabled={!option.label.trim() || busy} onClick={() => assist(option,'short')}>Suggest compact wording with {provider}</button><button className={buttonClass} onClick={() => changeField({...selectedField,options:selectedField.options.filter(item => item.value!==option.value)})}>Remove choice</button></div>
             </div>)}
