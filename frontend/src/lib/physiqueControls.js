@@ -32,9 +32,16 @@ const REGIONAL_PRESETS = {
 };
 
 export function regionalPhysiquePrompt(region, preset, slider = 0) {
-  const amount = Math.max(0, Math.min(region === 'butt' ? 300 : 100, Number(slider) || 0));
+  const amount = Math.max(0, Math.min(region === 'butt' ? 500 : 300, Number(slider) || 0));
   if (!amount) return REGIONAL_PRESETS[region]?.[preset] || String(preset || '');
   if (region === 'butt') return '';
+  if (amount > 100) {
+    const band = amount <= 150 ? 'dramatically amplified' : amount <= 200 ? 'fantasy-scale expansive' : amount <= 250 ? 'surreal maximum' : 'beyond-human fantasy-scale';
+    const shape = region === 'hips'
+      ? 'lateral hip flare, broad outer pelvic silhouette and a pronounced waist-to-hip transition'
+      : 'upper-thigh thickness, prominent outer-leg fullness and substantial upper-leg volume';
+    return `${band} ${shape} (${region === 'hips' ? 'lateral hip width' : 'upper-thigh volume'} intensity ${Math.round(amount)}/300)`;
+  }
   const level = Math.min(4, Math.floor(Math.min(amount, 99.999) / 20));
   const descriptions = region === 'hips'
     ? [
