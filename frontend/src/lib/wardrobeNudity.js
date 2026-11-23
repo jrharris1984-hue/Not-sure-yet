@@ -7,6 +7,17 @@ export const EXPOSURE_CHOICES = [
 
 export const COVERAGE_BEHAVIORS = [...EXPOSURE_CHOICES, 'replace outfit', 'topless', 'bottomless', 'topless and barefoot', 'hosiery only', 'heels only', 'jewelry only'];
 
+// Some coverage behaviors describe an appearance and can combine with a
+// garment state (for example, wet fabric with an unbuttoned shirt). Others
+// control garment position or removal themselves, so a separate state would
+// contradict the coverage selection.
+const STATE_CONTROLLING_COVERAGE = new Set([
+  'lingerie showing', 'lingerie only', 'open or shifted outfit', 'partially nude',
+  'nude', 'replace outfit', 'topless', 'bottomless', 'topless and barefoot',
+  'hosiery only', 'heels only', 'jewelry only',
+]);
+export const coverageControlsClothingState = wardrobe => STATE_CONTROLLING_COVERAGE.has(wardrobeNudity(wardrobe).mode);
+
 export function withCoveragePrompt(wardrobe = {}, config) {
   const option = coverageOption(wardrobe.exposure_mode, config);
   if (!option) return {...wardrobe, _exposurePrompt:{mode:wardrobe.exposure_mode, missing:true}};
