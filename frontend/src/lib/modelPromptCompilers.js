@@ -478,7 +478,9 @@ export function resolveZImageComposition(dna = {}, options = {}) {
 
   const castSize = lower(resolved.scenario?.cast_size) || "solo";
   const solo = !options.forceMulti && !["duo", "threesome", "foursome", "group", "gangbang", "orgy"].includes(castSize);
-  const selectedProportions = hasDetailedBodyScale(resolved);
+  const selectedProportions = hasDetailedBodyScale(resolved) ||
+    ['bust', 'butt', 'hips', 'thighs'].some(key =>
+      ['hyper', 'extreme', 'enormous', 'huge', 'massive', 'very large', 'very wide', 'very thick'].includes(lower(resolved.physique?.[key])));
   const naturalProportions = selectedProportions ? "selected body proportions" : "believable adult proportions";
   const humanLead = options.forceMulti
     ? (mode === "natural"
