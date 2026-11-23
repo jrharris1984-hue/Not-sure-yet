@@ -9,6 +9,7 @@ import { catalogSelection } from './promptCatalog';
 import { ageAppearancePrompt, resolveAgeSkin } from './ageAppearance';
 import { HERITAGE_GROUPS, HERITAGE_LABELS, HERITAGE_PROFILES, heritageLabel } from "./heritageProfiles";
 import { ADDITIONAL_OUTFIT_GROUPS, OUTFIT_SET_LABELS, LAYERED_OUTFIT_GROUP, SET_LINGERIE_GROUPS } from "./completeOutfitSets";
+import { WARDROBE_CATEGORY_GROUPS, WARDROBE_ITEM_LABELS } from "./wardrobeCatalog";
 import { resolveWardrobeMode } from "./wardrobeMode";
 import { bustShapePrompt, regionalPhysiquePrompt } from "./physiqueControls";
 import { PHOTOGRAPHY_POSE_GROUPS } from "@/lib/photographyPoses";
@@ -239,7 +240,8 @@ export const SECTIONS = [
         { name: "Indian & Bollywood", options: ["embroidered lehenga choli with dupatta", "silk sari with fitted blouse", "ornate anarkali suit", "sharara set with dupatta", "gharara set with embroidered kurta", "Bollywood princess gown with jewelry"] },
         { name: "Arabian inspired", options: ["embroidered kaftan", "formal abaya with matching headscarf", "ornate jalabiya", "beaded evening kaftan"] },
       ]},
-      { key: "outfit_set", type: "chips", label: "Complete outfit set", optionLabels: OUTFIT_SET_LABELS, groups: [
+      { key: "outfit_set", type: "chips", label: "Complete outfit set", optionLabels: { ...OUTFIT_SET_LABELS, ...WARDROBE_ITEM_LABELS }, groups: [
+        ...WARDROBE_CATEGORY_GROUPS,
         { name: "Lingerie sets", options: ["lace balconette set with matching panties, garter belt, stockings and heels", "satin push-up bra set with matching briefs, sheer thigh-highs and stilettos", "embroidered bralette and high-waist panties with seamed stockings and pumps", "sheer mesh bra and thong with fishnet stockings and platform heels", "silk corset and matching panties with garters, lace stockings and heels"] },
         { name: "Costume sets", options: ["French maid dress with apron, matching lingerie, stockings and heels", "classic maid dress with lace headpiece, stockings and pumps", "superheroine bodysuit with matching cape, gloves and boots", "armored heroine suit with matching cape, belt and boots", "royal princess gown with matching jewelry, veil and heels"] },
         { name: "Cultural fashion sets", options: ["Bollywood royal lehenga choli with dupatta, jewelry and embroidered heels", "Indian silk sari with matching blouse, bangles and sandals", "embroidered anarkali with dupatta, earrings and embellished flats", "formal embroidered kaftan with matching jewelry and sandals", "ornate abaya with matching scarf, jewelry and shoes"] },
