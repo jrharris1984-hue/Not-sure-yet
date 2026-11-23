@@ -8,6 +8,9 @@ export const PHYSIQUE_DETAIL_GROUPS=[
  {name:'Shoulders',controls:[['shoulder_slope','Shoulder slope'],['shoulder_roundness','Shoulder contour roundness'],['clavicle_definition','Clavicle definition'],['shoulder_back_width','Upper-back width']]},
  {name:'Arms',controls:[['upper_arm_shape','Upper-arm contour'],['arm_muscularity','Arm muscular definition'],['arm_softness','Arm softness'],['forearm_fullness','Forearm fullness']]},
  {name:'Calves',controls:[['calf_roundness','Calf roundness'],['calf_muscularity','Calf muscular definition'],['ankle_taper','Ankle taper'],['lower_leg_length','Lower-leg proportion']]},
+ {name:'Torso & Frame',controls:[['torso_width','Torso width'],['ribcage_width','Ribcage width'],['ribcage_depth','Ribcage depth'],['upper_back_taper','Upper-back taper'],['abdominal_softness','Abdominal softness'],['abdominal_roundness','Abdominal roundness'],['pelvic_width','Pelvic frame width'],['pelvic_front_depth','Pelvic front-to-back depth']]},
+ {name:'Legs',controls:[['leg_length','Leg length'],['thigh_length','Thigh length'],['knee_width','Knee width'],['knee_contour','Knee contour'],['leg_to_torso_balance','Leg-to-torso balance']]},
+ {name:'Neck',controls:[['neck_length','Neck length'],['neck_fullness','Neck fullness'],['neck_muscularity','Neck muscular definition'],['trapezius_definition','Trapezius definition']]},
 ];
 const descriptions={
  bust_roundness:["subtle rounded breast contour","distinctly rounded breast contour","highly spherical breast contour"],
@@ -63,7 +66,24 @@ const descriptions={
  calf_roundness:['straight narrow calf contour','subtle calf curve','smooth rounded calf contour','pronounced rounded calf contour','strongly rounded full calf silhouette'],
  calf_muscularity:['soft calf contour with no visible definition','subtle natural calf definition','clear athletic calf shape','pronounced calf-muscle definition','strong muscular calf definition'],
  ankle_taper:['gradual lower-leg line with little ankle taper','soft ankle taper','balanced calf-to-ankle taper','defined taper from calf to ankle','sharp narrow ankle taper beneath a full calf'],
- lower_leg_length:['shorter lower-leg proportion','slightly compact lower-leg proportion','balanced lower-leg proportion','long lower-leg proportion','very long lower-leg proportion']
+ lower_leg_length:['shorter lower-leg proportion','slightly compact lower-leg proportion','balanced lower-leg proportion','long lower-leg proportion','very long lower-leg proportion'],
+ torso_width:['narrow torso frame','slim balanced torso frame','balanced torso width','broad torso frame','very broad torso frame'],
+ ribcage_width:['narrow ribcage width','slim ribcage width','balanced ribcage width','broad ribcage width','very broad ribcage width'],
+ ribcage_depth:['shallow ribcage depth','slight ribcage depth','balanced ribcage depth','deep ribcage profile','very deep ribcage profile'],
+ upper_back_taper:['straight upper-back contour','subtle upper-back taper','balanced shoulder-to-waist back taper','defined upper-back taper','dramatic V-shaped upper-back taper'],
+ abdominal_softness:['firm abdominal surface','light natural abdominal softness','soft natural abdominal contour','full soft abdominal contour','very full abdominal softness'],
+ abdominal_roundness:['flat abdominal profile','slightly rounded abdominal profile','soft rounded abdomen','full rounded abdominal profile','pronounced rounded abdominal silhouette'],
+ pelvic_width:['narrow pelvic frame','slim pelvic frame','balanced pelvic width','broad pelvic frame','very broad pelvic frame'],
+ pelvic_front_depth:['shallow pelvic front profile','subtle pelvic front depth','balanced pelvic front-to-back depth','full pelvic front profile','pronounced pelvic front depth'],
+ leg_length:['shorter leg proportion','slightly compact leg proportion','balanced leg proportion','long leg proportion','very long leg proportion'],
+ thigh_length:['shorter upper-leg proportion','compact upper-leg proportion','balanced thigh length','long thigh proportion','very long thigh proportion'],
+ knee_width:['slender knee width','narrow knee contour','balanced knee width','broad knee contour','very broad knee width'],
+ knee_contour:['soft rounded knee contour','subtle knee definition','balanced knee contour','defined athletic knee contour','strongly defined knee contour'],
+ leg_to_torso_balance:['compact leg-to-torso proportion','slightly longer torso proportion','balanced leg-to-torso proportion','long-legged proportion','very long-legged proportion'],
+ neck_length:['short neck proportion','slightly compact neck proportion','balanced neck length','long neck proportion','very long neck proportion'],
+ neck_fullness:['slender neck contour','slim natural neck contour','balanced neck fullness','full neck contour','very full neck contour'],
+ neck_muscularity:['soft neck contour','subtle neck definition','balanced neck definition','defined athletic neck','strong muscular neck definition'],
+ trapezius_definition:['soft shoulder-to-neck transition','subtle trapezius definition','clear shoulder-to-neck contour','pronounced trapezius definition','strong muscular trapezius contour']
 };
 export const PHYSIQUE_DETAIL_KEYS=Object.keys(descriptions);
 export function physiqueDetailPrompt(ph={}){
