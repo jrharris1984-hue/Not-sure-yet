@@ -2,6 +2,7 @@ import { catalogSelection } from './promptCatalog';
 import { ageAppearancePrompt, resolveAgeSkin } from './ageAppearance';
 import { bustShapePrompt } from "./physiqueControls";
 import { gluteSizePrompt } from "@/lib/gluteControls";
+import { regionalPhysiquePrompt } from "./physiqueControls";
 // Pony V6 XL prompt builder — uses Pony's score_9 quality prefix and booru-style tag weighting.
 // Pony expects: score_9, score_8_up, score_7_up, rating_explicit, source_photo (or source_anime), then tag list.
 import { expandPrompt } from "@/lib/promptMap";
@@ -378,10 +379,10 @@ function _ponySubjectBlock(dna = {}, opts = {}) {
     ph.implant_volume > 0 ? "" : w(ph.bust_scale ? `${ph.bust_scale >= 80 ? "fantasy oversized" : ph.bust_scale >= 60 ? "very large" : ph.bust_scale >= 40 ? "full" : "small"} breasts` : exp("physique", "bust") || (ph.bust && `${ph.bust} breasts`), eWeight),
     ph.implant_volume > 0 ? "round augmented breasts" : bustShapePrompt(ph.bust_shape),
     implantVisualPrompt(ph.implant_volume),
-    w(ph.butt_scale > 100 ? gluteSizePrompt(ph.butt_scale) : ph.butt_scale ? `${ph.butt_scale >= 80 ? "fantasy oversized" : ph.butt_scale >= 60 ? "very large" : ph.butt_scale >= 40 ? "full" : "small"} glutes` : exp("physique", "butt") || (ph.butt && `${ph.butt} ass`), eWeight),
+    w(ph.butt_scale ? gluteSizePrompt(ph.butt_scale) : exp("physique", "butt") || regionalPhysiquePrompt("butt", ph.butt), eWeight),
     ph.glute_shape,
-    w(ph.thigh_scale ? `${ph.thigh_scale >= 60 ? "very thick" : ph.thigh_scale >= 40 ? "full" : "slim"} thighs` : exp("physique", "thighs") || (ph.thighs && `${ph.thighs} thighs`), eWeight),
-    w(ph.hip_scale ? `${ph.hip_scale >= 80 ? "fantasy wide" : ph.hip_scale >= 60 ? "very wide" : ph.hip_scale >= 40 ? "wide" : "narrow"} hips` : exp("physique", "hips") || (ph.hips && `${ph.hips} hips`), eWeight),
+    w(ph.thigh_scale ? regionalPhysiquePrompt("thighs", ph.thighs, ph.thigh_scale) : exp("physique", "thighs") || regionalPhysiquePrompt("thighs", ph.thighs), eWeight),
+    w(ph.hip_scale ? regionalPhysiquePrompt("hips", ph.hips, ph.hip_scale) : exp("physique", "hips") || regionalPhysiquePrompt("hips", ph.hips), eWeight),
     ph.waist_scale ? `${ph.waist_scale >= 80 ? "very wide" : ph.waist_scale >= 40 ? "average" : "narrow"} waist` : exp("physique", "waist"),
     ph.legs && ph.legs !== "average" && exp("physique", "legs"),
   ]);
