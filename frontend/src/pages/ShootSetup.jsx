@@ -1,3 +1,5 @@
+import ShotStoryboard3 from "@/components/ShotStoryboard3";
+import {createShotPlan,activeShots} from "@/lib/shotPlan3";
 import { SHOOT_TEMPLATES, SHOOT_TEMPLATE_CATEGORIES } from "@/lib/shootTemplates";
 import { QUICK_SHOOT_STYLES, QUICK_SHOOT_COUNTS } from "@/lib/quickShootStyles";
 import { referenceShootWorkflows, shootContinuityDefaults, shootReferenceInstruction, shootReferencePreview } from "@/lib/shootContinuity";
@@ -69,6 +71,7 @@ export default function ShootSetup() {
     queryKey: ["shoot-context", characterId], queryFn: () => endpoints.characterShootContext(characterId), enabled: !!characterId,
   });
   const [shootStep, setShootStep] = useState("character");
+  const [studio3Plan,setStudio3Plan]=useState(null);
   const [quickMode,setQuickMode]=useState(()=>new URLSearchParams(window.location.search).get('quick')==='1');
   const [quickStyle,setQuickStyle]=useState('editorial');
   const [templateCategory,setTemplateCategory]=useState('All');
@@ -93,7 +96,7 @@ export default function ShootSetup() {
   const [shotsPerStage, setShotsPerStage] = useState(4);
   const [sequenceSet, setSequenceSet] = useState('');
   const coverageFrames = useMemo(() => clothingSequence(coverageStages, shotsPerStage, sequenceSet), [coverageStages, shotsPerStage, sequenceSet]);
-  const count = orderedSetsEnabled ? orderedShots.length : sequenceEnabled ? coverageFrames.length : manualCount;
+  const count = studio3Plan ? studio3Plan.shots.length : orderedSetsEnabled ? orderedShots.length : sequenceEnabled ? coverageFrames.length : manualCount;
   const [workflowId, setWorkflowId] = useState("");
   const [poseMode, setPoseMode] = useState("pack"); // random | pack | manual
   const [packKey, setPackKey] = useState("editorial");
@@ -128,14 +131,17 @@ export default function ShootSetup() {
     const poses = orderedSetsEnabled ? orderedShots.map(shot => lifestyleFrameControls(shot).pose_action) : samplePoses({ mode: poseMode, packKey, manualPoses, count, allPoses: ALL_POSES });
     const outs = cycleOutfits(outfits.map((o) => ({ outfit_preset: o })), count);
     return poses.map((sampledPose, i) => {
-      const planned = orderedSetsEnabled ? lifestyleFrameControls(orderedShots[i]) : aiFrames ? plannedFrameControls(aiFrames[i], lockScenario) : null;
-      const p = planned ? planned.pose_action : sampledPose;
+      const planned = orderedSetsEnabled && !studio3Plan ? lifestyleFrameControls(orderedShots[i]) : aiFrames && !studio3Plan ? plannedFrameControls(aiFrames[i], lockScenario) : null;
+      const shot3=studio3Plan?.shots[i];
+      const p = shot3?.pose || (planned ? planned.pose_action : sampledPose);
       const scene_direction = [planned?.scene_direction, shotScript.length ? shotScript[i % shotScript.length] : ""].filter(Boolean).join(" ");
-      const outfit_overrides = sequenceEnabled ? coverageFrames[i] : planned ? planned.outfit_overrides : outs[i] || {};
+      const outfit_overrides = shot3?.outfit ? {outfit_preset:shot3.outfit} : sequenceEnabled && !studio3Plan ? coverageFrames[i] : planned ? planned.outfit_overrides : outs[i] || {};
       const face_overrides = planned ? planned.face_overrides : expressions.length ? { expression: expressions[i % expressions.length] } : {};
       const savedDna = character?.subjects?.[0]?.dna || character?.dna || {};
       const baseDna = { ...savedDna, scene: { ...savedDna.scene, ...setControls.scene }, lighting: { ...savedDna.lighting, ...setControls.lighting }, camera: { ...savedDna.camera, ...setControls.camera } };
-      const planControls = { wardrobeOverrides: outfit_overrides, poseOverrides: planned?.pose_overrides, cameraOverrides: planned?.camera_overrides, lightingOverrides: { ...setControls.lighting, ...planned?.lighting_overrides }, sceneOverrides: { ...setControls.scene, ...planned?.scene_overrides }, lockScenario };
+      const shot3Pose=shot3?.subjectView?{angle:shot3.subjectView}:{};
+      const shot3Camera=shot3?.cameraAngle?{angle:shot3.cameraAngle}:{};
+      const planControls = { wardrobeOverrides: outfit_overrides, poseOverrides: {...planned?.pose_overrides,...shot3Pose}, cameraOverrides: {...planned?.camera_overrides,...shot3Camera,...(shot3?.lens?{lens:shot3.lens}:{})}, lightingOverrides: { ...setControls.lighting, ...planned?.lighting_overrides,...shot3?.lighting }, sceneOverrides: { ...setControls.scene, ...planned?.scene_overrides,...shot3?.scene }, lockScenario: shot3 ? false : lockScenario };
       const frameDna = shootFrameDna(baseDna, { poseAction: p, outfitPreset: outfit_overrides.outfit_preset, faceOverrides: face_overrides, ...planControls });
       const subjects = (character?.subjects || []).map((subject, index) =>
         ({ ...subject, dna: index === 0 ? frameDna : shootFrameDna({ ...subject.dna, scene: { ...subject.dna?.scene, ...setControls.scene }, lighting: { ...subject.dna?.lighting, ...setControls.lighting }, camera: { ...subject.dna?.camera, ...setControls.camera } }, {
@@ -154,12 +160,12 @@ export default function ShootSetup() {
         sectionLocks: character?.locks || {},
       }) : null;
       return {
-        shot_label: planned?.shot_label || "",
-        camera_overrides: planned?.camera_overrides || {},
+        shot_label: shot3?.label || planned?.shot_label || "",
+        camera_overrides: planControls.cameraOverrides,
         control_notes: resolveBuilderControls(frameDna).notes.map(note => note.text),
-        pose_overrides: planned?.pose_overrides || {},
-        lighting_overrides: planned?.lighting_overrides || {},
-        scene_overrides: planned?.scene_overrides || {},
+        pose_overrides: planControls.poseOverrides,
+        lighting_overrides: planControls.lightingOverrides,
+        scene_overrides: planControls.sceneOverrides,
         pose_action: p,
         scene_direction,
         outfit_overrides,
@@ -179,16 +185,17 @@ export default function ShootSetup() {
 
       };
     });
-  }, [orderedSetsEnabled, orderedShots, sequenceEnabled, coverageFrames, poseMode, packKey, manualPoses, count, outfits, expressions, shotScript, character, shootWorkflow, aiFrames, lockScenario, setControls, identityMode, settings?.builder_prompt_format]);
+  }, [orderedSetsEnabled, orderedShots, sequenceEnabled, coverageFrames, poseMode, packKey, manualPoses, count, outfits, expressions, shotScript, character, shootWorkflow, aiFrames, lockScenario, setControls, identityMode, settings?.builder_prompt_format, studio3Plan]);
 
   const create = useMutation({
     mutationFn: async () => {
+      if(studio3Plan && !activeShots(studio3Plan).length) throw new Error("Enable at least one shot before queuing");
       const body = {
         name: name || `${character?.name || "Shoot"} · ${count} shots`,
         character_id: characterId,
         workflow_id: workflowId,
-        count,
-        frames: previewFrames,
+        count: studio3Plan ? activeShots(studio3Plan).length : count,
+        frames: studio3Plan ? previewFrames.filter((_,i)=>studio3Plan.shots[i]?.enabled) : previewFrames,
         lora_overrides: identityMode === "reference" ? {} : { ...loraOverrides, ...savedLikenessOverrides },
         source_render_id: identityMode === "reference" ? shootContext?.render_id : null,
         set_overrides: setControls,
@@ -277,6 +284,8 @@ export default function ShootSetup() {
           <p className="text-xs text-zinc-500">Templates use existing outfit, scene and lighting settings. The storyboard shows planned shots; generated image previews appear after rendering.</p>
         </div>}
       </section>
+      <section className="pane p-4 space-y-3" data-testid="studio3-entry"><div className="flex flex-wrap items-center justify-between gap-2"><div><h2 className="font-semibold">Ultra Studio 3.0 · Shot Director (Preview)</h2><p className="text-xs text-zinc-400">Independent shot edits, rear camera views, and per-frame overrides.</p></div><button type="button" className="chip active" onClick={()=>{if(studio3Plan){setStudio3Plan(null);return;}const template=SHOOT_TEMPLATES.find(t=>t.id===selectedTemplate);setOrderedSetsEnabled(false);setSequenceEnabled(false);setAiFrames(null);setStudio3Plan(createShotPlan({template,count:manualCount,characterId}));}}>{studio3Plan?'Exit 3.0 director':'Open 3.0 director'}</button></div></section>
+      {studio3Plan&&<ShotStoryboard3 plan={studio3Plan} onChange={setStudio3Plan} outfitOptions={OUTFIT_GROUPS.flatMap(group=>group.options)}/>}
       <section ref={shootNavigation} className="pane scroll-mt-24 p-3 sm:p-4 space-y-3" aria-label="Shoot plan">
         <div className="flex flex-wrap items-center gap-2 text-xs text-zinc-300"><span className="chip">{identityMode === "reference" ? "Saved photo reference" : "Text-based identity"}</span><span>{count} shots</span><span>·</span><span>{shootWorkflow?.name || "Choose workflow"}</span></div>
         <nav className="flex gap-2 overflow-x-auto pb-1" aria-label="Shoot setup sections">
