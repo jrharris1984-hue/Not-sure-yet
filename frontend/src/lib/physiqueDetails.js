@@ -5,6 +5,9 @@ export const PHYSIQUE_DETAIL_GROUPS=[
  {name:'Waist',controls:[['waist_taper','Waist taper'],['waist_torso_length','Torso length'],['waist_abdominal_definition','Abdominal definition'],['waist_ribcage_transition','Ribcage transition'],['waist_side_curve','Side-waist curve'],['waist_roundness','Waist contour roundness'],['waist_thickness','Torso depth'],['waist_front_profile','Front profile']]},
  {name:'Thighs',controls:[['thigh_inner_fullness','Inner thigh fullness'],['thigh_outer_fullness','Outer thigh fullness'],['thigh_roundness','Thigh roundness'],['thigh_thickness','Thigh thickness'],['thigh_taper','Knee taper']]},
  {name:'Glutes',controls:[['glute_upper_fullness','Upper fullness'],['glute_lower_fullness','Lower fullness'],['glute_lateral_width','Lateral width'],['glute_lift','Lift'],['glute_lower_curve','Lower curve'],['glute_side_projection','Side projection'],['glute_roundness','Glute roundness'],['glute_thickness','Glute thickness'],['glute_projection_profile','Projection profile']]},
+ {name:'Shoulders',controls:[['shoulder_slope','Shoulder slope'],['shoulder_roundness','Shoulder contour roundness'],['clavicle_definition','Clavicle definition'],['shoulder_back_width','Upper-back width']]},
+ {name:'Arms',controls:[['upper_arm_shape','Upper-arm contour'],['arm_muscularity','Arm muscular definition'],['arm_softness','Arm softness'],['forearm_fullness','Forearm fullness']]},
+ {name:'Calves',controls:[['calf_roundness','Calf roundness'],['calf_muscularity','Calf muscular definition'],['ankle_taper','Ankle taper'],['lower_leg_length','Lower-leg proportion']]},
 ];
 const descriptions={
  bust_roundness:["subtle rounded breast contour","distinctly rounded breast contour","highly spherical breast contour"],
@@ -45,14 +48,29 @@ const descriptions={
  glute_upper_fullness:['subtle upper glute fullness','rounded upper glute fullness','dramatic upper glute shelf'],
  glute_lower_fullness:['subtle lower glute fullness','weighted lower glute fullness','extreme lower glute fullness'],
  glute_lateral_width:['narrow glute lateral contour','broad outer glute contour','enormously wide outer glute contour'],
- glute_lift:['low-set glute silhouette','lifted glute silhouette','strongly elevated glute silhouette']
+ glute_lift:['low-set glute silhouette','lifted glute silhouette','strongly elevated glute silhouette'],
+ shoulder_width:['very narrow shoulder width with a compact upper-body frame','narrow shoulders with a softly tapered upper body','balanced shoulder width in proportion to the hips','broad shoulders with a clear upper-body line','very broad shoulders with a strong, expansive upper-body frame'],
+ shoulder_slope:['steeply sloped shoulders','softly sloping shoulder line','balanced shoulder slope','gently squared shoulder line','strongly squared broad shoulder line'],
+ shoulder_roundness:['angular shoulder contour','subtle rounded shoulder contour','smoothly rounded shoulder contour','full rounded deltoid contour','prominently rounded shoulder and deltoid contour'],
+ clavicle_definition:['softly defined collarbone line','subtle clavicle definition','clear natural clavicle definition','pronounced collarbone definition','strong high-definition clavicle line'],
+ shoulder_back_width:['narrow upper-back silhouette','slim upper-back contour','balanced upper-back width','broad upper-back silhouette','very broad upper-back frame'],
+ upper_arm_fullness:['slender upper arms with minimal fullness','slim upper arms with gentle contour','balanced upper-arm fullness','full rounded upper arms','very full upper arms with substantial volume'],
+ upper_arm_shape:['softly tapered upper-arm contour','slim upper-arm contour','balanced upper-arm shape','rounded defined upper-arm contour','strongly rounded upper-arm silhouette'],
+ arm_muscularity:['smooth arms with no visible muscle definition','subtle natural arm definition','clear toned arm definition','pronounced athletic arm definition','strong muscular arm definition with visible separation'],
+ arm_softness:['firm upper-arm contour','lightly softened upper-arm contour','natural soft-tissue fullness in the arms','soft full upper-arm contour','very soft, visibly full upper-arm contour'],
+ forearm_fullness:['slender forearms with a narrow contour','lean forearms with gentle shape','balanced forearm fullness','full rounded forearms','very full forearms with a broad contour'],
+ calf_fullness:['slender calves with little lower-leg volume','lean calves with a gentle contour','balanced calf fullness','full rounded calves','very full calves with substantial lower-leg volume'],
+ calf_roundness:['straight narrow calf contour','subtle calf curve','smooth rounded calf contour','pronounced rounded calf contour','strongly rounded full calf silhouette'],
+ calf_muscularity:['soft calf contour with no visible definition','subtle natural calf definition','clear athletic calf shape','pronounced calf-muscle definition','strong muscular calf definition'],
+ ankle_taper:['gradual lower-leg line with little ankle taper','soft ankle taper','balanced calf-to-ankle taper','defined taper from calf to ankle','sharp narrow ankle taper beneath a full calf'],
+ lower_leg_length:['shorter lower-leg proportion','slightly compact lower-leg proportion','balanced lower-leg proportion','long lower-leg proportion','very long lower-leg proportion']
 };
 export const PHYSIQUE_DETAIL_KEYS=Object.keys(descriptions);
 export function physiqueDetailPrompt(ph={}){
  return PHYSIQUE_DETAIL_KEYS.map(key=>{
  const n=Math.max(0,Math.min(100,Number(ph[key])||0));
  if(!n)return '';
- const tier=n<=33?0:n<=66?1:2;
+ const tier=descriptions[key].length>=5?Math.min(4,Math.floor((n-1)/20)):n<=33?0:n<=66?1:2;
  return descriptions[key][tier];
  }).filter(Boolean).join(', ');
 }
