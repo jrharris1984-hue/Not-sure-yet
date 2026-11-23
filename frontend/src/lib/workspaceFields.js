@@ -2,13 +2,17 @@ import { SECTIONS } from './dna';
 import { editWardrobeField, wardrobeFieldDisabled } from './wardrobeMode';
 import { SIZE_CONTROL_PAIRS } from './physiqueControlPriority';
 
-export const BODY_GROUPS = [
+const CORE_BODY_GROUPS = [
   {key:'build',label:'Build',fields:['height','body_type','muscularity','shoulders','legs','proportions']},
   {key:'bust',label:'Bust',fields:['bust','bust_scale','bust_shape','implant_volume']},
   {key:'glutes',label:'Glutes',fields:['butt','butt_scale','glute_shape']},
   {key:'waist',label:'Waist & hips',fields:['waist','waist_scale','hips','hip_scale']},
   {key:'thighs',label:'Thighs',fields:['thighs','thigh_scale']},
 ];
+const groupedBodyFields=new Set(CORE_BODY_GROUPS.flatMap(group=>group.fields));
+const allPhysiqueFields=(SECTIONS.find(section=>section.key==='physique')?.fields||[]).map(field=>field.key);
+const additionalBodyFields=allPhysiqueFields.filter(field=>!groupedBodyFields.has(field));
+export const BODY_GROUPS=[...CORE_BODY_GROUPS,...(additionalBodyFields.length?[{key:'shape-details',label:'Detailed shape controls',fields:additionalBodyFields}]:[])];
 export const workspaceSection = key => SECTIONS.find(section=>section.key===key);
 export function workspaceFieldPatch(person,section,field,value) {
   const current=person.dna[section] || {};
