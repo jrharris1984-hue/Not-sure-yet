@@ -1,4 +1,5 @@
 import { newCatalogKey, validateCatalogDraft } from './promptCatalog';
+import { expandPrompt } from './promptMap';
 
 const clean = value => String(value || '').replace(/\s+/g, ' ').trim();
 const norm = value => clean(value).toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
@@ -62,7 +63,7 @@ export function parseBatchPromptInput(input) {
     const label=clean(item.label||item.name||item.value)||prompt.slice(0,80);
     if(!prompt || !label)throw new Error(`Prompt row ${index+1} needs a name and prompt text.`);
     if(prompt.length>1500 || label.length>200)throw new Error(`Prompt row ${index+1} exceeds the supported length.`);
-    return {label,prompt,category:clean(item.category||item.section),subcategory:clean(item.subcategory||item.field),group:clean(item.group)};
+    return {id:clean(item.id),value:clean(item.value),label,prompt,category:clean(item.category||item.section),subcategory:clean(item.subcategory||item.field),group:clean(item.group)};
   });
   if(!entries.length || entries.length>1000)throw new Error('Import between 1 and 1,000 prompt rows at a time.');
   return entries;
@@ -99,13 +100,27 @@ export function suggestPromptDestination(entry, sections=[]) {
 export function prepareBatchPromptRows(entries, sections) {
   const locations=sections.flatMap(section=>section.fields.filter(isPromptField).map(field=>({value:locationValue(section,field),section,field})));
   const known=new Map();
-  locations.forEach(({value,field})=>field.options.forEach(option=>known.set(`${value}::${norm(option.label)}`,option)));
+  const byId=new Map();
+  locations.forEach(({value,field})=>field.options.forEach(option=>{known.set(`${value}::${norm(option.label)}`,option);byId.set(`${value}::${option.value}`,{value,option});}));
   return entries.map(entry=>{
     const suggestion=suggestPromptDestination(entry,sections);
-    const destination=locations.some(item=>item.value===suggestion.destination)?suggestion.destination:'__custom__';
-    const match=known.get(`${destination}::${norm(entry.label)}`);
-    return {...entry,...suggestion,destination,change:match?'update':'add',existingValue:match?.value||''};
+    const exact=entry.id.match(/^([^:]+)::([^:]+)::(.+)$/);
+    const exactMatch=exact&&byId.get(`${exact[1]}::${exact[2]}::${exact[3]}`);
+    const destination=exactMatch?exactMatch.value:locations.some(item=>item.value===suggestion.destination)?suggestion.destination:'__custom__';
+    const match=exactMatch?.option||known.get(`${destination}::${norm(entry.label)}`);
+    return {...entry,...suggestion,destination:exactMatch?destination:destination,change:match?'update':'add',existingValue:match?.value||''};
   });
+}
+
+export function exportPromptBatch(sections, sectionKey='*', fieldKey='*') {
+  const prompts=sections.filter(section=>sectionKey==='*'||section.key===sectionKey).flatMap(section=>section.fields
+    .filter(field=>(fieldKey==='*'||field.key===fieldKey)&&isPromptField(field))
+    .flatMap(field=>(field.options||[]).map(option=>({
+      id:`${section.key}::${field.key}::${option.value}`,
+      category:section.title,subcategory:field.label,label:option.label||option.value,
+      prompt:clean(option.keywords||(section.key==='shared_poses'?option.value:expandPrompt(section.key,field.key,option.value))),group:option.group||''
+    }))));
+  return {format:'ultrastudio-prompt-batch',version:1,prompts};
 }
 
 export function applyBatchPromptRows(catalog, rows, sections) {
@@ -123,7 +138,8 @@ export function applyBatchPromptRows(catalog, rows, sections) {
     }
     let field=target.fields.find(item=>item.key===fieldKey);
     if(!field){const source=sections.find(section=>section.key===sectionKey)?.fields.find(item=>item.key===fieldKey);field=source?{...source,options:[]}:{key:fieldKey,label:'Imported prompts',type:'chips',options:[]};target.fields.push(field);}
-    const existing=field.options.find(option=>norm(option.label)===norm(row.label));
+    const exact=row.id.match(/^([^:]+)::([^:]+)::(.+)$/);
+    const existing=(exact&&exact[1]===sectionKey&&exact[2]===fieldKey?field.options.find(option=>option.value===exact[3]):null)||field.options.find(option=>norm(option.label)===norm(row.label));
     if(existing){existing.keywords=row.prompt; if(row.group)existing.group=row.group;updated++;}
     else {field.options.push({value:newCatalogKey(),label:row.label,keywords:row.prompt,group:row.group||''});added++;}
   }

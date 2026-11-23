@@ -7,6 +7,7 @@ import {simpleCoverageOptions} from '@/lib/simpleCoverage';
 import BulkChoiceEditor from '@/components/BulkChoiceEditor';
 import BulkCategoryEditor from '@/components/BulkCategoryEditor';
 import BatchPromptImport from '@/components/BatchPromptImport';
+import {exportPromptBatch} from '@/lib/batchPromptImport';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { endpoints } from '@/lib/api';
@@ -68,6 +69,7 @@ export default function PromptLibraryEditor() {
   const [previewWorkflow,setPreviewWorkflow]=useState('Moss Image FinalCut Universal FP8');
   const [provider,setProvider]=useState('AI'), [suggestion,setSuggestion]=useState(null);
   const [showBatchImport,setShowBatchImport]=useState(false);
+  const [exportCategory,setExportCategory]=useState('*'), [exportSubcategory,setExportSubcategory]=useState('*');
   useEffect(() => {let live=true; endpoints.settings().then(settings => {
     if(!live)return;
     const config=settings.prompt_catalog || {sections:[]};setDraft(config);setSaved(config);setLoaded(true);
@@ -116,6 +118,13 @@ export default function PromptLibraryEditor() {
     } catch(err) {setError(err.message || 'Could not import content pack.');}
   };
   const backup = () => {const blob=new Blob([JSON.stringify(exportPromptLibrary(LIBRARY_SECTIONS,draft),null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const link=document.createElement('a');link.href=url;link.download='ultra-studio-prompt-library.json';link.click();URL.revokeObjectURL(url);};
+  const exportAiBatch = () => {
+    const data=exportPromptBatch(sections,exportCategory,exportSubcategory);
+    data.instructions='Improve each prompt for clear, model-readable image-generation wording. Keep every id, category, subcategory, label, group, array order, and JSON structure unchanged. Edit only the prompt field. Return the complete JSON object without markdown.';
+    const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),link=document.createElement('a');
+    link.href=url;link.download=`ultra-studio-prompts-${exportCategory==='*'?'all':exportCategory}${exportSubcategory==='*'?'':`-${exportSubcategory}`}.json`;link.click();URL.revokeObjectURL(url);
+    setMessage(`Exported ${data.prompts.length} prompts in a round-trip AI batch file.`);
+  };
   const restore = async event => {const file=event.target.files?.[0];event.target.value='';if(!file)return;
     try {if(file.size>PROMPT_LIBRARY_FILE_LIMIT)throw new Error('Backup is too large (maximum 2 MB).');const config=parsePromptLibraryBackup(await file.text(),file.size);
       if(!Array.isArray(config.sections) || config.sections.some(section => !section?.key || !section?.title || !Array.isArray(section.fields) || section.fields.some(field => !field?.key || !field?.label || !Array.isArray(field.options))))throw new Error('Choose a valid prompt library backup.');
@@ -146,6 +155,16 @@ export default function PromptLibraryEditor() {
       <button className={buttonClass} disabled={busy} onClick={() => {setDraft({sections:[]});setSectionKey(LIBRARY_SECTIONS[0].key);setFieldKey(LIBRARY_SECTIONS[0].fields[0].key);setMessage('Default library staged. Save to apply this reset.');setSuggestion(null);}}>Restore defaults</button>
       <span className="self-center text-xs text-zinc-500">{dirty?'Unsaved changes':'Saved library'}</span>
     </div>
+    <section className="pane space-y-3 p-4" aria-label="Export prompts for external AI editing">
+      <h2 className="font-semibold text-cyan-200">Prepare prompts for external AI editing</h2>
+      <p className="text-xs text-zinc-400">Export every prompt or narrow the file to one category and subcategory. The JSON includes stable prompt IDs and a return instruction so an external AI can revise only the wording. Reimport the edited file with Batch import prompts, review the matches, then Save library.</p>
+      <div className="flex flex-wrap items-end gap-2">
+        <label className="text-xs">Prompt set<select aria-label="Export prompt category" className={fieldClass} value={exportCategory} onChange={event=>{setExportCategory(event.target.value);setExportSubcategory('*');}}><option value="*">All prompt categories</option>{sections.map(item=><option key={item.key} value={item.key}>{item.title}</option>)}</select></label>
+        <label className="text-xs">Subcategory<select aria-label="Export prompt subcategory" className={fieldClass} value={exportSubcategory} onChange={event=>setExportSubcategory(event.target.value)}><option value="*">All subcategories</option>{(sections.find(item=>item.key===exportCategory)?.fields||[]).map(item=><option key={item.key} value={item.key}>{item.label}</option>)}</select></label>
+        <button type="button" className={buttonClass} disabled={busy||!exportPromptBatch(sections,exportCategory,exportSubcategory).prompts.length} onClick={exportAiBatch}>Export AI editing batch</button>
+        <span className="self-center text-xs text-zinc-500">{exportPromptBatch(sections,exportCategory,exportSubcategory).prompts.length} prompts</span>
+      </div>
+    </section>
     {showBatchImport&&<BatchPromptImport catalog={draft} sections={sections} onClose={()=>setShowBatchImport(false)} onApply={result=>{
       setDraft(result.catalog);setPromptPreview(null);setSuggestion(null);setError('');
       setMessage(`Batch staged: ${result.added} prompts added, ${result.updated} matching prompts updated, ${result.skipped} skipped. Review and Save library to apply.`);
