@@ -33,6 +33,20 @@ export function resolveBuilderControls(source = {}) {
   };
   dna.wardrobe = resolveWardrobeMode(dna.wardrobe);
   const p = dna.pose, f = dna.feet, w = dna.wardrobe, ws = dna.watersports;
+  // Visibility switches affect the render copy, while saved garment choices remain restorable.
+  const hiddenLayerFields = {
+    upper: ['top'], lower: ['bottom', 'skirt_style'], dress: ['dress_style'],
+    underwear: ['underwear'], hosiery: ['hosiery_type'], shoes: ['footwear', 'heel_type'],
+    accessories: ['accessories', 'glasses_style', 'glasses_color'],
+  };
+  for (const [layer, fields] of Object.entries(hiddenLayerFields)) {
+    if (w._layerVisibility?.[layer] === false) {
+      for (const field of fields) omit('wardrobe', field, `The ${layer} layer is hidden. Its saved selection stays available when the layer is turned back on.`);
+    }
+  }
+  if (Object.values(w._layerVisibility || {}).some(visible => visible === false)) {
+    omit('wardrobe', 'outfit_preset', 'An outfit preset can contain several garments, so it is inactive while individual layer visibility is customized.');
+  }
   // A named pose with defined arm placement owns the hands; do not ask the
   // same arms to occupy a second position. Custom wording remains untouched.
   const selectedPose = catalogSelection(dna, 'pose', 'action');
