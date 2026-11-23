@@ -182,3 +182,16 @@ describe('Physique 2.0 expanded range compatibility', () => {
     expect(compileModelPrompts({promptStyle:'moss',dna}).positive).toMatch(/glute volume intensity 300\/300/);
   });
 });
+
+
+it.each(['chroma','krea2','sdxl','zimage','pony','flux2_klein'])('compiles new shoulder arm and calf controls for %s',promptStyle=>{
+ const dna=recipe();
+ dna.physique={...dna.physique,shoulder_width:95,clavicle_definition:80,upper_arm_fullness:90,arm_muscularity:75,calf_fullness:85,ankle_taper:60};
+ const positive=compileModelPrompts({promptStyle,dna}).positive;
+ expect(positive).toContain('very broad shoulders with a strong, expansive upper-body frame');
+ expect(positive).toContain('strong high-definition clavicle line');
+ expect(positive).toContain('very full upper arms with substantial volume');
+ expect(positive).toContain('pronounced athletic arm definition');
+ expect(positive).toContain('very full calves with substantial lower-leg volume');
+ expect(positive).toContain('defined taper from calf to ankle');
+});
