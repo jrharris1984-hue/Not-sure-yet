@@ -1,5 +1,5 @@
 import { DEFAULT_DNA } from './dna';
-import { compileModelPrompts } from './modelPromptCompilers';
+import { compileModelPrompts, resolvePromptCompiler } from './modelPromptCompilers';
 import { resolvePhysiqueControls } from './physiqueControls';
 
 const recipe = () => JSON.parse(JSON.stringify(DEFAULT_DNA));
@@ -107,4 +107,17 @@ it('does not shrink Hyper and Huge physique presets in Z-Image normalization', (
   expect(positive).toMatch(/hyper-scale bust|hyper.*bust/i);
   expect(positive).toMatch(/fantasy-scale hyper glute|hyper.*glute/i);
   expect(positive).not.toMatch(/very large breasts with believable weight|extremely full rounded buttocks/i);
+});
+
+it.each(['Moss Image FinalCut Universal FP8', 'HyperMoss Lush Turbo int8 V1'])('routes %s to the MOSS compiler', workflowName => {
+  expect(resolvePromptCompiler({ workflowName })).toBe('moss');
+});
+it('preserves MOSS extreme regional selections and separate glute shape', () => {
+  const dna = recipe();
+  dna.physique = { ...dna.physique, hips: 'extreme', thighs: 'massive', butt_scale: 225, glute_shape: 'heart-shaped' };
+  const { positive } = compileModelPrompts({ promptStyle: 'moss', dna });
+  expect(positive).toMatch(/dramatically broad hip silhouette/i);
+  expect(positive).toMatch(/extremely broad upper thighs/i);
+  expect(positive).toMatch(/glute volume intensity 225\/300/);
+  expect(positive).toMatch(/heart.*glute contour/i);
 });
