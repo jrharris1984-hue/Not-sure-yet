@@ -18,6 +18,7 @@ from prompt_catalog import validate_prompt_catalog
 from qwen_test_models import resolve_qwen_test_models
 from assistant_research import AssistantResearchMiddleware, enrich_assistant_request
 from qwen_reference_edit import configure_reference_edit, resolve_reference_models, configure_camera_strength
+from workflow_compatibility import validate_workflow_graph
 from ai_research import research_sources, research_messages, research_response, prompt_research_query, prompt_research_messages, prompt_research_metadata
 """Ultra Studio Character DNA Builder — FastAPI backend."""
 from fastapi import FastAPI, APIRouter, HTTPException, Body, BackgroundTasks, WebSocket, WebSocketDisconnect, Query, UploadFile, File, Form
@@ -814,6 +815,33 @@ async def workflow_loras(wid: str):
     except Exception:
         return {"loras": []}
     return {"loras": _detect_loras(wf)}
+
+
+@api.post("/workflows/{wid}/validate")
+async def validate_saved_workflow(wid: str):
+    """Compare a saved API graph with the currently connected ComfyUI node schema."""
+    s = await get_settings()
+    wf_template = next((w for w in s.workflows if w.id == wid), None)
+    if not wf_template:
+        raise HTTPException(404, "The selected workflow no longer exists.")
+    try:
+        workflow = json.loads(wf_template.json_str or "")
+    except (TypeError, json.JSONDecodeError):
+        return {"workflow_id": wid, "workflow_name": wf_template.name,
+                **validate_workflow_graph(None, {})}
+
+    try:
+        async with httpx.AsyncClient(timeout=12.0) as hc:
+            response = await hc.get(f"{s.comfyui_url.rstrip('/')}/object_info")
+        response.raise_for_status()
+        object_info = response.json()
+    except Exception as exc:
+        raise HTTPException(502, f"Could not validate against ComfyUI: {exc}")
+
+    result = validate_workflow_graph(workflow, object_info)
+    result.update({"workflow_id": wid, "workflow_name": wf_template.name,
+                   "schema_source": "connected ComfyUI /object_info"})
+    return result
 
 
 @api.get("/comfyui/loras")

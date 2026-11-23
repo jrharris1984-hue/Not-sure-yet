@@ -18,11 +18,19 @@ const KIND_OPTIONS = [
   { value: "face", label: "Face-preserved" },
 ];
 
-function WorkflowRow({ w, isDefault, isFallback, isFirst, isLast, onSetDefault, onDelete, onSave, onMoveUp, onMoveDown, builderVisible, onBuilderVisibility }) {
+function WorkflowRow({ w, isDefault, isFallback, isFirst, isLast, onSetDefault, onDelete, onSave, onMoveUp, onMoveDown, onValidate, builderVisible, onBuilderVisibility }) {
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState(w);
+  const [validation, setValidation] = useState(null);
+  const [validating, setValidating] = useState(false);
   useEffect(() => setForm(w), [w]);
   const dirty = JSON.stringify(form) !== JSON.stringify(w);
+  const validate = async () => {
+    setValidating(true);
+    try { setValidation(await onValidate(w.id)); }
+    catch (error) { setValidation({ error: error?.response?.data?.detail || "Could not reach ComfyUI for validation." }); }
+    finally { setValidating(false); }
+  };
 
   return (
     <div className="border hairline rounded-lg overflow-hidden bg-elevated/60" data-testid={`workflow-row-${w.id}`}>
@@ -101,6 +109,16 @@ function WorkflowRow({ w, isDefault, isFallback, isFirst, isLast, onSetDefault, 
           </label>
           <div className="flex flex-wrap gap-2">
             <button
+              type="button"
+              onClick={validate}
+              disabled={validating || dirty || !w.json_str?.trim()}
+              data-testid={`btn-workflow-validate-${w.id}`}
+              className="inline-flex items-center gap-1.5 rounded-md border border-cyan-500/40 text-cyan-200 hover:bg-cyan-500/10 disabled:opacity-40 text-xs font-semibold px-3 py-1.5"
+              title={dirty ? "Save the workflow before validating its saved graph." : "Check this graph against the connected ComfyUI node schema."}
+            >
+              {validating ? "Checking ComfyUI…" : "Check compatibility"}
+            </button>
+            <button
               onClick={() => onSave({ ...form, auto_detect: true })}
               disabled={!dirty}
               data-testid={`btn-workflow-save-${w.id}`}
@@ -142,6 +160,13 @@ function WorkflowRow({ w, isDefault, isFallback, isFirst, isLast, onSetDefault, 
               <Trash2 className="h-3.5 w-3.5" />
             </button>
           </div>
+          {validation && <div className={`rounded-md border p-3 text-xs space-y-1 ${validation.error || !validation.compatible ? "border-amber-500/40 bg-amber-500/5 text-amber-100" : "border-emerald-500/40 bg-emerald-500/5 text-emerald-100"}`} role="status" data-testid={`workflow-validation-${w.id}`}>
+            {validation.error ? <p>{validation.error}</p> : <>
+              <p className="font-semibold">{validation.compatible ? `Graph compatible · ${validation.checked_nodes} nodes checked` : `Graph needs attention · ${validation.checked_nodes} nodes checked`}</p>
+              {validation.schema_source && <p className="text-[10px] opacity-70">Checked against {validation.schema_source}. This does not verify installed model files or render quality.</p>}
+              {validation.issues?.slice(0, 8).map((issue, index) => <p key={`${issue.code}-${issue.node_id || "graph"}-${index}`}>Node {issue.node_id ? `${issue.node_id}: ` : ""}{issue.message}</p>)}
+              {(validation.issues?.length || 0) > 8 && <p>And {validation.issues.length - 8} more issue(s).</p>}
+            </>}</div>}
         </div>
       )}
     </div>
@@ -338,6 +363,7 @@ export default function Settings() {
               }}
               onDelete={(id) => deleteWf.mutate(id)}
               onSave={(payload) => upsertWf.mutate(payload)}
+              onValidate={endpoints.validateWorkflow}
             />
             </div>
           ))}

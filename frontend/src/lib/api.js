@@ -136,6 +136,7 @@ export const endpoints = {
   pollRender: (id) => api.post(`/renders/${id}/poll`).then((r) => r.data),
   cancelRender: (id) => api.post(`/renders/${id}/cancel`).then((r) => r.data),
   listWorkflows: () => api.get("/workflows").then((r) => r.data),
+  validateWorkflow: (id) => api.post(`/workflows/${id}/validate`).then((r) => r.data),
   upsertWorkflow: (body) => api.post("/workflows", body).then((r) => r.data),
   deleteWorkflow: (id) => api.delete(`/workflows/${id}`).then((r) => r.data),
   seedWorkflows: () => api.post("/workflows/seed").then((r) => r.data),
