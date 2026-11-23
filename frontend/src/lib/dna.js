@@ -1,7 +1,7 @@
 import { INTIMATE_EXTRA_FIELDS, intimateAppearancePrompt } from './intimateAppearance';
 import { physiqueDetailPrompt, PHYSIQUE_DETAIL_KEYS } from './physiqueDetails';
 import { physiqueScalePrompt } from './physiqueScalePrompts';
-import {EXTRA_CAMERA_ANGLES,EXTRA_SUBJECT_VIEWS,SPHERICAL_SUBJECT_VIEWS} from './cameraViewChoices';
+import {EXTRA_CAMERA_ANGLES,EXTRA_SUBJECT_VIEWS,SPHERICAL_SUBJECT_VIEWS,subjectOrientationDirective} from './cameraViewChoices';
 import {layerVisible} from './wardrobeLayerOverrides';
 import characterVibeOptions from './characterVibeOptions.json';
 import { expandEverydayWardrobe } from './everydayWardrobe';
@@ -1360,6 +1360,7 @@ function _veniceSubjectBlock(dna = {}, opts = {}) {
   const pose = dna.pose || {};
   const poseCore = exp("pose", "action");
   const poseFraming = join([
+    subjectOrientationDirective(pose.angle),
     SPHERICAL_SUBJECT_VIEWS[pose.angle] || exp("pose", "angle"),
     exp("pose", "distance"),
     pose.focus && pose.focus !== "full frame" && exp("pose", "focus"),
