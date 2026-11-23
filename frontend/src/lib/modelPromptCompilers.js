@@ -1,5 +1,6 @@
 import {cameraViewPrompt,subjectViewPrompt} from './cameraViewChoices';
 import { normalizePromptStyle } from "./promptModelAliases";
+import { composeMossPrompt } from "./mossPromptProfile";
 import { protectModelPromptOrder } from "./modelPromptOrder";
 import { buildSceneReview } from './sceneReview';
 import { buildSceneNarrative } from "./sceneNarrative";
@@ -66,24 +67,6 @@ const chromaProgressiveScale = (value, noun, levels) => {
   const step = Math.min(levels.length - 1, Math.max(0, Math.ceil(n / 10) - 1));
   return `${levels[step]} ${noun} (size intensity ${n}/100)`;
 };
-
-// MOSS benefits from a compact visual hierarchy rather than repeated intensity
-// tokens. This lead describes the dominant silhouette without replacing the
-// independent regional controls in the full DNA prompt.
-function mossSilhouetteLead(dna = {}) {
-  const ph = dna.physique || {};
-  const features = [];
-  const hips = Number(ph.hip_scale) > 0 ? Number(ph.hip_scale) >= 80 : ph.hips === 'extreme';
-  const thighs = Number(ph.thigh_scale) > 0 ? Number(ph.thigh_scale) >= 80 : ph.thighs === 'massive';
-  const glutes = Number(ph.butt_scale) > 0 ? Number(ph.butt_scale) >= 200 : ph.butt === 'hyper';
-  const bust = Number(ph.bust_scale) > 0 ? Number(ph.bust_scale) >= 80 : ['hyper', 'enormous'].includes(ph.bust);
-  if (hips) features.push('dramatically broad lateral hip silhouette');
-  if (thighs) features.push('exceptionally full upper-thigh volume');
-  if (glutes) features.push('fantasy-scale rearward glute projection');
-  if (bust) features.push('dramatically enlarged bust silhouette');
-  if (!features.length) return '';
-  return `MOSS VISUAL PRIORITY: ${features.join('; ')}; show the selected silhouette clearly in the chosen camera framing, with coherent connected anatomy; preserve independently selected shapes and proportions.`;
-}
 
 function hasDetailedBodyScale(dna = {}) {
   const ph = dna.physique || {};
@@ -1113,17 +1096,11 @@ function compileModelPromptsRaw({
     // Preserve regional shape and volume wording independently.
     const prompts = basePrompts({ dna: primaryGuard.dna, subjects: guardedSubjects, isMulti, raunch });
     const prioritized = withPriorityGuard(prompts, "standard");
-    const lead = isMulti
-      ? guardedSubjects.map((subject, index) => {
-          const cue = mossSilhouetteLead(subject.dna);
-          return cue ? `Subject ${subject.label || String.fromCharCode(65 + index)}: ${cue}` : '';
-        }).filter(Boolean).join(' ')
-      : mossSilhouetteLead(primaryGuard.dna);
-    return lead ? {
-      ...prioritized,
-      positive: `${lead} ${prioritized.positive}`,
-      promptWords: clean(`${lead} ${prioritized.positive}`).split(/\\s+/).filter(Boolean).length,
-    } : prioritized;
+    const moss = composeMossPrompt(prioritized.positive, isMulti
+      ? guardedSubjects
+      : [{ dna: primaryGuard.dna }]);
+    return { ...prioritized, ...moss };
+
   }
   if (compiler === "pony") return withPriorityGuard(
     isMulti ? buildMultiPonyPrompts(guardedSubjects, { raunch }) : buildPonyPrompts(primaryGuard.dna, { raunch }),
