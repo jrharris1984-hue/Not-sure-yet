@@ -45,7 +45,8 @@ test('exports round-trip IDs and applies AI wording to the exact choice even whe
   const catalog={sections:[{key:'pose',title:'Pose',fields:[{key:'action',label:'Action',type:'chips',options:[{value:'runway_walk',label:'Runway walk',keywords:'walk with confidence'}]}]}]};
   const batch=exportPromptBatch([{key:'pose',title:'Pose',fields:catalog.sections[0].fields}], 'pose','action');
   expect(batch.prompts[0]).toMatchObject({id:'pose::action::runway_walk',label:'Runway walk',prompt:'walk with confidence'});
-  const row=prepareBatchPromptRows([{...batch.prompts[0],label:'Confident runway stride',prompt:'A poised editorial runway stride'}],[{key:'pose',title:'Pose',fields:catalog.sections[0].fields}]);
+  const roundTrip=parseBatchPromptInput(JSON.stringify(batch)).map(prompt=>({...prompt,label:'Confident runway stride',prompt:'A poised editorial runway stride'}));
+  const row=prepareBatchPromptRows(roundTrip,[{key:'pose',title:'Pose',fields:catalog.sections[0].fields}]);
   expect(row[0]).toMatchObject({destination:'pose::action',change:'update',existingValue:'runway_walk'});
   const result=applyBatchPromptRows(catalog,row,[{key:'pose',title:'Pose',fields:catalog.sections[0].fields}]);
   expect(result.catalog.sections[0].fields[0].options).toEqual([{value:'runway_walk',label:'Runway walk',keywords:'A poised editorial runway stride'}]);
