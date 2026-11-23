@@ -51,7 +51,11 @@ export function regionalPhysiquePrompt(region, preset, slider = 0) {
       'thick upper thighs with substantial upper-leg volume',
       'extremely thick upper thighs with dramatic upper-leg volume',
     ];
-  return descriptions[level];
+  // Keep the silhouette descriptor stable within a band while preserving the
+  // exact slider position for downstream prompt compilation and comparisons.
+  // This avoids identical prompts for every value in a twenty-point range.
+  const axis = region === 'hips' ? 'lateral hip width' : 'upper-thigh volume';
+  return `${descriptions[level]} (${axis} intensity ${Math.round(amount)}/100)`;
 }
 
 export const BUST_SHAPES = {
