@@ -1,7 +1,7 @@
 import {createLook3,applyLook3,compareLooks3} from './studio3WardrobeScenes';
 import {directorPlan3,directorApplySuggestion3} from './studio3Director';
 import {videoTimeline3,addVideoClip3,timelineDuration3} from './studio3VideoTimeline';
-import {generationPreflight3} from './studio3GenerationPreflight';
+import {generationPreflight3,workflowCompatibility3} from './studio3GenerationPreflight';
 import {STUDIO3_STEPS,nextStudio3Step} from './studio3Navigation';
 test('look edits preserve original character and unrelated fields',()=>{
  const dna={identity:{name:'A'},wardrobe:{outfit:'dress'},scene:{location:'studio'}};
@@ -25,6 +25,17 @@ test('video timeline computes duration without modifying source',()=>{
 });
 test('preflight blocks wrong workflow and bad seed',()=>{
  expect(generationPreflight3({workflow:{id:'x',kind:'video'},seed:-1}).ready).toBe(false);
+});
+test('video workflow kinds are compatible only with video generation',()=>{
+ expect(workflowCompatibility3({kind:'text_video'},'text-to-video').compatible).toBe(true);
+ expect(workflowCompatibility3({kind:'video'},'i2v').compatible).toBe(true);
+ expect(workflowCompatibility3({kind:'image'},'text_video').compatible).toBe(false);
+ expect(generationPreflight3({workflow:{id:'i2v',kind:'video'},kind:'image-to-video'}).errors).toContain('Choose a starting image for image-to-video generation.');
+ expect(generationPreflight3({workflow:{id:'i2v',kind:'video'},kind:'image-to-video',sourceImage:'input/start.png'}).ready).toBe(true);
+});
+test('blank seeds remain optional while nonnumeric seeds are rejected',()=>{
+ expect(generationPreflight3({workflow:{id:'image',kind:'image'},seed:''}).ready).toBe(true);
+ expect(generationPreflight3({workflow:{id:'image',kind:'image'},seed:'not-a-seed'}).errors).toContain('Seed must be a nonnegative integer.');
 });
 test('guided navigation is bounded',()=>{
  expect(nextStudio3Step('results',1)).toBe('results');
