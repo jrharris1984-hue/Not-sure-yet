@@ -27,31 +27,40 @@ export const SECTIONS = [
     key: "identity",
     title: "Identity",
     fields: [
-      { key: "gender", type: "chips", label: "Gender", options: ["female", "male"] },
+      { key: "gender", type: "chips", label: "Gender", options: ["female", "male", "non-binary", "androgynous"] },
+      { key: "presentation", type: "chips", label: "Presentation", help: "Optional visual presentation cue. This does not change the selected gender.", options: ["feminine-presenting", "masculine-presenting", "androgynous-presenting", "softly feminine", "boldly feminine", "softly masculine", "gender-neutral styling"] },
       { key: "age", type: "slider", label: "Age (adult)", min: 18, max: 80, step: 1, defaultValue: 30, help: "Changing age updates skin texture automatically. New images use age-specific facial detail; hair color and cosmetic finishes stay separate." },
       { key: "ethnicity", type: "chips", label: "Ethnicity", groups: HERITAGE_GROUPS, optionLabels: HERITAGE_LABELS },
       { key: "archetype", type: "chips", label: "Character vibe (optional)", help: "Choose a personality or mood, or leave this blank. Boudoir & portrait choices describe presence only. Older themed presets may also suggest styling.", optionLabels: Object.fromEntries(characterVibeOptions.map(option=>[option.value,option.label])), groups: [
         { name: "Boudoir & portrait", options: characterVibeOptions.map(option=>option.value) },
         { name: "Everyday", options: ["girl next door", "athlete", "artist", "socialite", "scholar"] },
+        { name: "Professional & leadership", options: ["creative director", "entrepreneur", "executive", "diplomat", "researcher", "educator", "physician", "architect", "attorney", "journalist", "mentor"] },
+        { name: "Creative & cultural", options: ["photographer", "fashion designer", "dancer", "musician", "painter", "novelist", "filmmaker", "chef", "stylist", "curator", "ceramic artist"] },
+        { name: "Adventure & athletics", options: ["endurance athlete", "climber", "martial artist", "equestrian", "surfer", "mountaineer", "explorer", "outdoor guide", "runner", "swimmer"] },
+        { name: "Personality & presence", options: ["warm and approachable", "witty and observant", "analytical and composed", "quietly confident", "charismatic and expressive", "optimistic and energetic", "rebellious and independent", "thoughtful and reserved", "curious and adventurous", "calm and grounded"] },
         { name: "Royal & cinematic", options: ["queen", "Bollywood princess", "Indian royal", "Arabian princess", "desert queen", "regal heroine"] },
         { name: "Fantasy & action", options: ["warrior", "pirate", "superheroine", "sorceress", "space explorer"] },
         { name: "Style", options: ["femme fatale", "cyberpunk", "goth", "cottagecore", "vintage starlet"] },
       ] },
       { key: "name", type: "text", label: "Name" },
+      { key: "identity_details", type: "text", label: "Distinctive identity details", help: "Optional short cues such as profession, signature style, or recognizable personal details." },
     ],
   },
   {
     key: "physique",
     title: "Physique",
     fields: [
-      { key: "height", type: "chips", label: "Height", options: ["petite", "short", "average", "tall", "statuesque"] },
-      { key: "body_type", type: "chips", label: "Body type", options: ["slim", "athletic", "curvy", "voluptuous", "plus size", "hourglass", "pear", "apple", "bombshell", "amazonian"] },
+      { key: "height", type: "chips", label: "Height", options: ["very petite", "petite", "short", "slightly short", "average", "above average", "tall", "very tall", "statuesque", "towering"] },
+      { key: "body_type", type: "chips", label: "Body type", groups: [
+        { name: "Build", options: ["slim", "lean", "wiry", "lithe", "athletic", "soft athletic", "muscular", "stocky", "compact", "long-limbed", "powerlifter build", "bodybuilder build"] },
+        { name: "Silhouette", options: ["curvy", "voluptuous", "plus size", "rounded plus-size", "hourglass", "petite hourglass", "athletic hourglass", "pear", "pear-shaped", "apple", "apple-shaped", "rectangle", "inverted triangle", "broad-shouldered", "bombshell", "amazonian"] },
+      ] },
       { key: "muscularity", type: "slider", label: "Muscularity", min: 0, max: 100, step: 1 },
       { key: "bust", type: "chips", label: "Bust size", options: ["flat", "small", "medium", "large", "very large", "huge", "enormous", "hyper"] },
       { key: "bust_scale", type: "slider", label: "Bust size", min: 0, max: 2000, step: 1, defaultValue: 0 },
-      { key: "bust_shape", type: "chips", label: "Bust shape", options: ["natural", "perky", "round", "teardrop", "athletic", "augmented", "gravity-defying"] },
+      { key: "bust_shape", type: "chips", label: "Bust shape", options: ["natural", "soft natural", "full lower pole", "rounded upper fullness", "wide-set", "close-set", "asymmetric", "perky", "round", "teardrop", "athletic", "augmented", "gravity-defying"] },
       { key: "implant_volume", type: "slider", label: "Implant visual size (cc reference; 0 = none)", min: 0, max: 5000, step: 50, defaultValue: 0, help: "Prompts include the selected visual-size value and projection description. This is a visual reference, not a medical measurement." },
-      { key: "butt", type: "chips", label: "Butt", options: ["flat", "small", "toned", "round", "bubble", "large", "very large", "huge", "hyper"] },
+      { key: "butt", type: "chips", label: "Butt", options: ["flat", "small", "toned", "compact rounded", "heart-shaped", "wide and soft", "low-set full", "high-set lifted", "shelf-shaped", "projected", "round", "bubble", "large", "very large", "huge", "hyper"] },
       { key: "butt_scale", type: "slider", label: "Glute size", min: 0, max: 2000, step: 1, defaultValue: 0, help: "0 keeps the Butt preset. 1–100 sets size; 101–300 retains the original fantasy scale; 301–500 adds surreal fantasy volume; 501–1000 moves into Beyond Extreme; 1001–2000 reaches the upper fantasy range. Shape is controlled separately. A rear or three-quarter view makes the silhouette easier to see." },
       { key: "glute_shape", type: "chips", label: "Glute shape / augmentation look", groups: [
         { name: "Natural contours", options: ["natural rounded", "athletic lifted", "soft pear-shaped", "heart-shaped", "gentle teardrop glutes", "soft lower fullness", "natural low-set fullness", "compact rounded glutes", "wide natural glute contour", "subtle side curvature"] },
@@ -60,11 +69,11 @@ export const SECTIONS = [
         { name: "Width & distribution", options: ["broad lateral glute flare", "narrow high-projection glutes", "wide heart-shaped silhouette", "bottom-heavy glute fullness", "upper-heavy glute fullness", "evenly distributed rounded fullness", "strong outer glute curve", "full side-to-rear transition"] },
         { name: "Fantasy & stylized", options: ["fantasy oversized glutes", "extreme round projection", "hyper-round fantasy glutes", "monumental rearward projection", "impossibly broad rounded silhouette", "fantasy bubble shape", "extreme shelf-like upper fullness", "colossal heart-shaped lower silhouette", "surreal spherical projection"] },
       ] },
-      { key: "thighs", type: "chips", label: "Thighs", options: ["slim", "toned", "athletic", "thick", "very thick", "massive"] },
+      { key: "thighs", type: "chips", label: "Thighs", options: ["slim", "lean", "toned", "athletic", "muscular", "full", "thick", "very thick", "massive"] },
       { key: "thigh_scale", type: "slider", label: "Thigh size", min: 0, max: 750, step: 1, defaultValue: 0 },
-      { key: "hips", type: "chips", label: "Hips", options: ["narrow", "average", "wide", "very wide", "extreme"] },
+      { key: "hips", type: "chips", label: "Hips", options: ["narrow", "slightly narrow", "average", "rounded", "wide", "very wide", "pear-shaped", "broad pelvic frame", "extreme"] },
       { key: "hip_scale", type: "slider", label: "Hip width", min: 0, max: 2000, step: 1, defaultValue: 0 },
-      { key: "waist", type: "chips", label: "Waist", options: ["thick", "average", "slim", "cinched", "tiny", "wasp-thin"] },
+      { key: "waist", type: "chips", label: "Waist", options: ["thick", "soft full", "average", "straight", "slim", "defined", "cinched", "tiny", "wasp-thin"] },
       { key: "waist_scale", type: "slider", label: "Waist width", min: 0, max: 500, step: 1, defaultValue: 0 },
       { key: "bust_projection", type: "slider", label: "Bust forward projection", min: 0, max: 100, step: 1, defaultValue: 0, help: "Independent of bust volume. Zero leaves projection unspecified." },
       { key: "glute_projection", type: "slider", label: "Glute rear projection", min: 0, max: 100, step: 1, defaultValue: 0, help: "Independent of glute volume. Zero leaves projection unspecified." },
@@ -72,8 +81,8 @@ export const SECTIONS = [
       { key: "thigh_fullness", type: "slider", label: "Thigh lateral fullness", min: 0, max: 100, step: 1, defaultValue: 0 },
       { key: "waist_narrowness", type: "slider", label: "Waist narrowness", min: 0, max: 100, step: 1, defaultValue: 0, help: "Narrowness is independent of the waist width control; avoid setting both to maximum." },
       ...PHYSIQUE_DETAIL_KEYS.map(key=>({key,type:"slider",label:key.replace(/_/g," "),min:0,max:100,step:1,defaultValue:0})),
-      { key: "shoulders", type: "chips", label: "Shoulders", options: ["narrow", "average", "broad", "athletic"] },
-      { key: "legs", type: "chips", label: "Legs", options: ["short", "average", "long", "endless"] },
+      { key: "shoulders", type: "chips", label: "Shoulders", options: ["very narrow", "narrow", "sloped", "average", "gently squared", "broad", "broad athletic", "strongly squared", "athletic"] },
+      { key: "legs", type: "chips", label: "Legs", options: ["short", "compact", "average", "long", "long-limbed", "slender", "full", "muscular", "endless"] },
       { key: "proportions", type: "text", label: "Extra proportions notes" },
     ],
   },
@@ -1259,7 +1268,7 @@ function _veniceSubjectBlock(dna = {}, opts = {}) {
   const height = ph.height && ph.height !== "average" ? `${ph.height} height` : "";
   const musc = ph.muscularity > 85 ? "highly muscular fitness physique"
              : ph.muscularity > 60 ? "athletic toned build" : "";
-  const curveBuiltIn = ["curvy", "voluptuous", "plus size", "hourglass", "bombshell"].includes(ph.body_type);
+  const curveBuiltIn = ["curvy", "voluptuous", "plus size", "rounded plus-size", "hourglass", "petite hourglass", "athletic hourglass", "pear", "pear-shaped", "apple", "apple-shaped", "bombshell", "amazonian"].includes(ph.body_type);
   const curveModifier = ph.curves > 85 && !curveBuiltIn ? "pronounced feminine curves"
                       : ph.curves > 60 && !curveBuiltIn ? "curved feminine silhouette" : "";
   const bodyProfileBase = join([bodyType, curveModifier]);
@@ -1315,7 +1324,7 @@ function _veniceSubjectBlock(dna = {}, opts = {}) {
       : skin.glow > 60 ? "dewy glowing luminous skin, healthy sheen" : "",
   ]);
   const nameTag = id.name ? `portrait of ${id.name}` : "";
-  const subject = join([nameTag, subjectHead, subjectBody, subjectFace, hairStr, hairExtras, skinDetails]);
+  const subject = join([nameTag, subjectHead, id.presentation, id.archetype && id.archetype !== "none" ? `${id.archetype} character presence` : "", id.identity_details, subjectBody, subjectFace, hairStr, hairExtras, skinDetails]);
 
   // -------- Wardrobe --------
   const wd = resolveWardrobeMode(dna.wardrobe || {});
