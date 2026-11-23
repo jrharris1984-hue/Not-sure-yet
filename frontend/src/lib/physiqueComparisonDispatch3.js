@@ -1,3 +1,4 @@
+import {regionFields} from './physiqueStudio3';
 import {compileModelPrompts} from './modelPromptCompilers';
 import {comparisonIsControlled} from './physiqueComparison3';
 
@@ -10,7 +11,11 @@ export const comparisonDispatches=(plan,character,workflow)=>{
  const originalSubjects=character.subjects||[];
  return plan.frames.map(frame=>{
   const original=originalSubjects[0]?.dna||character.dna||{};
-  const physique={...original.physique,...frame.dna};
+  const physique={...original.physique};
+  for(const key of regionFields(plan.region)){
+   if(Object.prototype.hasOwnProperty.call(frame.dna,key))physique[key]=frame.dna[key];
+   else delete physique[key];
+  }
   const dna={...original,physique,pose:{...original.pose,action:frame.pose,angle:frame.subjectView},camera:{...original.camera,angle:frame.cameraAngle}};
   const subjects=originalSubjects.map((subject,index)=>index===0?{...subject,dna}:{...subject});
   const compiled=compileModelPrompts({
