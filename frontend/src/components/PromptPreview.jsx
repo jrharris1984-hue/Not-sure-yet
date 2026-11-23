@@ -1,3 +1,4 @@
+import MossPromptInspector from './MossPromptInspector';
 import SceneReviewPanel from './SceneReviewPanel';
 import SelectionPromptAudit from './SelectionPromptAudit';
 import { Copy, Check, ShieldCheck, Wand2, Undo2, AlertTriangle, Sparkles, Loader2, ChevronDown, Pencil } from "lucide-react";
@@ -109,6 +110,7 @@ export default function PromptPreview({ learningPanel, positive, negative, dna, 
         <div className="flex gap-3 text-xs"><button type="button" disabled={improving || suggestionStale || !aiSuggestion.positive.trim()} onClick={onApplySuggestion} className="text-cyan-200">Apply AI suggestion</button><button type="button" disabled={improving} onClick={onDiscardSuggestion}>Discard AI suggestion</button></div>
       </section>}
       <SelectionPromptAudit positive={positive} manifest={compilerMeta?.selectionManifest}/>
+      <MossPromptInspector positive={positive} compilerMeta={compilerMeta} />
       <details className="rounded-lg border hairline bg-black/20 p-3 text-xs text-zinc-400" data-testid="prompt-length-review">
         <summary className="cursor-pointer">Length & selection review · ~{tokens} tokens · {String(positive || "").length} characters</summary>
         <p className="mt-2">App guidance for {quality.profileLabel}: about {quality.warningTokens} tokens. This is an estimate, not a confirmed encoder limit. Sending more text does not guarantee the model uses every detail.</p>
