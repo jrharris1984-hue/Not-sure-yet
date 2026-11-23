@@ -1,6 +1,7 @@
 import CameraOrbit3 from "@/components/CameraOrbit3";
 import React from "react";
 import {updateShot,reorderShot,duplicateShot,activeShots} from "@/lib/shotPlan3";
+import Studio3SavedLooks from "@/components/Studio3SavedLooks";
 export const STUDIO3_VIEWS=["front","back","rear left three-quarter","rear right three-quarter","left profile","right profile","back from below","back from above","front left three-quarter","front right three-quarter"];
 export const STUDIO3_CAMERAS=["eye-level","low","high","rear low upward","rear high downward","side profile low upward","side profile high downward"];
 export const STUDIO3_POSES=["standing","standing hip out","standing hands on hips","walking","sitting on edge","leaning wall","over shoulder look","lying side","kneeling upright"];
@@ -8,6 +9,7 @@ const Select=({label,value,options,onChange})=><label className="block text-xs t
 export default function ShotStoryboard3({plan,onChange,outfitOptions=[]}){
   return <section className="pane p-4 space-y-3" data-testid="studio3-storyboard">
     <div><h2 className="text-lg font-bold">3.0 Shot Storyboard</h2><p className="text-sm text-zinc-400">Edit individual shots. Disabled shots will not be queued. Preview cards describe the plan, not rendered images.</p></div>
+    <Studio3SavedLooks plan={plan} onApply={onChange}/>
     <div className="text-xs text-amber-200">{activeShots(plan).length} enabled of {plan.shots.length} shots</div>
     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">{plan.shots.map((shot,index)=><article key={shot.id} className={`rounded-xl border p-3 space-y-3 ${shot.enabled?'border-zinc-700':'border-zinc-800 opacity-60'}`}>
       <div className="flex items-center justify-between gap-2"><label className="flex items-center gap-2 text-sm font-semibold"><input type="checkbox" checked={shot.enabled} onChange={e=>onChange(updateShot(plan,shot.id,{enabled:e.target.checked}))}/>{shot.label}</label><div className="flex gap-1"><button type="button" className="chip" disabled={index===0} onClick={()=>onChange(reorderShot(plan,index,index-1))} aria-label={`Move ${shot.label} earlier`}>↑</button><button type="button" className="chip" disabled={index===plan.shots.length-1} onClick={()=>onChange(reorderShot(plan,index,index+1))} aria-label={`Move ${shot.label} later`}>↓</button><button type="button" className="chip" disabled={plan.shots.length>=48} onClick={()=>onChange(duplicateShot(plan,shot.id))}>Copy</button></div></div>
