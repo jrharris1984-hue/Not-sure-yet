@@ -1,4 +1,5 @@
-import {useState} from 'react';
+import {useState,useRef} from 'react';
+import {applyPhysiquePreset,restorePhysiqueRegion,physiqueRegionDifferences} from '@/lib/physiqueStudio3';
 import {PHYSIQUE_DETAIL_GROUPS} from '@/lib/physiqueDetails';
 import {physiqueScalePrompt} from '@/lib/physiqueScalePrompts';
 const regions=[
@@ -12,6 +13,8 @@ const shapeKeys=['roundness','thickness','side_fullness','outer_curve','front_pr
 const modes=[['Natural',1,100],['Enhanced',101,300],['Extreme',301,600],['Fantasy',601,1000],['Beyond fantasy',1001,2000]];
 export default function PhysiqueStudio({value,onChange,locked=false,fieldLocks={}}){
  const [active,setActive]=useState('Breasts');
+ const baseline=useRef({...value});
+ const [compare,setCompare]=useState(false);
  const region=regions.find(r=>r.name===active);
  const group=PHYSIQUE_DETAIL_GROUPS.find(g=>g.name===active);
  const amount=Number(value[region.key]||0);
@@ -21,6 +24,12 @@ export default function PhysiqueStudio({value,onChange,locked=false,fieldLocks={
  return <section className="border border-zinc-700 rounded-xl p-3 sm:p-4 space-y-4" aria-label="Physique Studio 3.0" data-testid="physique-studio">
   <div><h3 className="font-semibold text-lg">Physique Studio 3.0</h3><p className="text-xs text-zinc-400">Choose a region, then refine its volume and silhouette. Zero retains the original preset.</p></div>
   <div className="grid grid-cols-2 sm:grid-cols-4 gap-2" role="group" aria-label="Body regions">{regions.map(r=><button type="button" key={r.name} aria-pressed={active===r.name} onClick={()=>setActive(r.name)} className={`rounded-lg min-h-11 border px-2 py-2 text-sm ${active===r.name?'border-amber-400 bg-amber-500/10':'border-zinc-700'}`}>{r.name}</button>)}</div>
+  <div className="rounded-lg border border-zinc-700 p-3 space-y-2" data-testid="physique3-region-presets">
+   <div className="flex flex-wrap justify-between items-center gap-2"><strong className="text-sm">{active} · Shape presets</strong><button type="button" className="text-xs underline" onClick={()=>setCompare(v=>!v)}>{compare?'Hide comparison':'Compare with starting values'}</button></div>
+   <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">{['subtle','balanced','pronounced','dramatic'].map(preset=><button key={preset} type="button" disabled={locked} onClick={()=>onChange(applyPhysiquePreset(value,active,preset,fieldLocks))} className="min-h-11 rounded-lg border border-zinc-600 px-2 text-xs capitalize hover:border-amber-400">{preset}</button>)}</div>
+   <button type="button" disabled={locked} className="text-xs text-amber-200 underline" onClick={()=>onChange(restorePhysiqueRegion(value,baseline.current,active,fieldLocks))}>Restore {active} to starting values</button>
+   {compare&&<div className="rounded-lg bg-zinc-900 p-2 text-xs space-y-1"><p className="text-zinc-400">Numeric DNA comparison, not a rendered preview.</p>{physiqueRegionDifferences(baseline.current,value,active).length?physiqueRegionDifferences(baseline.current,value,active).map(row=><div key={row.key} className="flex justify-between gap-2"><span>{row.key.replaceAll('_',' ')}</span><span className="font-mono">{row.before} → {row.after}</span></div>):<p>No changes to this region.</p>}</div>}
+  </div>
   <div className="space-y-3">
    <div className="flex justify-between items-center"><strong>{active} size</strong><span className="font-mono text-amber-300">{amount}</span></div>
    {region.axis&&<div className="grid grid-cols-2 sm:grid-cols-3 gap-2" role="group" aria-label="Volume scale">{modes.map(([label,min,max],i)=><button type="button" key={label} disabled={locked||fieldLocks[region.key]} aria-pressed={currentMode===i&&amount>0} onClick={()=>change(region.key,Math.min(region.max,Math.round((min+max)/2)))} className={`rounded-lg border p-2 text-xs min-h-11 ${currentMode===i&&amount>0?'border-amber-400':'border-zinc-700'}`}>{label}</button>)}</div>}
