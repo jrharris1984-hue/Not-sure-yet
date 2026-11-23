@@ -1,3 +1,4 @@
+import { INTIMATE_EXTRA_FIELDS, intimateAppearancePrompt } from './intimateAppearance';
 import { physiqueDetailPrompt, PHYSIQUE_DETAIL_KEYS } from './physiqueDetails';
 import { physiqueScalePrompt } from './physiqueScalePrompts';
 import {EXTRA_CAMERA_ANGLES,EXTRA_SUBJECT_VIEWS,SPHERICAL_SUBJECT_VIEWS} from './cameraViewChoices';
@@ -130,6 +131,7 @@ export const SECTIONS = [
     key: "intimate",
     title: "Intimate",
     fields: [
+      ...INTIMATE_EXTRA_FIELDS.map(field=>({...field,type:"chips"})),
       { key: "pubic_hair", type: "chips", label: "Pubic hair", options: ["hairless", "shaved smooth", "stubble", "trimmed", "landing strip", "natural bush", "hairy", "very hairy", "wild bush", "heart-shaped"] },
       { key: "pussy", type: "chips", label: "Pussy", options: ["closed", "small labia", "prominent labia", "puffy", "innie", "outie", "meaty", "tight", "spread", "wet"] },
       { key: "clit", type: "chips", label: "Clit", options: ["hidden", "subtle", "prominent", "large", "pierced"] },
@@ -1371,6 +1373,7 @@ function _veniceSubjectBlock(dna = {}, opts = {}) {
   // -------- Intimate --------
   const intimateStr = join([
     exp("intimate", "pubic_hair"),
+    intimateAppearancePrompt(im),
     exp("intimate", "pussy"),
     im.clit && im.clit !== "hidden" && exp("intimate", "clit"),
     im.asshole && im.asshole !== "hidden" && exp("intimate", "asshole"),
