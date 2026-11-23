@@ -10,7 +10,7 @@ import { ageAppearancePrompt, resolveAgeSkin } from './ageAppearance';
 import { HERITAGE_GROUPS, HERITAGE_LABELS, HERITAGE_PROFILES, heritageLabel } from "./heritageProfiles";
 import { ADDITIONAL_OUTFIT_GROUPS, OUTFIT_SET_LABELS, LAYERED_OUTFIT_GROUP, SET_LINGERIE_GROUPS } from "./completeOutfitSets";
 import { resolveWardrobeMode } from "./wardrobeMode";
-import { bustShapePrompt } from "./physiqueControls";
+import { bustShapePrompt, regionalPhysiquePrompt } from "./physiqueControls";
 import { PHOTOGRAPHY_POSE_GROUPS } from "@/lib/photographyPoses";
 import { GLUTE_SIZE_MAX, gluteSizePrompt } from "@/lib/gluteControls";
 // DNA schema + prompt builder + randomizer
@@ -1237,10 +1237,10 @@ function _veniceSubjectBlock(dna = {}, opts = {}) {
     ph.implant_volume > 0 ? "" : ph.bust_scale ? visualScale(ph.bust_scale, "bust", ["small", "moderate", "full", "very large", "extremely oversized"]) : exp("physique", "bust") || (ph.bust && `${ph.bust} breasts`),
     ph.implant_volume > 0 ? "round augmented breast shape" : bustShapePrompt(ph.bust_shape),
     implantVisualPrompt(ph.implant_volume),
-    ph.butt_scale > 100 ? gluteSizePrompt(ph.butt_scale) : ph.butt_scale ? visualScale(ph.butt_scale, "glutes", ["small", "moderate", "full rounded", "very large projected", "extremely oversized projected"]) : exp("physique", "butt") || (ph.butt && `${ph.butt} butt`),
+    ph.butt_scale ? gluteSizePrompt(ph.butt_scale) : regionalPhysiquePrompt("butt", ph.butt),
     ph.glute_shape,
-    ph.thigh_scale ? visualScale(ph.thigh_scale, "thighs", ["slim", "moderate", "full", "very thick", "extremely thick"]) : exp("physique", "thighs") || (ph.thighs && `${ph.thighs} thighs`),
-    ph.hip_scale ? visualScale(ph.hip_scale, "hips", ["narrow", "moderate width", "wide", "very wide", "extremely wide"]) : exp("physique", "hips") || (ph.hips && `${ph.hips} hips`),
+    regionalPhysiquePrompt("thighs", ph.thighs, ph.thigh_scale),
+    regionalPhysiquePrompt("hips", ph.hips, ph.hip_scale),
     ph.waist_scale ? visualScale(ph.waist_scale, "waist", ["very narrow", "narrow", "average width", "wide", "very wide"]) : exp("physique", "waist"),
     ph.shoulders && ph.shoulders !== "average" && exp("physique", "shoulders"),
     ph.legs && ph.legs !== "average" && exp("physique", "legs"),
