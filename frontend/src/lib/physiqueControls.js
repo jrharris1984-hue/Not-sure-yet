@@ -1,6 +1,59 @@
 import { gluteShapePrompt } from './gluteControls';
 import { catalogSelection } from './promptCatalog';
 
+
+const REGIONAL_PRESETS = {
+  hips: {
+    narrow: 'narrow pelvic silhouette with minimal lateral hip flare',
+    average: 'balanced hip width relative to the waist and shoulders',
+    wide: 'wide lateral hip contour with a clearly defined waist-to-hip transition',
+    'very wide': 'very wide hip silhouette with prominent outward flare at both sides',
+    extreme: 'dramatically broad hip silhouette with pronounced lateral width and a strong waist-to-hip contrast',
+  },
+  thighs: {
+    slim: 'slender upper thighs with a narrow outer leg contour',
+    toned: 'lean toned upper thighs with subtle muscular definition',
+    athletic: 'athletic upper thighs with visible quadriceps development',
+    thick: 'full thick upper thighs with a broad rounded outer contour',
+    'very thick': 'very thick upper thighs with substantial upper-leg volume',
+    massive: 'extremely broad upper thighs with dramatically increased upper-leg volume',
+  },
+  butt: {
+    flat: 'minimal rear glute projection and a shallow side profile',
+    small: 'compact glute silhouette with subtle rear projection',
+    toned: 'firm compact glute silhouette with athletic definition',
+    round: 'rounded glute silhouette with balanced rear projection',
+    bubble: 'prominently rounded glute silhouette with concentrated rear projection',
+    large: 'large full glute silhouette with clear rear projection',
+    'very large': 'very large glute silhouette with substantial rear projection',
+    huge: 'oversized glute silhouette with pronounced rearward volume',
+    hyper: 'fantasy-scale glute silhouette with extreme rearward volume',
+  },
+};
+
+export function regionalPhysiquePrompt(region, preset, slider = 0) {
+  const amount = Math.max(0, Math.min(region === 'butt' ? 300 : 100, Number(slider) || 0));
+  if (!amount) return REGIONAL_PRESETS[region]?.[preset] || String(preset || '');
+  if (region === 'butt') return '';
+  const level = Math.min(4, Math.floor(Math.min(amount, 99.999) / 20));
+  const descriptions = region === 'hips'
+    ? [
+      'very narrow hips with little lateral flare',
+      'moderately narrow hips with a gentle waist-to-hip transition',
+      'balanced hip width with a visible waist-to-hip transition',
+      'wide hips with prominent lateral flare and a defined waist-to-hip transition',
+      'extremely wide hips with dramatic lateral flare and a pronounced waist-to-hip contrast',
+    ]
+    : [
+      'very slender upper thighs with minimal volume',
+      'lean upper thighs with subtle muscular contour',
+      'moderately full upper thighs with rounded outer contours',
+      'thick upper thighs with substantial upper-leg volume',
+      'extremely thick upper thighs with dramatic upper-leg volume',
+    ];
+  return descriptions[level];
+}
+
 export const BUST_SHAPES = {
   natural: 'natural breast contour with realistic weight',
   perky: 'firm upturned breast contour',
