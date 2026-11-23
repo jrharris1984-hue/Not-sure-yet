@@ -6,7 +6,7 @@ This document distinguishes implemented code from product readiness. Do not merg
 |---|---|---|
 | 1 — Photoshoot storyboard | Per-shot editor, ordering, drafts, preflight | Confirm all editor options match actual DNA schema; render and mobile tests |
 | 2 — Virtual camera | Orbit UI, elevation mapping, rear-view prompt detection | Verify prompt and generated orientation across models |
-| 3 — Character DNA | A/B dispatch/results and saved regional preferences are implemented; expanded body sliders have explicit range cues, slider selections take precedence over conflicting saved presets, and shape descriptors reach model prompt compilers | Rerun the updated tests; verify actual DNA shape, baseline capture, model effects and output consistency in isolated ComfyUI staging |
+| 3 — Character DNA | A/B dispatch/results and saved regional preferences are implemented and user-tested successfully; expanded body sliders have explicit range cues, slider selections take precedence over conflicting saved presets, and shape descriptors reach model prompt compilers | Broaden controlled output/persistence checks across physique regions and supported models; record reproducible test recipes |
 | 4 — Wardrobe/environment | Per-shot outfit, scene and lighting editing; named looks per character; 20 new layered outfit sets across activewear, formalwear, ceremony, seasonal layers and creative workwear | Full layered outfit composition inside the 3.0 storyboard, shared cross-device persistence, and live mobile validation |
 | 5 — Local AI director | Studio 3 reviewable shot suggestions wired to the existing validated AI shoot-plan endpoint and editable storyboard; prompt library has full backup/restore, category packs, per-control batch edits, reviewed multi-category batch import with destination suggestions, and AI round-trip JSON export for all prompts or a selected category/subcategory | Verify local Ollama configuration, schema mapping for every supported control, and live assistant behavior |
 | 6 — Video studio | Persistent editable clip timeline, motion/camera prompts, duration calculation, and clip-to-existing-generation-form handoff | Multi-clip queue orchestration, timeline-aware render results, stitching/export, and live video validation |
@@ -15,17 +15,19 @@ This document distinguishes implemented code from product readiness. Do not merg
 
 ## Release blockers
 1. The supplied Windows run on 2026-11-23 (commit `b16edc3`) reports **216 passing suites, 3,222 passing tests, and a successful production build**. The build reports a bundle-size advisory; it completes successfully.
-2. Confirm A/B dispatch payload against live backend schema and model compiler, including whether character DNA is nested under `dna.physique` and how `subjects` is stored.
+2. The user reports that A/B testing worked in the live test setup. Record the exact dispatch recipe and extend checks across physique regions and supported models.
 3. Test queue status, image URLs and ComfyUI output from isolated staging; do not use production MongoDB or render directories.
 4. Test browser refresh, switching characters, locked fields, failed/partial queues, and mobile layout.
-5. Validate output consistency: same model/workflow, seed, camera, pose, scene and character reference; vary only selected physique region.
+5. Extend output consistency coverage using the same model/workflow, seed, camera, pose, scene and character reference while varying only one selected physique region at a time.
 6. Do not auto-merge or start production Docker. Require explicit user approval for deployment.
 
 ## Manual integration evidence
 
 On 2026-11-23, the user ran the workflow compatibility action against their connected ComfyUI in the isolated Studio 3 test stack. The experimental MOSS image workflow reported **Graph compatible · 10 nodes checked**. This confirms the Settings UI, backend endpoint, and live `/object_info` schema path worked for that workflow. It does not validate every workflow or guarantee that every selected LoRA/model will load. The GPU resource panel also returned the user's RTX 4070 SUPER and VRAM readings; scheduling remains serial and does not yet defer work based on VRAM pressure.
 
-The user also reports that several live test generations completed successfully and ComfyUI created the images as expected. This confirms generation worked for those unrecorded tests. The exact workflows, model/LoRA selections, prompts, and seeds were not captured, so this is not yet controlled A/B consistency evidence or validation across all models.
+The user also reports that several live test generations completed successfully and ComfyUI created the images as expected. This confirms generation worked for those unrecorded tests. The exact workflows, model/LoRA selections, prompts, and seeds were not captured, so these reports do not establish coverage across all models.
+
+The user additionally confirms that the controlled A/B test worked. The exact region, workflow/model, seed, and saved-preference details were not included in the report, so broader coverage and a reproducible recipe remain open.
 
 ## Test commands (PowerShell, separate checkout)
 ```powershell
