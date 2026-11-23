@@ -453,28 +453,16 @@ export function resolveZImageComposition(dna = {}, options = {}) {
     adjustments.push("Replaced first-person POV with a moderate three-quarter angle for coherent full-body anatomy.");
   }
 
-  if (mode === "natural") {
-    resolved.physique.exaggeration = Math.min(35, Number(resolved.physique.exaggeration || 0));
-    if (["hyper", "enormous", "huge"].includes(lower(resolved.physique.bust))) {
-      resolved.physique.bust = "large";
-      adjustments.push("Clamped the bust to a believable large proportion in Natural mode.");
+  // Anatomy mode governs structural coherence, not the user's selected size.
+  // Never silently downgrade Hyper/Extreme presets: keep them intact and let
+  // the coherent-body guard describe connected anatomy around those choices.
+  if (mode === "natural" || mode === "enhanced") {
+    const exaggerated = ['bust', 'butt', 'hips', 'thighs'].filter(key =>
+      ['hyper', 'extreme', 'enormous', 'huge', 'massive'].includes(lower(resolved.physique[key])));
+    if (exaggerated.length) {
+      adjustments.push(`Preserved selected exaggerated proportions (${exaggerated.join(', ')}) while applying ${mode} anatomy coherence.`);
     }
-    if (["hyper", "huge"].includes(lower(resolved.physique.butt))) {
-      resolved.physique.butt = "large";
-      adjustments.push("Clamped the rear proportion to a believable large size in Natural mode.");
-    }
-    if (lower(resolved.physique.thighs) === "massive") resolved.physique.thighs = "thick";
-    if (lower(resolved.physique.hips) === "extreme") resolved.physique.hips = "wide";
-
-    if (lower(resolved.feet.foot_size) === "size queen") {
-      resolved.feet.foot_size = "large";
-      adjustments.push("Reduced extreme foot enlargement to a realistic large size in Natural mode.");
-    }
-  } else if (mode === "enhanced") {
-    resolved.physique.exaggeration = Math.min(70, Number(resolved.physique.exaggeration || 0));
-    if (lower(resolved.physique.bust) === "hyper") resolved.physique.bust = "huge";
-    if (lower(resolved.physique.butt) === "hyper") resolved.physique.butt = "huge";
-    if (focus !== "feet" && feetCloseup) {
+    if (mode === "enhanced" && focus !== "feet" && feetCloseup) {
       writeControl("feet","framing","full body");
       adjustments.push("Downgraded the competing foot close-up while preserving enhanced foot details.");
     }
