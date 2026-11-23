@@ -24,16 +24,16 @@ const EXTREME_SIZE_DESCRIPTORS = {
   250: "fantasy-scale exceptionally oversized with broad rounded volume and deep rear projection",
   300: "fantasy-scale maximum oversized with the broadest rounded volume and deepest rear projection",
   350: "surreal oversized glute silhouette with dramatically extended rearward and lateral fullness",
-  400: "hyper-fantasy glute volume with immense rounded projection and strongly exaggerated lower-body proportions",
-  450: "beyond-human fantasy-scale glute volume with enormous rear projection and broad lateral contours",
-  500: "maximum surreal glute volume with extraordinary rearward projection, sweeping lateral fullness and a deliberately impossible silhouette",
-  650: "beyond extreme fantasy glute volume with immense rearward depth and expansive outer contours",
-  800: "hyper-surreal glute volume with extraordinary projection and overwhelming lower-body silhouette",
-  1000: "ultimate impossible fantasy glute scale with monumental rearward projection and enormous lateral fullness",
-  1250: "colossal fantasy glute volume with vastly expanded rear depth and broad lateral fullness",
+  400: "hyper-fantasy silhouette with immense rounded projection and strongly exaggerated lower-body proportions",
+  450: "beyond-human fantasy-scale silhouette with enormous rear projection and broad lateral contours",
+  500: "maximum surreal silhouette with extraordinary rearward projection, sweeping lateral fullness and a deliberately impossible shape",
+  650: "beyond extreme fantasy silhouette with immense rearward depth and expansive outer contours",
+  800: "hyper-surreal silhouette with extraordinary projection and overwhelming lower-body shape",
+  1000: "ultimate impossible fantasy scale with monumental rearward projection and enormous lateral fullness",
+  1250: "colossal fantasy silhouette with vastly expanded rear depth and broad lateral fullness",
   1500: "monumental glute silhouette with extreme rearward volume and dramatically expanded outer contours",
   1750: "immense surreal glute scale dominating the lower-body silhouette with maximum rounded projection",
-  2000: "maximum beyond-fantasy glute volume with colossal rearward projection and the broadest coherent lower-body silhouette",
+  2000: "maximum beyond-fantasy silhouette with colossal rearward projection and the broadest coherent lower-body contour",
 };
 
 // Comprehensive shape catalog covering all aesthetic types
@@ -133,8 +133,7 @@ export function gluteSizePrompt(value, { intensity = false, texture = null } = {
   // Add texture if specified
   const textureMod = texture && TEXTURE_MODIFIERS[texture] ? `, ${TEXTURE_MODIFIERS[texture]}` : "";
   
-  const max=n<=300?300:n<=500?500:n<=1000?1000:GLUTE_SIZE_MAX;
-  return `${descriptor} glute volume${textureMod} (glute volume intensity ${n}/${max})`;
+  return `${descriptor} glute volume${textureMod} (size intensity ${n}/${GLUTE_SIZE_MAX})`;
 }
 
 export function gluteShapePrompt(value, { texture = null } = {}) {
@@ -148,9 +147,10 @@ export function gluteShapePrompt(value, { texture = null } = {}) {
 
 // Emit each independent control exactly once, including ordinary sizes.
 export function buildGlutePrompt({ size = 0, shape = "naturally round", texture = null, intensity = false } = {}) {
+  const hasSize=Number(size)>0;
   return [
-    gluteSizePrompt(size, { intensity }),
-    gluteShapePrompt(shape, { texture }),
+    gluteSizePrompt(size, { intensity, texture:hasSize?texture:null }),
+    gluteShapePrompt(shape, { texture:hasSize?null:texture }),
   ].filter(Boolean).join(", ");
 }
 

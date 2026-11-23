@@ -29,6 +29,7 @@ test("multi-person pose variety uses shared pose prompts and wide framing", () =
     sections: [{
       key: "shared_poses",
       title: "Shared Poses",
+      exact_fields: true,
       fields: [{
         key: "two_people",
         label: "2 people",

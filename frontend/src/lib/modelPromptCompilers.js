@@ -71,11 +71,11 @@ const withPhysiqueDetails = (prompts, targets = []) => {
 };
 
 
-const chromaProgressiveScale = (value, noun, levels) => {
-  const n = Math.max(0, Math.min(100, Math.round(Number(value) || 0)));
+const chromaProgressiveScale = (value, noun, levels, max=100, axis='size') => {
+  const n = Math.max(0, Math.min(max, Math.round(Number(value) || 0)));
   if (!n) return "";
-  const step = Math.min(levels.length - 1, Math.max(0, Math.ceil(n / 10) - 1));
-  return `${levels[step]} ${noun} (size intensity ${n}/100)`;
+  const step = Math.min(levels.length - 1, Math.max(0, Math.ceil(n / max * levels.length) - 1));
+  return `${levels[step]} ${noun} (${axis} intensity ${n}/${max})`;
 };
 
 function hasDetailedBodyScale(dna = {}) {
@@ -139,7 +139,7 @@ function chromaBodyPriority(dna = {}) {
     clauses.push(chromaProgressiveScale(ph.bust_scale, "bust", [
       "compact rounded, minimal volume", "compact rounded, light volume", "rounded, modest volume", "rounded, moderate volume", "rounded, noticeable volume",
       "rounded, moderately strong volume", "rounded, strong volume", "rounded, very strong volume", "rounded, pronounced volume", "rounded, maximum volume emphasis",
-    ]));
+    ], 2000, 'breast volume'));
   }
   if (ph.bust_shape) {
     clauses.push(`BREAST SHAPE: ${breastShapePrompt(ph.bust_shape)}; make this contour visibly distinct at the selected volume`);
@@ -155,19 +155,19 @@ function chromaBodyPriority(dna = {}) {
     clauses.push(chromaProgressiveScale(ph.hip_scale, "hips", [
       "very narrow", "narrow", "moderate width", "slightly wide", "wide",
       "very wide", "oversized wide", "dramatically wide", "extremely wide fantasy-scale", "maximum fantasy-scale width",
-    ]));
+    ], 2000, 'lateral hip width'));
   }
   if (Number(ph.thigh_scale) > 0) {
     clauses.push(chromaProgressiveScale(ph.thigh_scale, "thighs", [
       "very slim", "slim", "moderate thickness", "full", "thick",
       "very thick", "oversized thick", "extremely thick fantasy-scale", "dramatically oversized fantasy-scale", "maximum fantasy-scale thickness",
-    ]));
+    ], 750, 'upper-thigh volume'));
   }
   if (Number(ph.waist_scale) > 0) {
     clauses.push(chromaProgressiveScale(ph.waist_scale, "waist", [
       "defined, minimal width", "defined, light width", "defined, modest width", "defined, moderate width", "defined, noticeable width",
       "defined, moderately strong width", "defined, strong width", "defined, very strong width", "defined, pronounced width", "defined, maximum width emphasis",
-    ]));
+    ], 500, 'waist width'));
   }
 
   if (!clauses.length) return "";

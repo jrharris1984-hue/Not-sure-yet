@@ -1,5 +1,6 @@
 import { gluteShapePrompt } from './gluteControls';
 import { catalogSelection } from './promptCatalog';
+import { physiqueScalePrompt } from './physiqueScalePrompts';
 
 
 const REGIONAL_PRESETS = {
@@ -32,42 +33,11 @@ const REGIONAL_PRESETS = {
 };
 
 export function regionalPhysiquePrompt(region, preset, slider = 0) {
-  const amount = Math.max(0, Math.min(region === 'butt' ? 1000 : 750, Number(slider) || 0));
+  const max = region === 'hips' ? 2000 : 750;
+  const amount = Math.max(0, Math.min(max, Number(slider) || 0));
   if (!amount) return REGIONAL_PRESETS[region]?.[preset] || String(preset || '');
   if (region === 'butt') return '';
-  if (amount > 300) {
-    const band = amount <= 450 ? 'hyper-fantasy' : amount <= 600 ? 'beyond extreme surreal' : 'maximum impossible fantasy-scale';
-    const shape = region === 'hips' ? 'enormous lateral hip flare with an exceptionally broad outer silhouette' : 'monumental upper-thigh thickness with sweeping inner and outer leg contours';
-    return `${band} ${shape} (${region === 'hips' ? 'lateral hip width' : 'upper-thigh volume'} intensity ${Math.round(amount)}/750)`;
-  }
-  if (amount > 100) {
-    const band = amount <= 150 ? 'dramatically amplified' : amount <= 200 ? 'fantasy-scale expansive' : amount <= 250 ? 'surreal maximum' : 'beyond-human fantasy-scale';
-    const shape = region === 'hips'
-      ? 'lateral hip flare, broad outer pelvic silhouette and a pronounced waist-to-hip transition'
-      : 'upper-thigh thickness, prominent outer-leg fullness and substantial upper-leg volume';
-    return `${band} ${shape} (${region === 'hips' ? 'lateral hip width' : 'upper-thigh volume'} intensity ${Math.round(amount)}/300)`;
-  }
-  const level = Math.min(4, Math.floor(Math.min(amount, 99.999) / 20));
-  const descriptions = region === 'hips'
-    ? [
-      'very narrow hips with little lateral flare',
-      'moderately narrow hips with a gentle waist-to-hip transition',
-      'balanced hip width with a visible waist-to-hip transition',
-      'wide hips with prominent lateral flare and a defined waist-to-hip transition',
-      'extremely wide hips with dramatic lateral flare and a pronounced waist-to-hip contrast',
-    ]
-    : [
-      'very slender upper thighs with minimal volume',
-      'lean upper thighs with subtle muscular contour',
-      'moderately full upper thighs with rounded outer contours',
-      'thick upper thighs with substantial upper-leg volume',
-      'extremely thick upper thighs with dramatic upper-leg volume',
-    ];
-  // Keep the silhouette descriptor stable within a band while preserving the
-  // exact slider position for downstream prompt compilation and comparisons.
-  // This avoids identical prompts for every value in a twenty-point range.
-  const axis = region === 'hips' ? 'lateral hip width' : 'upper-thigh volume';
-  return `${descriptions[level]} (${axis} intensity ${Math.round(amount)}/100)`;
+  return physiqueScalePrompt(region, amount, max);
 }
 
 export const BUST_SHAPES = {
@@ -90,17 +60,20 @@ export function resolvePhysiqueControls(dna = {}) {
   for (const [slider, preset] of Object.entries(controls)) {
     if (Number(ph[slider]) > 0 && ph[preset]) {
       ph[preset] = '';
+      if(resolved._catalogSelections?.physique)resolved._catalogSelections.physique[preset]='';
       adjustments.push(`Used ${slider} instead of the competing ${preset} preset.`);
     }
   }
   if (Number(ph.implant_volume) > 0) {
     ph.bust = ''; ph.bust_scale = 0; ph.bust_shape = '';
+    if(resolved._catalogSelections?.physique)for(const key of ['bust','bust_scale','bust_shape'])resolved._catalogSelections.physique[key]='';
   }
   // Imported size choices sometimes include an augmentation specification.
   // A separately selected natural contour owns that choice.
   const naturalContour = /\bnatural\b|\bunaugmented\b/i.test(ph.bust_shape || '');
   if (naturalContour && /\bimplants?\b|\baugmented\b|\bfake\b|\bbolt-ons?\b/i.test(ph.bust || '')) {
     ph.bust = '';
+    if(resolved._catalogSelections?.physique)resolved._catalogSelections.physique.bust='';
     adjustments.push('The selected natural contour overrides augmentation wording bundled into the size preset.');
   }
   if (detailed && ph.proportions) {
@@ -114,6 +87,7 @@ export function resolvePhysiqueControls(dna = {}) {
       || (bodyType === 'amazonian' && ['petite', 'short'].includes(ph.height))) {
     adjustments.push(`Removed the ${ph.body_type} preset because it conflicts with the selected regional proportions.`);
     ph.body_type = '';
+    if(resolved._catalogSelections?.physique)resolved._catalogSelections.physique.body_type='';
   }
   if (ph.glute_shape) ph.glute_shape = gluteShapePrompt(ph.glute_shape);
   return { dna: resolved, adjustments };

@@ -43,7 +43,7 @@ test("desktop exposes six workspaces and secondary More destinations", () => {
 test("mobile keeps four destinations and More visible", () => {
   render();
   expect(container.querySelectorAll("a").length).toBe(4);
-  for (const id of ["home", "create", "projects", "library"]) {
+  for (const id of ["home", "create", "shoots", "library"]) {
     expect(container.querySelector(`[data-testid="nav-${id}-mobile"]`)).not.toBeNull();
   }
   expect(container.querySelector('[data-testid="nav-more-mobile"]')).not.toBeNull();

@@ -10,7 +10,8 @@ test('visited steps stay reachable after going back, while unmet requirements bl
 });
 test('detail search matches across categories and supports several words',()=>{
   const fields=matchingWorkspaceFields(SECTIONS,'hair color');expect(fields.length).toBeGreaterThan(0);
-  expect(fields.every(item=>item.section==='hair')).toBe(true);
+  expect(fields.some(item=>item.section==='hair')).toBe(true);
+  expect(fields.every(item=>`${item.sectionTitle} ${item.field.label} ${item.field.key}`.toLowerCase().includes('hair')&&`${item.sectionTitle} ${item.field.label} ${item.field.key}`.toLowerCase().includes('color'))).toBe(true);
   expect(matchingWorkspaceFields(SECTIONS,'glute').some(item=>item.section==='physique')).toBe(true);
   expect(matchingWorkspaceFields(SECTIONS,'not-a-field')).toEqual([]);
 });

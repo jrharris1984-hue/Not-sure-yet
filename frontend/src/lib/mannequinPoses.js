@@ -1,3 +1,5 @@
+import { POSE_ACTION_PROMPTS } from './photographyPoses';
+
 // Local joint geometry for non-anatomical pose mannequins.
 const LEGACY_POSES = {
   // Standing family
@@ -75,7 +77,19 @@ const PORTRAIT_POSES = {
 };
 const EXTRA_POSE_DEFINITIONS = {"runway mid-stride":["walking",{"turn":true}],"catwalk pivot":["walking",{"turn":true}],"over shoulder runway turn":["over shoulder look",{"turn":true}],"one hand in pocket editorial":["standing thumbs in pockets",{}],"strong asymmetrical stance":["standing hip out",{"turn":true}],"jacket over shoulder":["adjusting jacket lapel",{}],"editorial leaning on railing":["leaning forearms on railing",{}],"dramatic fabric toss":["dancing",{"turn":true}],"perched on stool":["sitting on edge",{}],"sideways on chaise lounge":["seated sideways on chair",{"profile":true}],"cross-legged on floor cushion":["sitting legs crossed",{}],"seated with elbow on knee":["seated leaning on chair arm",{}],"sitting on windowsill":["sitting on edge",{}],"lounging in armchair":["seated leaning on chair arm",{}],"seated on staircase":["seated on steps",{}],"sitting on ottoman":["sitting on edge",{}],"twirling with flowing skirt":["dancing",{"turn":true}],"mid-step walking toward camera":["walking",{}],"walking away looking back":["walking",{"turn":true}],"slow dance dip":["dancing",{"turn":true}],"ballet-inspired arabesque":["standing splits",{}],"turning in doorway":["turning toward camera",{"turn":true}],"windblown hair movement":["hair flip",{}],"reaching upward in motion":["standing arms up",{}],"1950s calendar pose":["standing hip out",{}],"retro hand on hip":["standing hip out",{}],"pin-up seated on vintage car":["sitting reverse chair",{"support":[[4,16],[4,22],[20,22]]}],"playful over shoulder glance":["over shoulder look",{}],"reclining on vintage chaise":["lying side",{"support":[[3,20],[21,20]]}],"standing beside jukebox":["standing",{}],"retro beach towel pose":["lying stomach",{"support":[[2,20],[22,20]]}],"classic magazine cover pose":["standing hands on hips",{}],"reclining on velvet sofa":["lying side",{"support":[[3,20],[21,20]]}],"seated at vanity mirror":["seated leaning on chair arm",{"support":[[5,22],[19,22]]}],"silhouette beside sheer curtains":["standing",{}],"kneeling on cushioned bench":["kneeling upright",{"support":[[3,21],[21,21]]}],"standing in doorway with robe":["standing",{}],"looking back over shoulder":["over shoulder look",{}],"sitting on edge of bed":["sitting on edge",{"support":[[3,22],[20,22]]}],"reclining against pillows":["lying back",{"support":[[2,20],[22,20]]}],"back to back standing":["standing",{"turn":true}],"walking side by side":["walking",{}],"mirrored standing poses":["standing",{}],"one seated one standing":["sitting on edge",{}],"facing each other in profile":["standing",{"profile":true}],"shared over shoulder glance":["over shoulder look",{}],"seated together on sofa":["seated leaning on chair arm",{}],"staggered fashion portrait":["standing hip out",{}]};
 const EXTRA_POSES = Object.fromEntries(Object.entries(EXTRA_POSE_DEFINITIONS).map(([name,[base,overrides]])=>[name,copy(base,overrides)]));
-const POSES = { ...LEGACY_POSES, ...PORTRAIT_POSES, ...EXTRA_POSES };
+const inferredPose = name => {
+  const lower=name.toLowerCase();
+  const base=/seated|sitting|sofa|chair|stool|ottoman|cushion|windowsill|staircase/.test(lower)?'sitting on edge'
+    :/kneeling/.test(lower)?'kneeling upright'
+    :/lying|reclin|loung/.test(lower)?'lying side'
+    :/leaning|railing|table|wall/.test(lower)?'leaning wall'
+    :/walk|stride|mid-step|staircase|descending|movement|twirl|dance/.test(lower)?'walking':'standing';
+  return copy(base,{turn:/turn|over shoulder|profile|looking back|rotated/.test(lower),profile:/profile|sideways/.test(lower)});
+};
+const GENERATED_POSES=Object.fromEntries(Object.keys(POSE_ACTION_PROMPTS)
+  .filter(name=>!LEGACY_POSES[name]&&!PORTRAIT_POSES[name]&&!EXTRA_POSES[name])
+  .map(name=>[name,inferredPose(name)]));
+const POSES = { ...LEGACY_POSES, ...PORTRAIT_POSES, ...EXTRA_POSES, ...GENERATED_POSES };
 export const MANNEQUIN_POSE_NAMES = Object.keys(POSES);
 
 export function mannequinPose(name = "") {

@@ -64,7 +64,7 @@ it('keeps individual hip, thigh and glute slider positions distinct in compiled 
   for (const [key, first, second, label] of [
     ['hip_scale', 41, 42, 'lateral hip width intensity'],
     ['thigh_scale', 61, 62, 'upper-thigh volume intensity'],
-    ['butt_scale', 141, 142, 'glute volume intensity'],
+    ['butt_scale', 141, 142, 'size intensity'],
   ]) {
     const dna = recipe();
     dna.physique[key] = first;
@@ -95,7 +95,7 @@ it.each(['pony', 'krea2'])('uses consistent regional slider descriptions in %s',
   const positive = compileModelPrompts({ promptStyle, dna }).positive;
   expect(positive).toMatch(/lateral hip width intensity 92\/100/);
   expect(positive).toMatch(/upper-thigh volume intensity 87\/100/);
-  expect(positive).toMatch(/glute volume intensity 225\/300/);
+  expect(positive).toMatch(/size intensity 225\/2000/);
 });
 
 
@@ -118,7 +118,7 @@ it('preserves MOSS extreme regional selections and separate glute shape', () => 
   const { positive } = compileModelPrompts({ promptStyle: 'moss', dna });
   expect(positive).toMatch(/dramatically broad hip silhouette/i);
   expect(positive).toMatch(/extremely broad upper thighs/i);
-  expect(positive).toMatch(/glute volume intensity 225\/300/);
+  expect(positive).toMatch(/size intensity 225\/2000/);
   expect(positive).toMatch(/heart.*glute contour/i);
 });
 
@@ -139,9 +139,9 @@ it('gives MOSS a concise visual priority only for strongly exaggerated selection
 
 describe('physique slider endpoint comparisons', () => {
   it.each([
-    ['hip_scale', 'lateral hip width intensity', 100],
-    ['thigh_scale', 'upper-thigh volume intensity', 100],
-    ['butt_scale', 'glute volume intensity', 300],
+    ['hip_scale', 'lateral hip width intensity', 2000],
+    ['thigh_scale', 'upper-thigh volume intensity', 750],
+    ['butt_scale', 'size intensity', 2000],
   ])('keeps %s low, middle, and maximum settings distinguishable in MOSS', (key, axis, maximum) => {
     const values = [1, Math.round(maximum / 2), maximum];
     const prompts = values.map(value => {
@@ -179,7 +179,7 @@ describe('Physique 2.0 expanded range compatibility', () => {
   it('keeps the previous glute scale interpretation at 300', () => {
     const dna = recipe();
     dna.physique = {...dna.physique, butt_scale:300};
-    expect(compileModelPrompts({promptStyle:'moss',dna}).positive).toMatch(/glute volume intensity 300\/300/);
+    expect(compileModelPrompts({promptStyle:'moss',dna}).positive).toMatch(/glute volume intensity 300\/2000/);
   });
 });
 

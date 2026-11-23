@@ -108,10 +108,13 @@ test('Qwen freeform exposes two independent slots and dispatches them', async ()
   act(() => button('Use clothed portrait test prompt').click());
   expect(container.querySelector('[aria-label="Your prompt"]').value).toContain('fully clothed');
   const pickers = () => [...container.querySelectorAll('[data-testid="universal-lora-picker"]')];
+  const openPicker = picker => act(()=>[...picker.querySelectorAll('button')].find(item=>item.textContent==='Browse LoRAs').click());
   const choose = (picker, file) => picker.querySelector(`button[title="${file}"]`);
+  openPicker(pickers()[0]);
   expect(choose(pickers()[0], 'Qwen_Edit/other.safetensors')).toBeNull();
   await act(async () => choose(pickers()[0], 'Qwen_Image/portrait.safetensors').click());
   await act(async () => button('Add second LoRA').click());
+  openPicker(pickers()[1]);
   expect(choose(pickers()[1], 'Qwen_Image/portrait.safetensors')).toBeNull();
   await act(async () => choose(pickers()[1], 'Qwen_Image/daylight.safetensors').click());
   const strength = pickers()[1].querySelector('input[type="range"]');
@@ -138,7 +141,9 @@ test('unclassified installed LoRA can be assigned its documented family; saved t
   endpoints.listWorkflows.mockResolvedValue([{id:'q',name:'Qwen Image',kind:'image',prompt_style:'qwen_image'}]);
   endpoints.comfyLoras.mockResolvedValue({loras:[name]});
   await act(async () => root.render(<FreeformCreate/>));
+  act(()=>[...container.querySelectorAll('[data-testid="universal-lora-picker"] button')].find(item=>item.textContent==='Browse LoRAs').click());
   expect(container.querySelector(`button[title="${name}"]`)).toBeNull();
+  [...container.querySelectorAll('summary')].find(item=>item.textContent.includes('Set its model family'))?.closest('details')?.setAttribute('open','');
   const family=container.querySelector(`[aria-label="Model family for ${name}"]`);
   await act(async () => {family.value='qwen_image'; family.dispatchEvent(new Event('change',{bubbles:true}));});
   await act(async () => container.querySelector(`button[title="${name}"]`).click());
@@ -151,6 +156,7 @@ test('unclassified installed LoRA can be assigned its documented family; saved t
   expect(container.textContent).toContain('Trigger words saved in this browser.');
   await act(async () => root.unmount()); root=createRoot(container);
   await act(async () => root.render(<FreeformCreate/>));
+  act(()=>[...container.querySelectorAll('[data-testid="universal-lora-picker"] button')].find(item=>item.textContent==='Browse LoRAs').click());
   await act(async () => container.querySelector(`button[title="${name}"]`).click());
   expect(container.querySelector('[data-testid="lora-trigger-words"]').value).toBe('portrait style, soft daylight');
   await enter('Portrait photograph');

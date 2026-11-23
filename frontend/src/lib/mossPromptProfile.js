@@ -1,7 +1,7 @@
 // MOSS-specific prompt priorities. Descriptions are visual cues, not promises
 // that an image model interprets numeric sliders literally.
-const selected = (scale, preset, threshold, values) =>
-  Number(scale) > 0 ? Number(scale) >= threshold : values.includes(String(preset || '').toLowerCase());
+const selected = (scale, preset, threshold, values, maximum) =>
+  Number(scale) > 0 ? Number(scale) / maximum * 100 >= threshold : values.includes(String(preset || '').toLowerCase());
 
 // Keep volume, contour, and projection as separate conceptual axes.
 // Projection is inferred from an explicit shape choice only; it is never
@@ -34,10 +34,10 @@ export function mossBodyGeometry(dna = {}) {
 export function mossVisualPriority(dna = {}) {
   const ph = dna.physique || {};
   const features = [];
-  if (selected(ph.hip_scale, ph.hips, 80, ['extreme'])) features.push('dramatically broad lateral hip silhouette');
-  if (selected(ph.thigh_scale, ph.thighs, 80, ['massive'])) features.push('exceptionally full upper-thigh volume');
-  if (selected(ph.butt_scale, ph.butt, 200, ['hyper'])) features.push('fantasy-scale rearward glute projection');
-  if (selected(ph.bust_scale, ph.bust, 80, ['hyper', 'enormous'])) features.push('dramatically enlarged bust silhouette');
+  if (selected(ph.hip_scale, ph.hips, 80, ['extreme'], 2000)) features.push('dramatically broad lateral hip silhouette');
+  if (selected(ph.thigh_scale, ph.thighs, 80, ['massive'], 750)) features.push('exceptionally full upper-thigh volume');
+  if (selected(ph.butt_scale, ph.butt, 10, ['hyper'], 2000)) features.push('fantasy-scale rearward glute projection');
+  if (selected(ph.bust_scale, ph.bust, 80, ['hyper', 'enormous'], 2000)) features.push('dramatically enlarged bust silhouette');
   return features.length
     ? `MOSS VISUAL PRIORITY: ${features.join('; ')}; preserve the selected contours and connected anatomy in the chosen camera framing.`
     : '';
@@ -62,12 +62,12 @@ export function inspectMossPhysique(dna = {}) {
 // prompt. Never remove a phrase: user-authored wording may be intentional.
 const MOSS_OPPOSITES = {
   hips: {
-    narrow: /\\b(?:narrow|slim|very narrow) (?:hips?|pelvic silhouette)\\b/i,
-    wide: /\\b(?:wide|broad|extremely wide|dramatically broad) (?:hips?|hip silhouette|lateral hip silhouette)\\b/i,
+    narrow: /\b(?:narrow|slim|very narrow) (?:hips?|pelvic silhouette)\b/i,
+    wide: /\b(?:wide|broad|extremely wide|dramatically broad) (?:hips?|hip silhouette|lateral hip silhouette)\b/i,
   },
   thighs: {
-    narrow: /\\b(?:slim|slender|narrow|very slender) (?:upper )?thighs?\\b/i,
-    wide: /\\b(?:thick|massive|extremely thick|extremely broad) (?:upper )?thighs?\\b/i,
+    narrow: /\b(?:slim|slender|narrow|very slender) (?:upper )?thighs?\b/i,
+    wide: /\b(?:thick|massive|extremely thick|extremely broad) (?:upper )?thighs?\b/i,
   },
 };
 export function detectMossPromptConflicts(positive = '', dna = {}) {
@@ -76,8 +76,9 @@ export function detectMossPromptConflicts(positive = '', dna = {}) {
   for (const [region, patterns] of Object.entries(MOSS_OPPOSITES)) {
     const slider = Number(ph[region === 'hips' ? 'hip_scale' : 'thigh_scale']);
     const preset = String(ph[region] || '').toLowerCase();
+    const ratio=slider>0?slider/(region==='hips'?2000:750)*100:0;
     const desired = slider > 0
-      ? (slider <= 20 ? 'narrow' : slider >= 80 ? 'wide' : '')
+      ? (ratio <= 20 ? 'narrow' : ratio >= 80 ? 'wide' : '')
       : (region === 'hips'
         ? ({ narrow: 'narrow', wide: 'wide', 'very wide': 'wide', extreme: 'wide' })[preset]
         : ({ slim: 'narrow', thick: 'wide', 'very thick': 'wide', massive: 'wide' })[preset]);

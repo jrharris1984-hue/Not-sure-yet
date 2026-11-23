@@ -70,6 +70,10 @@ export function parseBatchPromptInput(input) {
 }
 
 function isPromptField(field) { return ['chips','chips_multi','pose_chips'].includes(field.type); }
+function promptOptions(field) {
+  if(Array.isArray(field.options))return field.options;
+  return (field.groups||[]).flatMap(group=>(group.options||[]).map(value=>({value,label:field.optionLabels?.[value]||value,keywords:'',group:group.name||''})));
+}
 function locationValue(section, field) { return `${section.key}::${field.key}`; }
 
 export function suggestPromptDestination(entry, sections=[]) {
@@ -89,7 +93,7 @@ export function suggestPromptDestination(entry, sections=[]) {
   let field=null;
   if(section && subcategory)field=section.fields.find(item=>isPromptField(item)&&(norm(item.key)===subcategory||norm(item.label)===subcategory));
   if(section && !field){
-    const ranked=section.fields.filter(isPromptField).map(item=>({item,score:Math.max(overlap(`${entry.label} ${entry.prompt}`,item.label),overlap(`${entry.label} ${entry.prompt}`,item.key),...(item.options||[]).map(option=>overlap(`${entry.label} ${entry.prompt}`,`${option.label} ${option.value} ${option.keywords||''}`)))})).sort((a,b)=>b.score-a.score);
+    const ranked=section.fields.filter(isPromptField).map(item=>({item,score:Math.max(overlap(`${entry.label} ${entry.prompt}`,item.label),overlap(`${entry.label} ${entry.prompt}`,item.key),...promptOptions(item).map(option=>overlap(`${entry.label} ${entry.prompt}`,`${option.label} ${option.value} ${option.keywords||''}`)))})).sort((a,b)=>b.score-a.score);
     field=ranked[0]?.item;
   }
   if(section && !field)field=section.fields.find(isPromptField);
@@ -98,13 +102,13 @@ export function suggestPromptDestination(entry, sections=[]) {
 }
 
 export function prepareBatchPromptRows(entries, sections) {
-  const locations=sections.flatMap(section=>section.fields.filter(isPromptField).map(field=>({value:locationValue(section,field),section,field})));
+  const locations=sections.flatMap(section=>section.fields.filter(isPromptField).map(field=>({value:locationValue(section,field),section,field,options:promptOptions(field)})));
   const known=new Map();
   const byId=new Map();
-  locations.forEach(({value,field})=>field.options.forEach(option=>{known.set(`${value}::${norm(option.label)}`,option);byId.set(`${value}::${option.value}`,{value,option});}));
+  locations.forEach(({value,options})=>options.forEach(option=>{known.set(`${value}::${norm(option.label)}`,option);byId.set(`${value}::${option.value}`,{value,option});}));
   return entries.map(entry=>{
     const suggestion=suggestPromptDestination(entry,sections);
-    const exact=entry.id.match(/^([^:]+)::([^:]+)::(.+)$/);
+    const exact=String(entry.id||'').match(/^([^:]+)::([^:]+)::(.+)$/);
     const exactMatch=exact&&byId.get(`${exact[1]}::${exact[2]}::${exact[3]}`);
     const destination=exactMatch?exactMatch.value:locations.some(item=>item.value===suggestion.destination)?suggestion.destination:'__custom__';
     const match=exactMatch?.option||known.get(`${destination}::${norm(entry.label)}`);
@@ -115,7 +119,7 @@ export function prepareBatchPromptRows(entries, sections) {
 export function exportPromptBatch(sections, sectionKey='*', fieldKey='*') {
   const prompts=sections.filter(section=>sectionKey==='*'||section.key===sectionKey).flatMap(section=>section.fields
     .filter(field=>(fieldKey==='*'||field.key===fieldKey)&&isPromptField(field))
-    .flatMap(field=>(field.options||[]).map(option=>({
+    .flatMap(field=>promptOptions(field).map(option=>({
       id:`${section.key}::${field.key}::${option.value}`,
       category:section.title,subcategory:field.label,label:option.label||option.value,
       prompt:clean(option.keywords||(section.key==='shared_poses'?option.value:expandPrompt(section.key,field.key,option.value))),group:option.group||''
@@ -137,8 +141,9 @@ export function applyBatchPromptRows(catalog, rows, sections) {
       next.sections.push(target);
     }
     let field=target.fields.find(item=>item.key===fieldKey);
-    if(!field){const source=sections.find(section=>section.key===sectionKey)?.fields.find(item=>item.key===fieldKey);field=source?{...source,options:[]}:{key:fieldKey,label:'Imported prompts',type:'chips',options:[]};target.fields.push(field);}
-    const exact=row.id.match(/^([^:]+)::([^:]+)::(.+)$/);
+    if(!field){const source=sections.find(section=>section.key===sectionKey)?.fields.find(item=>item.key===fieldKey);field=source?{...source,options:promptOptions(source)}:{key:fieldKey,label:'Imported prompts',type:'chips',options:[]};target.fields.push(field);}
+    if(!Array.isArray(field.options))field.options=promptOptions(field);
+    const exact=String(row.id||'').match(/^([^:]+)::([^:]+)::(.+)$/);
     const existing=(exact&&exact[1]===sectionKey&&exact[2]===fieldKey?field.options.find(option=>option.value===exact[3]):null)||field.options.find(option=>norm(option.label)===norm(row.label));
     if(existing){existing.keywords=row.prompt; if(row.group)existing.group=row.group;updated++;}
     else {field.options.push({value:newCatalogKey(),label:row.label,keywords:row.prompt,group:row.group||''});added++;}

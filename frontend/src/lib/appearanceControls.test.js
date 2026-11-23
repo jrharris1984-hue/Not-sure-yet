@@ -90,7 +90,7 @@ test('Chroma keeps breast, glute shape, garment and color controls together at e
   const { positive } = compileModelPrompts({ promptStyle: 'chroma', dna });
   expect(positive).toContain('fantasy-scale augmented bust');
   expect(positive).toContain('fantasy-scale maximum oversized');
-  expect(positive).toContain('size intensity 300/300');
+  expect(positive).toContain('size intensity 300/2000');
   expect(positive).toContain('BBL-style glute contour');
   expect(positive).toContain('mermaid gown');
   expect(positive).toContain('emerald outfit color');

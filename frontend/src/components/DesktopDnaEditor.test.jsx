@@ -49,6 +49,8 @@ test('every appearance and wardrobe field, including custom library fields, rema
 test('wardrobe uses a single editor and hides inactive controls until requested', () => {
   render(<Editor section="wardrobe" />);
   expect(container.querySelector('[data-testid="desktop-edit-top"]')).toBeNull();
+  expect(container.querySelector('[aria-label="Guided wardrobe editor"]')).not.toBeNull();
+  click('Advanced settings');
   expect(container.querySelector('[data-testid="wardrobe-focused-editor"]')).not.toBeNull();
   expect(container.querySelectorAll('[data-testid="wardrobe-mode-controls"]')).toHaveLength(1);
   expect([...container.querySelectorAll('option')].some(option=>option.value==='top')).toBe(false);

@@ -1207,13 +1207,6 @@ function expandedBustPrompt(value) {
   return `${tier} bust (bust volume intensity ${Math.round(n)}/500)`;
 }
 
-function expandedWaistPrompt(value) {
-  const n = Math.max(0, Math.min(500, Number(value) || 0));
-  if (n <= 100) return visualScale(n, "waist", ["very narrow", "narrow", "average width", "wide", "very wide"]);
-  if (n > 200) return `${n <= 350 ? "hyper-fantasy broad" : "beyond extreme impossible-width"} waist with monumental lateral torso width (waist width intensity ${Math.round(n)}/500)`;
-  return `${n <= 150 ? "dramatically broad" : "surreal fantasy-scale broad"} waist with exaggerated lateral torso width (waist width intensity ${Math.round(n)}/200)`;
-}
-
 function visualScale(value, noun, labels) {
   const n = Number(value) || 0;
   if (!n) return "";
@@ -1283,7 +1276,7 @@ function _veniceSubjectBlock(dna = {}, opts = {}) {
     physiqueDetailPrompt(ph),
     ph.thigh_scale ? physiqueScalePrompt("thighs",ph.thigh_scale,750) : regionalPhysiquePrompt("thighs",ph.thighs),
     ph.hip_scale ? physiqueScalePrompt("hips",ph.hip_scale,2000) : regionalPhysiquePrompt("hips",ph.hips),
-    ph.waist_scale ? expandedWaistPrompt(ph.waist_scale) : exp("physique", "waist"),
+    ph.waist_scale ? physiqueScalePrompt("waist",ph.waist_scale,500) : exp("physique", "waist"),
     ph.bust_projection > 0 && `independent bust forward projection: ${Number(ph.bust_projection) > 70 ? 'extraordinary forward depth' : Number(ph.bust_projection) > 35 ? 'pronounced forward depth' : 'subtle forward depth'} (projection intensity ${ph.bust_projection}/100)`,
     ph.glute_projection > 0 && `independent rearward glute projection: ${Number(ph.glute_projection) > 70 ? 'monumental rearward depth' : Number(ph.glute_projection) > 35 ? 'pronounced rearward depth' : 'subtle rearward depth'} (projection intensity ${ph.glute_projection}/100)`,
     ph.hip_flare > 0 && `independent lateral hip flare: ${Number(ph.hip_flare) > 70 ? 'dramatically extended outer hip contour' : 'defined outward hip contour'} (flare intensity ${ph.hip_flare}/100)`,

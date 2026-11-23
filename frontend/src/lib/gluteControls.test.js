@@ -1,6 +1,7 @@
 import { SECTIONS, DEFAULT_DNA } from './dna';
 import { gluteSizePrompt, gluteShapePrompt, buildGlutePrompt, GLUTE_SIZE_MAX } from './gluteControls';
 import { compileModelPrompts } from './modelPromptCompilers';
+import { photographicPrompt } from './physiqueControls';
 
 const physique = SECTIONS.find((section) => section.key === 'physique');
 const shapes = physique.fields.find((field) => field.key === 'glute_shape').groups.flatMap((group) => group.options);
@@ -11,7 +12,7 @@ it('extends glutes to 2000 while retaining the expanded breast slider range', ()
   expect(physique.fields.find((field) => field.key === 'implant_volume').max).toBe(5000);
   expect(gluteSizePrompt(0)).toBe('');
   expect(new Set([100, 125, 150, 175, 200].map((value) => gluteSizePrompt(value))).size).toBe(5);
-  expect(gluteSizePrompt(2000)).toContain('glute volume intensity 2000/2000');
+  expect(gluteSizePrompt(2000)).toContain('size intensity 2000/2000');
 });
 
 it.each(shapes)('keeps %s in the final single-subject Chroma creation prompt', (shape) => {
@@ -19,7 +20,7 @@ it.each(shapes)('keeps %s in the final single-subject Chroma creation prompt', (
   dna.physique.butt_scale = 100;
   dna.physique.glute_shape = shape;
   const { positive } = compileModelPrompts({ promptStyle: 'chroma', workflowKind: 'image', dna });
-  expect(positive).toContain(`GLUTE SHAPE: ${gluteShapePrompt(shape)}`);
+  expect(positive).toContain(`GLUTE SHAPE: ${photographicPrompt(gluteShapePrompt(shape))}`);
   expect(positive).toContain('fantasy-scale extremely oversized glute volume');
 });
 
@@ -85,7 +86,9 @@ it('keeps shape independent of size and clamps invalid slider values', () => {
   expect(gluteShapePrompt('naturally round', { size: 300 })).toBe(gluteShapePrompt('naturally round'));
   expect(gluteSizePrompt(-1)).toBe('');
   expect(gluteSizePrompt('invalid')).toBe('');
-  expect(gluteSizePrompt(999)).toBe(gluteSizePrompt(300));
+  expect(gluteSizePrompt(999)).not.toBe(gluteSizePrompt(300));
+  expect(gluteSizePrompt(999)).toContain('size intensity 999/2000');
+  expect(gluteSizePrompt(9999)).toBe(gluteSizePrompt(2000));
 });
 
 it('compiles the saved 238 detail-crop recipe without conflicting framing or size weights', () => {
@@ -97,7 +100,7 @@ it('compiles the saved 238 detail-crop recipe without conflicting framing or siz
   const original = JSON.stringify(dna);
   const { positive, guardAdjustments } = compileModelPrompts({ promptStyle: 'chroma', dna });
   expect(positive).toContain('tight detail framing');
-  expect(positive).toContain('composition: detail shot, profile, lying');
+  expect(positive).toMatch(/composition:.*detail shot, profile, lying/);
   expect(positive).not.toMatch(/full-character|full character|head to feet|pixie|:1\.[3-8]|extended to/);
   expect(positive).toContain('braids hairstyle');
   expect(positive.match(/glute volume/g)).toHaveLength(1);

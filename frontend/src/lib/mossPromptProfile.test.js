@@ -19,8 +19,8 @@ test('preserves individual subject priorities and accurate word count', () => {
     { label: 'A', dna: { physique: { hips: 'extreme' } } },
     { label: 'B', dna: { physique: { butt: 'hyper' } } },
   ]);
-  expect(result.positive).toContain('Subject A: PRIMARY VISUAL REQUIREMENTS:');
-  expect(result.positive).toContain('Subject B: PRIMARY VISUAL REQUIREMENTS:');
+  expect(result.positive).toContain('Subject A: MOSS VISUAL PRIORITY:');
+  expect(result.positive).toContain('Subject B: MOSS VISUAL PRIORITY:');
   expect(result.promptWords).toBe(result.positive.trim().split(/\s+/).length);
   expect(result.mossDiagnostics).toHaveLength(2);
 });
