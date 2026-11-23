@@ -1,3 +1,4 @@
+import { SHOOT_TEMPLATES, SHOOT_TEMPLATE_CATEGORIES } from "@/lib/shootTemplates";
 import { QUICK_SHOOT_STYLES, QUICK_SHOOT_COUNTS } from "@/lib/quickShootStyles";
 import { referenceShootWorkflows, shootContinuityDefaults, shootReferenceInstruction, shootReferencePreview } from "@/lib/shootContinuity";
 import { clothingSequence, DEFAULT_CLOTHING_STAGES } from "@/lib/shootClothingSequence";
@@ -70,6 +71,8 @@ export default function ShootSetup() {
   const [shootStep, setShootStep] = useState("character");
   const [quickMode,setQuickMode]=useState(()=>new URLSearchParams(window.location.search).get('quick')==='1');
   const [quickStyle,setQuickStyle]=useState('editorial');
+  const [templateCategory,setTemplateCategory]=useState('All');
+  const [selectedTemplate,setSelectedTemplate]=useState('');
   const [quickVariation,setQuickVariation]=useState('balanced');
   const shootNavigation = useRef(null);
   const goShootStep = step => {
@@ -205,18 +208,30 @@ export default function ShootSetup() {
     onError: (e) => toast.error(e?.response?.data?.detail || "Shoot creation failed"),
   });
 
-  const applyQuickShoot = () => {
-    const chosen=QUICK_SHOOT_STYLES.find(item=>item.key===quickStyle)||QUICK_SHOOT_STYLES[0];
+  const applyTemplate = (template) => {
+    setSelectedTemplate(template.id);
+    setQuickStyle(template.pack==='boudoir'?'boudoir':template.pack==='portrait'?'portrait':template.pack==='action'?'action':'editorial');
+    setSetControls(previous=>({...previous,scene:{...previous.scene,...template.scene},lighting:{...previous.lighting,...template.lighting},camera:{...previous.camera,...template.camera}}));
+    setOutfits([template.outfit]);
     setPoseMode('pack');
-    setPackKey(chosen.pack);
+    setPackKey(template.pack);
     setOrderedSetsEnabled(false);
     setSequenceEnabled(false);
     setAiFrames(null);
-    setOutfits([]);
+    setName(`${character?.name||'Character'} · ${template.name}`);
+  };
+  const applyQuickShoot = () => {
+    const chosen=QUICK_SHOOT_STYLES.find(item=>item.key===quickStyle)||QUICK_SHOOT_STYLES[0];
+    setPoseMode('pack');
+    setPackKey(selectedTemplate ? (SHOOT_TEMPLATES.find(t=>t.id===selectedTemplate)?.pack||chosen.pack) : chosen.pack);
+    setOrderedSetsEnabled(false);
+    setSequenceEnabled(false);
+    setAiFrames(null);
+    if(!selectedTemplate) setOutfits([]);
     setContinuity(quickVariation==='creative'?'creative':quickVariation==='subtle'?'maximum':'balanced');
     setSeedMode(quickVariation==='creative'?'fresh':quickVariation==='subtle'?'same':'character_pose');
     setLockScenario(quickVariation!=='creative');
-    setName(`${character?.name||'Character'} · ${chosen.name} · ${manualCount} photos`);
+    setName(`${character?.name||'Character'} · ${SHOOT_TEMPLATES.find(t=>t.id===selectedTemplate)?.name||chosen.name} · ${manualCount} photos`);
     goShootStep('review');
   };
 
@@ -246,6 +261,15 @@ export default function ShootSetup() {
         <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="font-display text-xl font-bold">Quick Photoshoot Director</h2><p className="text-sm text-zinc-400">Choose a style, number of photos and variation. Advanced controls remain available below.</p></div><button type="button" className="chip" onClick={()=>setQuickMode(v=>!v)} aria-expanded={quickMode}>{quickMode?'Hide quick director':'Open quick director'}</button></div>
         {quickMode&&<div className="space-y-4">
           <div><h3 className="font-semibold mb-2">1. Choose your style</h3><div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">{QUICK_SHOOT_STYLES.map(item=><button type="button" key={item.key} aria-pressed={quickStyle===item.key} onClick={()=>setQuickStyle(item.key)} className={`min-h-20 rounded-xl border p-3 text-left ${quickStyle===item.key?'border-amber-400 bg-amber-500/10':'border-zinc-700'}`}><span className="block text-sm font-semibold">{item.name}</span><span className="block text-xs text-zinc-400 mt-1">{item.hint}</span></button>)}</div></div>
+          <div className="rounded-xl border border-zinc-700 p-3 sm:p-4 space-y-3" data-testid="shoot-template-library">
+            <div><h3 className="font-semibold">Complete photoshoot templates</h3><p className="text-xs text-zinc-400">Optional: apply a coordinated scene, outfit, lighting and camera setup. Your character identity stays unchanged.</p></div>
+            <div className="flex gap-2 overflow-x-auto pb-1">{SHOOT_TEMPLATE_CATEGORIES.map(category=><button type="button" key={category} aria-pressed={templateCategory===category} onClick={()=>setTemplateCategory(category)} className={`chip shrink-0 ${templateCategory===category?'active':''}`}>{category}</button>)}</div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">{SHOOT_TEMPLATES.filter(t=>templateCategory==='All'||t.category===templateCategory).map(template=><button type="button" key={template.id} aria-pressed={selectedTemplate===template.id} onClick={()=>applyTemplate(template)} className={`overflow-hidden rounded-xl border text-left ${selectedTemplate===template.id?'border-amber-400 bg-amber-500/10':'border-zinc-700'}`}>
+              <div className="h-16 bg-gradient-to-br from-zinc-800 via-zinc-900 to-amber-950 flex items-center justify-center text-xs uppercase tracking-widest text-amber-200/80">{template.category} · {template.scene.environment}</div>
+              <div className="p-3"><span className="block font-semibold text-sm">{template.name}</span><span className="block text-xs text-zinc-400 mt-1">{template.outfit} · {template.lighting.style} · {template.camera.lens}</span><span className="block mt-2 text-xs text-amber-300">{selectedTemplate===template.id?'Selected · applied':'Apply template'}</span></div>
+            </button>)}</div>
+            {selectedTemplate&&<p className="text-xs text-amber-200">Template applied. Review or adjust its wardrobe, scene and lighting in the advanced editor before rendering.</p>}
+          </div>
           <div><h3 className="font-semibold mb-2">2. How many photos?</h3><div className="flex flex-wrap gap-2">{QUICK_SHOOT_COUNTS.map(n=><button key={n} type="button" aria-pressed={manualCount===n} onClick={()=>setCount(n)} className={`chip ${manualCount===n?'active':''}`}>{n} photos</button>)}</div></div>
           <div><h3 className="font-semibold mb-2">3. How much variety?</h3><div className="grid grid-cols-1 sm:grid-cols-3 gap-2">{[['subtle','Subtle','Keep the same seed and setting'],['balanced','Balanced','Vary seeds while keeping the setting'],['creative','Creative','Fresh seeds and flexible settings']].map(([key,label,hint])=><button key={key} type="button" aria-pressed={quickVariation===key} onClick={()=>setQuickVariation(key)} className={`min-h-16 rounded-lg border p-3 text-left ${quickVariation===key?'border-amber-400 bg-amber-500/10':'border-zinc-700'}`}><span className="block font-medium">{label}</span><span className="block text-xs text-zinc-400">{hint}</span></button>)}</div></div>
           <button type="button" className="w-full sm:w-auto min-h-12 rounded-xl bg-amber-500 px-5 py-3 font-semibold text-black hover:bg-amber-400" onClick={applyQuickShoot}>Build my shot list → Review & queue</button>
