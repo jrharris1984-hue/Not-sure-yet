@@ -36,3 +36,10 @@ test('includes shoulders arms and calves in region editing and comparison',()=>{
  expect(saved.shoulder_width).toBe(80);
  expect(saved.shoulder_slope).toBe(95);
 });
+
+test('adds torso, leg and neck regions to the organized physique editor',()=>{
+ expect(regionFields('Torso & Frame')).toEqual(expect.arrayContaining(['torso_width','ribcage_width','abdominal_softness','pelvic_width']));
+ expect(regionFields('Legs')).toEqual(expect.arrayContaining(['leg_length','thigh_length','knee_contour']));
+ expect(regionFields('Neck')).toEqual(expect.arrayContaining(['neck_length','neck_muscularity','trapezius_definition']));
+ expect(applyPhysiquePreset({},'Torso & Frame','pronounced').torso_width).toBe(55);
+});
