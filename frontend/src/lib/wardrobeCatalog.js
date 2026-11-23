@@ -1070,6 +1070,294 @@ export const WARDROBE_ITEMS = [
     "prompt": "fine-knit polo under a relaxed blazer, stretch trousers, compact crossbody bag and clean sneakers",
     "tags": ["creative","travel","smart casual"],
     "version": 2
+  },
+{
+    "id": "lingerie-emerald-lace-garter-set",
+    "category": "Lingerie Sets",
+    "label": "Emerald lace garter set",
+    "prompt": "emerald lace balconette bra with matching high-waisted briefs, garter belt and sheer thigh-high stockings",
+    "tags": [
+      "lingerie",
+      "emerald",
+      "lace",
+      "garter",
+      "stockings"
+    ],
+    "version": 1
+  },
+{
+    "id": "lingerie-plum-satin-longline",
+    "category": "Lingerie Sets",
+    "label": "Plum satin longline set",
+    "prompt": "plum satin longline bra and matching high-waisted briefs with a coordinating lightweight robe",
+    "tags": [
+      "lingerie",
+      "plum",
+      "satin",
+      "longline"
+    ],
+    "version": 1
+  },
+{
+    "id": "lingerie-ivory-bridal-corset",
+    "category": "Lingerie Sets",
+    "label": "Ivory bridal corset set",
+    "prompt": "ivory lace corset with matching briefs, detachable garters and sheer seamed stockings",
+    "tags": [
+      "lingerie",
+      "bridal",
+      "ivory",
+      "corset"
+    ],
+    "version": 1
+  },
+{
+    "id": "lingerie-crimson-velvet-bustier",
+    "category": "Lingerie Sets",
+    "label": "Crimson velvet bustier set",
+    "prompt": "crimson velvet bustier and matching high-waisted briefs beneath a sheer black robe",
+    "tags": [
+      "lingerie",
+      "crimson",
+      "velvet",
+      "bustier"
+    ],
+    "version": 1
+  },
+{
+    "id": "lingerie-champagne-silk-chemise",
+    "category": "Lingerie Sets",
+    "label": "Champagne silk chemise set",
+    "prompt": "champagne silk chemise with delicate lace edging, matching briefs and satin slippers",
+    "tags": [
+      "lingerie",
+      "champagne",
+      "silk",
+      "chemise"
+    ],
+    "version": 1
+  },
+{
+    "id": "lingerie-retro-pinup-seamed",
+    "category": "Lingerie Sets",
+    "label": "Retro pin-up seamed set",
+    "prompt": "1950s satin bullet bra with matching high-waisted briefs, garter belt and back-seam stockings",
+    "tags": [
+      "lingerie",
+      "retro",
+      "pin-up",
+      "1950s",
+      "seamed"
+    ],
+    "version": 1
+  },
+{
+    "id": "lingerie-cobalt-lace-corset",
+    "category": "Lingerie Sets",
+    "label": "Cobalt lace corset set",
+    "prompt": "cobalt-blue lace corset with matching briefs, garter straps and sheer stockings",
+    "tags": [
+      "lingerie",
+      "cobalt",
+      "lace",
+      "corset"
+    ],
+    "version": 1
+  },
+{
+    "id": "lingerie-rose-mesh-babydoll",
+    "category": "Lingerie Sets",
+    "label": "Rose mesh babydoll set",
+    "prompt": "rose-colored mesh babydoll with matching briefs and a soft satin wrap robe",
+    "tags": [
+      "lingerie",
+      "rose",
+      "mesh",
+      "babydoll"
+    ],
+    "version": 1
+  },
+{
+    "id": "hosiery-black-seamed-garter-look",
+    "category": "Stocking Looks",
+    "label": "Black seamed stocking look",
+    "prompt": "black back-seam stockings with a satin garter belt, lace bodysuit and pointed pumps",
+    "tags": [
+      "stockings",
+      "hosiery",
+      "back seam",
+      "garter"
+    ],
+    "version": 1
+  },
+{
+    "id": "hosiery-polka-dot-sheer-look",
+    "category": "Stocking Looks",
+    "label": "Polka-dot sheer tights",
+    "prompt": "fine polka-dot sheer tights paired with a tailored black mini dress and slingback heels",
+    "tags": [
+      "hosiery",
+      "tights",
+      "polka dot",
+      "sheer"
+    ],
+    "version": 1
+  },
+{
+    "id": "hosiery-diamond-fishnet-stage-look",
+    "category": "Stocking Looks",
+    "label": "Diamond fishnet stage look",
+    "prompt": "diamond fishnet stockings with a red performance bodysuit, matching gloves and platform heels",
+    "tags": [
+      "hosiery",
+      "fishnet",
+      "stage",
+      "performance"
+    ],
+    "version": 1
+  },
+{
+    "id": "hosiery-lace-top-thigh-high-look",
+    "category": "Stocking Looks",
+    "label": "Lace-top thigh-high set",
+    "prompt": "lace-top thigh-high stockings with coordinating garter straps, satin lingerie and ankle-strap heels",
+    "tags": [
+      "hosiery",
+      "thigh-high",
+      "lace",
+      "garter"
+    ],
+    "version": 1
+  },
+{
+    "id": "hosiery-opaque-ribbed-tights-look",
+    "category": "Stocking Looks",
+    "label": "Opaque ribbed tights look",
+    "prompt": "opaque ribbed tights with a fitted knit mini dress, longline cardigan and block heels",
+    "tags": [
+      "hosiery",
+      "opaque",
+      "ribbed",
+      "tights"
+    ],
+    "version": 1
+  },
+{
+    "id": "hosiery-bridal-ivory-stockings-look",
+    "category": "Stocking Looks",
+    "label": "Ivory bridal stocking set",
+    "prompt": "ivory sheer stockings with a lace garter, bridal slip dress and satin pumps",
+    "tags": [
+      "hosiery",
+      "bridal",
+      "ivory",
+      "stockings"
+    ],
+    "version": 1
+  },
+{
+    "id": "stage-clear-platform-show-look",
+    "category": "Stage & Dancewear",
+    "label": "Clear platform show look",
+    "prompt": "crystal-trim performance bodysuit with clear ankle-strap platform stage heels",
+    "tags": [
+      "stage",
+      "dancewear",
+      "clear platform",
+      "heels"
+    ],
+    "version": 1
+  },
+{
+    "id": "stage-rhinestone-lace-up-look",
+    "category": "Stage & Dancewear",
+    "label": "Rhinestone lace-up platforms",
+    "prompt": "black rhinestone performance set with lace-up platform dance heels and detachable ankle cuffs",
+    "tags": [
+      "stage",
+      "rhinestone",
+      "platform",
+      "dance"
+    ],
+    "version": 1
+  },
+{
+    "id": "stage-velvet-over-knee-look",
+    "category": "Stage & Dancewear",
+    "label": "Velvet over-knee stage look",
+    "prompt": "deep blue velvet mini dress with over-the-knee stiletto boots and a matching choker",
+    "tags": [
+      "stage",
+      "velvet",
+      "over-knee",
+      "stiletto"
+    ],
+    "version": 1
+  },
+{
+    "id": "stage-neon-platform-performance",
+    "category": "Stage & Dancewear",
+    "label": "Neon platform performance",
+    "prompt": "neon sequin bodysuit with tall clear platform performance heels and coordinated wrist cuffs",
+    "tags": [
+      "stage",
+      "neon",
+      "platform",
+      "performance"
+    ],
+    "version": 1
+  },
+{
+    "id": "stage-red-patent-platform-look",
+    "category": "Stage & Dancewear",
+    "label": "Red patent platform look",
+    "prompt": "red patent mini dress with matching red platform pumps and sheer black tights",
+    "tags": [
+      "stage",
+      "red",
+      "patent",
+      "platform"
+    ],
+    "version": 1
+  },
+{
+    "id": "stage-silver-glitter-dance-look",
+    "category": "Stage & Dancewear",
+    "label": "Silver glitter dance look",
+    "prompt": "silver glitter two-piece performance outfit with ankle-strap platform dance heels",
+    "tags": [
+      "stage",
+      "silver",
+      "glitter",
+      "dance"
+    ],
+    "version": 1
+  },
+{
+    "id": "stage-pole-dance-platform-look",
+    "category": "Stage & Dancewear",
+    "label": "Pole dance platform set",
+    "prompt": "high-neck stretch performance bodysuit with secure ankle-wrap platform pole-dance heels",
+    "tags": [
+      "stage",
+      "pole dance",
+      "platform",
+      "performance"
+    ],
+    "version": 1
+  },
+{
+    "id": "stage-satin-slingback-evening-look",
+    "category": "Stage & Dancewear",
+    "label": "Satin slingback evening look",
+    "prompt": "one-shoulder satin evening mini dress with crystal slingback stilettos and a compact clutch",
+    "tags": [
+      "stage",
+      "satin",
+      "slingback",
+      "stilettos"
+    ],
+    "version": 1
   }
 ];
 export const WARDROBE_CATEGORY_GROUPS = Object.entries(WARDROBE_ITEMS.reduce((acc, item) => { (acc[item.category] ||= []).push(item); return acc; }, {})).map(([name, items]) => ({ name, options: items.map(item => item.prompt) }));
