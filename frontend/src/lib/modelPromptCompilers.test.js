@@ -10,6 +10,18 @@ import {
 } from "./modelPromptCompilers";
 
 describe("model-specific prompt compilers", () => {
+  it.each(['chroma','zimage','krea2','sdxl','pony'])('includes expanded identity and physique details for %s', promptStyle => {
+    const dna = JSON.parse(JSON.stringify(DEFAULT_DNA));
+    dna.identity = {...dna.identity, gender:'non-binary', presentation:'androgynous-presenting', archetype:'quietly confident', identity_details:'signature silver glasses'};
+    dna.physique = {...dna.physique, torso_width:60, neck_length:60, leg_length:40};
+    const result = compileModelPrompts({promptStyle,dna});
+    expect(result.positive).toContain('androgynous-presenting');
+    expect(result.positive).toContain('quietly confident');
+    expect(result.positive).toContain('signature silver glasses');
+    expect(result.positive).toContain('broad torso frame');
+    expect(result.positive).toContain('long neck proportion');
+    expect(result.positive).toContain('balanced leg proportion');
+  });
   it.each(['chroma','zimage','krea2','sdxl','pony'])('preserves explicit barefoot with an outfit set for %s', promptStyle => {
     const dna = JSON.parse(JSON.stringify(DEFAULT_DNA));
     dna.wardrobe = {...dna.wardrobe,outfit_set:'evening outfit',footwear:'barefoot',heel_type:'',hosiery_type:''};
