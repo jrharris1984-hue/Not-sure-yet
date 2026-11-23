@@ -161,7 +161,7 @@ describe("model-specific prompt compilers", () => {
     expect(result.negative).not.toContain("score_9");
   });
 
-  it("uses Natural mode to suppress competing extreme anatomy and secondary feet priority", () => {
+  it("uses Natural mode for body coherence while preserving selected extreme anatomy", () => {
     const dna = JSON.parse(JSON.stringify(DEFAULT_DNA));
     dna.style.anatomy_mode = "natural";
     dna.physique = {
@@ -188,9 +188,9 @@ describe("model-specific prompt compilers", () => {
 
     const guard = resolveZImageComposition(dna);
     expect(guard.anatomyMode).toBe("natural");
-    expect(guard.dna.physique.bust).toBe("large");
-    expect(guard.dna.physique.butt).toBe("large");
-    expect(guard.dna.physique.exaggeration).toBe(35);
+    expect(guard.dna.physique.bust).toBe("hyper");
+    expect(guard.dna.physique.butt).toBe("hyper");
+    expect(guard.dna.physique.exaggeration).toBe(100);
     expect(guard.dna.pose.angle).toBe("3/4");
     expect(guard.dna.feet.pedicure).toBe("painted red");
     expect(guard.dna.feet.framing).toBe("");
@@ -200,11 +200,11 @@ describe("model-specific prompt compilers", () => {
     expect(result.positive).toContain("NORMAL HUMAN ANATOMY REQUIRED");
     expect(result.positive).toContain("red-painted toenails");
     expect(result.positive).not.toContain("PRIMARY FEET COMPOSITION");
-    expect(result.positive).not.toContain("hyper-inflated");
+    expect(result.positive).toContain("hyper-scale bust volume");
     expect(result.positive.split(/\\s+/).length).toBeLessThanOrEqual(220);
   });
 
-  it("preserves explicit extreme choices only when Extreme mode is selected", () => {
+  it("preserves explicit extreme choices in each anatomy mode", () => {
     const dna = JSON.parse(JSON.stringify(DEFAULT_DNA));
     dna.style.anatomy_mode = "extreme";
     dna.physique.bust = "hyper";
@@ -245,7 +245,7 @@ describe("model-specific prompt compilers", () => {
     expect(textVideo.negative).toContain("temporal inconsistency");
   });
 
-  it("applies the Natural human guard to Pony, Chroma, and standard still compilers", () => {
+  it("keeps structural human guidance without replacing selected volume in still compilers", () => {
     const dna = JSON.parse(JSON.stringify(DEFAULT_DNA));
     dna.style.anatomy_mode = "natural";
     dna.physique.bust = "hyper";
@@ -253,7 +253,7 @@ describe("model-specific prompt compilers", () => {
     ["pony", "chroma", "standard"].forEach((promptStyle) => {
       const result = compileModelPrompts({ promptStyle, dna });
       expect(result.positive).toContain("NORMAL HUMAN ANATOMY REQUIRED");
-      expect(result.positive).not.toContain("hyper-inflated");
+      expect(result.positive).toMatch(/hyper|fantasy-scale/i);
       expect(result.guardAdjustments.length).toBeGreaterThan(0);
     });
   });
@@ -384,8 +384,8 @@ describe("model-specific prompt compilers", () => {
     const lowResult = compileModelPrompts({ promptStyle: "chroma", dna: low });
     const highResult = compileModelPrompts({ promptStyle: "chroma", dna: high });
 
-    expect(lowResult.positive).toContain("moderate glute volume (size intensity 20/300)");
-    expect(highResult.positive).toContain("extremely oversized with strong rear projection glute volume (size intensity 80/300)");
+    expect(lowResult.positive).toContain("moderate glute volume (glute volume intensity 20/300)");
+    expect(highResult.positive).toContain("extremely oversized with strong rear projection glute volume (glute volume intensity 80/300)");
     expect(lowResult.positive).not.toContain("Large bust and prominent buttocks from imported analyzer metadata");
     expect(highResult.positive).not.toContain("Large bust and prominent buttocks from imported analyzer metadata");
     expect(lowResult.positive).not.toBe(highResult.positive);

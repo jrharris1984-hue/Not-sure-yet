@@ -39,7 +39,7 @@ export function mossVisualPriority(dna = {}) {
   if (selected(ph.butt_scale, ph.butt, 200, ['hyper'])) features.push('fantasy-scale rearward glute projection');
   if (selected(ph.bust_scale, ph.bust, 80, ['hyper', 'enormous'])) features.push('dramatically enlarged bust silhouette');
   return features.length
-    ? `PRIMARY VISUAL REQUIREMENTS: ${features.join('; ')}; preserve the selected contours and connected anatomy in the chosen camera framing.`
+    ? `MOSS VISUAL PRIORITY: ${features.join('; ')}; preserve the selected contours and connected anatomy in the chosen camera framing.`
     : '';
 }
 

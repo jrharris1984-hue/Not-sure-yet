@@ -458,8 +458,12 @@ export function compatibleInstalledLoras(workflow = {}, installed = [], preferen
   const registryMatches = compatibleRegistryForWorkflow(workflow, installed);
   const registryByInstalled = new Map(registryMatches.map((entry) => [normalized(entry.installedName), entry]));
   const results = [];
+  const uniqueInstalled=[...new Map(installed.map(name=>[normalized(name),name])).values()];
+  const basename=name=>normalized(name).split('/').pop();
+  const rootDuplicate=name=>!normalized(name).includes('/')&&uniqueInstalled.some(other=>normalized(other).includes('/')&&basename(other)===basename(name)&&allowedFamilies.has(folderFamilyForInstalled(other)));
 
-  installed.forEach((installedName) => {
+  uniqueInstalled.forEach((installedName) => {
+    if(rootDuplicate(installedName))return;
     const normalizedName = normalized(installedName);
     const registered = registryByInstalled.get(normalizedName) ||
       LORA_REGISTRY.find((entry) => installedMatch(entry, [installedName]) && allowedFamilies.has(entry.family));

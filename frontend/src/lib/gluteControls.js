@@ -1,5 +1,5 @@
 // Visual prompt controls, not anatomical measurements. Zero keeps the preset.
-export const GLUTE_SIZE_MAX = 1000;
+export const GLUTE_SIZE_MAX = 2000;
 
 const SIZE_LEVELS = [
   "small", // 1-10
@@ -30,6 +30,10 @@ const EXTREME_SIZE_DESCRIPTORS = {
   650: "beyond extreme fantasy glute volume with immense rearward depth and expansive outer contours",
   800: "hyper-surreal glute volume with extraordinary projection and overwhelming lower-body silhouette",
   1000: "ultimate impossible fantasy glute scale with monumental rearward projection and enormous lateral fullness",
+  1250: "colossal fantasy glute volume with vastly expanded rear depth and broad lateral fullness",
+  1500: "monumental glute silhouette with extreme rearward volume and dramatically expanded outer contours",
+  1750: "immense surreal glute scale dominating the lower-body silhouette with maximum rounded projection",
+  2000: "maximum beyond-fantasy glute volume with colossal rearward projection and the broadest coherent lower-body silhouette",
 };
 
 // Comprehensive shape catalog covering all aesthetic types
@@ -122,14 +126,15 @@ export function gluteSizePrompt(value, { intensity = false, texture = null } = {
     const threshold = Object.keys(EXTREME_SIZE_DESCRIPTORS)
       .map(Number)
       .sort((a, b) => a - b)
-      .find(t => n <= t) || 500;
+      .find(t => n <= t) || GLUTE_SIZE_MAX;
     descriptor = EXTREME_SIZE_DESCRIPTORS[threshold];
   }
   
   // Add texture if specified
   const textureMod = texture && TEXTURE_MODIFIERS[texture] ? `, ${TEXTURE_MODIFIERS[texture]}` : "";
   
-  return `${descriptor} glute volume${textureMod}${` (glute volume intensity ${n}/${n <= 300 ? 300 : n <= 500 ? 500 : GLUTE_SIZE_MAX})`}`;
+  const max=n<=300?300:n<=500?500:n<=1000?1000:GLUTE_SIZE_MAX;
+  return `${descriptor} glute volume${textureMod} (glute volume intensity ${n}/${max})`;
 }
 
 export function gluteShapePrompt(value, { texture = null } = {}) {

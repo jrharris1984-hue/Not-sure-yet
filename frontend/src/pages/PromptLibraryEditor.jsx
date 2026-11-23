@@ -6,6 +6,7 @@ import {COVERAGE_BEHAVIORS} from '@/lib/wardrobeNudity';
 import {simpleCoverageOptions} from '@/lib/simpleCoverage';
 import BulkChoiceEditor from '@/components/BulkChoiceEditor';
 import BulkCategoryEditor from '@/components/BulkCategoryEditor';
+import BatchPromptImport from '@/components/BatchPromptImport';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { endpoints } from '@/lib/api';
@@ -66,6 +67,7 @@ export default function PromptLibraryEditor() {
   const [promptPreview,setPromptPreview]=useState(null);
   const [previewWorkflow,setPreviewWorkflow]=useState('Moss Image FinalCut Universal FP8');
   const [provider,setProvider]=useState('AI'), [suggestion,setSuggestion]=useState(null);
+  const [showBatchImport,setShowBatchImport]=useState(false);
   useEffect(() => {let live=true; endpoints.settings().then(settings => {
     if(!live)return;
     const config=settings.prompt_catalog || {sections:[]};setDraft(config);setSaved(config);setLoaded(true);
@@ -137,12 +139,17 @@ export default function PromptLibraryEditor() {
       <button className={buttonClass} disabled={busy || !dirty} onClick={save}>Save library</button>
       <button className={buttonClass} disabled={busy || !dirty} onClick={() => {setDraft(saved);chooseSection(LIBRARY_SECTIONS[0].key);setMessage('Unsaved edits discarded.');setSuggestion(null);}}>Discard edits</button>
       <button className={buttonClass} disabled={busy} onClick={backup}>Download backup</button>
+      <button className={buttonClass} disabled={busy} onClick={()=>setShowBatchImport(value=>!value)}>Batch import prompts</button>
       <button className={buttonClass} disabled={busy} onClick={downloadPack}>Export category pack</button>
       <label className={buttonClass}>Import content pack<input aria-label="Import content pack" type="file" accept="application/json,.json" disabled={busy} onChange={importPack} className="hidden"/></label>
       <label className={buttonClass}>Restore backup<input aria-label="Restore backup" type="file" accept="application/json,.json" disabled={busy} onChange={restore} className="hidden"/></label>
       <button className={buttonClass} disabled={busy} onClick={() => {setDraft({sections:[]});setSectionKey(LIBRARY_SECTIONS[0].key);setFieldKey(LIBRARY_SECTIONS[0].fields[0].key);setMessage('Default library staged. Save to apply this reset.');setSuggestion(null);}}>Restore defaults</button>
       <span className="self-center text-xs text-zinc-500">{dirty?'Unsaved changes':'Saved library'}</span>
     </div>
+    {showBatchImport&&<BatchPromptImport catalog={draft} sections={sections} onClose={()=>setShowBatchImport(false)} onApply={result=>{
+      setDraft(result.catalog);setPromptPreview(null);setSuggestion(null);setError('');
+      setMessage(`Batch staged: ${result.added} prompts added, ${result.updated} matching prompts updated, ${result.skipped} skipped. Review and Save library to apply.`);
+    }}/>}
     <section className="pane space-y-2 p-4" aria-label="Content manager quick start">
       <h2 className="text-sm font-semibold text-cyan-200">Add your own poses and clothing</h2>
       <p className="text-xs text-zinc-400">Choose a category, open a subcategory, and select Add choice. Give it a display name and describe the visual result in Prompt keywords. Use Group to organize options into tabs. Save library when finished; new selections appear in the builder without changing application code.</p>

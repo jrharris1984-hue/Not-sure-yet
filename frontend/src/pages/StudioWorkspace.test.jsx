@@ -26,7 +26,7 @@ test('opens a canvas workspace with app navigation and one inspector instead of 
 test('all body and outfit collections remain accessible through the inspector',async()=>{
   await paint();await click('Physical features');await click('Glutes');
   const glutes=buttons().find(button=>button.textContent.includes('Glute size · slider'));await act(async()=>glutes.click());
-  expect(document.querySelector('input[type="range"]').max).toBe('300');await click('Done');
+  expect(document.querySelector('input[type="range"]').max).toBe('2000');await click('Done');
   await click('Outfit');
   await act(async()=>buttons().find(button=>button.textContent.includes('Choose an outfit')).click());
   await act(async()=>buttons().find(button=>button.textContent.includes('Complete outfit set')).click());

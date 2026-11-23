@@ -1,4 +1,5 @@
 import {EXTRA_CAMERA_ANGLES} from './cameraViewChoices';
+import { SECTIONS } from './dna';
 import { normalizeAnatomyDetails } from "./anatomyDetailControls";
 import { POSE_ACTION_PROMPTS } from './photographyPoses';
 import { catalogSelection, catalogControl, getPromptCatalog } from './promptCatalog';
@@ -468,19 +469,17 @@ export function resolveBuilderControls(source = {}) {
 
 // Exact values survive each compiler's word budget. Numbers express a requested
 // visual direction; they do not guarantee a measurable change in the image.
-const sliders = [
-  ['identity', 'age', 'age', 80], ['physique', 'muscularity', 'muscularity', 100],
-  ['physique', 'bust_scale', 'bust size', 100], ['physique', 'implant_volume', 'implant visual size', 5000],
-  ['physique', 'butt_scale', 'glute size', 300], ['physique', 'thigh_scale', 'thigh size', 100],
-  ['physique', 'hip_scale', 'hip width', 100], ['physique', 'waist_scale', 'waist width', 100],
-  ['skin', 'glow', 'skin glow', 100],
-  ['scenario', 'explicit_level', 'scenario intensity', 100],
-];
+const specialSliderLabels={age:'age',implant_volume:'implant visual size',bust_scale:'bust size',butt_scale:'glute size',thigh_scale:'thigh size',hip_scale:'hip width',waist_scale:'waist width',glow:'skin glow',explicit_level:'scenario intensity'};
+const primarySliderKeys=new Set(['identity.age','physique.muscularity','physique.bust_scale','physique.implant_volume','physique.butt_scale','physique.thigh_scale','physique.hip_scale','physique.waist_scale','skin.glow','scenario.explicit_level']);
+const sliders=SECTIONS.flatMap(section=>section.fields.filter(field=>field.type==='slider'&&field.key!=='cast_age_gap').map(field=>[
+  section.key,field.key,specialSliderLabels[field.key]||field.label.replace(/\s*\([^)]*\)/g,'').toLowerCase(),Number(field.max)||100,field.defaultValue??Math.round(((Number(field.min)||0)+(Number(field.max)||100))/2),
+]));
 export function sliderPromptSignature(dna = {}, existing = "") {
-  return sliders.flatMap(([section, key, label, max]) => {
+  return sliders.flatMap(([section, key, label, max, defaultValue]) => {
     const raw = dna[section]?.[key];
     if (!Number.isFinite(Number(raw)) || raw === '' || raw === undefined || raw === null) return [];
     const value = Math.max(0, Math.min(max, Number(raw)));
+    if(!primarySliderKeys.has(`${section}.${key}`)&&value===Number(defaultValue))return [];
     if (key !== 'age' && !value) return []; // 0 restores the preset.
     if (['bust_scale'].includes(key) && Number(dna.physique?.implant_volume) > 0) return [];
     if (key === 'implant_volume' && !value) return [];

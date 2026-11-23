@@ -166,11 +166,11 @@ describe('physique slider endpoint comparisons', () => {
 
 describe('Physique 2.0 expanded range compatibility', () => {
   it.each([
-    ['bust_scale', 500, /bust volume intensity 500\/500/],
-    ['hip_scale', 300, /lateral hip width intensity 300\/300/],
-    ['waist_scale', 200, /waist width intensity 200\/200/],
-    ['thigh_scale', 300, /upper-thigh volume intensity 300\/300/],
-    ['butt_scale', 500, /glute volume intensity 500\/500/],
+    ['bust_scale', 500, /bust size 500\/2000/],
+    ['hip_scale', 300, /hip width 300\/2000/],
+    ['waist_scale', 200, /waist width 200\/500/],
+    ['thigh_scale', 300, /thigh size 300\/750/],
+    ['butt_scale', 1500, /glute size 1500\/2000/],
   ])('compiles expanded %s maximum for MOSS', (key, maximum, phrase) => {
     const dna = recipe();
     dna.physique = {...dna.physique, [key]: maximum};

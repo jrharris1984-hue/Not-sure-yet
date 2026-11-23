@@ -55,6 +55,15 @@ export function sharedPoseGroups(count = 2, config = catalog) {
   const savedSection = config.sections?.find(item => item.key === SHARED_POSE_SECTION.key);
   const savedField = savedSection?.fields?.find(item => item.key === baseField.key);
   const savedOptions = new Map((savedField?.options || []).map(option => [option.value, option]));
+  if(savedSection?.exact_fields) {
+    const groups=new Map();
+    for(const option of savedField?.options||[]) {
+      const label=option.group||'Custom poses';
+      if(!groups.has(label))groups.set(label,[]);
+      groups.get(label).push({value:option.value,label:option.label||option.value,prompt:option.keywords?.trim()||option.value});
+    }
+    return [...groups].map(([label,poses])=>({label,poses}));
+  }
   const seen = new Set();
   const groups = baseField.groups.map(group => ({
     label: group.name,

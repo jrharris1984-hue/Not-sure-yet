@@ -256,7 +256,7 @@ test("kept redo and exhausted compatible choices retain the reviewed shot", () =
   const original = [{ index: 0, title: "Hero", kept: true, pose: { value: "side by side", label: "Side by side" } }];
   expect(regenerateSmartPhotoshootPlan({ plan: original, index: 0 })[0]).toBe(original[0]);
   const unlocked = [{ ...original[0], kept: false }];
-  const next = regenerateSmartPhotoshootPlan({ plan: unlocked, subjects: [baseSubject(), baseSubject()], promptCatalog: { sections: [{ key: "shared_poses", fields: [{ key: "two_people", options: [{ value: "side by side", label: "Side by side", group: "Portrait" }] }] }] } });
+  const next = regenerateSmartPhotoshootPlan({ plan: unlocked, subjects: [baseSubject(), baseSubject()], promptCatalog: { sections: [{ key: "shared_poses", exact_fields:true, fields: [{ key: "two_people", options: [{ value: "side by side", label: "Side by side", group: "Portrait" }] }] }] } });
   expect(next[0].pose).toBe(unlocked[0].pose);
 });
 

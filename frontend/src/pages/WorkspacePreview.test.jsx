@@ -73,9 +73,9 @@ test('new-character creation exposes identity choices and browsable appearance d
   await click('Done');expect(container.textContent).toContain('42');
 });
 
-test('body categories expose size sliders and the original glute maximum',async()=>{
+test('body categories expose size sliders through the expanded glute maximum',async()=>{
   await paint();await click('Create a new character');await click('Next');await click('Body build');await click('Glutes');
-  await click('Glute size (slider)');expect(document.querySelector('input[type="range"]').max).toBe('300');await click('Done');
+  await click('Glute size (slider)');expect(document.querySelector('input[type="range"]').max).toBe('2000');await click('Done');
   await click('Waist & hips');expect(container.textContent).toContain('Hip width (slider)');
   await click('Bust');expect(container.textContent).toContain('Bust shape');
 });

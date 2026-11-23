@@ -45,7 +45,7 @@ export const rearSubjectView = value => /^(back|rear(?:\s|$)|over-shoulder)/i.te
 export const subjectOrientationDirective = value => {
   const v=String(value||'').trim().toLowerCase();
   if (!v) return '';
-  if (rearSubjectView(v)) return 'REQUIRED SUBJECT ORIENTATION: camera positioned behind the subject; show the back of the head, shoulders and torso; subject facing away from the camera; do not rotate the body toward the viewer; ' + subjectViewPrompt(value);
+  if (rearSubjectView(v)) return 'REQUIRED SUBJECT ORIENTATION: camera behind the subject, positioned to show the back of the head, shoulders and torso; subject facing away from the camera; do not rotate the body toward the viewer; ' + subjectViewPrompt(value);
   if (/^(left profile|right profile|profile)/.test(v)) return 'REQUIRED SUBJECT ORIENTATION: side profile, camera beside the subject, not a frontal portrait; ' + subjectViewPrompt(value);
   return '';
 };

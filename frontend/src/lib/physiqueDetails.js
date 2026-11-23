@@ -70,7 +70,7 @@ export function physiqueDetailPrompt(ph={}){
  return PHYSIQUE_DETAIL_KEYS.map(key=>{
  const n=Math.max(0,Math.min(100,Number(ph[key])||0));
  if(!n)return '';
- const tier=descriptions[key].length>=5?Math.min(4,Math.floor((n-1)/20)):n<=33?0:n<=66?1:2;
+ const tier=descriptions[key].length>=5?Math.min(4,Math.floor(n/20)):n<=33?0:n<=66?1:2;
  return descriptions[key][tier];
  }).filter(Boolean).join(', ');
 }

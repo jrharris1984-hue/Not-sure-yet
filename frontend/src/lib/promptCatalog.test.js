@@ -105,7 +105,7 @@ test('Prompt Library ordering starts with Scenario then Identity and adds Shared
 });
 
 test('shared pose metadata is editable without becoming a character DNA section', () => {
-  const config={sections:[{key:'shared_poses',title:'Shared Poses',fields:[{key:'two_people',label:'2 people',type:'pose_chips',options:[
+  const config={sections:[{key:'shared_poses',title:'Shared Poses',exact_fields:true,fields:[{key:'two_people',label:'2 people',type:'pose_chips',options:[
     {value:'side by side',label:'Editorial Pair',keywords:'close editorial pairing',group:'Custom'},
   ]}]}]};
   const groups=sharedPoseGroups(2,config);

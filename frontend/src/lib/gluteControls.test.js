@@ -5,12 +5,13 @@ import { compileModelPrompts } from './modelPromptCompilers';
 const physique = SECTIONS.find((section) => section.key === 'physique');
 const shapes = physique.fields.find((field) => field.key === 'glute_shape').groups.flatMap((group) => group.options);
 
-it('extends glutes to 300 while retaining the existing breast slider ranges', () => {
+it('extends glutes to 2000 while retaining the expanded breast slider range', () => {
   expect(physique.fields.find((field) => field.key === 'butt_scale').max).toBe(GLUTE_SIZE_MAX);
-  expect(physique.fields.find((field) => field.key === 'bust_scale').max).toBe(100);
+  expect(physique.fields.find((field) => field.key === 'bust_scale').max).toBe(2000);
   expect(physique.fields.find((field) => field.key === 'implant_volume').max).toBe(5000);
   expect(gluteSizePrompt(0)).toBe('');
   expect(new Set([100, 125, 150, 175, 200].map((value) => gluteSizePrompt(value))).size).toBe(5);
+  expect(gluteSizePrompt(2000)).toContain('glute volume intensity 2000/2000');
 });
 
 it.each(shapes)('keeps %s in the final single-subject Chroma creation prompt', (shape) => {
