@@ -922,6 +922,7 @@ export function resolvePromptCompiler({ promptStyle = "", workflowKind = "", wor
   if (kind === "edit" || kind === "enhance" || style === "qwen_edit" || name.includes("qwen")) return "qwen_edit";
   if (kind === "video" || style === "wan_i2v") return "wan_i2v";
   if (kind === "text_video" || style === "wan_t2v") return "wan_t2v";
+  if (style === "moss" || /\\bmoss\\b|finalcut|hypermos(s)?/i.test(name)) return "moss";
   if (style === "pony" || kind === "pony" || name.includes("pony")) return "pony";
   if (style === "sdxl_dmd2") return "sdxl_dmd2";
   if (style === "sdxl" || name.includes("juggernaut xl")) return "sdxl";
@@ -1088,6 +1089,13 @@ function compileModelPromptsRaw({
     };
   };
 
+  if (compiler === "moss") {
+    // MOSS receives the complete selected physique description through the
+    // standard DNA compiler, rather than Chroma/Krea/Z-Image size rewrites.
+    // Preserve regional shape and volume wording independently.
+    const prompts = basePrompts({ dna: primaryGuard.dna, subjects: guardedSubjects, isMulti, raunch });
+    return withPriorityGuard(prompts, "standard");
+  }
   if (compiler === "pony") return withPriorityGuard(
     isMulti ? buildMultiPonyPrompts(guardedSubjects, { raunch }) : buildPonyPrompts(primaryGuard.dna, { raunch }),
     "pony"
