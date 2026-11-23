@@ -1,4 +1,4 @@
-import { composeMossPrompt, inspectMossPhysique, mossVisualPriority, mossBodyGeometry } from './mossPromptProfile';
+import { composeMossPrompt, inspectMossPhysique, mossVisualPriority, mossBodyGeometry, dedupeMossClauses } from './mossPromptProfile';
 
 test('explicit extreme selections get a concise silhouette priority', () => {
   const dna = { physique: { hips: 'extreme', thighs: 'massive', butt: 'hyper' } };
@@ -48,4 +48,17 @@ test('MOSS diagnostics expose geometry without changing presets', () => {
   expect(report.geometry.butt.sizeSource).toBe('preset');
   expect(report.geometry.butt.size).toBe('hyper');
   expect(report.geometry.butt.projection).toBe('lateral');
+});
+
+test('deduplicates only exact repeated MOSS clauses', () => {
+  const result = dedupeMossClauses('wide hips; rounded contour; WIDE   HIPS; custom wide hip description');
+  expect(result.positive).toBe('wide hips; rounded contour; custom wide hip description');
+  expect(result.removed).toEqual(['WIDE   HIPS']);
+});
+
+test('MOSS composition reports removed duplicates without changing custom wording', () => {
+  const result = composeMossPrompt('studio portrait; studio portrait; my custom phrase', [{ dna: { physique: {} } }]);
+  expect(result.positive).toContain('my custom phrase');
+  expect(result.mossRemovedDuplicates).toEqual(['studio portrait']);
+  expect(result.promptWords).toBe(result.positive.split(/\s+/).filter(Boolean).length);
 });
