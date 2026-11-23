@@ -1,18 +1,8 @@
 import PhysiqueComparison3 from '@/components/PhysiqueComparison3';
 import {useState,useRef} from 'react';
-import {applyPhysiquePreset,restorePhysiqueRegion,physiqueRegionDifferences} from '@/lib/physiqueStudio3';
+import {PHYSIQUE_REGIONS as regions,applyPhysiquePreset,restorePhysiqueRegion,physiqueRegionDifferences} from '@/lib/physiqueStudio3';
 import {PHYSIQUE_DETAIL_GROUPS} from '@/lib/physiqueDetails';
 import {physiqueScalePrompt} from '@/lib/physiqueScalePrompts';
-const regions=[
- {name:'Breasts',key:'bust_scale',axis:'bust',max:2000},
- {name:'Hips',key:'hip_scale',axis:'hips',max:2000},
- {name:'Waist',key:'waist_scale',axis:null,max:500},
- {name:'Glutes',key:'butt_scale',axis:'butt',max:2000},
- {name:'Thighs',key:'thigh_scale',axis:'thighs',max:750},
- {name:'Shoulders',key:'shoulder_width',axis:null,max:100},
- {name:'Arms',key:'upper_arm_fullness',axis:null,max:100},
- {name:'Calves',key:'calf_fullness',axis:null,max:100},
-];
 const shapeKeys=['roundness','thickness','side_fullness','outer_curve','front_profile','projection_profile','taper'];
 const modes=[['Natural',1,100],['Enhanced',101,300],['Extreme',301,600],['Fantasy',601,1000],['Beyond fantasy',1001,2000]];
 export default function PhysiqueStudio({value,onChange,locked=false,fieldLocks={}}){
