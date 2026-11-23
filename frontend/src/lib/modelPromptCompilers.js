@@ -1,4 +1,4 @@
-import {cameraViewPrompt,subjectViewPrompt} from './cameraViewChoices';
+import {cameraViewPrompt,subjectViewPrompt,subjectOrientationDirective,rearSubjectView} from './cameraViewChoices';
 import { normalizePromptStyle } from "./promptModelAliases";
 import { composeMossPrompt } from "./mossPromptProfile";
 import { protectModelPromptOrder } from "./modelPromptOrder";
@@ -263,6 +263,7 @@ function chromaLeanSingleSubjectPrompt(dna = {}, primaryGuard = {}, sourceDna = 
     ? [dna.feet?.sole_presentation, dna.feet?.foot_pose].filter(Boolean).join(', ') : '';
 
   const framing = [
+    subjectOrientationDirective(pose.angle),
     pose.distance,
     subjectViewPrompt(pose.angle),
     photographyPosePrompt(pose.action),
@@ -501,7 +502,7 @@ export function resolveZImageComposition(dna = {}, options = {}) {
       ? "PRIMARY COMPOSITION — full character visible head to feet, both complete feet visible at realistic perspective, feet prominent without filling the frame"
       : `PRIMARY COMPOSITION — ${resolved.feet.framing || "feet and ankles"} is the visual priority, coherent foot anatomy and perspective`;
   } else if (["butt", "hips"].includes(focus) && fullBody) {
-    composition = "PRIMARY COMPOSITION — rear three-quarter full-body view, face and complete body visible, lower body prominent without filling the frame";
+    composition = "PRIMARY COMPOSITION — full-body view with lower body prominent; preserve the explicitly selected subject orientation and coherent anatomy";
   } else if (["butt", "hips"].includes(focus)) {
     composition = "PRIMARY COMPOSITION — rear three-quarter view, lower body is the single visual priority, moderate perspective and connected limbs";
   } else if (focus === "face") {
@@ -527,7 +528,8 @@ export function resolveZImageComposition(dna = {}, options = {}) {
     front: "REQUIRED VIEW — front view of the body, subject facing the camera",
     profile: "REQUIRED VIEW — side profile of the body",
   }[lower(resolved.pose?.angle)];
-  if (selectedView && !options.forceMulti) composition = `${composition}; ${selectedView}`;
+  const orientation = subjectOrientationDirective(resolved.pose?.angle) || selectedView;
+  if (orientation && !options.forceMulti) composition = `${composition}; ${orientation}`;
 
   const multiBodyGuard = options.forceMulti
     ? "MULTI-SUBJECT ANATOMY — each adult is a separate complete person with one head, one torso and pelvis, two arms and two legs; keep visible separation between torsos and pelvises; no merged bodies, shared limbs, stacked torsos or duplicated anatomy"
