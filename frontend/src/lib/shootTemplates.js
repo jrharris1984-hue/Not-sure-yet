@@ -17,7 +17,7 @@ export const SHOOT_TEMPLATES=[
       "angle": "eye-level",
       "lens": "85mm"
     },
-    "outfit": "tailored evening gown"
+    "outfit": "evening gown slit"
   },
   {
     "id": "retro-pinup",
@@ -36,7 +36,7 @@ export const SHOOT_TEMPLATES=[
       "angle": "low",
       "lens": "50mm"
     },
-    "outfit": "retro polka-dot dress"
+    "outfit": "1950s swing dress"
   },
   {
     "id": "old-hollywood",
@@ -55,7 +55,7 @@ export const SHOOT_TEMPLATES=[
       "angle": "eye-level",
       "lens": "85mm"
     },
-    "outfit": "satin evening gown"
+    "outfit": "velvet gown"
   },
   {
     "id": "boudoir-window",
@@ -93,7 +93,7 @@ export const SHOOT_TEMPLATES=[
       "angle": "low",
       "lens": "50mm"
     },
-    "outfit": "tailored women's pantsuit"
+    "outfit": "tailored pantsuit"
   },
   {
     "id": "runway",
@@ -112,7 +112,7 @@ export const SHOOT_TEMPLATES=[
       "angle": "low",
       "lens": "35mm"
     },
-    "outfit": "couture evening gown"
+    "outfit": "sculptural couture gown"
   },
   {
     "id": "noir",
@@ -131,7 +131,7 @@ export const SHOOT_TEMPLATES=[
       "angle": "dutch",
       "lens": "50mm"
     },
-    "outfit": "trench coat"
+    "outfit": "1940s tailored suit"
   },
   {
     "id": "neon-city",
@@ -150,7 +150,7 @@ export const SHOOT_TEMPLATES=[
       "angle": "low",
       "lens": "35mm"
     },
-    "outfit": "leather jacket"
+    "outfit": "biker chick"
   },
   {
     "id": "fantasy-royal",
@@ -169,7 +169,7 @@ export const SHOOT_TEMPLATES=[
       "angle": "eye-level",
       "lens": "85mm"
     },
-    "outfit": "royal ball gown"
+    "outfit": "victorian-inspired evening gown"
   },
   {
     "id": "desert-gold",
@@ -188,7 +188,7 @@ export const SHOOT_TEMPLATES=[
       "angle": "low",
       "lens": "50mm"
     },
-    "outfit": "flowing maxi dress"
+    "outfit": "halter maxi dress"
   },
   {
     "id": "coastal",
@@ -207,7 +207,7 @@ export const SHOOT_TEMPLATES=[
       "angle": "eye-level",
       "lens": "50mm"
     },
-    "outfit": "summer sundress"
+    "outfit": "Mediterranean sundress"
   },
   {
     "id": "eighties",
@@ -226,7 +226,7 @@ export const SHOOT_TEMPLATES=[
       "angle": "low",
       "lens": "35mm"
     },
-    "outfit": "80s power suit"
+    "outfit": "1980s power suit"
   }
 ];
 export const SHOOT_TEMPLATE_CATEGORIES=['All','Fashion','Retro','Romantic','Cinematic','Fantasy','Lifestyle'];
