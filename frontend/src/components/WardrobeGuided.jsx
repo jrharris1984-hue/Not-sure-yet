@@ -10,7 +10,7 @@ import {editWardrobeField,wardrobeMode} from '@/lib/wardrobeMode';
 
 const steps=[
  {key:'outfit',label:'Outfit',help:'Choose a complete outfit or build with garments'},
- {key:'coverage',label:'Coverage',help:'Choose how dressed the character should be'},
+ {key:'coverage',label:'Coverage',help:'Set the overall coverage. Garment state remains active unless it conflicts with clothing removal or position.'},
  {key:'layers',label:'Layers',help:'Adjust what remains on the character'},
  {key:'review',label:'Review',help:'Check your selections and resolve conflicts'},
 ];
