@@ -162,3 +162,23 @@ describe('physique slider endpoint comparisons', () => {
     expect(positive.toLowerCase()).toMatch(/quarter.turn|45 degrees|three.quarter/);
   });
 });
+
+
+describe('Physique 2.0 expanded range compatibility', () => {
+  it.each([
+    ['bust_scale', 500, /bust volume intensity 500\/500/],
+    ['hip_scale', 300, /lateral hip width intensity 300\/300/],
+    ['waist_scale', 200, /waist width intensity 200\/200/],
+    ['thigh_scale', 300, /upper-thigh volume intensity 300\/300/],
+    ['butt_scale', 500, /glute volume intensity 500\/500/],
+  ])('compiles expanded %s maximum for MOSS', (key, maximum, phrase) => {
+    const dna = recipe();
+    dna.physique = {...dna.physique, [key]: maximum};
+    expect(compileModelPrompts({promptStyle:'moss', dna}).positive).toMatch(phrase);
+  });
+  it('keeps the previous glute scale interpretation at 300', () => {
+    const dna = recipe();
+    dna.physique = {...dna.physique, butt_scale:300};
+    expect(compileModelPrompts({promptStyle:'moss',dna}).positive).toMatch(/glute volume intensity 300\/300/);
+  });
+});
