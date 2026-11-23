@@ -1,4 +1,4 @@
-import { composeMossPrompt, inspectMossPhysique, mossVisualPriority } from './mossPromptProfile';
+import { composeMossPrompt, inspectMossPhysique, mossVisualPriority, mossBodyGeometry } from './mossPromptProfile';
 
 test('explicit extreme selections get a concise silhouette priority', () => {
   const dna = { physique: { hips: 'extreme', thighs: 'massive', butt: 'hyper' } };
@@ -27,4 +27,25 @@ test('preserves individual subject priorities and accurate word count', () => {
 
 test('ordinary presets do not receive exaggerated emphasis', () => {
   expect(mossVisualPriority({ physique: { hips: 'average', thighs: 'toned', butt: 'round' } })).toBe('');
+});
+
+test('keeps size, contour and projection independent in MOSS geometry', () => {
+  const dna = { physique: { butt: 'hyper', butt_scale: 250, glute_shape: 'deep rear projection', hips: 'extreme', hip_scale: 10 } };
+  const original = JSON.stringify(dna);
+  const geometry = mossBodyGeometry(dna);
+  expect(geometry.butt).toEqual({
+    sizeSource: 'slider', size: 250, contour: 'deep rear projection', projection: 'rearward',
+  });
+  expect(geometry.hips.sizeSource).toBe('slider');
+  expect(geometry.hips.size).toBe(10);
+  expect(geometry.thighs.sizeSource).toBe('unspecified');
+  expect(JSON.stringify(dna)).toBe(original);
+});
+
+test('MOSS diagnostics expose geometry without changing presets', () => {
+  const dna = { physique: { butt: 'hyper', glute_shape: 'dramatic side projection' } };
+  const report = inspectMossPhysique(dna);
+  expect(report.geometry.butt.sizeSource).toBe('preset');
+  expect(report.geometry.butt.size).toBe('hyper');
+  expect(report.geometry.butt.projection).toBe('lateral');
 });
