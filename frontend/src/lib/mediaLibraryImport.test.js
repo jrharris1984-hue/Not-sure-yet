@@ -2,6 +2,11 @@ import { mediaPeopleMetadata, mediaLibraryTraits } from "./mediaLibraryMetadata"
 import { buildMediaSubjects } from "./mediaLibraryImport";
 import { expectedSubjectCount } from "./dna";
 
+test("imports body types from grouped build and silhouette choices", () => {
+  const result = buildMediaSubjects({ bodyBuild: "pear-shaped" });
+  expect(result.subjects[0].dna.physique.body_type).toBe("pear-shaped");
+});
+
 test("body orientation maps independently from camera elevation", () => {
   const result = buildMediaSubjects({ orientation: "front-facing", cameraAngle: "eye level" });
   expect(result.subjects[0].dna.pose.angle).toBe("front");
