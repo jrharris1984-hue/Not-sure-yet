@@ -121,3 +121,17 @@ it('preserves MOSS extreme regional selections and separate glute shape', () => 
   expect(positive).toMatch(/glute volume intensity 225\/300/);
   expect(positive).toMatch(/heart.*glute contour/i);
 });
+
+
+it('gives MOSS a concise visual priority only for strongly exaggerated selections', () => {
+  const dna = recipe();
+  dna.physique = { ...dna.physique, hips: 'extreme', thighs: 'massive', butt: 'hyper' };
+  const { positive } = compileModelPrompts({ promptStyle: 'moss', dna });
+  expect(positive).toContain('MOSS VISUAL PRIORITY:');
+  expect(positive).toContain('dramatically broad lateral hip silhouette');
+  expect(positive).toContain('exceptionally full upper-thigh volume');
+  expect(positive).toContain('fantasy-scale rearward glute projection');
+  const ordinary = recipe();
+  ordinary.physique = { ...ordinary.physique, hips: 'average', thighs: 'toned', butt: 'round' };
+  expect(compileModelPrompts({ promptStyle: 'moss', dna: ordinary }).positive).not.toContain('MOSS VISUAL PRIORITY:');
+});
