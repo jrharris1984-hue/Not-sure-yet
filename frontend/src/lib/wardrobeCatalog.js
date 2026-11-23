@@ -1,5 +1,5 @@
 // Normalized, additive wardrobe catalog. Keep prompt strings stable: saved DNA stores prompt values.
-export const WARDROBE_CATALOG_VERSION = 1;
+export const WARDROBE_CATALOG_VERSION = 2;
 export const WARDROBE_ITEMS = [
   {
     "id": "everyday-essentials-tailored-weekend",
@@ -911,6 +911,166 @@ export const WARDROBE_ITEMS = [
   ],
   "version": 1
 }
+  {
+    "id": "activewear-movement-studio-set",
+    "category": "Activewear & Movement",
+    "label": "Studio training set",
+    "prompt": "sculpted high-support sports bra, matching high-waisted leggings, lightweight zip jacket and clean training sneakers",
+    "tags": ["activewear","studio","training"],
+    "version": 2
+  },
+  {
+    "id": "activewear-movement-tennis-editorial",
+    "category": "Activewear & Movement",
+    "label": "Tennis editorial",
+    "prompt": "pleated tennis skirt, fitted polo shirt, ribbed athletic socks, visor and white court sneakers",
+    "tags": ["activewear","tennis","editorial"],
+    "version": 2
+  },
+  {
+    "id": "activewear-movement-trackside",
+    "category": "Activewear & Movement",
+    "label": "Trackside layers",
+    "prompt": "cropped track jacket over a fitted performance top, tapered track pants and retro running shoes",
+    "tags": ["activewear","track","streetwear"],
+    "version": 2
+  },
+  {
+    "id": "activewear-movement-dance-rehearsal",
+    "category": "Activewear & Movement",
+    "label": "Dance rehearsal",
+    "prompt": "wrap-front dance cardigan, fitted unitard, leg warmers and soft ballet flats",
+    "tags": ["activewear","dance","layered"],
+    "version": 2
+  },
+  {
+    "id": "modern-formal-satin-suit",
+    "category": "Modern Formal",
+    "label": "Satin lapel suit",
+    "prompt": "tailored single-button tuxedo jacket with satin lapels, silk camisole, straight-leg trousers and pointed heels",
+    "tags": ["formal","tailoring","evening"],
+    "version": 2
+  },
+  {
+    "id": "modern-formal-velvet-gown",
+    "category": "Modern Formal",
+    "label": "Velvet column gown",
+    "prompt": "floor-length velvet column gown with a sculpted waist, long gloves and understated metallic heels",
+    "tags": ["formal","gown","velvet"],
+    "version": 2
+  },
+  {
+    "id": "modern-formal-sculpted-jumpsuit",
+    "category": "Modern Formal",
+    "label": "Sculpted evening jumpsuit",
+    "prompt": "one-shoulder crepe jumpsuit with a defined waist, draped sash and minimalist heels",
+    "tags": ["formal","jumpsuit","evening"],
+    "version": 2
+  },
+  {
+    "id": "modern-formal-cocktail-set",
+    "category": "Modern Formal",
+    "label": "Cocktail tailoring",
+    "prompt": "cropped structured blazer over a satin midi dress with a narrow belt and slingback heels",
+    "tags": ["formal","cocktail","layered"],
+    "version": 2
+  },
+  {
+    "id": "wedding-ceremony-modern-bride",
+    "category": "Wedding & Ceremony",
+    "label": "Modern bride",
+    "prompt": "structured ivory satin gown with a clean neckline, detachable overskirt, sheer veil and satin pumps",
+    "tags": ["wedding","bridal","satin"],
+    "version": 2
+  },
+  {
+    "id": "wedding-ceremony-garden-guest",
+    "category": "Wedding & Ceremony",
+    "label": "Garden ceremony guest",
+    "prompt": "floral organza midi dress over a fitted lining, cropped shawl and low block heels",
+    "tags": ["wedding","garden","guest"],
+    "version": 2
+  },
+  {
+    "id": "wedding-ceremony-evening-guest",
+    "category": "Wedding & Ceremony",
+    "label": "Evening ceremony guest",
+    "prompt": "deep jewel-tone wrap gown with a softly draped sleeve, delicate clutch and polished heels",
+    "tags": ["wedding","evening","formal"],
+    "version": 2
+  },
+  {
+    "id": "wedding-ceremony-modern-suit",
+    "category": "Wedding & Ceremony",
+    "label": "Modern ceremony suit",
+    "prompt": "ivory tailored vest over a silk blouse, wide-leg trousers, fine belt and pointed pumps",
+    "tags": ["wedding","suit","modern"],
+    "version": 2
+  },
+  {
+    "id": "seasonal-layers-autumn-coat",
+    "category": "Seasonal Layers",
+    "label": "Autumn city coat",
+    "prompt": "double-breasted wool coat over a fine-gauge turtleneck, pleated midi skirt, tights and leather boots",
+    "tags": ["seasonal","autumn","coat"],
+    "version": 2
+  },
+  {
+    "id": "seasonal-layers-winter-knit",
+    "category": "Seasonal Layers",
+    "label": "Winter knit layers",
+    "prompt": "oversized cable-knit sweater over a fitted thermal top, wool trousers, scarf and lug-sole boots",
+    "tags": ["seasonal","winter","knit"],
+    "version": 2
+  },
+  {
+    "id": "seasonal-layers-spring-trench",
+    "category": "Seasonal Layers",
+    "label": "Spring trench",
+    "prompt": "lightweight belted trench coat over a striped knit top, cropped straight-leg jeans and loafers",
+    "tags": ["seasonal","spring","trench"],
+    "version": 2
+  },
+  {
+    "id": "seasonal-layers-summer-linen",
+    "category": "Seasonal Layers",
+    "label": "Summer linen set",
+    "prompt": "linen vest layered over a sleeveless shell, matching tailored shorts, woven belt and leather sandals",
+    "tags": ["seasonal","summer","linen"],
+    "version": 2
+  },
+  {
+    "id": "creative-workshop-denim-apron",
+    "category": "Creative Workwear",
+    "label": "Artist's workshop",
+    "prompt": "utility chore jacket over a cotton tee, straight-leg work trousers, canvas apron and practical boots",
+    "tags": ["creative","workwear","layered"],
+    "version": 2
+  },
+  {
+    "id": "creative-workshop-gallery-opening",
+    "category": "Creative Workwear",
+    "label": "Gallery opening",
+    "prompt": "minimal black sleeveless jumpsuit with a cropped sculptural jacket, geometric earrings and ankle boots",
+    "tags": ["creative","gallery","modern"],
+    "version": 2
+  },
+  {
+    "id": "creative-workshop-camera-ready",
+    "category": "Creative Workwear",
+    "label": "Camera-ready layers",
+    "prompt": "soft draped blouse under a fitted vest, tailored cigarette trousers and low-profile leather pumps",
+    "tags": ["creative","studio","tailoring"],
+    "version": 2
+  },
+  {
+    "id": "creative-workshop-travel-capsule",
+    "category": "Creative Workwear",
+    "label": "Travel capsule",
+    "prompt": "fine-knit polo under a relaxed blazer, stretch trousers, compact crossbody bag and clean sneakers",
+    "tags": ["creative","travel","smart casual"],
+    "version": 2
+  }
 ];
 export const WARDROBE_CATEGORY_GROUPS = Object.entries(WARDROBE_ITEMS.reduce((acc, item) => { (acc[item.category] ||= []).push(item); return acc; }, {})).map(([name, items]) => ({ name, options: items.map(item => item.prompt) }));
 export const WARDROBE_ITEM_LABELS = Object.fromEntries(WARDROBE_ITEMS.map(item => [item.prompt, item.label]));
