@@ -11,11 +11,48 @@ import { Link } from 'react-router-dom';
 import { endpoints } from '@/lib/api';
 import { expandPrompt } from '@/lib/promptMap';
 import { compileModelPrompts } from '@/lib/modelPromptCompilers';
+import { regionalPhysiquePrompt } from '@/lib/physiqueControls';
+import { gluteSizePrompt } from '@/lib/gluteControls';
 import { SECTIONS, DEFAULT_DNA } from '@/lib/dna';
 import { PROMPT_LIBRARY_FILE_LIMIT, parsePromptLibraryBackup, editableSection, editableLibrarySection, exportPromptLibrary, catalogSections, newCatalogKey, promptLibrarySections, setPromptCatalog, validateCatalogDraft } from '@/lib/promptCatalog';
 const fieldClass='w-full rounded-lg border hairline bg-elevated px-3 py-2 text-sm';
 const buttonClass='rounded-lg border hairline px-3 py-2 text-sm text-cyan-200 disabled:opacity-40';
 const LIBRARY_SECTIONS = promptLibrarySections(SECTIONS);
+function PhysiqueSliderPreview({ sectionKey, fieldKey, label }) {
+  const definition = SECTIONS.find(section => section.key === sectionKey)?.fields.find(field => field.key === fieldKey);
+  const maximum = definition?.max ?? 100;
+  const [value, setValue] = useState(0);
+  const [model, setModel] = useState('moss');
+  if (sectionKey !== 'physique' || !definition || definition.type !== 'slider') return null;
+  const describe = amount => {
+    if (fieldKey === 'butt_scale') return amount ? gluteSizePrompt(amount) : '0: use the selected Butt preset';
+    if (fieldKey === 'hip_scale') return amount ? regionalPhysiquePrompt('hips', '', amount) : '0: use the selected Hips preset';
+    if (fieldKey === 'thigh_scale') return amount ? regionalPhysiquePrompt('thighs', '', amount) : '0: use the selected Thighs preset';
+    const dna = JSON.parse(JSON.stringify(DEFAULT_DNA));
+    dna.physique = {...dna.physique, [fieldKey]: amount};
+    return compileModelPrompts({dna, promptStyle:model}).positive;
+  };
+  const samples = [0, Math.round(maximum/2), maximum];
+  return <section className="space-y-3 rounded-xl border hairline p-3" aria-label={`${label} slider prompt preview`}>
+    <h3 className="font-semibold text-cyan-200">Slider wording preview</h3>
+    <p className="text-xs text-zinc-400">Read-only preview. Moving this slider does not change a character or saved settings. This compares prompt instructions, not generated images.</p>
+    <label className="block text-sm">{label}: <strong>{value} / {maximum}</strong>
+      <input className="mt-2 w-full" type="range" min={definition.min ?? 0} max={maximum} step={definition.step ?? 1} value={value} onChange={event=>setValue(Number(event.target.value))}/>
+    </label>
+    <label className="block text-xs">Prompt model
+      <select className={fieldClass} value={model} onChange={event=>setModel(event.target.value)}>
+        <option value="moss">MOSS</option><option value="chroma">Chroma</option><option value="pony">Pony</option><option value="krea2">Krea2</option>
+      </select>
+    </label>
+    <div className="rounded-lg bg-elevated p-3 text-xs whitespace-pre-wrap break-words">{describe(value)}</div>
+    <div className="grid grid-cols-1 gap-2 md:grid-cols-3">{samples.map((sample,index)=><div key={index} className="rounded-lg border hairline p-2">
+      <div className="mb-1 text-xs font-semibold">{['Preset / 0','Middle','Maximum'][index]} ({sample})</div>
+      <p className="text-xs text-zinc-400 break-words">{describe(sample)}</p>
+      <button type="button" className={buttonClass} onClick={()=>setValue(sample)}>Inspect</button>
+    </div>)}</div>
+  </section>;
+}
+
 export default function PromptLibraryEditor() {
   const [draft,setDraft]=useState({sections:[]}), [saved,setSaved]=useState({sections:[]});
   const [sectionKey,setSectionKey]=useState(LIBRARY_SECTIONS[0].key), [fieldKey,setFieldKey]=useState(LIBRARY_SECTIONS[0].fields[0].key);
@@ -138,6 +175,7 @@ export default function PromptLibraryEditor() {
           <label className="block">Subcategory name<input aria-label="Subcategory name" className={fieldClass} value={selectedField.label} onChange={event => changeField({...selectedField,label:event.target.value})}/></label>
           {selectedField.key.startsWith('custom_') && <><label className="block">Selection mode<select aria-label="Selection mode" className={fieldClass} value={selectedField.type} onChange={event => changeField({...selectedField,type:event.target.value})}><option value="chips">Choose one</option><option value="chips_multi">Choose multiple</option></select></label>
             <button className={buttonClass} onClick={() => {changeSection({...section,fields:section.fields.filter(item => item.key!==fieldKey)});setFieldKey('');}}>Remove subcategory</button></>}
+          {selectedField.type==='slider' && <PhysiqueSliderPreview key={sectionKey+'.'+fieldKey} sectionKey={sectionKey} fieldKey={fieldKey} label={selectedField.label}/>}
           {['chips','chips_multi','pose_chips'].includes(selectedField.type) ? <>
             {sectionKey==='wardrobe' && fieldKey==='exposure_mode' && <button className={buttonClass} disabled={busy} onClick={()=>{changeField({...selectedField,options:simpleCoverageOptions(selectedField.options)});setOptionKey('');setFilter('');setBrowseLevel('choices');setSuggestion(null);setPromptPreview(null);setMessage('The 22 simple coverage choices are staged. Save library to apply. Other categories are unchanged.');}}>Use simple coverage list</button>}
             <p className="text-xs text-zinc-400">Blank keywords keep the original prompt mapping. For new choices, blank keywords use the display name. Group names create tabs within this subcategory.</p>
