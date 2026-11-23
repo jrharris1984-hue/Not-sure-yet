@@ -28,8 +28,10 @@ test('director frames adapt to Studio 3 shots without changing disabled or unsup
 test('video timeline computes duration without modifying source',()=>{
  const t=videoTimeline3({fps:24});
  const next=addVideoClip3(t,{frames:48});
+ const second=addVideoClip3(next,{frames:24});
  expect(t.clips).toHaveLength(0);
- expect(timelineDuration3(next)).toBe(2);
+ expect(second.clips.map(clip=>clip.id)).toEqual(['clip-1','clip-2']);
+ expect(timelineDuration3(second)).toBe(3);
 });
 test('video timeline edits clips immutably and validates prompt and duration',()=>{
  const original=videoTimeline3({fps:24});const first=addVideoClip3(original,{prompt:'A woman walks',frames:48});const second=addVideoClip3(first,{motion:'Camera pans left',frames:24});

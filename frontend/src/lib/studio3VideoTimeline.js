@@ -4,7 +4,7 @@ const clampFps=value=>Math.max(1,Math.min(120,Math.trunc(Number(value)||24)));
 export const videoTimeline3=({sourceImage='',fps=24,workflowId=''}={})=>({version:1,sourceImage,fps:clampFps(fps),workflowId,clips:[]});
 export const addVideoClip3=(timeline,clip={})=>{
  const clips=Array.isArray(timeline?.clips)?timeline.clips:[];
- const nextNumber=clips.reduce((max,item)=>Math.max(max,Number(String(item.id||'').match(/^clip-(\\d+)$/)?.[1])||0),0)+1;
+ const nextNumber=clips.reduce((max,item)=>Math.max(max,Number(String(item.id||'').match(/^clip-(\d+)$/)?.[1])||0),0)+1;
  const id=clip.id||'clip-'+nextNumber;
  const next={id,label:'Clip '+nextNumber,frames:41,motion:'',prompt:'',enabled:true,...clip,frames:clampFrames(clip.frames)};
  return {...timeline,clips:[...clips,next]};
