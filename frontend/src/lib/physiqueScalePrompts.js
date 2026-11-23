@@ -1,3 +1,5 @@
+import { gluteSizePrompt } from './gluteControls';
+
 // Explicit silhouette descriptions for the independent physique volume and width axes.
 // Zero intentionally preserves legacy preset behavior for saved characters.
 const AXES={
@@ -13,6 +15,7 @@ export function physiqueScalePrompt(axis,value,max=({bust:2000,butt:2000,hips:20
  max=Math.max(1,Number(max)||1);
  const n=Math.max(0,Math.min(max,Number(value)||0));
  if(n===0)return ''; // Legacy zero means use preset; avoid changing saved characters.
+ if(axis==='butt')return gluteSizePrompt(n);
  const tier=Math.min(10,Math.floor((n-1)/max*11));
  return `${spec.tiers[tier]} (${AXIS_LABELS[axis]||spec.name} intensity ${Math.round(n)}/${max})`;
 }

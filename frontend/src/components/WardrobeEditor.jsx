@@ -78,7 +78,7 @@ export default function WardrobeEditor({requestedField, ...props}) {
     <label className="wardrobe-mobile-category">Clothing category<select aria-label="Clothing category" value={group?.key || ''} onChange={e=>selectDetail(e.target.value,groups.find(g=>g.key===e.target.value)?.fields[0]?.key)}>{groups.map(item=><option key={item.key} value={item.key}>{item.label}</option>)}</select></label>
     </div>
     {field ? <>
-      <div className="wardrobe-desktop-detail-nav"><DetailNavigator label="Editing" fields={group.fields.map(item=>({...item,label:`${item.label}${wardrobeFieldDisabled(item.key,props.value)?' · inactive':''}`}))} value={field.key} onChange={setFieldKey}/></div>
+      <div className="wardrobe-desktop-detail-nav"><DetailNavigator label="Editing detail" fields={group.fields.map(item=>({...item,label:`${item.label}${wardrobeFieldDisabled(item.key,props.value)?' · inactive':''}`}))} value={field.key} onChange={setFieldKey}/></div>
       <label className="wardrobe-mobile-detail-nav wardrobe-existing-navigation">Customize
         <select aria-label="Wardrobe detail" value={field.key} onChange={event=>setFieldKey(event.target.value)}>
           {group.fields.map(item=><option key={item.key} value={item.key}>{item.label}{wardrobeFieldDisabled(item.key,props.value)?' · inactive':''}</option>)}

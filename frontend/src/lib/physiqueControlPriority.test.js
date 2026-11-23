@@ -26,7 +26,7 @@ test("notes and conflicting build presets match the compiler's priority rules", 
 
 test.each(["chroma", "krea2", "sdxl", "pony", "zimage", "flux2_klein"])("%s does not add the small size presets when sliders or implants supply size", (promptStyle) => {
   const dna = JSON.parse(JSON.stringify(DEFAULT_DNA));
-  dna.physique = { ...dna.physique, bust: "flat", bust_scale: 83, implant_volume: 2750, butt: "flat", butt_scale: 180, hips: "narrow", hip_scale: 90 };
+  dna.physique = { ...dna.physique, bust: "flat", bust_scale: 83, implant_volume: 2750, butt: "flat", butt_scale: 180, hips: "narrow", hip_scale: 1800 };
   const result = compileModelPrompts({ promptStyle, dna });
   expect(result.positive).not.toMatch(/flat (breasts|bust|butt|ass)|narrow hips/i);
 });

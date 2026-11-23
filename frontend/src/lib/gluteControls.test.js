@@ -48,7 +48,7 @@ it('keeps ordinary Chroma breast volume wording while adding glute shape', () =>
   dna.physique.glute_shape = 'high round projection';
   dna.physique.butt_scale = 150;
   const after = compileModelPrompts({ promptStyle: 'chroma', dna }).positive;
-  const breastClause = 'rounded, very strong volume bust (size intensity 80/100)';
+  const breastClause = 'compact rounded, minimal volume bust (breast volume intensity 80/2000)';
   expect(before).toContain(breastClause);
   expect(after).toContain(breastClause);
 });
@@ -68,14 +68,14 @@ it('gives shape priority over the generic high-size projection cue without chang
     expect(prompt).toContain(gluteSizePrompt(150, { intensity: true }));
     expect(prompt).toContain('full body, 3/4, standing');
     expect(prompt).not.toContain('extreme rear and lateral projection, clearly visible lower-body volume');
-    expect(prompt.indexOf('GLUTE SHAPE:')).toBeLessThan(prompt.indexOf('dramatically wide hips'));
+    expect(prompt.indexOf('GLUTE SHAPE:')).toBeLessThan(prompt.indexOf('lateral hip width intensity'));
   }
 });
 
 it('emits one volume clause and one texture at both ordinary and extended sizes', () => {
   for (const size of [50, 100, 125, 150, 175, 200, 238, 250, 300]) {
     const prompt = buildGlutePrompt({ size, texture: 'smooth', intensity: true });
-    expect(prompt).toContain(gluteSizePrompt(size, { intensity: true }));
+    expect(prompt).toContain(gluteSizePrompt(size, { intensity: true, texture: 'smooth' }));
     expect(prompt.match(/glute volume/g)).toHaveLength(1);
     expect(prompt.match(/smooth skin/g)).toHaveLength(1);
     expect(prompt).not.toMatch(/:\d|impossible|otherworldly|colossal/);

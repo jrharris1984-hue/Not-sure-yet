@@ -52,7 +52,8 @@ test('wardrobe uses a single editor and hides inactive controls until requested'
   expect(container.querySelector('[aria-label="Guided wardrobe editor"]')).not.toBeNull();
   click('Advanced settings');
   expect(container.querySelector('[data-testid="wardrobe-focused-editor"]')).not.toBeNull();
-  expect(container.querySelectorAll('[data-testid="wardrobe-mode-controls"]')).toHaveLength(1);
+  expect(container.querySelectorAll('.wardrobe-mobile-guide [data-testid="wardrobe-mode-controls"]')).toHaveLength(1);
+  expect(container.querySelectorAll('.wardrobe-existing-navigation [data-testid="wardrobe-mode-controls"]')).toHaveLength(1);
   expect([...container.querySelectorAll('option')].some(option=>option.value==='top')).toBe(false);
   act(()=>container.querySelector('[data-testid="wardrobe-mode-custom"]').click());
   expect([...container.querySelectorAll('option')].some(option=>option.value==='top')).toBe(true);

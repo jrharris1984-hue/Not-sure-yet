@@ -355,8 +355,8 @@ describe("model-specific prompt compilers", () => {
     dna.physique = {
       ...dna.physique,
       butt_scale: 100,
-      hip_scale: 85,
-      thigh_scale: 80,
+      hip_scale: 1800,
+      thigh_scale: 600,
       glute_shape: "extreme round projection",
     };
     const result = compileModelPrompts({ promptStyle: "chroma", dna });

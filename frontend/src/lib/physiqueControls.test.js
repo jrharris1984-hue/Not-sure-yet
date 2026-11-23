@@ -5,14 +5,14 @@ import { resolvePhysiqueControls } from './physiqueControls';
 const recipe = () => JSON.parse(JSON.stringify(DEFAULT_DNA));
 it.each(['chroma', 'krea2', 'sdxl', 'zimage', 'pony', 'flux2_klein'])('keeps explicit physique sliders authoritative in %s', promptStyle => {
   const dna = recipe();
-  dna.physique = { ...dna.physique, body_type: 'hourglass', waist: 'tiny', waist_scale: 90, hips: 'wide', hip_scale: 10, butt: 'huge', butt_scale: 10, glute_shape: 'fantasy oversized glutes' };
+  dna.physique = { ...dna.physique, body_type: 'hourglass', waist: 'tiny', waist_scale: 450, hips: 'wide', hip_scale: 10, butt: 'huge', butt_scale: 10, glute_shape: 'fantasy oversized glutes' };
   const original = JSON.stringify(dna);
   const { positive } = compileModelPrompts({ promptStyle, dna });
   expect(positive).not.toMatch(/cinched narrow waist|tiny waist|fantasy oversized glutes|huge butt|ample bust and hips|believable adult proportions|natural proportions|cartoon/);
   expect(positive).toContain('sculpted bulbous glute contour');
   expect(positive).toMatch(/small glute/);
   expect(positive).toMatch(/narrow hips/);
-  expect(positive).toMatch(/(?:very wide|pronounced width) waist/);
+  expect(positive).toContain('waist width intensity 450/500');
   expect(positive).toContain('photographic skin texture');
   expect(JSON.stringify(dna)).toBe(original);
 });
@@ -93,8 +93,8 @@ it.each(['pony', 'krea2'])('uses consistent regional slider descriptions in %s',
   const dna = recipe();
   dna.physique = { ...dna.physique, hip_scale: 92, thigh_scale: 87, butt_scale: 225 };
   const positive = compileModelPrompts({ promptStyle, dna }).positive;
-  expect(positive).toMatch(/lateral hip width intensity 92\/100/);
-  expect(positive).toMatch(/upper-thigh volume intensity 87\/100/);
+  expect(positive).toMatch(/lateral hip width intensity 92\/2000/);
+  expect(positive).toMatch(/upper-thigh volume intensity 87\/750/);
   expect(positive).toMatch(/size intensity 225\/2000/);
 });
 
