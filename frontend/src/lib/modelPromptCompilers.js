@@ -230,6 +230,8 @@ function chromaLeanSingleSubjectPrompt(dna = {}, primaryGuard = {}, sourceDna = 
   const subject = [
     age ? `${age}-year-old adult ${gender}` : `adult ${gender}`,
     ageAppearancePrompt(age),
+    id.presentation,
+    id.identity_details,
     id.gender && id.gender !== catalogSelection(dna, "identity", "gender") ? id.gender : "",
     id.archetype && id.archetype !== "none" ? `${id.archetype} character archetype` : "",
     heritagePrompt(id.ethnicity, dna),
@@ -598,7 +600,7 @@ function kreaSubjectSentence(dna = {}, label = "") {
   const skin = dna.skin || {};
   const age = Number(id.age || 0);
   const person = kreaGenderLabel(catalogSelection(dna, "identity", "gender"));
-  const head = [age ? `${age}-year-old adult ${person}` : `adult ${person}`, ageAppearancePrompt(age)].filter(Boolean).join(', ');
+  const head = [age ? `${age}-year-old adult ${person}` : `adult ${person}`, ageAppearancePrompt(age), id.presentation, id.archetype && id.archetype !== "none" ? `${id.archetype} character presence` : "", id.identity_details].filter(Boolean).join(', ');
   const body = kreaList(
     heritagePrompt(id.ethnicity, dna),
     ph.height && ph.height !== "average" ? `${ph.height} height` : "",
