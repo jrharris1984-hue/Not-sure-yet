@@ -1,5 +1,5 @@
-import {ArrowLeft,ArrowRight,Camera,Footprints,Layers3,Mountain,Palette,PersonStanding,ScanFace,Scissors,Shirt,Sparkles,Sun,UserRound,UsersRound} from 'lucide-react';
-const sectionIcons={scenario:UsersRound,identity:UserRound,physique:PersonStanding,feet:Footprints,face:ScanFace,hair:Scissors,skin:Layers3,wardrobe:Shirt,pose:PersonStanding,camera:Camera,scene:Mountain,lighting:Sun,style:Palette};
+import {ArrowLeft,ArrowRight,Camera,Footprints,Layers2,Mountain,Palette,PersonStanding,ScanFace,Scissors,Shirt,Sparkles,Sun,UserRound,UsersRound} from 'lucide-react';
+const sectionIcons={scenario:UsersRound,identity:UserRound,physique:PersonStanding,feet:Footprints,face:ScanFace,hair:Scissors,skin:Layers2,wardrobe:Shirt,pose:PersonStanding,camera:Camera,scene:Mountain,lighting:Sun,style:Palette};
 const hints={scenario:'Set the cast. Build the story.',identity:'Give your character a point of view.',physique:'Shape the silhouette, one detail at a time.',feet:'Fine-tune the details that make them unique.',face:'Find a face with character.',hair:'A new cut. A different color. Your signature.',skin:'Bring texture and subtle detail to life.',wardrobe:'Style a complete look, or build your own.',pose:'Find the angle. Set the mood.',camera:'See your scene through a different lens.',scene:'Give your character a world.',lighting:'Let the light tell the story.',style:'Make the image feel like yours.'};
 export default function CreationSectionHeader({section,sections,stages,onSection}) {
   if(!section)return null;
