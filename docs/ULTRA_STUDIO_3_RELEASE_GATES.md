@@ -21,6 +21,10 @@ This document distinguishes implemented code from product readiness. Do not merg
 5. Validate output consistency: same model/workflow, seed, camera, pose, scene and character reference; vary only selected physique region.
 6. Do not auto-merge or start production Docker. Require explicit user approval for deployment.
 
+## Manual integration evidence
+
+On 2026-11-23, the user ran the workflow compatibility action against their connected ComfyUI in the isolated Studio 3 test stack. The experimental MOSS image workflow reported **Graph compatible · 10 nodes checked**. This confirms the Settings UI, backend endpoint, and live `/object_info` schema path worked for that workflow. It does not validate every workflow, guarantee the selected LoRA/model loads, or confirm generated image quality. The GPU resource panel also returned the user's RTX 4070 SUPER and VRAM readings; scheduling remains serial and does not yet defer work based on VRAM pressure.
+
 ## Test commands (PowerShell, separate checkout)
 ```powershell
 cd C:\Users\jrhar\UltraStudio3-Test\frontend
