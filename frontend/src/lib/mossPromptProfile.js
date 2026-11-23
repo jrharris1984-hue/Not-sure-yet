@@ -106,9 +106,32 @@ export function dedupeMossClauses(value = '') {
   return { positive: retained.map(clause => clause.trim()).join('; '), removed };
 }
 
-export function composeMossPrompt(basePositive, subjects = []) {
+// Conservative workflow profiles. These change only the short priority lead;
+// the full selected DNA prompt, custom catalog and camera choices remain intact.
+export function resolveMossProfile(workflowName = '') {
+  const name = String(workflowName || '').toLowerCase();
+  if (/hypermoss|hyper[\\s_-]*moss/.test(name)) return 'hypermoss';
+  if (/final[\\s_-]*cut/.test(name)) return 'finalcut';
+  return 'generic';
+}
+
+const PROFILE_ENDINGS = {
+  generic: 'preserve the selected contours and connected anatomy in the chosen camera framing.',
+  finalcut: 'show the selected contours clearly in the chosen camera framing; use direct photographic descriptions and connected anatomy.',
+  hypermoss: 'make the selected silhouette visually prominent in the chosen camera framing while retaining distinct contours and connected anatomy.',
+};
+
+export function mossProfilePriority(dna = {}, profile = 'generic') {
+  const lead = mossVisualPriority(dna);
+  if (!lead) return '';
+  const ending = PROFILE_ENDINGS[profile] || PROFILE_ENDINGS.generic;
+  return lead.replace(PROFILE_ENDINGS.generic, ending);
+}
+
+export function composeMossPrompt(basePositive, subjects = [], workflowName = '') {
+  const mossProfile = resolveMossProfile(workflowName);
   const priorities = subjects.map((subject, index) => {
-    const priority = mossVisualPriority(subject.dna || {});
+    const priority = mossProfilePriority(subject.dna || {}, mossProfile);
     return priority && subjects.length > 1
       ? `Subject ${subject.label || String.fromCharCode(65 + index)}: ${priority}`
       : priority;
@@ -116,7 +139,7 @@ export function composeMossPrompt(basePositive, subjects = []) {
   const combined = [priorities.join(' '), String(basePositive || '').trim()].filter(Boolean).join(' ');
   const deduped = dedupeMossClauses(combined);
   const positive = deduped.positive;
-  return { positive, promptWords: positive.split(/\s+/).filter(Boolean).length,
+  return { positive, mossProfile, promptWords: positive.split(/\s+/).filter(Boolean).length,
     mossRemovedDuplicates: deduped.removed,
     mossPromptConflicts: subjects.length === 1
       ? detectMossPromptConflicts(basePositive, subjects[0].dna || {}) : [],
