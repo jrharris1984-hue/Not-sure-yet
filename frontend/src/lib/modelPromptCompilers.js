@@ -336,14 +336,14 @@ function buildPrioritizedChromaPrompt(prompts, priorityPlan, primaryGuard, dna) 
 
 const ZIMAGE_SIZE_REWRITES = [
   [/extremely voluptuous body, abundant curves, thick and luscious/gi, "voluptuous curvy body"],
-  [/huge enormous ass, gigantic buttocks, PAWG rear/gi, "dramatically full rounded buttocks"],
-  [/very large jiggly ass, massive round butt/gi, "very full rounded buttocks"],
-  [/hyper-sized cartoonishly enormous ass, impossibly huge butt, extreme bubble/gi, "extremely full rounded buttocks"],
+  [/huge enormous ass, gigantic buttocks, PAWG rear/gi, "huge glute silhouette with substantial rearward volume and a broad lower-body contour"],
+  [/very large jiggly ass, massive round butt/gi, "very large glute silhouette with pronounced rear projection"],
+  [/hyper-sized cartoonishly enormous ass, impossibly huge butt, extreme bubble/gi, "fantasy-scale hyper glute silhouette with extreme rear projection and a visibly enlarged lower-body contour"],
   [/flat chest, small AA cup, boyish chest/gi, "very small flat chest"],
   [/small athletic firm breasts, muscled chest/gi, "small athletic breasts"],
-  [/hyper-inflated impossibly huge breasts, cartoonishly enormous tits, gravity-defying/gi, "very large breasts with believable weight and attachment"],
-  [/enormous H-cup\+ tits, gigantic breasts, dramatic overflowing cleavage/gi, "very large breasts with believable weight"],
-  [/huge massive G-cup breasts, enormous cleavage, spilling out, gravity-affected/gi, "large breasts with realistic gravity"],
+  [/hyper-inflated impossibly huge breasts, cartoonishly enormous tits, gravity-defying/gi, "hyper-scale bust volume with dramatically enlarged projection and coherent chest attachment"],
+  [/enormous H-cup\+ tits, gigantic breasts, dramatic overflowing cleavage/gi, "enormous bust volume with pronounced forward projection and coherent chest attachment"],
+  [/huge massive G-cup breasts, enormous cleavage, spilling out, gravity-affected/gi, "huge bust volume with strong forward projection and coherent chest attachment"],
   [/detailed anatomy with natural proportions, anatomically correct body, realistic weight distribution, natural breast shape with realistic gravity, detailed vulva, visible labia, realistic skin flush, natural moisture/gi,
     "coherent human anatomy, realistic proportions, natural weight distribution, realistic joints and limb connections"],
 ];
