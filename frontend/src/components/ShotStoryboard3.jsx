@@ -2,9 +2,10 @@ import CameraOrbit3 from "@/components/CameraOrbit3";
 import React from "react";
 import {updateShot,reorderShot,duplicateShot,activeShots} from "@/lib/shotPlan3";
 import Studio3SavedLooks from "@/components/Studio3SavedLooks";
+import {PHOTOGRAPHY_POSE_GROUPS} from "@/lib/photographyPoses";
 export const STUDIO3_VIEWS=["front","back","rear left three-quarter","rear right three-quarter","left profile","right profile","back from below","back from above","front left three-quarter","front right three-quarter"];
 export const STUDIO3_CAMERAS=["eye-level","low","high","rear low upward","rear high downward","side profile low upward","side profile high downward"];
-export const STUDIO3_POSES=["standing","standing hip out","standing hands on hips","walking","sitting on edge","leaning wall","over shoulder look","lying side","kneeling upright"];
+export const STUDIO3_POSES=[...new Set(["standing","standing hip out","standing hands on hips","walking","sitting on edge","leaning wall","over shoulder look","lying side","kneeling upright",...PHOTOGRAPHY_POSE_GROUPS.flatMap(group=>group.options)])];
 const Select=({label,value,options,onChange})=><label className="block text-xs text-zinc-300">{label}<select value={value||""} onChange={e=>onChange(e.target.value||null)} className="mt-1 w-full rounded-lg border border-zinc-700 bg-zinc-900 p-2 text-sm text-white"><option value="">Use character / template</option>{options.map(x=><option key={x} value={x}>{x}</option>)}</select></label>;
 export default function ShotStoryboard3({plan,onChange,outfitOptions=[]}){
   return <section className="pane p-4 space-y-3" data-testid="studio3-storyboard">
