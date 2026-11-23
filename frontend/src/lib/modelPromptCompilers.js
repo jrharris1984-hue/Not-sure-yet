@@ -923,7 +923,7 @@ export function resolvePromptCompiler({ promptStyle = "", workflowKind = "", wor
   if (kind === "edit" || kind === "enhance" || style === "qwen_edit" || name.includes("qwen")) return "qwen_edit";
   if (kind === "video" || style === "wan_i2v") return "wan_i2v";
   if (kind === "text_video" || style === "wan_t2v") return "wan_t2v";
-  if (style === "moss" || /\\bmoss\\b|finalcut|hypermos(s)?/i.test(name)) return "moss";
+  if (style === "moss" || /moss|final[\\s_-]*cut/i.test(name)) return "moss";
   if (style === "pony" || kind === "pony" || name.includes("pony")) return "pony";
   if (style === "sdxl_dmd2") return "sdxl_dmd2";
   if (style === "sdxl" || name.includes("juggernaut xl")) return "sdxl";
@@ -1098,7 +1098,7 @@ function compileModelPromptsRaw({
     const prioritized = withPriorityGuard(prompts, "standard");
     const moss = composeMossPrompt(prioritized.positive, isMulti
       ? guardedSubjects
-      : [{ dna: primaryGuard.dna }]);
+      : [{ dna: primaryGuard.dna }], workflowName);
     return { ...prioritized, ...moss };
 
   }
