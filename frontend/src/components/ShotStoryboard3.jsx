@@ -1,3 +1,4 @@
+import CameraOrbit3 from "@/components/CameraOrbit3";
 import React from "react";
 import {updateShot,reorderShot,duplicateShot,activeShots} from "@/lib/shotPlan3";
 const VIEWS=["front","back","rear left three-quarter","rear right three-quarter","left profile","right profile","back from below","back from above","front left three-quarter","front right three-quarter"];
@@ -10,6 +11,7 @@ export default function ShotStoryboard3({plan,onChange,outfitOptions=[]}){
     <div className="text-xs text-amber-200">{activeShots(plan).length} enabled of {plan.shots.length} shots</div>
     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">{plan.shots.map((shot,index)=><article key={shot.id} className={`rounded-xl border p-3 space-y-3 ${shot.enabled?'border-zinc-700':'border-zinc-800 opacity-60'}`}>
       <div className="flex items-center justify-between gap-2"><label className="flex items-center gap-2 text-sm font-semibold"><input type="checkbox" checked={shot.enabled} onChange={e=>onChange(updateShot(plan,shot.id,{enabled:e.target.checked}))}/>{shot.label}</label><div className="flex gap-1"><button type="button" className="chip" disabled={index===0} onClick={()=>onChange(reorderShot(plan,index,index-1))} aria-label={`Move ${shot.label} earlier`}>↑</button><button type="button" className="chip" disabled={index===plan.shots.length-1} onClick={()=>onChange(reorderShot(plan,index,index+1))} aria-label={`Move ${shot.label} later`}>↓</button><button type="button" className="chip" disabled={plan.shots.length>=48} onClick={()=>onChange(duplicateShot(plan,shot.id))}>Copy</button></div></div>
+      <details className="rounded-lg border border-zinc-700 p-2"><summary className="cursor-pointer text-sm font-medium text-amber-200">Visual Camera Director</summary><div className="mt-2"><CameraOrbit3 subjectView={shot.subjectView} cameraAngle={shot.cameraAngle} onChange={changes=>onChange(updateShot(plan,shot.id,changes))}/></div></details>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
         <Select label="Subject view" value={shot.subjectView} options={VIEWS} onChange={subjectView=>onChange(updateShot(plan,shot.id,{subjectView}))}/>
         <Select label="Camera height / tilt" value={shot.cameraAngle} options={CAMERA} onChange={cameraAngle=>onChange(updateShot(plan,shot.id,{cameraAngle}))}/>
