@@ -1,18 +1,21 @@
 import {PHYSIQUE_DETAIL_GROUPS} from './physiqueDetails';
 export const PHYSIQUE_REGIONS=[
- {name:'Breasts',key:'bust_scale',max:2000},
- {name:'Hips',key:'hip_scale',max:2000},
- {name:'Waist',key:'waist_scale',max:500},
- {name:'Glutes',key:'butt_scale',max:2000},
- {name:'Thighs',key:'thigh_scale',max:750},
- {name:'Shoulders',key:'shoulder_width',max:100},
- {name:'Arms',key:'upper_arm_fullness',max:100},
- {name:'Calves',key:'calf_fullness',max:100},
+ {name:'Breasts',key:'bust_scale',axis:'bust',max:2000},
+ {name:'Hips',key:'hip_scale',axis:'hips',max:2000},
+ {name:'Waist',key:'waist_scale',axis:null,max:500},
+ {name:'Glutes',key:'butt_scale',axis:'butt',max:2000},
+ {name:'Thighs',key:'thigh_scale',axis:'thighs',max:750},
+ {name:'Shoulders',key:'shoulder_width',axis:null,max:100},
+ {name:'Arms',key:'upper_arm_fullness',axis:null,max:100},
+ {name:'Calves',key:'calf_fullness',axis:null,max:100},
+ {name:'Torso & Frame',key:'torso_width',axis:null,max:100},
+ {name:'Legs',key:'leg_length',axis:null,max:100},
+ {name:'Neck',key:'neck_length',axis:null,max:100},
 ];
 export const regionFields=name=>{
  const region=PHYSIQUE_REGIONS.find(r=>r.name===name);
  const detail=PHYSIQUE_DETAIL_GROUPS.find(g=>g.name===name);
- return [region?.key,...(detail?.controls||[]).map(([key])=>key)].filter(Boolean);
+ return [...new Set([region?.key,...(detail?.controls||[]).map(([key])=>key)].filter(Boolean));
 };
 export const physiqueRegionSnapshot=(dna={},name)=>Object.fromEntries(regionFields(name).map(key=>[key,Number(dna[key]||0)]));
 export const applyPhysiquePreset=(dna={},name,preset,fieldLocks={})=>{
