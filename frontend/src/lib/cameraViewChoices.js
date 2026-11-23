@@ -41,7 +41,7 @@ export const SPHERICAL_SUBJECT_VIEWS = Object.fromEntries(
 );
 
 // Subject orientation takes precedence over framing and camera elevation.
-export const rearSubjectView = value => /^(back|rear(?:\\s|$)|over-shoulder)/i.test(String(value||'').trim());
+export const rearSubjectView = value => /^(back|rear(?:\s|$)|over-shoulder)/i.test(String(value||'').trim());
 export const subjectOrientationDirective = value => {
   const v=String(value||'').trim().toLowerCase();
   if (!v) return '';
