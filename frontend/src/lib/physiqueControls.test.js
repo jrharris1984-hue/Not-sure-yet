@@ -135,3 +135,30 @@ it('gives MOSS a concise visual priority only for strongly exaggerated selection
   ordinary.physique = { ...ordinary.physique, hips: 'average', thighs: 'toned', butt: 'round' };
   expect(compileModelPrompts({ promptStyle: 'moss', dna: ordinary }).positive).not.toContain('MOSS VISUAL PRIORITY:');
 });
+
+
+describe('physique slider endpoint comparisons', () => {
+  it.each([
+    ['hip_scale', 'lateral hip width intensity', 100],
+    ['thigh_scale', 'upper-thigh volume intensity', 100],
+    ['butt_scale', 'glute volume intensity', 300],
+  ])('keeps %s low, middle, and maximum settings distinguishable in MOSS', (key, axis, maximum) => {
+    const values = [1, Math.round(maximum / 2), maximum];
+    const prompts = values.map(value => {
+      const dna = recipe();
+      dna.physique = { ...dna.physique, [key]: value };
+      return compileModelPrompts({ promptStyle: 'moss', dna }).positive;
+    });
+    values.forEach((value, index) => {
+      expect(prompts[index]).toContain(`${axis} ${value}/${maximum}`);
+    });
+    expect(new Set(prompts).size).toBe(3);
+  });
+
+  it.each(['moss', 'chroma', 'pony', 'krea2'])('preserves pose action through the %s compiler', promptStyle => {
+    const dna = recipe();
+    dna.pose = { ...dna.pose, action: 'standing quarter turn' };
+    const positive = compileModelPrompts({ promptStyle, dna }).positive;
+    expect(positive.toLowerCase()).toMatch(/quarter.turn|45 degrees|three.quarter/);
+  });
+});
