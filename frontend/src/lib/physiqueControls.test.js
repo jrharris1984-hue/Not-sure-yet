@@ -12,7 +12,7 @@ it.each(['chroma', 'krea2', 'sdxl', 'zimage', 'pony', 'flux2_klein'])('keeps exp
   expect(positive).toContain('sculpted bulbous glute contour');
   expect(positive).toMatch(/small glute/);
   expect(positive).toMatch(/narrow hips/);
-  expect(positive).toContain('waist width intensity 450/500');
+  expect(positive).toContain('waist width 450/500');
   expect(positive).toContain('photographic skin texture');
   expect(JSON.stringify(dna)).toBe(original);
 });
