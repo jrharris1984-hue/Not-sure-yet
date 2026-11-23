@@ -51,16 +51,41 @@ export const POSE_ACTION_PROMPTS = {
   "hands on knees": "hands planted on knees, forward lean, grounded preparation, athletic stance",
   "hair flip": "hair flip motion, dynamic hair movement, frozen action, energetic moment",
   "dancing": "dancing pose, captured movement, rhythmic stance, expressive body language",
-  "reverse view": "reverse view from behind, back-facing perspective, posterior focus, turned away stance"
+  "reverse view": "reverse view from behind, back-facing perspective, posterior focus, turned away stance",
+  "standing relaxed shoulder turn": "standing in a relaxed three-quarter stance, shoulders turned slightly, weight balanced on the back leg, natural posture",
+  "standing hands clasped": "standing with hands gently clasped at waist level, shoulders relaxed, composed editorial posture",
+  "standing hand at collar": "standing with one hand lightly touching the collar, relaxed opposite arm, poised fashion portrait",
+  "chin resting on hand": "seated with chin resting lightly on one hand, elbow supported, thoughtful expression and relaxed shoulders",
+  "hands framing face": "portrait pose with hands softly framing the face, fingers relaxed and separated, elbows kept clear of the cheeks",
+  "adjusting sleeve cuff": "standing while adjusting one sleeve cuff, natural hand placement, candid tailored-fashion moment",
+  "seated with ankles crossed": "seated upright with ankles crossed, knees angled slightly to one side, hands resting naturally",
+  "seated leaning forward": "seated near the front edge of a chair, leaning forward slightly with a long back and relaxed hands",
+  "seated with one arm on chair": "seated at a slight angle with one arm resting along the chair back, shoulders open and posture easy",
+  "seated torso rotated": "seated with hips angled to one side and torso gently rotated toward the light, head following the torso",
+  "leaning on high table": "standing beside a high table with one forearm resting on its edge, relaxed stance and natural shoulder line",
+  "leaning with arms crossed": "leaning lightly against a wall with arms loosely crossed, shoulders lowered and weight settled on one leg",
+  "walking diagonal": "walking diagonally across the frame at a natural pace, one foot stepping through and arms moving loosely",
+  "walking looking back": "walking away at an easy pace while turning the head back over one shoulder, body still moving forward",
+  "mid-turn fabric movement": "captured mid-turn with the torso rotating naturally and loose fabric following the movement",
+  "reaching toward window light": "standing beside a window and reaching one hand gently toward the light, body stretched without exaggerated arching",
+  "descending staircase": "walking down a staircase with one hand lightly near the rail, careful natural stride and upright posture",
+  "holding coat over shoulder": "standing with a coat draped over one shoulder, one hand holding its edge and the other relaxed at the side"
 };
 
-export const PHOTOGRAPHY_POSE_PROMPTS = Object.fromEntries(Object.entries(POSE_ACTION_PROMPTS).slice(0,16));
+const ADDITIONAL_PHOTOGRAPHY_POSES = ["standing relaxed shoulder turn","standing hands clasped","standing hand at collar","chin resting on hand","hands framing face","adjusting sleeve cuff","seated with ankles crossed","seated leaning forward","seated with one arm on chair","seated torso rotated","leaning on high table","leaning with arms crossed","walking diagonal","walking looking back","mid-turn fabric movement","reaching toward window light","descending staircase","holding coat over shoulder"];
+export const PHOTOGRAPHY_POSE_PROMPTS = Object.fromEntries([
+  ...Object.entries(POSE_ACTION_PROMPTS).slice(0,16),
+  ...ADDITIONAL_PHOTOGRAPHY_POSES.map(key=>[key,POSE_ACTION_PROMPTS[key]]),
+]);
 
 export const PHOTOGRAPHY_POSE_GROUPS = [
   {name:'Portrait standing', options:Object.keys(PHOTOGRAPHY_POSE_PROMPTS).slice(0,6)},
   {name:'Portrait seated', options:Object.keys(PHOTOGRAPHY_POSE_PROMPTS).slice(6,10)},
   {name:'Relaxed leaning', options:Object.keys(PHOTOGRAPHY_POSE_PROMPTS).slice(10,13)},
-  {name:'Natural movement', options:Object.keys(PHOTOGRAPHY_POSE_PROMPTS).slice(13)},
+  {name:'Natural movement', options:Object.keys(PHOTOGRAPHY_POSE_PROMPTS).slice(13,16)},
+  {name:'Studio & expression', options:ADDITIONAL_PHOTOGRAPHY_POSES.slice(0,6)},
+  {name:'Seated editorial', options:ADDITIONAL_PHOTOGRAPHY_POSES.slice(6,12)},
+  {name:'Movement & gestures', options:ADDITIONAL_PHOTOGRAPHY_POSES.slice(12)},
 ];
 
 export function photographyPosePrompt(value) {
