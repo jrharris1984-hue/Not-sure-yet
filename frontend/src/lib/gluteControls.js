@@ -122,7 +122,7 @@ export function gluteSizePrompt(value, { intensity = false, texture = null } = {
   // Add texture if specified
   const textureMod = texture && TEXTURE_MODIFIERS[texture] ? `, ${TEXTURE_MODIFIERS[texture]}` : "";
   
-  return `${descriptor} glute volume${textureMod}${intensity ? ` (size intensity ${n}/${GLUTE_SIZE_MAX})` : ""}`;
+  return `${descriptor} glute volume${textureMod}${` (glute volume intensity ${n}/${GLUTE_SIZE_MAX})`}`;
 }
 
 export function gluteShapePrompt(value, { texture = null } = {}) {
