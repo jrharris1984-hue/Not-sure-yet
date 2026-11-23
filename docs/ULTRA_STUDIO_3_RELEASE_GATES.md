@@ -31,4 +31,4 @@ corepack yarn build
 ```
 
 ## Status
-Development foundations and selected UI features are committed. The shared generation preflight now rejects image/video workflow mismatches and missing source images for image-to-video, with unit coverage added. End-to-end product phases 3–8 remain **incomplete**; the preflight does not inspect workflow graphs, installed models, or GPU capacity. This GitHub-connected workspace has no repository checkout, so frontend tests, builds, and ComfyUI validation could not be run here.
+Development foundations and selected UI features are committed. The shared generation preflight now rejects image/video workflow mismatches and missing source images for image-to-video, with unit coverage added. End-to-end product phases 3–8 remain **incomplete**; the preflight does not inspect workflow graphs, installed models, or GPU capacity. Frontend tests, production builds, and ComfyUI validation have not been run for this increment; treat the code as unverified until the release blockers above pass.
