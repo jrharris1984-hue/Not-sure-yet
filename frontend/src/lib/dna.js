@@ -272,13 +272,18 @@ export const SECTIONS = [
       ]},
       { key: "underwear", type: "chips", label: "Lingerie", options: [
         "none", "thong", "g-string", "lace panties", "sheer panties", "crotchless", "microkini", "boy shorts", "high-waist briefs",
-        "teddy", "babydoll", "chemise", "bodysuit", "mesh bodysuit", "corset with garters", "harness lingerie", "leather harness", "bikini set"
+        "teddy", "babydoll", "chemise", "bodysuit", "mesh bodysuit", "corset with garters", "harness lingerie", "leather harness", "bikini set",
+        "lace longline bra and high-waist briefs", "plunge balconette bra and matching briefs", "embroidered corset and garter set",
+        "silk bralette and French knickers", "velvet bustier and high-waist panties", "bridal lace corset and briefs",
+        "sheer babydoll and matching briefs", "rhinestone stage bra and matching briefs"
       ]},
       { key: "footwear", type: "chips", label: "Footwear", options: [
         "barefoot", "stiletto heels", "stripper heels", "thigh-high boots", "over-the-knee boots", "ankle boots", "combat boots", "sneakers", "platform heels", "sandals", "kitten heels", "cowgirl boots"
       ]},
       { key: "hosiery_type", type: "chips", label: "Pantyhose & stockings", options: [
-        "sheer pantyhose", "opaque tights", "fishnet tights", "patterned tights", "seamed stockings", "lace-top thigh-high stockings", "stay-up stockings", "garter stockings", "ultra-sheer tights", "semi-opaque tights", "toeless tights", "footless tights", "hold-up stockings", "back-seam stockings", "knee-high nylons", "ankle socks", "over-the-knee socks"
+        "sheer pantyhose", "opaque tights", "fishnet tights", "patterned tights", "seamed stockings", "lace-top thigh-high stockings", "stay-up stockings", "garter stockings", "ultra-sheer tights", "semi-opaque tights", "toeless tights", "footless tights", "hold-up stockings", "back-seam stockings", "knee-high nylons", "ankle socks", "over-the-knee socks",
+        "sheer black back-seam stockings", "polka-dot sheer tights", "diamond fishnet tights", "wide-net fishnet stockings",
+        "lace-top thigh-highs", "opaque ribbed tights", "seamed hold-up stockings", "shimmer pantyhose"
       ]},
       { key: "hosiery_color", type: "chips", label: "Pantyhose / stocking color", groups: [
         { name: "Neutral", options: ["nude", "tan", "espresso", "black", "white", "gray", "brown"] },
@@ -288,6 +293,7 @@ export const SECTIONS = [
         { name: "Pumps", options: ["pointed-toe stilettos", "round-toe pumps", "platform pumps", "slingback heels", "kitten heels", "block heels", "d'Orsay pumps", "Mary Jane heels", "T-strap heels", "square-toe pumps"] },
         { name: "Sandals", options: ["strappy sandals", "ankle-strap heels", "open-toe heels", "peep-toe heels", "wedge sandals", "mule heels", "gladiator heels", "slide heels", "wraparound lace-up sandals"] },
         { name: "Statement", options: ["sculptural heels", "clear platform heels", "lace-up heels", "thigh-high heeled boots", "cone heels", "cork wedges", "chunky platform boots", "metallic heeled boots"] },
+        { name: "Stage & Pole Heels", options: ["7-inch clear platform stripper heels", "ankle-strap platform stripper heels", "rhinestone platform stripper heels", "lace-up knee-high platform boots", "open-toe clear platform heels", "glitter platform dance heels", "over-the-knee stiletto boots", "pole-dance platform boots"] },
       ] },
       { key: "heel_color", type: "chips", label: "Heel color", groups: [
         { name: "Neutral", options: ["black", "white", "ivory", "nude", "tan", "brown", "clear"] },
