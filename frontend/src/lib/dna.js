@@ -1,3 +1,4 @@
+import { physiqueScalePrompt } from './physiqueScalePrompts';
 import {EXTRA_CAMERA_ANGLES,EXTRA_SUBJECT_VIEWS,SPHERICAL_SUBJECT_VIEWS} from './cameraViewChoices';
 import {layerVisible} from './wardrobeLayerOverrides';
 import characterVibeOptions from './characterVibeOptions.json';
@@ -1268,13 +1269,13 @@ function _veniceSubjectBlock(dna = {}, opts = {}) {
     bodyProfile,
     height,
     musc,
-    ph.implant_volume > 0 ? "" : ph.bust_scale ? expandedBustPrompt(ph.bust_scale) : exp("physique", "bust") || (ph.bust && `${ph.bust} breasts`),
+    ph.implant_volume > 0 ? "" : ph.bust_scale ? physiqueScalePrompt("bust",ph.bust_scale,1000) : exp("physique", "bust") || (ph.bust && `${ph.bust} breasts`),
     ph.implant_volume > 0 ? "round augmented breast shape" : bustShapePrompt(ph.bust_shape),
     implantVisualPrompt(ph.implant_volume),
-    ph.butt_scale ? gluteSizePrompt(ph.butt_scale) : regionalPhysiquePrompt("butt", ph.butt),
+    ph.butt_scale ? physiqueScalePrompt("butt",ph.butt_scale,GLUTE_SIZE_MAX) : regionalPhysiquePrompt("butt", ph.butt),
     ph.glute_shape,
-    regionalPhysiquePrompt("thighs", ph.thighs, ph.thigh_scale),
-    regionalPhysiquePrompt("hips", ph.hips, ph.hip_scale),
+    ph.thigh_scale ? physiqueScalePrompt("thighs",ph.thigh_scale,750) : regionalPhysiquePrompt("thighs",ph.thighs),
+    ph.hip_scale ? physiqueScalePrompt("hips",ph.hip_scale,750) : regionalPhysiquePrompt("hips",ph.hips),
     ph.waist_scale ? expandedWaistPrompt(ph.waist_scale) : exp("physique", "waist"),
     ph.bust_projection > 0 && `independent bust forward projection: ${Number(ph.bust_projection) > 70 ? 'extraordinary forward depth' : Number(ph.bust_projection) > 35 ? 'pronounced forward depth' : 'subtle forward depth'} (projection intensity ${ph.bust_projection}/100)`,
     ph.glute_projection > 0 && `independent rearward glute projection: ${Number(ph.glute_projection) > 70 ? 'monumental rearward depth' : Number(ph.glute_projection) > 35 ? 'pronounced rearward depth' : 'subtle rearward depth'} (projection intensity ${ph.glute_projection}/100)`,
