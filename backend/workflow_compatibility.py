@@ -21,6 +21,16 @@ def _socket_type(spec: Any) -> Optional[str]:
     return None
 
 
+def _choice_values(spec: Any) -> Optional[List[Any]]:
+    """Return live ComfyUI combo choices, distinct from typed socket specs."""
+    if not isinstance(spec, (list, tuple)) or not spec:
+        return None
+    values = spec[0]
+    if isinstance(values, list) and all(not isinstance(item, (dict, list, tuple)) for item in values):
+        return values
+    return None
+
+
 def _issue(code: str, message: str, node_id: Optional[str] = None) -> Dict[str, str]:
     issue = {"severity": "error", "code": code, "message": message}
     if node_id is not None:
@@ -33,8 +43,8 @@ def validate_workflow_graph(
 ) -> Dict[str, Any]:
     """Compare a serialized ComfyUI prompt graph with the connected node registry.
 
-    The check intentionally does not claim model-file or runtime compatibility.
-    It validates node classes, input names, required inputs, and known link types.
+    The check intentionally does not claim runtime or output compatibility.
+    It validates node classes, declared choices, required inputs, and known link types.
     """
     if not isinstance(workflow, dict) or not workflow:
         return {"compatible": False, "checked_nodes": 0,
@@ -70,6 +80,19 @@ def validate_workflow_graph(
             issues.append(_issue("unknown_input", f"Input '{name}' is not declared by node type '{class_type}'.", node_id))
         for name in sorted(set(required) - set(inputs)):
             issues.append(_issue("missing_required_input", f"Required input '{name}' is missing.", node_id))
+        for name, value in inputs.items():
+            choices = _choice_values(required.get(name, optional.get(name)))
+            if choices is not None and value not in choices:
+                allowed = ", ".join(str(item) for item in choices[:4])
+                remaining = len(choices) - 4
+                if remaining > 0:
+                    allowed += f", and {remaining} more"
+                issues.append(_issue(
+                    "unsupported_option",
+                    f"Saved value '{value}' for '{name}' is not available in ComfyUI" +
+                    (f" (available examples: {allowed})." if allowed else "."),
+                    node_id,
+                ))
 
     for node_id, node in nodes.items():
         if not isinstance(node, dict) or node_id not in schemas:

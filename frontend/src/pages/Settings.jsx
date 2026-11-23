@@ -163,7 +163,7 @@ function WorkflowRow({ w, isDefault, isFallback, isFirst, isLast, onSetDefault, 
           {validation && <div className={`rounded-md border p-3 text-xs space-y-1 ${validation.error || !validation.compatible ? "border-amber-500/40 bg-amber-500/5 text-amber-100" : "border-emerald-500/40 bg-emerald-500/5 text-emerald-100"}`} role="status" data-testid={`workflow-validation-${w.id}`}>
             {validation.error ? <p>{validation.error}</p> : <>
               <p className="font-semibold">{validation.compatible ? `Graph compatible · ${validation.checked_nodes} nodes checked` : `Graph needs attention · ${validation.checked_nodes} nodes checked`}</p>
-              {validation.schema_source && <p className="text-[10px] opacity-70">Checked against {validation.schema_source}. This does not verify installed model files or render quality.</p>}
+              {validation.schema_source && <p className="text-[10px] opacity-70">Checked against {validation.schema_source}. Exposed choices can be checked, but a match does not guarantee the model will load or render successfully.</p>}
               {validation.issues?.slice(0, 8).map((issue, index) => <p key={`${issue.code}-${issue.node_id || "graph"}-${index}`}>Node {issue.node_id ? `${issue.node_id}: ` : ""}{issue.message}</p>)}
               {(validation.issues?.length || 0) > 8 && <p>And {validation.issues.length - 8} more issue(s).</p>}
             </>}</div>}

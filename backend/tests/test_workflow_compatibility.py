@@ -12,7 +12,7 @@ SCHEMA = {
         "input": {"required": {
             "model": ["MODEL"], "seed": ["INT"],
             "steps": ["INT"], "cfg": ["FLOAT"],
-        }},
+        }, "optional": {"sampler_name": [["euler", "heun"], {}]}},
         "output": ["LATENT"],
     },
     "VAEDecode": {
@@ -27,7 +27,7 @@ class WorkflowCompatibilityTests(unittest.TestCase):
         graph = {
             "1": {"class_type": "CheckpointLoaderSimple", "inputs": {"ckpt_name": "model.safetensors"}},
             "2": {"class_type": "KSampler", "inputs": {
-                "model": ["1", 0], "seed": 1, "steps": 20, "cfg": 7,
+                "model": ["1", 0], "seed": 1, "steps": 20, "cfg": 7, "sampler_name": "euler",
             }},
             "3": {"class_type": "VAEDecode", "inputs": {"samples": ["2", 0], "vae": ["1", 2]}},
         }
@@ -59,6 +59,19 @@ class WorkflowCompatibilityTests(unittest.TestCase):
     def test_rejects_empty_graph_or_unavailable_schema(self):
         self.assertEqual(validate_workflow_graph({}, SCHEMA)["issues"][0]["code"], "invalid_graph")
         self.assertEqual(validate_workflow_graph({"1": {}}, {})["issues"][0]["code"], "schema_unavailable")
+
+    def test_reports_model_and_sampler_choices_missing_from_live_comfyui(self):
+        graph = {
+            "1": {"class_type": "CheckpointLoaderSimple", "inputs": {"ckpt_name": "old-model.safetensors"}},
+            "2": {"class_type": "KSampler", "inputs": {
+                "model": ["1", 0], "seed": 1, "steps": 20, "cfg": 7, "sampler_name": "old-sampler",
+            }},
+        }
+        result = validate_workflow_graph(graph, SCHEMA)
+        unavailable = [issue for issue in result["issues"] if issue["code"] == "unsupported_option"]
+        self.assertEqual(len(unavailable), 2)
+        self.assertTrue(any("old-model.safetensors" in issue["message"] for issue in unavailable))
+        self.assertTrue(any("old-sampler" in issue["message"] for issue in unavailable))
 
 
 if __name__ == "__main__":
