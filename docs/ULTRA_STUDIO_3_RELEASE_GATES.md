@@ -23,7 +23,9 @@ This document distinguishes implemented code from product readiness. Do not merg
 
 ## Manual integration evidence
 
-On 2026-11-23, the user ran the workflow compatibility action against their connected ComfyUI in the isolated Studio 3 test stack. The experimental MOSS image workflow reported **Graph compatible · 10 nodes checked**. This confirms the Settings UI, backend endpoint, and live `/object_info` schema path worked for that workflow. It does not validate every workflow, guarantee the selected LoRA/model loads, or confirm generated image quality. The GPU resource panel also returned the user's RTX 4070 SUPER and VRAM readings; scheduling remains serial and does not yet defer work based on VRAM pressure.
+On 2026-11-23, the user ran the workflow compatibility action against their connected ComfyUI in the isolated Studio 3 test stack. The experimental MOSS image workflow reported **Graph compatible · 10 nodes checked**. This confirms the Settings UI, backend endpoint, and live `/object_info` schema path worked for that workflow. It does not validate every workflow or guarantee that every selected LoRA/model will load. The GPU resource panel also returned the user's RTX 4070 SUPER and VRAM readings; scheduling remains serial and does not yet defer work based on VRAM pressure.
+
+The user also reports that several live test generations completed successfully and ComfyUI created the images as expected. This confirms generation worked for those unrecorded tests. The exact workflows, model/LoRA selections, prompts, and seeds were not captured, so this is not yet controlled A/B consistency evidence or validation across all models.
 
 ## Test commands (PowerShell, separate checkout)
 ```powershell
