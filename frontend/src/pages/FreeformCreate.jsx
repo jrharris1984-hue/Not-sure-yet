@@ -8,6 +8,7 @@ import {planLoras, compatibleInstalledLoras} from '@/lib/loraRegistry';
 import {readLoraPreferences} from '@/lib/loraPreferences';
 import VideoModeLinks from '@/components/VideoModeLinks';
 import VideoPromptBuilder from '@/components/VideoPromptBuilder';
+import Studio3VideoTimeline from '@/components/Studio3VideoTimeline';
 import AIResearchPanel from '@/components/AIResearchPanel';
 import { WebPromptResearchOptions, PromptResearchNotes } from '@/components/WebPromptResearch';
 import { FREEFORM_MODES, freeformPayload, freeformWorkflows } from '@/lib/freeformGeneration';
@@ -214,6 +215,7 @@ function FreeformWorkspace({ mode }) {
           <div className="flex flex-wrap gap-2">{group.concepts.map(concept => <button key={concept} type="button" disabled={!!busy} className="rounded-full border border-white/15 px-3 py-2 text-xs text-zinc-300 hover:bg-white/5" onClick={() => {setPrompt(current => `${current.trim()}${current.trim() ? '\n' : ''}The scene includes ${concept}.`);setSuggestion(null);setQueued(false);}}>{concept}</button>)}</div>
         </div>)}</div>
       </details>}
+      {mode !== 'image' && <Studio3VideoTimeline mode={mode} workflow={workflow} sourceImage={source?.name||''} disabled={!!busy} onUseClip={(value,clipFrames)=>{setPrompt(value);setFrames(clipFrames);setSuggestion(null);setQueued(false);}}/>}
       {mode !== 'image' && <VideoPromptBuilder mode={mode} disabled={!!busy} onApply={value => {setPrompt(value);setSuggestion(null);setQueued(false);}}/>}
       {mode === 'image' && workflow && <section className="rounded-lg border border-cyan-500/25 p-3 space-y-3" aria-label="Smart LoRA">
         <div className="flex flex-wrap items-center justify-between gap-2">

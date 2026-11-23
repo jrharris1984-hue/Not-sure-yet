@@ -1,6 +1,6 @@
 import {createLook3,applyLook3,compareLooks3} from './studio3WardrobeScenes';
 import {directorPlan3,directorApplySuggestion3,directorFramesFromPlan3,directorFramesToPlan3} from './studio3Director';
-import {videoTimeline3,addVideoClip3,timelineDuration3} from './studio3VideoTimeline';
+import {videoTimeline3,addVideoClip3,updateVideoClip3,removeVideoClip3,moveVideoClip3,timelineDuration3,validateVideoTimeline3} from './studio3VideoTimeline';
 import {generationPreflight3,workflowCompatibility3} from './studio3GenerationPreflight';
 import {STUDIO3_STEPS,nextStudio3Step} from './studio3Navigation';
 test('look edits preserve original character and unrelated fields',()=>{
@@ -30,6 +30,15 @@ test('video timeline computes duration without modifying source',()=>{
  const next=addVideoClip3(t,{frames:48});
  expect(t.clips).toHaveLength(0);
  expect(timelineDuration3(next)).toBe(2);
+});
+test('video timeline edits clips immutably and validates prompt and duration',()=>{
+ const original=videoTimeline3({fps:24});const first=addVideoClip3(original,{prompt:'A woman walks',frames:48});const second=addVideoClip3(first,{motion:'Camera pans left',frames:24});
+ const edited=updateVideoClip3(second,'clip-2',{prompt:'Camera pans left'});const moved=moveVideoClip3(edited,1,0);
+ expect(timelineDuration3(moved)).toBe(3);
+ expect(validateVideoTimeline3(moved)).toEqual([]);
+ expect(original.clips).toHaveLength(0);
+ expect(removeVideoClip3(moved,'clip-1').clips).toHaveLength(1);
+ expect(validateVideoTimeline3(addVideoClip3(original))).toContain('Clip 1: add a prompt or motion description.');
 });
 test('preflight blocks wrong workflow and bad seed',()=>{
  expect(generationPreflight3({workflow:{id:'x',kind:'video'},seed:-1}).ready).toBe(false);
