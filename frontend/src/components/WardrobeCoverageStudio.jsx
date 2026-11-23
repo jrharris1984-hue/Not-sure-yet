@@ -19,7 +19,7 @@ export default function WardrobeCoverageStudio({value={},onChange,disabled=false
     onChange({...value,exposure_mode:key,_exposurePrompt:undefined,nudity_level:0,nudity_outfit:''});
   };
   return <section className="wardrobe-coverage-studio" aria-label="Wardrobe coverage studio">
-    <div className="wardrobe-coverage-title"><div><strong>How dressed should the character be?</strong><p>Choose a starting point, then fine-tune the outfit below.</p></div></div>
+    <div className="wardrobe-coverage-title"><div><strong>How dressed should the character be?</strong><p>Set the overall coverage. Compatible clothing details and fabric choices remain in effect.</p></div></div>
     <div className="wardrobe-coverage-levels" role="group" aria-label="Clothing coverage">
       {levels.map((item,index)=>{
         const unavailable=fullSetWithoutLingerie&&['lingerie showing','lingerie only'].includes(item.key);
@@ -29,6 +29,6 @@ export default function WardrobeCoverageStudio({value={},onChange,disabled=false
       })}
     </div>
     <p className="wardrobe-coverage-current" aria-live="polite">{active>=0?`Current: ${levels[active].label}`:'Custom coverage selected. Use the detailed clothing coverage setting below to edit it.'}</p>
-    <details className="wardrobe-coverage-help"><summary>How clothing changes work</summary><p>Coverage changes keep your selected outfit and garment details saved. Use the clothing controls below to change individual layers, fabric, footwear or accessories. For specific options such as topless, bottomless, hosiery only or shifted garments, use the existing Clothing coverage detail.</p></details>
+    <details className="wardrobe-coverage-help"><summary>How clothing changes work</summary><p>Coverage changes keep your selected outfit and garment details saved. Choices that remove or reposition clothing take priority over a conflicting clothing-state choice; compatible state, fabric, footwear and accessory details remain active. Use the Layers step or advanced clothing coverage control for specific layer combinations.</p></details>
   </section>;
 }
