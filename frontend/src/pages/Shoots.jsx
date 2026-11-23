@@ -55,6 +55,7 @@ export default function Shoots() {
           {characterId && !character && <option value={characterId}>Selected character</option>}
           {characters.map(item => <option key={item.id} value={item.id}>{item.name || "Untitled"}</option>)}
         </select>
+        {characterId && <Link to={`/shoot/new/${encodeURIComponent(characterId)}?quick=1`} data-testid="start-quick-shoot" className="block rounded-xl border border-amber-500/50 bg-amber-500/10 p-4 hover:border-amber-400"><span className="block text-base font-semibold text-amber-200">Quick Photoshoot · Recommended</span><span className="block mt-1 text-sm text-zinc-300">Pick a style, choose 3, 6 or 12 photos, then review and queue. Works on mobile and desktop.</span></Link>}
         {characterId ? <div className="grid gap-3 sm:grid-cols-2">
           <Link to={`/character/${encodeURIComponent(characterId)}?shoot=smart`} data-testid="start-smart-shoot" className="rounded-xl border border-cyan-500/40 bg-cyan-500/10 p-4">
             <span className="block font-semibold text-cyan-200">Open Smart director</span>
