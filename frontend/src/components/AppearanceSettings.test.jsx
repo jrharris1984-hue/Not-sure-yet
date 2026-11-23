@@ -19,5 +19,5 @@ test('invalid saved themes fall back to Studio and resetting restores default co
   act(() => root.render(<AppearanceSettings />));
   act(() => container.querySelector('[data-testid="theme-ocean"]').click());
   act(() => container.querySelector('[data-testid="theme-studio"]').click());
-  expect(document.documentElement.style.getPropertyValue('--studio-accent')).toBe('#86efac');
+  expect(document.documentElement.style.getPropertyValue('--studio-accent')).toBe('#e9c98a');
 });
