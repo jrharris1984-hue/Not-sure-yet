@@ -44,22 +44,22 @@ export const SECTIONS = [
       { key: "body_type", type: "chips", label: "Body type", options: ["slim", "athletic", "curvy", "voluptuous", "plus size", "hourglass", "pear", "apple", "bombshell", "amazonian"] },
       { key: "muscularity", type: "slider", label: "Muscularity", min: 0, max: 100, step: 1 },
       { key: "bust", type: "chips", label: "Bust size", options: ["flat", "small", "medium", "large", "very large", "huge", "enormous", "hyper"] },
-      { key: "bust_scale", type: "slider", label: "Bust size", min: 0, max: 500, step: 1, defaultValue: 0 },
+      { key: "bust_scale", type: "slider", label: "Bust size", min: 0, max: 1000, step: 1, defaultValue: 0 },
       { key: "bust_shape", type: "chips", label: "Bust shape", options: ["natural", "perky", "round", "teardrop", "athletic", "augmented", "gravity-defying"] },
       { key: "implant_volume", type: "slider", label: "Implant visual size (cc reference; 0 = none)", min: 0, max: 5000, step: 50, defaultValue: 0, help: "Prompts include the selected visual-size value and projection description. This is a visual reference, not a medical measurement." },
       { key: "butt", type: "chips", label: "Butt", options: ["flat", "small", "toned", "round", "bubble", "large", "very large", "huge", "hyper"] },
-      { key: "butt_scale", type: "slider", label: "Glute size", min: 0, max: GLUTE_SIZE_MAX, step: 1, defaultValue: 0, help: "0 keeps the Butt preset. 1–100 sets size; 101–300 retains the original fantasy scale; 301–500 adds surreal fantasy volume. Shape is controlled separately. A rear or three-quarter view makes the silhouette easier to see." },
+      { key: "butt_scale", type: "slider", label: "Glute size", min: 0, max: GLUTE_SIZE_MAX, step: 1, defaultValue: 0, help: "0 keeps the Butt preset. 1–100 sets size; 101–300 retains the original fantasy scale; 301–500 adds surreal fantasy volume; 501–1000 enables Beyond Extreme. Shape is controlled separately. A rear or three-quarter view makes the silhouette easier to see." },
       { key: "glute_shape", type: "chips", label: "Glute shape / augmentation look", groups: [
         { name: "Natural", options: ["natural rounded", "athletic lifted", "soft pear-shaped", "heart-shaped"] },
         { name: "Enhanced", options: ["BBL-style fuller glutes", "high round projection", "pronounced upper shelf", "dramatic side projection"] },
         { name: "Fantasy", options: ["fantasy oversized glutes", "extreme round projection"] },
       ] },
       { key: "thighs", type: "chips", label: "Thighs", options: ["slim", "toned", "athletic", "thick", "very thick", "massive"] },
-      { key: "thigh_scale", type: "slider", label: "Thigh size", min: 0, max: 300, step: 1, defaultValue: 0 },
+      { key: "thigh_scale", type: "slider", label: "Thigh size", min: 0, max: 750, step: 1, defaultValue: 0 },
       { key: "hips", type: "chips", label: "Hips", options: ["narrow", "average", "wide", "very wide", "extreme"] },
-      { key: "hip_scale", type: "slider", label: "Hip width", min: 0, max: 300, step: 1, defaultValue: 0 },
+      { key: "hip_scale", type: "slider", label: "Hip width", min: 0, max: 750, step: 1, defaultValue: 0 },
       { key: "waist", type: "chips", label: "Waist", options: ["thick", "average", "slim", "cinched", "tiny", "wasp-thin"] },
-      { key: "waist_scale", type: "slider", label: "Waist width", min: 0, max: 200, step: 1, defaultValue: 0 },
+      { key: "waist_scale", type: "slider", label: "Waist width", min: 0, max: 500, step: 1, defaultValue: 0 },
       { key: "shoulders", type: "chips", label: "Shoulders", options: ["narrow", "average", "broad", "athletic"] },
       { key: "legs", type: "chips", label: "Legs", options: ["short", "average", "long", "endless"] },
       { key: "proportions", type: "text", label: "Extra proportions notes" },
@@ -1174,8 +1174,9 @@ function _veniceSharedBlock(dna = {}, opts = {}, subjectCount = 1) {
 // Empty (zero) dials leave saved presets untouched. Numeric values are visual
 // direction, never a promise that the image model can measure anatomy exactly.
 function expandedBustPrompt(value) {
-  const n = Math.max(0, Math.min(500, Number(value) || 0));
+  const n = Math.max(0, Math.min(1000, Number(value) || 0));
   if (n <= 100) return visualScale(n, "bust", ["small", "moderate", "full", "very large", "extremely oversized"]);
+  if (n > 500) return `${n <= 750 ? "beyond extreme fantasy bust with immense forward projection and expansive fullness" : "maximum impossible fantasy bust with monumental volume and extraordinary forward projection"} (bust volume intensity ${Math.round(n)}/1000)`;
   const tier = n <= 200 ? "dramatically oversized with pronounced forward projection"
     : n <= 300 ? "fantasy-scale with substantial rounded fullness and heavy natural volume"
     : n <= 400 ? "surreal hyper-volume with extraordinary forward projection and lower fullness"
@@ -1184,8 +1185,9 @@ function expandedBustPrompt(value) {
 }
 
 function expandedWaistPrompt(value) {
-  const n = Math.max(0, Math.min(200, Number(value) || 0));
+  const n = Math.max(0, Math.min(500, Number(value) || 0));
   if (n <= 100) return visualScale(n, "waist", ["very narrow", "narrow", "average width", "wide", "very wide"]);
+  if (n > 200) return `${n <= 350 ? "hyper-fantasy broad" : "beyond extreme impossible-width"} waist with monumental lateral torso width (waist width intensity ${Math.round(n)}/500)`;
   return `${n <= 150 ? "dramatically broad" : "surreal fantasy-scale broad"} waist with exaggerated lateral torso width (waist width intensity ${Math.round(n)}/200)`;
 }
 
