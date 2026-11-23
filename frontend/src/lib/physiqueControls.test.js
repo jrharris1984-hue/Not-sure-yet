@@ -58,3 +58,21 @@ it('keeps zeroed-negative strategies and edit instructions intact', () => {
   expect(compileModelPrompts({ promptStyle: 'flux2_klein', dna }).negativeStrategy).toBe('zeroed');
   expect(compileModelPrompts({ promptStyle: 'qwen_edit', dna, editInstruction: 'Change the background to a garden' }).positive).toContain('Change the background to a garden');
 });
+
+
+it('keeps individual hip, thigh and glute slider positions distinct in compiled prompts', () => {
+  for (const [key, first, second, label] of [
+    ['hip_scale', 41, 42, 'lateral hip width intensity'],
+    ['thigh_scale', 61, 62, 'upper-thigh volume intensity'],
+    ['butt_scale', 141, 142, 'glute volume intensity'],
+  ]) {
+    const dna = recipe();
+    dna.physique[key] = first;
+    const before = compileModelPrompts({ promptStyle: 'chroma', dna }).positive;
+    dna.physique[key] = second;
+    const after = compileModelPrompts({ promptStyle: 'chroma', dna }).positive;
+    expect(before).toContain(label);
+    expect(after).toContain(label);
+    expect(before).not.toBe(after);
+  }
+});
