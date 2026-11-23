@@ -359,7 +359,7 @@ function _ponySubjectBlock(dna = {}, opts = {}) {
   const ageHead = age ? `${age}-year-old ${age >= 45 ? 'mature' : 'adult'} ${gender}` : `adult ${gender}`;
   const ageStr = join([age >= 45 ? w(ageHead, 1.35) : ageHead, ageAppearancePrompt(age)]);
   const heritage = exp("identity", "ethnicity");
-  const curveBuiltIn = ["curvy", "voluptuous", "plus size", "hourglass", "bombshell"].includes(ph.body_type);
+  const curveBuiltIn = ["curvy", "voluptuous", "plus size", "rounded plus-size", "hourglass", "petite hourglass", "athletic hourglass", "pear", "pear-shaped", "apple", "apple-shaped", "bombshell", "amazonian"].includes(ph.body_type);
   const curveModifier = ph.curves > 85 && !curveBuiltIn ? "pronounced feminine curves"
                       : ph.curves > 60 && !curveBuiltIn ? "curved feminine silhouette" : "";
   const baseProfile = join([exp("physique", "body_type"), curveModifier]);
@@ -371,6 +371,9 @@ function _ponySubjectBlock(dna = {}, opts = {}) {
     id.name && w(`portrait of ${id.name}`, 1.2),
     ageStr,
     heritage,
+    id.presentation,
+    id.archetype && id.archetype !== "none" ? `${id.archetype} character presence` : "",
+    id.identity_details,
     exp("skin", "tone"),
     exp("skin", "texture"),
     "realistic natural skin texture, visible pores, subtle skin imperfections",
