@@ -16,7 +16,7 @@ import { catalogSections, catalogDna, catalogSelection, catalogControl, customCa
 import { applyPhotographicGuidance } from "./photographicGuidance";
 import { resolveBuilderControls, sliderPromptSignature } from "./builderControlResolution";
 import { footVisibility } from './footVisibility';
-import { resolvePhysiqueControls, bustShapePrompt, photographicPrompt } from "./physiqueControls";
+import { resolvePhysiqueControls, bustShapePrompt, photographicPrompt, regionalPhysiquePrompt } from "./physiqueControls";
 import { preserveGeneralSelections, subjectPromptText } from "./selectionFidelity";
 import { applyCastAppearance, castAppearancePrompt } from "./castAppearance";
 import { photographyPosePrompt } from "@/lib/photographyPoses";
@@ -115,7 +115,10 @@ function chromaBodyPriority(dna = {}) {
   const clauses = [];
   if (ph.bust_shape && !(Number(ph.implant_volume) > 0)) clauses.push(bustShapePrompt(ph.bust_shape));
   for (const [preset, slider, noun] of [['bust', 'bust_scale', 'bust'], ['butt', 'butt_scale', 'glute volume'], ['hips', 'hip_scale', 'hips'], ['waist', 'waist_scale', 'waist'], ['thighs', 'thigh_scale', 'thighs']]) {
-    if (ph[preset] && !(Number(ph[slider]) > 0) && !(preset === 'bust' && Number(ph.implant_volume) > 0)) clauses.push(`${ph[preset]} ${noun}`);
+    if (ph[preset] && !(Number(ph[slider]) > 0) && !(preset === 'bust' && Number(ph.implant_volume) > 0)) {
+      const regional = ['butt', 'hips', 'thighs'].includes(preset) ? regionalPhysiquePrompt(preset, ph[preset]) : '';
+      clauses.push(regional || `${ph[preset]} ${noun}`);
+    }
   }
   if (Number(ph.implant_volume) > 0) clauses.push(implantVisualPrompt(ph.implant_volume));
 
