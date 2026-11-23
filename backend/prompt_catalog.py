@@ -47,6 +47,13 @@ def validate_prompt_catalog(value):
                     if sid != 'wardrobe' or fid != 'exposure_mode' or not isinstance(option['coverage_mode'], str) or option['coverage_mode'] not in modes:
                         raise ValueError('Invalid clothing coverage behavior.')
                     clean_options[-1]['coverage_mode'] = option['coverage_mode']
+                if 'reference_url' in option:
+                    reference = text(option, 'reference_url', 1000, True)
+                    if reference and (not reference.startswith('https://') or re.search(r'\\s', reference)):
+                        raise ValueError('Reference image URL must use HTTPS.')
+                    clean_options[-1]['reference_url'] = reference
+                if 'notes' in option:
+                    clean_options[-1]['notes'] = text(option, 'notes', 1000, True)
                 for compact_key in ('short', 'short_tags'):
                     if compact_key in option:
                         clean_options[-1][compact_key] = text(option,compact_key,500,True)
