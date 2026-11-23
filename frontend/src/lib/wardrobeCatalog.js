@@ -538,6 +538,379 @@ export const WARDROBE_ITEMS = [
     ],
     "version": 1
   }
+,
+{
+  "id": "glamour-nightlife-midnight-velvet-mini",
+  "category": "Glamour & Nightlife",
+  "label": "Midnight velvet mini",
+  "prompt": "fitted midnight velvet mini dress with plunging neckline, statement earrings and stiletto heels",
+  "tags": [
+    "glamour & nightlife",
+    "midnight",
+    "velvet",
+    "mini"
+  ],
+  "version": 1
+},
+{
+  "id": "glamour-nightlife-satin-cowl-slip",
+  "category": "Glamour & Nightlife",
+  "label": "Satin cowl slip",
+  "prompt": "satin cowl-neck mini slip dress with delicate straps and strappy heels",
+  "tags": [
+    "glamour & nightlife",
+    "satin",
+    "cowl",
+    "slip"
+  ],
+  "version": 1
+},
+{
+  "id": "glamour-nightlife-backless-cocktail",
+  "category": "Glamour & Nightlife",
+  "label": "Backless cocktail",
+  "prompt": "backless fitted cocktail dress with dramatic open back and metallic heels",
+  "tags": [
+    "glamour & nightlife",
+    "backless",
+    "cocktail"
+  ],
+  "version": 1
+},
+{
+  "id": "glamour-nightlife-crystal-clubwear",
+  "category": "Glamour & Nightlife",
+  "label": "Crystal clubwear",
+  "prompt": "crystal-embellished fitted bodysuit with high-waisted mini skirt and platform heels",
+  "tags": [
+    "glamour & nightlife",
+    "crystal",
+    "clubwear"
+  ],
+  "version": 1
+},
+{
+  "id": "glamour-nightlife-leather-nightlife",
+  "category": "Glamour & Nightlife",
+  "label": "Leather nightlife",
+  "prompt": "fitted leather mini dress with asymmetric zipper and knee-high boots",
+  "tags": [
+    "glamour & nightlife",
+    "leather",
+    "nightlife"
+  ],
+  "version": 1
+},
+{
+  "id": "glamour-nightlife-cutout-runway",
+  "category": "Glamour & Nightlife",
+  "label": "Cutout runway",
+  "prompt": "high-fashion cutout bodycon dress with sculptural side panels and sleek heels",
+  "tags": [
+    "glamour & nightlife",
+    "cutout",
+    "runway"
+  ],
+  "version": 1
+},
+{
+  "id": "romantic-boudoir-scarlet-lace-ensemble",
+  "category": "Romantic Boudoir",
+  "label": "Scarlet lace ensemble",
+  "prompt": "scarlet lace bralette and high-waisted matching briefs with sheer robe and heels",
+  "tags": [
+    "romantic boudoir",
+    "scarlet",
+    "lace",
+    "ensemble"
+  ],
+  "version": 1
+},
+{
+  "id": "romantic-boudoir-black-satin-corsetry",
+  "category": "Romantic Boudoir",
+  "label": "Black satin corsetry",
+  "prompt": "black satin corset with matching high-waisted shorts and thigh-high stockings",
+  "tags": [
+    "romantic boudoir",
+    "black",
+    "satin",
+    "corsetry"
+  ],
+  "version": 1
+},
+{
+  "id": "romantic-boudoir-sheer-robe-layers",
+  "category": "Romantic Boudoir",
+  "label": "Sheer robe layers",
+  "prompt": "sheer embroidered robe over a matching satin camisole and lace shorts",
+  "tags": [
+    "romantic boudoir",
+    "sheer",
+    "robe",
+    "layers"
+  ],
+  "version": 1
+},
+{
+  "id": "romantic-boudoir-silk-nightdress",
+  "category": "Romantic Boudoir",
+  "label": "Silk nightdress",
+  "prompt": "silk bias-cut nightdress with delicate lace edging and matching slippers",
+  "tags": [
+    "romantic boudoir",
+    "silk",
+    "nightdress"
+  ],
+  "version": 1
+},
+{
+  "id": "romantic-boudoir-vintage-garter-set",
+  "category": "Romantic Boudoir",
+  "label": "Vintage garter set",
+  "prompt": "retro satin longline bra with matching briefs, garter belt and seamed stockings",
+  "tags": [
+    "romantic boudoir",
+    "vintage",
+    "garter",
+    "set"
+  ],
+  "version": 1
+},
+{
+  "id": "romantic-boudoir-velvet-lounge-glamour",
+  "category": "Romantic Boudoir",
+  "label": "Velvet lounge glamour",
+  "prompt": "deep burgundy velvet wrap robe with matching satin lounge set",
+  "tags": [
+    "romantic boudoir",
+    "velvet",
+    "lounge",
+    "glamour"
+  ],
+  "version": 1
+},
+{
+  "id": "fantasy-seduction-vampire-countess",
+  "category": "Fantasy Seduction",
+  "label": "Vampire countess",
+  "prompt": "gothic black velvet corset gown with dramatic lace sleeves, crimson lining and ornate choker",
+  "tags": [
+    "fantasy seduction",
+    "vampire",
+    "countess"
+  ],
+  "version": 1
+},
+{
+  "id": "fantasy-seduction-dark-fairy-queen",
+  "category": "Fantasy Seduction",
+  "label": "Dark fairy queen",
+  "prompt": "iridescent dark fairy corset dress with layered translucent skirts, jeweled wings and thigh-high boots",
+  "tags": [
+    "fantasy seduction",
+    "dark",
+    "fairy",
+    "queen"
+  ],
+  "version": 1
+},
+{
+  "id": "fantasy-seduction-moonlit-enchantress",
+  "category": "Fantasy Seduction",
+  "label": "Moonlit enchantress",
+  "prompt": "silver embroidered fitted gown with celestial cutouts, long sheer cape and moonstone jewelry",
+  "tags": [
+    "fantasy seduction",
+    "moonlit",
+    "enchantress"
+  ],
+  "version": 1
+},
+{
+  "id": "fantasy-seduction-demon-queen-couture",
+  "category": "Fantasy Seduction",
+  "label": "Demon queen couture",
+  "prompt": "deep red sculpted fantasy bodice with dramatic horned crown, flowing split skirt and high boots",
+  "tags": [
+    "fantasy seduction",
+    "demon",
+    "queen",
+    "couture"
+  ],
+  "version": 1
+},
+{
+  "id": "fantasy-seduction-cyber-siren",
+  "category": "Fantasy Seduction",
+  "label": "Cyber siren",
+  "prompt": "futuristic metallic corset top, asymmetric fitted skirt and illuminated thigh-high boots",
+  "tags": [
+    "fantasy seduction",
+    "cyber",
+    "siren"
+  ],
+  "version": 1
+},
+{
+  "id": "fantasy-seduction-gothic-sorceress",
+  "category": "Fantasy Seduction",
+  "label": "Gothic sorceress",
+  "prompt": "black lace-up fantasy corset, layered high-slit skirt and ornate arcane jewelry",
+  "tags": [
+    "fantasy seduction",
+    "gothic",
+    "sorceress"
+  ],
+  "version": 1
+},
+{
+  "id": "pin-up-burlesque-showgirl-feathers",
+  "category": "Pin-Up & Burlesque",
+  "label": "Showgirl feathers",
+  "prompt": "sparkling stage corset with feathered shoulder adornments, high-waisted shorts and dance heels",
+  "tags": [
+    "pin-up & burlesque",
+    "showgirl",
+    "feathers"
+  ],
+  "version": 1
+},
+{
+  "id": "pin-up-burlesque-classic-pin-up-swimsuit",
+  "category": "Pin-Up & Burlesque",
+  "label": "Classic pin-up swimsuit",
+  "prompt": "retro sweetheart-neckline one-piece swimsuit with polka-dot wrap and wedge sandals",
+  "tags": [
+    "pin-up & burlesque",
+    "classic",
+    "pin-up",
+    "swimsuit"
+  ],
+  "version": 1
+},
+{
+  "id": "pin-up-burlesque-burlesque-velvet",
+  "category": "Pin-Up & Burlesque",
+  "label": "Burlesque velvet",
+  "prompt": "burgundy velvet corset, matching high-waisted shorts, opera gloves and feathered headpiece",
+  "tags": [
+    "pin-up & burlesque",
+    "burlesque",
+    "velvet"
+  ],
+  "version": 1
+},
+{
+  "id": "pin-up-burlesque-rockabilly-glamour",
+  "category": "Pin-Up & Burlesque",
+  "label": "Rockabilly glamour",
+  "prompt": "fitted halter pencil dress with sweetheart neckline and classic pumps",
+  "tags": [
+    "pin-up & burlesque",
+    "rockabilly",
+    "glamour"
+  ],
+  "version": 1
+},
+{
+  "id": "pin-up-burlesque-old-hollywood-satin",
+  "category": "Pin-Up & Burlesque",
+  "label": "Old Hollywood satin",
+  "prompt": "bias-cut satin evening gown with dramatic faux-fur stole and long gloves",
+  "tags": [
+    "pin-up & burlesque",
+    "old",
+    "hollywood",
+    "satin"
+  ],
+  "version": 1
+},
+{
+  "id": "pin-up-burlesque-cabaret-sparkle",
+  "category": "Pin-Up & Burlesque",
+  "label": "Cabaret sparkle",
+  "prompt": "sequined cabaret bodysuit with fringed overskirt and ankle-strap dance heels",
+  "tags": [
+    "pin-up & burlesque",
+    "cabaret",
+    "sparkle"
+  ],
+  "version": 1
+},
+{
+  "id": "fantasy-armor-royalty-warrior-empress",
+  "category": "Fantasy Armor & Royalty",
+  "label": "Warrior empress",
+  "prompt": "ornate fitted fantasy breastplate over a structured bodice, layered battle skirt and armored boots",
+  "tags": [
+    "fantasy armor & royalty",
+    "warrior",
+    "empress"
+  ],
+  "version": 1
+},
+{
+  "id": "fantasy-armor-royalty-elven-moon-princess",
+  "category": "Fantasy Armor & Royalty",
+  "label": "Elven moon princess",
+  "prompt": "silver leaf-embroidered flowing gown with fitted waist, translucent cape and delicate circlet",
+  "tags": [
+    "fantasy armor & royalty",
+    "elven",
+    "moon",
+    "princess"
+  ],
+  "version": 1
+},
+{
+  "id": "fantasy-armor-royalty-dragon-court",
+  "category": "Fantasy Armor & Royalty",
+  "label": "Dragon court",
+  "prompt": "scale-textured fitted corset dress with dramatic shoulder armor and high boots",
+  "tags": [
+    "fantasy armor & royalty",
+    "dragon",
+    "court"
+  ],
+  "version": 1
+},
+{
+  "id": "fantasy-armor-royalty-royal-masquerade",
+  "category": "Fantasy Armor & Royalty",
+  "label": "Royal masquerade",
+  "prompt": "deep purple off-shoulder brocade gown with ornate masquerade mask and opera gloves",
+  "tags": [
+    "fantasy armor & royalty",
+    "royal",
+    "masquerade"
+  ],
+  "version": 1
+},
+{
+  "id": "fantasy-armor-royalty-steampunk-adventuress",
+  "category": "Fantasy Armor & Royalty",
+  "label": "Steampunk adventuress",
+  "prompt": "brown leather corset vest over ruffled blouse, layered high-low skirt and lace-up boots",
+  "tags": [
+    "fantasy armor & royalty",
+    "steampunk",
+    "adventuress"
+  ],
+  "version": 1
+},
+{
+  "id": "fantasy-armor-royalty-desert-sorceress",
+  "category": "Fantasy Armor & Royalty",
+  "label": "Desert sorceress",
+  "prompt": "gold embroidered halter top with flowing layered skirt, jeweled belt and gauzy cape",
+  "tags": [
+    "fantasy armor & royalty",
+    "desert",
+    "sorceress"
+  ],
+  "version": 1
+}
 ];
 export const WARDROBE_CATEGORY_GROUPS = Object.entries(WARDROBE_ITEMS.reduce((acc, item) => { (acc[item.category] ||= []).push(item); return acc; }, {})).map(([name, items]) => ({ name, options: items.map(item => item.prompt) }));
 export const WARDROBE_ITEM_LABELS = Object.fromEntries(WARDROBE_ITEMS.map(item => [item.prompt, item.label]));
