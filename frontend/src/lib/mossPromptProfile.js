@@ -3,6 +3,34 @@
 const selected = (scale, preset, threshold, values) =>
   Number(scale) > 0 ? Number(scale) >= threshold : values.includes(String(preset || '').toLowerCase());
 
+// Keep volume, contour, and projection as separate conceptual axes.
+// Projection is inferred from an explicit shape choice only; it is never
+// treated as a new user setting or an exact anatomical measurement.
+export function mossBodyGeometry(dna = {}) {
+  const ph = dna.physique || {};
+  const regions = [
+    ['bust', 'bust_scale', 'bust_shape'],
+    ['butt', 'butt_scale', 'glute_shape'],
+    ['hips', 'hip_scale', null],
+    ['thighs', 'thigh_scale', null],
+    ['waist', 'waist_scale', null],
+  ];
+  return regions.reduce((result, [region, slider, shape]) => {
+    const amount = Number(ph[slider]);
+    const sliderActive = Number.isFinite(amount) && amount > 0;
+    const contour = shape ? String(ph[shape] || '').trim() : '';
+    result[region] = {
+      sizeSource: sliderActive ? 'slider' : (ph[region] ? 'preset' : 'unspecified'),
+      size: sliderActive ? amount : (ph[region] || ''),
+      contour,
+      projection: region === 'butt' && /rear projection|rearward|posterior|upper shelf/i.test(contour)
+        ? 'rearward'
+        : region === 'butt' && /side projection|lateral/i.test(contour) ? 'lateral' : 'unspecified',
+    };
+    return result;
+  }, {});
+}
+
 export function mossVisualPriority(dna = {}) {
   const ph = dna.physique || {};
   const features = [];
@@ -27,7 +55,7 @@ export function inspectMossPhysique(dna = {}) {
   if (ph.proportions && axes.some(([, scale]) => Number(ph[scale]) > 0)) {
     warnings.push('Detailed regional controls override general proportions notes');
   }
-  return { warnings, priority: mossVisualPriority(dna) };
+  return { warnings, priority: mossVisualPriority(dna), geometry: mossBodyGeometry(dna) };
 }
 
 export function composeMossPrompt(basePositive, subjects = []) {
