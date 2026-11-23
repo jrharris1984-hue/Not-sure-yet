@@ -591,10 +591,10 @@ function kreaSubjectSentence(dna = {}, label = "") {
     ph.implant_volume > 0 ? "" : kreaScale(ph.bust_scale, "bust", ["small", "moderate", "full", "very large", "extremely oversized"]) || (ph.bust && `${ph.bust} bust`),
     ph.implant_volume > 0 ? "round augmented breast shape" : bustShapePrompt(ph.bust_shape),
     kreaScale(ph.waist_scale, "waist", ["very narrow", "narrow", "average", "wide", "very wide"]) || (ph.waist && `${ph.waist} waist`),
-    kreaScale(ph.hip_scale, "hips", ["narrow", "moderate-width", "wide", "very wide", "extremely wide"]) || (ph.hips && `${ph.hips} hips`),
-    (ph.butt_scale > 100 ? gluteSizePrompt(ph.butt_scale) : kreaScale(ph.butt_scale, "glutes", ["small", "moderate", "full rounded", "very large projected", "extremely oversized projected"])) || (ph.butt && `${ph.butt} buttocks`),
+    regionalPhysiquePrompt("hips", ph.hips, ph.hip_scale),
+    (ph.butt_scale ? gluteSizePrompt(ph.butt_scale) : regionalPhysiquePrompt("butt", ph.butt)),
     ph.glute_shape,
-    kreaScale(ph.thigh_scale, "thighs", ["slim", "moderate", "full", "very thick", "extremely thick"]) || (ph.thighs && `${ph.thighs} thighs`),
+    regionalPhysiquePrompt("thighs", ph.thighs, ph.thigh_scale),
     ph.legs && ph.legs !== "average" ? `${ph.legs} legs` : "",
     ph.proportions
   );
