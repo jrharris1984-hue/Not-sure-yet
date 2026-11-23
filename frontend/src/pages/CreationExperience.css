@@ -275,3 +275,26 @@
   .design-workspace [data-testid=desktop-focused-editor],.design-workspace [data-testid=wardrobe-focused-editor] {animation:studio-detail-reveal 140ms ease-out}
 }
 @keyframes studio-detail-reveal {from {opacity:.55} to {opacity:1}}
+
+
+/* Premium Studio palette: quiet slate surfaces with restrained champagne and steel accents. */
+:where(html[data-studio-theme=studio],html:not([data-studio-theme])) .studio-shell .design-workspace {
+  --design-canvas:#101722;--design-panel:#182331;--design-edge:#334253;--design-text:#edf2f7;--design-muted:#aab7c5;--design-accent:#d6bd83;--design-control:#202d3b;
+  --creation-color:#d6bd83;--creation-soft:#d6bd831a;
+  background:radial-gradient(ellipse at 92% 0,#8ea7be0b,transparent 42%),var(--design-canvas);
+}
+:where(html[data-studio-theme=studio],html:not([data-studio-theme])) .studio-shell .design-workspace[data-creation-tone=people] {--creation-color:#91bbd8;--creation-soft:#91bbd81a}
+:where(html[data-studio-theme=studio],html:not([data-studio-theme])) .studio-shell .design-workspace[data-creation-tone=wardrobe] {--creation-color:#d6bd83;--creation-soft:#d6bd831c}
+:where(html[data-studio-theme=studio],html:not([data-studio-theme])) .studio-shell .design-workspace[data-creation-tone=scene] {--creation-color:#8fc5b0;--creation-soft:#8fc5b01a}
+:where(html[data-studio-theme=studio],html:not([data-studio-theme])) .studio-shell .design-workspace[data-creation-tone=appearance] {--creation-color:#b1a6d9;--creation-soft:#b1a6d91a}
+:where(html[data-studio-theme=studio],html:not([data-studio-theme])) .studio-shell .design-workspace .creation-section-emblem {
+  width:50px;height:50px;border-radius:15px;transform:none;background:var(--creation-soft);border-color:var(--creation-soft);box-shadow:inset 0 1px 0 #ffffff1a,0 6px 16px #0002;
+}
+:where(html[data-studio-theme=studio],html:not([data-studio-theme])) .studio-shell .design-workspace .creation-section-emblem svg {transform:none}
+:where(html[data-studio-theme=studio],html:not([data-studio-theme])) .studio-shell .design-workspace :is(.visual-choice,.detail-navigator,.selection-panel,.sheet-field-card) {transition:background-color 160ms ease,border-color 160ms ease,box-shadow 160ms ease,transform 160ms ease}
+:where(html[data-studio-theme=studio],html:not([data-studio-theme])) .studio-shell .design-workspace :is(input,select,textarea):focus-visible {outline:2px solid var(--creation-color);outline-offset:2px;box-shadow:0 0 0 4px var(--creation-soft)}
+@media(prefers-reduced-motion:reduce) {
+  :where(html[data-studio-theme=studio],html:not([data-studio-theme])) .studio-shell .design-workspace *,
+  :where(html[data-studio-theme=studio],html:not([data-studio-theme])) .studio-shell .design-workspace *::before,
+  :where(html[data-studio-theme=studio],html:not([data-studio-theme])) .studio-shell .design-workspace *::after {scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
+}
