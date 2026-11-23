@@ -26,3 +26,13 @@ describe('Physique Studio 3.0 region editing',()=>{
   expect(regionFields('Glutes')).toContain('glute_projection_profile');
  });
 });
+
+
+test('includes shoulders arms and calves in region editing and comparison',()=>{
+ expect(regionFields('Shoulders')).toEqual(expect.arrayContaining(['shoulder_width','shoulder_slope','clavicle_definition']));
+ expect(regionFields('Arms')).toEqual(expect.arrayContaining(['upper_arm_fullness','arm_muscularity','forearm_fullness']));
+ expect(regionFields('Calves')).toEqual(expect.arrayContaining(['calf_fullness','ankle_taper','lower_leg_length']));
+ const saved=applyPhysiquePreset({shoulder_width:0},'Shoulders','dramatic');
+ expect(saved.shoulder_width).toBe(80);
+ expect(saved.shoulder_slope).toBe(95);
+});
