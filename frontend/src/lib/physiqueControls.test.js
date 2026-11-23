@@ -76,3 +76,14 @@ it('keeps individual hip, thigh and glute slider positions distinct in compiled 
     expect(before).not.toBe(after);
   }
 });
+
+
+it.each(['natural', 'enhanced', 'extreme'])('preserves explicitly selected extreme physique presets in %s anatomy mode', anatomy_mode => {
+  const dna = recipe();
+  dna.style = { ...dna.style, anatomy_mode };
+  dna.physique = { ...dna.physique, bust: 'hyper', butt: 'hyper', hips: 'extreme', thighs: 'massive' };
+  const original = JSON.stringify(dna);
+  const result = compileModelPrompts({ promptStyle: 'chroma', dna });
+  expect(result.positive).toMatch(/hyper|fantasy-scale|extreme|massive|oversized/i);
+  expect(JSON.stringify(dna)).toBe(original);
+});
