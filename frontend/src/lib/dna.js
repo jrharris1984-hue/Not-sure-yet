@@ -230,6 +230,9 @@ export const SECTIONS = [
         { name: "Roleplay", options: ["sexy schoolgirl", "naughty nurse", "french maid", "playboy bunny", "showgirl", "cheerleader", "secretary unbuttoned", "librarian undone", "biker chick", "cowgirl chaps", "cop uniform undone", "flight attendant undone"] },
         { name: "Fetish/Kink", options: ["dominatrix", "leather mistress", "latex catsuit", "kinky harness", "shibari rope", "fetish gimp"] },
         { name: "Adult Perf.", options: ["pole dancer", "gogo dancer", "stripper"] },
+        { name: "Period fashion", options: ["1920s flapper dress", "1940s tailored suit", "1950s swing dress", "1960s mod shift dress", "1970s disco jumpsuit", "1980s power suit", "1990s minimalist slip dress", "victorian-inspired evening gown"] },
+        { name: "Editorial couture", options: ["sculptural couture gown", "avant-garde runway ensemble", "metallic pleated dress", "dramatic cape dress", "architectural blazer dress", "feather-trim evening gown", "asymmetric silk dress", "high-fashion monochrome ensemble"] },
+        { name: "Vacation resort", options: ["linen resort co-ord", "flowing beach kaftan", "halter maxi dress", "tropical print wrap dress", "poolside sarong ensemble", "safari chic linen outfit", "Mediterranean sundress", "wide-leg resort trousers"] },
         { name: "Formal", options: ["cocktail dress", "evening gown slit", "backless red carpet", "club outfit", "tailored pantsuit", "velvet gown", "sequined mini dress"] },
         { name: "Athletic", options: ["yoga wear", "gym set", "sports bra and shorts", "cheerleader off-duty"] },
         { name: "Casual", options: ["streetwear", "casual home", "oversized sweater", "denim jacket and skirt", "off-shoulder blouse", "summer romper", "cardigan and slip dress"] },
@@ -334,6 +337,12 @@ export const SECTIONS = [
     fields: [
       { key: "action", type: "pose_chips", label: "Pose", groups: [
         ...PHOTOGRAPHY_POSE_GROUPS,
+        { name: "Editorial runway", options: ["runway mid-stride", "catwalk pivot", "over shoulder runway turn", "one hand in pocket editorial", "strong asymmetrical stance", "jacket over shoulder", "editorial leaning on railing", "dramatic fabric toss"] },
+        { name: "Seated portraits", options: ["perched on stool", "sideways on chaise lounge", "cross-legged on floor cushion", "seated with elbow on knee", "sitting on windowsill", "lounging in armchair", "seated on staircase", "sitting on ottoman"] },
+        { name: "Movement & dance", options: ["twirling with flowing skirt", "mid-step walking toward camera", "walking away looking back", "slow dance dip", "ballet-inspired arabesque", "turning in doorway", "windblown hair movement", "reaching upward in motion"] },
+        { name: "Retro pin-up", options: ["1950s calendar pose", "retro hand on hip", "pin-up seated on vintage car", "playful over shoulder glance", "reclining on vintage chaise", "standing beside jukebox", "retro beach towel pose", "classic magazine cover pose"] },
+        { name: "Boudoir editorial", options: ["reclining on velvet sofa", "seated at vanity mirror", "silhouette beside sheer curtains", "kneeling on cushioned bench", "standing in doorway with robe", "looking back over shoulder", "sitting on edge of bed", "reclining against pillows"] },
+        { name: "Two-person editorial", options: ["back to back standing", "walking side by side", "mirrored standing poses", "one seated one standing", "facing each other in profile", "shared over shoulder glance", "seated together on sofa", "staggered fashion portrait"] },
         { name: "Standing", options: ["standing", "standing hip out", "standing hands on hips", "standing arms up", "standing back arched", "standing legs apart", "standing splits", "walking"] },
         { name: "Leaning", options: ["leaning wall", "leaning forward", "bending over"] },
         { name: "Sitting", options: ["sitting legs crossed", "sitting legs open", "sitting reverse chair", "sitting on edge"] },
@@ -435,7 +444,7 @@ export const SECTIONS = [
     key: "scene",
     title: "Scene",
     fields: [
-      { key: "environment", type: "chips", label: "Environment", options: ["studio", "beach", "forest", "urban street", "rooftop", "bedroom", "living room", "bathroom", "warehouse", "desert", "neon alley", "castle"] },
+      { key: "environment", type: "chips", label: "Environment", options: ["studio", "beach", "forest", "urban street", "rooftop", "bedroom", "living room", "bathroom", "warehouse", "desert", "neon alley", "castle", "white cyclorama studio", "black seamless studio", "editorial loft studio", "sunlit penthouse", "art deco hotel suite", "luxury dressing room", "vintage diner", "retro motel", "theater backstage", "grand staircase", "botanical greenhouse", "rooftop infinity pool", "Mediterranean villa", "Parisian balcony", "Japanese garden", "rain-soaked city street", "desert canyon overlook", "snowy mountain lodge", "moonlit lakeshore", "misty woodland clearing", "lavender field", "industrial photo loft", "historic library", "palace ballroom", "futuristic glass atrium", "cyberpunk market", "fantasy crystal cavern", "old Hollywood dressing room", "vintage pin-up garage", "coastal cliff overlook", "yacht deck", "luxury spa", "concert stage", "neon photography studio"] },
       { key: "background", type: "text", label: "Background details" },
       { key: "indoor_outdoor", type: "chips", label: "Indoor / Outdoor", options: ["indoor", "outdoor", "mixed"] },
       { key: "era", type: "chips", label: "Era / theme", options: ["contemporary", "80s", "90s", "vintage", "futuristic", "medieval", "victorian", "cyberpunk"] },
@@ -446,10 +455,10 @@ export const SECTIONS = [
     key: "lighting",
     title: "Lighting",
     fields: [
-      { key: "source", type: "chips", label: "Source", options: ["natural", "window", "softbox", "hard key", "neon", "candle", "firelight", "moonlight"] },
+      { key: "source", type: "chips", label: "Source", options: ["natural", "window", "softbox", "hard key", "neon", "candle", "firelight", "moonlight", "beauty dish", "octabox", "strip softbox", "ring light", "Fresnel spotlight", "large diffusion scrim", "practical lamps", "projected gobos", "sunset backlight", "overcast skylight"] },
       { key: "color_temp", type: "chips", label: "Color temp", options: ["warm", "neutral", "cool", "mixed"] },
       { key: "direction", type: "chips", label: "Direction", options: ["front", "side", "rim", "back", "top", "underlit"] },
-      { key: "style", type: "chips", label: "Style", options: ["cinematic", "chiaroscuro", "high-key", "low-key", "golden hour", "blue hour", "hard shadows"] },
+      { key: "style", type: "chips", label: "Style", options: ["cinematic", "chiaroscuro", "high-key", "low-key", "golden hour", "blue hour", "hard shadows", "butterfly portrait lighting", "Rembrandt lighting", "split lighting", "clamshell beauty lighting", "three-point studio lighting", "silhouette backlighting", "soft editorial daylight", "colored gel crosslighting", "volumetric haze beams", "film noir lighting"] },
       { key: "mood", type: "chips", label: "Mood", options: ["dramatic", "soft", "moody", "playful", "sensual", "harsh"] },
     ],
   },
@@ -459,7 +468,7 @@ export const SECTIONS = [
     fields: [
       { key: "lens", type: "chips", label: "Lens", options: ["24mm", "35mm", "50mm", "85mm", "135mm", "macro"] },
       { key: "aperture", type: "chips", label: "Aperture", options: ["f/1.4", "f/1.8", "f/2.8", "f/4", "f/8"] },
-      { key: "angle", type: "chips", label: "Camera height & tilt", options: ["eye-level", "low", "high", "foot level", "dutch", "birds-eye", ...Object.keys(EXTRA_CAMERA_ANGLES)] },
+      { key: "angle", type: "chips", label: "Camera height & tilt", options: ["eye-level", "low", "high", "foot level", "dutch", "birds-eye", "ground-level upward", "ankle-level upward", "knee-height upward", "waist-height level", "shoulder-height downward", "overhead 45 degrees", "top-down flat lay", "rear low upward", "rear high downward", "side profile low upward", "side profile high downward", "diagonal dutch low", "floor-level wide angle", ...Object.keys(EXTRA_CAMERA_ANGLES)] },
       { key: "aspect_ratio", type: "chips", label: "Aspect ratio", options: ["1:1", "4:5", "3:2", "16:9", "9:16", "2.35:1"] },
     ],
   },
