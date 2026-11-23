@@ -9,6 +9,9 @@ const regions=[
  {name:'Waist',key:'waist_scale',axis:null,max:500},
  {name:'Glutes',key:'butt_scale',axis:'butt',max:2000},
  {name:'Thighs',key:'thigh_scale',axis:'thighs',max:750},
+ {name:'Shoulders',key:'shoulder_width',axis:null,max:100},
+ {name:'Arms',key:'upper_arm_fullness',axis:null,max:100},
+ {name:'Calves',key:'calf_fullness',axis:null,max:100},
 ];
 const shapeKeys=['roundness','thickness','side_fullness','outer_curve','front_profile','projection_profile','taper'];
 const modes=[['Natural',1,100],['Enhanced',101,300],['Extreme',301,600],['Fantasy',601,1000],['Beyond fantasy',1001,2000]];
@@ -23,7 +26,7 @@ export default function PhysiqueStudio({value,onChange,locked=false,fieldLocks={
  const selectedMode=modes.findIndex(([,,max])=>amount<=max);
  const currentMode=Math.max(0,selectedMode);
  return <section className="border border-zinc-700 rounded-xl p-3 sm:p-4 space-y-4" aria-label="Physique Studio 3.0" data-testid="physique-studio">
-  <div><h3 className="font-semibold text-lg">Physique Studio 3.0</h3><p className="text-xs text-zinc-400">Choose a region, then refine its volume and silhouette. Zero retains the original preset.</p></div>
+  <div><h3 className="font-semibold text-lg">Physique Studio 3.0</h3><p className="text-xs text-zinc-400">Adjust volume, frame width, fullness and contour by region. Zero leaves the saved preset unchanged.</p></div>
   <div className="grid grid-cols-2 sm:grid-cols-4 gap-2" role="group" aria-label="Body regions">{regions.map(r=><button type="button" key={r.name} aria-pressed={active===r.name} onClick={()=>setActive(r.name)} className={`rounded-lg min-h-11 border px-2 py-2 text-sm ${active===r.name?'border-amber-400 bg-amber-500/10':'border-zinc-700'}`}>{r.name}</button>)}</div>
   <div className="rounded-lg border border-zinc-700 p-3 space-y-2" data-testid="physique3-region-presets">
    <div className="flex flex-wrap justify-between items-center gap-2"><strong className="text-sm">{active} · Shape presets</strong><button type="button" className="text-xs underline" onClick={()=>setCompare(v=>!v)}>{compare?'Hide comparison':'Compare with starting values'}</button></div>
@@ -33,7 +36,7 @@ export default function PhysiqueStudio({value,onChange,locked=false,fieldLocks={
   </div>
   <PhysiqueComparison3 baseline={baseline.current} current={value} region={active}/>
   <div className="space-y-3">
-   <div className="flex justify-between items-center"><strong>{active} size</strong><span className="font-mono text-amber-300">{amount}</span></div>
+   <div className="flex justify-between items-center"><strong>{active} {region.max<=100?'shape intensity':'size'}</strong><span className="font-mono text-amber-300">{amount}</span></div>
    {region.axis&&<div className="grid grid-cols-2 sm:grid-cols-3 gap-2" role="group" aria-label="Volume scale">{modes.map(([label,min,max],i)=><button type="button" key={label} disabled={locked||fieldLocks[region.key]} aria-pressed={currentMode===i&&amount>0} onClick={()=>change(region.key,Math.min(region.max,Math.round((min+max)/2)))} className={`rounded-lg border p-2 text-xs min-h-11 ${currentMode===i&&amount>0?'border-amber-400':'border-zinc-700'}`}>{label}</button>)}</div>}
    <input type="range" aria-label={`${active} volume`} min="0" max={region.max} step="1" value={amount} disabled={locked||fieldLocks[region.key]} onChange={e=>change(region.key,Number(e.target.value))} className="w-full accent-amber-500 min-h-11"/>
    <p className="text-xs text-zinc-400">{region.axis?physiqueScalePrompt(region.axis,amount,region.max)||'Uses existing preset':amount?'Independent waist width adjustment':'Uses existing waist preset'}</p>
