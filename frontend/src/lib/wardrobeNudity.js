@@ -36,12 +36,12 @@ export function coverageBehavior(wardrobe) {
 
 export const EXPOSURE_PROMPTS = {
   "use selected outfit": "",
-  "slightly revealing": "selected outfit with modestly revealing coverage",
-  "revealing outfit": "revealing clothing with some skin visible",
-  "lingerie showing": "selected outfit open enough to reveal lingerie underneath",
-  "lingerie only": "lingerie only, no outer clothing",
-  "open or shifted outfit": "partially nude, selected outfit worn open or shifted to expose skin",
-  "partially nude": "partially nude, some clothing remains on the body covering part of it, never fully undressed",
+  "slightly revealing": "selected outfit remains on and correctly worn, a modest neckline or leg reveal, chest and pelvis remain covered",
+  "revealing outfit": "selected outfit remains on with a clearly deep neckline, a cutout, a high slit, or exposed shoulders; chest and pelvis remain covered",
+  "lingerie showing": "outer outfit visibly open with a coordinated lingerie top and bottom clearly visible underneath",
+  "lingerie only": "coordinated lingerie set only; remove dresses, shirts, pants, and all outer layers",
+  "open or shifted outfit": "selected outfit worn open or shifted; clearly displace fabric at one area while other garments remain on",
+  "partially nude": "one or more garments removed; substantial clothing remains on and chest and pelvis stay covered, never fully undressed",
   nude: "fully nude, no clothing except selected accessories and hosiery",
 };
 export function wardrobeExposure(wardrobe = {}) {
