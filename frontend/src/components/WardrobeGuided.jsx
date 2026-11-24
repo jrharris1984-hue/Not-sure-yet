@@ -39,7 +39,14 @@ export default function WardrobeGuided({props,onAdvanced}){
     </details>
    </div>
   </>}
-  {step===1&&<WardrobeCoverageStudio value={props.value} disabled={exposureLocked} onChange={props.onChange}/>}
+  {step===1&&<>
+   <WardrobeCoverageStudio value={props.value} disabled={exposureLocked} onChange={props.onChange}/>
+   <details className="wardrobe-coverage-details rounded-lg border border-zinc-700 p-3">
+    <summary className="cursor-pointer text-sm font-semibold">Fine-tune coverage · 40 styles</summary>
+    <p className="my-3 text-xs text-zinc-400">Choose a specific neckline, shoulder or back cut, hemline, fabric layer, or garment position. These choices refine the selected coverage prompt.</p>
+    <DnaSection {...props} focusedField="exposure_mode" hideWardrobeOverview embedded collapsed={false} simpleMode={false}/>
+   </details>
+  </>}
   {step===2&&<><WardrobeLayerPicker value={props.value} disabled={exposureLocked} onChange={props.onChange}/><WardrobeIndependentLayers value={props.value} disabled={locked} onChange={props.onChange}/></>}
   {step===3&&<WardrobeLiveReview value={props.value} disabled={exposureLocked} onChange={props.onChange}/>}
   </div>
