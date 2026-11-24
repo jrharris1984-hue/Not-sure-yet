@@ -132,14 +132,14 @@ export function catalogSections(base, config = catalog) {
   const result = base.map(section => {
     const saved = config.sections.find(item => item.key === section.key);
     if (!saved) return section;
-    if (saved.exact_fields) return {...section,title:saved.title,fields:saved.fields.map(field => buildField(section.fields.find(item => item.key === field.key),field))};
-    return {...section,title:saved.title,fields:section.fields.map(field => buildField(field,saved.fields.find(item => item.key === field.key))).concat(saved.fields.filter(field => !section.fields.some(item => item.key === field.key)).map(field => buildField(null,field)))};
+    if (saved.exact_fields) return {...section,title:saved.title,fields:saved.fields.map(field => buildField(section.fields.find(item => item.key === field.key),field,true))};
+    return {...section,title:saved.title,fields:section.fields.map(field => buildField(field,saved.fields.find(item => item.key === field.key),false)).concat(saved.fields.filter(field => !section.fields.some(item => item.key === field.key)).map(field => buildField(null,field,false)))};
   });
   return result.concat(config.sections.filter(section => section.key !== SHARED_POSE_SECTION.key && !base.some(item => item.key === section.key)).map(section => ({...section,fields:section.fields.map(field => buildField(null,field))}))).filter(section=>section.key!=="kink").map(section => section.key === "scenario"
     ? {...section, fields:section.fields.filter(field => field.key !== "kink_level")}
     : section);
 }
-function buildField(base, saved) {
+function buildField(base, saved, exactFields = false) {
   if (!saved) return base;
   if (base && !['chips','chips_multi','pose_chips'].includes(base.type)) return {...base,label:saved.label};
   if (base?.key === 'ethnicity' && base.groups) {
@@ -153,7 +153,17 @@ function buildField(base, saved) {
       ...(saved.options || []).filter(option => !builtins.some(builtin => builtin.value === option.value)),
     ]};
   }
-  const options = saved.options || [];
+  let options = saved.options || [];
+  if (base?.key === 'exposure_mode' && !exactFields) {
+    const savedByValue = new Map(options.map(option => [option.value, option]));
+    const defaults = SIMPLE_COVERAGE_OPTIONS.map(option => {
+      const existing = savedByValue.get(option.value);
+      return {...option, ...existing, keywords: existing?.keywords?.trim() ? existing.keywords : option.keywords,
+        group: existing?.group || option.group};
+    });
+    const shipped = new Set(defaults.map(option => option.value));
+    options = [...defaults, ...options.filter(option => !shipped.has(option.value))];
+  }
   const groupNames = [...new Set(options.map(option => option.group || 'Choices'))];
   return {...base,key:saved.key,label:saved.label,type:base?.type || saved.type || 'chips',
     options:options.map(option => option.value),
