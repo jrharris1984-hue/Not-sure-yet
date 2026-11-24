@@ -7,9 +7,12 @@ Four separate workflows extend the existing library. No model downloads or autom
 | FLUX.2 Klein 4B · Reference Image Edit | Tools → Edit a photo | 1–3 ordered reference images and an edit instruction |
 | Qwen 2511 · Reference Image Composer | Tools → Edit a photo | 2–3 ordered reference images and a composition instruction |
 | FLUX.1 Dev FP8 · Text to Image | Free Text to Image or the character builder | Text prompt |
-| WAN 2.2 5B · Text to Video | Create → Text to video | Motion/scene prompt; no starting image |\n| MOSS Image · Dirty-Moss V2 · Photographic Realism | Character Builder workflow picker | Installed `Dirty-MossV2.safetensors`; 1152×1440, 25 steps, CFG 2.5, ER-SDE/simple, shift 5 |
+| WAN 2.2 5B · Text to Video | Create → Text to video | Motion/scene prompt; no starting image |
+| MOSS Image · Dirty-Moss V2 · Photographic Realism | Character Builder workflow picker | Installed `Dirty-MossV2.safetensors`; 1152×1440, 25 steps, CFG 2.5, ER-SDE/simple, shift 5 |
 
-Dirty-Moss V2 reuses the installed MOSS Qwen3.5 9B encoder and FLUX.2 small VAE. Its workflow adds an explicit native ModelSamplingSD3 shift node. The screenshot confirms the checkpoint filename, but not whether the installed file is BF16 or CONVROT8; the workflow is therefore named by model version, not precision. The optional Hires.fix Lanczos pass is not included in this base graph. Validate its graph compatibility and render locally before relying on it.\n\nThe reference workflows open a dedicated editor on desktop and mobile. The numbered uploads retain separate file paths, and Gallery → Tools can supply image 1. Missing required references, duplicate filenames, gaps in numbering, and submission failures are shown without reporting a successful render. References and output dimensions are stored in render recipes. These two workflows are omitted from the character-builder dropdown because their required inputs belong in the dedicated editor.
+Dirty-Moss V2 reuses the installed MOSS Qwen3.5 9B encoder and FLUX.2 small VAE. Its workflow adds an explicit native ModelSamplingSD3 shift node. The screenshot confirms the checkpoint filename, but not whether the installed file is BF16 or CONVROT8; the workflow is therefore named by model version, not precision. The optional Hires.fix Lanczos pass is not included in this base graph. Validate its graph compatibility and render locally before relying on it.
+
+The reference workflows open a dedicated editor on desktop and mobile. The numbered uploads retain separate file paths, and Gallery → Tools can supply image 1. Missing required references, duplicate filenames, gaps in numbering, and submission failures are shown without reporting a successful render. References and output dimensions are stored in render recipes. These two workflows are omitted from the character-builder dropdown because their required inputs belong in the dedicated editor.
 
 ## Files reused
 
