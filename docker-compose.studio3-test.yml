@@ -17,7 +17,7 @@ services:
     environment:
       MONGO_URL: mongodb://mongo:27017
       DB_NAME: ultra_studio3_test
-      CORS_ORIGINS: http://localhost:3013
+      CORS_ORIGINS: "http://localhost:3013,http://127.0.0.1:3013,http://100.89.192.127:3013,http://drag3m-1.tail5fea95.ts.net:3013"
       COMFYUI_OUTPUT_DIR: /comfyui-output
       MEDIA_LIBRARY_URL: http://host.docker.internal:8010
     ports:
@@ -40,8 +40,9 @@ services:
       HOST: 0.0.0.0
       PORT: "3000"
       CHOKIDAR_USEPOLLING: "true"
+    # Publish the frontend for phone testing over Tailscale; Windows Firewall limits access to the tailnet.
     ports:
-      - "127.0.0.1:3013:3000"
+      - "3013:3000"
 
 volumes:
   studio3_test_mongo:
