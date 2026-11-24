@@ -119,7 +119,7 @@ test('older libraries retain edits and expose newly shipped controls', () => {
   const base=SECTIONS.find(section=>section.key==='wardrobe');
   const saved={key:'wardrobe',title:'My outfits',fields:[{key:'outfit_set',label:'My sets',type:'chips',options:[]}]};
   const result=editableLibrarySection(base,saved);
-  expect(result.fields.find(field=>field.key==='exposure_mode').options).toHaveLength(22);
+  expect(result.fields.find(field=>field.key==='exposure_mode').options).toHaveLength(40);
   expect(result.fields.find(field=>field.key==='outfit_set').options).toEqual([]);
   expect(result.title).toBe('My outfits');
 });
@@ -131,6 +131,7 @@ test('full backup includes built-in wording without turning defaults into overri
   const option=full.sections.find(section=>section.key==='wardrobe').fields.find(field=>field.key==='exposure_mode').options[0];
   expect(option.label).toBe('topless');
   expect(option.keywords).toBe('top removed, bare breasts, bottoms still on');
+  expect(full.sections.find(section=>section.key==='wardrobe').fields.find(field=>field.key==='exposure_mode').options).toHaveLength(40);
   const dna={...DEFAULT_DNA,wardrobe:{exposure_mode:option.value,top:'blouse',bottom:'jeans'}};
   expect(compileModelPrompts({dna,promptStyle:'qwen_image',promptCatalog:full}).positive).toBe(compileModelPrompts({dna,promptStyle:'qwen_image',promptCatalog:{sections:[]}}).positive);
 });
