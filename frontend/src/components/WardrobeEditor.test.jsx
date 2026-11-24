@@ -39,3 +39,16 @@ test('outfit mode lock prevents switching modes',()=>{
   act(()=>container.querySelector('[data-testid="wardrobe-mode-full"]').click());
   expect(onChange).not.toHaveBeenCalled();
 });
+
+test('guided coverage step exposes grouped fine-tuning choices',()=>{
+  act(()=>root.render(<WardrobeEditor section={section} value={{outfit_mode:'custom',exposure_mode:'use selected outfit'}} onChange={jest.fn()}/>));
+  act(()=>container.querySelector('.wardrobe-guided-steps button:nth-child(2)').click());
+  const fineTune=[...container.querySelectorAll('.wardrobe-coverage-details summary')].find(item=>item.textContent.includes('Fine-tune coverage'));
+  expect(fineTune).not.toBeNull();
+  act(()=>fineTune.click());
+  const category=container.querySelector('select[aria-label="Choice category"]');
+  expect(category).not.toBeNull();
+  expect([...category.options].map(option=>option.value)).toContain('Necklines & coverage');
+  changeSelect(category,'Necklines & coverage');
+  expect(container.querySelector('[data-testid="chip-wardrobe-exposure_mode-high-neckline"]')).not.toBeNull();
+});
