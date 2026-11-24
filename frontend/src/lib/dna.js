@@ -238,7 +238,7 @@ export const SECTIONS = [
     title: "Wardrobe",
     fields: [
       { key: "outfit_mode", type: "chips", label: "Outfit mode", options: ["full", "custom"], optionLabels: { full: "Full set", custom: "Custom" }, help: "Full set uses one coordinated outfit. Custom enables separate clothing, hosiery, shoes and accessories." },
-      { key: "exposure_mode", type: "chips", label: "Clothing coverage", options: SIMPLE_COVERAGE_OPTIONS.map(option=>option.value), optionLabels: Object.fromEntries(SIMPLE_COVERAGE_OPTIONS.map(option=>[option.value,option.label])),
+      { key: "exposure_mode", type: "chips", label: "Clothing coverage", options: SIMPLE_COVERAGE_OPTIONS.map(option=>option.value), optionLabels: Object.fromEntries(SIMPLE_COVERAGE_OPTIONS.map(option=>[option.value,option.label])), groups: [...new Set(SIMPLE_COVERAGE_OPTIONS.map(option=>option.group))].map(name=>({name,options:SIMPLE_COVERAGE_OPTIONS.filter(option=>option.group===name).map(option=>option.value)})),
         help: "Choose how clothing is worn or removed. Topless and bottomless keep the opposite garments; barefoot and only choices remove conflicting footwear, hosiery or accessories. Clear the choice to follow your selected outfit." },
       { key: "outfit_preset", type: "chips", label: "Outfit preset", groups: [
         { name: "Bare", options: ["nude", "topless", "bottomless", "just panties", "just a shirt", "boyfriend's shirt"] },
