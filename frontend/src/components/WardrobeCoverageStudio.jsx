@@ -1,14 +1,14 @@
 import {wardrobeExposure} from '@/lib/wardrobeNudity';
 
 const levels=[
-  {key:'use selected outfit',label:'Fully clothed',hint:'Use the selected outfit'},
-  {key:'slightly revealing',label:'Slightly revealing',hint:'Keep most of the outfit'},
-  {key:'revealing outfit',label:'Revealing',hint:'Show more skin'},
-  {key:'lingerie showing',label:'Lingerie showing',hint:'Outer clothing with visible lingerie'},
-  {key:'lingerie only',label:'Lingerie only',hint:'Remove outer layers'},
-  {key:'open or shifted outfit',label:'Clothing adjusted',hint:'Open or shift selected garments'},
-  {key:'partially nude',label:'Partially undressed',hint:'Some clothing remains'},
-  {key:'nude',label:'Nude',hint:'Remove clothing; retain permitted accessories'},
+  {key:'use selected outfit',label:'Fully clothed',hint:'Keep every selected garment on and correctly worn'},
+  {key:'slightly revealing',label:'Slightly revealing',hint:'Keep chest and pelvis covered; allow a modest neckline or leg reveal'},
+  {key:'revealing outfit',label:'Revealing outfit',hint:'Use a deep neckline, cutout, slit, or exposed shoulders while staying dressed'},
+  {key:'lingerie showing',label:'Lingerie showing',hint:'Open an outer layer so a coordinated set is clearly visible underneath'},
+  {key:'lingerie only',label:'Lingerie only',hint:'Show the selected coordinated set without shirts, dresses, or other outerwear'},
+  {key:'open or shifted outfit',label:'Clothing adjusted',hint:'Visibly open, lower, or shift a selected garment; other pieces stay on'},
+  {key:'partially nude',label:'Partially undressed',hint:'Remove one or more garments while keeping substantial coverage'},
+  {key:'nude',label:'No clothing',hint:'Remove garments and underwear; keep selected accessories only'},
 ];
 export default function WardrobeCoverageStudio({value={},onChange,disabled=false}){
   const selected=wardrobeExposure(value);
@@ -19,7 +19,7 @@ export default function WardrobeCoverageStudio({value={},onChange,disabled=false
     onChange({...value,exposure_mode:key,_exposurePrompt:undefined,nudity_level:0,nudity_outfit:''});
   };
   return <section className="wardrobe-coverage-studio" aria-label="Wardrobe coverage studio">
-    <div className="wardrobe-coverage-title"><div><strong>How dressed should the character be?</strong><p>Set the overall coverage. Compatible clothing details and fabric choices remain in effect.</p></div></div>
+    <div className="wardrobe-coverage-title"><div><strong>How dressed should the character be?</strong><p>Set the overall coverage. Each state has a distinct prompt direction. Use detailed coverage choices below for necklines, slits, layers, and specific garment positions.</p></div></div>
     <div className="wardrobe-coverage-levels" role="group" aria-label="Clothing coverage">
       {levels.map((item,index)=>{
         const unavailable=fullSetWithoutLingerie&&['lingerie showing','lingerie only'].includes(item.key);
@@ -28,7 +28,7 @@ export default function WardrobeCoverageStudio({value={},onChange,disabled=false
         </button>;
       })}
     </div>
-    <p className="wardrobe-coverage-current" aria-live="polite">{active>=0?`Current: ${levels[active].label}`:'Custom coverage selected. Use the detailed clothing coverage setting below to edit it.'}</p>
+    <p className="wardrobe-coverage-current" aria-live="polite">{active>=0?`Current: ${levels[active].label}`:'Custom coverage selected. Choose a detailed coverage style below to control the garment shape or position.'}</p>
     <details className="wardrobe-coverage-help"><summary>How clothing changes work</summary><p>Coverage changes keep your selected outfit and garment details saved. Choices that remove or reposition clothing take priority over a conflicting clothing-state choice; compatible state, fabric, footwear and accessory details remain active. Use the Layers step or advanced clothing coverage control for specific layer combinations.</p></details>
   </section>;
 }
