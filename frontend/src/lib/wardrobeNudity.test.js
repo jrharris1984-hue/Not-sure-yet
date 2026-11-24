@@ -103,3 +103,14 @@ test.each(families)('%s supplies remaining coverage when partial nudity has no s
   expect(positive).toContain('plain briefs');
   expect(positive).not.toContain('fully nude');
 });
+
+test.each(families)('%s keeps expanded named coverage cues distinct in compiled prompts',promptStyle=>{
+ const neckline=SIMPLE_COVERAGE_OPTIONS.find(option=>option.label==='high neckline');
+ const slit=SIMPLE_COVERAGE_OPTIONS.find(option=>option.label==='high side slit');
+ const baseDna={...DEFAULT_DNA,identity:{...DEFAULT_DNA.identity,age:35},wardrobe:{top:'dress',bottom:'skirt'}};
+ const necklinePrompt=compileModelPrompts({promptStyle,dna:{...baseDna,wardrobe:{...baseDna.wardrobe,exposure_mode:neckline.value}}}).positive;
+ const slitPrompt=compileModelPrompts({promptStyle,dna:{...baseDna,wardrobe:{...baseDna.wardrobe,exposure_mode:slit.value}}}).positive;
+ expect(necklinePrompt).toContain('closed neckline');expect(necklinePrompt).toContain('opaque fabric covering the chest');
+ expect(slitPrompt).toContain('single high side slit');expect(slitPrompt).toContain('one leg to upper thigh');
+ expect(necklinePrompt).not.toBe(slitPrompt);
+});
