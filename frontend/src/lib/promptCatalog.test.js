@@ -123,6 +123,22 @@ test('older libraries retain edits and expose newly shipped controls', () => {
   expect(result.fields.find(field=>field.key==='outfit_set').options).toEqual([]);
   expect(result.title).toBe('My outfits');
 });
+test('older prompt libraries gain shipped coverage choices while preserving edits and custom options',()=>{
+  const base=SECTIONS.find(section=>section.key==='wardrobe');
+  const wardrobe=editableSection(base);
+  const field=wardrobe.fields.find(item=>item.key==='exposure_mode');
+  const legacy={...field,options:field.options.slice(0,22).map(option=>({...option,keywords:option.label==='topless'?'my preferred wording':''}))};
+  legacy.options.push({value:'custom_coverage_mine',label:'My custom look',keywords:'custom styling',group:'My looks',coverage_mode:'use selected outfit'});
+  const saved={sections:[{key:'wardrobe',title:'My wardrobe',fields:[legacy]}]};
+  const merged=catalogSections([base],saved)[0].fields.find(item=>item.key==='exposure_mode');
+  expect(merged.options).toHaveLength(41);
+  expect(merged.optionLabels['custom_coverage_high_neckline']).toBe('high neckline');
+  expect(merged.optionLabels.custom_coverage_mine).toBe('My custom look');
+  expect(merged.groups.map(group=>group.name)).toContain('Necklines & coverage');
+  expect(merged.optionLabels.topless).toBe('topless');
+  const exact={sections:[{key:'wardrobe',exact_fields:true,fields:[{...legacy,options:legacy.options.slice(0,1)}]}]};
+  expect(catalogSections([base],exact)[0].fields[0].options).toEqual(['custom_coverage_topless']);
+});
 test('full backup includes built-in wording without turning defaults into overrides', () => {
   const {exportPromptLibrary}=require('./promptCatalog');
   const full=exportPromptLibrary(promptLibrarySections(SECTIONS),{sections:[]});
