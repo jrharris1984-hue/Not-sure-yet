@@ -1,7 +1,7 @@
 // Studio 3 video timeline draft and immutable clip operations.
 const clampFrames=value=>Math.max(1,Math.min(240,Math.trunc(Number(value)||41)));
 const clampFps=value=>Math.max(1,Math.min(120,Math.trunc(Number(value)||24)));
-export const videoTimeline3=({sourceImage='',fps=24,workflowId=''}={})=>({version:1,sourceImage,fps:clampFps(fps),workflowId,clips:[]});
+export const videoTimeline3=({sourceImage='',fps=24,workflowId='',name='Untitled sequence'}={})=>({version:1,name,sourceImage,fps:clampFps(fps),workflowId,clips:[]});
 export const addVideoClip3=(timeline,clip={})=>{
  const clips=Array.isArray(timeline?.clips)?timeline.clips:[];
  const nextNumber=clips.reduce((max,item)=>Math.max(max,Number(String(item.id||'').match(/^clip-(\d+)$/)?.[1])||0),0)+1;
@@ -17,6 +17,19 @@ export const moveVideoClip3=(timeline,from,to)=>{
  const [clip]=clips.splice(from,1);clips.splice(to,0,clip);return {...timeline,clips};
 };
 export const timelineDuration3=timeline=>(timeline?.clips||[]).filter(clip=>clip.enabled!==false).reduce((sum,clip)=>sum+clampFrames(clip.frames),0)/clampFps(timeline?.fps);
+export const queueableVideoClips3=(timeline,sequenceId)=>{
+ const clips=Array.isArray(timeline?.clips)?timeline.clips:[];
+ const active=clips.filter(clip=>clip.enabled!==false);
+ if(!active.length||validateVideoTimeline3({...timeline,clips:active}).length)return [];
+ return clips.flatMap((clip,index)=>{
+  if(clip.enabled===false)return [];
+  const instruction=[clip.prompt,clip.motion].map(value=>String(value||'').trim()).filter(Boolean).join('\n');
+  if(!instruction)return [];
+  return [{sequenceId,sequenceLabel:String(timeline.name||'Untitled sequence').trim().slice(0,80)||'Untitled sequence',
+   clipId:String(clip.id||''),clipLabel:String(clip.label||('Clip '+(index+1))).trim().slice(0,80)||('Clip '+(index+1)),
+   clipIndex:index,instruction,frames:clampFrames(clip.frames),fps:clampFps(timeline.fps)}];
+ });
+};
 export const validateVideoTimeline3=timeline=>{
  const errors=[];const clips=Array.isArray(timeline?.clips)?timeline.clips:[];const fps=Number(timeline?.fps);
  if(!Number.isInteger(fps)||fps<1||fps>120)errors.push('Frame rate must be a whole number from 1 to 120.');
