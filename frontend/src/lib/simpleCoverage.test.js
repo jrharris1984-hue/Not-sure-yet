@@ -5,10 +5,12 @@ import {resolveBuilderControls} from './builderControlResolution';
 import {compileModelPrompts} from './modelPromptCompilers';
 const config=options=>({sections:[{key:'wardrobe',title:'Wardrobe',fields:[{key:'exposure_mode',label:'Clothing coverage',type:'chips',options}]}]});
 afterEach(()=>setPromptCatalog({sections:[]}));
-test('default library has exactly 22 choices with usable wording',()=>{
+test('default library has 40 grouped choices with usable wording',()=>{
  const wardrobe=SECTIONS.find(section=>section.key==='wardrobe');
  const field=editableSection(wardrobe).fields.find(item=>item.key==='exposure_mode');
  expect(field.options).toHaveLength(40);expect(field.options.map(item=>item.label)).toEqual(SIMPLE_COVERAGE_OPTIONS.map(item=>item.label));
+ const builtIn=wardrobe.fields.find(item=>item.key==='exposure_mode');
+ expect(builtIn.groups.map(group=>group.name)).toContain('Necklines & coverage');expect(builtIn.groups.flatMap(group=>group.options)).toHaveLength(40);
  expect(()=>validateCatalogDraft(config(field.options))).not.toThrow();
  const selected=SIMPLE_COVERAGE_OPTIONS[0];
  const result=compileModelPrompts({dna:{...DEFAULT_DNA,wardrobe:{outfit_mode:'custom',top:'blouse',bottom:'jeans',exposure_mode:selected.value}},promptStyle:'sdxl'});
