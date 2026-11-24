@@ -11,7 +11,7 @@ from reference_composition import configure_composition
 from downloaded_models import resolve_separate_image_models
 from generation_settings import normalize_generation_settings, apply_generation_settings
 
-STEMS = ['moss_stardust_bf16','moss_jib_realistic_bf16','moss_finalcut_universal','flux1_dev_t2i','flux2_klein_edit','qwen_reference_composer','wan5b_t2v']
+STEMS = ['moss_stardust_bf16','moss_jib_realistic_bf16','dirty_moss_v2_photographic_realism','moss_finalcut_universal','flux1_dev_t2i','flux2_klein_edit','qwen_reference_composer','wan5b_t2v']
 def graph(stem):
     return json.loads((ROOT/'seed_workflows'/(stem+'.json')).read_text())
 def info_for(g):
@@ -108,6 +108,29 @@ class LocalModelWorkflowTests(unittest.TestCase):
         self.assertEqual(g['6']['inputs']['width'],768)
         self.assertEqual(g['6']['inputs']['height'],1024)
         self.assertEqual(g['7']['inputs']['cfg'],3)
+
+    def test_dirty_moss_v2_uses_documented_photo_realism_recipe_and_exact_installed_file(self):
+        g = graph('dirty_moss_v2_photographic_realism')
+        self.assertEqual(g['1']['inputs']['unet_name'], 'Dirty-MossV2.safetensors')
+        self.assertEqual(g['2']['inputs']['type'], 'moss_image')
+        self.assertEqual(g['2']['inputs']['clip_name'], 'qwen3.5_9b_w4a8_gptq.safetensors')
+        self.assertEqual(g['3']['inputs']['vae_name'], 'flux2-vae_small.safetensors')
+        self.assertEqual(g['6']['inputs'], {'width': 1152, 'height': 1440, 'batch_size': 1})
+        self.assertEqual(g['10']['class_type'], 'ModelSamplingSD3')
+        self.assertEqual(g['10']['inputs'], {'shift': 5, 'model': ['1', 0]})
+        self.assertEqual(g['7']['inputs']['model'], ['10', 0])
+        self.assertEqual(g['7']['inputs']['steps'], 25)
+        self.assertEqual(g['7']['inputs']['cfg'], 2.5)
+        self.assertEqual(g['7']['inputs']['sampler_name'], 'er_sde')
+        self.assertEqual(g['7']['inputs']['scheduler'], 'simple')
+        self.assert_connected(g)
+        original = copy.deepcopy(g)
+        apply_generation_settings(g, normalize_generation_settings({'width': 1024, 'height': 1280, 'steps': 30, 'cfg': 3}, 'moss_image'))
+        self.assertEqual(g['6']['inputs'], {'width': 1024, 'height': 1280, 'batch_size': 1})
+        self.assertEqual(g['7']['inputs']['steps'], 30)
+        self.assertEqual(g['7']['inputs']['cfg'], 3)
+        self.assertEqual(g['10']['inputs']['shift'], 5)
+        self.assertEqual(g['10']['inputs']['model'], original['10']['inputs']['model'])
 
     def test_moss_bf16_comparisons_keep_exact_models_and_editable_sampling(self):
         cases = [
