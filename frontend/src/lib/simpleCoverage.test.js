@@ -8,7 +8,7 @@ afterEach(()=>setPromptCatalog({sections:[]}));
 test('default library has exactly 22 choices with usable wording',()=>{
  const wardrobe=SECTIONS.find(section=>section.key==='wardrobe');
  const field=editableSection(wardrobe).fields.find(item=>item.key==='exposure_mode');
- expect(field.options).toHaveLength(22);expect(field.options.map(item=>item.label)).toEqual(SIMPLE_COVERAGE_OPTIONS.map(item=>item.label));
+ expect(field.options).toHaveLength(40);expect(field.options.map(item=>item.label)).toEqual(SIMPLE_COVERAGE_OPTIONS.map(item=>item.label));
  expect(()=>validateCatalogDraft(config(field.options))).not.toThrow();
  const selected=SIMPLE_COVERAGE_OPTIONS[0];
  const result=compileModelPrompts({dna:{...DEFAULT_DNA,wardrobe:{outfit_mode:'custom',top:'blouse',bottom:'jeans',exposure_mode:selected.value}},promptStyle:'sdxl'});
@@ -35,4 +35,12 @@ test.each(['topless and barefoot','hosiery only','heels only','nothing but jewel
   if(label==='nothing but jewelry'){expect(result.wardrobe.accessories).toEqual(['jewelry']);expect(result.feet.foot_accessories).toEqual(['anklet']);expect(result.wardrobe.heel_type).toBe('');}
  }
  expect(JSON.stringify(source)).toBe(before);
+});
+
+test('expanded coverage choices have distinct wording and organized prompt-library groups',()=>{
+ const labels=SIMPLE_COVERAGE_OPTIONS.map(option=>option.label);
+ expect(labels).toContain('high neckline');expect(labels).toContain('high side slit');expect(labels).toContain('open robe over lingerie');
+ expect(SIMPLE_COVERAGE_OPTIONS.find(option=>option.label==='high neckline')).toMatchObject({group:'Necklines & coverage',coverage_mode:'use selected outfit'});
+ expect(SIMPLE_COVERAGE_OPTIONS.find(option=>option.label==='open robe over lingerie')).toMatchObject({group:'Fabric & layers',coverage_mode:'lingerie showing'});
+ expect(new Set(SIMPLE_COVERAGE_OPTIONS.map(option=>option.keywords)).size).toBe(40);
 });
