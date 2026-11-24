@@ -284,6 +284,7 @@ SEED_WORKFLOWS = [
     {"file": "krea2_realistic_photography.json", "name": "Krea 2 · Realistic Photography (Baseline)", "kind": "image", "prompt_style": "krea2_test", "notes": "Assumes realisticPhotography_krea2Turbo.safetensors is a full diffusion model in diffusion_models. Reuses Qwen3-VL 4B and Qwen Image VAE. Adjustable 8-step Euler / simple / CFG 1 baseline; creator recipe and file tensor format were not independently verified. If this download is a LoRA instead, use it through the Krea2 LoRA picker rather than this workflow."},
     {"file": "moss_nsfw_lora_experimental.json", "name": "MOSS Image · NSFW Uncensored LoRA (Experimental)", "kind": "image", "prompt_style": "moss_image", "notes": "Isolated test workflow based on the existing MOSS FinalCut Universal FP8 graph, with MOSS\\MOSS-Image-NSFW-Uncensored-LoRA-ComfyUI.safetensors at model strength 0.8 and CLIP strength 0.0. Adds moss_xvstyle trigger. LoRA was authored for MOSS-Image SFT; compatibility with FinalCut FP8 is unverified. Keep existing workflows unchanged. 6 steps, CFG 2.5, Euler/simple are inherited from FinalCut, not the LoRA creator recipe."},
     {"file": "moss_finalcut_universal.json", "name": "MOSS Image · FinalCut Universal FP8 (6 Step)", "kind": "image", "prompt_style": "moss_image", "notes": "Universal FP8 diffusion model with Qwen3.5 9B W4A8 encoder and FLUX.2 small VAE. Creator baseline: 6 Euler steps, CFG 2.5. Simple scheduler is an initial choice. Native MOSS support in ComfyUI is required. No Turbo LoRA; optional adapters must be trained for MOSS. Starts at 768x1024 for local testing."},
+    {"file": "dirty_moss_v2_photographic_realism.json", "name": "MOSS Image · Dirty-Moss V2 · Photographic Realism", "kind": "image", "prompt_style": "moss_image", "notes": "Standalone profile for the installed Dirty-MossV2.safetensors checkpoint. Creator-supplied starting settings: 1152x1440, 25 steps, CFG 2.5, ER-SDE / simple, shift 5. The creator describes BF16 and CONVROT8 variants, but the supplied screenshot confirms only this filename and does not identify its precision. Uses the existing MOSS Qwen3.5 9B encoder and FLUX.2 small VAE; confirm both are installed. Explicit ModelSamplingSD3 shift node requires live compatibility validation. Hires.fix Lanczos 8 steps / 0.15 denoise / 1.5x / CFG 2 is documented as optional but is not included in this base graph."},
     {"file": "zimage_base.json", "name": "Z-Image Turbo · Base (No LoRA)", "kind": "image", "prompt_style": "zimage", "notes": "Plain Z-Image Turbo using the installed standard Qwen 3 4B encoder and ae VAE. No required LoRA, face detector, or upscaler."},
     {"file": "flux2_klein_edit.json", "name": "FLUX.2 Klein 4B · Reference Image Edit", "kind": "edit", "prompt_style": "flux2_klein_edit", "notes": "Native distilled Klein editing with 1–3 ordered reference images. Uses the installed standard Qwen 3 4B encoder, FLUX.2 VAE, 4 steps and CFG 1. Open from Tools."},
     {"file": "qwen_reference_composer.json", "name": "Qwen 2511 · Reference Image Composer", "kind": "edit", "prompt_style": "qwen_reference", "notes": "Compose 2–3 reference images with native Qwen Edit 2511. Reuses installed encoder/VAE; no additional task LoRA. 40-step baseline. Open from Tools."},
@@ -411,6 +412,16 @@ async def get_settings() -> Settings:
     if new_seeds:
         await db.settings.update_one({"id": "singleton"}, {"$push": {"workflows": {"$each": new_seeds}}})
         doc = await db.settings.find_one({"id": "singleton"}, {"_id": 0})
+    # Install the Dirty-Moss V2 profile once on existing installs without replacing any saved workflow.
+    dirty_moss_name = "MOSS Image · Dirty-Moss V2 · Photographic Realism"
+    if not any(w.get("name") == dirty_moss_name for w in doc.get("workflows", [])):
+        seed = next((w for w in _load_seed_workflows() if w.name == dirty_moss_name), None)
+        if seed:
+            await db.settings.update_one(
+                {"id": "singleton", "workflows.name": {"$ne": dirty_moss_name}},
+                {"$push": {"workflows": seed.model_dump()}}
+            )
+            doc = await db.settings.find_one({"id": "singleton"}, {"_id": 0})
     if doc.get("wardrobe_catalog_version", 0) < 2:
         catalog = upgrade_wardrobe_catalog(doc.get("prompt_catalog"), doc.get("wardrobe_catalog_version", 0))
         await db.settings.update_one({"id": "singleton", "$or": [{"wardrobe_catalog_version": {"$exists": False}}, {"wardrobe_catalog_version": {"$lt": 2}}]}, {"$set": {"prompt_catalog": catalog, "wardrobe_catalog_version": 2}})
