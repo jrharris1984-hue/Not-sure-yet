@@ -42,6 +42,7 @@ import { confirmPermanentDelete } from "@/lib/permanentDeleteConfirmation";
 import { applyScenarioSelection } from "@/lib/scenarioSelection";
 import { catalogSections, usePromptCatalog } from "@/lib/promptCatalog";
 import VideoModeLinks from "@/components/VideoModeLinks";
+import Studio3VideoTimeline from "@/components/Studio3VideoTimeline";
 import RandomSceneControls from "@/components/RandomSceneControls";
 import {useOllamaPrompt} from "@/lib/useOllamaPrompt";
 import PromptFormatControl from "@/components/PromptFormatControl";
@@ -1458,6 +1459,8 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
     dispatchInFlight.current=true;
     try {
     const sourceSubjects=options?.studioSubjects || subjects;
+    const videoClips=Array.isArray(options?.studioVideoClips)?options.studioVideoClips:[];
+    const isVideoSequence=videoClips.length>0;
     const surprise=!!options?.studioSubjects;
     if(surprise && (activeWorkflow?.kind!=='image' || poseAssistEnabled || promptFormat==='ollama' || promptOverride.trim() || negativePromptOverride.trim()))return;
     const surprisePrompts=surprise?compileBatchVariationPrompts(sourceSubjects):null;
@@ -1471,7 +1474,8 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
       toast.error("Pick a workflow first (Settings → Workflow library)");
       return;
     }
-    if (!isImageFirst && dispatchAnalysis.blockers.length) {
+    if (isVideoSequence && (!isAnyVideoWorkflow || videoClips.length>20 || videoClips.some(clip=>!String(clip?.instruction||"").trim()))) {toast.error("Choose a video workflow and add a prompt or motion description to every queued clip.");return;}
+    if (!isImageFirst && !isVideoSequence && dispatchAnalysis.blockers.length) {
       toast.error(dispatchAnalysis.blockers[0].message);
       return;
     }
@@ -1512,7 +1516,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
       toast.error("Upload a starting image before using WAN Image to Video");
       return;
     }
-    if ((isVideoWorkflow || isTextVideoWorkflow) && !videoInstruction.trim()) {
+    if ((isVideoWorkflow || isTextVideoWorkflow) && !videoInstruction.trim() && !isVideoSequence) {
       toast.error(isTextVideoWorkflow
         ? "Describe the video you want to create"
         : "Describe the movement you want WAN to create");
@@ -1676,7 +1680,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
     } : null);
     setDispatching(true);
     try {
-      const requestedCount = !surprise && (activeRecipeFamily === "image" || (batchSeedMode === "smart" && (isFaceWorkflow || isEditWorkflow || isVariationWorkflow))) ? renderCount : 1;
+      const requestedCount = isVideoSequence ? videoClips.length : !surprise && (activeRecipeFamily === "image" || (batchSeedMode === "smart" && (isFaceWorkflow || isEditWorkflow || isVariationWorkflow))) ? renderCount : 1;
       const baseSeed = activeRecipeFamily === "image" && chromaSettings.seed !== ""
         ? Number(chromaSettings.seed)
         : Math.floor(Math.random() * 2147483647);
@@ -1724,6 +1728,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
           ? compileBatchVariationPrompts(dispatchSubjects)
           : { positive: finalPositive, negative: finalNegative, sceneReview: compiledPrompt.sceneReview };
         if (hasBatchVariation && batchPrompts.finalAssembly?.overBudgetWords > 0) overBudgetBatchPrompts += 1;
+        const timelineClip=isVideoSequence?videoClips[imageIndex]:null;
         let r;
         try {
           r = await endpoints.dispatchRender({
@@ -1781,8 +1786,14 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
         preserve_unmentioned: preserveUnmentioned,
         repair_targets: isEnhanceWorkflow ? repairTargets : [],
         repair_strength: repairStrength,
-        video_frames: videoFrames,
-        video_fps: videoFps,
+        video_instruction: timelineClip?.instruction ?? videoInstruction,
+        video_frames: timelineClip?.frames ?? videoFrames,
+        video_fps: timelineClip?.fps ?? videoFps,
+        video_sequence_id: timelineClip?.sequenceId,
+        video_sequence_label: timelineClip?.sequenceLabel,
+        video_clip_id: timelineClip?.clipId,
+        video_clip_label: timelineClip?.clipLabel,
+        video_clip_index: timelineClip?.clipIndex,
         video_width: videoWidth,
         video_height: videoHeight,
       
@@ -1790,7 +1801,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
         } catch (error) {
           if (isSmartShoot) setSmartShootRun(current => ({ ...current, error: `${queuedRenders.length} shots submitted. Could not queue shot ${imageIndex + 1}: ${error?.response?.data?.detail || error.message || 'Dispatch failed'}` }));
           if (!queuedRenders.length) throw error;
-          toast.error(`${queuedRenders.length} of ${requestedCount} images queued. The next request failed: ${error?.response?.data?.detail || error.message}`);
+          toast.error(`${queuedRenders.length} of ${requestedCount} ${isVideoSequence ? "video clips" : "images"} queued. The next request failed: ${error?.response?.data?.detail || error.message}`);
           break;
         }
         queuedRenders.push(r);
@@ -1804,8 +1815,10 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
       setBatchRenders(queuedRenders);
       setSelectedBatchRenderId(queuedRenders[0]?.id || null);
       setActiveRender(queuedRenders[0] || latestRender);
-      if (queuedRenders.length === requestedCount) toast.success(requestedCount > 1
-        ? `Added ${queuedRenders.length} images to the queue · unique seeds`
+      if (queuedRenders.length === requestedCount) toast.success(isVideoSequence
+        ? `Added ${queuedRenders.length} video clips to the queue`
+        : requestedCount > 1
+          ? `Added ${queuedRenders.length} images to the queue · unique seeds`
         : (latestRender.status === "queued"
           ? `Added to queue${latestRender.queue_position ? ` · position #${latestRender.queue_position}` : ""}`
           : `Render ${latestRender.status}`));
@@ -3311,6 +3324,11 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
               </p>
             </div>
           )}
+          {isAnyVideoWorkflow && <div data-mobile-tools="references" className="pane mt-4 p-4" data-testid="studio3-video-timeline-panel">
+            <Studio3VideoTimeline mode={isTextVideoWorkflow?"text":"image"} workflow={activeWorkflow} sourceImage={referenceImage?.name||""} disabled={dispatching}
+              onUseClip={(instruction,frames,fps)=>{setVideoInstruction(instruction);setVideoFrames(frames);setVideoFps(fps);toast.success("Clip loaded into the video generation form");}}
+              onQueueClips={clips=>doDispatch({studioVideoClips:clips})}/>
+          </div>}
           {isFaceWorkflow && (
             <div data-mobile-tools="references" className="pane p-4 space-y-4" data-testid="face-reference-panel">
               <div className="flex items-center gap-2">
