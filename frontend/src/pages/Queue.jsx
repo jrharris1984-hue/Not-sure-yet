@@ -79,6 +79,10 @@ export default function Queue() {
           </div>
           <h2 className="mt-2 truncate font-display font-bold text-zinc-100">{job.workflow_name || job.workflow_type || "Render"}</h2>
           {job.shoot_id && <Link to={`/shoot/${job.shoot_id}`} className="mt-1 inline-block text-xs text-cyan-200">Photo shoot · frame {Number(job.shoot_frame_index) + 1} →</Link>}
+          {job.video_sequence_id && <p className="mt-1 text-xs text-cyan-200" data-testid={`video-sequence-${job.id}`}>
+            {job.video_sequence_label || "Video sequence"} · clip {Number(job.video_clip_index || 0) + 1}: {job.video_clip_label || "Untitled clip"}
+            {Number(job.video_frames) > 0 && Number(job.video_fps) > 0 ? ` · ${((Number(job.video_frames) - 1) / Number(job.video_fps)).toFixed(1)} sec` : ""}
+          </p>}
           <div className="mt-1 text-[11px] font-mono text-zinc-500">
             Added {when(job.created_at)}
             {job.attempts > 0 ? ` · retry ${job.attempts}` : ""}
