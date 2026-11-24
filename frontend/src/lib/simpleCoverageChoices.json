@@ -1,24 +1,304 @@
 [
- ["topless", "top removed, bare breasts, bottoms still on", "topless", []],
- ["bottomless", "bottoms removed, bare below waist, top still on", "bottomless", []],
- ["topless and barefoot", "top off, shoes off, bare breasts and feet, bottoms on", "topless and barefoot", []],
- ["unbuttoned", "buttons undone down the front, chest or torso exposed through opening", "open or shifted outfit", ["unbuttoned shirt"]],
- ["unzipped", "zipper open, garment parted at front, body visible through gap", "open or shifted outfit", []],
- ["hiked up", "hem raised above hips or waist, lower body exposed, fabric bunched", "open or shifted outfit", ["skirt hiked up"]],
- ["pulled down", "garment pulled off shoulders or to waist, chest exposed, fabric pooled", "open or shifted outfit", ["dress pulled down"]],
- ["pulled aside", "fabric moved aside to one side, single zone exposed, quick peek", "open or shifted outfit", ["pulled to side"]],
- ["slipped off one shoulder", "garment falling off one shoulder, one side bare, asymmetric", "open or shifted outfit", ["one shoulder"]],
- ["slipping off", "garment sliding down the body, mid-removal, caught falling", "open or shifted outfit", ["strap slip"]],
- ["mid-undress", "actively undressing, half-removed garment, caught in transition", "open or shifted outfit", []],
- ["undone", "fastenings open, garment hanging loose, relaxed and open", "open or shifted outfit", []],
- ["bra showing", "bra visible, straps or cups exposed at neckline or through fabric", "use selected outfit", []],
- ["panties showing", "underwear visible, peeking below hem or through slit", "use selected outfit", []],
- ["see-through", "sheer fabric, body and lingerie visible through material, transparent", "use selected outfit", ["sheer fabric"]],
- ["wet", "clothing soaked and clinging, fabric transparent and stuck to skin", "use selected outfit", ["dripping wet"]],
- ["strategic covering", "minimal coverage, hands or object covering key zones", "replace outfit", []],
- ["barely covered", "almost nude, tiny fabric coverage, maximum skin", "replace outfit", []],
- ["accessories only", "nude except jewelry, heels, gloves, or stockings", "nude", []],
- ["hosiery only", "stockings or pantyhose only, otherwise nude", "hosiery only", ["stockings only"]],
- ["heels only", "high heels only, completely bare otherwise", "heels only", []],
- ["nothing but jewelry", "nude with statement jewelry, adorned bare body", "jewelry only", ["necklace only"]]
+  [
+    "topless",
+    "top removed, bare breasts, bottoms still on",
+    "topless",
+    [],
+    "Garments removed"
+  ],
+  [
+    "bottomless",
+    "bottoms removed, bare below waist, top still on",
+    "bottomless",
+    [],
+    "Garments removed"
+  ],
+  [
+    "topless and barefoot",
+    "top off, shoes off, bare breasts and feet, bottoms on",
+    "topless and barefoot",
+    [],
+    "Garments removed"
+  ],
+  [
+    "unbuttoned",
+    "buttons undone down the front, chest or torso exposed through opening",
+    "open or shifted outfit",
+    [
+      "unbuttoned shirt"
+    ],
+    "Garment adjustment"
+  ],
+  [
+    "unzipped",
+    "zipper open, garment parted at front, body visible through gap",
+    "open or shifted outfit",
+    [],
+    "Garment adjustment"
+  ],
+  [
+    "hiked up",
+    "hem raised above hips or waist, lower body exposed, fabric bunched",
+    "open or shifted outfit",
+    [
+      "skirt hiked up"
+    ],
+    "Garment adjustment"
+  ],
+  [
+    "pulled down",
+    "garment pulled off shoulders or to waist, chest exposed, fabric pooled",
+    "open or shifted outfit",
+    [
+      "dress pulled down"
+    ],
+    "Garment adjustment"
+  ],
+  [
+    "pulled aside",
+    "fabric moved aside to one side, single zone exposed, quick peek",
+    "open or shifted outfit",
+    [
+      "pulled to side"
+    ],
+    "Garment adjustment"
+  ],
+  [
+    "slipped off one shoulder",
+    "garment falling off one shoulder, one side bare, asymmetric",
+    "open or shifted outfit",
+    [
+      "one shoulder"
+    ],
+    "Garment adjustment"
+  ],
+  [
+    "slipping off",
+    "garment sliding down the body, mid-removal, caught falling",
+    "open or shifted outfit",
+    [
+      "strap slip"
+    ],
+    "Garment adjustment"
+  ],
+  [
+    "mid-undress",
+    "actively undressing, half-removed garment, caught in transition",
+    "open or shifted outfit",
+    [],
+    "Garment adjustment"
+  ],
+  [
+    "undone",
+    "fastenings open, garment hanging loose, relaxed and open",
+    "open or shifted outfit",
+    [],
+    "Garment adjustment"
+  ],
+  [
+    "bra showing",
+    "bra visible, straps or cups exposed at neckline or through fabric",
+    "use selected outfit",
+    [],
+    "Lingerie & fabric"
+  ],
+  [
+    "panties showing",
+    "underwear visible, peeking below hem or through slit",
+    "use selected outfit",
+    [],
+    "Lingerie & fabric"
+  ],
+  [
+    "see-through",
+    "sheer fabric, body and lingerie visible through material, transparent",
+    "use selected outfit",
+    [
+      "sheer fabric"
+    ],
+    "Lingerie & fabric"
+  ],
+  [
+    "wet",
+    "clothing soaked and clinging, fabric transparent and stuck to skin",
+    "use selected outfit",
+    [
+      "dripping wet"
+    ],
+    "Lingerie & fabric"
+  ],
+  [
+    "strategic covering",
+    "minimal coverage, hands or object covering key zones",
+    "replace outfit",
+    [],
+    "Minimal coverage"
+  ],
+  [
+    "barely covered",
+    "almost nude, tiny fabric coverage, maximum skin",
+    "replace outfit",
+    [],
+    "Minimal coverage"
+  ],
+  [
+    "accessories only",
+    "nude except jewelry, heels, gloves, or stockings",
+    "nude",
+    [],
+    "Minimal coverage"
+  ],
+  [
+    "hosiery only",
+    "stockings or pantyhose only, otherwise nude",
+    "hosiery only",
+    [
+      "stockings only"
+    ],
+    "Minimal coverage"
+  ],
+  [
+    "heels only",
+    "high heels only, completely bare otherwise",
+    "heels only",
+    [],
+    "Minimal coverage"
+  ],
+  [
+    "nothing but jewelry",
+    "nude with statement jewelry, adorned bare body",
+    "jewelry only",
+    [
+      "necklace only"
+    ],
+    "Minimal coverage"
+  ],
+  [
+    "high neckline",
+    "closed neckline, opaque fabric covering the chest, no cleavage",
+    "use selected outfit",
+    [],
+    "Necklines & coverage"
+  ],
+  [
+    "deep neckline",
+    "deep V neckline, clear visible cleavage, fitted bodice remains fully on",
+    "use selected outfit",
+    [],
+    "Necklines & coverage"
+  ],
+  [
+    "off-shoulder",
+    "both shoulders bare, neckline rests below the shoulders, garment stays securely worn",
+    "use selected outfit",
+    [],
+    "Necklines & coverage"
+  ],
+  [
+    "one-shoulder",
+    "asymmetric one-shoulder neckline, one shoulder bare, opposite shoulder covered",
+    "use selected outfit",
+    [],
+    "Necklines & coverage"
+  ],
+  [
+    "backless",
+    "open back from shoulder blades to waist, front of garment remains fully covered",
+    "use selected outfit",
+    [],
+    "Back & shoulders"
+  ],
+  [
+    "strappy open back",
+    "open back with narrow crossed straps, front coverage remains intact",
+    "use selected outfit",
+    [],
+    "Back & shoulders"
+  ],
+  [
+    "cropped top",
+    "short top ending above the navel, a clear band of midriff visible",
+    "use selected outfit",
+    [],
+    "Hemlines & silhouette"
+  ],
+  [
+    "bare midriff",
+    "top raised or cut above the navel, abdomen visibly uncovered, lower garment stays on",
+    "use selected outfit",
+    [],
+    "Hemlines & silhouette"
+  ],
+  [
+    "high side slit",
+    "single high side slit exposing one leg to upper thigh, remaining fabric drapes closed",
+    "use selected outfit",
+    [],
+    "Hemlines & silhouette"
+  ],
+  [
+    "front slit",
+    "center-front skirt slit opening to the knee, both sides of the garment remain in place",
+    "use selected outfit",
+    [],
+    "Hemlines & silhouette"
+  ],
+  [
+    "sheer overlay",
+    "transparent outer layer over an opaque lining, lining still fully covers the body",
+    "use selected outfit",
+    [],
+    "Fabric & layers"
+  ],
+  [
+    "sheer sleeves",
+    "translucent sleeves with opaque bodice and torso coverage",
+    "use selected outfit",
+    [],
+    "Fabric & layers"
+  ],
+  [
+    "open blazer over lingerie",
+    "blazer worn open with a clearly visible coordinated bra and panties underneath",
+    "lingerie showing",
+    [],
+    "Fabric & layers"
+  ],
+  [
+    "open robe over lingerie",
+    "soft robe loosely open over a clearly visible coordinated lingerie set",
+    "lingerie showing",
+    [],
+    "Fabric & layers"
+  ],
+  [
+    "jacket draped over shoulders",
+    "jacket resting cape-style over both shoulders, arms remain outside the sleeves",
+    "use selected outfit",
+    [],
+    "Fabric & layers"
+  ],
+  [
+    "slipped strap",
+    "one garment strap slipped below the shoulder, one side of the neckline lowered, other side stays in place",
+    "open or shifted outfit",
+    [
+      "strap slipped"
+    ],
+    "Garment adjustment"
+  ],
+  [
+    "garment gathered at waist",
+    "outer garment gathered at the waist, upper garment remains on and lower garment stays in place",
+    "open or shifted outfit",
+    [],
+    "Garment adjustment"
+  ],
+  [
+    "high-cut bodysuit",
+    "fitted opaque bodysuit with high-cut leg openings, chest and pelvis remain covered",
+    "use selected outfit",
+    [],
+    "Hemlines & silhouette"
+  ]
 ]
