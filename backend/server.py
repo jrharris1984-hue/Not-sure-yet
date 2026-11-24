@@ -139,6 +139,13 @@ class Render(BaseModel):
     prompt_negative: str = ""
     selected_loras: List[Dict[str, Any]] = Field(default_factory=list)
     workflow_type: str = "image"  # image | video
+    video_sequence_id: Optional[str] = None
+    video_sequence_label: Optional[str] = Field(default=None, max_length=80)
+    video_clip_id: Optional[str] = None
+    video_clip_label: Optional[str] = Field(default=None, max_length=80)
+    video_clip_index: Optional[int] = Field(default=None, ge=0, le=19)
+    video_frames: Optional[int] = None
+    video_fps: Optional[int] = None
     status: str = "queued"  # queued | running | done | failed | offline
     progress: float = 0.0
     comfy_prompt_id: Optional[str] = None
@@ -1646,6 +1653,11 @@ class DispatchBody(BaseModel):
     video_fps: int = 24
     video_width: int = 640
     video_height: int = 640
+    video_sequence_id: Optional[str] = Field(default=None, max_length=120)
+    video_sequence_label: Optional[str] = Field(default=None, max_length=80)
+    video_clip_id: Optional[str] = Field(default=None, max_length=120)
+    video_clip_label: Optional[str] = Field(default=None, max_length=80)
+    video_clip_index: Optional[int] = Field(default=None, ge=0, le=19)
 
 
 def _combo_options(object_info: Dict[str, Any], node_type: str, input_name: str) -> List[str]:
@@ -2062,6 +2074,11 @@ async def _perform_dispatch(body: "DispatchBody", queue_id: Optional[str] = None
         prompt_negative=body.prompt_negative,
         workflow_type=wf_template.kind if wf_template else body.workflow_type,
         hidden_from_gallery=bool(body.hidden_from_gallery),
+        video_sequence_id=body.video_sequence_id,
+        video_sequence_label=body.video_sequence_label,
+        video_clip_id=body.video_clip_id,
+        video_clip_label=body.video_clip_label,
+        video_clip_index=body.video_clip_index,
     )
 
     if wf_template:
@@ -2455,8 +2472,9 @@ async def _perform_dispatch(body: "DispatchBody", queue_id: Optional[str] = None
         latent_patched = False
         if is_ltx:
             frames, fps = patch_ltx_video(workflow, requested_frames, fps, body.video_width, body.video_height)
-            body.video_frames, body.video_fps = frames, fps
             latent_patched = any(node.get("class_type") == "EmptyLTXVLatentVideo" for node in workflow.values() if isinstance(node, dict))
+        body.video_frames, body.video_fps = frames, fps
+        r.video_frames, r.video_fps = frames, fps
 
         for node in workflow.values():
             if not isinstance(node, dict):
@@ -2826,6 +2844,11 @@ async def _enqueue_render(body: DispatchBody, queue_id: Optional[str] = None) ->
         "character_id": body.character_id,
         "shoot_id": body.shoot_id,
         "shoot_frame_index": body.shoot_frame_index,
+        "video_sequence_id": body.video_sequence_id,
+        "video_sequence_label": body.video_sequence_label,
+        "video_clip_id": body.video_clip_id,
+        "video_clip_label": body.video_clip_label,
+        "video_clip_index": body.video_clip_index,
         "render_id": None,
         "error": None,
         "attempts": 0,
