@@ -731,7 +731,8 @@ export default function Gallery() {
           onClick={() => { setLightbox(null); setShowDetails(false); }}
           data-testid="gallery-lightbox"
           role="dialog" aria-modal="true" aria-label="Selected Gallery media"
-          className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden overscroll-contain bg-black/95 p-0 backdrop-blur-md sm:p-6"
+          className="fixed inset-0 z-[9999] flex h-screen min-h-screen w-screen items-center justify-center overflow-hidden overscroll-contain bg-black/95 p-0 backdrop-blur-md sm:p-6 [height:100dvh]"
+          style={{ position: "fixed", inset: 0, width: "100vw" }}
         >
           <div
             onClick={(e) => e.stopPropagation()}
@@ -1138,7 +1139,7 @@ export default function Gallery() {
             </aside>
           </div>
         </div>
-      ), document.body)}
+      ), document.documentElement)}
 
       {compareOpen && compared.length === 2 && (
         <div className="fixed inset-0 z-[60] bg-black/95 p-4 sm:p-8" onClick={() => setCompareOpen(false)} data-testid="gallery-compare-modal">
