@@ -118,6 +118,18 @@ export default function Gallery() {
     refetchOnMount: "always",
   });
   const [lightbox, setLightbox] = useState(null); // render object
+  const lightboxOpen = !!lightbox;
+  useEffect(() => {
+    if (!lightboxOpen) return undefined;
+    const previousOverflow = document.body.style.overflow;
+    const previousOverscroll = document.documentElement.style.overscrollBehavior;
+    document.body.style.overflow = "hidden";
+    document.documentElement.style.overscrollBehavior = "none";
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.documentElement.style.overscrollBehavior = previousOverscroll;
+    };
+  }, [lightboxOpen]);
   const [retrySelection, setRetrySelection] = useState(null);
   const [retryPreview, setRetryPreview] = useState(null);
   useEffect(() => { setRetrySelection(null); setRetryPreview(null); }, [lightbox?.id, lightbox?.alignment_review?.reviewed_at]);
@@ -717,11 +729,13 @@ export default function Gallery() {
         <div
           onClick={() => { setLightbox(null); setShowDetails(false); }}
           data-testid="gallery-lightbox"
-          className="fixed inset-0 z-50 bg-black/95 backdrop-blur-md p-0 sm:p-6 flex items-center justify-center"
+          role="dialog" aria-modal="true" aria-label="Selected Gallery image"
+          className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden overscroll-contain bg-black/95 p-0 backdrop-blur-md sm:p-6"
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="relative w-full h-full md:h-auto max-w-6xl md:max-h-full flex flex-col md:flex-row md:gap-4"
+            data-testid="gallery-lightbox-content"
+            className="relative flex h-full min-h-0 w-full max-w-6xl flex-col md:flex-row md:gap-4"
           >
             {/* Mobile controls float over the image instead of covering it with metadata. */}
             {returnTo && (
