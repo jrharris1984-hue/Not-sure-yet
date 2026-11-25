@@ -10,6 +10,7 @@ import ImageRecoveryPanel from "@/components/ImageRecoveryPanel";
 import PostGenerationActions from "@/components/PostGenerationActions";
 import { loadBodyCreationRecipe } from "@/lib/bodyCreationRecipe";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { API_BASE, endpoints } from "@/lib/api";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
@@ -725,11 +726,11 @@ export default function Gallery() {
       )}
 
       {/* Lightbox modal */}
-      {lightbox && (
+      {lightbox && createPortal((
         <div
           onClick={() => { setLightbox(null); setShowDetails(false); }}
           data-testid="gallery-lightbox"
-          role="dialog" aria-modal="true" aria-label="Selected Gallery image"
+          role="dialog" aria-modal="true" aria-label="Selected Gallery media"
           className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden overscroll-contain bg-black/95 p-0 backdrop-blur-md sm:p-6"
         >
           <div
@@ -1137,7 +1138,7 @@ export default function Gallery() {
             </aside>
           </div>
         </div>
-      )}
+      ), document.body)}
 
       {compareOpen && compared.length === 2 && (
         <div className="fixed inset-0 z-[60] bg-black/95 p-4 sm:p-8" onClick={() => setCompareOpen(false)} data-testid="gallery-compare-modal">
