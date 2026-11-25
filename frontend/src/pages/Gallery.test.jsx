@@ -45,36 +45,36 @@ async function render(url = "/gallery") {
 }
 function inputSearch(value) {
   act(() => {
-    const input = container.querySelector('[aria-label="Search Gallery"]');
+    const input = document.querySelector('[aria-label="Search Gallery"]');
     Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set.call(input, value);
     input.dispatchEvent(new Event("input", { bubbles: true }));
   });
 }
 test("search narrows cards and offers a useful no-match state", async () => {
   await render();
-  expect(container.querySelectorAll('[data-testid^="gallery-thumb-"]').length).toBe(2);
+  expect(document.querySelectorAll('[data-testid^="gallery-thumb-"]').length).toBe(2);
   inputSearch("blue");
-  expect(container.querySelectorAll('[data-testid^="gallery-thumb-"]').length).toBe(1);
+  expect(document.querySelectorAll('[data-testid^="gallery-thumb-"]').length).toBe(1);
   inputSearch("unmatched");
   expect(container.textContent).toContain("No images match these filters");
-  act(() => Array.from(container.querySelectorAll("button")).find((node) => node.textContent === "Clear search & filters").click());
-  expect(container.querySelectorAll('[data-testid^="gallery-thumb-"]').length).toBe(2);
+  act(() => Array.from(document.querySelectorAll("button")).find((node) => node.textContent === "Clear search & filters").click());
+  expect(document.querySelectorAll('[data-testid^="gallery-thumb-"]').length).toBe(2);
 });
 test("model filtering combines with search and sorting", async () => {
   await render();
   act(() => {
-    const select = container.querySelector('[aria-label="Filter Gallery model"]');
+    const select = document.querySelector('[aria-label="Filter Gallery model"]');
     select.value = "Krea2";
     select.dispatchEvent(new Event("change", { bubbles: true }));
   });
-  expect(container.querySelector('[data-testid="gallery-use-recipe-a"]')).toBeNull();
-  expect(container.querySelector('[data-testid="gallery-use-recipe-b"]')).not.toBeNull();
+  expect(document.querySelector('[data-testid="gallery-use-recipe-a"]')).toBeNull();
+  expect(document.querySelector('[data-testid="gallery-use-recipe-b"]')).not.toBeNull();
   inputSearch("blue");
-  expect(container.querySelectorAll('[data-testid^="gallery-thumb-"]').length).toBe(0);
+  expect(document.querySelectorAll('[data-testid^="gallery-thumb-"]').length).toBe(0);
 });
 test("using a card recipe retrieves the saved recipe without dispatching a render", async () => {
   await render();
-  await act(async () => { container.querySelector('[data-testid="gallery-use-recipe-a"]').click(); });
+  await act(async () => { document.querySelector('[data-testid="gallery-use-recipe-a"]').click(); });
   expect(endpoints.getRenderRecipe).toHaveBeenCalledWith("a");
   expect(mockNavigate).toHaveBeenCalledWith("/character/new", { state: { renderRecipe: { recipe: {} }, renderRecipeMode: "exact" } });
 });
@@ -82,7 +82,7 @@ test("direct Gallery links retrieve a render absent from the current list", asyn
   endpoints.getRender.mockResolvedValue({ ...records[0], id: "older" });
   await render("/gallery?render=older");
   expect(endpoints.getRender).toHaveBeenCalledWith("older");
-  expect(container.querySelector('[data-testid="gallery-lightbox"]')).not.toBeNull();
+  expect(document.querySelector('[data-testid="gallery-lightbox"]')).not.toBeNull();
 });
 test("backend failure is shown as an error rather than an empty gallery", async () => {
   endpoints.listRenders.mockRejectedValue(new Error("offline"));
@@ -93,11 +93,11 @@ test("backend failure is shown as an error rather than an empty gallery", async 
 test("newly completed renders appear after a refresh without reopening Gallery", async () => {
   endpoints.listRenders.mockResolvedValueOnce([{ ...records[0], status: "running", output_files: [] }]);
   await render();
-  expect(container.querySelector('[data-testid="gallery-inflight"]')).not.toBeNull();
+  expect(document.querySelector('[data-testid="gallery-inflight"]')).not.toBeNull();
   await act(async () => { await client.refetchQueries({ queryKey: ["renders"] }); });
   await act(async () => { await new Promise((resolve) => setTimeout(resolve, 20)); });
-  expect(container.querySelectorAll('[data-testid^="gallery-thumb-"]').length).toBe(2);
-  expect(container.querySelector('[data-testid="gallery-inflight"]')).toBeNull();
+  expect(document.querySelectorAll('[data-testid^="gallery-thumb-"]').length).toBe(2);
+  expect(document.querySelector('[data-testid="gallery-inflight"]')).toBeNull();
 });
 test("a failed refresh keeps previously loaded images available", async () => {
   await render();
@@ -105,17 +105,17 @@ test("a failed refresh keeps previously loaded images available", async () => {
   await act(async () => { await client.refetchQueries({ queryKey: ["renders"] }); });
   await act(async () => { await new Promise((resolve) => setTimeout(resolve, 20)); });
   expect(container.textContent).toContain("Your last loaded images remain available");
-  expect(container.querySelectorAll('[data-testid^="gallery-thumb-"]').length).toBe(2);
+  expect(document.querySelectorAll('[data-testid^="gallery-thumb-"]').length).toBe(2);
 });
 
 test("lightbox puts image changes first and collapses secondary tools", async () => {
   await render("/gallery?render=a");
-  const tools = container.querySelector('[data-testid="gallery-other-tools"]');
+  const tools = document.querySelector('[data-testid="gallery-other-tools"]');
   expect(tools.open).toBe(false);
   expect(tools.querySelector('[data-testid="gallery-improve-render"]')).not.toBeNull();
-  expect(container.querySelector('[data-testid="image-recovery-panel"]').closest("details")).toBeNull();
-  expect(container.querySelector('[data-testid="btn-lightbox-download"]').closest("details")).toBeNull();
-  expect(container.querySelector('[data-testid="btn-lightbox-copy-prompt"]').closest("details")).toBeNull();
+  expect(document.querySelector('[data-testid="image-recovery-panel"]').closest("details")).toBeNull();
+  expect(document.querySelector('[data-testid="btn-lightbox-download"]').closest("details")).toBeNull();
+  expect(document.querySelector('[data-testid="btn-lightbox-copy-prompt"]').closest("details")).toBeNull();
   act(() => tools.querySelector("summary").click());
   expect(tools.open).toBe(true);
 });
@@ -123,16 +123,16 @@ test("Gallery clarifies the change and carries reviewed wording into Qwen Edit",
   endpoints.aiEditPrompt.mockResolvedValue({ prompt: "Change the dress to blue; preserve unmentioned details." });
   endpoints.prepareRenderReference.mockResolvedValue({ name: "a.png" });
   await render("/gallery?render=a");
-  act(() => container.querySelector('[data-testid="recovery-small_variation"]').click());
+  act(() => document.querySelector('[data-testid="recovery-small_variation"]').click());
   act(() => {
-    const textarea = container.querySelector('[data-testid="recovery-instruction"]');
+    const textarea = document.querySelector('[data-testid="recovery-instruction"]');
     Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value").set.call(textarea, "blue dress");
     textarea.dispatchEvent(new Event("input", { bubbles: true }));
   });
-  await act(async () => container.querySelector('[data-testid="recovery-improve-instruction"]').click());
+  await act(async () => document.querySelector('[data-testid="recovery-improve-instruction"]').click());
   expect(endpoints.aiEditPrompt).toHaveBeenCalledWith("blue dress", true, "variation");
   expect(endpoints.recoverRenderImage).not.toHaveBeenCalled();
-  await act(async () => container.querySelector('[data-testid="recovery-open-edit"]').click());
+  await act(async () => document.querySelector('[data-testid="recovery-open-edit"]').click());
   expect(mockNavigate).toHaveBeenCalledWith("/character/new", { state: expect.objectContaining({
     targetKind: "edit", editInstruction: "Change the dress to blue; preserve unmentioned details.",
   }) });
@@ -140,8 +140,8 @@ test("Gallery clarifies the change and carries reviewed wording into Qwen Edit",
 
 test('recipe shortcuts have one label and the action guide distinguishes generation from image editing', async () => {
   await render('/gallery?render=a');
-  expect(container.querySelector('[data-testid="gallery-use-recipe-a"]').textContent.trim()).toBe('Open exact recipe');
-  const guide = container.querySelector('[data-testid="gallery-action-guide"]');
+  expect(document.querySelector('[data-testid="gallery-use-recipe-a"]').textContent.trim()).toBe('Open exact recipe');
+  const guide = document.querySelector('[data-testid="gallery-action-guide"]');
   expect(guide.textContent).toContain('The card shortcut does the same thing');
   expect(guide.textContent).toContain('This is a new generation, not an edit');
   expect(guide.textContent).toContain('Uses this image to guide facial identity');
@@ -151,7 +151,7 @@ test('Copy prompt copies the saved prompt and reports clipboard failures', async
   const writeText = jest.fn().mockResolvedValue(undefined);
   Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } });
   await render('/gallery?render=a');
-  const button = container.querySelector('[data-testid="btn-lightbox-copy-prompt"]');
+  const button = document.querySelector('[data-testid="btn-lightbox-copy-prompt"]');
   await act(async () => button.click());
   expect(writeText).toHaveBeenCalledWith('Blue dress');
   writeText.mockRejectedValueOnce(new Error('denied'));
@@ -161,50 +161,50 @@ test('Copy prompt copies the saved prompt and reports clipboard failures', async
 
 test('mobile options start collapsed, can close, and retain filter values', async () => {
   await render();
-  const toggle = container.querySelector('[data-testid="btn-gallery-options"]');
-  const panel = container.querySelector('[data-testid="gallery-options"]');
+  const toggle = document.querySelector('[data-testid="btn-gallery-options"]');
+  const panel = document.querySelector('[data-testid="gallery-options"]');
   expect(toggle.getAttribute('aria-expanded')).toBe('false');
   expect(panel.classList.contains('hidden')).toBe(true);
   expect(panel.classList.contains('sm:block')).toBe(true);
-  expect(panel.contains(container.querySelector('[aria-label="Search Gallery"]'))).toBe(true);
-  expect(panel.contains(container.querySelector('[data-testid="gallery-album-filter"]'))).toBe(true);
-  expect(panel.contains(container.querySelector('[data-testid="gallery-thumbnail-size"]'))).toBe(true);
+  expect(panel.contains(document.querySelector('[aria-label="Search Gallery"]'))).toBe(true);
+  expect(panel.contains(document.querySelector('[data-testid="gallery-album-filter"]'))).toBe(true);
+  expect(panel.contains(document.querySelector('[data-testid="gallery-thumbnail-size"]'))).toBe(true);
   act(() => toggle.click());
   expect(toggle.getAttribute('aria-expanded')).toBe('true');
   expect(panel.classList.contains('hidden')).toBe(false);
   inputSearch('blue');
   act(() => Array.from(panel.querySelectorAll('button')).find(node => node.textContent === 'Done').click());
   expect(panel.classList.contains('hidden')).toBe(true);
-  expect(container.querySelectorAll('[data-testid^="gallery-thumb-"]').length).toBe(1);
+  expect(document.querySelectorAll('[data-testid^="gallery-thumb-"]').length).toBe(1);
   act(() => toggle.click());
-  expect(container.querySelector('[aria-label="Search Gallery"]').value).toBe('blue');
+  expect(document.querySelector('[aria-label="Search Gallery"]').value).toBe('blue');
 });
 
 test('defaults to 24 images per page and paginates without skipping images', async () => {
   endpoints.listRenders.mockResolvedValue(Array.from({ length: 30 }, (_, i) => ({ ...records[0], id: `image-${i}`, output_files: [`image-${i}.png`] })));
   await render();
-  expect(container.querySelector('[data-testid="gallery-page-size-24"]').getAttribute('aria-pressed')).toBe('true');
-  expect(container.querySelectorAll('[data-testid^="gallery-thumb-"]').length).toBe(24);
-  const pages = container.querySelector('[aria-label="Gallery pages"]');
+  expect(document.querySelector('[data-testid="gallery-page-size-24"]').getAttribute('aria-pressed')).toBe('true');
+  expect(document.querySelectorAll('[data-testid^="gallery-thumb-"]').length).toBe(24);
+  const pages = document.querySelector('[aria-label="Gallery pages"]');
   act(() => Array.from(pages.querySelectorAll('button')).find(node => node.textContent === 'Next').click());
-  expect(container.querySelectorAll('[data-testid^="gallery-thumb-"]').length).toBe(6);
-  expect(container.querySelector('[data-testid="gallery-thumb-24"]')).not.toBeNull();
-  act(() => container.querySelector('[data-testid="gallery-page-size-12"]').click());
-  expect(container.querySelectorAll('[data-testid^="gallery-thumb-"]').length).toBe(12);
-  expect(container.querySelector('[data-testid="gallery-thumb-0"]')).not.toBeNull();
+  expect(document.querySelectorAll('[data-testid^="gallery-thumb-"]').length).toBe(6);
+  expect(document.querySelector('[data-testid="gallery-thumb-24"]')).not.toBeNull();
+  act(() => document.querySelector('[data-testid="gallery-page-size-12"]').click());
+  expect(document.querySelectorAll('[data-testid^="gallery-thumb-"]').length).toBe(12);
+  expect(document.querySelector('[data-testid="gallery-thumb-0"]')).not.toBeNull();
 });
 
 test('selection returns to the images and its tools remain reachable', async () => {
   await render();
-  const toggle = container.querySelector('[data-testid="btn-gallery-options"]');
+  const toggle = document.querySelector('[data-testid="btn-gallery-options"]');
   act(() => toggle.click());
-  act(() => container.querySelector('[data-testid="btn-gallery-select"]').click());
+  act(() => document.querySelector('[data-testid="btn-gallery-select"]').click());
   expect(toggle.getAttribute('aria-expanded')).toBe('false');
-  const card = container.querySelector('[data-testid="gallery-thumb-0"]');
+  const card = document.querySelector('[data-testid="gallery-thumb-0"]');
   act(() => card.querySelector('[aria-label="Select render"]').click());
   expect(container.textContent).toContain('1 selected');
   act(() => toggle.click());
-  expect(container.querySelector('[data-testid="btn-gallery-delete-selected"]')).not.toBeNull();
+  expect(document.querySelector('[data-testid="btn-gallery-delete-selected"]')).not.toBeNull();
 });
 
 test('fullscreen Delete permanently deletes without a disk checkbox', async () => {
@@ -212,9 +212,9 @@ test('fullscreen Delete permanently deletes without a disk checkbox', async () =
   endpoints.deleteRender.mockResolvedValue({ deleted: 1, files_deleted: 1 });
   try {
     await render('/gallery?render=a');
-    expect(container.querySelector('[data-testid="toggle-delete-gallery-files"]')).toBeNull();
-    expect(container.querySelector('[data-testid="toggle-delete-gallery-files-lightbox"]')).toBeNull();
-    const button = container.querySelector('[data-testid="btn-lightbox-delete-fullscreen"]');
+    expect(document.querySelector('[data-testid="toggle-delete-gallery-files"]')).toBeNull();
+    expect(document.querySelector('[data-testid="toggle-delete-gallery-files-lightbox"]')).toBeNull();
+    const button = document.querySelector('[data-testid="btn-lightbox-delete-fullscreen"]');
     expect(button).not.toBeNull();
     await act(async () => { button.click(); await new Promise(resolve => setTimeout(resolve, 20)); });
     expect(confirm).toHaveBeenCalledWith(expect.stringContaining('Permanently delete'));
@@ -227,14 +227,14 @@ test('fullscreen Delete permanently deletes without a disk checkbox', async () =
   await render("/gallery?character=char%20a&name=Alice");
   expect(endpoints.listRenders).toHaveBeenCalledWith({ character_id: "char a" });
   expect(container.textContent).toContain("Alice · Gallery");
-  expect(container.querySelector('a[href="/gallery"]')).not.toBeNull();
-  expect(container.querySelector('a[href="/character/char%20a"]')).not.toBeNull();
+  expect(document.querySelector('a[href="/gallery"]')).not.toBeNull();
+  expect(document.querySelector('a[href="/character/char%20a"]')).not.toBeNull();
 });
  test("a foreign render deep link cannot open inside a character gallery", async () => {
   endpoints.listRenders.mockResolvedValue([]);
   endpoints.getRender.mockResolvedValue({ ...records[0], character_id: "other" });
   await render("/gallery?character=alice&render=a");
-  expect(container.querySelector('[data-testid="btn-lightbox-open-character"]')).toBeNull();
+  expect(document.querySelector('[data-testid="btn-lightbox-open-character"]')).toBeNull();
 });
 
 test("Gallery saves feedback against the opened render and retains it when reopened", async () => {
@@ -246,21 +246,21 @@ test("Gallery saves feedback against the opened render and retains it when reope
     return feedback;
   });
   await render('/gallery?render=a');
-  act(()=>{const select=container.querySelector('[aria-label="Pose result"]');Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype,'value').set.call(select,'matched');select.dispatchEvent(new Event('change',{bubbles:true}));});
-  await act(async()=>[...container.querySelectorAll('button')].find(button=>button.textContent==='Save feedback').click());
+  act(()=>{const select=document.querySelector('[aria-label="Pose result"]');Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype,'value').set.call(select,'matched');select.dispatchEvent(new Event('change',{bubbles:true}));});
+  await act(async()=>[...document.querySelectorAll('button')].find(button=>button.textContent==='Save feedback').click());
   expect(endpoints.saveSceneFeedback).toHaveBeenCalledWith('a',{ratings:{pose:'matched'},notes:''});
   expect(container.textContent).toContain('Feedback saved.');
-  act(()=>container.querySelector('[data-testid="btn-lightbox-close"]').click());
-  act(()=>container.querySelector('[data-testid="gallery-thumb-0"] .gallery-poster-open').click());
-  expect(container.querySelector('[aria-label="Pose result"]').value).toBe('matched');
+  act(()=>document.querySelector('[data-testid="btn-lightbox-close"]').click());
+  act(()=>document.querySelector('[data-testid="gallery-thumb-0"] .gallery-poster-open').click());
+  expect(document.querySelector('[aria-label="Pose result"]').value).toBe('matched');
 });
 
 test("mobile Gallery exposes Animate without opening Details and transfers the image", async () => {
   endpoints.prepareRenderReference.mockResolvedValue({name:"a.png"});
   await render("/gallery?render=a");
-  const animate = container.querySelector('[data-testid="btn-lightbox-animate-mobile"]');
+  const animate = document.querySelector('[data-testid="btn-lightbox-animate-mobile"]');
   expect(animate).not.toBeNull();
-  expect(container.querySelector('[data-testid="btn-lightbox-animate"]')).not.toBeNull();
+  expect(document.querySelector('[data-testid="btn-lightbox-animate"]')).not.toBeNull();
   await act(async () => animate.click());
   expect(endpoints.prepareRenderReference).toHaveBeenCalledWith("a", "a.png");
   expect(mockNavigate).toHaveBeenCalledWith("/create/video", {
@@ -270,13 +270,14 @@ test("mobile Gallery exposes Animate without opening Details and transfers the i
 
 test('selected image stays centered in a fixed viewer without scrolling the gallery behind it',async()=>{
   await render('/gallery?render=a');
-  const dialog=container.querySelector('[data-testid="gallery-lightbox"]');
-  const content=container.querySelector('[data-testid="gallery-lightbox-content"]');
+  const dialog=document.querySelector('[data-testid="gallery-lightbox"]');
+  const content=document.querySelector('[data-testid="gallery-lightbox-content"]');
   expect(dialog.getAttribute('role')).toBe('dialog');
   expect(dialog.getAttribute('aria-modal')).toBe('true');
+  expect(dialog.parentElement).toBe(document.body);
   expect(content.className).toContain('h-full');
   expect(content.className).toContain('min-h-0');
   expect(document.body.style.overflow).toBe('hidden');
-  act(()=>container.querySelector('[data-testid="btn-lightbox-close"]').click());
+  act(()=>document.querySelector('[data-testid="btn-lightbox-close"]').click());
   expect(document.body.style.overflow).toBe('');
 });
