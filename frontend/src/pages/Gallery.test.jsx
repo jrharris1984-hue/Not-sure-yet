@@ -274,7 +274,9 @@ test('selected image stays centered in a fixed viewer without scrolling the gall
   const content=document.querySelector('[data-testid="gallery-lightbox-content"]');
   expect(dialog.getAttribute('role')).toBe('dialog');
   expect(dialog.getAttribute('aria-modal')).toBe('true');
-  expect(dialog.parentElement).toBe(document.body);
+  expect(dialog.parentElement).toBe(document.documentElement);
+  expect(dialog.style.position).toBe("fixed");
+  expect(dialog.style.width).toBe("100vw");
   expect(content.className).toContain('h-full');
   expect(content.className).toContain('min-h-0');
   expect(document.body.style.overflow).toBe('hidden');
