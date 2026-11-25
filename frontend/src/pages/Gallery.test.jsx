@@ -267,3 +267,16 @@ test("mobile Gallery exposes Animate without opening Details and transfers the i
     state: expect.objectContaining({sourceRenderId:"a", galleryReference:{name:"a.png"}}),
   });
 });
+
+test('selected image stays centered in a fixed viewer without scrolling the gallery behind it',async()=>{
+  await render('/gallery?render=a');
+  const dialog=container.querySelector('[data-testid="gallery-lightbox"]');
+  const content=container.querySelector('[data-testid="gallery-lightbox-content"]');
+  expect(dialog.getAttribute('role')).toBe('dialog');
+  expect(dialog.getAttribute('aria-modal')).toBe('true');
+  expect(content.className).toContain('h-full');
+  expect(content.className).toContain('min-h-0');
+  expect(document.body.style.overflow).toBe('hidden');
+  act(()=>container.querySelector('[data-testid="btn-lightbox-close"]').click());
+  expect(document.body.style.overflow).toBe('');
+});
