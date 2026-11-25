@@ -1203,6 +1203,25 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
     if (!saved || !workflows.length || galleryImportApplied.current || !editorHydrated) return;
     const bodyCreation = location.state?.renderRecipeMode === "body_creation";
     const rebuildCurrent = bodyCreation || location.state?.renderRecipeMode === "current";
+    const savedWorkflowName = location.state?.renderRecipe?.workflow_name || saved.workflow_name;
+    const savedWorkflowById = saved.workflow_id
+      ? workflows.find((workflow) => workflow.id === saved.workflow_id)
+      : null;
+    const savedWorkflowNameMatches = savedWorkflowName
+      ? workflows.filter((workflow) => workflow.name === savedWorkflowName)
+      : [];
+    const savedWorkflow = savedWorkflowById && (!savedWorkflowName || savedWorkflowById.name === savedWorkflowName)
+      ? savedWorkflowById
+      : savedWorkflowNameMatches.length === 1 ? savedWorkflowNameMatches[0] : null;
+    if (!bodyCreation && !savedWorkflow) {
+      galleryImportApplied.current = true;
+      toast.error(savedWorkflowName
+        ? `Saved workflow "${savedWorkflowName}" is unavailable or ambiguous. The exact recipe was not opened.`
+        : "This render has no restorable workflow reference. The exact recipe was not opened.");
+      const renderId = location.state?.renderRecipe?.render_id;
+      nav(renderId ? `/gallery?render=${encodeURIComponent(renderId)}` : "/gallery", { replace: true, state: null });
+      return;
+    }
     galleryImportApplied.current = true;
     setMobileStudioStep(bodyCreation ? mobileStudioStepForSection("physique", studioSteps) : "create");
     setQuickReview(!bodyCreation);
@@ -1238,12 +1257,11 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
       setPromptLanguage(saved.prompt_language);
       setRaunch(saved.prompt_language === "explicit");
     }
-    if (saved.workflow_id) {
-      const savedWorkflow = workflows.find((workflow) => workflow.id === saved.workflow_id);
-      if (savedWorkflow?.kind === "krea_style") {
+    if (savedWorkflow) {
+      if (savedWorkflow.kind === "krea_style") {
         const baseKrea = workflows.find((workflow) => workflow.prompt_style === "krea2" && workflow.kind === "image");
         if (baseKrea) setWorkflowId(baseKrea.id);
-      } else if (savedWorkflow && (!bodyCreation || savedWorkflow.kind === "image")) {
+      } else if (!bodyCreation || savedWorkflow.kind === "image") {
         setWorkflowId(savedWorkflow.id);
       }
     }
