@@ -53,7 +53,7 @@ const GalleryCarousel = forwardRef(function GalleryCarousel({ current, items, pr
     resize?.observe(node);
     return () => { clearTimeout(timer.current); resize?.disconnect(); };
   }, [recenter, width]);
-  return <div ref={viewport} className="gallery-carousel-viewport flex-1 min-h-0 h-full" data-testid="gallery-carousel"
+  return <div ref={viewport} className="gallery-carousel-viewport h-full min-h-0 w-full min-w-0 flex-1 md:w-auto" data-testid="gallery-carousel"
     style={{ overflowX: available.current ? 'auto' : 'hidden' }}
     onTouchStart={() => { touching.current = true; clearTimeout(timer.current); }}
     onTouchEnd={event => {
