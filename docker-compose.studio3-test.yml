@@ -1,5 +1,7 @@
 # Isolated Ultra Studio 3 development test stack.
 # Uses project-scoped containers and volumes, with no host-published MongoDB port.
+# Set COMFYUI_HOST_OUTPUT_DIR to the host's ComfyUI output directory so Gallery
+# can read and delete output files. Example on this machine: G:/Comfy.ui/output
 # Start with: docker compose -p ultra-studio3-test -f docker-compose.studio3-test.yml up -d --build
 services:
   mongo:
@@ -24,7 +26,7 @@ services:
       - "127.0.0.1:8013:8001"
     volumes:
       - studio3_test_renders:/app/renders
-      - studio3_test_comfy_output:/comfyui-output
+      - ${COMFYUI_HOST_OUTPUT_DIR:-./backend/renders}:/comfyui-output
     extra_hosts:
       - "host.docker.internal:host-gateway"
 
@@ -47,4 +49,3 @@ services:
 volumes:
   studio3_test_mongo:
   studio3_test_renders:
-  studio3_test_comfy_output:
