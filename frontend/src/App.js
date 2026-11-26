@@ -1,4 +1,3 @@
-import CreationHome from "@/pages/CreationHome";
 import LearningComparison from '@/pages/LearningComparison';
 import ImageToolRoute from "@/pages/ImageToolRoute";
 import { useEffect, lazy, Suspense } from "react";
@@ -44,10 +43,10 @@ function App() {
       <BrowserRouter>
         <AppShell>
           <Routes>
-            <Route path="/" element={<CreationHome />} />
+            <Route path="/" element={<Navigate to="/create" replace />} />
             <Route path="/library" element={<Library />} />
             <Route path="/projects" element={<Projects />} />
-            <Route path="/create/image-start" element={<CreationHome chooseImage />} />
+            <Route path="/create/image-start" element={<Navigate to="/create" replace />} />
             <Route path="/research" element={<div className="mx-auto max-w-4xl p-6"><AIResearchPanel open /></div>} />
             <Route path="/create" element={<Suspense fallback={<div className="p-8">Loading workspace…</div>}><StudioWorkspace /></Suspense>} />
             <Route path="/create/guided" element={<Suspense fallback={<div className="p-8">Loading guided editor…</div>}><WorkspacePreview /></Suspense>} />

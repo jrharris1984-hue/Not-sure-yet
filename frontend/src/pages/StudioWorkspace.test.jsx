@@ -9,7 +9,7 @@ jest.mock('@/lib/api',()=>({endpoints:{settings:jest.fn(),listWorkflows:jest.fn(
 let root,container;
 const buttons=()=>[...document.querySelectorAll('button')];
 const click=async text=>{await act(async()=>{const button=buttons().find(item=>item.textContent===text);if(!button)throw new Error(`Missing button ${text}`);button.click();});};
-const paint=async()=>{await act(async()=>root.render(<StudioWorkspace/>));};
+const paint=async({fresh=false,resume=!fresh}={})=>{if(!fresh && !sessionStorage.getItem('ultra-studio-canvas-draft-v1'))sessionStorage.setItem('ultra-studio-canvas-draft-v1',JSON.stringify({version:1,mode:'character',people:[previewPerson()],relationship:'Choose later',description:'',instruction:'',count:1,shape:'Portrait',sceneOverrides:{}}));await act(async()=>root.render(<StudioWorkspace/>));if(resume && !fresh)await click('Resume your saved draft');};
 const input=(selector,value)=>act(()=>{const element=document.querySelector(selector);Object.getOwnPropertyDescriptor(element.tagName==='TEXTAREA'?HTMLTextAreaElement.prototype:HTMLInputElement.prototype,'value').set.call(element,value);element.dispatchEvent(new Event('input',{bubbles:true}));});
 beforeEach(()=>{
   global.IS_REACT_ACT_ENVIRONMENT=true;sessionStorage.clear();container=document.createElement('div');document.body.appendChild(container);root=createRoot(container);jest.clearAllMocks();
@@ -17,11 +17,24 @@ beforeEach(()=>{
   endpoints.comfyLoras.mockResolvedValue({loras:[]});
 });
 afterEach(()=>{act(()=>root.unmount());container.remove();});
-test('opens a canvas workspace with app navigation and one inspector instead of a wizard',async()=>{
+test('first launch offers one Create hub for image, editing, shoots and video',async()=>{
+  await paint({fresh:true});expect(container.querySelector('.cs-start-hub')).not.toBeNull();expect(container.querySelector('.cs-inspector')).toBeNull();expect(container.querySelector('.cs-generate-bar')).toBeNull();
+  expect(container.textContent).toContain('What are you creating?');expect(container.querySelectorAll('.cs-start-card')).toHaveLength(6);
+  expect(container.querySelector('a[href="/create/guided?start=build"]')).not.toBeNull();
+  expect(container.querySelector('a[href="/create/text-video"]')).not.toBeNull();expect(container.querySelector('a[href="/create/video"]')).not.toBeNull();
+  expect(container.querySelector('a[href="/character/new"]')).not.toBeNull();await click('Text to image');expect(container.querySelector('.cs-start-hub')).toBeNull();expect(container.querySelector('.cs-inspector')).not.toBeNull();
+});
+test('Create opens the workflow hub first and offers saved draft resume',async()=>{
+  await paint({fresh:false,resume:false});
+  expect(container.querySelector('.cs-start-hub')).not.toBeNull();
+  expect(buttons().some(button=>button.textContent.includes('Resume your saved draft'))).toBe(true);
+  await click('Resume your saved draft');expect(container.querySelector('.cs-inspector')).not.toBeNull();
+});
+test('a saved draft opens the canvas workspace with app navigation and one inspector',async()=>{
   await paint();expect(container.querySelector('.cs-stage')).not.toBeNull();expect(container.querySelector('.cs-inspector')).not.toBeNull();
   expect(container.querySelector('nav[aria-label="Studio navigation"] a[href="/gallery"]')).not.toBeNull();
   expect(container.textContent).not.toContain('Continue');expect(container.textContent).not.toContain('Step 1');
-  expect(container.querySelector('a[href="/create/guided"]')).not.toBeNull();
+  expect(container.querySelector('nav[aria-label="Studio navigation"] a[href="/create"] span').textContent).toBe('Create');
 });
 test('all body and outfit collections remain accessible through the inspector',async()=>{
   await paint();await click('Physical features');await click('Glutes');
@@ -72,9 +85,11 @@ test('image edit uploads the chosen reference and uses the edit workflow',async(
   const createURL=URL.createObjectURL,revokeURL=URL.revokeObjectURL;URL.createObjectURL=jest.fn(()=> 'blob:reference');URL.revokeObjectURL=jest.fn();
   try {
     await paint();await click('Image edit');const upload=document.querySelector('input[type="file"]');
+    expect(container.querySelector('.cs-preserve-toggle input').checked).toBe(true);
     Object.defineProperty(upload,'files',{value:[new File(['image'],'photo.png',{type:'image/png'})]});
     await act(async()=>upload.dispatchEvent(new Event('change',{bubbles:true})));input('textarea[aria-label="Image description"]','Change the jacket to navy');await click('Generate');
     expect(endpoints.dispatchRender.mock.calls[0][0]).toMatchObject({workflow_id:'edit',reference_image:'input/uploaded.png',preserve_unmentioned:true});
+    expect(endpoints.dispatchRender.mock.calls[0][0].edit_instruction).toContain('face, identity, hair, expression, and camera framing unchanged');
     await act(async()=>root.unmount());root=createRoot(container);expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:reference');
   } finally {URL.createObjectURL=createURL;URL.revokeObjectURL=revokeURL;}
 });

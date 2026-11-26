@@ -1,5 +1,4 @@
 export const DESKTOP_WORKSPACES = [
-  { id: "home", label: "Home", path: "/" },
   { id: "create", label: "Create", path: "/create" },
   { id: "characters", label: "Characters", path: "/library" },
   { id: "shoots", label: "Shoots", path: "/shoots" },
@@ -7,7 +6,7 @@ export const DESKTOP_WORKSPACES = [
   { id: "library", label: "Library", path: "/gallery" },
 ];
 
-export const MOBILE_WORKSPACES = ["home", "create", "shoots", "library"];
+export const MOBILE_WORKSPACES = ["create", "characters", "shoots", "library"];
 export const EDITOR_CATEGORIES = ["Cast", "Appearance", "Wardrobe", "Pose", "Scene", "Camera", "Lighting", "Style"];
 export const SECONDARY_DESTINATIONS = [
   { id: "media", label: "Media", path: "/media" },

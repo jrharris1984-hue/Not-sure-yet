@@ -29,21 +29,20 @@ beforeEach(() => {
 afterEach(() => { act(() => root.unmount()); container.remove(); });
 const render = (component = <MobileStudioNavigation />) => act(() => root.render(component));
 
-test("desktop exposes six workspaces and secondary More destinations", () => {
+test("desktop exposes the main workspaces and secondary More destinations", () => {
   render(<StudioNavLinks returnTo="/character/new" compact />);
-  for (const id of ["home", "create", "characters", "shoots", "projects", "library"]) {
+  for (const id of ["create", "characters", "shoots", "projects", "library"]) {
     expect(container.querySelector(`[data-testid="nav-${id}"]`)).not.toBeNull();
   }
   expect(container.querySelector('[data-testid="nav-more-desktop"]')).not.toBeNull();
   expect(container.querySelector('[data-testid="nav-tools"]')).not.toBeNull();
   expect(container.querySelector('[data-testid="nav-library"]').getAttribute("aria-current")).toBe("page");
-  expect(container.querySelector('[data-testid="nav-home"]').getAttribute("aria-current")).toBeNull();
 });
 
 test("mobile keeps four destinations and More visible", () => {
   render();
   expect(container.querySelectorAll("a").length).toBe(4);
-  for (const id of ["home", "create", "shoots", "library"]) {
+  for (const id of ["create", "characters", "shoots", "library"]) {
     expect(container.querySelector(`[data-testid="nav-${id}-mobile"]`)).not.toBeNull();
   }
   expect(container.querySelector('[data-testid="nav-more-mobile"]')).not.toBeNull();

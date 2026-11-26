@@ -1,7 +1,7 @@
 import WardrobeOverview from "@/components/WardrobeOverview";
 import {useEffect, useRef, useState} from 'react';
 import {Link} from 'react-router-dom';
-import {ImagePlus, Images, UsersRound, WandSparkles, SlidersHorizontal, Layers, Settings, ListOrdered, Menu, Plus, Shuffle, ChevronRight, Download, Maximize2} from 'lucide-react';
+import {ImagePlus, Images, UsersRound, WandSparkles, SlidersHorizontal, Layers, Settings, ListOrdered, Menu, Plus, Shuffle, ChevronRight, Download, Maximize2, Camera, Clapperboard, Video, Type} from 'lucide-react';
 import {Dialog, DialogContent, DialogTitle, DialogDescription} from '@/components/ui/dialog';
 import {endpoints} from '@/lib/api';
 import {mediaUrl} from '@/lib/media';
@@ -22,7 +22,7 @@ const sceneSections = STUDIO_SCENE_SECTIONS;
 const sectionNames = STUDIO_SECTION_NAMES;
 const modes = [{id:'character',label:'Character'},{id:'describe',label:'Text to image'},{id:'image',label:'Image edit'}];
 const navigation = [
-  {to:'/create',label:'Studio',icon:WandSparkles}, {to:'/',label:'Characters',icon:UsersRound},
+  {to:'/create',label:'Create',icon:WandSparkles}, {to:'/library',label:'Characters',icon:UsersRound},
   {to:'/gallery',label:'Gallery',icon:Images}, {to:'/queue',label:'Queue',icon:ListOrdered},
   {to:'/create/tools',label:'Tools',icon:Layers}, {to:'/settings',label:'Settings',icon:Settings},
 ];
@@ -30,11 +30,13 @@ const sectionFor = studioFeatureSection;
 
 export default function StudioWorkspace() {
   const [initialDraft]=useState(loadStudioDraft);
+  const [showStart,setShowStart]=useState(true);
   const [draftSaved,setDraftSaved]=useState(!!initialDraft);
   const [mode,setMode]=useState(initialDraft?.mode || 'character');
   const [people,setPeople]=useState(()=>initialDraft?.people || [previewPerson()]), [active,setActive]=useState(0);
   const [relationship,setRelationship]=useState(initialDraft?.relationship || 'Choose later');
   const [description,setDescription]=useState(initialDraft?.description || ''), [instruction,setInstruction]=useState(initialDraft?.instruction || '');
+  const [preserveFace,setPreserveFace]=useState(true);
   const [count,setCount]=useState([1,2,4].includes(initialDraft?.count)?initialDraft.count:1), [shape,setShape]=useState(['Portrait','Square','Landscape'].includes(initialDraft?.shape)?initialDraft.shape:'Portrait');
   const [file,setFile]=useState(null), [sourceUrl,setSourceUrl]=useState('');
   const [panel,setPanel]=useState(initialDraft?.mode && initialDraft.mode!=='character'?'prompt':'character'), [category,setCategory]=useState('identity');
@@ -50,7 +52,10 @@ export default function StudioWorkspace() {
   const [sceneOverrides,setSceneOverrides]=useState(initialDraft?.sceneOverrides || {});
   const effectiveDescription=[description,...Object.entries(sceneOverrides).map(([key,value])=>{const [section,field]=key.split('.');const label=sectionFor(section)?.fields.find(item=>item.key===field)?.label || field;return `${label}: ${Array.isArray(value)?value.join(', '):value}.`;})].join(' ');
   const fileUrl=useRef(''), mounted=useRef(true);
-  const generation=useWorkspaceGeneration({mode,people,relationship,description:effectiveDescription,instruction,file,count,shape,sceneName});
+  const editInstruction=mode==='image' && preserveFace && instruction.trim()
+    ? `Keep the adult subject's face, identity, hair, expression, and camera framing unchanged. Make only this requested edit: ${instruction.trim()}`
+    : instruction;
+  const generation=useWorkspaceGeneration({mode,people,relationship,description:effectiveDescription,instruction:editInstruction,file,count,shape,sceneName});
   const locked=!!generation.busy || generation.pending;
   const person=people[active] || people[0];
   const outputs=generation.renders.flatMap(render=>(render.output_files || []).map(url=>({url,id:render.id})));
@@ -81,6 +86,7 @@ export default function StudioWorkspace() {
   }
   function selectMode(next) {
     if(locked)return;
+    setShowStart(false);
     setMode(next);generation.clearResults();setSelectedOutput('');setError('');
     selectPanel(next==='character'?'character':'prompt');
   }
@@ -127,7 +133,7 @@ export default function StudioWorkspace() {
     category==='intimate'?INTIMATE_DETAIL_GROUPS.find(group=>group.key===intimateGroup)?.fields.includes(field.key):category==='wardrobe'?field.key!=='outfit_mode' && (showInactiveWardrobe || !wardrobeFieldDisabled(field.key,person.dna.wardrobe)) && groups.find(group=>group.key===groupKey)?.fields.some(f=>f.key===field.key):true);
   const matched=matchingWorkspaceFields(allowed.map(key=>({...sectionFor(key),title:sectionNames[key]})),detailQuery).filter(item=>item.section!=='identity' || item.field.key!=='name');
   const directory=studioCategoryDirectory().filter(item=>mode==='character' || item.panel==='scene');
-  const navigationContent=<nav className="cs-navigation" aria-label="Studio navigation">{navigation.map(item=><Link key={item.to} to={item.to} aria-current={item.to==='/create'?'page':undefined}><item.icon size={21} strokeWidth={1.7}/><span>{item.label}</span></Link>)}<div className="cs-nav-extra"><Link to="/create/guided">Guided editor</Link><Link to="/character/new">Classic editor</Link></div></nav>;
+  const navigationContent=<nav className="cs-navigation" aria-label="Studio navigation">{navigation.map(item=><Link key={item.to} to={item.to} aria-current={item.to==='/create'?'page':undefined}><item.icon size={21} strokeWidth={1.7}/><span>{item.label}</span></Link>)}</nav>;
 
   const inspectorContent=<>
     <div className="cs-inspector-heading"><span className="cs-eyebrow">WORKSPACE</span><h2>{panel==='output'?'Output settings':panel==='scene'?'Build the scene':panel==='prompt'?(mode==='image'?'Describe the edit':'Describe your image'):'Your character'}</h2></div>
@@ -141,8 +147,9 @@ export default function StudioWorkspace() {
       </>}
       {panel==='prompt' && <>
         {mode==='image' && <label className="cs-upload"><ImagePlus size={24}/><strong>{file?.name || 'Choose a starting image'}</strong><span>JPG, PNG or WebP · up to 20 MB</span>{initialDraft?.mode==='image' && !file && <span>Choose the file again after refreshing.</span>}<input aria-label="Starting image" type="file" accept="image/jpeg,image/png,image/webp" onChange={upload}/></label>}
+        {mode==='image' && <label className="cs-preserve-toggle"><input type="checkbox" checked={preserveFace} onChange={event=>setPreserveFace(event.target.checked)}/><span><strong>Keep face and identity consistent</strong><small>Ultra Studio adds this instruction to your edit. Results depend on the selected model.</small></span></label>}
         <label className="cs-label">{mode==='image'?'What should change?':'Your image idea'}<textarea aria-label="Image description" rows={7} value={mode==='image'?instruction:description} onChange={event=>mode==='image'?setInstruction(event.target.value):setDescription(event.target.value)} placeholder={mode==='image'?'Change the jacket to navy. Keep everything else.':'A relaxed portrait in a bright studio, soft daylight…'}/></label>
-        <p className="cs-note">{mode==='image'?'Your selected edit workflow preserves unmentioned details.':'Your words go to the selected workflow. Scene choices can add a coordinated setting.'}</p>
+        <p className="cs-note">{mode==='image'?'Describe exactly what should change. For body or wardrobe edits, name the feature and preserve pose and framing. Face consistency varies by workflow.':'Your words go to the selected workflow. Scene choices can add a coordinated setting.'}</p>
       </>}
       {(panel==='character' || panel==='scene') && <>
         <button type="button" className="cs-category-browser" onClick={()=>open({type:'categories',title:'All character and scene categories'})}>Browse all categories <span>{directory.length} categories →</span></button>
@@ -171,10 +178,22 @@ export default function StudioWorkspace() {
     [['prompt',mode==='image'?'Edit':'Prompt',ImagePlus],...(mode==='describe'?[['scene','Scene',Layers]]:[]),['output','Output',SlidersHorizontal]];
   const panelTabs=<div className="cs-panel-tabs" role="group" aria-label="Editing panels">{panelOptions.map(([id,label,Icon])=><button key={id} type="button" aria-pressed={panel===id} onClick={()=>selectPanel(id)}><Icon size={16}/>{label}</button>)}</div>;
 
-  return <div className="canvas-studio">
+  return <div className={`canvas-studio${showStart?' cs-starting':''}`}>
     <a className="cs-skip" href="#studio-canvas">Skip to canvas</a>
     <aside className="cs-rail"><Link to="/create" className="cs-mark" aria-label="Ultra Studio home">U<span>•</span></Link>{navigationContent}<span className="cs-rail-caption">ULTRA</span></aside>
-    <header className="cs-header"><div className="cs-header-title"><button type="button" className="cs-mobile-menu cs-square" aria-label="Open studio navigation" onClick={()=>open({type:'navigation',title:'Ultra Studio'})}><Menu size={20}/></button><div><span className="cs-eyebrow">ULTRA STUDIO</span><h1>{title}</h1></div><span className="cs-draft">{generation.saved?'Copy saved':draftSaved?'Draft kept in this tab':'Working draft'}</span></div><div className="cs-header-actions">{mode==='character' && <><button type="button" className="cs-icon-label" disabled={locked} onClick={()=>open({type:'randomizers',title:'Randomize'})}><Shuffle size={17}/><span>Randomize</span></button><button type="button" className="cs-save" disabled={locked} onClick={generation.save}>{generation.busy==='Saving'?'Saving…':'Save a copy'}</button></>}</div></header>
+    <header className="cs-header"><div className="cs-header-title"><button type="button" className="cs-mobile-menu cs-square" aria-label="Open studio navigation" onClick={()=>open({type:'navigation',title:'Ultra Studio'})}><Menu size={20}/></button><div><span className="cs-eyebrow">ULTRA STUDIO · CREATE</span><h1>{showStart?'Choose a workflow':title}</h1></div><span className="cs-draft">{generation.saved?'Copy saved':draftSaved?'Draft kept in this tab':'Working draft'}</span></div><div className="cs-header-actions">{!showStart && <button type="button" className="cs-icon-label" aria-label="All workflows" onClick={()=>setShowStart(true)}><Layers size={17}/><span>All workflows</span></button>}{!showStart && mode==='character' && <><button type="button" className="cs-icon-label" disabled={locked} onClick={()=>open({type:'randomizers',title:'Randomize'})}><Shuffle size={17}/><span>Randomize</span></button><button type="button" className="cs-save" disabled={locked} onClick={generation.save}>{generation.busy==='Saving'?'Saving…':'Save a copy'}</button></>}</div></header>
+    {showStart ? <main id="studio-canvas" tabIndex={-1} className="cs-start-hub">
+      <div className="cs-start-intro"><span className="cs-eyebrow">ONE WORKSPACE · EVERY WORKFLOW</span><h2>What are you creating?</h2><p>Choose a starting point. Your image, shoot, and video tools all begin here.</p>{initialDraft && <button type="button" className="cs-resume" onClick={()=>setShowStart(false)}>Resume your saved draft <ChevronRight size={16}/></button>}</div>
+      <div className="cs-start-grid" aria-label="Choose a creation workflow">
+        <Link className="cs-start-card cs-start-featured" to="/create/guided?start=build"><span className="cs-start-icon"><UsersRound size={22}/></span><strong>Create a character & photoshoot</strong><small>Build their look, save the character, then plan the shoot.</small><ChevronRight size={17}/></Link>
+        <button type="button" className="cs-start-card" onClick={()=>selectMode('describe')}><span className="cs-start-icon"><Type size={22}/></span><strong>Text to image</strong><small>Describe the editorial image you want to create.</small><ChevronRight size={17}/></button>
+        <button type="button" className="cs-start-card" onClick={()=>selectMode('image')}><span className="cs-start-icon"><ImagePlus size={22}/></span><strong>Edit a personal photo</strong><small>Upload a photo, keep the face consistent, and describe the body, wardrobe, or scene edit.</small><ChevronRight size={17}/></button>
+        <Link className="cs-start-card" to="/create/text-video"><span className="cs-start-icon"><Clapperboard size={22}/></span><strong>Text to video</strong><small>Turn a scene description into a video workflow.</small><ChevronRight size={17}/></Link>
+        <Link className="cs-start-card" to="/create/video"><span className="cs-start-icon"><Video size={22}/></span><strong>Animate an image</strong><small>Start with an image and build a motion clip.</small><ChevronRight size={17}/></Link>
+        <Link className="cs-start-card" to="/shoots"><span className="cs-start-icon"><Camera size={22}/></span><strong>Photoshoot with a saved character</strong><small>Choose a saved character and open the shoot planner.</small><ChevronRight size={17}/></Link>
+      </div>
+      <div className="cs-start-footer"><span>Need every control?</span><Link to="/character/new">Open the advanced character editor</Link></div>
+    </main> : <>
     <main id="studio-canvas" tabIndex={-1} className="cs-canvas-area">
       <div className="cs-canvas-toolbar"><div className="cs-modes" role="group" aria-label="Creation mode">{modes.map(item=><button key={item.id} type="button" disabled={locked} aria-pressed={mode===item.id} onClick={()=>selectMode(item.id)}>{item.label}</button>)}</div><span className="cs-canvas-meta">{mode==='image'?'Reference edit':shape}</span></div>
       <div className="cs-stage">
@@ -184,12 +203,13 @@ export default function StudioWorkspace() {
       <div className="cs-canvas-bottom"><span>{output?'Last result · edits apply on Generate':canvasImage?'Reference':'Canvas ready'}{outputs.length?` · ${outputs.length} result${outputs.length>1?'s':''}`:''}</span>{canvasImage && <div><button type="button" aria-label="Enlarge image" onClick={()=>open({type:'image',title:output?'Generated image':'Reference image'})}><Maximize2 size={17}/></button>{output && <a href={mediaUrl(output.url)} target="_blank" rel="noreferrer" aria-label="Open image to download"><Download size={17}/></a>}</div>}</div>
       {!!outputs.length && <div className="cs-filmstrip" aria-label="Generated images">{outputs.map((item,index)=><button type="button" key={`${item.id}-${index}`} aria-label={`View result ${index+1}`} aria-pressed={output?.url===item.url} onClick={()=>setSelectedOutput(item.url)}><img src={mediaUrl(item.url)} alt=""/></button>)}</div>}
       {(error || generation.error || generation.promptError || generation.pollError) && <p className="cs-error" role="alert">{error || generation.error || generation.promptError || generation.pollError}</p>}
-      {generation.saved && <p className="cs-save-status" role="status">Copy saved. <Link to={`/character/${generation.saved.id}`}>Open saved character</Link></p>}
+      {generation.saved && <p className="cs-save-status" role="status">Copy saved. <Link to={`/character/${generation.saved.id}`}>Open saved character</Link>{mode==='character' && <> · <Link to={`/shoot/new/${generation.saved.id}`}>Plan their photoshoot</Link></>}</p>}
       {generation.renders.some(render=>['failed','offline','cancelled'].includes(render.status)) && <div className="cs-error" role="alert">{generation.renders.filter(render=>['failed','offline','cancelled'].includes(render.status)).map(render=><p key={render.id}>{render.error || `Image ${render.status}`}</p>)}<Link to="/queue">Open queue</Link></div>}
     </main>
     <aside className="cs-inspector" aria-label="Editing inspector">{panelTabs}<div className="cs-inspector-scroll">{inspectorContent}</div></aside>
     <footer className="cs-generate-bar"><div className="cs-model-summary"><span className="cs-ready-dot"/><span>{generation.loading?'Loading workflows…':generation.workflow?.name || 'Select a compatible workflow'}</span>{!generation.loading && !generation.workflow && <button type="button" onClick={generation.load}>Retry</button>}</div><div className="cs-generate-actions"><span>{count} image{count>1?'s':''}</span><button type="button" className="cs-generate" disabled={locked || !ready} onClick={generation.generate}><WandSparkles size={17}/>{generation.busy || (generation.pending?'Creating…':'Generate')}</button></div></footer>
     <div className="cs-mobile-panels">{panelOptions.map(([id,label,Icon])=><button type="button" key={id} onClick={()=>{selectPanel(id);open({type:'inspector',title:label});}}><Icon size={18}/>{label}</button>)}</div>
+    </>}
     <Dialog open={!!dialog} onOpenChange={value=>{if(!value)closeDialog();}}><DialogContent className={`cs-dialog ${dialog?.type==='inspector'?'cs-sheet':''} ${dialog?.type==='randomizers'?'cs-randomizers-dialog':''}`}><DialogTitle>{dialog?.title || 'Choose a detail'}</DialogTitle><DialogDescription>{dialog?.type==='inspector'?'Edit your setup. Choices update the draft.':dialog?.type==='randomizers'?'Preview a coherent variation before applying.':dialog?.type==='library'?'Use a saved character without changing the original.':dialog?.type==='new'?'Replace the selected person’s unsaved draft with a fresh character.':dialog?.type==='image'?'Your selected image.':choiceField?.type==='chips_multi'?'Choose any that apply.':'Choose one option.'}</DialogDescription>
       {dialog?.type==='inspector'?<>{panelTabs}{inspectorContent}</>:dialog?.type==='categories'?<div className="cs-category-directory">{['character','scene'].filter(group=>directory.some(item=>item.panel===group)).map(group=><section key={group}><h3>{group==='character'?'Character & appearance':'Scene & photography'}</h3>{directory.filter(item=>item.panel===group && `${item.label}`.toLowerCase().includes(query.toLowerCase())).map(item=><button type="button" key={item.key} onClick={()=>{selectPanel(item.panel);setCategory(item.key);if(returnToInspector){setDialog({type:'inspector',title:item.panel==='scene'?'Scene':'Character'});setReturnToInspector(false);}else setDialog(null);}}><span>{item.label}</span><small>{item.fields} detail controls</small><ChevronRight size={16}/></button>)}</section>)}</div>:dialog?.type==='navigation'?navigationContent:dialog?.type==='randomizers'?<RandomizerSuites people={people} active={active} busy={locked} onApply={next=>{setPeople(next);setSceneName('Use current scene');}}/>:dialog?.type==='new'?<div className="cs-dialog-actions"><button type="button" disabled={locked} onClick={resetCharacter}>Start fresh</button><button type="button" onClick={closeDialog}>Keep editing</button></div>:dialog?.type==='image'?<img className="cs-expanded-image" src={mediaUrl(canvasImage)} alt={output?'Generated result':'Selected reference'}/>:dialog?.type==='library'?<><input type="search" aria-label="Find saved character" placeholder="Search characters…" value={query} onChange={event=>setQuery(event.target.value)}/>{libraryState==='loading'?<p role="status">Loading characters…</p>:libraryState==='error'?<p role="alert">Could not load characters. <button type="button" onClick={loadCharacters}>Try again</button></p>:<div className="cs-library-grid">{characters.filter(item=>(item.name || '').toLowerCase().includes(query.toLowerCase())).map(item=><button type="button" key={item.id} onClick={()=>chooseCharacter(item)}>{item.thumbnail?<img src={mediaUrl(item.thumbnail)} alt=""/>:<UsersRound size={30}/>}<strong>{item.name || 'Untitled'}</strong></button>)}{!characters.some(item=>(item.name || '').toLowerCase().includes(query.toLowerCase())) && <p>No matching characters. You can build a new one in the inspector.</p>}</div>}</>:choiceField && <fieldset disabled={locked} className="cs-choice-controls">
         {['slider','text'].includes(choiceField.type)?<label className="cs-label">{choiceField.label}{choiceField.type==='slider'?<><input aria-label={choiceField.label} type="range" min={choiceField.min} max={choiceField.max} step={choiceField.step || 1} value={choiceValue ?? choiceField.defaultValue ?? choiceField.min} onChange={event=>changeField(dialog.section,dialog.field,Number(event.target.value))}/><output>{choiceValue ?? choiceField.defaultValue ?? choiceField.min}</output></>:<input aria-label={choiceField.label} value={choiceValue || ''} onChange={event=>changeField(dialog.section,dialog.field,event.target.value)}/>}</label>:<><input autoFocus type="search" aria-label="Find an option" placeholder="Search options…" value={query} onChange={event=>setQuery(event.target.value)}/>{!!choiceField.groups?.length && <label className="cs-label">Collection<select aria-label="Option collection" value={choiceGroup} onChange={event=>setChoiceGroup(event.target.value)}><option>All</option>{choiceField.groups.map(group=><option key={group.name}>{group.name}</option>)}</select></label>}<div className="cs-option-list">{choices.map(option=><button type="button" key={option.value} disabled={workspaceFieldLocked(person,dialog.section,dialog.field,option.value)} aria-pressed={Array.isArray(choiceValue)?choiceValue.includes(option.value):choiceValue===option.value} onClick={()=>{const value=choiceField.type==='chips_multi'?(Array.isArray(choiceValue)?choiceValue.includes(option.value)?choiceValue.filter(item=>item!==option.value):[...choiceValue,option.value]:[option.value]):option.value;changeField(dialog.section,dialog.field,value);if(choiceField.type!=='chips_multi')closeDialog();}}>{option.label}<span>{(Array.isArray(choiceValue)?choiceValue.includes(option.value):choiceValue===option.value)?'✓':''}</span></button>)}{!choices.length && <p>No matching options. Try another search.</p>}</div></>}

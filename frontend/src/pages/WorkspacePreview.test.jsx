@@ -5,12 +5,13 @@ import { previewPerson, previewCanContinue, previewOptions } from '@/lib/workspa
 import { endpoints } from '@/lib/api';
 
 jest.mock('react-router-dom', () => ({ Link: ({to, children, ...props}) => <a href={to} {...props}>{children}</a> }), {virtual:true});
-jest.mock('@/lib/api', () => ({endpoints:{listCharacters:jest.fn(),listWorkflows:jest.fn(),settings:jest.fn()}}));
+jest.mock('@/lib/api', () => ({endpoints:{listCharacters:jest.fn(),listWorkflows:jest.fn(),settings:jest.fn(),createCharacter:jest.fn()}}));
 let root, container;
 beforeEach(() => {
   global.IS_REACT_ACT_ENVIRONMENT=true;
   container=document.createElement('div');document.body.appendChild(container);
   root=createRoot(container);jest.clearAllMocks();endpoints.settings.mockResolvedValue({});endpoints.listWorkflows.mockResolvedValue([{id:'image',name:'Image',kind:'image',prompt_style:'krea2'}]);
+  endpoints.createCharacter.mockResolvedValue({id:'new-character',name:'New character'});
 });
 afterEach(() => {act(()=>root.unmount());container.remove();});
 const paint=async()=>{await act(async()=>root.render(<WorkspacePreview/>));};
@@ -18,7 +19,15 @@ const click=async text=>{await act(async()=>[...document.querySelectorAll('butto
 test('start screen offers four distinct tasks without loading the character library',async()=>{
   await paint();expect(container.querySelectorAll('main button')).toHaveLength(4);
   expect(container.querySelector('footer')).toBeNull();
+  expect(container.querySelector('header a[href="/create"]')).not.toBeNull();
   expect(endpoints.listCharacters).not.toHaveBeenCalled();
+});
+test('saving a wizard character offers the next photoshoot step',async()=>{
+  await paint();await click('Create a new character');
+  await click('Next');await click('Next');await click('Next');await click('Review image');
+  await click('Save as new character');
+  expect(container.querySelector('a[href="/shoot/new/new-character"]')?.textContent).toContain('Plan this character’s photoshoot');
+  expect(container.querySelector('a[href="/character/new-character"]')?.textContent).toContain('Open full character editor');
 });
 test('relationship controls appear only for multiple people and disappear when removed',async()=>{
   await paint();await click('Create a new character');

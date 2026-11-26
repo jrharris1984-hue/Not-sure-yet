@@ -7,7 +7,6 @@ import { DESKTOP_WORKSPACES, getMobileWorkspaces, SECONDARY_DESTINATIONS } from 
 const ICONS = { home: Home, create: Plus, characters: Users, shoots: Camera, projects: FolderKanban, library: Images, media: Database, tools: Wrench, queue: ListOrdered, settings: Settings2 };
 
 function isDestinationActive(item, pathname) {
-  if (item.id === "home") return pathname === "/";
   if (item.id === "create") return pathname.startsWith("/create");
   if (item.id === "characters") return pathname.startsWith("/library") || pathname.startsWith("/character");
   if (item.id === "shoots") return pathname.startsWith("/shoot");
