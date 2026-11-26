@@ -73,6 +73,40 @@ class WorkflowCompatibilityTests(unittest.TestCase):
         self.assertTrue(any("old-model.safetensors" in issue["message"] for issue in unavailable))
         self.assertTrue(any("old-sampler" in issue["message"] for issue in unavailable))
 
+    def test_runtime_image_placeholders_are_warnings_not_schema_failures(self):
+        schema = {
+            "LoadImage": {"input": {"required": {"image": [["installed.png"]]}}, "output": ["IMAGE"]},
+            "ImageSink": {"input": {"required": {"image": ["IMAGE"]}}, "output": []},
+        }
+        graph = {
+            "source": {"class_type": "LoadImage", "inputs": {"image": "uploaded-at-render-time.png"}},
+            "sink": {"class_type": "ImageSink", "inputs": {"image": ["source", 0]}},
+        }
+        result = validate_workflow_graph(graph, schema)
+        self.assertTrue(result["compatible"])
+        self.assertEqual([issue["severity"] for issue in result["issues"]], ["warning"])
+        self.assertEqual(result["issues"][0]["code"], "runtime_image_input")
+
+    def test_match_type_v3_is_a_dynamic_socket_wildcard(self):
+        schema = {
+            "DynamicSwitch": {"input": {"required": {"value": ["COMFY_MATCHTYPE_V3"]}}, "output": ["COMFY_MATCHTYPE_V3"]},
+            "KSampler": {"input": {"required": {"model": ["MODEL"]}}, "output": ["LATENT"]},
+        }
+        graph = {
+            "switch": {"class_type": "DynamicSwitch", "inputs": {"value": ["sampler", 0]}},
+            "sampler": {"class_type": "KSampler", "inputs": {"model": ["switch", 0]}},
+        }
+        result = validate_workflow_graph(graph, schema)
+        self.assertTrue(result["compatible"])
+        self.assertEqual(result["issues"], [])
+
+    def test_accepts_comfy_path_case_and_separator_normalization(self):
+        schema = {"LoraLoader": {"input": {"required": {"lora_name": [["MOSS/Portrait.safetensors"]]}}, "output": []}}
+        graph = {"1": {"class_type": "LoraLoader", "inputs": {"lora_name": "moss\\portrait.safetensors"}}}
+        result = validate_workflow_graph(graph, schema)
+        self.assertTrue(result["compatible"])
+        self.assertEqual(result["issues"], [])
+
 
 if __name__ == "__main__":
     unittest.main()
