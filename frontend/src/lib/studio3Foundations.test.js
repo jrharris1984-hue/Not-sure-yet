@@ -1,5 +1,5 @@
 import {createLook3,applyLook3,compareLooks3} from './studio3WardrobeScenes';
-import {directorPlan3,directorApplySuggestion3,directorFramesFromPlan3,directorFramesToPlan3} from './studio3Director';
+import {directorPlan3,directorApplySuggestion3,directorContinuityNotes3,directorFramesFromPlan3,directorFramesToPlan3,directorPlanningBatches3} from './studio3Director';
 import {videoTimeline3,addVideoClip3,updateVideoClip3,removeVideoClip3,moveVideoClip3,timelineDuration3,validateVideoTimeline3} from './studio3VideoTimeline';
 import {generationPreflight3,workflowCompatibility3} from './studio3GenerationPreflight';
 import {STUDIO3_STEPS,nextStudio3Step} from './studio3Navigation';
@@ -18,12 +18,29 @@ test('director suggestion updates only one shot',()=>{
  expect(next.shots[1].scene.location).toBeUndefined();
 });
 test('director frames adapt to Studio 3 shots without changing disabled or unsupported controls',()=>{
- const plan={shots:[{id:'a',enabled:true,pose:'standing',subjectView:null,cameraAngle:null,outfit:null,scene:{environment:'studio'},lighting:{style:'soft'}},{id:'b',enabled:false,pose:'walking',scene:{},lighting:{}}]};
+ const plan={shots:[{id:'a',enabled:true,pose:'standing',subjectView:null,cameraAngle:null,framing:'full body',lens:'50mm',expression:'smile',outfit:null,scene:{environment:'studio'},lighting:{style:'soft'}},{id:'b',enabled:false,pose:'walking',scene:{},lighting:{}}]};
  expect(directorFramesFromPlan3(plan)).toHaveLength(1);
- const next=directorFramesToPlan3(plan,[{pose_action:'walking',view:'back',camera_height:'low',outfit_preset:'jacket',environment:'loft',lighting_source:'window'}],{choices:{poses:['walking'],views:['back'],cameras:['low'],outfits:['jacket']}});
- expect(next.shots[0]).toMatchObject({pose:'walking',subjectView:'back',cameraAngle:'low',outfit:'jacket',scene:{environment:'loft'},lighting:{style:'soft',source:'window'}});
+ expect(directorFramesFromPlan3(plan)[0]).toMatchObject({framing:'full body',lens:'50mm',expression:'smile'});
+ const next=directorFramesToPlan3(plan,[{pose_action:'walking',view:'back',camera_height:'low',framing:'portrait',lens:'85mm',expression:'serious',outfit_preset:'jacket',environment:'loft',lighting_source:'window'}],{choices:{poses:['walking'],views:['back'],cameras:['low'],framings:['portrait'],lenses:['85mm'],expressions:['serious'],outfits:['jacket']}});
+ expect(next.shots[0]).toMatchObject({pose:'walking',subjectView:'back',cameraAngle:'low',framing:'portrait',lens:'85mm',expression:'serious',outfit:'jacket',scene:{environment:'loft'},lighting:{style:'soft',source:'window'}});
  expect(next.shots[1]).toEqual(plan.shots[1]);
  expect(plan.shots[0].pose).toBe('standing');
+});
+test('director divides a 120-shot storyboard into ordered chapter batches of no more than twenty',()=>{
+ const plan={shots:Array.from({length:120},(_,index)=>({id:`shot-${index+1}`,enabled:true,chapter:`Chapter ${Math.floor(index/30)+1}`}))};
+ const batches=directorPlanningBatches3(plan);
+ expect(batches.map(batch=>[batch.chapter,batch.indexes.length])).toEqual([
+  ['Chapter 1',20],['Chapter 1',10],['Chapter 2',20],['Chapter 2',10],
+  ['Chapter 3',20],['Chapter 3',10],['Chapter 4',20],['Chapter 4',10],
+ ]);
+ expect(batches.flatMap(batch=>batch.indexes)).toEqual(Array.from({length:120},(_,index)=>index));
+ expect(batches.every(batch=>batch.indexes.length<=20)).toBe(true);
+});
+test('director chapter continuity notes carry the preceding shot direction',()=>{
+ const plan={shots:[{chapter:'Opening',pose:'standing',coverage:'use selected outfit',wardrobeAction:'Keep jacket on',outfit:'tailored suit',scene:{environment:'studio'},lighting:{style:'softbox'}}]};
+ expect(directorContinuityNotes3(plan,[0])).toContain('coverage: use selected outfit');
+ expect(directorContinuityNotes3(plan,[0])).toContain('wardrobe direction: Keep jacket on');
+ expect(directorContinuityNotes3(plan,[0])).toContain('set: studio');
 });
 test('video timeline computes duration without modifying source',()=>{
  const t=videoTimeline3({fps:24});
