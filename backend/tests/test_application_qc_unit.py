@@ -68,6 +68,9 @@ class ApplicationQcTests(unittest.IsolatedAsyncioTestCase):
             with self.subTest(body=body):
                 self.assertEqual((await self.http.put('/api/settings',json=body)).status_code,422)
                 self.assertEqual((await self.http.get('/api/settings')).status_code,200)
+        enabled=await self.http.put('/api/settings',json={'queue_pause_high_vram':True})
+        self.assertEqual(enabled.status_code,200)
+        self.assertTrue((await self.http.get('/api/settings')).json()['queue_pause_high_vram'])
     async def test_negative_list_limits_are_rejected_at_the_route_boundary(self):
         for path in ('characters','queue','shoots'):
             with self.subTest(path=path):
@@ -108,10 +111,14 @@ class ApplicationQcTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(stored['payload']['dna'],dna)
         self.assertEqual(stored['payload']['seed'],42)
         self.assertEqual((await self.http.post(f"/api/queue/{job['id']}/retry")).status_code,409)
+        override=await self.http.post(f"/api/queue/{job['id']}/dispatch-anyway")
+        self.assertEqual(override.status_code,200)
+        self.assertTrue((await self.db.render_queue.find_one({'id':job['id']}))['gpu_wait_override'])
         await self.db.render_queue.update_one({'id':job['id']},{'$set':{'status':'failed','error':'Test failure'}})
         self.assertEqual((await self.http.post(f"/api/queue/{job['id']}/retry")).json()['status'],'queued')
         updated=await self.db.render_queue.find_one({'id':job['id']})
         self.assertEqual(updated['payload'],stored['payload'])
+        self.assertFalse(updated['gpu_wait_override'])
     async def test_chroma_hd_dispatch_sends_exact_prompts_settings_and_seed(self):
         import json
         settings = (await self.http.get('/api/settings')).json()
