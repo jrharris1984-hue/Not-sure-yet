@@ -36,7 +36,7 @@ class CharacterVibeSettingsTests(unittest.IsolatedAsyncioTestCase):
         async def update(query, patch):
             doc.update(patch['$set'])
         settings = SimpleNamespace(find_one=AsyncMock(side_effect=lambda *args: dict(doc)), update_one=AsyncMock(side_effect=update))
-        namespace = {'db':SimpleNamespace(settings=settings),'Settings':lambda **kwargs:kwargs,'upgrade_character_vibes':upgrade_character_vibes}
+        namespace = {'db':SimpleNamespace(settings=settings),'Settings':lambda **kwargs:kwargs,'upgrade_character_vibes':upgrade_character_vibes,'_load_seed_workflows':lambda:[]}
         exec(compile(ast.Module(body=[node],type_ignores=[]),'settings_handler','exec'), namespace)
         result = await namespace['get_settings']()
         self.assertEqual(result['character_vibe_version'],1)

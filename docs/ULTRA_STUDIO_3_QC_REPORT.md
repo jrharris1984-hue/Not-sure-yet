@@ -1,6 +1,6 @@
 # Ultra Studio 3.0 Quality Check
 
-**Date:** 2026-11-25  
+**Date:** 2026-11-26
 **Branch:** `feature/ultra-studio-3-foundation`  
 **Scope:** Registered workflow graphs, prompt compilers/library validation, Golden Chroma recipe restoration, wardrobe catalog and pose organization.
 
@@ -8,15 +8,15 @@
 
 ### Dirty-Moss V2
 
-The seeded API graph used `ModelSamplingSD3` with shift 5. The current Comfy-Org MOSS template says SD3 sampling uses a different shift scale; its API workflow uses the model directly and relies on the MOSS model default. This was a strong candidate for the multicolored-noise result.
+The branch seed workflow specifies 1152×1440, 25 steps, CFG 2.5, ER-SDE/simple, and shift 5. The earlier audit incorrectly concluded that the shift node should be removed. Rechecking the primary sources shows the supplied creator recipe specifies shift 5 and the OpenMOSS example graph includes `ModelSamplingSD3` shift 5. Comfy-Org's current MOSS template uses a subgraph and describes shift 5 as the model default. Thus the old direct-UNET seed omitted an expected recipe setting and could explain why the 3.0 result differed from the reported reference, but only a controlled local render can confirm the cause.
 
-The feature branch now removes that SD3 node and connects the MOSS UNET directly to the sampler. The published recipe defaults remain 1152×1440, 25 steps, CFG 2.5, ER-SDE/simple. Static JSON parsing and the sampler connection were checked after the change. A Windows render is still required to confirm the fix against the installed Dirty-Moss V2 file and ComfyUI build.
+The development branch now restores `ModelSamplingSD3` shift 5 in the seeded Dirty-Moss graph. On settings load, a narrow migration adds that node only when the saved workflow has the exact Dirty-Moss name and checkpoint and one direct UNET-to-KSampler model connection; other graph values are preserved. A regression test covers the migration. This updates the saved profile after the backend is rebuilt and its settings route is read; it does not confirm that the model file, encoder, VAE, sampler availability, or installed ComfyUI version produces a correct image.
 
 ### Golden Chroma and Gallery recipes
 
 The feature branch's `chroma.json` is byte-identical to the current `main` seed graph. It loads Chroma1-HD, the Chroma T5 encoder and AE VAE, uses `ModelSamplingAuraFlow` shift 1, and includes the GoldenChroma LoRA at model strength 0.5 (plus a zero-strength duplicate node). This is not evidence that the Chroma and another model's workflow JSON were merged.
 
-Gallery recipe restoration selects a workflow by matching the saved ID and name, and aborts if the workflow is missing or ambiguous. It then dispatches the selected workflow graph. However, the saved recipe can also restore a user-selected LoRA. If that is the same GoldenChroma LoRA already embedded in the graph, the previous backend injected a second copy. The feature branch now reuses the embedded LoRA node and changes its strength instead of silently stacking another copy. A focused regression test was added but has not yet been executed.
+Gallery recipe restoration selects a workflow by matching the saved ID and name, and aborts if the workflow is missing or ambiguous. It then dispatches the selected workflow graph. However, the saved recipe can also restore a user-selected LoRA. If that is the same GoldenChroma LoRA already embedded in the graph, the previous backend injected a second copy. The feature branch now reuses the embedded LoRA node and changes its strength instead of silently stacking another copy. The focused backend regression test passes in this checkout.
 
 The Chroma graph's recipe settings are structurally intact; an actual same-seed comparison is needed to determine whether a prompt, negative prompt, seed, or LoRA override changed the observed image quality.
 
@@ -65,18 +65,26 @@ The workflow inventory also has two Qwen catalog entries backed by the same `qwe
 ## Validation status
 
 - Workflow JSON syntax and internal link-reference checks: passed in the previous static pass; Dirty-Moss sampler graph rechecked after the correction.
-- New backend duplicate-LoRA regression test: added, not run.
-- New frontend MOSS prompt-profile regression test: added, not run.
-- The local checkout available to this audit is dirty and has no `pytest` installation or frontend dependencies, so I did not run tests against that stale checkout.
+- Focused backend workflow, capability, shoot-planner, migration, LoRA, and settings-upgrade tests: 35 passed in the available Python environment.
+- Full backend unittest discovery ran 244 tests; eight modules/cases could not complete because this environment lacks `bson`, `requests`, and `pytest`. The failures are dependency/import errors; no assertion failures were reported.
+- Frontend dependencies are absent in this checkout, so Jest and production build were not run here.
 - GitHub reports no CI check runs for the audit commits. The supplied Windows result of 216 suites / 3,391 tests and a production build applies to commit `864e1de`, before this audit's changes.
 
 ## Windows staging checks still required
 
 1. Pull this feature branch and rebuild only the isolated Studio 3 test stack.
 2. Run the focused backend and frontend tests, then the full frontend test suite and production build.
-3. Run Dirty-Moss V2 at its seeded recipe and confirm the output is no longer noise.
+3. Reopen the Dirty-Moss workflow settings after the backend reads settings. Confirm the sampler's model input now goes through `ModelSamplingSD3` shift 5, with 1152×1440, 25 steps, CFG 2.5, ER-SDE/simple. Then run a low-cost control render and the supplied 1152×1440 recipe; confirm neither result is multicolored noise.
 4. Reopen the affected Gallery recipe. Confirm the recorded workflow, positive/negative prompt, seed, and LoRA list. Render one comparison with the saved recipe and one with the current compiler, using the same seed where the workflow allows it.
 5. Check every installed workflow against live ComfyUI `/object_info`; render at least one small image, edit, image-to-video, and text-to-video job per installed family. Record failures by workflow name.
 6. Compare coverage states with the same character, outfit, model, prompt, and seed while changing only the coverage control.
 
 This report does not authorize merging to `main` or modifying the production installation.
+
+## Follow-up verification — 2026-11-26
+
+The development branch's Dirty-Moss seed had been changed to omit shift 5, while its documentation still advertised shift 5. This was inconsistent with the recipe supplied by the user and with the OpenMOSS example graph, which includes a `ModelSamplingSD3` shift-5 node. The branch seed now includes the node again. Existing Studio settings are not replaced wholesale: a guarded, idempotent startup migration adds shift 5 only to a saved workflow with the exact Dirty-Moss V2 name/checkpoint and a single direct UNET-to-KSampler model link. Focused migration tests cover that topology and ensure unrelated/custom graphs are left untouched.
+
+The migration is code-reviewed and unit-tested, but has not run against the user's MongoDB. After rebuilding the **isolated Studio 3 test backend**, inspect the saved Dirty-Moss graph or the character workflow settings and confirm the sampler model input passes through `ModelSamplingSD3` with shift 5. Render a baseline and compare it with ComfyUI's own MOSS workflow at the same prompt and seed. A Windows GPU render remains the only validation of the multicolored-noise symptom.
+
+The current local source tree is a detached review checkout. At review start, GitHub's development branch pointed to `84306674c61b719578d1f75de546a8dd46811707`; this follow-up must be committed to that development branch before it can be pulled into the Windows staging checkout.

@@ -56,7 +56,8 @@ class LibraryTests(unittest.TestCase):
         from typing import Any,Dict,Optional
         ns=dict(Any=Any,Dict=Dict,Optional=Optional,httpx=SimpleNamespace(AsyncClient=Client),signed_strength=signed_strength,
                 _all_lora_options=lambda x:['light.safetensors'],_resolve_installed_lora=lambda a,b:a,
-                _next_workflow_node_id=lambda w:str(max(map(int,w))+1))
+                _next_workflow_node_id=lambda w:str(max(map(int,w))+1),
+                _normalized_lora_name=lambda value:str(value or '').replace('\\','/').strip().lower())
         exec(compile(ast.Module(body=[fn],type_ignores=[]),'server.py','exec'),ns)
         graph={'1':{'class_type':'UNETLoader'},'2':{'class_type':'KSampler','inputs':{'model':['1',0]}},'3':{'class_type':'BasicGuider','inputs':{'model':['1',0]}}}
         result=asyncio.run(ns[fn.name](graph,'http://comfy','light.safetensors',-.7))

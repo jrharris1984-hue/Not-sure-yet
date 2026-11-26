@@ -8,9 +8,9 @@ Four separate workflows extend the existing library. No model downloads or autom
 | Qwen 2511 · Reference Image Composer | Tools → Edit a photo | 2–3 ordered reference images and a composition instruction |
 | FLUX.1 Dev FP8 · Text to Image | Free Text to Image or the character builder | Text prompt |
 | WAN 2.2 5B · Text to Video | Create → Text to video | Motion/scene prompt; no starting image |
-| MOSS Image · Dirty-Moss V2 · Photographic Realism | Character Builder workflow picker | Installed `Dirty-MossV2.safetensors`; 1152×1440, 25 steps, CFG 2.5, ER-SDE/simple, shift 5 |
+| MOSS Image · Dirty-Moss V2 · Photographic Realism | Character Builder workflow picker | Installed `Dirty-MossV2.safetensors`; 1152×1440, 25 steps, CFG 2.5, ER-SDE/simple, ModelSamplingSD3 shift 5 |
 
-Dirty-Moss V2 reuses the installed MOSS Qwen3.5 9B encoder and FLUX.2 small VAE. Its workflow adds an explicit native ModelSamplingSD3 shift node. The screenshot confirms the checkpoint filename, but not whether the installed file is BF16 or CONVROT8; the workflow is therefore named by model version, not precision. The optional Hires.fix Lanczos pass is not included in this base graph. Validate its graph compatibility and render locally before relying on it.
+Dirty-Moss V2 reuses the installed MOSS Qwen3.5 9B encoder and FLUX.2 small VAE. The supplied creator recipe specifies shift 5, and the OpenMOSS ComfyUI example graph also uses `ModelSamplingSD3` shift 5. Comfy-Org's newer MOSS template packages its graph in a subgraph and documents the same shift as a model default, so the JSON wiring differs while the recommended value agrees. The screenshot confirms the checkpoint filename, but not whether the installed file is BF16 or CONVROT8; the workflow is therefore named by model version, not precision. The optional Hires.fix Lanczos pass is not included in this base graph. Validate its graph compatibility and render locally before relying on it.
 
 The reference workflows open a dedicated editor on desktop and mobile. The numbered uploads retain separate file paths, and Gallery → Tools can supply image 1. Missing required references, duplicate filenames, gaps in numbering, and submission failures are shown without reporting a successful render. References and output dimensions are stored in render recipes. These two workflows are omitted from the character-builder dropdown because their required inputs belong in the dedicated editor.
 
@@ -36,7 +36,7 @@ FLUX.1 uses sampler CFG 1 with embedded guidance 3.5. Negative text is not an ac
 
 ## Enable and smoke test
 
-After merging, pull main and rebuild Ultra Studio. Restart ComfyUI if files were moved, refresh bundled workflows in Settings, and enable the additions. Their filenames are matched against the connected ComfyUI model lists; a screenshot of another model directory alone does not establish that ComfyUI scans it.
+After this change is committed to `feature/ultra-studio-3-foundation`, pull that branch and rebuild only the isolated Studio 3 test stack. Restart ComfyUI if files were moved, refresh bundled workflows in Settings, and enable the additions. Their filenames are matched against the connected ComfyUI model lists; a screenshot of another model directory alone does not establish that ComfyUI scans it.
 
 Start with one small output and no optional LoRA. For Klein, change a clothed studio portrait's wall color. For Qwen, combine two separate clothed portraits into a studio group image. For FLUX.1, render a simple landscape. For WAN, start with a short sailboat scene. Check the intended change, reference order, actual output size and Gallery output before using larger settings.
 

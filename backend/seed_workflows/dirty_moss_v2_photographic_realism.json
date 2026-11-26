@@ -65,6 +65,19 @@
       "title": "Dirty-Moss V2 portrait canvas"
     }
   },
+  "10": {
+    "inputs": {
+      "shift": 5,
+      "model": [
+        "1",
+        0
+      ]
+    },
+    "class_type": "ModelSamplingSD3",
+    "_meta": {
+      "title": "Dirty-Moss V2 · creator shift 5"
+    }
+  },
   "7": {
     "inputs": {
       "seed": 123456789,
@@ -74,7 +87,7 @@
       "scheduler": "simple",
       "denoise": 1,
       "model": [
-        "1",
+        "10",
         0
       ],
       "positive": [
