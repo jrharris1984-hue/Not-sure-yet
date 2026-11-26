@@ -186,6 +186,43 @@ test("glamour category includes boudoir, pin-up and decade-inspired shoots", () 
   ]));
 });
 
+test("adult editorial presets coordinate wardrobe, foot direction, scene and lighting per shot", () => {
+  const category = SMART_SHOOT_CATEGORIES.find(item => item.key === "adult_editorial");
+  expect(category.presets.map(item => item.key)).toEqual(expect.arrayContaining([
+    "heels_editorial", "hosiery_editorial", "barefoot_boudoir_editorial",
+  ]));
+  const original = baseSubject();
+  const plan = buildSmartPhotoshootPlan({ count: 6, subjects: [original], preset: "heels_editorial", seed: 5 });
+  expect(plan.map(item => item.title)).toContain("Hosiery and heel detail");
+  expect(plan[2].framing).toBe("detail shot");
+  expect(plan[2].style.feet.framing).toBe("ankle and arch close-up");
+
+  const applied = smartPhotoshootVariation({ subjects: [original], plan, index: 2 });
+  const dna = applied.subjects[0].dna;
+  expect(dna.wardrobe.heel_type).toBe("pointed-toe stilettos");
+  expect(dna.wardrobe.hosiery_type).toBe("sheer black back-seam stockings");
+  expect(dna.pose.focus).toBe("feet");
+  expect(dna.feet.framing).toBe("ankle and arch close-up");
+  expect(dna.scene.environment).toBe("luxury dressing room");
+  expect(dna.lighting.style).toBe("soft editorial daylight");
+  expect(original.dna.wardrobe.heel_type).toBeUndefined();
+});
+
+test("adult editorial style switches can preserve the saved outfit and scene", () => {
+  const original = baseSubject();
+  original.dna.wardrobe = { outfit_set: "my saved outfit", footwear: "sneakers" };
+  original.dna.scene = { environment: "my saved studio" };
+  const plan = buildSmartPhotoshootPlan({ count: 1, subjects: [original], preset: "heels_editorial", seed: 4 });
+  const result = smartPhotoshootVariation({
+    subjects: [original], plan, index: 0,
+    options: { wardrobe: false, scene: false, lighting: false, camera: false, feet: false },
+  }).subjects[0].dna;
+  expect(result.wardrobe).toEqual(original.dna.wardrobe);
+  expect(result.scene).toEqual(original.dna.scene);
+  expect(result.pose.focus).toBeUndefined();
+  expect(result.feet).toBeUndefined();
+});
+
 test("subtle strength preserves selected framing and conservative camera choices", () => {
   const subject = baseSubject();
   subject.dna.pose.distance = "waist-up";
