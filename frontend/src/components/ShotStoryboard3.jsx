@@ -5,11 +5,13 @@ import Studio3SavedLooks from "@/components/Studio3SavedLooks";
 import { PHOTOGRAPHY_POSE_GROUPS } from "@/lib/photographyPoses";
 import { EXPOSURE_CHOICES } from "@/lib/wardrobeNudity";
 import { ADULT_EDITORIAL_POSES } from "@/lib/adultEditorialPlan";
+import { SECTIONS } from "@/lib/dna";
 
 export const STUDIO3_VIEWS = ["front", "back", "rear left three-quarter", "rear right three-quarter", "left profile", "right profile", "back from below", "back from above", "front left three-quarter", "front right three-quarter"];
 export const STUDIO3_CAMERAS = ["eye-level", "low", "high", "rear low upward", "rear high downward", "side profile low upward", "side profile high downward"];
 export const STUDIO3_POSES = [...new Set(["standing", "standing hip out", "standing hands on hips", "walking", "sitting on edge", "leaning wall", "over shoulder look", "lying side", "kneeling upright", ...PHOTOGRAPHY_POSE_GROUPS.flatMap(group => group.options), ...ADULT_EDITORIAL_POSES])];
 export const STUDIO3_LENSES = ["24mm", "35mm", "50mm", "85mm", "135mm", "macro"];
+export const STUDIO3_EXPRESSIONS = SECTIONS.find(section => section.key === "face")?.fields.find(field => field.key === "expression")?.options || [];
 export const STUDIO3_FRAMINGS = ["close-up", "portrait", "waist-up", "thigh-up", "knees-up", "full body", "wide shot", "detail shot"];
 export const STUDIO3_HOSIERY = ["bare", "sheer stockings", "toeless stockings", "footed stockings", "pantyhose", "fishnet stockings", "knee-high socks", "thigh-high socks"];
 export const STUDIO3_SKIN_FINISH = ["natural matte", "soft lotion sheen", "light massage oil sheen", "glossy body oil finish"];
@@ -39,6 +41,7 @@ export default function ShotStoryboard3({ plan, onChange, outfitOptions = [] }) 
         <Select label="Subject view" value={shot.subjectView} options={STUDIO3_VIEWS} onChange={subjectView => onChange(updateShot(plan, shot.id, { subjectView }))} />
         <Select label="Camera height / tilt" value={shot.cameraAngle} options={STUDIO3_CAMERAS} onChange={cameraAngle => onChange(updateShot(plan, shot.id, { cameraAngle }))} />
         <Select label="Pose" value={shot.pose} options={STUDIO3_POSES} onChange={pose => onChange(updateShot(plan, shot.id, { pose }))} />
+        <Select label="Expression" value={shot.expression} options={STUDIO3_EXPRESSIONS} onChange={expression => onChange(updateShot(plan, shot.id, { expression }))} />
         <Select label="Framing" value={shot.framing} options={STUDIO3_FRAMINGS} onChange={framing => onChange(updateShot(plan, shot.id, { framing }))} />
         <Select label="Lens" value={shot.lens} options={STUDIO3_LENSES} onChange={lens => onChange(updateShot(plan, shot.id, { lens }))} />
         <Select label="Coverage" value={shot.coverage} options={EXPOSURE_CHOICES} onChange={coverage => onChange(updateShot(plan, shot.id, { coverage }))} />
