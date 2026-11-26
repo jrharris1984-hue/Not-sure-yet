@@ -5,6 +5,7 @@ export const SHOT_CONTROLS = [
   ['framing', 'Framing', 'pose', 'distance'],
   ['view', 'View', 'pose', 'angle'],
   ['camera_height', 'Camera height', 'camera', 'angle'],
+  ['lens', 'Lens', 'camera', 'lens'],
   ['expression', 'Expression', 'face', 'expression'],
   ['outfit_preset', 'Outfit', 'wardrobe', 'outfit_preset'],
   ['outfit_color', 'Outfit color', 'wardrobe', 'garment_color'],
