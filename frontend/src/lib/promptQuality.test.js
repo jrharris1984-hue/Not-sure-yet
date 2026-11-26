@@ -19,6 +19,14 @@ describe("prompt quality preflight", () => {
     expect(promptProfile({ name: "IMAGE · Z-image Turbo · NSFW" })).toBe("zimage");
     expect(promptProfile({ prompt_style: "chroma" })).toBe("chroma");
     expect(promptProfile({ prompt_style: "pony" })).toBe("pony");
+    expect(promptProfile({ prompt_style: "moss_image" })).toBe("moss_image");
+    expect(promptProfile({ name: "Dirty-Moss V2 · Photographic Realism" })).toBe("moss_image");
+
+    const longMoss = analyzePromptQuality({
+      positive: "natural photographic detail, ".repeat(700),
+      workflow: { prompt_style: "moss_image" },
+    });
+    expect(longMoss.issues.map((item) => item.code)).not.toContain("length");
   });
 
   test("blocks Krea tight crops and custom prompts that omit the selected magazine framing", () => {
