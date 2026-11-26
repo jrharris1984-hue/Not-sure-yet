@@ -1359,6 +1359,55 @@ export const WARDROBE_ITEMS = [
     ],
     "version": 1
   }
+,
+  {
+    "id": "adult-editorial-black-lace-robe",
+    "category": "Adult Editorial",
+    "label": "Black lace and satin robe",
+    "prompt": "black lace bodysuit layered under a sheer satin robe, back-seam stockings and pointed stilettos",
+    "tags": ["adult editorial", "black lace", "robe", "back seam", "stilettos"],
+    "version": 1
+  },
+  {
+    "id": "adult-editorial-crimson-pinup",
+    "category": "Adult Editorial",
+    "label": "Crimson satin pin-up set",
+    "prompt": "crimson satin bustier with matching high-waisted briefs, seamed black stockings and platform heels",
+    "tags": ["adult editorial", "pin-up", "crimson", "stockings", "platform heels"],
+    "version": 1
+  },
+  {
+    "id": "adult-editorial-champagne-boudoir",
+    "category": "Adult Editorial",
+    "label": "Champagne silk boudoir",
+    "prompt": "champagne silk robe over a lace camisole and briefs, sheer stockings and nude slingback heels",
+    "tags": ["adult editorial", "boudoir", "champagne", "silk", "slingbacks"],
+    "version": 1
+  },
+  {
+    "id": "adult-editorial-velvet-garter",
+    "category": "Adult Editorial",
+    "label": "Burgundy velvet garter look",
+    "prompt": "burgundy velvet corset with matching briefs, garter belt, sheer black stockings and red patent heels",
+    "tags": ["adult editorial", "velvet", "garter", "burgundy", "patent heels"],
+    "version": 1
+  },
+  {
+    "id": "adult-editorial-tuxedo-corset",
+    "category": "Adult Editorial",
+    "label": "Tuxedo corset editorial",
+    "prompt": "black tuxedo-style corset blazer over lace lingerie, sheer stockings and ankle-strap heels",
+    "tags": ["adult editorial", "tailored", "corset", "lace", "ankle strap"],
+    "version": 1
+  },
+  {
+    "id": "adult-editorial-latex-mini",
+    "category": "Adult Editorial",
+    "label": "Gloss latex night editorial",
+    "prompt": "glossy black latex mini dress with sheer black tights and over-the-knee heeled boots",
+    "tags": ["adult editorial", "latex", "black", "tights", "over-the-knee boots"],
+    "version": 1
+  }
 ];
 export const WARDROBE_CATEGORY_GROUPS = Object.entries(WARDROBE_ITEMS.reduce((acc, item) => { (acc[item.category] ||= []).push(item); return acc; }, {})).map(([name, items]) => ({ name, options: items.map(item => item.prompt) }));
 export const WARDROBE_ITEM_LABELS = Object.fromEntries(WARDROBE_ITEMS.map(item => [item.prompt, item.label]));
