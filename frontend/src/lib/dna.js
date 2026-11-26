@@ -201,6 +201,7 @@ export const SECTIONS = [
       { key: "pedicure", type: "chips", label: "Pedicure", options: ["natural nails", "painted red", "painted black", "painted french", "painted pink", "chipped polish", "long nails", "sharp claws", "glitter polish"] },
       { key: "foot_size", type: "chips", label: "Foot size", options: ["petite", "average", "large", "size queen"] },
       { key: "foot_state", type: "chips_multi", label: "Foot state (pick many)", options: ["bare", "sweaty", "oiled", "dirty", "muddy", "freshly washed", "in nylons", "in socks", "stinky", "cum on feet", "cum on soles"], exclusiveGroups: [["bare", "in nylons", "in socks"], ["dirty", "muddy", "freshly washed"]] },
+      { key: "skin_finish", type: "chips", label: "Foot skin finish", options: ["natural matte", "soft lotion sheen", "light massage oil sheen", "glossy body oil finish"], help: "Cosmetic skin-finish wording for adult editorial beauty photography." },
       { key: "hosiery", type: "chips", label: "Hosiery", groups: [
         { name: "Bare / sheer", options: ["bare", "sheer stockings", "toeless stockings", "footed stockings", "pantyhose", "ripped pantyhose"] },
         { name: "Fishnet", options: ["fishnet stockings", "toeless fishnets", "ripped fishnets"] },
@@ -216,8 +217,8 @@ export const SECTIONS = [
       { key: "framing", type: "chips", label: "Framing", options: ["full body", "waist-down", "knees-down", "feet close-up", "sole close-up", "POV under foot", "low angle sole", "ankle and arch close-up", "pedicure close-up", "both soles in foreground"] },
       { key: "foot_pose", type: "chips", label: "Foot pose", groups: [
         { name: "Relaxed", options: ["feet side by side", "ankles crossed", "feet resting on a cushion", "one foot over the other", "toes resting on floor"] },
-        { name: "Active", options: ["heels raised", "one foot lifted", "toes pointed", "toes flexed", "feet dangling", "walking barefoot", "standing on tiptoe"] },
-        { name: "Detail", options: ["soles facing lens", "one sole toward lens", "arches visible in profile", "heels together", "toes toward lens"] },
+        { name: "Active", options: ["heels raised", "one foot lifted", "toes pointed", "toes flexed", "feet dangling", "walking barefoot", "standing on tiptoe", "one heel resting on a low riser"] },
+        { name: "Detail", options: ["soles facing lens", "one sole toward lens", "arches visible in profile", "heels together", "toes toward lens", "pedicure detail with relaxed toes"] },
       ] },
       { key: "toe_length", type: "chips", label: "Toe shape", options: ["even toe line", "long second toe", "tapered toe line", "short rounded toes", "long slender toes"] },
       { key: "sole_texture", type: "chips", label: "Sole texture", options: ["smooth soles", "natural sole creases", "pronounced arch creases", "slightly calloused heels", "soft heel pads", "light dust on soles", "water droplets on soles"] },
@@ -1412,7 +1413,7 @@ function _veniceSubjectBlock(dna = {}, opts = {}) {
   // -------- Feet --------
   const ft = dna.feet || {};
   const feetActive = !!(ft.foot_size || ft.sole_presentation || (Array.isArray(ft.toes) && ft.toes.length) || ft.arch || ft.pedicure ||
-    (Array.isArray(ft.foot_state) && ft.foot_state.length) || ft.hosiery ||
+    (Array.isArray(ft.foot_state) && ft.foot_state.length) || ft.hosiery || ft.skin_finish ||
     (Array.isArray(ft.foot_act) && ft.foot_act.length) || ft.framing || ft.foot_pose ||
     ft.toe_length || ft.sole_texture || ft.pedicure_art || ft.toenail_shape ||
     (Array.isArray(ft.foot_accessories) && ft.foot_accessories.length) || ft.ground_surface);
@@ -1421,6 +1422,7 @@ function _veniceSubjectBlock(dna = {}, opts = {}) {
     expArr("feet", "toes"),
     ft.arch && exp("feet", "arch"),
     ft.pedicure && exp("feet", "pedicure"),
+    ft.skin_finish && exp("feet", "skin_finish"),
     ft.foot_size && ft.foot_size !== "average" && exp("feet", "foot_size"),
     expArr("feet", "foot_state"),
     ft.hosiery && ft.hosiery !== "bare" && exp("feet", "hosiery"),
