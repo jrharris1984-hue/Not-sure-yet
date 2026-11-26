@@ -191,7 +191,7 @@ export default function Settings() {
 
   const saveSettings = useMutation({
     mutationFn: (payload) => {const {builder_prompt_format, ...patch}=payload || form;return endpoints.updateSettings(patch);},
-    onSuccess: () => { toast.success("Settings saved"); qc.invalidateQueries({ queryKey: ["settings"] }); qc.invalidateQueries({ queryKey: ["comfy-health"] }); qc.invalidateQueries({ queryKey: ["ollama-models"] }); qc.invalidateQueries({ queryKey: ["media-library-health"] }); qc.invalidateQueries({ queryKey: ["media-library"] }); },
+    onSuccess: () => { toast.success("Settings saved"); qc.invalidateQueries({ queryKey: ["settings"] }); qc.invalidateQueries({ queryKey: ["comfy-health"] }); qc.invalidateQueries({ queryKey: ["comfy-resources"] }); qc.invalidateQueries({ queryKey: ["ollama-models"] }); qc.invalidateQueries({ queryKey: ["media-library-health"] }); qc.invalidateQueries({ queryKey: ["media-library"] }); },
     onError: (e) => toast.error(e?.response?.data?.detail || "Save failed"),
   });
 
@@ -307,6 +307,16 @@ export default function Settings() {
             </div>)}
           </div> : <p className="text-xs text-zinc-500">{comfyResources.isFetching ? "Reading ComfyUI device status…" : "No GPU device details were reported by ComfyUI."}</p>}
           <p className="text-xs text-zinc-400">Ultra Studio dispatches one queued job at a time. Current free VRAM is a snapshot and cannot predict a workflow’s peak memory or force ComfyUI to use a specific GPU.</p>
+          <label className="flex items-start gap-2 rounded-md border hairline p-3 text-xs text-zinc-300">
+            <input type="checkbox" className="mt-0.5 accent-cyan-400" checked={!!form.queue_pause_high_vram} data-testid="input-pause-high-vram"
+              onChange={event => set("queue_pause_high_vram", event.target.checked)} />
+            <span><strong className="block text-zinc-100">Pause dispatch when every GPU reports high pressure</strong>
+              Leave off for current behavior. This signal is approximate; cached ComfyUI models can use VRAM and still render successfully. A waiting job can be overridden individually from the Queue.</span>
+          </label>
+          <div className="flex justify-end"><button type="button" disabled={saveSettings.isPending}
+            onClick={() => saveSettings.mutate({ queue_pause_high_vram: !!form.queue_pause_high_vram })}
+            className="inline-flex items-center gap-2 rounded-lg border hairline px-3 py-2 text-xs text-cyan-100 disabled:opacity-40" data-testid="btn-save-gpu-scheduling">
+            <Save className="h-3.5 w-3.5"/> Save queue policy</button></div>
           {comfyResources.data?.queue && <p className="text-[11px] font-mono text-zinc-500">Queue: {comfyResources.data.queue.active_jobs} active · {comfyResources.data.queue.queued_jobs} waiting</p>}
           {comfyResources.isError && <p className="text-xs text-amber-200">GPU status is unavailable. Check that ComfyUI is online, then refresh.</p>}
         </div>
