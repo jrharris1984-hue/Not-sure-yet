@@ -9,7 +9,7 @@ test('catalog additions have unique identities and appear in category browsing',
 });
 
 test('new lingerie, stocking and stage footwear sets are searchable and unique',()=>{
- const additions=WARDROBE_ITEMS.filter(item=>/^(lingerie|hosiery|stage)-/.test(item.id));
+ const additions=WARDROBE_ITEMS.filter(item=>/^(lingerie|hosiery|stage|adult-editorial)-/.test(item.id));
  expect(additions).toHaveLength(28);
  expect(new Set(additions.map(item=>item.prompt)).size).toBe(additions.length);
  expect(WARDROBE_CATEGORY_GROUPS.map(group=>group.name)).toEqual(expect.arrayContaining(['Lingerie Sets','Stocking Looks','Stage & Dancewear','Adult Editorial']));
