@@ -1802,6 +1802,37 @@ async def _inject_selected_lora(
         selected_strength = signed_strength(strength, max_strength)
     except ValueError as exc:
         return None, 0, str(exc)
+
+    # Exact Gallery recipes can restore a LoRA that is already part of the
+    # selected graph (Golden Chroma is the known case). Reuse that graph node
+    # instead of silently applying the same adapter a second time.
+    requested_key = _normalized_lora_name(resolved)
+    embedded = [
+        node for node in workflow.values()
+        if isinstance(node, dict)
+        and "lora" in str(node.get("class_type", "")).lower()
+        and isinstance(node.get("inputs"), dict)
+        and _normalized_lora_name(str(node["inputs"].get("lora_name", ""))) == requested_key
+    ]
+    if embedded:
+        active = [
+            node for node in embedded
+            if isinstance(node["inputs"].get("strength_model"), (int, float))
+            and node["inputs"]["strength_model"] != 0
+        ]
+        if len(active) > 1:
+            return None, 0, (
+                f"{requested_name} is already enabled more than once in this workflow. "
+                "Remove the duplicate graph entries or choose a different LoRA."
+            )
+        target = active[0] if active else embedded[0]
+        if not isinstance(target["inputs"].get("strength_model"), (int, float)):
+            return None, 0, (
+                f"{requested_name} is embedded in this workflow but its strength cannot be safely edited."
+            )
+        target["inputs"]["strength_model"] = selected_strength
+        return resolved, 1, None
+
     by_source: Dict[tuple[str, int], str] = {}
     injected = 0
     for target_id, model_ref in targets:
