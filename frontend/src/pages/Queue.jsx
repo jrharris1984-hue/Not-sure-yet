@@ -61,6 +61,11 @@ export default function Queue() {
     onSuccess: () => { toast.success("Added back to the queue"); qc.invalidateQueries({ queryKey: ["render-queue"] }); },
     onError: (e) => toast.error(e?.response?.data?.detail || "Could not retry job"),
   });
+  const dispatchAnyway = useMutation({
+    mutationFn: endpoints.dispatchQueueJobAnyway,
+    onSuccess: () => { toast.success("Dispatch override added"); qc.invalidateQueries({ queryKey: ["render-queue"] }); },
+    onError: (e) => toast.error(e?.response?.data?.detail || "Could not override GPU scheduling"),
+  });
   const clear = useMutation({
     mutationFn: endpoints.clearCompletedQueue,
     onSuccess: (data) => { toast.success(`Cleared ${data.deleted || 0} finished jobs`); qc.invalidateQueries({ queryKey: ["render-queue"] }); },
@@ -88,6 +93,7 @@ export default function Queue() {
             {job.attempts > 0 ? ` · retry ${job.attempts}` : ""}
           </div>
           {job.connection_error && <p className="mt-2 text-sm text-amber-200">{job.connection_error}</p>}
+          {job.gpu_wait_reason && <p className="mt-2 text-sm text-amber-200">{job.gpu_wait_reason}</p>}
           {job.recovery_attempts > 0 && <p className="mt-1 text-xs text-zinc-400">Recovered after ComfyUI lost its prompt · original seed retained.</p>}
           {(job.setup_notes || []).map(note => <p key={note} className="mt-2 text-sm text-amber-200">{note}</p>)}
           {job.error && <p className="mt-2 text-sm text-red-300">{job.error}</p>}
@@ -99,6 +105,11 @@ export default function Queue() {
               <Ban className="h-4 w-4" /> Cancel
             </button>
           )}
+          {job.status === "queued" && job.gpu_wait && <button type="button" disabled={dispatchAnyway.isPending}
+            onClick={() => dispatchAnyway.mutate(job.id)} data-testid={`btn-dispatch-anyway-${job.id}`}
+            className="inline-flex items-center gap-2 rounded-lg border border-cyan-500/40 px-3 py-2 text-xs font-semibold text-cyan-100 disabled:opacity-40">
+            Dispatch anyway
+          </button>}
           {["failed", "offline", "cancelled"].includes(job.status) && (
             <button type="button" disabled={retry.isPending} onClick={() => retry.mutate(job.id)}
               className="inline-flex items-center gap-2 rounded-lg bg-amber-500 px-3 py-2 text-xs font-semibold text-black hover:bg-amber-400">
