@@ -9,7 +9,7 @@ from unittest.mock import AsyncMock
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from shoot_planner import apply_shot_controls, validate_shot_plan
 
-CATALOG = {"pose_action": ["walking", "seated"], "framing": ["full body"],
+CATALOG = {"pose_action": ["walking", "seated"], "framing": ["full body"], "lens": ["50mm", "85mm"],
            "environment": ["beach"], "lighting_temperature": ["warm"]}
 
 class PlannerTests(unittest.TestCase):
@@ -30,10 +30,10 @@ class PlannerTests(unittest.TestCase):
         dna = {"identity": {"age": 72}, "camera": {"angle": "high", "lens": "50mm"},
                "pose": {"angle": "front", "focus": "face", "hands": "on hips"},
                "scene": {"environment": "studio"}}
-        frame = {"camera_overrides": {"angle": "low", "unexpected": "ignored"},
+        frame = {"camera_overrides": {"angle": "low", "lens": "85mm", "unexpected": "ignored"},
                  "pose_overrides": {"angle": "back", "focus": "full frame", "hands": "", "body_language": "relaxed"}}
         out = apply_shot_controls(dna, frame, True)
-        self.assertEqual(out["camera"], {"angle": "low", "lens": "50mm"})
+        self.assertEqual(out["camera"], {"angle": "low", "lens": "85mm"})
         self.assertEqual(out["pose"]["angle"], "back")
         self.assertEqual(out["pose"]["hands"], "")
         self.assertEqual(out["pose"]["focus"], "full frame")
@@ -42,13 +42,16 @@ class PlannerTests(unittest.TestCase):
         self.assertEqual(dna["pose"]["hands"], "on hips")
 
     def test_catalog_validation_and_locked_location(self):
-        plan = validate_shot_plan({"frames": [{"pose_action": "walking", "environment": "beach",
+        plan = validate_shot_plan({"frames": [{"pose_action": "walking", "environment": "beach", "lens": "85mm",
                                                "identity": {"age": 20}}]}, 1, CATALOG, True)
         self.assertEqual(plan["frames"][0]["environment"], "")
+        self.assertEqual(plan["frames"][0]["lens"], "85mm")
         self.assertNotIn("identity", plan["frames"][0])
         self.assertTrue(plan["warnings"])
         with self.assertRaises(ValueError):
             validate_shot_plan({"frames": [{"pose_action": "invented"}]}, 1, CATALOG, True)
+        with self.assertRaises(ValueError):
+            validate_shot_plan({"frames": [{"lens": "900mm"}]}, 1, CATALOG, True)
         with self.assertRaises(ValueError):
             validate_shot_plan({"frames": []}, 1, CATALOG, True)
 
@@ -83,10 +86,15 @@ class PlannerRouteTests(unittest.IsolatedAsyncioTestCase):
                      "validate_shot_plan": validate_shot_plan, "json": json}
         exec(compile(ast.Module(body=[function], type_ignores=[]), 'server.py', 'exec'), namespace)
         result = await namespace['ai_shoot_plan'](SimpleNamespace(character_id='c', workflow_id='w', instruction='seated shots',
-            count=5, shot_numbers=[2, 4, 6, 8, 10], lock_scenario=True, catalog=CATALOG, current_frames=[{"framing": "full body"}] * 5))
+            count=5, shot_numbers=[2, 4, 6, 8, 10], lock_scenario=True, catalog=CATALOG, current_frames=[{"framing": "full body"}] * 5,
+            chapter='Wardrobe reveal', chapter_position=41, total_shots=80, continuity_context='Shot 40: seated, 85mm lens'))
         self.assertEqual(len(result['frames']), 5)
         self.assertEqual(result['frames'][0]['framing'], 'full body')
         self.assertEqual(chat.await_count, 2)
         self.assertEqual(json.loads(chat.call_args.args[1])['shot_numbers'], [10])
+        self.assertEqual(json.loads(chat.call_args.args[1])['chapter'], 'Wardrobe reveal')
+        self.assertEqual(json.loads(chat.call_args.args[1])['chapter_position'], 45)
+        self.assertEqual(json.loads(chat.call_args.args[1])['total_shots'], 80)
+        self.assertEqual(json.loads(chat.call_args.args[1])['continuity_context'], 'Shot 40: seated, 85mm lens')
         self.assertEqual(len(json.loads(chat.call_args.args[1])['subjects']), 2)
         self.assertTrue(chat.call_args.kwargs['response_format_json'])
