@@ -1,5 +1,10 @@
 export function referenceShootWorkflows(workflows = []) {
-  return workflows.filter(w => w.kind === 'edit' && !w.edit_variant && ['qwen_edit', 'qwen_remix'].includes(w.prompt_style));
+  return workflows.filter(w => {
+    if (w.kind !== 'edit' || w.edit_variant) return false;
+    if (w.capabilities) return w.capabilities.supports_reference_shoot === true;
+    // Backward compatibility while an older backend is serving workflow records.
+    return ['qwen_edit', 'qwen_remix'].includes(w.prompt_style);
+  });
 }
 
 export function shootContinuityDefaults(context, workflows = [], defaultWorkflowId = '') {

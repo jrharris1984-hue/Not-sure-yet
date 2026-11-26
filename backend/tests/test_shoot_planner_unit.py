@@ -80,10 +80,18 @@ class PlannerRouteTests(unittest.IsolatedAsyncioTestCase):
         chat = AsyncMock(side_effect=[json.dumps({"frames": [{"pose_action": "seated"}] * 4}),
                                     json.dumps({"frames": [{"pose_action": "walking"}]})])
         char = {"dna": {"identity": {"age": 35}}, "subjects": [{"dna": {"identity": {"age": 35}}}, {"dna": {"identity": {"age": 42}}}]}
+        class EmptyCursor:
+            def sort(self, *_args):
+                return self
+            async def to_list(self, length=None):
+                return []
         db = SimpleNamespace(characters=SimpleNamespace(find_one=AsyncMock(return_value=char)),
-                             workflows=SimpleNamespace(find_one=AsyncMock(return_value={"name": "Chroma", "kind": "image"})))
+                             workflows=SimpleNamespace(find_one=AsyncMock(return_value={"id": "w", "name": "Chroma", "kind": "image", "json_str": "{}"})),
+                             renders=SimpleNamespace(find=lambda *_args: EmptyCursor()))
         namespace = {"db": db, "openrouter_chat": chat, "extract_json": json.loads,
-                     "validate_shot_plan": validate_shot_plan, "json": json}
+                     "validate_shot_plan": validate_shot_plan, "json": json,
+                     "analyze_workflow_capabilities": lambda _graph: {"supports_text_to_image": True, "supports_reference_shoot": False},
+                     "rated_recipe_examples": lambda _renders: {"preferred_examples": [], "avoid_examples": []}}
         exec(compile(ast.Module(body=[function], type_ignores=[]), 'server.py', 'exec'), namespace)
         result = await namespace['ai_shoot_plan'](SimpleNamespace(character_id='c', workflow_id='w', instruction='seated shots',
             count=5, shot_numbers=[2, 4, 6, 8, 10], lock_scenario=True, catalog=CATALOG, current_frames=[{"framing": "full body"}] * 5,
@@ -97,4 +105,6 @@ class PlannerRouteTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(json.loads(chat.call_args.args[1])['total_shots'], 80)
         self.assertEqual(json.loads(chat.call_args.args[1])['continuity_context'], 'Shot 40: seated, 85mm lens')
         self.assertEqual(len(json.loads(chat.call_args.args[1])['subjects']), 2)
+        self.assertFalse(json.loads(chat.call_args.args[1])['workflow']['capabilities']['supports_reference_shoot'])
+        self.assertEqual(json.loads(chat.call_args.args[1])['user_rated_examples']['preferred_examples'], [])
         self.assertTrue(chat.call_args.kwargs['response_format_json'])

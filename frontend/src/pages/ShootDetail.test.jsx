@@ -6,7 +6,7 @@ import Shoots from "./Shoots";
 import ShootDetail from "./ShootDetail";
 
 jest.mock("@/lib/api", () => ({ API_BASE: "/api", endpoints: {
-  listShoots: jest.fn(), getShoot: jest.fn(), listCharacters: jest.fn(),
+  listShoots: jest.fn(), getShoot: jest.fn(), listCharacters: jest.fn(), rateRenderQuality: jest.fn(),
 } }));
 jest.mock("sonner", () => ({ toast: { error: jest.fn(), success: jest.fn() } }));
 jest.mock("react-router-dom", () => ({
@@ -68,4 +68,16 @@ test("failed shoot load displays retry and retry opens the photos", async () => 
     await new Promise(resolve => setTimeout(resolve, 20));
   });
   expect(container.querySelector('[data-testid="btn-view-shoot-photos"]')).not.toBeNull();
+});
+test("shoot review summary selects unreviewed frames and persists a user rating", async () => {
+  endpoints.rateRenderQuality.mockResolvedValue({ ok: true });
+  await render(ShootDetail);
+  expect(container.querySelector('[data-testid="shoot-quality-summary"]').textContent).toContain("0/2 reviewed");
+  act(() => [...container.querySelectorAll("button")].find((button) => button.textContent.startsWith("Select unreviewed")).click());
+  expect(container.querySelector('[data-testid="shoot-frame-1"] input[type="checkbox"]').checked).toBe(true);
+  await act(async () => {
+    container.querySelector('[aria-label="Rate frame 2 5 of 5"]').click();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  });
+  expect(endpoints.rateRenderQuality).toHaveBeenCalledWith("one", 5);
 });

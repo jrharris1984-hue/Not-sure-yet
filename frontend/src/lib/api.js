@@ -123,6 +123,7 @@ export const endpoints = {
   learningDecision: (id, body) => api.post(`/learning/recommendations/${id}/decision`, body).then(r => r.data),
   saveSceneFeedback: (id, body) => api.put(`/renders/${id}/scene-feedback`, body).then((r) => r.data),
   reviewRenderAlignment: (id) => api.post(`/renders/${id}/alignment`).then((r) => r.data),
+  rateRenderQuality: (id, rating, note = "") => api.put(`/renders/${id}/quality-rating`, { rating, note }).then((r) => r.data),
   previewMissingDetails: (id, indices) => api.post(`/renders/${id}/retry-missing/preview`, { indices }).then((r) => r.data),
   retryMissingDetails: ({ id, indices }) => api.post(`/renders/${id}/retry-missing`, { indices }).then((r) => r.data),
   previewImprovedRender: ({ id, source_prompt, instruction }) => api.post(`/renders/${id}/improve/preview`, { source_prompt, instruction }).then((r) => r.data),

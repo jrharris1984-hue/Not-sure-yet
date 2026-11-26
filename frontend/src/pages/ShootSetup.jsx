@@ -157,9 +157,9 @@ export default function ShootSetup() {
           poseAction: p, outfitPreset: outfit_overrides.outfit_preset, faceOverrides: face_overrides, ...planControls,
         }) }));
       const compiled = shootWorkflow ? compileModelPrompts({
-        promptStyle: identityMode === "reference" ? "qwen_rapid" : shootWorkflow.prompt_style,
-        workflowKind: identityMode === "reference" ? "image" : shootWorkflow.kind,
-        workflowName: identityMode === "reference" ? "Qwen Rapid" : shootWorkflow.name,
+        promptStyle: shootWorkflow.prompt_style,
+        workflowKind: shootWorkflow.kind,
+        workflowName: shootWorkflow.name,
         promptFormat: ["compact", "ollama"].includes(settings?.builder_prompt_format) ? "compact" : "detailed",
         dna: frameDna,
         subjects,
@@ -356,7 +356,7 @@ export default function ShootSetup() {
               const next = mode === 'reference' ? referenceWorkflows[0] : workflows.find(w => w.id === shootContext?.recipe?.workflow_id && ['image','pony'].includes(w.kind)) || workflows.find(w => ['image','pony'].includes(w.kind));
               setWorkflowId(next?.id || ''); setLoraOverrides(mode === 'text' && next?.id === shootContext?.recipe?.workflow_id ? shootContext.recipe.lora_overrides || {} : {});
             }}>{label}</button>)}</div>
-            <p className="text-xs text-zinc-400">{identityMode === 'reference' ? 'Uses Qwen Image Edit with the same source photo for every frame. Large pose or wardrobe changes can still cause drift.' : 'Text and seeds describe traits; they cannot lock the exact face. Source workflow, seed and render settings are reused when available.'}</p>
+            <p className="text-xs text-zinc-400">{identityMode === 'reference' ? `Uses ${shootWorkflow?.name || 'the selected source-image workflow'} with the same source photo for every frame. Large pose or wardrobe changes can still cause drift.` : 'Text and seeds describe traits; they cannot lock the exact face. Source workflow, seed and render settings are reused when available.'}</p>
           </section>}
           {/* Basics */}
           <section hidden={shootStep !== "character"} className="pane p-4 sm:p-6 space-y-4" data-testid="shoot-basics-panel">

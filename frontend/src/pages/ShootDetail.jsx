@@ -6,6 +6,7 @@ import { Camera, ChevronLeft, ChevronRight, X, ExternalLink, RefreshCw, Trash2, 
 import { API_BASE, endpoints } from "@/lib/api";
 import LivePreview from "@/components/LivePreview";
 import { orderedShootFrames } from "@/lib/shootReview";
+import { summarizeShootQuality } from "@/lib/shootQualitySummary";
 
 const STATUS_COLOR = {
   done: "text-emerald-300",
@@ -119,6 +120,11 @@ export default function ShootDetail() {
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["shoot", shootId] }); qc.invalidateQueries({ queryKey: ["shoots"] }); toast.success("Shoot cover updated"); },
     onError: () => toast.error("Could not set shoot cover"),
   });
+  const qualityRating = useMutation({
+    mutationFn: ({ id, rating }) => endpoints.rateRenderQuality(id, rating),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["shoot", shootId] }); toast.success("Rating saved for future workflow suggestions"); },
+    onError: (e) => toast.error(e?.response?.data?.detail || "Could not save rating"),
+  });
   const reviewSelected = async () => {
     const targets = selectedFrames.filter((index) => shoot.renders?.[index]?.output_files?.length);
     if (!targets.length) return;
@@ -162,6 +168,7 @@ export default function ShootDetail() {
   const doneCount = shoot.rendered_count ?? shoot.frames.filter((f) => f.status === "done").length;
   const failedCount = shoot.frames.filter((f) => f.status === "failed").length;
   const offlineCount = shoot.frames.filter((f) => f.status === "offline").length;
+  const qualitySummary = summarizeShootQuality(shoot.renders || []);
 
   return (
     <div className="mx-auto max-w-[1400px] px-4 sm:px-6 py-6 sm:py-10 space-y-6" data-testid="shoot-detail-page">
@@ -222,6 +229,22 @@ export default function ShootDetail() {
         />
       </div>
 
+      {qualitySummary.completed > 0 && <section className="pane p-4 space-y-3" aria-label="Shoot quality review" data-testid="shoot-quality-summary">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div><h2 className="font-semibold">Shoot review</h2><p className="text-xs text-zinc-400">Ollama compares requested details; your ratings are stored separately and can guide future plans for this character and workflow.</p></div>
+          <span className="text-xs text-zinc-300">{qualitySummary.reviewed}/{qualitySummary.completed} reviewed · {qualitySummary.missingCount} reported misses · {qualitySummary.uncertainCount} uncertain</span>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <button type="button" className="chip" disabled={!qualitySummary.unreviewed.length} onClick={() => setSelectedFrames(qualitySummary.unreviewed)}>Select unreviewed ({qualitySummary.unreviewed.length})</button>
+          <button type="button" className="chip" disabled={!qualitySummary.missingFrames.length} onClick={() => setSelectedFrames(qualitySummary.missingFrames)}>Select frames with misses ({qualitySummary.missingFrames.length})</button>
+          {selectedFrames.length > 0 && <button type="button" className="chip" onClick={() => setSelectedFrames([])}>Clear selection</button>}
+        </div>
+        {qualitySummary.misses.length > 0 && <ul className="grid gap-1 text-xs text-amber-100 sm:grid-cols-2">
+          {qualitySummary.misses.map((item) => <li key={`${item.category}:${item.detail}`}>{item.category}: {item.detail} <span className="text-zinc-400">· frame{item.frames.length === 1 ? "" : "s"} {item.frames.map((i) => i + 1).join(", ")}</span></li>)}
+        </ul>}
+        <p className="text-[11px] text-zinc-500">Image review is a model estimate, not a definitive quality score. Rate each result yourself below; ratings do not alter prompts or settings automatically.</p>
+      </section>}
+
       {/* Frames grid */}
       <div className="flex flex-wrap items-center gap-2 text-xs">
         <button type="button" onClick={() => setBestFirst((value) => !value)} aria-pressed={bestFirst}
@@ -281,6 +304,12 @@ export default function ShootDetail() {
               </div>
               {r?.alignment_review && <div className="text-[10px] text-cyan-200" title={r.alignment_review.summary || ""}>
                 {r.alignment_review.matched?.length || 0} matched · {r.alignment_review.missing?.length || 0} missing
+              </div>}
+              {outputUrl && r?.id && <div className="flex items-center justify-between gap-2 text-[10px]" aria-label={`Rate frame ${i + 1}`}>
+                <span className="text-zinc-400">Your rating</span>
+                <div className="flex gap-0.5">{[1, 2, 3, 4, 5].map((rating) => <button key={rating} type="button" aria-label={`Rate frame ${i + 1} ${rating} of 5`} aria-pressed={r.user_quality_rating === rating}
+                  disabled={qualityRating.isPending} onClick={() => qualityRating.mutate({ id: r.id, rating })}
+                  className={`rounded px-1 ${r.user_quality_rating >= rating ? "text-amber-300" : "text-zinc-600 hover:text-amber-200"}`}>★</button>)}</div>
               </div>}
               {outputUrl && !r?.alignment_review && <div className="text-[10px] text-zinc-500">
                 {r?.alignment_review_status === "reviewing" ? "Reviewing image…" : "Not reviewed yet"}

@@ -19,6 +19,7 @@ from qwen_test_models import resolve_qwen_test_models
 from assistant_research import AssistantResearchMiddleware, enrich_assistant_request
 from qwen_reference_edit import configure_reference_edit, resolve_reference_models, configure_camera_strength
 from workflow_compatibility import validate_workflow_graph
+from workflow_capabilities import analyze_workflow_capabilities, rated_recipe_examples
 from gpu_resources import should_defer_dispatch, summarize_comfy_resources
 from ai_research import research_sources, research_messages, research_response, prompt_research_query, prompt_research_messages, prompt_research_metadata
 """Ultra Studio Character DNA Builder — FastAPI backend."""
@@ -783,7 +784,24 @@ class WorkflowUpsert(BaseModel):
 @api.get("/workflows")
 async def list_workflows():
     s = await get_settings()
-    return [w.model_dump() for w in s.workflows]
+    return [{**w.model_dump(), "capabilities": analyze_workflow_capabilities(w.json_str)} for w in s.workflows]
+
+
+class RenderQualityRatingBody(BaseModel):
+    rating: int = Field(ge=1, le=5)
+    note: str = Field(default="", max_length=500)
+
+
+@api.put("/renders/{rid}/quality-rating")
+async def save_render_quality_rating(rid: str, body: RenderQualityRatingBody):
+    render = await db.renders.find_one({"id": rid}, {"_id": 0, "id": 1})
+    if not render:
+        raise HTTPException(404, "Render not found")
+    patch = {"user_quality_rating": body.rating,
+             "user_quality_note": body.note.strip(),
+             "user_quality_rated_at": now_iso()}
+    await db.renders.update_one({"id": rid}, {"$set": patch})
+    return {"ok": True, **patch}
 
 
 @api.post("/workflows")
@@ -4809,6 +4827,8 @@ async def ai_shoot_plan(body: ShootPlanBody):
         raise HTTPException(400, "Choose a text-to-image workflow for the shoot planner")
     system = (
         "Plan editable photographic shot cards for the supplied saved character(s). "
+        "Treat workflow.capabilities as a hard boundary: only plan controls and reference modes the graph exposes; never invent node IDs, sampler settings, LoRA slots, or rendering features. "
+        "User-rated examples are advisory preferences for this same character and workflow. Use high-rated examples as style guidance and avoid low-rated patterns only when relevant; do not copy an entire prompt or change locked selections. "
         "Preserve all identities, ages, body traits, subject count and unrequested clothing. Treat coverage, wardrobe_action, and foot_direction included in current_frames as fixed notes, not editable response fields. "
         "Use only the supplied control names and exact catalog values; empty string keeps the saved setting. "
         "Do not add people or change the workflow, model, LoRAs, seed, or clothing coverage. "
@@ -4820,6 +4840,13 @@ async def ai_shoot_plan(body: ShootPlanBody):
         "lighting_temperature, environment, background. Background is a short description; "
         "all other fields must match the catalog. Omit unchanged fields to keep the reply short."
     )
+    workflow_capabilities = analyze_workflow_capabilities(workflow.get("json_str") or "")
+    rated_examples = rated_recipe_examples(await db.renders.find(
+        {"character_id": body.character_id, "workflow_id": body.workflow_id,
+         "user_quality_rating": {"$gte": 1, "$lte": 5}},
+        {"_id": 0, "user_quality_rating": 1, "workflow_name": 1,
+         "prompt_positive": 1, "user_quality_note": 1}
+    ).sort("user_quality_rated_at", -1).to_list(length=12))
     frames, warnings = [], []
     # Small batches fit the configured local assistant's JSON output budget.
     for start in range(0, body.count, 4):
@@ -4831,7 +4858,9 @@ async def ai_shoot_plan(body: ShootPlanBody):
             "shot_numbers": (body.shot_numbers or list(range(1, body.count + 1)))[start:start + batch_count],
             "total_requested_shots": body.count,
             "lock_scenario": body.lock_scenario, "catalog": body.catalog,
-            "workflow": {k: workflow.get(k) for k in ("name", "kind", "prompt_style")},
+            "workflow": {**{k: workflow.get(k) for k in ("id", "name", "kind", "prompt_style", "edit_variant")},
+                         "capabilities": workflow_capabilities},
+            "user_rated_examples": rated_examples,
             "subjects": character.get("subjects") or [{"dna": character.get("dna", {})}],
             "current_frames": body.current_frames[start:start + batch_count],
             "previous_shots": frames,

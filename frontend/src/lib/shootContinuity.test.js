@@ -24,3 +24,11 @@ test('reference instructions preserve identity while stating the selected shot c
   expect(shootReferencePreview('http://comfy:8188/view?filename=character.png&type=output','/api'))
     .toBe('/api/comfyui/media?filename=character.png&type=output');
 });
+test('reference editor list uses graph-derived capabilities when available', () => {
+  const detected = [
+    {id:'graph-edit',kind:'edit',capabilities:{supports_reference_shoot:true}},
+    {id:'graph-text',kind:'edit',capabilities:{supports_reference_shoot:false}},
+    {id:'variant',kind:'edit',capabilities:{supports_reference_shoot:true},edit_variant:'pose'},
+  ];
+  expect(referenceShootWorkflows(detected).map((item) => item.id)).toEqual(['graph-edit']);
+});
