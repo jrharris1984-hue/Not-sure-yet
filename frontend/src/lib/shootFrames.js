@@ -2,7 +2,7 @@ import { wardrobeMode } from "./wardrobeMode";
 // A shoot outfit replaces the saved character's clothing for this frame only.
 // Leaving a saved outfit set, garment, or high nudity value in place can hide
 // the selected preset from the prompt compiler.
-export function shootFrameDna(baseDna = {}, { poseAction = "", outfitPreset = "", faceOverrides = {}, wardrobeOverrides = {}, poseOverrides = {}, cameraOverrides = {}, lightingOverrides = {}, sceneOverrides = {}, lockScenario = true } = {}) {
+export function shootFrameDna(baseDna = {}, { poseAction = "", outfitPreset = "", faceOverrides = {}, wardrobeOverrides = {}, feetOverrides = {}, poseOverrides = {}, cameraOverrides = {}, lightingOverrides = {}, sceneOverrides = {}, lockScenario = true } = {}) {
   const wardrobe = { ...(baseDna.wardrobe || {}) };
   if (outfitPreset) {
     Object.assign(wardrobe, {
@@ -21,6 +21,7 @@ export function shootFrameDna(baseDna = {}, { poseAction = "", outfitPreset = ""
     scene: { ...(baseDna.scene || {}), ...(!lockScenario ? sceneOverrides : {}) },
     pose: { ...(baseDna.pose || {}), ...poseOverrides, ...(poseAction ? { action: poseAction } : {}) },
     wardrobe: { ...wardrobe, ...wardrobeOverrides },
+    feet: { ...(baseDna.feet || {}), ...feetOverrides },
     face: { ...(baseDna.face || {}), ...faceOverrides },
   };
 }
