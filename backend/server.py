@@ -1,4 +1,4 @@
-Warning: truncated output (original token count: 8101)
+Warning: truncated output (original token count: 8094)
 Total output lines: 400
 
 from lora_library import file_key, record_id, metadata_profile, hash_profile, validate_profile, validate_hash_import, signed_strength
@@ -22,7 +22,7 @@ from qwen_test_models import resolve_qwen_test_models
 from assistant_research import AssistantResearchMiddleware, enrich_assistant_request
 from qwen_reference_edit import configure_reference_edit, resolve_reference_models, configure_camera_strength
 from workflow_compatibility import validate_workflow_graph
-from gpu_resources import summarize_comfy_resources
+from gpu_resources import should_defer_dispatch, summarize_comfy_resources
 from ai_research import research_sources, research_messages, research_response, prompt_research_query, prompt_research_messages, prompt_research_metadata
 """Ultra Studio Character DNA Builder — FastAPI backend."""
 from fastapi import FastAPI, APIRouter, HTTPException, Body, BackgroundTasks, WebSocket, WebSocketDisconnect, Query, UploadFile, File, Form
@@ -184,6 +184,7 @@ class Settings(BaseModel):
     ollama_url: str = "http://host.docker.internal:11434"
     ollama_text_model: str = ""
     ollama_vision_model: str = ""
+    queue_pause_high_vram: bool = False
     prompt_catalog: Dict[str, Any] = Field(default_factory=lambda: {"sections": []})
     custom_photoshoot_presets: List[Dict[str, Any]] = Field(default_factory=list)
     wardrobe_catalog_version: int = 2
@@ -272,9 +273,8 @@ SEED_WORKFLOWS = [
     {"file":"moss_lora_fit_babe_experimental.json","name":"MOSS Image · Fit Babe LoRA (Experimental)","kind":"image","prompt_style":"moss_image","notes":"Standalone experiment based on MOSS FinalCut Universal FP8, loading the locally listed Fit Babe LoRA at model strength 0.7, CLIP 0. Filename is from the user's screenshot; compatibility with FinalCut and recommended strength are not verified. Existing workflows unchanged. Test with a non-sensitive adult portrait first."},
     {"file":"moss_lora_labia_ex_experimental.json","name":"MOSS Image · Labia EX LoRA (Experimental)","kind":"image","prompt_style":"moss_image","notes":"Standalone experiment based on MOSS FinalCut Universal FP8, loading the locally listed Labia EX LoRA at model strength 0.7, CLIP 0. Filename is from the user's screenshot; compatibility with FinalCut and recommended strength are not verified. Existing workflows unchanged. Test with a non-sensitive adult portrait first."},
     {"file":"moss_lora_megaracks_experimental.json","name":"MOSS Image · Megaracks LoRA (Experimental)","kind":"image","prompt_style":"moss_image","notes":"Standalone experiment based on MOSS FinalCut Universal FP8, loading the locally listed Megaracks LoRA at model strength 0.7, CLIP 0. Filename is from the user's screenshot; compatibility with FinalCut and recommended strength are not verified. Existing workflows unchanged. Test with a non-sensitive adult portrait first."},
-    {"file":"moss_lora_realism_lightning_experimental.json","name":"MOSS Image · Realism 8-Step Lightning LoRA (Experimental)","kind":"image","prompt_style":"moss_image","notes":"Standalone experiment based on MOSS FinalCut Universal FP8, loading the locally listed Realism 8-Step Lightning LoRA at model strength 1, CLIP 0. Filename is from the user's screenshot; compatibility with FinalCut and recommended strength are not verified. Existing workflows unchanged. Test with a non-sensitive adult portrait first."},
-
-    {"file": "moss_snofs_v1_sft.…601 tokens truncated…name": "MOSS Image · HyperMoss Lush Turbo INT8 (8 Step)", "kind": "image", "prompt_style": "moss_image", "notes": "Uses hypermossLushTurbo_int8V1.safetensors (INT8 ConvRot) with the existing MOSS Qwen3.5 9B encoder and FLUX.2 small VAE. Model-card baseline: 8 steps, CFG 1, Euler sampler, Simple scheduler; MOSS scheduler is also recommended if installed. Natural-language descriptive sentences are preferred; TAG-style prompts remain supported. No additional DMD Turbo LoRA should be loaded because the checkpoint already includes its acceleration. Confirm local filename and loader compatibility in ComfyUI. Manual settings can override defaults."},
+    {"file":"moss_lora_realism_lightning_experimental.json","name":"MOSS Image · Realism 8-Step Lightning LoRA (Experimental)","kind":"image","prompt_style":"moss_image","notes":"Standalone experiment based on MOSS FinalCut Universal FP8, loading the locally listed Realism 8-Step Lightning LoRA at model strength 1, CLIP 0. Filename is from the user's screenshot; compatibility with FinalCut and recommended strength are not verified. Existing workflows unchanged. Test with a non-sensi…594 tokens truncated…RA filename before production use."},
+    {"file": "moss_hypermoss_lush_turbo_int8.json", "name": "MOSS Image · HyperMoss Lush Turbo INT8 (8 Step)", "kind": "image", "prompt_style": "moss_image", "notes": "Uses hypermossLushTurbo_int8V1.safetensors (INT8 ConvRot) with the existing MOSS Qwen3.5 9B encoder and FLUX.2 small VAE. Model-card baseline: 8 steps, CFG 1, Euler sampler, Simple scheduler; MOSS scheduler is also recommended if installed. Natural-language descriptive sentences are preferred; TAG-style prompts remain supported. No additional DMD Turbo LoRA should be loaded because the checkpoint already includes its acceleration. Confirm local filename and loader compatibility in ComfyUI. Manual settings can override defaults."},
     {"file": "moss_stardust_nsfw_lora_experimental.json", "name": "MOSS Image · Lox Stardust + NSFW LoRA (Experimental)", "kind": "image", "prompt_style": "moss_image", "notes": "Separate experimental copy of the existing Lox Stardust Mix v1.0 BF16 workflow. Adds MOSS\\MOSS-Image-NSFW-Uncensored-LoRA-ComfyUI.safetensors at model strength 0.8, CLIP strength 0.0 and moss_xvstyle trigger. Keeps Stardust creator baseline of 25 steps, CFG 3, ER-SDE/simple, 1024x1024. Compatibility with this fine-tuned checkpoint is unverified. Original Stardust workflow is untouched; the checkpoint creator license is personal non-commercial."},
     {"file": "moss_stardust_bf16.json", "name": "MOSS Image · Lox Stardust Mix v1.0 BF16 (Test)", "kind": "image", "prompt_style": "moss_image", "notes": "Uses loxsStardustMixMoss_v10_bf16.safetensors with Qwen3.5 9B W4A8 encoder and FLUX.2 small VAE. Creator baseline from the supplied model card: 25 steps, CFG 3, ER-SDE / simple, 1024x1024, batch 1. Creator ranges: 25-50 steps, CFG 3-5, 1-2 MP. No added speed LoRA. Optional creator detailers and SeedVR2 are not bundled. BF16 may require CPU offloading on 12 GB VRAM. Existing manual generation settings can override template values. Model card limits use to personal, non-commercial generation; see the creator license."},
     {"file": "moss_jib_realistic_bf16.json", "name": "MOSS Image · Jib Mix Realistic v1 BF16 (8-Step Test)", "kind": "image", "prompt_style": "moss_image", "notes": "Uses jibMixMossRealistic_v1OneToOne_bf16.safetensors with Qwen3.5 9B W4A8 encoder and FLUX.2 small VAE. Creator announcement says an 8-step LoRA is merged; no additional speed LoRA is loaded. Adjustable starting test: 8 steps, CFG 1, Euler / simple, 768x1024, batch 1. CFG and sampler are assumptions, not verified version-specific recommendations. BF16 may require CPU offloading on 12 GB VRAM. Existing manual generation settings can override template values."},
@@ -654,7 +654,7 @@ async def read_settings():
 @api.put("/settings", response_model=Settings)
 async def update_settings(body: Dict[str, Any] = Body(...)):
     current = (await get_settings()).model_dump()
-    allowed = {"builder_prompt_format", "media_library_url", "comfyui_url", "openrouter_api_key", "openrouter_model", "ai_provider", "ollama_url", "ollama_text_model", "ollama_vision_model",
+    allowed = {"builder_prompt_format", "media_library_url", "comfyui_url", "openrouter_api_key", "openrouter_model", "ai_provider", "ollama_url", "ollama_text_model", "ollama_vision_model", "queue_pause_high_vram",
                "image_workflow_json", "video_workflow_json",
                "positive_prompt_node_id", "negative_prompt_node_id",
                "default_workflow_id"}
@@ -1092,10 +1092,7 @@ async def comfyui_resources():
     """Read GPU memory and Ultra Studio queue counts for scheduling visibility."""
     s = await get_settings()
     try:
-        async with httpx.AsyncClient(timeout=8.0) as hc:
-            response = await hc.get(f"{s.comfyui_url.rstrip('/')}/system_stats")
-        response.raise_for_status()
-        resources = summarize_comfy_resources(response.json())
+        resources = await _read_comfy_resource_data(s.comfyui_url)
     except Exception as exc:
         raise HTTPException(502, f"Could not read ComfyUI GPU resources: {exc}")
     active = await db.render_queue.count_documents({"status": {"$in": ["dispatching", "running"]}})
@@ -1109,6 +1106,13 @@ async def comfyui_resources():
             "dispatch_policy": "one Ultra Studio job at a time",
         },
     }
+
+
+async def _read_comfy_resource_data(base_url: str) -> Dict[str, Any]:
+    async with httpx.AsyncClient(timeout=8.0) as hc:
+        response = await hc.get(f"{base_url.rstrip('/')}/system_stats")
+    response.raise_for_status()
+    return summarize_comfy_resources(response.json())
 
 
 @api.get("/comfyui/media")
@@ -3639,10 +3643,25 @@ async def retry_queue_job(qid: str):
         "finished_at": None,
         "updated_at": now_iso(),
         "connection_wait": False, "connection_error": None,
+        "gpu_wait": False, "gpu_wait_reason": None, "gpu_wait_override": False,
         "attempts": int(job.get("attempts", 0)) + 1,
     }
     await db.render_queue.update_one({"id": qid}, {"$set": patch})
     job.update(patch)
+    return await _queue_view(job)
+
+
+@api.post("/queue/{qid}/dispatch-anyway")
+async def dispatch_queued_job_anyway(qid: str):
+    job = await db.render_queue.find_one({"id": qid}, {"_id": 0})
+    if not job:
+        raise HTTPException(404, "Queue job not found")
+    if job.get("status") != "queued":
+        raise HTTPException(409, "Only a waiting queue job can be dispatched")
+    await db.render_queue.update_one({"id": qid, "status": "queued"}, {"$set": {
+        "gpu_wait_override": True, "gpu_wait": False,
+        "gpu_wait_reason": "Dispatch override requested", "updated_at": now_iso()}})
+    job.update(gpu_wait_override=True, gpu_wait=False, gpu_wait_reason="Dispatch override requested")
     return await _queue_view(job)
 
 
@@ -4207,6 +4226,20 @@ async def _render_queue_worker():
             if not queued:
                 await asyncio.sleep(1.0)
                 continue
+            schedule_settings = await get_settings()
+            if schedule_settings.queue_pause_high_vram and not queued.get("gpu_wait_override"):
+                try:
+                    resources = await _read_comfy_resource_data(schedule_settings.comfyui_url)
+                except Exception as exc:
+                    # Unknown telemetry must not strand work; ComfyUI will report a real OOM if one occurs.
+                    logger.warning("GPU scheduling telemetry unavailable; dispatching queued work: %s", exc)
+                    resources = {"devices": []}
+                if should_defer_dispatch(resources, enabled=True):
+                    reason = "Waiting for VRAM pressure to ease on all ComfyUI GPUs, or choose Dispatch anyway in the queue."
+                    await db.render_queue.update_one({"id": queued["id"], "status": "queued"}, {"$set": {
+                        "gpu_wait": True, "gpu_wait_reason": reason, "updated_at": now_iso()}})
+                    await asyncio.sleep(5.0)
+                    continue
             connection = await comfyui_health()
             if not connection.get("online"):
                 await db.render_queue.update_one({"id": queued["id"], "status": "queued"},
@@ -4215,7 +4248,9 @@ async def _render_queue_worker():
                 continue
             claimed = await db.render_queue.update_one(
                 {"id": queued["id"], "status": "queued"},
-                {"$set": {"status": "dispatching", "connection_wait": False, "connection_error": None, "started_at": now_iso(), "updated_at": now_iso()}},
+                {"$set": {"status": "dispatching", "connection_wait": False, "connection_error": None,
+                          "gpu_wait": False, "gpu_wait_reason": None, "gpu_wait_override": False,
+                          "started_at": now_iso(), "updated_at": now_iso()}},
             )
             if not claimed.modified_count:
                 continue
