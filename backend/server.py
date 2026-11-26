@@ -4265,6 +4265,7 @@ class ShootFrame(BaseModel):
     scene_direction: str = ""
     shot_label: str = ""
     outfit_overrides: Dict[str, Any] = Field(default_factory=dict)  # partial wardrobe overrides
+    feet_overrides: Dict[str, Any] = Field(default_factory=dict)  # per-frame footwear, hosiery and cosmetic styling
     face_overrides: Dict[str, Any] = Field(default_factory=dict)
     pose_overrides: Dict[str, Any] = Field(default_factory=dict)
     camera_overrides: Dict[str, Any] = Field(default_factory=dict)
@@ -4342,6 +4343,9 @@ def _apply_frame_to_dna(dna: Dict[str, Any], frame: Dict[str, Any], lock_scenari
             })
         for k, v in outfit.items():
             out["wardrobe"][k] = v
+    feet = frame.get("feet_overrides") or {}
+    if feet:
+        out.setdefault("feet", {}).update(feet)
     if outfit.get("exposure_mode") and out.get("wardrobe", {}).get("outfit_set") and out["wardrobe"].get("outfit_mode") != "custom":
         out["wardrobe"]["outfit_mode"] = "full"
     if outfit.get("garment_color") and out.get("wardrobe", {}).get("outfit_set"):
@@ -4449,8 +4453,8 @@ async def _run_shoot_background(shoot_id: str):
 
 @api.post("/shoots")
 async def create_shoot(body: ShootCreateBody, background_tasks: BackgroundTasks):
-    if body.count < 1 or body.count > 40:
-        raise HTTPException(400, "count must be between 1 and 40")
+    if body.count < 1 or body.count > 120:
+        raise HTTPException(400, "count must be between 1 and 120")
     if not body.frames or len(body.frames) != body.count:
         raise HTTPException(400, "frames list length must equal count")
     char = await db.characters.find_one({"id": body.character_id}, {"_id": 0})
@@ -4498,6 +4502,7 @@ async def create_shoot(body: ShootCreateBody, background_tasks: BackgroundTasks)
             shot_label=str(f.get("shot_label") or "")[:200],
             camera_overrides=f.get("camera_overrides") or {},
             outfit_overrides=f.get("outfit_overrides") or {},
+            feet_overrides=f.get("feet_overrides") or {},
             face_overrides=f.get("face_overrides") or {},
             pose_overrides=f.get("pose_overrides") or {},
             lighting_overrides=f.get("lighting_overrides") or {},
