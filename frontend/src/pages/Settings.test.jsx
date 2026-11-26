@@ -102,6 +102,21 @@ test("Settings exposes a compact navigator for the major configuration areas", (
   act(() => root.unmount());
 });
 
+test("GPU-aware queue hold is opt-in and saved as a setting", () => {
+  global.IS_REACT_ACT_ENVIRONMENT = true;
+  mockMutate.mockClear();
+  const container = document.createElement("div");
+  const root = createRoot(container);
+  act(() => root.render(<Settings />));
+  const policy = container.querySelector('[data-testid="input-pause-high-vram"]');
+  expect(policy.checked).toBe(false);
+  act(() => policy.click());
+  expect(policy.checked).toBe(true);
+  act(() => container.querySelector('[data-testid="btn-save-gpu-scheduling"]').click());
+  expect(mockMutate).toHaveBeenLastCalledWith({ queue_pause_high_vram: true });
+  act(() => root.unmount());
+});
+
 test("saved workflow can be checked against the connected ComfyUI schema", async () => {
   global.IS_REACT_ACT_ENVIRONMENT = true;
   endpoints.validateWorkflow.mockResolvedValueOnce({
