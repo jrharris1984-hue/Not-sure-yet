@@ -106,6 +106,7 @@ class QueueReliabilityTests(unittest.IsolatedAsyncioTestCase):
         namespace = {"db": SimpleNamespace(render_queue=queue), "_queue_stop": stop,
                      "asyncio": SimpleNamespace(sleep=sleep, CancelledError=asyncio.CancelledError),
                      "logger": SimpleNamespace(info=lambda *a: None, exception=lambda *a: None),
+                     "get_settings": AsyncMock(return_value=SimpleNamespace(queue_pause_high_vram=False)),
                      "now_iso": lambda: "now", "comfyui_health": AsyncMock(return_value={"online": False}),
                      "_perform_dispatch": dispatch}
         exec(compile(ast.Module(body=[node], type_ignores=[]), "worker", "exec"), namespace)
