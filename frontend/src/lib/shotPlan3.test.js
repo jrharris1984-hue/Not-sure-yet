@@ -8,6 +8,12 @@ describe('3.0 shot plan',()=>{
     expect(edited.shots[0].scene.environment).toBe('studio');
     expect(p.shots[1].scene.environment).toBe('studio');
   });
+  test('supports a 120-shot plan and merges per-shot foot edits',()=>{
+    const p=createShotPlan({count:120});
+    expect(p.shots).toHaveLength(120);
+    const withFeet=updateShot({...p,shots:p.shots.map((shot,index)=>index===0?{...shot,feet:{hosiery:'sheer stockings',skin_finish:'soft lotion sheen'}}:shot)},'shot-1',{feet:{foot_pose:'ankles crossed'}});
+    expect(withFeet.shots[0].feet).toEqual({hosiery:'sheer stockings',skin_finish:'soft lotion sheen',foot_pose:'ankles crossed'});
+  });
   test('reorders without losing shot identity',()=>{
     const p=createShotPlan({count:3});
     expect(reorderShot(p,0,2).shots.map(s=>s.id)).toEqual(['shot-2','shot-3','shot-1']);
