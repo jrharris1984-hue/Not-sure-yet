@@ -6,7 +6,7 @@ import { compileModelPrompts } from './modelPromptCompilers';
 
 it('makes all thirty-four photography directions selectable in Builder and shoot packs',()=>{
  const choices=SECTIONS.find(s=>s.key==='pose').fields.find(f=>f.key==='action').groups.flatMap(g=>g.options);
- expect(Object.keys(PHOTOGRAPHY_POSE_PROMPTS)).toHaveLength(34);
+ expect(Object.keys(PHOTOGRAPHY_POSE_PROMPTS)).toHaveLength(42);
  PHOTOGRAPHY_POSE_GROUPS.forEach((group,index)=>{
   group.options.forEach(option=>expect(choices).toContain(option));
   expect(POSE_PACKS.find(p=>p.key===`photography_${index}`).poses).toEqual(group.options);
