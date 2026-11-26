@@ -7,6 +7,7 @@ const PLACEHOLDER_SEGMENTS = new Set(["none", "average", "default", "n/a", "unde
 const PROFILE_LIMITS = {
   qwen_image: { label: "Qwen Image 2512", warningTokens: 360, hardTokens: 512 },
   qwen_rapid: { label: "Qwen Rapid AIO", warningTokens: 360, hardTokens: 512 },
+  moss_image: { label: "MOSS Image (approx. 4K-token context)", warningTokens: 3000, hardTokens: 3800 },
   sdxl: { label: "SDXL / CLIP", warningTokens: 175, hardTokens: 225 },
   chroma: { label: "Golden Chroma", warningTokens: 480, hardTokens: 512 },
   krea2: { label: "Krea 2 Turbo", warningTokens: 480, hardTokens: 640 },
@@ -32,6 +33,7 @@ export function promptProfile(workflow = {}) {
   if (["qwen_image", "qwen_rapid"].includes(style) && !["edit", "enhance"].includes(kind)) return style;
   if (kind === "edit" || kind === "enhance" || style === "qwen_edit" || haystack.includes("qwen")) return "qwen_edit";
   if (kind === "video" || style === "wan_i2v") return "wan_i2v";
+  if (style === "moss_image" || haystack.includes("moss")) return "moss_image";
   if (kind === "text_video" || style === "wan_t2v") return "wan_t2v";
   if (haystack.includes("chroma")) return "chroma";
   if (style === "krea2" || haystack.includes("krea 2") || haystack.includes("krea2")) return "krea2";
