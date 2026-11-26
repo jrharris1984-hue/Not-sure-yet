@@ -64,6 +64,21 @@ class LibraryTests(unittest.TestCase):
         self.assertEqual(graph['4']['inputs']['strength_model'],-.7)
         self.assertEqual(graph['2']['inputs']['model'],graph['3']['inputs']['model'])
 
+        ns['_normalized_lora_name'] = lambda value: str(value).replace('\\\\', '/').split('/')[-1].lower()
+        embedded_graph = {
+            '1': {'class_type': 'UNETLoader'},
+            '2': {'class_type': 'LoraLoaderModelOnly', 'inputs': {
+                'model': ['1', 0], 'lora_name': 'light.safetensors', 'strength_model': .5}},
+            '3': {'class_type': 'LoraLoaderModelOnly', 'inputs': {
+                'model': ['2', 0], 'lora_name': 'light.safetensors', 'strength_model': 0}},
+            '4': {'class_type': 'KSampler', 'inputs': {'model': ['3', 0]}},
+        }
+        existing = asyncio.run(ns[fn.name](embedded_graph, 'http://comfy', 'light.safetensors', .9))
+        self.assertEqual(existing, ('light.safetensors', 1, None))
+        self.assertEqual(embedded_graph['2']['inputs']['strength_model'], .9)
+        self.assertEqual(embedded_graph['3']['inputs']['strength_model'], 0)
+        self.assertEqual(len(embedded_graph), 4)
+
 if __name__=='__main__': unittest.main()
 
 class RouteTests(unittest.IsolatedAsyncioTestCase):
