@@ -18,6 +18,10 @@ const SMART_FIELDS = [
   ["camera", "Camera"],
   ["framing", "Framing"],
   ["expression", "Expression"],
+  ["wardrobe", "Wardrobe look"],
+  ["feet", "Foot styling"],
+  ["scene", "Scene"],
+  ["lighting", "Lighting"],
 ];
 
 export default function BatchVariationControl({
@@ -68,6 +72,10 @@ export default function BatchVariationControl({
   const [planDraft, setPlanDraft] = useState(null);
   const catalog = photoshootCatalog(customPresets);
   const activePreset = resolvePhotoshootPreset(smartPreset, customPresets);
+  const styleFields = new Set(["wardrobe", "feet", "scene", "lighting"]);
+  const availableSmartFields = SMART_FIELDS.filter(([key]) =>
+    !styleFields.has(key) || Object.hasOwn(activePreset.style || {}, key)
+  );
   const planSummary = useMemo(() => smartPlan.map(item => item.title).filter(Boolean).join(" · "), [smartPlan]);
 
   return (
@@ -108,7 +116,7 @@ export default function BatchVariationControl({
 
           <div className="mt-3 rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-3" data-testid="smart-shoot-ready">
             <div role="status" aria-live="polite" className="text-xs font-semibold text-emerald-200">Selected: {activePreset.label} · {smartPlan.length} images · {smartStrength}</div>
-            <p className="mt-1 text-xs text-zinc-300">Vary: {SMART_FIELDS.filter(([key]) => smartOptions[key]).map(([, label]) => label).join(', ') || 'Seeds only'}.</p>
+            <p className="mt-1 text-xs text-zinc-300">Vary: {availableSmartFields.filter(([key]) => smartOptions[key] !== false).map(([, label]) => label).join(', ') || 'Seeds only'}.</p>
             <p className="mt-1 text-[11px] text-zinc-400">Your selections update the planned shots below. Generate submits one image per shot with a different seed.</p>
             {onGenerate && <button type="button" onClick={onGenerate}
               disabled={generating || !!generateBlockedReason || !smartPlan.length || photoshootRunPending(shootRun, shootRenders)}
@@ -141,6 +149,7 @@ export default function BatchVariationControl({
             <div className="min-w-0 flex-1">
               <span className="font-semibold text-zinc-200">{activePreset.label}</span>
               <span className="ml-1">{activePreset.description}</span>
+              {activePreset.style?.summary && <p className="mt-1 text-cyan-100/80">Look direction: {activePreset.style.summary}</p>}
             </div>
             <div className="grid shrink-0 grid-cols-2 gap-2 sm:flex sm:gap-1">
               <button type="button" onClick={() => { setPlanDraft(null); setDesignerSource("__blank__"); setDesignerOpen(true); }}
@@ -169,17 +178,19 @@ export default function BatchVariationControl({
           </label>
 
           <div className="mt-3 grid grid-cols-2 gap-2">
-            {SMART_FIELDS.map(([key, label]) => (
+            {availableSmartFields.map(([key, label]) => (
               <label key={key} className="flex min-h-11 items-center gap-2 rounded-xl border hairline bg-white/[0.02] px-3 py-2 text-xs text-zinc-300 sm:min-h-0 sm:rounded-lg sm:px-2 sm:text-[11px]">
                 <input
                   type="checkbox"
-                  checked={!!smartOptions[key]}
+                  checked={smartOptions[key] !== false}
                   onChange={(event) => updateSmart(key, event.target.checked)}
                 />
                 {label}
               </label>
             ))}
           </div>
+
+          {activePreset.style && <p className="mt-2 text-[11px] text-zinc-500">Look changes apply to these generated shots only. Your saved character and original wardrobe stay unchanged.</p>}
 
           <div className="mt-3 flex items-center justify-between gap-2">
             <button type="button"
