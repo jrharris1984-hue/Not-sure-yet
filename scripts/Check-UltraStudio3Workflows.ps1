@@ -46,7 +46,7 @@ try {
 catch {
     Write-Host "Studio backend health: FAILED - $($_.Exception.Message)" -ForegroundColor Red
     Write-Host "Start the isolated Studio 3 test stack, then run this script again."
-    exit 1
+    return
 }
 
 try {
@@ -67,7 +67,7 @@ catch {
 
 if ($workflows.Count -eq 0) {
     Write-Warning "The backend returned no saved workflows."
-    exit 0
+    return
 }
 
 Write-Host ""
