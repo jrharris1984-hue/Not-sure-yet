@@ -1321,7 +1321,15 @@ export function compileModelPrompts(options = {}) {
     if (photographic) prompts = preserveWardrobeLayerGuidance(prompts, resolvedSubjects);
     if (castPose.sharedPose) prompts = {...prompts, positive:`Shared pose for all ${castPose.subjects.length} adults: ${castPose.sharedPose}. ${prompts.positive}`} ;
     const ruled = applyCatalogRules(prompts, options.workflowKind || 'image', promptCatalog);
-    const final = {...ruled, positive:protectModelPromptOrder(ruled.positive, compiler)};
+    const singleFrameGuard = isMulti
+      ? `SINGLE-FRAME GROUP COMPOSITION: exactly ${resolvedSubjects.length} adult people physically together in one uninterrupted scene, one shared background and one camera frame at the same moment; each person appears once. This is one photograph, not a diptych, split screen, collage, contact sheet, grid, separate panels or a bordered layout.`
+      : '';
+    const panelNegative = isMulti ? 'diptych, split screen, collage, contact sheet, multi-panel grid, separate image panels, divider between panels, border separating images' : '';
+    const final = {
+      ...ruled,
+      positive:protectModelPromptOrder([singleFrameGuard,ruled.positive].filter(Boolean).join(' '), compiler),
+      negative:[ruled.negative,panelNegative].filter(Boolean).join(', '),
+    };
     const manifest = buildSelectionManifest({sources:auditSources, prepared:fidelitySubjects, resolved:resolvedSubjects,
       sections:catalogSections(SECTIONS, promptCatalog), raunch:options.raunch, compactRequirements:final.compactRequirements});
     if (castPose.sharedPose) manifest.push({key:'shared-pose', label:'Shared cast pose', value:castPose.sharedPose,

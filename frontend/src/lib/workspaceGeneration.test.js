@@ -33,4 +33,8 @@ test('cast size matches the visible people and relationship does not leak after 
   const a=previewPerson();a.dna.scenario.cast_size='duo';a.dna.scenario.cast_type='twins';
   expect(workspaceSubjects([a],'Friends')[0].dna.scenario).toMatchObject({cast_size:'solo',cast_type:'none'});
   expect(workspaceSubjects([a,previewPerson()],'Friends')[0].dna.scenario.cast_type).toBe('best friends');
+  const v=values();v.people=[previewPerson(),previewPerson()];
+  const payload=workspacePayload(v);
+  expect(payload).toMatchObject({batch_size:1});
+  expect(payload.subjects).toHaveLength(2);
 });

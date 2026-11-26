@@ -26,6 +26,7 @@ import { likenessOverrides, likenessTriggerText } from "@/components/LikenessLor
 import { compileModelPrompts } from "@/lib/modelPromptCompilers";
 import { resolveBuilderControls } from "@/lib/builderControlResolution";
 import { shootFrameDna } from "@/lib/shootFrames";
+import { sharedPoseGroups, usePromptCatalog } from "@/lib/promptCatalog";
 
 // Flat pool of all pose actions from the DNA schema
 const POSE_SECTION = SECTIONS.find((s) => s.key === "pose");
@@ -61,6 +62,7 @@ const PAIRING_SHOTS = {
 export default function ShootSetup() {
   const { characterId } = useParams();
   const nav = useNavigate();
+  const promptCatalog=usePromptCatalog();
 
   const { data: character, isLoading: charLoading } = useQuery({
     queryKey: ["character", characterId],
@@ -108,6 +110,10 @@ export default function ShootSetup() {
   const [poseMode, setPoseMode] = useState("pack"); // random | pack | manual
   const [packKey, setPackKey] = useState("editorial");
   const [manualPoses, setManualPoses] = useState([]);
+  const castCount=character?.subjects?.length || 1;
+  const manualPoseGroups=castCount>1
+    ? sharedPoseGroups(castCount,promptCatalog).map(group=>({name:group.label,options:group.poses.map(pose=>pose.prompt || pose.value)}))
+    : POSE_FIELD.groups;
   const [outfits, setOutfits] = useState([]); // list of outfit_preset strings
   const [expressions, setExpressions] = useState([]);
   const [continuity, setContinuity] = useState("maximum");
@@ -474,7 +480,7 @@ export default function ShootSetup() {
               </div>
             )}
 
-            {poseMode === "manual" && <GroupedChips groups={POSE_FIELD.groups} value={manualPoses} onChange={setManualPoses} multi testIdPrefix="shoot-manual-pose" />}
+            {poseMode === "manual" && <><p className="text-xs text-zinc-400">{castCount>1?'Choose shared poses that stage everyone together in one photograph.':'Choose from the full solo pose library.'}</p><GroupedChips groups={manualPoseGroups} value={manualPoses} onChange={setManualPoses} multi testIdPrefix="shoot-manual-pose" /></>}
 
             {poseMode === "random" && (
               <div className="text-xs text-zinc-400 p-3 rounded-md bg-elevated border border-hairline flex items-center gap-2">

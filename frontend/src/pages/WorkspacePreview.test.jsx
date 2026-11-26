@@ -48,8 +48,12 @@ test('random starter creates a multi-person lingerie shoot with distinct outfits
   for(const name of ['Person 2','Person 3']){await click(name);outfits.push(selectedOutfit());}
   expect(new Set(outfits).size).toBe(3);expect(outfits.every(value=>/lingerie|bra|briefs|stockings|boudoir|slip|robe/i.test(value))).toBe(true);
   await click('Next');
+  expect(container.querySelector('[data-testid="cast-aware-poses"]')).not.toBeNull();
+  const groupPose=[...container.querySelectorAll('[data-testid="cast-aware-poses"] button')].find(button=>button.textContent.includes('three or four adults walking together across one studio set'));
+  expect(groupPose).toBeDefined();await act(async()=>groupPose.click());
+  expect(container.querySelector('[data-testid="cast-aware-poses"] button[aria-pressed="true"]')?.textContent).toContain('three or four adults walking together');
   const pose=()=>[...container.querySelectorAll('.wp-detail-row')].find(row=>row.querySelector('span')?.textContent==='Pose')?.querySelector('strong')?.textContent;
-  const sharedPose=pose();for(const name of ['Person 2','Person 3']){await click(name);expect(pose()).toBe(sharedPose);}
+  const sharedPose=pose();for(const name of ['Person 2','Person 3']){await click(name);expect(pose()).toBe(sharedPose);expect(container.querySelector('[data-testid="cast-aware-poses"] button[aria-pressed="true"]')?.textContent).toContain('three or four adults walking together');}
   await click('Next');expect(container.querySelector('h1').textContent).toBe('Everything look right?');
 });
 test('description is required and survives step navigation; generation becomes available after review',async()=>{

@@ -9,7 +9,7 @@ const SMART_CAMERA_VARIATIONS = [...CAMERA_VARIATIONS,
   { poseAngle: "front", cameraAngle: "foot level", label: "front · foot level" },
   { poseAngle: "3/4", cameraAngle: "foot level", label: "3/4 · foot level" },
 ];
-const SMART_SHARED_GROUP = /portrait|interaction|movement|seated|angle|composition|candid/i;
+const SMART_SHARED_GROUP = /portrait|interaction|movement|seated|angle|composition|candid|group|boudoir|lingerie|editorial/i;
 const BLOCKED_SHARED_GROUP = /explicit|specialty|sex|fetish|kink|adult|nsfw/i;
 const normalize = value => String(value || "").replace(/\s+/g, " ").trim();
 
