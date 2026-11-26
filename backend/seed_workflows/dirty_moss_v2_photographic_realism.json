@@ -74,7 +74,7 @@
       "scheduler": "simple",
       "denoise": 1,
       "model": [
-        "10",
+        "1",
         0
       ],
       "positive": [
@@ -122,19 +122,6 @@
     "class_type": "SaveImage",
     "_meta": {
       "title": "Save Dirty-Moss V2 image"
-    }
-  },
-  "10": {
-    "inputs": {
-      "shift": 5,
-      "model": [
-        "1",
-        0
-      ]
-    },
-    "class_type": "ModelSamplingSD3",
-    "_meta": {
-      "title": "MOSS sampling shift 5"
     }
   }
 }
