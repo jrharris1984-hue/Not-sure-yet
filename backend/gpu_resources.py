@@ -38,3 +38,15 @@ def summarize_comfy_resources(payload: Any) -> Dict[str, Any]:
                 "pressure": pressure,
             })
     return {"devices": devices}
+
+
+def should_defer_dispatch(resources: Any, enabled: bool, override: bool = False) -> bool:
+    """Hold only when the optional policy is enabled and every known CUDA GPU is high pressure."""
+    if not enabled or override or not isinstance(resources, dict):
+        return False
+    devices = resources.get("devices")
+    if not isinstance(devices, list):
+        return False
+    gpus = [device for device in devices if isinstance(device, dict)
+            and str(device.get("type", "")).lower() in {"cuda", "gpu"}]
+    return bool(gpus) and all(device.get("pressure") == "high" for device in gpus)
