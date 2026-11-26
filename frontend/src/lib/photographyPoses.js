@@ -117,13 +117,23 @@ export const POSE_ACTION_PROMPTS = {
   "facing each other in profile": "for a paired portrait, facing one another in profile with open relaxed posture",
   "shared over shoulder glance": "for a paired portrait, standing at a slight angle and glancing back over the shoulder toward one another",
   "seated together on sofa": "for a paired portrait, seated together on a sofa with comfortable spacing and relaxed shoulders",
-  "staggered fashion portrait": "for a paired portrait, standing at staggered depths with distinct silhouettes and relaxed editorial posture"
+  "staggered fashion portrait": "for a paired portrait, standing at staggered depths with distinct silhouettes and relaxed editorial posture",
+  "seated with one leg extended and heel visible": "seated in a composed editorial pose with one leg extended naturally, the shoe and full foot visible without distortion",
+  "one foot on a low studio riser": "standing with one foot resting on a low studio riser, balanced posture, both legs and the featured shoe fully visible",
+  "adjusting a heel strap at the vanity": "seated at a dressing table, adjusting an ankle strap with relaxed shoulders and a clear view of the shoe",
+  "reclining with ankles crossed": "reclining on one side with ankles crossed and legs comfortably extended, elegant editorial line",
+  "standing on tiptoe beside a chair": "standing lightly on tiptoe beside a chair, balanced posture and both shoes visible in full-length framing",
+  "seated with shoes angled toward camera": "seated with knees softly bent and shoes angled toward the camera, natural perspective and complete feet in frame",
+  "low chaise pose with feet in frame": "reclining along a chaise with the upper body supported and both feet comfortably visible within the composition",
+  "walking turn with heel detail": "captured mid-step during a gentle turn, with both heels visible and a natural, balanced gait"
 };
 
 const ADDITIONAL_PHOTOGRAPHY_POSES = ["standing relaxed shoulder turn","standing hands clasped","standing hand at collar","chin resting on hand","hands framing face","adjusting sleeve cuff","seated with ankles crossed","seated leaning forward","seated with one arm on chair","seated torso rotated","leaning on high table","leaning with arms crossed","walking diagonal","walking looking back","mid-turn fabric movement","reaching toward window light","descending staircase","holding coat over shoulder"];
+const ADULT_EDITORIAL_POSES = ["seated with one leg extended and heel visible","one foot on a low studio riser","adjusting a heel strap at the vanity","reclining with ankles crossed","standing on tiptoe beside a chair","seated with shoes angled toward camera","low chaise pose with feet in frame","walking turn with heel detail"];
 export const PHOTOGRAPHY_POSE_PROMPTS = Object.fromEntries([
   ...Object.entries(POSE_ACTION_PROMPTS).slice(0,16),
   ...ADDITIONAL_PHOTOGRAPHY_POSES.map(key=>[key,POSE_ACTION_PROMPTS[key]]),
+  ...ADULT_EDITORIAL_POSES.map(key=>[key,POSE_ACTION_PROMPTS[key]]),
 ]);
 
 export const PHOTOGRAPHY_POSE_GROUPS = [
@@ -134,6 +144,7 @@ export const PHOTOGRAPHY_POSE_GROUPS = [
   {name:'Studio & expression', options:ADDITIONAL_PHOTOGRAPHY_POSES.slice(0,6)},
   {name:'Seated editorial', options:ADDITIONAL_PHOTOGRAPHY_POSES.slice(6,12)},
   {name:'Movement & gestures', options:ADDITIONAL_PHOTOGRAPHY_POSES.slice(12)},
+  {name:'Footwear & detail editorial', options:ADULT_EDITORIAL_POSES},
 ];
 
 export function photographyPosePrompt(value) {
