@@ -1,6 +1,6 @@
 import unittest
 
-from gpu_resources import summarize_comfy_resources
+from gpu_resources import should_defer_dispatch, summarize_comfy_resources
 
 
 class GpuResourceSummaryTests(unittest.TestCase):
@@ -29,6 +29,18 @@ class GpuResourceSummaryTests(unittest.TestCase):
         self.assertEqual(len(result["devices"]), 1)
         self.assertEqual(result["devices"][0]["vram_free"], 100)
         self.assertEqual(result["devices"][0]["vram_used_percent"], 0.0)
+
+    def test_dispatch_wait_is_opt_in_conservative_and_user_overrideable(self):
+        resources = {"devices": [
+            {"type": "cuda", "pressure": "high"},
+            {"type": "cuda", "pressure": "high"},
+        ]}
+        self.assertFalse(should_defer_dispatch(resources, False))
+        self.assertTrue(should_defer_dispatch(resources, True))
+        self.assertFalse(should_defer_dispatch(resources, True, override=True))
+        self.assertFalse(should_defer_dispatch({"devices": [*resources["devices"], {"type": "cuda", "pressure": "normal"}]}, True))
+        self.assertFalse(should_defer_dispatch({"devices": [*resources["devices"], {"type": "cuda", "pressure": "unknown"}]}, True))
+        self.assertFalse(should_defer_dispatch({"devices": [{"type": "cpu", "pressure": "high"}]}, True))
 
 
 if __name__ == "__main__":
