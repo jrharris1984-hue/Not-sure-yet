@@ -19,8 +19,8 @@ export const SMART_VARIATION_STRENGTHS = [
   ["bold", "Bold"],
 ];
 
-const shot = (title, poseGroup, framing, camera, expression) => ({
-  title, poseGroup, framing, camera, expression,
+const shot = (title, poseGroup, framing, camera, expression, style = null) => ({
+  title, poseGroup, framing, camera, expression, ...(style ? { style } : {}),
 });
 
 export const SMART_SHOOT_CATEGORIES = [
@@ -255,6 +255,101 @@ export const SMART_SHOOT_CATEGORIES = [
     ],
   },
   {
+    key: "adult_editorial",
+    label: "Adult Editorial",
+    presets: [
+      {
+        key: "heels_editorial",
+        label: "Heels Editorial",
+        description: "Adult fashion-editorial coverage pairing polished lingerie styling with deliberate heel and foot compositions.",
+        style: {
+          summary: "Black lace, seamed hosiery and pointed stilettos; full-look frames alternate with footwear details.",
+          poseFocus: "feet",
+          wardrobe: {
+            outfit_mode: "custom", exposure_mode: "use selected outfit", outfit_set: "", outfit_preset: "",
+            dress_style: "", skirt_style: "", set_lingerie_mode: "none", top: "lace bralette",
+            bottom: "high-waisted briefs", underwear: "lace panties", material: "satin",
+            palette: "monochrome black", fit: "fitted", footwear: "stiletto heels",
+            heel_type: "pointed-toe stilettos", heel_color: "black", heel_height: "high 4-inch",
+            hosiery_type: "sheer black back-seam stockings", hosiery_color: "black",
+            accessories: "delicate anklet",
+          },
+          feet: { composition_mode: "feet focus", framing: "full body", foot_pose: "toes pointed", pedicure: "painted red", pedicure_art: "glossy polish" },
+          scene: { environment: "luxury dressing room", indoor_outdoor: "indoor" },
+          lighting: { source: "softbox", style: "soft editorial daylight", direction: "side", mood: "sensual" },
+          camera: { lens: "50mm", aperture: "f/2.8" },
+        },
+        sequence: [
+          shot("Heel campaign hero", /Standing|Footwear & detail editorial/i, "full body", /front|3\/4|low angle/i, "confident", { feet: { framing: "full body", foot_pose: "one foot on a low studio riser, heel visible" } }),
+          shot("Seated heel portrait", /Seated portraits|Footwear & detail editorial/i, "full body", /eye-level|3\/4/i, "playful", { feet: { framing: "full body", foot_pose: "seated with one leg extended and heel visible" } }),
+          shot("Hosiery and heel detail", /Seated portraits|Footwear & detail editorial/i, "detail shot", /foot level|low angle/i, "sultry", { feet: { framing: "ankle and arch close-up", foot_pose: "adjusting a heel strap at the vanity" } }),
+          shot("Sole and arch study", /Seated portraits|Footwear & detail editorial/i, "detail shot", /foot level|profile/i, "relaxed", { feet: { framing: "sole close-up", foot_pose: "seated with shoes angled toward camera" } }),
+          shot("Editorial stride", /Movement & dance|Footwear & detail editorial/i, "full body", /low angle|3\/4/i, "playful", { feet: { framing: "full body", foot_pose: "walking turn with heel detail" } }),
+          shot("Final cover look", /Standing|Boudoir editorial/i, "full body", /front|profile/i, "confident", { feet: { framing: "full body", foot_pose: "heels together, toes pointed" } }),
+        ],
+      },
+      {
+        key: "hosiery_editorial",
+        label: "Hosiery Editorial",
+        description: "Adult pin-up and fashion styling built around stockings, coordinated shoes and varied leg-to-full-look framing.",
+        style: {
+          summary: "Retro satin styling, black seamed stockings and patent platform heels in a warm vintage studio.",
+          poseFocus: "feet",
+          wardrobe: {
+            outfit_mode: "custom", exposure_mode: "use selected outfit", outfit_set: "", outfit_preset: "",
+            dress_style: "", skirt_style: "", set_lingerie_mode: "none", top: "satin bustier",
+            bottom: "high-waisted briefs", underwear: "lace panties", material: "satin",
+            palette: "blood red", fit: "fitted", footwear: "platform heels",
+            heel_type: "ankle-strap platform stripper heels", heel_color: "black", heel_height: "platform 6-inch",
+            hosiery_type: "sheer black back-seam stockings", hosiery_color: "black",
+            accessories: "garter belt, satin gloves",
+          },
+          feet: { composition_mode: "feet focus", framing: "full body", foot_pose: "toes pointed", pedicure: "painted red", pedicure_art: "glossy polish" },
+          scene: { environment: "vintage pin-up garage", indoor_outdoor: "indoor", era: "vintage" },
+          lighting: { source: "beauty dish", style: "high-key", direction: "front", mood: "playful" },
+          camera: { lens: "50mm", aperture: "f/4" },
+        },
+        sequence: [
+          shot("Retro full-look cover", /Retro pin-up|Standing/i, "full body", /front|3\/4/i, "playful", { feet: { framing: "full body", foot_pose: "one knee softly bent, shoe visible" } }),
+          shot("Stocking seam portrait", /Seated portraits|Retro pin-up/i, "knees-up", /eye-level|3\/4/i, "smile", { feet: { framing: "knees-down", foot_pose: "ankles crossed, stocking seams visible" } }),
+          shot("Platform heel detail", /Seated portraits|Footwear & detail editorial/i, "detail shot", /foot level|low angle/i, "confident", { feet: { framing: "ankle and arch close-up", foot_pose: "one foot on a low studio riser, platform profile visible" } }),
+          shot("Playful seated pose", /Retro pin-up|Seated portraits/i, "full body", /eye-level|3\/4/i, "playful", { feet: { framing: "full body", foot_pose: "seated with legs angled, both shoes visible" } }),
+          shot("Mid-step hosiery look", /Movement & dance|Retro pin-up/i, "full body", /3\/4|low angle/i, "smile", { feet: { framing: "full body", foot_pose: "mid-step with stocking and heel details visible" } }),
+          shot("Vintage finale", /Retro pin-up|Standing/i, "full body", /front|low angle/i, "smoldering", { feet: { framing: "full body", foot_pose: "heels together, confident pin-up stance" } }),
+        ],
+      },
+      {
+        key: "barefoot_boudoir_editorial",
+        label: "Barefoot Boudoir Editorial",
+        description: "Soft adult boudoir portraits with intentional barefoot details, graceful poses and natural photographic lighting.",
+        style: {
+          summary: "A silk robe, natural pedicure details and graceful barefoot poses in soft window light.",
+          poseFocus: "feet",
+          wardrobe: {
+            outfit_mode: "custom", exposure_mode: "use selected outfit", outfit_set: "", outfit_preset: "",
+            dress_style: "", skirt_style: "", set_lingerie_mode: "none", top: "silk robe open",
+            bottom: "high-waisted briefs", underwear: "lace panties", material: "silk",
+            palette: "champagne", fit: "loose", footwear: "barefoot", heel_type: "",
+            heel_color: "", heel_height: "", hosiery_type: "", hosiery_color: "",
+            accessories: "simple anklet",
+          },
+          feet: { composition_mode: "feet focus", framing: "full body", foot_pose: "feet resting on a cushion", pedicure: "natural nails", sole_texture: "natural sole creases" },
+          scene: { environment: "sunlit penthouse", indoor_outdoor: "indoor", background: "soft linen, warm wood and uncluttered editorial styling" },
+          lighting: { source: "window", style: "soft editorial daylight", direction: "side", mood: "soft" },
+          camera: { lens: "85mm", aperture: "f/2.8" },
+        },
+        sequence: [
+          shot("Soft full-look portrait", /Boudoir editorial|Standing/i, "full body", /eye-level|3\/4/i, "soft smile", { feet: { framing: "full body", foot_pose: "one foot relaxed ahead, toes softly pointed" } }),
+          shot("Reclined editorial", /Boudoir editorial|Seated portraits/i, "full body", /high angle|3\/4/i, "relaxed", { feet: { framing: "full body", foot_pose: "reclining with feet comfortably extended" } }),
+          shot("Anklet detail", /Seated portraits|Boudoir editorial/i, "detail shot", /foot level|eye-level/i, "serene", { feet: { framing: "ankle and arch close-up", foot_pose: "ankles crossed with anklet visible" } }),
+          shot("Pedicure portrait", /Seated portraits|Boudoir editorial/i, "detail shot", /foot level|profile/i, "playful", { feet: { framing: "pedicure close-up", foot_pose: "feet side by side, toes relaxed" } }),
+          shot("Window-light seated look", /Boudoir editorial|Seated portraits/i, "full body", /profile|3\/4/i, "soft smile", { feet: { framing: "full body", foot_pose: "seated at the edge of the bed, feet visible" } }),
+          shot("Quiet finale", /Boudoir editorial|Standing/i, "full body", /front|3\/4/i, "serene", { feet: { framing: "full body", foot_pose: "standing naturally with relaxed toes" } }),
+        ],
+      },
+    ],
+  },
+  {
     key: "cinematic",
     label: "Cinematic",
     presets: [
@@ -473,6 +568,14 @@ export function resolvePhotoshootPreset(key, customPresets = []) {
   return Object.hasOwn(catalog.presets, key) ? catalog.presets[key] : SMART_PHOTOSHOOT_PRESETS.editorial;
 }
 
+function mergeShotStyle(presetStyle = {}, shotStyle = {}) {
+  const merged = { ...presetStyle, ...shotStyle };
+  for (const key of ["wardrobe", "feet", "scene", "lighting", "camera"]) {
+    if (presetStyle[key] || shotStyle[key]) merged[key] = { ...(presetStyle[key] || {}), ...(shotStyle[key] || {}) };
+  }
+  return merged;
+}
+
 function eligibleSharedGroups(count, promptCatalog) {
   return sharedPoseGroups(count, promptCatalog).filter(group => {
     const label = group.label || "";
@@ -558,11 +661,12 @@ export function buildSmartPhotoshootPlan({
     return {
       index,
       title: shotDef.title,
+      style: mergeShotStyle(definition.style, shotDef.style),
       pose,
       camera,
       framing: options.framing === false
         ? null
-        : strength === "subtle" && !shotDef.raw
+        : strength === "subtle" && !shotDef.raw && !shotDef.style && !definition.style
           ? (subjects[0]?.dna?.pose?.distance || shotDef.framing)
           : shotDef.framing,
       expression: options.expression === true ? shotDef.expression : null,
@@ -621,6 +725,7 @@ export function smartPhotoshootVariation({
 
   let nextSubjects = subjects;
   const applied = { title: planned?.title };
+  const style = planned?.style || {};
 
   if (options.pose !== false && planned?.pose) {
     nextSubjects = nextSubjects.map(subject => ({
@@ -680,6 +785,41 @@ export function smartPhotoshootVariation({
       },
     }));
     applied.expression = planned.expression;
+  }
+
+  if (options.wardrobe !== false && style.wardrobe) {
+    nextSubjects = nextSubjects.map(subject => ({
+      ...subject,
+      dna: {
+        ...(subject.dna || {}),
+        wardrobe: { ...(subject.dna?.wardrobe || {}), ...style.wardrobe },
+      },
+    }));
+    applied.wardrobe = style.summary || "editorial look";
+  }
+
+  if (options.feet !== false && style.feet) {
+    nextSubjects = nextSubjects.map(subject => ({
+      ...subject,
+      dna: {
+        ...(subject.dna || {}),
+        ...(style.poseFocus ? { pose: { ...(subject.dna?.pose || {}), focus: style.poseFocus } } : {}),
+        feet: { ...(subject.dna?.feet || {}), ...style.feet },
+      },
+    }));
+    applied.feet = style.feet.framing || "editorial foot styling";
+  }
+
+  for (const [optionKey, dnaKey] of [["scene", "scene"], ["lighting", "lighting"], ["camera", "camera"]]) {
+    if (options[optionKey] === false || !style[dnaKey]) continue;
+    nextSubjects = nextSubjects.map(subject => ({
+      ...subject,
+      dna: {
+        ...(subject.dna || {}),
+        [dnaKey]: { ...(subject.dna?.[dnaKey] || {}), ...style[dnaKey] },
+      },
+    }));
+    applied[optionKey] = Object.keys(style[dnaKey]).join(", ");
   }
 
   return {
