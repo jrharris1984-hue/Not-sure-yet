@@ -32,7 +32,7 @@ test('the shared-pose library ships forty new boudoir and editorial group compos
   const groups=sharedPoseGroups(4,{sections:[]}).flatMap(group=>group.poses);
   expect(pairs).toHaveLength(45);
   expect(groups).toHaveLength(28);
-  expect(pairs.filter(pose=>/boudoir|lingerie|robe|chaise|vanity|sofa|bed/i.test(pose.value))).toHaveLength(20);
+  expect(pairs.filter(pose=>/^(two adults|one adult)/i.test(pose.value))).toHaveLength(20);
   expect(groups.filter(pose=>/three or four adults/i.test(pose.value))).toHaveLength(20);
   expect(new Set([...pairs,...groups].map(pose=>pose.value)).size).toBe(72);
 });

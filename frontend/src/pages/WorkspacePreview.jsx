@@ -144,7 +144,39 @@ export default function WorkspacePreview() {
           {key==='appearance' && randomStartNotice && <p className="wp-selection" role="status">{randomStartNotice}</p>}
           {key==='appearance' && <div className="wp-block"><p className="wp-muted">Build one part of the character at a time. All details are optional.</p>{searchDetails}{detailQuery?searchRows(appearanceSearch):<><div className="wp-appearance-tabs" role="group" aria-label="Appearance categories">{[['hair','Hair'],['face','Face'],['physique','Body build'],['skin','Skin'],['feet','Feet']].map(([category,label])=><button type="button" key={category} aria-pressed={appearanceCategory===category} onClick={()=>setAppearanceCategory(category)}>{label}</button>)}</div>{appearanceCategory==='physique' && <><div className="wp-appearance-tabs" role="group" aria-label="Body build categories">{[...BODY_GROUPS,{key:'intimate',label:'Intimate details'}].map(group=><button type="button" key={group.key} aria-pressed={bodyGroup===group.key} onClick={()=>setBodyGroup(group.key)}>{group.label}</button>)}</div>{bodyGroup==='intimate' && <><p className="wp-muted">Intimate detail controls are grouped below. Wardrobe coverage still determines which details are included in a generated prompt.</p><div className="wp-appearance-tabs" role="group" aria-label="Intimate detail categories">{INTIMATE_DETAIL_GROUPS.map(group=><button type="button" key={group.key} aria-pressed={intimateGroup===group.key} onClick={()=>setIntimateGroup(group.key)}>{group.label}</button>)}</div></>}</>}<div aria-label={`${appearanceFieldSection} details`}>{appearanceFields.map(field=><div key={field.key}>{editRow(appearanceFieldSection==='hair'?`Hair ${field.label.toLowerCase()}`:`${field.label}${appearanceFieldSection==='physique' && ['bust_scale','butt_scale','thigh_scale','hip_scale','waist_scale'].includes(field.key)?' (slider)':appearanceFieldSection==='physique' && ['bust','butt','thighs','hips','waist'].includes(field.key)?' (preset)':''}`,appearanceFieldSection,field.key)}</div>)}</div></>}</div>}
           {key==='outfit' && <div className="wp-block"><p className="wp-muted">Choose one coordinated outfit. You can keep your existing selection.</p><details className="wp-more-details wp-outfit-suggestions"><summary>Suggested outfits</summary><div className="wp-choices">{PREVIEW_OUTFITS.map((value,index)=><button type="button" key={value} disabled={fieldLocked('wardrobe','outfit_set') || fieldLocked('wardrobe','outfit_mode')} aria-pressed={person.dna.wardrobe?.outfit_set===value} onClick={()=>changePerson('wardrobe','outfit_set',value)}><span className="wp-choice-art">{['01','02','03'][index]}</span><strong>{['Embroidered & relaxed','Tailored linen','Cotton day dress'][index]}</strong><span>{value}</span></button>)}</div></details><button type="button" className="wp-text-button" disabled={fieldLocked('wardrobe','outfit_set') || fieldLocked('wardrobe','outfit_mode')} onClick={()=>open({type:'outfits',title:'Choose an outfit'})}>Browse outfit choices<ArrowRight size={16}/></button>{editRow('Outfit mode','wardrobe','outfit_mode')}{searchDetails}{detailQuery?searchRows(wardrobeSearch):<><div className="wp-appearance-tabs" role="group" aria-label="Wardrobe categories">{wardrobeCategories.map(group=><button type="button" key={group.key} aria-pressed={wardrobeGroup===group.key} onClick={()=>setWardrobeGroup(group.key)}>{group.label}</button>)}</div><p className="wp-muted">Full set coordinates the outfit. Switch Outfit mode to Custom to edit individual garments, shoes and accessories.</p>{wardrobeFields.map(field=><div key={field.key}>{editRow(field.label,'wardrobe',field.key)}</div>)}</>}{person.dna.wardrobe?.outfit_set && <p className="wp-selection">Selected: {person.dna.wardrobe.outfit_set}</p>}</div>}
-          {key==='scene' && <div className="wp-block"><div className="wp-choices">{PREVIEW_SCENES.map(choice=><button type="button" key={choice.name} aria-pressed={sceneName===choice.name} onClick={()=>selectScene(choice)}><span className={`wp-scene-art wp-scene-${choice.scene.environment.replace(' ','-')}`}/><strong>{choice.name}</strong><span>{choice.description}</span></button>)}</div><p className="wp-muted">Scene presets coordinate the setting and light. Saved locks are kept.</p>{mode==='character' && <>{people.length>1 && <CastPoseOptions count={people.length} value={sharedCastPose(people,promptCatalog)} onSelect={pose=>setPeople(current=>selectSharedCastPose(current,pose))} onClear={()=>setPeople(current=>editCastPose(current,current[0]?.id,{...current[0]?.dna.pose,action:''},promptCatalog))}/>{editRow('Pose','pose','action')}{editRow('Framing','pose','distance')}</>}</div>}
+          {key === 'scene' && (
+            <div className="wp-block">
+              <div className="wp-choices">
+                {PREVIEW_SCENES.map(choice => (
+                  <button type="button" key={choice.name} aria-pressed={sceneName === choice.name} onClick={() => selectScene(choice)}>
+                    <span className={`wp-scene-art wp-scene-${choice.scene.environment.replace(' ', '-')}`} />
+                    <strong>{choice.name}</strong>
+                    <span>{choice.description}</span>
+                  </button>
+                ))}
+              </div>
+              <p className="wp-muted">Scene presets coordinate the setting and light. Saved locks are kept.</p>
+              {mode === 'character' && (
+                <>
+                  {people.length > 1 && (
+                    <CastPoseOptions
+                      count={people.length}
+                      value={sharedCastPose(people, promptCatalog)}
+                      onSelect={pose => setPeople(current => selectSharedCastPose(current, pose))}
+                      onClear={() => setPeople(current => editCastPose(
+                        current,
+                        current[0]?.id,
+                        { ...(current[0]?.dna?.pose || {}), action: '' },
+                        promptCatalog
+                      ))}
+                    />
+                  )}
+                  {editRow('Pose', 'pose', 'action')}
+                  {editRow('Framing', 'pose', 'distance')}
+                </>
+              )}
+            </div>
+          )}
           {key==='review' && <div className="wp-review">{steps.slice(0,-1).map((item,index)=><button type="button" key={item.key} onClick={()=>setStep(index)}><span><strong>{item.label}</strong><small>{({person:people.map(p=>p.name).join(' & '),appearance:people.map(p=>[p.dna.hair?.style,p.dna.hair?.color].filter(Boolean).join(' · ') || 'Current appearance').join(' / '),outfit:people.map(p=>p.dna.wardrobe?.outfit_set || 'Current outfit').join(' / '),scene:sceneSummary,description,source:imageName,instruction})[item.key]}</small></span><span>Edit</span></button>)}<div className="wp-review-settings"><span>{count} image{count>1?'s':''} · {shape}</span><button type="button" className="wp-text-button" onClick={()=>open({type:'settings'})}>Change</button></div><div className="wp-review-settings"><span>{generation.loading?'Loading workflows…':generation.workflow?.name || 'No compatible workflow available'}</span><button type="button" className="wp-text-button" onClick={()=>open({type:'settings'})}>Image settings</button></div>{mode==='character' && <div className="wp-save"><button type="button" className="wp-button wp-secondary" onClick={generation.save}>Save as new character</button>{generation.saved && <div className="wp-save-actions" role="status"><p>Character saved. Continue with a photoshoot or refine every detail in the full editor.</p><Link className="wp-button wp-primary" to={`/shoot/new/${generation.saved.id}`}>Plan this character’s photoshoot</Link><Link className="wp-text-button" to={`/character/${generation.saved.id}`}>Open full character editor</Link></div>}</div>}<p className="wp-muted">Generated images are saved to your Gallery automatically.</p></div>}
           </fieldset>
           {(generation.error || generation.promptError) && <p className="wp-error" role="alert">{generation.error || generation.promptError}</p>}

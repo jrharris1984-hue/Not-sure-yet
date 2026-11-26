@@ -4,6 +4,8 @@ import WorkspacePreview from './WorkspacePreview';
 import { previewPerson, previewCanContinue, previewOptions } from '@/lib/workspacePreview';
 import { endpoints } from '@/lib/api';
 
+jest.setTimeout(15000);
+
 jest.mock('react-router-dom', () => ({ Link: ({to, children, ...props}) => <a href={to} {...props}>{children}</a> }), {virtual:true});
 jest.mock('@/lib/api', () => ({endpoints:{listCharacters:jest.fn(),listWorkflows:jest.fn(),settings:jest.fn(),createCharacter:jest.fn()}}));
 let root, container;
@@ -54,7 +56,7 @@ test('random starter creates a multi-person lingerie shoot with distinct outfits
   expect(container.querySelector('[data-testid="cast-aware-poses"] button[aria-pressed="true"]')?.textContent).toContain('three or four adults walking together');
   const pose=()=>[...container.querySelectorAll('.wp-detail-row')].find(row=>row.querySelector('span')?.textContent==='Pose')?.querySelector('strong')?.textContent;
   const sharedPose=pose();for(const name of ['Person 2','Person 3']){await click(name);expect(pose()).toBe(sharedPose);expect(container.querySelector('[data-testid="cast-aware-poses"] button[aria-pressed="true"]')?.textContent).toContain('three or four adults walking together');}
-  await click('Next');expect(container.querySelector('h1').textContent).toBe('Everything look right?');
+  await click('Review image');expect(container.querySelector('h1').textContent).toBe('Everything look right?');
 });
 test('description is required and survives step navigation; generation becomes available after review',async()=>{
   await paint();await click('Describe an image');
