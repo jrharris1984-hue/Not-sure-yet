@@ -1,3 +1,6 @@
+Warning: truncated output (original token count: 8101)
+Total output lines: 400
+
 from lora_library import file_key, record_id, metadata_profile, hash_profile, validate_profile, validate_hash_import, signed_strength
 from randomizer_presets import validate_randomizer
 from render_setup import graph_setup, correct_qwen_lightning, workflow_comparison_recipe, COMPARABLE_STYLES
@@ -271,13 +274,7 @@ SEED_WORKFLOWS = [
     {"file":"moss_lora_megaracks_experimental.json","name":"MOSS Image · Megaracks LoRA (Experimental)","kind":"image","prompt_style":"moss_image","notes":"Standalone experiment based on MOSS FinalCut Universal FP8, loading the locally listed Megaracks LoRA at model strength 0.7, CLIP 0. Filename is from the user's screenshot; compatibility with FinalCut and recommended strength are not verified. Existing workflows unchanged. Test with a non-sensitive adult portrait first."},
     {"file":"moss_lora_realism_lightning_experimental.json","name":"MOSS Image · Realism 8-Step Lightning LoRA (Experimental)","kind":"image","prompt_style":"moss_image","notes":"Standalone experiment based on MOSS FinalCut Universal FP8, loading the locally listed Realism 8-Step Lightning LoRA at model strength 1, CLIP 0. Filename is from the user's screenshot; compatibility with FinalCut and recommended strength are not verified. Existing workflows unchanged. Test with a non-sensitive adult portrait first."},
 
-    {"file": "moss_snofs_v1_sft.json", "name": "MOSS Image · SNOFS v1 SFT (Test)", "kind": "image", "prompt_style": "moss_image", "notes": "Full SNOFS MOSS-Image v1 SFT fine-tune, not a LoRA. Loads snofsMossV1SFT.safetensors from ComfyUI diffusion_models. Natural-language prompts are recommended by the creator. Initial 8 steps / CFG 1 / Euler / simple is an unverified starting test based on other MOSS workflows, not creator settings. Reuses the existing MOSS Qwen3.5 9B encoder and FLUX.2 small VAE; confirm local compatibility. May require model offloading on 12 GB VRAM. See frontend SNOFS concept catalog for creator-reported trained concepts and license information."},
-
-    {"file": "moss_winpic_realism_bf16.json", "name": "MOSS Image · WinPic Realism 1.2 BF16 (8–12 Steps)", "kind": "image", "prompt_style": "moss_image", "notes": "WinPic MOSS Realism 1.2 BF16, using the installed diffusion model bf16_moss_winpic_1.2_00001_.safetensors (confirm exact ComfyUI filename). User-supplied creator guidance: 8–12 steps, CFG 1.0. Starts at 10 steps, Euler/simple, 768x1024. Uses existing MOSS Qwen3.5 9B encoder and FLUX.2 small VAE; those dependencies and sampler choice are inferred from existing MOSS workflows, not verified against the model page. No mandatory LoRA. BF16 may require offloading on 12 GB VRAM."},
-    {"file": "minimax_h3_t2v.json", "name": "MiniMax H3 · Text → Video", "kind": "text_video", "prompt_style": "minimax_h3", "notes": "Tested locally at 384x224, 22 frames, 4 steps. Higher settings require validation."},
-    {"file": "minimax_h3_i2v.json", "name": "MiniMax H3 · Image → Video", "kind": "video", "prompt_style": "minimax_h3", "notes": "Uses a source image as first_frame. New integration: validate output and image adherence locally."},
-    {"file": "moss_realism_sft_bf16_lightning.json", "name": "MOSS Image · Realism SFT BF16 (8-Step Lightning)", "kind": "image", "prompt_style": "moss_image", "notes": "MOSS_Realism_sft_bf16.safetensors with required MOSS/MOSS_Realism_8Step_Lightning.safetensors model-only LoRA at strength 1.0. Creator recipe: 8 steps, CFG 1.5-2.5 (default 2), Euler/simple initial sampler assumptions. Uses existing MOSS Qwen3.5 9B encoder and FLUX.2 small VAE. BF16 may require offloading on 12 GB VRAM; test ComfyUI loader compatibility and the actual installed LoRA filename before production use."},
-    {"file": "moss_hypermoss_lush_turbo_int8.json", "name": "MOSS Image · HyperMoss Lush Turbo INT8 (8 Step)", "kind": "image", "prompt_style": "moss_image", "notes": "Uses hypermossLushTurbo_int8V1.safetensors (INT8 ConvRot) with the existing MOSS Qwen3.5 9B encoder and FLUX.2 small VAE. Model-card baseline: 8 steps, CFG 1, Euler sampler, Simple scheduler; MOSS scheduler is also recommended if installed. Natural-language descriptive sentences are preferred; TAG-style prompts remain supported. No additional DMD Turbo LoRA should be loaded because the checkpoint already includes its acceleration. Confirm local filename and loader compatibility in ComfyUI. Manual settings can override defaults."},
+    {"file": "moss_snofs_v1_sft.…601 tokens truncated…name": "MOSS Image · HyperMoss Lush Turbo INT8 (8 Step)", "kind": "image", "prompt_style": "moss_image", "notes": "Uses hypermossLushTurbo_int8V1.safetensors (INT8 ConvRot) with the existing MOSS Qwen3.5 9B encoder and FLUX.2 small VAE. Model-card baseline: 8 steps, CFG 1, Euler sampler, Simple scheduler; MOSS scheduler is also recommended if installed. Natural-language descriptive sentences are preferred; TAG-style prompts remain supported. No additional DMD Turbo LoRA should be loaded because the checkpoint already includes its acceleration. Confirm local filename and loader compatibility in ComfyUI. Manual settings can override defaults."},
     {"file": "moss_stardust_nsfw_lora_experimental.json", "name": "MOSS Image · Lox Stardust + NSFW LoRA (Experimental)", "kind": "image", "prompt_style": "moss_image", "notes": "Separate experimental copy of the existing Lox Stardust Mix v1.0 BF16 workflow. Adds MOSS\\MOSS-Image-NSFW-Uncensored-LoRA-ComfyUI.safetensors at model strength 0.8, CLIP strength 0.0 and moss_xvstyle trigger. Keeps Stardust creator baseline of 25 steps, CFG 3, ER-SDE/simple, 1024x1024. Compatibility with this fine-tuned checkpoint is unverified. Original Stardust workflow is untouched; the checkpoint creator license is personal non-commercial."},
     {"file": "moss_stardust_bf16.json", "name": "MOSS Image · Lox Stardust Mix v1.0 BF16 (Test)", "kind": "image", "prompt_style": "moss_image", "notes": "Uses loxsStardustMixMoss_v10_bf16.safetensors with Qwen3.5 9B W4A8 encoder and FLUX.2 small VAE. Creator baseline from the supplied model card: 25 steps, CFG 3, ER-SDE / simple, 1024x1024, batch 1. Creator ranges: 25-50 steps, CFG 3-5, 1-2 MP. No added speed LoRA. Optional creator detailers and SeedVR2 are not bundled. BF16 may require CPU offloading on 12 GB VRAM. Existing manual generation settings can override template values. Model card limits use to personal, non-commercial generation; see the creator license."},
     {"file": "moss_jib_realistic_bf16.json", "name": "MOSS Image · Jib Mix Realistic v1 BF16 (8-Step Test)", "kind": "image", "prompt_style": "moss_image", "notes": "Uses jibMixMossRealistic_v1OneToOne_bf16.safetensors with Qwen3.5 9B W4A8 encoder and FLUX.2 small VAE. Creator announcement says an 8-step LoRA is merged; no additional speed LoRA is loaded. Adjustable starting test: 8 steps, CFG 1, Euler / simple, 768x1024, batch 1. CFG and sampler are assumptions, not verified version-specific recommendations. BF16 may require CPU offloading on 12 GB VRAM. Existing manual generation settings can override template values."},
@@ -4751,6 +4748,10 @@ class ShootPlanBody(BaseModel):
     catalog: Dict[str, List[str]] = Field(default_factory=dict)
     current_frames: List[Dict[str, str]] = Field(default_factory=list)
     shot_numbers: List[int] = Field(default_factory=list)
+    chapter: str = Field(default="", max_length=160)
+    chapter_position: int = Field(default=1, ge=1, le=120)
+    total_shots: int = Field(default=20, ge=1, le=120)
+    continuity_context: str = Field(default="", max_length=2400)
 
 
 @api.post("/ai/shoot-plan")
@@ -4759,6 +4760,8 @@ async def ai_shoot_plan(body: ShootPlanBody):
         raise HTTPException(400, "Describe the shoot first")
     if body.shot_numbers and (len(body.shot_numbers) != body.count or len(set(body.shot_numbers)) != body.count or any(n < 1 or n > 20 for n in body.shot_numbers)):
         raise HTTPException(400, "Shot numbers must identify each requested card")
+    if body.chapter_position > body.total_shots:
+        raise HTTPException(400, "Chapter position cannot exceed the total shoot length")
     character = await db.characters.find_one({"id": body.character_id}, {"_id": 0})
     workflow = await db.workflows.find_one({"id": body.workflow_id}, {"_id": 0})
     if not character or not workflow:
@@ -4767,14 +4770,14 @@ async def ai_shoot_plan(body: ShootPlanBody):
         raise HTTPException(400, "Choose a text-to-image workflow for the shoot planner")
     system = (
         "Plan editable photographic shot cards for the supplied saved character(s). "
-        "Preserve all identities, ages, body traits, subject count and unrequested clothing. "
+        "Preserve all identities, ages, body traits, subject count and unrequested clothing. Treat coverage, wardrobe_action, and foot_direction included in current_frames as fixed notes, not editable response fields. "
         "Use only the supplied control names and exact catalog values; empty string keeps the saved setting. "
         "Do not add people or change the workflow, model, LoRAs, seed, or clothing coverage. "
         "When lock_scenario is true return empty environment and background. "
         "Prefer varied poses, expressions and framing when planning a new shoot. "
-        "When revising current_frames, preserve every unmentioned setting. "
+        "When revising current_frames, preserve every unmentioned setting. Use the chapter and continuity context to vary shots while keeping the story coherent. "
         "Return ONLY compact JSON {\"frames\":[{...}]} in the supplied shot_numbers order, with no commentary. "
-        "Fields: pose_action, framing, view, camera_height, expression, outfit_preset, outfit_color, lighting_source, "
+        "Fields: pose_action, framing, view, camera_height, lens, expression, outfit_preset, outfit_color, lighting_source, "
         "lighting_temperature, environment, background. Background is a short description; "
         "all other fields must match the catalog. Omit unchanged fields to keep the reply short."
     )
@@ -4784,6 +4787,8 @@ async def ai_shoot_plan(body: ShootPlanBody):
         batch_count = min(4, body.count - start)
         context = {
             "instruction": body.instruction, "shot_count": batch_count,
+            "chapter": body.chapter, "chapter_position": body.chapter_position + start,
+            "total_shots": body.total_shots, "continuity_context": body.continuity_context,
             "shot_numbers": (body.shot_numbers or list(range(1, body.count + 1)))[start:start + batch_count],
             "total_requested_shots": body.count,
             "lock_scenario": body.lock_scenario, "catalog": body.catalog,
