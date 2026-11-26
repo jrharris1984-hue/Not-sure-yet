@@ -58,11 +58,34 @@ catch {
 }
 
 try {
-    $workflows = @(Invoke-RestMethod -Method Get -Uri "$StudioApi/workflows" -TimeoutSec $TimeoutSeconds)
+    $workflowResponse = Invoke-RestMethod -Method Get -Uri "$StudioApi/workflows" -TimeoutSec $TimeoutSeconds
+
+    if ($workflowResponse -is [System.Array]) {
+        $workflows = @($workflowResponse)
+    }
+    elseif ($null -ne $workflowResponse.PSObject.Properties["workflows"]) {
+        $workflows = @($workflowResponse.workflows)
+    }
+    elseif (($workflowResponse.id -is [System.Array]) -and ($workflowResponse.name -is [System.Array])) {
+        # Windows PowerShell 5.1 may deserialize a top-level JSON array as one
+        # object whose properties each contain arrays. Rebuild the rows by index.
+        $ids = @($workflowResponse.id)
+        $names = @($workflowResponse.name)
+        if ($ids.Count -ne $names.Count) {
+            throw "Workflow IDs and names returned different counts."
+        }
+        $workflows = @()
+        for ($row = 0; $row -lt $ids.Count; $row++) {
+            $workflows += [pscustomobject]@{ id = $ids[$row]; name = $names[$row] }
+        }
+    }
+    else {
+        $workflows = @($workflowResponse)
+    }
 }
 catch {
     Write-Host "Could not read saved workflows: $($_.Exception.Message)" -ForegroundColor Red
-    exit 1
+    return
 }
 
 if ($workflows.Count -eq 0) {
