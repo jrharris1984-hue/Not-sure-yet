@@ -106,6 +106,22 @@ test("mobile Smart Photoshoot keeps primary controls and planned shots accessibl
 });
 
 
+test("adult editorial director exposes coordinated wardrobe, foot, scene and lighting controls", () => {
+  global.IS_REACT_ACT_ENVIRONMENT = true;
+  const container = document.createElement("div");
+  const root = createRoot(container);
+  act(() => root.render(<BatchVariationControl {...props} smartPreset="heels_editorial" />));
+
+  expect(container.textContent).toContain("Look direction: Black lace, seamed hosiery and pointed stilettos");
+  expect(container.textContent).toContain("Your saved character and original wardrobe stay unchanged.");
+  for (const label of ["Wardrobe look", "Foot styling", "Scene", "Lighting"]) {
+    const choice = [...container.querySelectorAll("label")].find(node => node.textContent.includes(label));
+    expect(choice).toBeTruthy();
+    expect(choice.querySelector("input").checked).toBe(true);
+  }
+  act(() => root.unmount());
+});
+
 test("shot controls call the shared planner and kept shots cannot be redone", () => {
   global.IS_REACT_ACT_ENVIRONMENT = true;
   const container = document.createElement("div");
