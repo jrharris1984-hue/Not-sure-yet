@@ -99,6 +99,7 @@ export const endpoints = {
   },
   listQueue: () => api.get("/queue").then((r) => r.data),
   retryQueueJob: (id) => api.post(`/queue/${id}/retry`).then((r) => r.data),
+  dispatchQueueJobAnyway: (id) => api.post(`/queue/${id}/dispatch-anyway`).then((r) => r.data),
   clearCompletedQueue: () => api.delete("/queue/completed").then((r) => r.data),
   deleteRender: (id) => api.delete(`/renders/${id}`).then((r) => r.data),
   clearCancelledRenders: () => api.delete("/renders/cancelled").then((r) => r.data),
