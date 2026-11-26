@@ -39,6 +39,16 @@ describe("model-specific prompt compilers", () => {
     const result = compileModelPrompts({promptStyle:'chroma',dna});
     expect(result.positive).not.toContain('barefoot, uncovered feet');
   });
+  it('compiles cosmetic lotion and massage-oil foot finishes as selected styling', () => {
+    const dna = JSON.parse(JSON.stringify(DEFAULT_DNA));
+    dna.feet = { ...dna.feet, composition_mode: 'feet focus', framing: 'feet close-up', skin_finish: 'soft lotion sheen', hosiery: 'sheer stockings' };
+    const lotion = compileModelPrompts({ promptStyle: 'chroma', dna });
+    dna.feet.skin_finish = 'light massage oil sheen';
+    const oil = compileModelPrompts({ promptStyle: 'chroma', dna });
+    expect(lotion.positive).toContain('soft lotion sheen');
+    expect(oil.positive).toContain('light massage oil sheen');
+    expect(lotion.positive).toContain('sheer stockings');
+  });
   it('binds barefoot guidance to each person in a two-person foot scene', () => {
     const dna = JSON.parse(JSON.stringify(DEFAULT_DNA));
     dna.wardrobe = {...dna.wardrobe,outfit_set:'evening outfit',footwear:'barefoot',heel_type:'',hosiery_type:''};
