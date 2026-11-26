@@ -35,6 +35,15 @@ test('relationship controls appear only for multiple people and disappear when r
   await click('Add another person');expect(container.textContent).toContain('Relationship');
   await click('Remove this person');expect([...container.querySelectorAll('label')].some(label=>label.textContent.startsWith('Relationship'))).toBe(false);
 });
+test('random character starter offers selectable boudoir and lingerie outfits while preserving full editing',async()=>{
+  await paint();await click('Create a new character');
+  const style=document.querySelector('select[aria-label="Random outfit style"]');expect(style).not.toBeNull();
+  act(()=>{style.value='lingerie';style.dispatchEvent(new Event('change',{bubbles:true}));});
+  await click('Create random person');
+  expect(container.querySelector('[role="status"]').textContent).toContain('lingerie outfit');
+  await click('Body build');expect(container.textContent).toContain('Intimate details');
+  await click('Next');expect(container.textContent).toContain('Browse outfit choices');expect(container.textContent).toContain('Selected:');
+});
 test('description is required and survives step navigation; generation becomes available after review',async()=>{
   await paint();await click('Describe an image');
   const next=()=>[...container.querySelectorAll('button')].find(b=>b.textContent==='Next');
