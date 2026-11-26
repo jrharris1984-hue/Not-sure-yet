@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-    [string]$StudioApi = "http://127.0.0.1:8013",
+    [string]$StudioApi = "http://127.0.0.1:8013/api",
     [string]$ComfyUrl = "http://127.0.0.1:8188",
     [ValidateRange(5, 120)]
     [int]$TimeoutSeconds = 30
