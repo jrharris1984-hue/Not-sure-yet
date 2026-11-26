@@ -31,8 +31,13 @@ def _choice_values(spec: Any) -> Optional[List[Any]]:
     return None
 
 
-def _issue(code: str, message: str, node_id: Optional[str] = None) -> Dict[str, str]:
-    issue = {"severity": "error", "code": code, "message": message}
+def _issue(
+    code: str,
+    message: str,
+    node_id: Optional[str] = None,
+    severity: str = "error",
+) -> Dict[str, str]:
+    issue = {"severity": severity, "code": code, "message": message}
     if node_id is not None:
         issue["node_id"] = str(node_id)
     return issue
@@ -82,6 +87,25 @@ def validate_workflow_graph(
             issues.append(_issue("missing_required_input", f"Required input '{name}' is missing.", node_id))
         for name, value in inputs.items():
             choices = _choice_values(required.get(name, optional.get(name)))
+            # Image widgets on bundled workflows are runtime inputs: the render
+            # dispatcher replaces them with an uploaded source/pose image before
+            # queuing the graph. They are not installation-time model choices.
+            if (class_type == "LoadImage" and name == "image" and isinstance(value, str)
+                    and (choices is None or value not in choices)):
+                issues.append(_issue(
+                    "runtime_image_input",
+                    f"Saved image '{value}' is a placeholder; the workflow must receive an uploaded image at render time.",
+                    node_id,
+                    severity="warning",
+                ))
+                continue
+            # ComfyUI serializes V3 MatchType as a meta-type marker. It adopts
+            # the connected value's type, so comparing it as a concrete socket
+            # creates false mismatches for switches and other dynamic nodes.
+            if choices is not None and isinstance(value, str):
+                normalized = value.replace("\\", "/").casefold()
+                if any(isinstance(choice, str) and choice.replace("\\", "/").casefold() == normalized for choice in choices):
+                    continue
             if choices is not None and value not in choices:
                 allowed = ", ".join(str(item) for item in choices[:4])
                 remaining = len(choices) - 4
@@ -128,8 +152,8 @@ def validate_workflow_graph(
             target_type = _socket_type(target_spec)
             source_type = outputs[index] if isinstance(outputs, list) and index < len(outputs) else None
             if (target_type and isinstance(source_type, str)
-                    and target_type not in {"*", "ANY"}
-                    and source_type not in {"*", "ANY"}
+                    and target_type not in {"*", "ANY", "COMFY_MATCHTYPE_V3"}
+                    and source_type not in {"*", "ANY", "COMFY_MATCHTYPE_V3"}
                     and target_type != source_type):
                 issues.append(_issue("link_type_mismatch", f"Input '{input_name}' expects {target_type}, but node '{source_id}' outputs {source_type}.", node_id))
 
