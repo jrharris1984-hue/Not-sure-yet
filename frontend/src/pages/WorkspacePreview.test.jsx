@@ -88,6 +88,13 @@ test('body categories expose size sliders through the expanded glute maximum',as
   await click('Waist & hips');expect(container.textContent).toContain('Hip width (slider)');
   await click('Bust');expect(container.textContent).toContain('Bust shape');
 });
+test('body build includes grouped intimate details and saves selections to the intimate section',async()=>{
+  await paint();await click('Create a new character');await click('Next');await click('Body build');await click('Intimate details');
+  expect(container.textContent).toContain('Grooming');expect(container.textContent).toContain('Body hair');expect(container.textContent).toContain('Pubic hair');
+  await click('Pubic hair');await click('landing strip');expect(container.textContent).toContain('landing strip');
+  await click('Chest anatomy');expect(container.textContent).toContain('Nipple size');expect(container.textContent).toContain('Areola detail');
+  await click('Body jewelry');expect(container.textContent).toContain('Piercings');
+});
 test('complete outfits are searchable beyond the heritage list and wardrobe has individual garment categories',async()=>{
   await paint();await click('Create a new character');await click('Next');await click('Next');await click('Browse outfit choices');
   const select=document.querySelector('select[aria-label="Option category"]');
