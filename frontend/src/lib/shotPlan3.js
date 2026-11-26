@@ -1,7 +1,7 @@
 // 3.0 shot-plan draft model. Pure functions: no API or persistence changes.
 export const SHOT_PLAN_VERSION = 1;
 export const createShotPlan = ({template, count=6, characterId=null}={}) => {
-  const total=Math.max(1,Math.min(48,Math.trunc(Number(count)||6)));
+  const total=Math.max(1,Math.min(120,Math.trunc(Number(count)||6)));
   return {
     version:SHOT_PLAN_VERSION,
     characterId,
@@ -20,7 +20,7 @@ export const createShotPlan = ({template, count=6, characterId=null}={}) => {
     })),
   };
 };
-export const updateShot=(plan,id,patch)=>({...plan,shots:plan.shots.map(shot=>shot.id===id?{...shot,...patch,scene:patch.scene?{...shot.scene,...patch.scene}:shot.scene,lighting:patch.lighting?{...shot.lighting,...patch.lighting}:shot.lighting}:shot)});
+export const updateShot=(plan,id,patch)=>({...plan,shots:plan.shots.map(shot=>shot.id===id?{...shot,...patch,scene:patch.scene?{...shot.scene,...patch.scene}:shot.scene,lighting:patch.lighting?{...shot.lighting,...patch.lighting}:shot.lighting,feet:patch.feet?{...shot.feet,...patch.feet}:shot.feet}:shot)});
 export const reorderShot=(plan,from,to)=>{
   if(!Number.isInteger(from)||!Number.isInteger(to)||from<0||to<0||from>=plan.shots.length||to>=plan.shots.length)return plan;
   const shots=[...plan.shots];const [shot]=shots.splice(from,1);shots.splice(to,0,shot);return {...plan,shots};
