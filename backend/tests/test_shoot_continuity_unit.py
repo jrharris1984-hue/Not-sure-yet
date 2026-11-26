@@ -3,7 +3,8 @@ import ast
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
-from typing import List
+from typing import Any, Dict, List
+from fastapi import HTTPException
 from shoot_continuity import shoot_render_settings, shoot_base_dna
 
 
@@ -26,7 +27,7 @@ class ShootContinuityTests(unittest.IsolatedAsyncioTestCase):
 
     def function(self, name, namespace):
         tree = ast.parse((Path(__file__).parents[1] / "server.py").read_text())
-        node = next(node for node in tree.body if isinstance(node, ast.AsyncFunctionDef) and node.name == name)
+        node = next(node for node in tree.body if isinstance(node, (ast.AsyncFunctionDef, ast.FunctionDef)) and node.name == name)
         node.decorator_list = []
         exec(compile(ast.Module(body=[node], type_ignores=[]), name, "exec"), namespace)
         return namespace[name]
@@ -69,3 +70,45 @@ class ShootContinuityTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(saved["frames"][1].edit_instruction, "Keep same face; sit")
         self.assertEqual(saved["frames"][0].shot_label, "Standing · Front")
         self.assertEqual(saved["frames"][0].camera_overrides, {"angle": "low"})
+
+    async def test_create_accepts_a_120_frame_editorial_shoot(self):
+        class Model:
+            def __init__(self, **kwargs): self.__dict__.update(kwargs); self.id = "long-shoot"
+            def model_dump(self): return self.__dict__
+        db = SimpleNamespace(characters=SimpleNamespace(find_one=AsyncMock(return_value={"id": "c", "name": "Adult model"})),
+                             shoots=SimpleNamespace(insert_one=AsyncMock()))
+        frames = [{"shot_label": f"Shot {i + 1}", "feet_overrides": {"skin_finish": "soft lotion sheen"},
+                   "outfit_overrides": {"exposure_mode": "nude" if i == 119 else "use selected outfit"}}
+                  for i in range(120)]
+        body = SimpleNamespace(count=120, frames=frames, character_id="c", source_render_id=None,
+            workflow_id="image", dispatch_settings={}, set_overrides={}, base_seed=42,
+            seed_mode="character_pose", name="120-frame editorial", lora_overrides={},
+            pose_mode="pack", pose_pack="editorial", lock_scenario=True)
+        create = self.function("create_shoot", {"ShootCreateBody": object, "BackgroundTasks": object, "db": db,
+            "shoot_render_settings": shoot_render_settings, "DispatchBody": lambda **kwargs: kwargs,
+            "List": List, "ShootFrame": Model, "Shoot": Model, "_run_shoot_background": AsyncMock(),
+            "get_shoot": AsyncMock(return_value={"id": "long-shoot", "count": 120})})
+        result = await create(body, None)
+        self.assertEqual(result["count"], 120)
+        saved = db.shoots.insert_one.call_args.args[0]
+        self.assertEqual(len(saved["frames"]), 120)
+        self.assertEqual(saved["frames"][0].feet_overrides["skin_finish"], "soft lotion sheen")
+        self.assertEqual(saved["frames"][-1].outfit_overrides["exposure_mode"], "nude")
+
+    async def test_create_rejects_more_than_120_frames(self):
+        body = SimpleNamespace(count=121)
+        create = self.function("create_shoot", {"ShootCreateBody": object, "BackgroundTasks": object, "HTTPException": HTTPException})
+        with self.assertRaises(HTTPException) as context:
+            await create(body, None)
+        self.assertEqual(context.exception.status_code, 400)
+
+    def test_per_frame_feet_and_coverage_controls_apply_without_replacing_other_dna(self):
+        apply_frame = self.function("_apply_frame_to_dna", {"Dict": Dict, "Any": Any, "apply_shot_controls": lambda dna, frame, lock: {
+            **dna, "wardrobe": dict(dna.get("wardrobe", {})), "feet": dict(dna.get("feet", {}))}})
+        base = {"identity": {"age": 34}, "wardrobe": {"outfit_preset": "robe"}, "feet": {"pedicure": "painted red"}}
+        result = apply_frame(base, {"outfit_overrides": {"exposure_mode": "nude"},
+                                    "feet_overrides": {"skin_finish": "soft lotion sheen"}}, True)
+        self.assertEqual(result["identity"]["age"], 34)
+        self.assertEqual(result["wardrobe"]["exposure_mode"], "nude")
+        self.assertEqual(result["feet"]["pedicure"], "painted red")
+        self.assertEqual(result["feet"]["skin_finish"], "soft lotion sheen")
