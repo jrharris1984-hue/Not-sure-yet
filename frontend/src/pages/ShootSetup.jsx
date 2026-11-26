@@ -114,6 +114,11 @@ export default function ShootSetup() {
   const manualPoseGroups=castCount>1
     ? sharedPoseGroups(castCount,promptCatalog).map(group=>({name:group.label,options:group.poses.map(pose=>pose.prompt || pose.value)}))
     : POSE_FIELD.groups;
+  const posePacks=castCount>1
+    ? manualPoseGroups.map((group,index)=>({key:`shared-${index}`,name:group.name,hint:'Coordinated poses for the whole cast',poses:group.options}))
+    : POSE_PACKS;
+  const selectedPackKey=posePacks.some(pack=>pack.key===packKey)?packKey:posePacks[0]?.key;
+  const posePool=castCount>1?manualPoseGroups.flatMap(group=>group.options):ALL_POSES;
   const [outfits, setOutfits] = useState([]); // list of outfit_preset strings
   const [expressions, setExpressions] = useState([]);
   const [continuity, setContinuity] = useState("maximum");
@@ -141,7 +146,7 @@ export default function ShootSetup() {
 
   // Preview: compute what each frame will be
   const previewFrames = useMemo(() => {
-    const poses = orderedSetsEnabled ? orderedShots.map(shot => lifestyleFrameControls(shot).pose_action) : samplePoses({ mode: poseMode, packKey, manualPoses, count, allPoses: ALL_POSES });
+    const poses = orderedSetsEnabled ? orderedShots.map(shot => lifestyleFrameControls(shot).pose_action) : samplePoses({ mode: poseMode, packKey:selectedPackKey, manualPoses, count, allPoses:posePool, packs:posePacks, shared:castCount>1 });
     const outs = cycleOutfits(outfits.map((o) => ({ outfit_preset: o })), count);
     return poses.map((sampledPose, i) => {
       const planned = orderedSetsEnabled && !studio3Plan ? lifestyleFrameControls(orderedShots[i]) : aiFrames && !studio3Plan ? plannedFrameControls(aiFrames[i], lockScenario) : null;
@@ -170,6 +175,7 @@ export default function ShootSetup() {
         dna: frameDna,
         subjects,
         isMulti: subjects.length > 1,
+        promptCatalog,
         raunch: character?.raunch || 0,
         fieldLocks: character?.field_locks || {},
         sectionLocks: character?.locks || {},
@@ -189,7 +195,7 @@ export default function ShootSetup() {
         prompt_positive: compiled ? [
           studio3Plan?.planType === "adult-editorial" ? "Adult editorial photography; the subject is clearly an adult, age 25 or older" : "",
           studio3Plan?.planType === "adult-editorial" && shot3?.wardrobeAction ? `Wardrobe progression: ${shot3.wardrobeAction}` : "",
-          p && `Frame pose: ${p}`,
+          p && subjects.length === 1 && `Frame pose: ${p}`,
           outfit_overrides.outfit_preset && `Frame outfit for every subject: ${outfit_overrides.outfit_preset}`,
           scene_direction,
           compiled.positive,
@@ -202,7 +208,7 @@ export default function ShootSetup() {
 
       };
     });
-  }, [orderedSetsEnabled, orderedShots, sequenceEnabled, coverageFrames, poseMode, packKey, manualPoses, count, outfits, expressions, shotScript, character, shootWorkflow, aiFrames, lockScenario, setControls, identityMode, settings?.builder_prompt_format, studio3Plan]);
+  }, [orderedSetsEnabled, orderedShots, sequenceEnabled, coverageFrames, poseMode, selectedPackKey, posePacks, posePool, castCount, manualPoses, count, outfits, expressions, shotScript, character, shootWorkflow, aiFrames, lockScenario, setControls, identityMode, settings?.builder_prompt_format, studio3Plan, promptCatalog]);
 
   const studio3Frames=studio3Plan ? previewFrames.filter((_,i)=>studio3Plan.shots[i]?.enabled) : [];
   const studio3Warnings=studio3Plan ? validateShotFrames(studio3Plan,studio3Frames) : [];
@@ -460,14 +466,14 @@ export default function ShootSetup() {
 
             {poseMode === "pack" && (
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                {POSE_PACKS.map((p) => (
+                {posePacks.map((p) => (
                   <button
                     key={p.key}
                     type="button"
                     onClick={() => setPackKey(p.key)}
                     data-testid={`btn-pose-pack-${p.key}`}
                     className={`text-left rounded-lg border p-3 transition-colors ${
-                      packKey === p.key
+                      selectedPackKey === p.key
                         ? "border-amber-500 bg-amber-500/10"
                         : "border-hairline hover:bg-white/5"
                     }`}
@@ -485,7 +491,7 @@ export default function ShootSetup() {
             {poseMode === "random" && (
               <div className="text-xs text-zinc-400 p-3 rounded-md bg-elevated border border-hairline flex items-center gap-2">
                 <Shuffle className="h-3.5 w-3.5 text-amber-300" />
-                {count} random poses will be sampled from the full pose library ({ALL_POSES.length} options).
+                {count} {castCount>1?'shared cast poses':'poses'} will be sampled from the {castCount>1?'multi-person':'solo'} pose library ({posePool.length} options).
               </div>
             )}
           </fieldset>

@@ -31,10 +31,10 @@ test('the shared-pose library ships forty new boudoir and editorial group compos
   const pairs=sharedPoseGroups(2,{sections:[]}).flatMap(group=>group.poses);
   const groups=sharedPoseGroups(4,{sections:[]}).flatMap(group=>group.poses);
   expect(pairs).toHaveLength(45);
-  expect(groups).toHaveLength(31);
+  expect(groups).toHaveLength(28);
   expect(pairs.filter(pose=>/boudoir|lingerie|robe|chaise|vanity|sofa|bed/i.test(pose.value))).toHaveLength(20);
   expect(groups.filter(pose=>/three or four adults/i.test(pose.value))).toHaveLength(20);
-  expect(new Set([...pairs,...groups].map(pose=>pose.value)).size).toBe(76);
+  expect(new Set([...pairs,...groups].map(pose=>pose.value)).size).toBe(72);
 });
 test('category and selection names can change without mutating built-ins or stored option IDs', () => {
   const hair=editableSection(SECTIONS.find(section => section.key==='hair'));

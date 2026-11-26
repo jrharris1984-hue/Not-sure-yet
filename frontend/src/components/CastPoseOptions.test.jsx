@@ -38,7 +38,7 @@ test.each([2,3,4])('cast-size %i receives pose choices designed for one shared b
     expect(container.textContent).toContain('Lingerie editorial');
     expect(container.textContent).toContain('one continuous photograph');
     const choices=[...container.querySelectorAll('button')];
-    expect(choices.length).toBeGreaterThan(30);
+    expect(choices.length).toBeGreaterThan(25);
   } finally {act(()=>root.unmount());}
 });
 

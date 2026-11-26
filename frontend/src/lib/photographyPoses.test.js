@@ -19,6 +19,15 @@ it.each(['chroma','krea2'])('sends detailed standing directions to %s',promptSty
  expect(compileModelPrompts({promptStyle,dna}).positive).toContain(POSE_ACTION_PROMPTS['standing quarter turn']);
 });
 
+it('uses shared cast pose pools for manual packs and random multi-person shots',()=>{
+ const packs=[{key:'shared-lingerie',name:'Lingerie editorial',poses:['pair pose A','pair pose B']}];
+ expect(samplePoses({mode:'pack',packKey:'shared-lingerie',count:4,allPoses:packs[0].poses,packs,shared:true}))
+  .toEqual(['pair pose A','pair pose B','pair pose A','pair pose B']);
+ const randomized=samplePoses({mode:'natural',count:8,allPoses:packs[0].poses,packs,shared:true});
+ expect(randomized).toHaveLength(8);
+ expect(randomized.every(pose=>packs[0].poses.includes(pose))).toBe(true);
+});
+
 it('maps every selectable pose to the supplied phrase without extra wording', () => {
  const choices=SECTIONS.find(section=>section.key==='pose').fields.find(field=>field.key==='action').groups.flatMap(group=>group.options);
  expect(Object.keys(POSE_ACTION_PROMPTS).sort()).toEqual([...choices].sort());
