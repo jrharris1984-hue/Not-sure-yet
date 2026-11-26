@@ -6,6 +6,7 @@ SHOT_FIELDS = {
     "framing": ("pose", "distance"),
     "view": ("pose", "angle"),
     "camera_height": ("camera", "angle"),
+    "lens": ("camera", "lens"),
     "expression": ("face", "expression"),
     "outfit_preset": ("wardrobe", "outfit_preset"),
     "outfit_color": ("wardrobe", "garment_color"),
