@@ -4,6 +4,7 @@ import { assembleFinalPrompts } from './finalPromptAssembly';
 import { freeformPayload } from './freeformGeneration';
 import { likenessOverrides } from '@/components/LikenessLoraPanel';
 import { skinAfterAgeChange } from './ageAppearance';
+import { updateWorkspaceField } from './workspaceFields';
 
 export function workspaceWorkflows(rows, settings, mode) {
   return builderCatalogWorkflows(rows, settings.default_workflow_id, '', settings.builder_hidden_workflow_ids)
