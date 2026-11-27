@@ -14,4 +14,4 @@ export const QUICK_SHOOT_STYLES=[
  {key:'retro80s',name:'1980s Glamour',pack:'editorial',hint:'Bold retro fashion and confident poses'},
  {key:'blackwhite',name:'Black & White',pack:'portrait',hint:'Classic portrait framing'}
 ];
-export const QUICK_SHOOT_COUNTS=[3,6,12,24,40,80,120];
+export const QUICK_SHOOT_COUNTS=[3,6,12,20,24,40,80,120];
