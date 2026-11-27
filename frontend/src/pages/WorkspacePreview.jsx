@@ -16,6 +16,7 @@ import { useWorkspaceGeneration } from '@/hooks/useWorkspaceGeneration';
 import RandomizerSuites from '@/components/RandomizerSuites';
 import UniversalLoraPicker from '@/components/UniversalLoraPicker';
 import CastPoseOptions from '@/components/CastPoseOptions';
+import CameraOrbitPicker from '@/components/CameraOrbitPicker';
 import { sharedCastPose, selectSharedCastPose, editCastPose } from '@/lib/castPoseResolution';
 import { usePromptCatalog } from '@/lib/promptCatalog';
 import './WorkspacePreview.css';
@@ -173,6 +174,16 @@ export default function WorkspacePreview() {
                   )}
                   {editRow('Pose', 'pose', 'action')}
                   {editRow('Framing', 'pose', 'distance')}
+                  <CameraOrbitPicker
+                    value={person.dna.pose?.angle || ''}
+                    disabled={locked || fieldLocked('pose', 'angle')}
+                    onChange={angle => setPeople(current => editCastPose(
+                      current,
+                      current[active]?.id,
+                      { ...(current[active]?.dna?.pose || {}), angle },
+                      promptCatalog
+                    ))}
+                  />
                 </>
               )}
             </div>

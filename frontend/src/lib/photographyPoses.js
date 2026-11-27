@@ -125,15 +125,47 @@ export const POSE_ACTION_PROMPTS = {
   "standing on tiptoe beside a chair": "standing lightly on tiptoe beside a chair, balanced posture and both shoes visible in full-length framing",
   "seated with shoes angled toward camera": "seated with knees softly bent and shoes angled toward the camera, natural perspective and complete feet in frame",
   "low chaise pose with feet in frame": "reclining along a chaise with the upper body supported and both feet comfortably visible within the composition",
-  "walking turn with heel detail": "captured mid-step during a gentle turn, with both heels visible and a natural, balanced gait"
+  "walking turn with heel detail": "captured mid-step during a gentle turn, with both heels visible and a natural, balanced gait",
+  "standing with one knee softly bent": "standing in a relaxed editorial pose with one knee softly bent, hips balanced and shoulders easy",
+  "standing with ankles crossed": "standing with ankles crossed and weight settled naturally, creating a long composed silhouette",
+  "standing with shoulder toward camera": "standing at a three-quarter angle with one shoulder nearer the camera and the face turned toward the light",
+  "standing with hands at waist": "standing with both hands resting lightly at the waist, elbows relaxed and posture upright",
+  "standing beside a tall stool": "standing beside a tall studio stool with one hand resting lightly on its back, balanced full-length posture",
+  "seated with legs angled to one side": "seated with both legs angled to one side, torso upright and hands resting comfortably",
+  "side-saddle on a chair": "seated side-saddle on a chair with legs together to one side and shoulders turned toward the camera",
+  "seated leaning back on forearms": "seated with forearms supporting the upper body behind, shoulders open and legs relaxed",
+  "cross-legged on a low seat": "seated cross-legged on a low upholstered seat, back tall and hands relaxed on the knees",
+  "seated looking over shoulder": "seated at a slight angle with the torso turned away and a calm look back over one shoulder",
+  "leaning on a doorframe": "leaning lightly against a doorframe with one shoulder supported, weight shifted onto the back leg",
+  "leaning beside a window": "standing beside a window with one hand lightly on the sill, torso angled toward the natural light",
+  "leaning back on a counter": "leaning gently back against a counter with hands placed beside the hips and shoulders relaxed",
+  "profile against a backdrop": "standing in a clean side profile against the backdrop, head level and arms resting naturally",
+  "seated profile on a bench": "seated in side profile on a studio bench with knees aligned and hands resting loosely in the lap",
+  "walking toward window light": "walking at an easy pace toward a window, captured mid-stride with soft natural movement",
+  "turning away mid-step": "captured while turning away mid-step, shoulders rotating naturally and posture remaining balanced",
+  "reaching to adjust hair": "raising one hand to adjust the hair while standing at a slight angle, expression relaxed and candid",
+  "walking heel to toe": "walking heel-to-toe across the set with a measured natural stride and composed posture",
+  "gentle seated stretch": "seated upright while extending one arm in a gentle side stretch, shoulders relaxed and movement controlled",
+  "reclining with upper body supported": "reclining on one side with the upper body supported by an arm and legs extended comfortably",
+  "kneeling beside a chair": "kneeling upright beside a chair with one hand resting on the seat, shoulders relaxed and spine tall",
+  "standing back to camera": "standing with the back toward the camera, shoulders level and head turned slightly to the side",
+  "seated with back to camera": "seated facing away from the camera with a relaxed back line and head turned gently over one shoulder"
 };
 
 const ADDITIONAL_PHOTOGRAPHY_POSES = ["standing relaxed shoulder turn","standing hands clasped","standing hand at collar","chin resting on hand","hands framing face","adjusting sleeve cuff","seated with ankles crossed","seated leaning forward","seated with one arm on chair","seated torso rotated","leaning on high table","leaning with arms crossed","walking diagonal","walking looking back","mid-turn fabric movement","reaching toward window light","descending staircase","holding coat over shoulder"];
 const ADULT_EDITORIAL_POSES = ["seated with one leg extended and heel visible","one foot on a low studio riser","adjusting a heel strap at the vanity","reclining with ankles crossed","standing on tiptoe beside a chair","seated with shoes angled toward camera","low chaise pose with feet in frame","walking turn with heel detail"];
+const EXTENDED_EDITORIAL_POSES = [
+  "standing with one knee softly bent", "standing with ankles crossed", "standing with shoulder toward camera", "standing with hands at waist", "standing beside a tall stool",
+  "seated with legs angled to one side", "side-saddle on a chair", "seated leaning back on forearms", "cross-legged on a low seat", "seated looking over shoulder",
+  "leaning on a doorframe", "leaning beside a window", "leaning back on a counter", "profile against a backdrop", "seated profile on a bench",
+  "walking toward window light", "turning away mid-step", "reaching to adjust hair", "walking heel to toe", "gentle seated stretch",
+  "reclining with upper body supported", "kneeling beside a chair", "standing back to camera", "seated with back to camera",
+];
 export const PHOTOGRAPHY_POSE_PROMPTS = Object.fromEntries([
   ...Object.entries(POSE_ACTION_PROMPTS).slice(0,16),
   ...ADDITIONAL_PHOTOGRAPHY_POSES.map(key=>[key,POSE_ACTION_PROMPTS[key]]),
   ...ADULT_EDITORIAL_POSES.map(key=>[key,POSE_ACTION_PROMPTS[key]]),
+  ...EXTENDED_EDITORIAL_POSES.map(key=>[key,POSE_ACTION_PROMPTS[key]]),
 ]);
 
 export const PHOTOGRAPHY_POSE_GROUPS = [
@@ -145,6 +177,11 @@ export const PHOTOGRAPHY_POSE_GROUPS = [
   {name:'Seated editorial', options:ADDITIONAL_PHOTOGRAPHY_POSES.slice(6,12)},
   {name:'Movement & gestures', options:ADDITIONAL_PHOTOGRAPHY_POSES.slice(12)},
   {name:'Footwear & detail editorial', options:ADULT_EDITORIAL_POSES},
+  {name:'Expanded standing', options:EXTENDED_EDITORIAL_POSES.slice(0,5)},
+  {name:'Expanded seated', options:EXTENDED_EDITORIAL_POSES.slice(5,10)},
+  {name:'Expanded profile & leaning', options:EXTENDED_EDITORIAL_POSES.slice(10,15)},
+  {name:'Expanded movement', options:EXTENDED_EDITORIAL_POSES.slice(15,20)},
+  {name:'Boudoir & reverse view', options:EXTENDED_EDITORIAL_POSES.slice(20)},
 ];
 
 export function photographyPosePrompt(value) {
