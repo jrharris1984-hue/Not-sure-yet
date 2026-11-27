@@ -30,6 +30,8 @@ test('shoot sections keep wardrobe selections when switching and expose set prop
     act(() => root.render(<ShootSetup />));
     expect(container.querySelector('[data-testid="shoot-basics-panel"]').hidden).toBe(false);
     expect(container.querySelector('[data-testid="shoot-clothing-sequence"]').hidden).toBe(true);
+    expect([...container.querySelector('[aria-label="Adult editorial image count"]').options].map(option => Number(option.value))).toEqual([20,40,80,120]);
+    expect(container.querySelector('[data-testid="quick-shoot-director"]').textContent).toContain('20 photos');
     const tab = label => [...container.querySelectorAll('nav[aria-label="Shoot setup sections"] button')].find(button => button.textContent.includes(label));
     act(() => tab('Wardrobe').click());
     act(() => container.querySelector('[data-testid="enable-clothing-sequence"]').click());

@@ -19,7 +19,7 @@ beforeEach(()=>{
 afterEach(()=>{act(()=>root.unmount());container.remove();});
 test('first launch offers one Create hub for image, editing, shoots and video',async()=>{
   await paint({fresh:true});expect(container.querySelector('.cs-start-hub')).not.toBeNull();expect(container.querySelector('.cs-inspector')).toBeNull();expect(container.querySelector('.cs-generate-bar')).toBeNull();
-  expect(container.textContent).toContain('What are you creating?');expect(container.querySelectorAll('.cs-start-card')).toHaveLength(6);
+  expect(container.textContent).toContain('Studio workspace');expect(container.querySelectorAll('.cs-start-card')).toHaveLength(6);
   expect(container.querySelector('a[href="/create/guided?start=build"]')).not.toBeNull();
   expect(container.querySelector('a[href="/create/text-video"]')).not.toBeNull();expect(container.querySelector('a[href="/create/video"]')).not.toBeNull();
   expect(container.querySelector('a[href="/character/new"]')).not.toBeNull();await click('Text to image');expect(container.querySelector('.cs-start-hub')).toBeNull();expect(container.querySelector('.cs-inspector')).not.toBeNull();
@@ -34,7 +34,7 @@ test('a saved draft opens the canvas workspace with app navigation and one inspe
   await paint();expect(container.querySelector('.cs-stage')).not.toBeNull();expect(container.querySelector('.cs-inspector')).not.toBeNull();
   expect(container.querySelector('nav[aria-label="Studio navigation"] a[href="/gallery"]')).not.toBeNull();
   expect(container.textContent).not.toContain('Continue');expect(container.textContent).not.toContain('Step 1');
-  expect(container.querySelector('nav[aria-label="Studio navigation"] a[href="/create"] span').textContent).toBe('Create');
+  expect(container.querySelector('nav[aria-label="Studio navigation"] a[href="/projects"] span').textContent).toBe('Dashboard');
 });
 test('all body and outfit collections remain accessible through the inspector',async()=>{
   await paint();await click('Physical features');await click('Glutes');

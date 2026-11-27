@@ -18,6 +18,15 @@ test("40-shot adult editorial plan progresses from clothed styling to nude fine-
   expect(plan.shots.every(shot => ADULT_EDITORIAL_POSES.includes(shot.pose))).toBe(true);
 });
 
+test("the 20-shot option keeps the full editable coverage arc from dressed to nude", () => {
+  const plan = createAdultEditorialPlan({ count: 20 });
+  expect(plan.shots).toHaveLength(20);
+  expect(plan.shots[0].coverage).toBe(ADULT_EDITORIAL_COVERAGE_STAGES[0]);
+  expect(plan.shots.at(-1).coverage).toBe("nude");
+  expect(new Set(plan.shots.map(shot => shot.coverage))).toEqual(new Set(ADULT_EDITORIAL_COVERAGE_STAGES));
+  expect(plan.shots.every(shot => shot.wardrobeAction)).toBe(true);
+});
+
 test("the 120-shot plan stays within the shot director limit and keeps every shot direction distinct", () => {
   const plan = createAdultEditorialPlan({ count: 120, templateKey: "footwear-care" });
   expect(plan.shots).toHaveLength(120);
