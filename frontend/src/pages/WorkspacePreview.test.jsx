@@ -83,6 +83,26 @@ test('Quick Start can assign one exact Wardrobe outfit to every subject',async()
   expect(selectedOutfit()).toContain(exactOutfit);
   await click('Subject B');expect(selectedOutfit()).toContain(exactOutfit);
 });
+test('image settings allow twenty outputs and expose seed, group pose, and camera controls',async()=>{
+  await paint();await click('Create a new character');await click('Add another person');
+  await click('Next');await click('Next');await click('Next');await click('Next');
+  await click('Image settings');
+  const settings=document.querySelector('.wp-settings');
+  expect(settings.querySelectorAll('[aria-label="Images to generate"] option')).toHaveLength(20);
+  const imageCount=settings.querySelector('[aria-label="Images to generate"]');
+  act(()=>{imageCount.value='20';imageCount.dispatchEvent(new Event('change',{bubbles:true}));});
+  const advanced=settings.querySelector('summary');act(()=>advanced.click());
+  expect(settings.querySelector('[aria-label="Seed"]')).not.toBeNull();
+  expect(settings.querySelector('[data-testid="cast-aware-poses"]')).not.toBeNull();
+  const camera=settings.querySelector('[aria-label="Horizontal camera direction"]');
+  expect(camera).not.toBeNull();
+  const back=[...camera.querySelectorAll('button')].find(button=>button.textContent==='Back');
+  await act(async()=>back.click());
+  expect(settings.querySelector('.camera-orbit-picker [aria-live="polite"]')?.textContent).toContain('Selected: back');
+  await click('Done');
+  expect(container.querySelector('.wp-review-settings')?.textContent).toContain('20 images');
+  expect([...container.querySelectorAll('.wp-review-settings')].some(row=>row.textContent.includes('20 images'))).toBe(true);
+});
 test('description is required and survives step navigation; generation becomes available after review',async()=>{
   await paint();await click('Describe an image');
   const next=()=>[...container.querySelectorAll('button')].find(b=>b.textContent==='Next');
