@@ -21,7 +21,7 @@ export default function Projects() {
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-violet-300">ULTRA STUDIO · PROJECT DASHBOARD</p>
           <h1 className="mt-2 text-3xl font-bold tracking-tight sm:text-4xl">Your creative workspace</h1>
-          <p className="mt-2 max-w-2xl text-sm text-zinc-400">Start a new project or return to your images, characters, and shoots. Creation, editing, and video tools open in the same Studio workspace.</p>
+          <p className="mt-2 max-w-2xl text-sm text-zinc-400">Start a new project or return to your images, characters, and shoots. Studio provides one front door for image, edit, and video workflows.</p>
         </div>
         <Link to="/create" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-violet-400 px-5 font-semibold text-zinc-950 transition hover:bg-violet-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-300">
           <Plus size={18} /> Start creating
