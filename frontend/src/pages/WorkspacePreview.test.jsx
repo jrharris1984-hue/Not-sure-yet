@@ -41,19 +41,23 @@ test('relationship controls appear only for multiple people and disappear when r
   await paint();await click('Create a new character');
   expect(container.textContent).toContain('One person');expect([...container.querySelectorAll('label')].some(label=>label.textContent.startsWith('Relationship'))).toBe(false);
   await click('Add another person');expect(container.textContent).toContain('Relationship');
+  expect(container.querySelector('[aria-label="Choose subject to edit"]')).not.toBeNull();
+  expect(container.querySelector('[aria-label="Edit Subject A"]')).not.toBeNull();
+  expect(container.querySelector('[aria-label="Edit Subject B"]')).not.toBeNull();
   await click('Remove this person');expect([...container.querySelectorAll('label')].some(label=>label.textContent.startsWith('Relationship'))).toBe(false);
 });
 test('random starter creates a multi-person lingerie shoot with distinct outfits and shared pose controls',async()=>{
   await paint();await click('Create a new character');
-  const style=document.querySelector('select[aria-label="Random outfit style"]');expect(style).not.toBeNull();
-  act(()=>{style.value='lingerie';style.dispatchEvent(new Event('change',{bubbles:true}));});
+  const category=document.querySelector('select[aria-label="Wardrobe category"]');expect(category).not.toBeNull();
+  act(()=>{category.value='Lingerie sets';category.dispatchEvent(new Event('change',{bubbles:true}));});
   const cast=document.querySelector('select[aria-label="Random cast size"]');act(()=>{cast.value='3';cast.dispatchEvent(new Event('change',{bubbles:true}));});
   await click('Create random 3-person shoot');
-  expect(container.querySelector('[role="status"]').textContent).toContain('3-person random shoot created');
+  expect(container.querySelector('[role="status"]').textContent).toContain('Subjects have randomized looks from Lingerie sets');
+  expect(container.querySelector('[aria-label="Edit Subject C"]')).not.toBeNull();
   await click('Body build');expect(container.textContent).toContain('Intimate details');await click('Next');
   const selectedOutfit=()=>container.querySelector('.wp-block .wp-selection')?.textContent;
   const outfits=[selectedOutfit()];
-  for(const name of ['Person 2','Person 3']){await click(name);outfits.push(selectedOutfit());}
+  for(const name of ['Subject B','Subject C']){await click(name);outfits.push(selectedOutfit());}
   expect(new Set(outfits).size).toBe(3);expect(outfits.every(value=>/lingerie|bra|briefs|stockings|boudoir|slip|robe/i.test(value))).toBe(true);
   await click('Next');
   expect(container.querySelector('[data-testid="cast-aware-poses"]')).not.toBeNull();
@@ -61,8 +65,23 @@ test('random starter creates a multi-person lingerie shoot with distinct outfits
   expect(groupPose).toBeDefined();await act(async()=>groupPose.click());
   expect(container.querySelector('[data-testid="cast-aware-poses"] button[aria-pressed="true"]')?.textContent).toContain('three or four adults walking together');
   const pose=()=>[...container.querySelectorAll('.wp-detail-row')].find(row=>row.querySelector('span')?.textContent==='Pose')?.querySelector('strong')?.textContent;
-  const sharedPose=pose();for(const name of ['Person 2','Person 3']){await click(name);expect(pose()).toBe(sharedPose);expect(container.querySelector('[data-testid="cast-aware-poses"] button[aria-pressed="true"]')?.textContent).toContain('three or four adults walking together');}
+  const sharedPose=pose();for(const name of ['Subject B','Subject C']){await click(name);expect(pose()).toBe(sharedPose);expect(container.querySelector('[data-testid="cast-aware-poses"] button[aria-pressed="true"]')?.textContent).toContain('three or four adults walking together');}
   await click('Review image');expect(container.querySelector('h1').textContent).toBe('Everything look right?');
+});
+test('Quick Start can assign one exact Wardrobe outfit to every subject',async()=>{
+  await paint();await click('Create a new character');
+  const category=document.querySelector('select[aria-label="Wardrobe category"]');
+  act(()=>{category.value='Lingerie sets';category.dispatchEvent(new Event('change',{bubbles:true}));});
+  const outfit=document.querySelector('select[aria-label="Specific outfit"]');
+  const exactOutfit=outfit.options[1].value;
+  act(()=>{outfit.value=exactOutfit;outfit.dispatchEvent(new Event('change',{bubbles:true}));});
+  const cast=document.querySelector('select[aria-label="Random cast size"]');act(()=>{cast.value='2';cast.dispatchEvent(new Event('change',{bubbles:true}));});
+  await click('Create random 2-person shoot');
+  expect(container.querySelector('[role="status"]').textContent).toContain(`All subjects are wearing “${exactOutfit}.”`);
+  await click('Next');
+  const selectedOutfit=()=>container.querySelector('.wp-block .wp-selection')?.textContent;
+  expect(selectedOutfit()).toContain(exactOutfit);
+  await click('Subject B');expect(selectedOutfit()).toContain(exactOutfit);
 });
 test('description is required and survives step navigation; generation becomes available after review',async()=>{
   await paint();await click('Describe an image');
