@@ -4,13 +4,13 @@ import { expandPrompt } from './promptMap';
 import { POSE_PACKS, samplePoses } from './posePacks';
 import { compileModelPrompts } from './modelPromptCompilers';
 
-it('makes all 106 photography directions selectable in Builder and shoot packs',()=>{
+it('makes all 127 photography directions selectable in Builder and shoot packs',()=>{
  const choices=SECTIONS.find(s=>s.key==='pose').fields.find(f=>f.key==='action').groups.flatMap(g=>g.options);
- expect(Object.keys(PHOTOGRAPHY_POSE_PROMPTS)).toHaveLength(106);
+ expect(Object.keys(PHOTOGRAPHY_POSE_PROMPTS)).toHaveLength(127);
  expect(choices).toContain('standing back to camera');
  expect(choices).toContain('seated with back to camera');
  expect(choices).toContain('side-saddle on a chair');
- for (const [name,count] of [['Squatting',13],['All Fours',13],['Kneeling',13],['Boudoir editorial',18]]) {
+ for (const [name,count] of [['Squatting',13],['All Fours',13],['Kneeling',13],['Boudoir editorial',18],['Boudoir studio variations',21]]) {
   const group=PHOTOGRAPHY_POSE_GROUPS.find(item=>item.name===name);
   expect(group.options).toHaveLength(count);
   for (const pose of group.options) expect(POSE_ACTION_PROMPTS[pose]).toBeTruthy();
@@ -20,6 +20,17 @@ it('makes all 106 photography directions selectable in Builder and shoot packs',
   expect(POSE_PACKS.find(p=>p.key===`photography_${index}`).poses).toEqual(group.options);
   expect(samplePoses({mode:'pack',packKey:`photography_${index}`,count:8})).toHaveLength(8);
  });
+});
+
+it('compiles boudoir layering and garment finish selections into the render prompt',()=>{
+ const dna=JSON.parse(JSON.stringify(DEFAULT_DNA));
+ dna.wardrobe.layering_piece='silk kimono robe';
+ dna.wardrobe.lingerie_cut='longline balconette silhouette';
+ dna.wardrobe.trim_detail='scalloped lace edging';
+ const positive=compileModelPrompts({promptStyle:'chroma',dna}).positive;
+ expect(positive).toContain('silk kimono robe');
+ expect(positive).toContain('longline balconette silhouette');
+ expect(positive).toContain('scalloped lace edging');
 });
 it.each(['chroma','krea2'])('sends detailed standing directions to %s',promptStyle=>{
  const dna=JSON.parse(JSON.stringify(DEFAULT_DNA));

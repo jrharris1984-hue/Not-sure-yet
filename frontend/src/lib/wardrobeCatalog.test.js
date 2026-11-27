@@ -10,12 +10,19 @@ test('catalog additions have unique identities and appear in category browsing',
 
 test('new lingerie, stocking and stage footwear sets are searchable and unique',()=>{
  const additions=WARDROBE_ITEMS.filter(item=>/^(lingerie|hosiery|stage|adult-editorial)-/.test(item.id));
- expect(additions).toHaveLength(28);
+ expect(additions).toHaveLength(33);
  expect(new Set(additions.map(item=>item.prompt)).size).toBe(additions.length);
  expect(WARDROBE_CATEGORY_GROUPS.map(group=>group.name)).toEqual(expect.arrayContaining(['Lingerie Sets','Stocking Looks','Stage & Dancewear','Adult Editorial']));
  expect(searchWardrobe('emerald lace','Lingerie Sets')[0].prompt).toContain('garter belt');
  expect(searchWardrobe('pole dance','Stage & Dancewear')[0].prompt).toContain('platform pole-dance heels');
  expect(searchWardrobe('black lace','Adult Editorial')[0].label).toBe('Black lace and satin robe');
+});
+test('boudoir wardrobe browsing includes layered, silhouette, hosiery and vintage editorial looks',()=>{
+ expect(WARDROBE_CATEGORY_GROUPS.map(group=>group.name)).toEqual(expect.arrayContaining(['Boudoir Wardrobe','Boudoir Lingerie','Hosiery Editorial','Vintage Boudoir']));
+ expect(searchWardrobe('cashmere','Boudoir Wardrobe')[0].prompt).toContain('opaque bias-cut satin slip');
+ expect(searchWardrobe('longline','Boudoir Lingerie')[0].prompt).toContain('high-waisted briefs');
+ expect(searchWardrobe('seamed','Hosiery Editorial')[0].prompt).toContain('classic pointed pumps');
+ expect(searchWardrobe('Hollywood','Vintage Boudoir')[0].label).toBe('Old Hollywood peignoir');
 });
 test('expanded individual lingerie, hosiery and stage heel options are available in the DNA controls',()=>{
  const fields=SECTIONS.find(section=>section.key==='wardrobe').fields;

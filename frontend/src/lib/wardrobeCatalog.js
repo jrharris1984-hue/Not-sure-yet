@@ -1,5 +1,5 @@
 // Normalized, additive wardrobe catalog. Keep prompt strings stable: saved DNA stores prompt values.
-export const WARDROBE_CATALOG_VERSION = 2;
+export const WARDROBE_CATALOG_VERSION = 3;
 export const WARDROBE_ITEMS = [
   {
     "id": "everyday-essentials-tailored-weekend",
@@ -1407,6 +1407,126 @@ export const WARDROBE_ITEMS = [
     "prompt": "glossy black latex mini dress with sheer black tights and over-the-knee heeled boots",
     "tags": ["adult editorial", "latex", "black", "tights", "over-the-knee boots"],
     "version": 1
+  },
+  {
+    "id": "boudoir-wardrobe-borrowed-shirt", "category": "Boudoir Wardrobe", "label": "Borrowed shirt and satin",
+    "prompt": "oversized white cotton button-down over a champagne satin camisole and matching tap shorts",
+    "tags": ["boudoir", "layered", "shirt", "satin", "covered"], "version": 1
+  },
+  {
+    "id": "boudoir-wardrobe-cashmere-slip", "category": "Boudoir Wardrobe", "label": "Cashmere and slip dress",
+    "prompt": "soft oversized cashmere cardigan over an opaque bias-cut satin slip dress",
+    "tags": ["boudoir", "knitwear", "slip", "soft", "covered"], "version": 1
+  },
+  {
+    "id": "boudoir-wardrobe-silk-peignoir", "category": "Boudoir Wardrobe", "label": "Silk peignoir set",
+    "prompt": "long silk peignoir over an opaque lace-trim camisole and matching tap shorts",
+    "tags": ["boudoir", "silk", "robe", "peignoir", "layered"], "version": 1
+  },
+  {
+    "id": "boudoir-wardrobe-velvet-wrap", "category": "Boudoir Wardrobe", "label": "Velvet wrap lounge set",
+    "prompt": "velvet wrap robe over an opaque matching camisole and lounge shorts",
+    "tags": ["boudoir", "velvet", "robe", "loungewear"], "version": 1
+  },
+  {
+    "id": "boudoir-wardrobe-bridal-morning", "category": "Boudoir Wardrobe", "label": "Bridal morning layers",
+    "prompt": "ivory satin dressing gown over a structured lace longline bra and high-waisted briefs",
+    "tags": ["boudoir", "bridal", "ivory", "satin", "layered"], "version": 1
+  },
+  {
+    "id": "boudoir-wardrobe-lounge-cardigan", "category": "Boudoir Wardrobe", "label": "Ribbed cardigan and camisole",
+    "prompt": "soft ribbed cardigan worn open over a satin camisole and tailored lounge shorts",
+    "tags": ["boudoir", "cardigan", "camisole", "loungewear", "covered"], "version": 1
+  },
+  {
+    "id": "boudoir-wardrobe-lace-bodysuit-duster", "category": "Boudoir Wardrobe", "label": "Lace bodysuit and embroidered duster",
+    "prompt": "opaque lace bodysuit layered under a long embroidered sheer duster",
+    "tags": ["boudoir", "bodysuit", "duster", "embroidered", "layered"], "version": 1
+  },
+  {
+    "id": "boudoir-wardrobe-satin-pajama", "category": "Boudoir Wardrobe", "label": "Satin pajama tailoring",
+    "prompt": "coordinated satin pajama shirt and shorts with contrast piping and a loosely tied waist",
+    "tags": ["boudoir", "satin", "pajama", "piping", "tailored"], "version": 1
+  },
+  {
+    "id": "boudoir-lingerie-longline-balconette", "category": "Boudoir Lingerie", "label": "Longline balconette set",
+    "prompt": "structured longline balconette bra and matching high-waisted briefs with a coordinating garter belt",
+    "tags": ["boudoir", "lingerie", "balconette", "longline", "high-waisted"], "version": 1
+  },
+  {
+    "id": "boudoir-lingerie-soft-cup-french-knickers", "category": "Boudoir Lingerie", "label": "Soft cup and French knickers",
+    "prompt": "soft-cup silk bralette and matching French knickers with lace trim",
+    "tags": ["boudoir", "lingerie", "silk", "soft cup", "French knickers"], "version": 1
+  },
+  {
+    "id": "boudoir-lingerie-underbust-corset", "category": "Boudoir Lingerie", "label": "Embroidered underbust corset",
+    "prompt": "embroidered underbust corset styled over an opaque matching bra and high-waisted briefs",
+    "tags": ["boudoir", "lingerie", "corset", "embroidered", "high-waisted"], "version": 1
+  },
+  {
+    "id": "boudoir-lingerie-satin-slip", "category": "Boudoir Lingerie", "label": "Bias-cut satin slip",
+    "prompt": "opaque bias-cut satin slip with lace-trim neckline and a coordinating short robe",
+    "tags": ["boudoir", "lingerie", "satin", "slip", "robe"], "version": 1
+  },
+  {
+    "id": "boudoir-lingerie-mesh-panel-bodysuit", "category": "Boudoir Lingerie", "label": "Geometric mesh-panel bodysuit",
+    "prompt": "tailored opaque bodysuit with geometric sheer-mesh panels and a matching wrap",
+    "tags": ["boudoir", "lingerie", "bodysuit", "mesh", "geometric"], "version": 1
+  },
+  {
+    "id": "boudoir-lingerie-vintage-high-waist", "category": "Boudoir Lingerie", "label": "Vintage high-waist set",
+    "prompt": "vintage-inspired satin bra and high-waisted briefs with a coordinating suspender belt",
+    "tags": ["boudoir", "lingerie", "vintage", "satin", "suspender"], "version": 1
+  },
+  {
+    "id": "hosiery-editorial-seamed-stockings", "category": "Hosiery Editorial", "label": "Seamed stockings and pumps",
+    "prompt": "black seamed stockings with a satin garter belt, coordinated lace lingerie and classic pointed pumps",
+    "tags": ["hosiery", "stockings", "garter", "pumps", "editorial"], "version": 1
+  },
+  {
+    "id": "hosiery-editorial-pattern-tights", "category": "Hosiery Editorial", "label": "Patterned tights and bodysuit",
+    "prompt": "fine geometric patterned tights with an opaque high-neck bodysuit, tailored robe and ankle-strap heels",
+    "tags": ["hosiery", "tights", "patterned", "bodysuit", "heels"], "version": 1
+  },
+  {
+    "id": "hosiery-editorial-lace-hold-ups", "category": "Hosiery Editorial", "label": "Lace-top hold-ups and slingbacks",
+    "prompt": "lace-top hold-up stockings with a matching satin lingerie set and elegant slingback heels",
+    "tags": ["hosiery", "stockings", "lace", "slingbacks", "editorial"], "version": 1
+  },
+  {
+    "id": "hosiery-editorial-fishnet-velvet", "category": "Hosiery Editorial", "label": "Fine fishnet and velvet bustier",
+    "prompt": "fine fishnet tights with a structured velvet bustier, matching briefs and platform pumps",
+    "tags": ["hosiery", "fishnet", "velvet", "bustier", "platform"], "version": 1
+  },
+  {
+    "id": "hosiery-editorial-neutral-sheer", "category": "Hosiery Editorial", "label": "Neutral sheer hosiery look",
+    "prompt": "ultra-sheer neutral stockings with an ivory lace-trim slip, silk robe and nude heels",
+    "tags": ["hosiery", "sheer", "neutral", "ivory", "heels"], "version": 1
+  },
+  {
+    "id": "vintage-boudoir-old-hollywood", "category": "Vintage Boudoir", "label": "Old Hollywood peignoir",
+    "prompt": "Old Hollywood satin peignoir with feather-trim cuffs over an opaque lace slip",
+    "tags": ["vintage", "boudoir", "Hollywood", "satin", "peignoir"], "version": 1
+  },
+  {
+    "id": "vintage-boudoir-1940s-seamed", "category": "Vintage Boudoir", "label": "1940s seamed stocking set",
+    "prompt": "1940s-inspired high-waisted satin lingerie with a structured garter belt and seamed stockings",
+    "tags": ["vintage", "boudoir", "1940s", "garter", "stockings"], "version": 1
+  },
+  {
+    "id": "vintage-boudoir-1950s-polka-dot", "category": "Vintage Boudoir", "label": "1950s polka-dot playsuit",
+    "prompt": "1950s polka-dot satin playsuit with a matching short robe, seamed stockings and kitten heels",
+    "tags": ["vintage", "boudoir", "1950s", "pin-up", "playsuit"], "version": 1
+  },
+  {
+    "id": "vintage-boudoir-french-chemise", "category": "Vintage Boudoir", "label": "French-inspired chemise",
+    "prompt": "French-inspired opaque lace-trim chemise with a coordinating dressing gown and delicate jewelry",
+    "tags": ["vintage", "boudoir", "chemise", "lace", "dressing gown"], "version": 1
+  },
+  {
+    "id": "vintage-boudoir-art-deco", "category": "Vintage Boudoir", "label": "Art deco beaded lounge set",
+    "prompt": "art-deco beaded satin camisole and tap shorts with a long bias-cut robe",
+    "tags": ["vintage", "boudoir", "art deco", "beaded", "satin"], "version": 1
   }
 ];
 export const WARDROBE_CATEGORY_GROUPS = Object.entries(WARDROBE_ITEMS.reduce((acc, item) => { (acc[item.category] ||= []).push(item); return acc; }, {})).map(([name, items]) => ({ name, options: items.map(item => item.prompt) }));

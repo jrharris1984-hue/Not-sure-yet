@@ -351,8 +351,58 @@ const collections = [
   }
 ];
 
-export const ADDITIONAL_OUTFIT_GROUPS = collections.map(group => ({ name: group.name, options: group.sets.map(set => set.prompt) }));
-export const OUTFIT_SET_LABELS = Object.fromEntries(collections.flatMap(group => group.sets.map(set => [set.prompt, set.label])));
+// Editorial-focused additions cover layered, modest, lingerie, hosiery, and
+// vintage looks so a shoot can vary its mood without relying on one silhouette.
+const boudoirCollections = [
+  {
+    name: 'Boudoir Layers',
+    sets: [
+      { label: 'Silk robe and camisole', prompt: 'open-front silk kimono robe layered over an opaque lace-trim camisole and matching tap shorts with satin slippers' },
+      { label: 'Borrowed shirt and satin', prompt: 'oversized white cotton button-down worn over a champagne satin camisole and matching shorts with bare feet' },
+      { label: 'Soft knit and slip', prompt: 'soft oversized cashmere cardigan over an opaque bias-cut satin slip dress with delicate ankle-strap heels' },
+      { label: 'Velvet wrap lounge', prompt: 'velvet wrap robe tied at the waist over a matching opaque camisole and lounge shorts with heeled mules' },
+      { label: 'Sheer duster over bodysuit', prompt: 'long sheer embroidered duster layered over an opaque fitted lace bodysuit with back-seam stockings and pumps' },
+      { label: 'Bridal morning layers', prompt: 'ivory satin dressing gown over a structured lace longline bra and high-waisted briefs with a soft veil and slippers' },
+    ],
+  },
+  {
+    name: 'Lingerie Silhouettes',
+    sets: [
+      { label: 'Longline balconette', prompt: 'structured longline balconette bra and matching high-waisted briefs with a coordinating garter belt and sheer stockings' },
+      { label: 'Soft cup and French knickers', prompt: 'soft-cup silk bralette and matching French knickers with lace trim and a short satin robe' },
+      { label: 'Embroidered corset ensemble', prompt: 'embroidered underbust corset over an opaque matching bra and high-waisted briefs with detachable garters' },
+      { label: 'Satin slip and robe', prompt: 'opaque bias-cut satin slip with a lace-trim neckline, matching robe, and minimalist slingback heels' },
+      { label: 'Modern mesh-panel bodysuit', prompt: 'tailored opaque bodysuit with geometric sheer-mesh panels, a matching wrap, and pointed heels' },
+      { label: 'High-waist vintage set', prompt: 'vintage-inspired satin bra and high-waisted briefs with a coordinating suspender belt and seamed stockings' },
+    ],
+  },
+  {
+    name: 'Hosiery & Heels Editorial',
+    sets: [
+      { label: 'Seamed stockings and pumps', prompt: 'black seamed stockings with a satin garter belt, coordinated lace lingerie, and classic pointed pumps' },
+      { label: 'Patterned tights and bodysuit', prompt: 'fine geometric patterned tights with an opaque high-neck bodysuit, tailored robe, and ankle-strap heels' },
+      { label: 'Lace-top stockings and slingbacks', prompt: 'lace-top hold-up stockings with a matching satin lingerie set and elegant slingback heels' },
+      { label: 'Fishnet and velvet bustier', prompt: 'fine fishnet tights with a structured velvet bustier, matching briefs, and platform pumps' },
+      { label: 'Sheer neutral hosiery look', prompt: 'ultra-sheer neutral stockings with an ivory lace-trim slip, silk robe, and nude heels' },
+      { label: 'Opera gloves and stilettos', prompt: 'satin lingerie set with sheer back-seam stockings, elbow-length opera gloves, and matching satin stilettos' },
+    ],
+  },
+  {
+    name: 'Vintage Boudoir',
+    sets: [
+      { label: 'Old Hollywood robe', prompt: 'Old Hollywood satin peignoir with feather-trim cuffs over an opaque lace slip and vintage pumps' },
+      { label: '1940s seamed stocking look', prompt: '1940s-inspired high-waisted satin lingerie with a structured garter belt, seamed stockings, and classic pumps' },
+      { label: '1950s pin-up lounge', prompt: '1950s polka-dot satin playsuit with a matching short robe, seamed stockings, and kitten heels' },
+      { label: 'French boudoir chemise', prompt: 'French-inspired opaque lace-trim chemise with a coordinating dressing gown, delicate jewelry, and slippers' },
+      { label: 'Art deco evening lingerie', prompt: 'art-deco beaded satin camisole and tap shorts with a long bias-cut robe and metallic heels' },
+      { label: 'Retro vanity ensemble', prompt: 'vintage floral satin robe over an opaque camisole and tap shorts with a coordinated headband and slippers' },
+    ],
+  },
+];
+
+const allCollections = [...collections, ...boudoirCollections];
+export const ADDITIONAL_OUTFIT_GROUPS = allCollections.map(group => ({ name: group.name, options: group.sets.map(set => set.prompt) }));
+export const OUTFIT_SET_LABELS = Object.fromEntries(allCollections.flatMap(group => group.sets.map(set => [set.prompt, set.label])));
 
 const layeredSets = [
   { label: 'Women’s pantsuit + satin lingerie', prompt: 'tailored women’s pantsuit with a matching blouse, handbag and pumps', lingerie: 'matching satin bra and briefs with garter belt, stockings and pumps' },

@@ -189,7 +189,28 @@ export const POSE_ACTION_PROMPTS = {
   "robe over shoulder portrait": "standing in a composed portrait with a robe draped securely over the shoulders and gaze turned aside",
   "reclining with knees softly bent": "reclining comfortably with knees softly bent and the upper body supported by pillows",
   "boudoir window silhouette seated": "seated in a soft window silhouette with a robe or slip fully covering the body and profile visible",
-  "seated on bed facing away": "seated on the bed facing away from the camera, shoulders relaxed and head turned gently toward the light"
+  "seated on bed facing away": "seated on the bed facing away from the camera, shoulders relaxed and head turned gently toward the light",
+  "boudoir seated wrapped in sheet": "seated at the edge of a bed with a sheet wrapped securely around the body, shoulders turned toward soft window light",
+  "side lounge with hand at temple": "reclining on one side with the upper body supported, one hand resting near the temple and gaze turned toward camera",
+  "kneeling robe portrait": "kneeling upright on a cushioned bed in a closed robe, hands resting softly on the thighs and posture relaxed",
+  "standing robe belt gesture": "standing in a closed dressing gown while lightly holding its belt, three-quarter angle and calm editorial expression",
+  "seated robe over shoulders": "seated in an armchair with a robe draped securely over the shoulders, legs angled to one side and hands relaxed",
+  "window-side slip profile": "standing in profile beside a bright window wearing an opaque slip dress, chin gently lifted and arms relaxed",
+  "vanity mirror reflection": "seated at a vanity with the face and shoulder visible both directly and in the mirror, one hand near a hairbrush",
+  "reclined with knees together": "reclining against pillows with knees together and softly bent, one arm resting above the head and a composed gaze",
+  "cross-legged in cardigan": "seated cross-legged on a bed wearing a soft cardigan over a camisole, hands resting naturally and expression candid",
+  "over-shoulder robe portrait": "standing with the back partly turned in a secured robe and looking back over one shoulder toward the lens",
+  "sitting on floor beside bed": "seated on the floor beside the bed with knees bent to one side, back lightly supported and posture comfortable",
+  "leaning at bedroom doorway": "leaning lightly against a bedroom doorway in a closed robe, one ankle crossed over the other and shoulders relaxed",
+  "reclining diagonally on chaise": "reclining diagonally along a chaise with the upper body supported, one knee softly bent and gaze turned toward light",
+  "hands adjusting robe cuff": "standing near a window while adjusting one robe cuff, eyes lowered and the other arm resting naturally",
+  "seated with robe sleeves folded": "seated sideways on a chair with robe sleeves folded loosely at the wrists, torso turned toward the camera",
+  "soft silhouette behind curtain": "standing behind a sheer curtain in an opaque slip, softly defined profile and non-revealing backlit silhouette",
+  "reaching for bedside book": "seated on the edge of a bed in a lounge set, reaching for a book on the bedside table in a candid gesture",
+  "lying on stomach reading": "lying comfortably on the stomach over a neatly made bed in a lounge set, upper body supported on forearms while reading",
+  "sitting at vanity applying lipstick": "seated at a vanity in a satin robe, applying lipstick while looking into the mirror with a relaxed expression",
+  "standing with robe trailing": "taking a slow step across the room in a closed flowing robe, fabric trailing gently and posture balanced",
+  "reclining under soft blanket": "reclining under a soft blanket with shoulders comfortably covered, head resting on pillows and eyes turned toward the window"
 };
 
 const ADDITIONAL_PHOTOGRAPHY_POSES = ["standing relaxed shoulder turn","standing hands clasped","standing hand at collar","chin resting on hand","hands framing face","adjusting sleeve cuff","seated with ankles crossed","seated leaning forward","seated with one arm on chair","seated torso rotated","leaning on high table","leaning with arms crossed","walking diagonal","walking looking back","mid-turn fabric movement","reaching toward window light","descending staircase","holding coat over shoulder"];
@@ -223,6 +244,14 @@ const BOUDOIR_EDITORIAL_POSES = [
   "lounging diagonally across chaise", "seated at vanity in three-quarter view", "robe over shoulder portrait",
   "reclining with knees softly bent", "boudoir window silhouette seated", "seated on bed facing away",
 ];
+const BOUDOIR_STUDIO_POSES = [
+  "boudoir seated wrapped in sheet", "side lounge with hand at temple", "kneeling robe portrait", "standing robe belt gesture",
+  "seated robe over shoulders", "window-side slip profile", "vanity mirror reflection", "reclined with knees together",
+  "cross-legged in cardigan", "over-shoulder robe portrait", "sitting on floor beside bed", "leaning at bedroom doorway",
+  "reclining diagonally on chaise", "hands adjusting robe cuff", "seated with robe sleeves folded", "soft silhouette behind curtain",
+  "reaching for bedside book", "lying on stomach reading", "sitting at vanity applying lipstick", "standing with robe trailing",
+  "reclining under soft blanket",
+];
 export const PHOTOGRAPHY_POSE_PROMPTS = Object.fromEntries([
   ...Object.entries(POSE_ACTION_PROMPTS).slice(0,16),
   ...ADDITIONAL_PHOTOGRAPHY_POSES.map(key=>[key,POSE_ACTION_PROMPTS[key]]),
@@ -232,6 +261,7 @@ export const PHOTOGRAPHY_POSE_PROMPTS = Object.fromEntries([
   ...ALL_FOURS_EDITORIAL_POSES.slice(3).map(key=>[key,POSE_ACTION_PROMPTS[key]]),
   ...KNEELING_EDITORIAL_POSES.slice(3).map(key=>[key,POSE_ACTION_PROMPTS[key]]),
   ...BOUDOIR_EDITORIAL_POSES.slice(8).map(key=>[key,POSE_ACTION_PROMPTS[key]]),
+  ...BOUDOIR_STUDIO_POSES.map(key=>[key,POSE_ACTION_PROMPTS[key]]),
 ]);
 
 export const PHOTOGRAPHY_POSE_GROUPS = [
@@ -252,6 +282,7 @@ export const PHOTOGRAPHY_POSE_GROUPS = [
   {name:'All Fours', options:ALL_FOURS_EDITORIAL_POSES},
   {name:'Kneeling', options:KNEELING_EDITORIAL_POSES},
   {name:'Boudoir editorial', options:BOUDOIR_EDITORIAL_POSES},
+  {name:'Boudoir studio variations', options:BOUDOIR_STUDIO_POSES},
 ];
 
 export function photographyPosePrompt(value) {

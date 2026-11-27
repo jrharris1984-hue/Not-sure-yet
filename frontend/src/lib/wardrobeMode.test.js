@@ -46,11 +46,12 @@ test.each(['use selected outfit','slightly revealing','revealing outfit','linger
   expect(selected.exposure_mode).toBe(coverage);
   expect(resolveWardrobeMode(selected).exposure_mode).toBe(coverage);
 });
-test('adds 75 unique complete sets including 60 decade and modern lingerie sets', () => {
+test('adds 99 unique complete sets including boudoir layers, silhouettes and vintage looks', () => {
   const options = ADDITIONAL_OUTFIT_GROUPS.flatMap(group => group.options);
-  expect(options).toHaveLength(75); expect(new Set(options).size).toBe(75);
+  expect(options).toHaveLength(99); expect(new Set(options).size).toBe(99);
   expect(ADDITIONAL_OUTFIT_GROUPS.filter(group => /lingerie/.test(group.name)).flatMap(group => group.options)).toHaveLength(60);
-  expect(Object.keys(OUTFIT_SET_LABELS)).toHaveLength(81);
+  expect(Object.keys(OUTFIT_SET_LABELS)).toHaveLength(105);
+  expect(ADDITIONAL_OUTFIT_GROUPS.map(group=>group.name)).toEqual(expect.arrayContaining(['Boudoir Layers','Lingerie Silhouettes','Hosiery & Heels Editorial','Vintage Boudoir']));
   expect(SECTIONS.find(section => section.key === 'wardrobe').fields.find(field => field.key === 'outfit_set').groups.flatMap(group => group.options)).toEqual(expect.arrayContaining(options));
 });
 test('selecting a set enters full mode and switching to Custom restores saved pieces', () => {
