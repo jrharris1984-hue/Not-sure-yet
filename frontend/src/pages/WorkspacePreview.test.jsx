@@ -44,6 +44,11 @@ test('relationship controls appear only for multiple people and disappear when r
   expect(container.querySelector('[aria-label="Choose subject to edit"]')).not.toBeNull();
   expect(container.querySelector('[aria-label="Edit Subject A"]')).not.toBeNull();
   expect(container.querySelector('[aria-label="Edit Subject B"]')).not.toBeNull();
+  const pairing=container.querySelector('[aria-label="Relationship / cast pairing"]');
+  expect([...pairing.options].some(option=>option.value==='sisters')).toBe(true);
+  expect([...pairing.options].some(option=>option.value==='mother and daughter')).toBe(true);
+  act(()=>{pairing.value='mother and daughter';pairing.dispatchEvent(new Event('change',{bubbles:true}));});
+  expect(container.textContent).toContain('family pairings can suggest related adult features and ages');
   await click('Remove this person');expect([...container.querySelectorAll('label')].some(label=>label.textContent.startsWith('Relationship'))).toBe(false);
 });
 test('random starter creates a multi-person lingerie shoot with distinct outfits and shared pose controls',async()=>{
@@ -102,6 +107,25 @@ test('image settings allow twenty outputs and expose seed, group pose, and camer
   await click('Done');
   expect(container.querySelector('.wp-review-settings')?.textContent).toContain('20 images');
   expect([...container.querySelectorAll('.wp-review-settings')].some(row=>row.textContent.includes('20 images'))).toBe(true);
+});
+test('Smart Shoot lives in Image Settings and previews editable per-image directions',async()=>{
+  await paint();await click('Create a new character');
+  await click('Next');await click('Next');await click('Next');await click('Next');
+  await click('Image settings');
+  const settings=document.querySelector('.wp-settings');
+  act(()=>settings.querySelector('summary').click());
+  const enable=settings.querySelector('[aria-label="Enable Smart Shoot"]');
+  expect(enable).not.toBeNull();
+  act(()=>enable.click());
+  expect(settings.querySelector('[aria-label="Smart Shoot style"]')).not.toBeNull();
+  expect(settings.querySelector('[aria-label="Smart Shoot style"]').value).toBe('boudoir');
+  expect(settings.querySelector('[aria-label="Smart Shoot variation strength"]')).not.toBeNull();
+  expect(settings.querySelectorAll('[data-testid="wizard-smart-shoot-plan"] li')).toHaveLength(1);
+  const count=settings.querySelector('[aria-label="Images to generate"]');
+  act(()=>{count.value='6';count.dispatchEvent(new Event('change',{bubbles:true}));});
+  expect(settings.querySelectorAll('[data-testid="wizard-smart-shoot-plan"] li')).toHaveLength(6);
+  expect(settings.querySelector('[data-testid="wizard-smart-shoot-plan"]').textContent).toContain('seed varies');
+  await click('Done');
 });
 test('description is required and survives step navigation; generation becomes available after review',async()=>{
   await paint();await click('Describe an image');

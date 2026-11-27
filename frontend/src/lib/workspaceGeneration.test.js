@@ -38,3 +38,14 @@ test('cast size matches the visible people and relationship does not leak after 
   expect(payload).toMatchObject({batch_size:1});
   expect(payload.subjects).toHaveLength(2);
 });
+test('group pairing selections such as sisters and adult mother-daughter reach every subject and respect cast size',()=>{
+  const cast=[previewPerson(),previewPerson(),previewPerson()];
+  const family=workspaceSubjects(cast,'mother and daughter');
+  expect(family.map(subject=>subject.dna.scenario)).toEqual(expect.arrayContaining([
+    expect.objectContaining({cast_size:'trio',cast_type:'mother and daughter'}),
+  ]));
+  expect(family.every(subject=>subject.dna._catalogSelections.scenario.cast_type==='mother and daughter')).toBe(true);
+  const sisters=workspaceSubjects(cast.slice(0,2),'sisters');
+  expect(sisters[0].dna.scenario).toMatchObject({cast_size:'duo',cast_type:'sisters'});
+  expect(workspaceSubjects([...cast,previewPerson()],'none')[0].dna.scenario.cast_size).toBe('foursome');
+});

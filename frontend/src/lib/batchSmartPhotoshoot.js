@@ -599,7 +599,7 @@ function poseGroupsFor(count, promptCatalog) {
     : soloPoseGroups();
 }
 
-function choosePose(groups, shotDef, used, seed, strength = "balanced") {
+function choosePose(groups, shotDef, used, seed, strength = "balanced", allowRepeat = false) {
   if (Object.hasOwn(shotDef?.raw || {}, 'pose_prompt')) return shotDef.raw.pose_prompt
     ? { value: shotDef.raw.pose_prompt, label: shotDef.raw.pose_label || shotDef.raw.pose_prompt } : null;
   const matched = groups.filter(group => !shotDef?.poseGroup || shotDef.poseGroup.test(group.label || ""));
@@ -608,17 +608,19 @@ function choosePose(groups, shotDef, used, seed, strength = "balanced") {
     : matched.length
       ? matched
       : groups;
-  const pool = source.flatMap(group => group.poses || [])
+  const sourcePool = source.flatMap(group => group.poses || [])
     .map(pose => ({
       value: normalize(pose.prompt || pose.value),
       label: pose.label || pose.value,
     }))
-    .filter(pose => pose.value && !used.has(normalize(pose.value)));
+    .filter(pose => pose.value);
+  const unused = sourcePool.filter(pose => !used.has(normalize(pose.value)));
+  const pool = unused.length ? unused : allowRepeat ? sourcePool : [];
   if (!pool.length) return null;
   return pool[Math.abs(Math.trunc(seed || 0)) % pool.length];
 }
 
-function chooseCamera(shotDef, used, seed, strength = "balanced") {
+function chooseCamera(shotDef, used, seed, strength = "balanced", allowRepeat = false) {
   if (Object.hasOwn(shotDef?.raw || {}, 'camera_pose_angle')) return shotDef.raw.camera_pose_angle
     ? { poseAngle: shotDef.raw.camera_pose_angle, cameraAngle: shotDef.raw.camera_angle,
         label: `${shotDef.raw.camera_pose_angle} · ${shotDef.raw.camera_angle}` } : null;
@@ -631,7 +633,8 @@ function chooseCamera(shotDef, used, seed, strength = "balanced") {
     : strength === "bold"
       ? SMART_CAMERA_VARIATIONS
       : (matched.length ? matched : SMART_CAMERA_VARIATIONS);
-  const pool = source.filter(item => !used.has(item.label));
+  const unused = source.filter(item => !used.has(item.label));
+  const pool = unused.length ? unused : allowRepeat ? source : [];
   if (!pool.length) return null;
   return pool[Math.abs(Math.trunc(seed || 0)) % pool.length];
 }
@@ -653,9 +656,10 @@ export function buildSmartPhotoshootPlan({
 
   return Array.from({ length: count }, (_, index) => {
     const shotDef = definition.sequence[index % definition.sequence.length];
-    const pose = options.pose === false ? null : choosePose(groups, shotDef, usedPoses, seed + index * 104729, strength);
+    const allowRepeat = index >= definition.sequence.length;
+    const pose = options.pose === false ? null : choosePose(groups, shotDef, usedPoses, seed + index * 104729, strength, allowRepeat);
     if (pose) usedPoses.add(normalize(pose.value));
-    const camera = options.camera === false ? null : chooseCamera(shotDef, usedCameras, seed + index * 7919, strength);
+    const camera = options.camera === false ? null : chooseCamera(shotDef, usedCameras, seed + index * 7919, strength, allowRepeat);
     if (camera) usedCameras.add(camera.label);
 
     return {
@@ -688,11 +692,12 @@ export function regenerateSmartPhotoshootPlan({ plan = [], index = null, ...conf
   return plan.map((shot, position) => {
     if (!replace(shot, position)) return shot;
     const shotDef = definition.sequence[position % definition.sequence.length];
+    const allowRepeat = position >= definition.sequence.length;
     const seed = (config.seed || 0) + position * 104729;
     const pose = options.pose === false ? null : choosePose(groups, shotDef,
-      new Set([...usedPoses, normalize(shot.pose?.value)]), seed, config.strength) || shot.pose;
+      new Set([...usedPoses, normalize(shot.pose?.value)]), seed, config.strength, allowRepeat) || shot.pose;
     const camera = options.camera === false ? null : chooseCamera(shotDef,
-      new Set([...usedCameras, shot.camera?.label]), seed, config.strength) || shot.camera;
+      new Set([...usedCameras, shot.camera?.label]), seed, config.strength, allowRepeat) || shot.camera;
     if (pose) usedPoses.add(normalize(pose.value));
     if (camera) usedCameras.add(camera.label);
     return { ...shot, pose, camera };

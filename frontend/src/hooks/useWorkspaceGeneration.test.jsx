@@ -3,6 +3,7 @@ import {createRoot} from 'react-dom/client';
 import {useWorkspaceGeneration} from './useWorkspaceGeneration';
 import {previewPerson} from '@/lib/workspacePreview';
 import {endpoints} from '@/lib/api';
+import {buildSmartPhotoshootPlan} from '@/lib/batchSmartPhotoshoot';
 jest.mock('@/lib/api',()=>({endpoints:{settings:jest.fn(),listWorkflows:jest.fn(),dispatchRender:jest.fn(),pollRender:jest.fn(),uploadReferenceImage:jest.fn(),createCharacter:jest.fn(),workflowLoras:jest.fn()}}));
 let root,container,current;
 const workflow={id:'image',kind:'image',name:'Krea 2',prompt_style:'krea2'};
@@ -19,6 +20,21 @@ test('queues the requested count with unique seeds, guards double clicks and pol
   const seeds=endpoints.dispatchRender.mock.calls.map(([body])=>body.seed);expect(new Set(seeds).size).toBe(2);
   expect(current.pending).toBe(true);await act(async()=>{jest.advanceTimersByTime(2500);});
   expect(current.pending).toBe(false);expect(current.renders[0].output_files).toEqual(['r1.png']);
+});
+test('Smart Shoot compiles each planned pose and camera into the queued character prompt',async()=>{
+  endpoints.dispatchRender.mockImplementation(async()=>({id:`r${endpoints.dispatchRender.mock.calls.length+1}`,status:'queued'}));
+  const person=previewPerson();
+  const options={pose:true,camera:true,framing:true,expression:false,wardrobe:false,feet:false,scene:false,lighting:false};
+  const smartPlan=buildSmartPhotoshootPlan({count:4,subjects:[person],preset:'boudoir',seed:1,options,strength:'balanced'});
+  await paint({...values(),mode:'character',count:4,smartShootEnabled:true,smartPreset:'boudoir',smartShootOptions:options,smartStrength:'balanced',smartPlan});
+  await act(async()=>current.generate());
+  expect(endpoints.dispatchRender).toHaveBeenCalledTimes(4);
+  const requests=endpoints.dispatchRender.mock.calls.map(([body])=>body);
+  expect(new Set(requests.map(body=>body.seed)).size).toBe(4);
+  expect(new Set(requests.map(body=>body.prompt_positive)).size).toBeGreaterThan(1);
+  expect(new Set(requests.map(body=>body.subjects[0].dna.pose.action)).size).toBeGreaterThan(1);
+  expect(new Set(requests.map(body=>body.subjects[0].dna.camera.angle)).size).toBeGreaterThan(1);
+  expect(requests.every(body=>body.subjects[0].dna.wardrobe.outfit_set===person.dna.wardrobe.outfit_set)).toBe(true);
 });
 test('retains successful jobs when the next dispatch fails and reports partial submission',async()=>{
   endpoints.dispatchRender.mockResolvedValueOnce({id:'first',status:'queued'}).mockRejectedValueOnce(new Error('offline'));

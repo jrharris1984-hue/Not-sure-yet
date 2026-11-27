@@ -9,8 +9,11 @@ export function workspaceWorkflows(rows, settings, mode) {
     .filter(w => mode === 'image' ? w.kind === 'edit' : w.kind === 'image');
 }
 export function workspaceSubjects(people, relationship) {
+  const castSize=people.length===1?'solo':people.length===2?'duo':people.length===3?'trio':'foursome';
+  const explicitPairing=({Friends:'best friends',Colleagues:'colleagues'}[relationship] || (relationship && !['none','Choose later'].includes(relationship)?relationship:''));
+  const pairing=people.length>1?(explicitPairing || people[0]?.dna?.scenario?.cast_type || 'none'):'none';
   return people.map((person,index) => ({id:`person-${index+1}`,label:String.fromCharCode(65+index),
-    dna:{...person.dna,scenario:{...person.dna.scenario,cast_size:people.length>1?'duo':'solo',cast_type:people.length>1?({Friends:'best friends',Colleagues:'colleagues'}[relationship] || 'none'):'none'}},
+    dna:{...person.dna,scenario:{...person.dna.scenario,cast_size:castSize,cast_type:pairing},_catalogSelections:{...(person.dna._catalogSelections || {}),scenario:{...(person.dna._catalogSelections?.scenario || {}),cast_size:castSize,cast_type:pairing}}},
     likeness:person.likeness,field_locks:person.field_locks || {}}));
 }
 export function workspacePrompt({mode,workflow,people,relationship,description,instruction,negative='',lora,settings={},sceneName}) {

@@ -299,6 +299,15 @@ test("redo changes one shot only and the render variation applies that reviewed 
   expect(applied.subjects[0].dna.scene).toEqual(config.subjects[0].dna.scene);
 });
 
+test("20-shot plans keep assigning pose and camera variation after one preset cycle", () => {
+  const plan = buildSmartPhotoshootPlan({ count: 20, subjects: [baseSubject()], preset: "editorial", seed: 17,
+    options: { pose: true, camera: true, framing: true, expression: false, wardrobe: false, feet: false, scene: false, lighting: false } });
+  expect(plan).toHaveLength(20);
+  expect(plan.every(shot => shot.pose?.value && shot.camera?.label)).toBe(true);
+  expect(new Set(plan.slice(0, 6).map(shot => shot.camera.label)).size).toBeGreaterThan(1);
+  expect(plan.slice(6).some(shot => shot.camera.label)).toBe(true);
+});
+
 test("kept redo and exhausted compatible choices retain the reviewed shot", () => {
   const original = [{ index: 0, title: "Hero", kept: true, pose: { value: "side by side", label: "Side by side" } }];
   expect(regenerateSmartPhotoshootPlan({ plan: original, index: 0 })[0]).toBe(original[0]);

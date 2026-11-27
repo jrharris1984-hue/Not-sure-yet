@@ -1,6 +1,8 @@
 import {useCallback,useEffect,useRef,useState} from 'react';
 import {endpoints} from '@/lib/api';
 import {workspaceWorkflows,workspacePrompt,workspacePayload,workspaceSubjects} from '@/lib/workspaceGeneration';
+import {smartPhotoshootVariation} from '@/lib/batchSmartPhotoshoot';
+import {batchSeed} from '@/lib/batchSeeds';
 const terminal=r=>['done','failed','offline','cancelled'].includes(r.status);
 const message=e=>{const detail=e?.response?.data?.detail || e.message;return typeof detail==='string'?detail:'The request failed. Please try again.';};
 export function useWorkspaceGeneration(values) {
@@ -61,7 +63,18 @@ export function useWorkspaceGeneration(values) {
       const base=workspacePayload({...preliminary,source});
       const firstSeed=seed===''?Math.floor(Math.random()*2147483647):Number(seed);
       for(let i=0;i<values.count;i++){
-        const result=await endpoints.dispatchRender({...base,seed:(firstSeed+i)%2147483647});
+        const smartShoot=values.smartShootEnabled && values.mode==='character'
+          ? smartPhotoshootVariation({subjects:values.people,promptCatalog:values.promptCatalog,index:i,
+              seed:values.smartPlanSeed || 1,options:values.smartShootOptions,preset:values.smartPreset,
+              plan:values.smartPlan,strength:values.smartStrength})
+          : null;
+        const shotPrompt=smartShoot
+          ? workspacePrompt({...values,people:smartShoot.subjects,workflow,settings,negative,lora})
+          : prompt;
+        const shotPayload=smartShoot
+          ? workspacePayload({...preliminary,people:smartShoot.subjects,prompt:shotPrompt,source})
+          : base;
+        const result=await endpoints.dispatchRender({...shotPayload,seed:batchSeed(firstSeed,i,smartShoot?'smart':'nearby')});
         if(!result.id || ['failed','offline'].includes(result.status))throw new Error(result.error || 'Generation could not start. Check ComfyUI and the selected workflow.');
         queued.push(result);if(live.current)setRenders([...queued]);
       }

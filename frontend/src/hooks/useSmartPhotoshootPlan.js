@@ -16,9 +16,10 @@ export default function useSmartPhotoshootPlan({ enabled, count, subjects, promp
   const toggleKeep = index => update(current => ({ ...current,
     plan: current.plan.map((shot, position) => position === index ? { ...shot, kept: !shot.kept } : shot),
   }));
-  const regenerate = (index = null) => update(current => ({ ...current,
-    seed: current.seed + 1,
-    plan: regenerateSmartPhotoshootPlan({ ...context, plan: current.plan, seed: current.seed + 1, index }),
-  }));
+  const regenerate = (index = null) => update(current => {
+    const seed = current.seed + 1;
+    const plan = index === null ? current.plan : current.plan.map((shot, position) => position === index ? { ...shot, kept: false } : shot);
+    return { ...current, seed, plan: regenerateSmartPhotoshootPlan({ ...context, plan, seed, index }) };
+  });
   return { plan, toggleKeep, regenerate };
 }
