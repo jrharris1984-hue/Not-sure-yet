@@ -45,8 +45,6 @@ export const EXPOSURE_PROMPTS = {
   nude: "fully nude, no clothing except selected accessories and hosiery",
 };
 export function wardrobeExposure(wardrobe = {}) {
-  if (wardrobe.set_lingerie_mode === 'none' && (wardrobe.outfit_mode === 'full' || (!wardrobe.outfit_mode && wardrobe.outfit_set))
-      && ['lingerie showing', 'lingerie only'].includes(coverageBehavior(wardrobe))) return 'use selected outfit';
   if (EXPOSURE_CHOICES.includes(wardrobe.exposure_mode)) return wardrobe.exposure_mode;
   if (String(wardrobe.exposure_mode || '').startsWith('custom_') && !wardrobe._exposurePrompt?.missing && (coverageOption(wardrobe.exposure_mode) || wardrobe._exposurePrompt?.mode === wardrobe.exposure_mode)) return wardrobe.exposure_mode;
   // Interpret saved recipes without mutating them. New selections override these fields.

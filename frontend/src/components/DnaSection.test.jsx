@@ -101,6 +101,25 @@ test('named exposure displays legacy state, removes the slider and clears old ov
   } finally { act(() => root.unmount()); }
 });
 
+test('adult age can be typed without clamping intermediate digits',()=>{
+  global.IS_REACT_ACT_ENVIRONMENT=true;
+  const container=document.createElement('div'),root=createRoot(container);
+  const section=SECTIONS.find(item=>item.key==='identity');
+  let value={age:30};
+  const paint=()=>root.render(<DnaSection section={{...section,fields:section.fields.filter(field=>field.key==='age')}} value={value} onChange={next=>{value=next;paint();}}/>);
+  try{
+    act(paint);
+    const input=container.querySelector('[aria-label="Age (adult) value"]');
+    act(()=>{
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(input,'47');
+      input.dispatchEvent(new Event('input',{bubbles:true}));
+    });
+    expect(value.age).toBe(30);
+    act(()=>input.dispatchEvent(new Event('blur',{bubbles:true})));
+    expect(value.age).toBe(47);
+  }finally{act(()=>root.unmount());}
+});
+
 
 test('sheet field focus keeps the complete size-control family and excludes unrelated fields', () => {
   global.IS_REACT_ACT_ENVIRONMENT = true;
@@ -134,7 +153,7 @@ test('full-set mode disables separate garments and Custom reactivates saved choi
   } finally { act(() => root.unmount()); container.remove(); }
 });
 
-test('full set lingerie is optional and unavailable coverage choices disappear', () => {
+test('full set lingerie can be turned off and coverage choices remain available as overrides', () => {
   global.IS_REACT_ACT_ENVIRONMENT = true;
   const container=document.createElement('div');document.body.appendChild(container);
   const root=createRoot(container);
@@ -149,9 +168,11 @@ test('full set lingerie is optional and unavailable coverage choices disappear',
     act(()=>container.querySelector('[data-testid="chip-wardrobe-set_lingerie_mode-none"]').click());
     expect(value.exposure_mode).toBe('use selected outfit');
     expect(value.set_lingerie).toBe('saved layer');
-    expect(container.querySelector('[data-testid="chip-wardrobe-exposure_mode-lingerie-only"]')).toBeNull();
-    expect(container.querySelector('[data-testid="chip-wardrobe-exposure_mode-lingerie-showing"]')).toBeNull();
-    expect(container.textContent).toContain('Choose Include lingerie');
+    expect(container.querySelector('[data-testid="chip-wardrobe-exposure_mode-lingerie-only"]')).not.toBeNull();
+    expect(container.querySelector('[data-testid="chip-wardrobe-exposure_mode-lingerie-showing"]')).not.toBeNull();
+    act(()=>container.querySelector('[data-testid="chip-wardrobe-exposure_mode-lingerie-only"]').click());
+    expect(value.exposure_mode).toBe('lingerie only');
+    expect(value.set_lingerie_mode).toBe('none');
     act(()=>container.querySelector('[data-testid="chip-wardrobe-set_lingerie_mode-matching"]').click());
     // Long lists are paged; expand before checking catalog availability.
     act(() => container.querySelectorAll('button').forEach(button => { if (button.textContent.startsWith('Show more choices')) button.click(); }));

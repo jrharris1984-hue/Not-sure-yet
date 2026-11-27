@@ -51,6 +51,15 @@ test('relationship controls appear only for multiple people and disappear when r
   expect(container.textContent).toContain('family pairings can suggest related adult features and ages');
   await click('Remove this person');expect([...container.querySelectorAll('label')].some(label=>label.textContent.startsWith('Relationship'))).toBe(false);
 });
+test('guided character age keeps the typed value until blur and then commits it',async()=>{
+  await paint();await click('Create a new character');
+  const input=container.querySelector('input[type="number"][min="18"][max="80"]');
+  expect(input).not.toBeNull();
+  act(()=>{Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(input,'47');input.dispatchEvent(new Event('input',{bubbles:true}));});
+  expect(input.value).toBe('47');
+  await act(async()=>input.dispatchEvent(new Event('blur',{bubbles:true})));
+  expect(container.querySelector('input[type="number"][min="18"][max="80"]').value).toBe('47');
+});
 test('random starter creates a multi-person lingerie shoot with distinct outfits and shared pose controls',async()=>{
   await paint();await click('Create a new character');
   const category=document.querySelector('select[aria-label="Wardrobe category"]');expect(category).not.toBeNull();

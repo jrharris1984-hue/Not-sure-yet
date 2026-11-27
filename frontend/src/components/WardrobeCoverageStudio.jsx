@@ -13,7 +13,6 @@ const levels=[
 export default function WardrobeCoverageStudio({value={},onChange,disabled=false}){
   const selected=wardrobeExposure(value);
   const active=levels.findIndex(item=>item.key===selected);
-  const fullSetWithoutLingerie=(value.outfit_mode==='full'||(!value.outfit_mode&&value.outfit_set))&&value.set_lingerie_mode==='none';
   const select=key=>{
     if(disabled)return;
     onChange({...value,exposure_mode:key,_exposurePrompt:undefined,nudity_level:0,nudity_outfit:''});
@@ -22,13 +21,12 @@ export default function WardrobeCoverageStudio({value={},onChange,disabled=false
     <div className="wardrobe-coverage-title"><div><strong>How dressed should the character be?</strong><p>Set the overall coverage. Each state has a distinct prompt direction. Use detailed coverage choices below for necklines, slits, layers, and specific garment positions.</p></div></div>
     <div className="wardrobe-coverage-levels" role="group" aria-label="Clothing coverage">
       {levels.map((item,index)=>{
-        const unavailable=fullSetWithoutLingerie&&['lingerie showing','lingerie only'].includes(item.key);
-        return <button key={item.key} type="button" disabled={disabled||unavailable} aria-pressed={selected===item.key} onClick={()=>select(item.key)} className="wardrobe-coverage-choice">
-          <span className="wardrobe-coverage-index">{index+1}</span><span><strong>{item.label}</strong><small>{unavailable?'Enable an underneath layer first':item.hint}</small></span>
+        return <button key={item.key} type="button" disabled={disabled} aria-pressed={selected===item.key} onClick={()=>select(item.key)} className="wardrobe-coverage-choice">
+          <span className="wardrobe-coverage-index">{index+1}</span><span><strong>{item.label}</strong><small>{item.hint}</small></span>
         </button>;
       })}
     </div>
     <p className="wardrobe-coverage-current" aria-live="polite">{active>=0?`Current: ${levels[active].label}`:'Custom coverage selected. Choose a detailed coverage style below to control the garment shape or position.'}</p>
-    <details className="wardrobe-coverage-help"><summary>How clothing changes work</summary><p>Coverage changes keep your selected outfit and garment details saved. Choices that remove or reposition clothing take priority over a conflicting clothing-state choice; compatible state, fabric, footwear and accessory details remain active. Use the Layers step or advanced clothing coverage control for specific layer combinations.</p></details>
+    <details className="wardrobe-coverage-help"><summary>How clothing changes work</summary><p>Coverage takes priority over the selected outfit’s default state while keeping that outfit saved for later. Lingerie coverage uses the selected underneath layer, or the outfit’s coordinated matching set if the underneath layer is turned off. Use the Layers step or advanced clothing coverage control for specific layer combinations.</p></details>
   </section>;
 }

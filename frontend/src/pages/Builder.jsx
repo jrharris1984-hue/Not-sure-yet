@@ -193,6 +193,7 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
   const mediaLibraryImportApplied = useRef(false);
   const draftHydrated = useRef(false);
   const [requestedDetail, setRequestedDetail] = useState(null);
+  const [castAgeDrafts, setCastAgeDrafts] = useState({});
   const [draftStatus, setDraftStatus] = useState("");
   const [smartBatchOptions, setSmartBatchOptions] = useState({
     pose: true,
@@ -4047,10 +4048,23 @@ export default function Builder({ studio = "standard", imageToolId = "" }) {
                 </label>}
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                   {subjects.map((subject,index)=><label key={subject.id} className="text-xs text-zinc-300">Subject {subject.label || subjectLabel(index)} age
-                    <Input type="number" min="18" max="80" value={subject.dna.identity?.age || 30} disabled={!!locks.identity || !!subject.field_locks?.identity?.age}
-                      onChange={event=>setSubjects(current=>editCastSubjectDna(current,subject.id,{ ...subject.dna,
-                        identity:{ ...subject.dna.identity, age:Math.min(80,Math.max(18,Number(event.target.value)||30)) },
-                      }))} className="mt-1 bg-elevated"/>
+                    <Input type="number" min="18" max="80" step="1" value={castAgeDrafts[subject.id] ?? String(subject.dna.identity?.age ?? 30)} disabled={!!locks.identity || !!subject.field_locks?.identity?.age}
+                      onFocus={()=>setCastAgeDrafts(current=>({...current,[subject.id]:String(subject.dna.identity?.age ?? 30)}))}
+                      onChange={event=>setCastAgeDrafts(current=>({...current,[subject.id]:event.target.value}))}
+                      onBlur={event=>{
+                        const raw=String(event.target.value).trim();
+                        const parsed=raw===''?Number(subject.dna.identity?.age ?? 30):Number(raw);
+                        const age=Number.isFinite(parsed)?Math.round(Math.min(80,Math.max(18,parsed))):Number(subject.dna.identity?.age ?? 30);
+                        setCastAgeDrafts(current=>{const next={...current};delete next[subject.id];return next;});
+                        setSubjects(current=>{
+                          const currentSubject=current.find(item=>item.id===subject.id);
+                          if(!currentSubject)return current;
+                          return editCastSubjectDna(current,subject.id,{ ...currentSubject.dna,
+                            identity:{ ...currentSubject.dna.identity, age },
+                          });
+                        });
+                      }}
+                      onKeyDown={event=>{if(event.key==='Enter'){event.preventDefault();event.currentTarget.blur();}}} className="mt-1 bg-elevated"/>
                   </label>)}
                 </div>
                 <p className="text-xs text-zinc-400">Age presets update the current cast. Set a person's age directly to use individual ages. Resemblance affects facial structure; expressions and outfits stay separate. Locked traits are preserved.</p>

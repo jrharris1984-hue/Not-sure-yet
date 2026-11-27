@@ -100,6 +100,8 @@ test('age can be typed directly as well as adjusted with the slider',async()=>{
   await paint();await act(async()=>buttons().find(button=>button.textContent.includes('Age (adult)')).click());
   const numberInput=document.querySelector('input[aria-label="Age (adult) value"]');expect(numberInput).not.toBeNull();
   input('input[aria-label="Age (adult) value"]','47');
+  expect(container.querySelector('.cs-field-list').textContent).not.toContain('47');
+  await act(async()=>numberInput.dispatchEvent(new Event('blur',{bubbles:true})));
   expect(container.querySelector('.cs-field-list').textContent).toContain('47');
 });
 test('invalid source files never upload and leave a clear error',async()=>{

@@ -52,3 +52,13 @@ test('guided coverage step exposes grouped fine-tuning choices',()=>{
   changeSelect(category,'Necklines & coverage');
   expect(container.querySelector('[data-testid="chip-wardrobe-exposure_mode-high-neckline"]')).not.toBeNull();
 });
+
+test('coverage presets override a full outfit even when its optional lingerie layer is off',()=>{
+  const onChange=jest.fn();
+  act(()=>root.render(<WardrobeEditor section={section} value={{outfit_mode:'full',outfit_set:'tailored pantsuit',set_lingerie_mode:'none'}} onChange={onChange}/>));
+  act(()=>container.querySelector('.wardrobe-guided-steps button:nth-child(2)').click());
+  const lingerieOnly=[...container.querySelectorAll('.wardrobe-coverage-choice')].find(button=>button.textContent.includes('Lingerie only'));
+  expect(lingerieOnly.disabled).toBe(false);
+  act(()=>lingerieOnly.click());
+  expect(onChange).toHaveBeenCalledWith(expect.objectContaining({outfit_set:'tailored pantsuit',set_lingerie_mode:'none',exposure_mode:'lingerie only'}));
+});

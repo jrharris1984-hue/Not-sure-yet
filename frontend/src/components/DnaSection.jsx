@@ -6,7 +6,7 @@ import WardrobeOverview from "./WardrobeOverview";
 import AnatomySelectionReview from "./AnatomySelectionReview";
 import { LEGACY_ANATOMY_FIELDS, selectAnatomyPreset, anatomyPresetDetails } from "@/lib/anatomyDetailControls";
 import OptionBrowser from "./OptionBrowser";
-import {useState} from 'react';
+import {useEffect,useState} from 'react';
 import {wardrobeGroups,wardrobeGroupFor} from '@/lib/wardrobeLayout';
 import { wardrobeMode, wardrobeFieldDisabled, editWardrobeField } from "@/lib/wardrobeMode";
 import { Slider } from "@/components/ui/slider";
@@ -14,7 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Shuffle, RotateCcw, Lock, LockOpen, Wand2, ChevronDown } from "lucide-react";
 import PoseIcon from "@/components/PoseIcon";
 import GroupedChips from "@/components/GroupedChips";
-import { wardrobeExposure, coverageBehavior } from "@/lib/wardrobeNudity";
+import { wardrobeExposure } from "@/lib/wardrobeNudity";
 import {catalogSections, getPromptCatalog} from "@/lib/promptCatalog";
 import { SECTIONS, normalizeMultiSelection } from "@/lib/dna";
 import { physiqueControlStatus, SIZE_CONTROL_PAIRS, sizeControlMode, selectSizeControl } from "@/lib/physiqueControlPriority";
@@ -87,6 +87,8 @@ export default function DnaSection({
   const [intimateGroup,setIntimateGroup]=useState('Breast & Nipple Details');
   const [wardrobeGroup,setWardrobeGroup]=useState('outfit');
   const [showInactiveWardrobe,setShowInactiveWardrobe]=useState(false);
+  const [ageDraft,setAgeDraft]=useState(String(value.age ?? 30));
+  useEffect(()=>{setAgeDraft(String(value.age ?? 30));},[section.key,value.age]);
   const groups=section.key==='wardrobe'?wardrobeGroups(section.fields).filter(group=>showInactiveWardrobe || group.fields.some(field=>!wardrobeFieldDisabled(field.key,value))):[];
   const activeGroup=focusedField && focusedField!=='all' ? wardrobeGroupFor(focusedField) : groups.some(group=>group.key===wardrobeGroup)?wardrobeGroup:groups[0]?.key;
   const sourceField=section.key==='watersports' ? section.fields.find(field=>field.key==='source') || catalogSections(SECTIONS).find(item=>item.key==='watersports')?.fields.find(field=>field.key==='source') : null;
@@ -108,6 +110,13 @@ export default function DnaSection({
     onChange(k === "exposure_mode"
       ? { ...value, exposure_mode: v || "use selected outfit", nudity_level: 0, nudity_outfit: "" }
       : { ...value, [k]: v });
+  };
+  const commitAge = () => {
+    const raw=String(ageDraft).trim();
+    const parsed=raw===''?Number(value.age ?? 30):Number(raw);
+    const next=Number.isFinite(parsed)?Math.round(Math.min(80,Math.max(18,parsed))):Number(value.age ?? 30);
+    setAgeDraft(String(next));
+    set('age',next);
   };
 
   return (
@@ -218,9 +227,6 @@ export default function DnaSection({
           if (section.key === 'intimate' && LEGACY_ANATOMY_FIELDS.includes(f.key) && !showLegacyAnatomy && focusedField !== f.key) return null;
           if ((section.key === "wardrobe" && f.key === "outfit_mode") || (sourceField && f.key === "source")) return null;
           const outfitDisabled = section.key === "wardrobe" && wardrobeFieldDisabled(f.key, value);
-          const visibleChoice = option => !(section.key === 'wardrobe' && f.key === 'exposure_mode'
-            && wardrobeMode(value) === 'full' && value.set_lingerie_mode === 'none'
-            && ['lingerie showing', 'lingerie only'].includes(coverageBehavior({exposure_mode:option})));
           if (focusedField && focusedField !== "all") {
             const family = Object.entries(SIZE_CONTROL_PAIRS).find(([key, [slider]]) => [key, slider, ...(key === "bust" ? ["implant_volume", "bust_shape"] : [])].includes(focusedField));
             const keys = family ? [family[0], family[1][0], ...(family[0] === "bust" ? ["implant_volume", "bust_shape"] : [])] : [focusedField];
@@ -266,6 +272,9 @@ export default function DnaSection({
                     {value[f.key] ?? ""}
                   </span>
                 )}
+                {section.key === 'identity' && f.key === 'age' && <Input aria-label="Age (adult) value" type="number" min="18" max="80" step="1" value={ageDraft} disabled={fLocked}
+                  onChange={event=>setAgeDraft(event.target.value)} onBlur={commitAge} onKeyDown={event=>{if(event.key==='Enter'){event.preventDefault();event.currentTarget.blur();}}}
+                  className="h-9 w-20 bg-elevated border-hairline text-zinc-100" />}
                 {canLock && onToggleFieldLock && (
                   <button
                     type="button"
@@ -299,7 +308,7 @@ export default function DnaSection({
               <GroupedChips
                 compactCategories={section.key === "wardrobe"}
                 labels={f.optionLabels}
-                groups={f.groups.map(group => ({...group, options:group.options.filter(visibleChoice)})).filter(group => group.options.length)}
+                groups={f.groups}
                 value={f.key === "exposure_mode" ? wardrobeExposure(value) : Array.isArray(value[f.key]) ? value[f.key].at(-1) || "" : value[f.key] || ""}
                 onChange={(v) => set(f.key, v)}
                 testIdPrefix={`chip-${section.key}-${f.key}`}
@@ -308,7 +317,7 @@ export default function DnaSection({
             )}
             {f.type === "chips" && !f.groups && (
               <ChipRow
-                options={(f.options || []).filter(visibleChoice)}
+                options={f.options || []}
                 labels={f.optionLabels}
                 value={f.key === "exposure_mode" ? wardrobeExposure(value) : Array.isArray(value[f.key]) ? value[f.key].at(-1) || "" : value[f.key] || ""}
                 onChange={(v) => set(f.key, v)}

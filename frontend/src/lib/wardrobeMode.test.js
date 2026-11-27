@@ -13,8 +13,12 @@ test('underneath lingerie can be disabled and restored without losing the saved 
   expect(disabled.set_lingerie).toBe('saved lingerie choice');
   expect(wardrobeFieldDisabled('set_lingerie',disabled)).toBe(true);
   expect(wardrobeFieldDisabled('set_lingerie_mode',disabled)).toBe(false);
-  expect(editWardrobeField(disabled,'exposure_mode','lingerie only')).toBe(disabled);
+  const override=editWardrobeField(disabled,'exposure_mode','lingerie only');
+  expect(override.exposure_mode).toBe('lingerie only');
+  expect(override.set_lingerie_mode).toBe('none');
   expect(resolveWardrobeMode(disabled)).toMatchObject({outfit_set:outerSet,set_lingerie:'',underwear:''});
+  expect(resolveWardrobeMode(override)).toMatchObject({outfit_mode:'full',outfit_set:'saved lingerie choice',set_lingerie:'saved lingerie choice',set_lingerie_mode:'matching'});
+  expect(wardrobeFieldDisabled('exposure_mode',disabled)).toBe(false);
   const enabled=editWardrobeField(disabled,'set_lingerie_mode','matching');
   expect(resolveWardrobeMode(enabled).set_lingerie).toBe('saved lingerie choice');
   expect(wardrobeFieldDisabled('set_lingerie',enabled)).toBe(false);
@@ -23,11 +27,11 @@ test('underneath lingerie can be disabled and restored without losing the saved 
   expect(original.exposure_mode).toBe('lingerie showing');
 });
 
-test.each(['chroma','krea2','standard','pony','sdxl','qwen_image','wan_t2v'])('%s keeps the outer set when an imported recipe disables its lingerie layer', promptStyle => {
+test.each(['chroma','krea2','standard','pony','sdxl','qwen_image','wan_t2v'])('%s applies explicit lingerie coverage while keeping the saved no-underlayer setting', promptStyle => {
   const dna={...DEFAULT_DNA,wardrobe:{outfit_mode:'full',outfit_set:outerSet,set_lingerie_mode:'none',set_lingerie:'stored lace lingerie',exposure_mode:'lingerie only'}};
   const result=compileModelPrompts({promptStyle,dna});
-  expect(result.positive).toContain('pantsuit');
-  expect(result.positive).not.toMatch(/matching satin bra|stored lace lingerie|lingerie only|reveal lingerie/);
+  expect(result.positive).toMatch(/stored lace lingerie|lingerie only/i);
+  expect(result.positive).not.toContain('pantsuit');
   expect(dna.wardrobe.set_lingerie).toBe('stored lace lingerie');
 });
 
@@ -36,6 +40,11 @@ test('disabling the extra layer preserves a lingerie set worn as the main outfit
   expect(resolveWardrobeMode(value).outfit_set).toBe(outfit);
   const uniform={outfit_set:'French maid dress with apron, matching lingerie, stockings and heels',set_lingerie_mode:'none'};
   expect(resolveWardrobeMode(uniform).outfit_set).toBe('French maid dress with apron, stockings and heels');
+});
+test.each(['use selected outfit','slightly revealing','revealing outfit','lingerie showing','lingerie only','open or shifted outfit','partially nude','nude'])('full outfit mode retains the explicit %s coverage override',coverage=>{
+  const selected=editWardrobeField({outfit_mode:'full',outfit_set:outerSet,set_lingerie_mode:'none'},'exposure_mode',coverage);
+  expect(selected.exposure_mode).toBe(coverage);
+  expect(resolveWardrobeMode(selected).exposure_mode).toBe(coverage);
 });
 test('adds 75 unique complete sets including 60 decade and modern lingerie sets', () => {
   const options = ADDITIONAL_OUTFIT_GROUPS.flatMap(group => group.options);
@@ -47,7 +56,7 @@ test('adds 75 unique complete sets including 60 decade and modern lingerie sets'
 test('selecting a set enters full mode and switching to Custom restores saved pieces', () => {
   const value = { top: 'corset', footwear: 'barefoot', exposure_mode: 'nude' };
   const full = editWardrobeField(value, 'outfit_set', outfit);
-  expect(full).toMatchObject({ outfit_mode: 'full', outfit_set: outfit, exposure_mode: 'use selected outfit', top: 'corset' });
+  expect(full).toMatchObject({ outfit_mode: 'full', outfit_set: outfit, exposure_mode: 'nude', top: 'corset' });
   expect(wardrobeFieldDisabled('top', full)).toBe(true); expect(wardrobeFieldDisabled('outfit_set_color', full)).toBe(false);
   expect(editWardrobeField(full, 'top', 'tube top')).toBe(full);
   const custom = selectWardrobeMode(full, 'custom');

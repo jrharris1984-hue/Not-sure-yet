@@ -7,13 +7,13 @@ export const wardrobeFieldDisabled = (field, value = {}) => wardrobeMode(value) 
   ? !FULL_SET_ALLOWED_FIELDS.has(field) || (field === 'set_lingerie' && value.set_lingerie_mode === 'none')
   : ['outfit_set', 'outfit_set_color', 'set_lingerie_mode', 'set_lingerie'].includes(field);
 export function selectWardrobeMode(value, mode) {
-  return { ...value, outfit_mode: mode, ...(mode === 'full' ? { exposure_mode: 'use selected outfit', nudity_level: 0, nudity_outfit: '' } : {}) };
+  // Switching outfit editing modes must not erase a deliberate coverage state.
+  return { ...value, outfit_mode: mode };
 }
 export function editWardrobeField(value, field, selected) {
   if (field === 'outfit_mode') return selectWardrobeMode(value, selected || 'custom');
   if (field === 'outfit_set') return { ...selectWardrobeMode(value, 'full'), outfit_set: selected };
   if (wardrobeFieldDisabled(field, value)) return value;
-  if (field === 'exposure_mode' && wardrobeMode(value) === 'full' && value.set_lingerie_mode === 'none' && ['lingerie showing', 'lingerie only'].includes(coverageBehavior({...value, exposure_mode:selected, _exposurePrompt:undefined}))) return value;
   if (field === 'set_lingerie_mode') return { ...value, outfit_mode:'full', set_lingerie_mode:selected,
     ...(selected === 'none' && ['lingerie showing', 'lingerie only'].includes(coverageBehavior(value)) ? {exposure_mode:'use selected outfit'} : {}) };
   const priority = selected && selected !== 'none' ? field==='dress_style' ? 'dress' : field==='skirt_style' ? 'skirt' : ['top','bottom'].includes(field) ? 'separates' : null : null;
@@ -30,11 +30,19 @@ export function resolveWardrobeMode(value = {}) {
   ]));
   resolved.outfit_mode = 'full';
   if (value.set_lingerie_mode === 'none') {
-    resolved.set_lingerie = '';
+    const coverage = coverageBehavior(value);
     resolved.underwear = '';
-    // Keep the outer outfit when an imported recipe asks to reveal a layer
-    // that the user explicitly disabled. Do not invent replacement garments.
-    if (['lingerie showing', 'lingerie only'].includes(coverageBehavior(value))) resolved.exposure_mode = 'use selected outfit';
+    // Coverage is an explicit styling override. If the user selects a lingerie
+    // coverage state while the optional layer is disabled, use the saved or
+    // outfit-matched set for this render without changing their saved toggle.
+    if (['lingerie showing', 'lingerie only'].includes(coverage)) {
+      resolved.set_lingerie = value.set_lingerie || matchingSetLingerie(value.outfit_set);
+      resolved.set_lingerie_mode = 'matching';
+      if (coverage === 'lingerie showing') resolved.underwear = resolved.set_lingerie;
+      if (coverage === 'lingerie only') resolved.outfit_set = resolved.set_lingerie;
+      return resolved;
+    }
+    resolved.set_lingerie = '';
     if (/dress|uniform|gown|pantsuit|suit|blazer/i.test(resolved.outfit_set || '')) {
       resolved.outfit_set = String(resolved.outfit_set).replace(/,?\s*(?:with\s+)?matching lingerie\s*,?/gi, ',').replace(/,\s*,/g, ',').replace(/,\s*$/, '').trim();
     }
