@@ -73,6 +73,16 @@ test("planned poses and cameras avoid repeats while choices remain available", (
   expect(new Set(cameras).size).toBe(cameras.length);
 });
 
+test('smart photoshoot planning can rotate through the expanded 3–4 adult editorial pose library',()=>{
+  const subjects=Array.from({length:4},(_,index)=>({...baseSubject(),id:String(index),label:`Person ${index+1}`}));
+  const plan=buildSmartPhotoshootPlan({count:28,subjects,seed:17,strength:'bold',options:{pose:true,camera:false,framing:false,expression:false}});
+  const poses=plan.map(frame=>frame.pose?.value).filter(Boolean);
+  expect(poses).toHaveLength(28);
+  expect(new Set(poses).size).toBe(28);
+  expect(poses.some(pose=>/three or four adults.*lingerie/i.test(pose))).toBe(true);
+  expect(poses.some(pose=>/three or four adults.*boudoir/i.test(pose))).toBe(true);
+});
+
 test("variation locks preserve framing and expression", () => {
   const original = baseSubject();
   const plan = buildSmartPhotoshootPlan({

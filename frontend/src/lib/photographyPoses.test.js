@@ -4,9 +4,17 @@ import { expandPrompt } from './promptMap';
 import { POSE_PACKS, samplePoses } from './posePacks';
 import { compileModelPrompts } from './modelPromptCompilers';
 
-it('makes all thirty-four photography directions selectable in Builder and shoot packs',()=>{
+it('makes all 106 photography directions selectable in Builder and shoot packs',()=>{
  const choices=SECTIONS.find(s=>s.key==='pose').fields.find(f=>f.key==='action').groups.flatMap(g=>g.options);
- expect(Object.keys(PHOTOGRAPHY_POSE_PROMPTS)).toHaveLength(42);
+ expect(Object.keys(PHOTOGRAPHY_POSE_PROMPTS)).toHaveLength(106);
+ expect(choices).toContain('standing back to camera');
+ expect(choices).toContain('seated with back to camera');
+ expect(choices).toContain('side-saddle on a chair');
+ for (const [name,count] of [['Squatting',13],['All Fours',13],['Kneeling',13],['Boudoir editorial',18]]) {
+  const group=PHOTOGRAPHY_POSE_GROUPS.find(item=>item.name===name);
+  expect(group.options).toHaveLength(count);
+  for (const pose of group.options) expect(POSE_ACTION_PROMPTS[pose]).toBeTruthy();
+ }
  PHOTOGRAPHY_POSE_GROUPS.forEach((group,index)=>{
   group.options.forEach(option=>expect(choices).toContain(option));
   expect(POSE_PACKS.find(p=>p.key===`photography_${index}`).poses).toEqual(group.options);
@@ -17,6 +25,15 @@ it.each(['chroma','krea2'])('sends detailed standing directions to %s',promptSty
  const dna=JSON.parse(JSON.stringify(DEFAULT_DNA));
  dna.pose.action='standing quarter turn';
  expect(compileModelPrompts({promptStyle,dna}).positive).toContain(POSE_ACTION_PROMPTS['standing quarter turn']);
+});
+
+it('uses shared cast pose pools for manual packs and random multi-person shots',()=>{
+ const packs=[{key:'shared-lingerie',name:'Lingerie editorial',poses:['pair pose A','pair pose B']}];
+ expect(samplePoses({mode:'pack',packKey:'shared-lingerie',count:4,allPoses:packs[0].poses,packs,shared:true}))
+  .toEqual(['pair pose A','pair pose B','pair pose A','pair pose B']);
+ const randomized=samplePoses({mode:'natural',count:8,allPoses:packs[0].poses,packs,shared:true});
+ expect(randomized).toHaveLength(8);
+ expect(randomized.every(pose=>packs[0].poses.includes(pose))).toBe(true);
 });
 
 it('maps every selectable pose to the supplied phrase without extra wording', () => {

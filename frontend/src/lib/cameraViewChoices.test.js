@@ -1,4 +1,4 @@
-import {EXTRA_CAMERA_ANGLES,EXTRA_SUBJECT_VIEWS} from './cameraViewChoices';
+import {EXTRA_CAMERA_ANGLES,EXTRA_SUBJECT_VIEWS,SPHERICAL_SUBJECT_VIEWS,subjectOrientationDirective,rearSubjectView} from './cameraViewChoices';
 import {DEFAULT_DNA,SECTIONS} from './dna';
 import {expandPrompt} from './promptMap';
 import {resolveBuilderControls} from './builderControlResolution';
@@ -21,4 +21,11 @@ test.each(['chroma','krea2','zimage','sdxl','pony','flux2_klein'])('%s retains t
   const {positive}=compileModelPrompts({promptStyle,dna});
   expect(positive).toMatch(/chest (?:height|level)/i);
   expect(positive).toMatch(/(?:front.*three.quarter|three.quarter.*left)/i);
+});
+test('spherical camera choices include all eight subject directions at five elevations',()=>{
+  expect(Object.keys(SPHERICAL_SUBJECT_VIEWS)).toHaveLength(40);
+  expect(SPHERICAL_SUBJECT_VIEWS['back from below']).toMatch(/back view.*below.*upward/i);
+  expect(SPHERICAL_SUBJECT_VIEWS['left profile from high overhead']).toMatch(/left-side profile.*high above.*downward/i);
+  expect(rearSubjectView('back from below')).toBe(true);
+  expect(subjectOrientationDirective('back from below')).toMatch(/subject facing away.*camera positioned below/i);
 });

@@ -287,6 +287,23 @@ describe("model-specific prompt compilers", () => {
     ];
     const result = compileModelPrompts({ promptStyle: "chroma", dna: subjects[0].dna, subjects, isMulti: true });
     expect(result.positive).not.toContain("exactly one adult person");
+    expect(result.positive).toMatch(/SINGLE-FRAME GROUP COMPOSITION/i);
+    expect(result.positive).toMatch(/one uninterrupted scene/i);
+    expect(result.positive).toMatch(/not a diptych/i);
+    expect(result.negative).toMatch(/split screen/i);
+  });
+
+  it("keeps multi-person casts in one shared image across the photo compilers", () => {
+    const subjects = [
+      { id: "a", label: "A", dna: JSON.parse(JSON.stringify(DEFAULT_DNA)) },
+      { id: "b", label: "B", dna: JSON.parse(JSON.stringify(DEFAULT_DNA)) },
+    ];
+    for (const promptStyle of ["moss", "krea2", "chroma", "standard"]) {
+      const result = compileModelPrompts({ promptStyle, dna: subjects[0].dna, subjects, isMulti: true, promptFormat: "compact" });
+      expect(result.positive).toMatch(/SINGLE-FRAME GROUP COMPOSITION/i);
+      expect(result.positive).toMatch(/one camera frame/i);
+      expect(result.positive).toMatch(/not a diptych/i);
+    }
   });
 
   it("resolves incompatible Z-Image composition choices before compiling", () => {

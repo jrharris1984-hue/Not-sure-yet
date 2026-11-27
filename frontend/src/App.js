@@ -22,7 +22,6 @@ import Shoots from "@/pages/Shoots";
 import ShootSetup from "@/pages/ShootSetup";
 import ShootDetail from "@/pages/ShootDetail";
 import Tools from "@/pages/Tools";
-import CreateHub from "@/pages/CreateHub";
 import { normalizeStudioMode } from "@/lib/studioProfiles";
 
 function LegacyStudioRedirect() {
@@ -43,14 +42,14 @@ function App() {
       <BrowserRouter>
         <AppShell>
           <Routes>
-            <Route path="/" element={<Navigate to="/create" replace />} />
+            <Route path="/" element={<Navigate to="/projects" replace />} />
             <Route path="/library" element={<Library />} />
             <Route path="/projects" element={<Projects />} />
             <Route path="/create/image-start" element={<Navigate to="/create" replace />} />
             <Route path="/research" element={<div className="mx-auto max-w-4xl p-6"><AIResearchPanel open /></div>} />
             <Route path="/create" element={<Suspense fallback={<div className="p-8">Loading workspace…</div>}><StudioWorkspace /></Suspense>} />
             <Route path="/create/guided" element={<Suspense fallback={<div className="p-8">Loading guided editor…</div>}><WorkspacePreview /></Suspense>} />
-            <Route path="/create/tools" element={<CreateHub />} />
+            <Route path="/create/tools" element={<Navigate to="/create" replace />} />
             <Route path="/create/workspace-preview" element={<Suspense fallback={<div className="p-8 text-zinc-400">Loading workspace preview…</div>}><WorkspacePreview /></Suspense>} />
             <Route path="/create/character-preview" element={<CharacterPreviewLab />} />
             <Route path="/create/image" element={<FreeformCreate key="image" mode="image" />} />

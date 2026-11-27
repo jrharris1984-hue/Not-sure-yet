@@ -23,12 +23,12 @@ export default function CastPoseOptions({count, value, onSelect, onClear}) {
 
   return <div className="pane p-3" data-testid="cast-aware-poses">
     <div className="section-label">Poses for {count} people</div>
-    <p className="mt-1 text-xs text-zinc-400">Shared poses apply to everyone and control body and hand placement. Editing an individual body pose clears the shared pose. Camera framing applies to the whole photograph.</p>
+    <p className="mt-1 text-xs text-zinc-400">Shared poses choreograph the whole cast in one continuous photograph. Editing an individual body pose clears the shared pose. Camera framing applies to everyone.</p>
 
     {value && onClear && <button type="button" onClick={onClear} className="mt-2 text-xs text-cyan-300">Clear shared pose</button>}
-    <div className="mt-3 space-y-3">
-      {groups.map(group => <section key={group.label} aria-label={group.label}>
-        <div className="mb-1.5 text-[10px] font-mono uppercase tracking-widest text-emerald-300/80">{group.label}</div>
+    <div className="mt-3 space-y-2">
+      {groups.map((group,index) => <details key={group.label} className="rounded-lg border hairline bg-black/10 p-2" open={index===0}>
+        <summary className="cursor-pointer py-1 text-[10px] font-mono uppercase tracking-widest text-emerald-300/80">{group.label} · {group.poses.length}</summary>
         <div className="grid grid-cols-2 gap-2">
           {group.poses.map(pose => {
             const selected = value === pose.value || value === pose.prompt;
@@ -36,7 +36,7 @@ export default function CastPoseOptions({count, value, onSelect, onClear}) {
               className={`sheet-field-card rounded-lg border px-3 py-2 text-xs capitalize ${selected ? 'has-selection border-amber-400 text-amber-200' : 'hairline text-zinc-300'}`}>{pose.label}</button>;
           })}
         </div>
-      </section>)}
+      </details>)}
     </div>
 
     <div className="mt-4 rounded-lg border hairline bg-black/10 p-2.5">

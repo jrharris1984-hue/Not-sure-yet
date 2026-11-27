@@ -129,17 +129,17 @@ export const POSE_PACKS = [
 
 export const getPack = (key) => POSE_PACKS.find((p) => p.key === key);
 
-export function samplePoses({ mode, packKey, manualPoses, count, allPoses }) {
+export function samplePoses({ mode, packKey, manualPoses, count, allPoses, packs = POSE_PACKS, shared = false }) {
   if (mode === "pack") {
-    const pack = getPack(packKey) || POSE_PACKS[0];
-    return cycleOrRepeat(pack.poses, count);
+    const pack = packs.find(item => item.key === packKey) || packs[0];
+    return pack?.poses?.length ? cycleOrRepeat(pack.poses, count) : Array(count).fill("");
   }
   if (mode === "manual") {
     if (!manualPoses?.length) return Array(count).fill("");
     return cycleOrRepeat(manualPoses, count);
   }
   // random
-  const pool = mode === 'natural' ? NATURAL_POOLS['pose.action'] : allPoses;
+  const pool = mode === 'natural' && !shared ? NATURAL_POOLS['pose.action'] : allPoses;
   if (!pool?.length) return Array(count).fill("");
   const shuffled = [...pool];
   for (let i = shuffled.length - 1; i > 0; i--) {

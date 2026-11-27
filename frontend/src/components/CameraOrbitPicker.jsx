@@ -10,9 +10,15 @@ const elevations=[
   ['from ground level','Ground level'],['from high overhead','High overhead'],
 ];
 export default function CameraOrbitPicker({value='',onChange,disabled=false}) {
-  const selection=directions.flatMap(([direction])=>elevations.map(([elevation])=>({direction,elevation,key:`${direction} ${elevation}`}))).find(item=>item.key===value);
-  const direction=selection?.direction||'front';
-  const elevation=selection?.elevation||'at eye level';
+  const choices=directions.flatMap(([direction])=>elevations.map(([elevation])=>({direction,elevation,key:`${direction} ${elevation}`})));
+  const selection=choices.find(item=>item.key===value);
+  const normalized=String(value||'').toLowerCase();
+  const aliases={profile:'left profile','3/4':'front left three-quarter','over-shoulder':'rear left three-quarter'};
+  const legacyDirection=aliases[normalized]||directions.find(([candidate])=>candidate===normalized)?.[0];
+  const legacyElevation=elevations.find(([candidate])=>candidate===normalized)?.[0];
+  const legacy=selection||(!legacyDirection&&!legacyElevation)?null:choices.find(item=>item.direction===(legacyDirection||'front') && item.elevation===(legacyElevation||'at eye level'));
+  const direction=selection?.direction||legacy?.direction||'front';
+  const elevation=selection?.elevation||legacy?.elevation||'at eye level';
   const choose=(nextDirection,nextElevation)=>onChange(`${nextDirection} ${nextElevation}`);
   return <section className="camera-orbit-picker" aria-label="Visual camera direction selector">
     <div className="camera-orbit-heading"><strong>Camera direction</strong><small>Choose where the camera looks from. This uses descriptive prompts, not a 3D camera.</small></div>
@@ -34,6 +40,6 @@ export default function CameraOrbitPicker({value='',onChange,disabled=false}) {
       {directions.map(([key,label])=><button key={key} type="button" disabled={disabled} aria-pressed={direction===key&&!!selection} onClick={()=>choose(key,elevation)}>{label}</button>)}
     </div>
     <label>Camera elevation<select value={elevation} disabled={disabled} onChange={event=>choose(direction,event.target.value)}>{elevations.map(([key,label])=><option key={key} value={key}>{label}</option>)}</select></label>
-    <small aria-live="polite">{selection?'Selected: '+value:SPHERICAL_SUBJECT_VIEWS[value]?'Selected: '+value:'Choose a direction to apply an orbit viewpoint. Existing camera settings are unchanged.'}</small>
+    <small aria-live="polite">{selection?'Selected: '+value:legacy?'Current view: '+value+' · '+direction+' · '+elevation:'Choose a direction to apply an orbit viewpoint. Existing camera settings are unchanged.'}</small>
   </section>;
 }

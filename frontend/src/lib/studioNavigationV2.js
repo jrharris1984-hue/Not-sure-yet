@@ -2,7 +2,7 @@ export const DESKTOP_WORKSPACES = [
   { id: "create", label: "Create", path: "/create" },
   { id: "characters", label: "Characters", path: "/library" },
   { id: "shoots", label: "Shoots", path: "/shoots" },
-  { id: "projects", label: "Projects", path: "/projects" },
+  { id: "projects", label: "Dashboard", path: "/projects" },
   { id: "library", label: "Library", path: "/gallery" },
 ];
 

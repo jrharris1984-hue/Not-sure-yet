@@ -28,6 +28,20 @@ test('two-person and group pickers expose categorized presets and selected state
   } finally {act(() => root.unmount());}
 });
 
+test.each([2,3,4])('cast-size %i receives pose choices designed for one shared boudoir/editorial frame',count=>{
+  global.IS_REACT_ACT_ENVIRONMENT=true;
+  const container=document.createElement('div'),root=createRoot(container);
+  try {
+    act(()=>root.render(<CastPoseOptions count={count} value="" onSelect={jest.fn()}/>));
+    expect(container.textContent).toContain(`${count} people`);
+    expect(container.textContent).toContain('Boudoir');
+    expect(container.textContent).toContain('Lingerie editorial');
+    expect(container.textContent).toContain('one continuous photograph');
+    const choices=[...container.querySelectorAll('button')];
+    expect(choices.length).toBeGreaterThan(25);
+  } finally {act(()=>root.unmount());}
+});
+
 test('custom shared pose can be entered, selected, and restored', () => {
   global.IS_REACT_ACT_ENVIRONMENT=true;
   const container=document.createElement('div'),root=createRoot(container),onSelect=jest.fn();
