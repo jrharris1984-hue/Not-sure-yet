@@ -4,12 +4,17 @@ import { expandPrompt } from './promptMap';
 import { POSE_PACKS, samplePoses } from './posePacks';
 import { compileModelPrompts } from './modelPromptCompilers';
 
-it('makes all 66 photography directions selectable in Builder and shoot packs',()=>{
+it('makes all 106 photography directions selectable in Builder and shoot packs',()=>{
  const choices=SECTIONS.find(s=>s.key==='pose').fields.find(f=>f.key==='action').groups.flatMap(g=>g.options);
- expect(Object.keys(PHOTOGRAPHY_POSE_PROMPTS)).toHaveLength(66);
+ expect(Object.keys(PHOTOGRAPHY_POSE_PROMPTS)).toHaveLength(106);
  expect(choices).toContain('standing back to camera');
  expect(choices).toContain('seated with back to camera');
  expect(choices).toContain('side-saddle on a chair');
+ for (const [name,count] of [['Squatting',13],['All Fours',13],['Kneeling',13],['Boudoir editorial',18]]) {
+  const group=PHOTOGRAPHY_POSE_GROUPS.find(item=>item.name===name);
+  expect(group.options).toHaveLength(count);
+  for (const pose of group.options) expect(POSE_ACTION_PROMPTS[pose]).toBeTruthy();
+ }
  PHOTOGRAPHY_POSE_GROUPS.forEach((group,index)=>{
   group.options.forEach(option=>expect(choices).toContain(option));
   expect(POSE_PACKS.find(p=>p.key===`photography_${index}`).poses).toEqual(group.options);

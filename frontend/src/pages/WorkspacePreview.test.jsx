@@ -24,6 +24,12 @@ test('start screen offers four distinct tasks without loading the character libr
   expect(container.querySelector('header a[href="/create"]')).not.toBeNull();
   expect(endpoints.listCharacters).not.toHaveBeenCalled();
 });
+test('gallery shortcut stays visible and opens separately to preserve the wizard draft',async()=>{
+  await paint();
+  const link=container.querySelector('header a[href="/gallery"]');
+  expect(link?.textContent).toContain('Gallery');
+  expect(link?.target).toBe('_blank');
+});
 test('saving a wizard character offers the next photoshoot step',async()=>{
   await paint();await click('Create a new character');
   await click('Next');await click('Next');await click('Next');await click('Review image');

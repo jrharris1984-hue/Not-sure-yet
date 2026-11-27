@@ -149,7 +149,47 @@ export const POSE_ACTION_PROMPTS = {
   "reclining with upper body supported": "reclining on one side with the upper body supported by an arm and legs extended comfortably",
   "kneeling beside a chair": "kneeling upright beside a chair with one hand resting on the seat, shoulders relaxed and spine tall",
   "standing back to camera": "standing with the back toward the camera, shoulders level and head turned slightly to the side",
-  "seated with back to camera": "seated facing away from the camera with a relaxed back line and head turned gently over one shoulder"
+  "seated with back to camera": "seated facing away from the camera with a relaxed back line and head turned gently over one shoulder",
+  "low squat with hands on thighs": "holding a balanced low squat with hands resting lightly on the thighs, upright chest and relaxed shoulders",
+  "wide editorial squat": "settling into a stable wide squat with knees tracking comfortably over the feet and a confident upright posture",
+  "side-facing squat": "holding a low side-facing squat with the torso turned toward the light and the spine long",
+  "squat with one heel lifted": "posing in a compact squat with one heel lifted slightly, balanced weight and a clean leg line",
+  "supported squat beside a stool": "holding a comfortable squat beside a studio stool with one hand lightly supported on its seat",
+  "squat with elbows on knees": "resting elbows gently on the knees in a relaxed squat, head lifted and expression composed",
+  "three-quarter squat with shoulder turn": "holding a three-quarter squat with shoulders turned toward the camera and posture steady",
+  "low crouch with one knee forward": "posing in a low crouch with one knee forward and hands placed naturally for balance",
+  "squat looking over shoulder": "holding a stable squat with the torso turned slightly and gaze directed over one shoulder",
+  "asymmetric fashion squat": "creating an asymmetrical squat with one knee higher than the other and shoulders softly angled",
+  "all fours facing camera": "posing on hands and knees facing the camera, shoulders relaxed, hands placed naturally and back comfortably neutral",
+  "all fours in side profile": "posing on hands and knees in a clear side profile, spine neutral and weight evenly supported",
+  "all fours turned away": "posing on hands and knees facing away from the camera with the head turned gently to the side",
+  "forearms supported on chaise": "kneeling on a cushioned chaise with forearms supported on the surface and a relaxed neutral back",
+  "one arm extended in all fours": "posing on hands and knees while extending one arm forward toward the light, maintaining steady balance",
+  "one leg extended behind on all fours": "posing on hands and knees with one leg extended behind at a comfortable height, hips level and movement controlled",
+  "all fours beside a chair": "posing on hands and knees beside a chair with one hand lightly resting on the seat and shoulders relaxed",
+  "all fours with a gentle shoulder turn": "holding a stable hands-and-knees pose while turning the shoulders slightly toward the camera",
+  "low hands-and-knees profile": "holding a low hands-and-knees pose in profile with forearms comfortably supported and neck relaxed",
+  "all fours looking back softly": "posing on hands and knees with a gentle look back over one shoulder, keeping the back comfortably neutral",
+  "upright kneel with hands at waist": "kneeling upright with hands resting lightly at the waist, shoulders open and spine tall",
+  "kneel with one foot planted": "kneeling in a balanced lunge with one foot planted forward and hands relaxed on the raised thigh",
+  "side-profile kneel": "kneeling in side profile with hips settled comfortably and hands resting naturally on the thighs",
+  "kneeling with hands clasped": "kneeling upright with hands loosely clasped at waist level and a calm editorial expression",
+  "kneeling beside a chaise": "kneeling beside a chaise with one hand resting on its edge and posture relaxed",
+  "kneeling with arms overhead": "kneeling tall while reaching both arms overhead in a gentle stretch, shoulders relaxed",
+  "kneeling turned toward window": "kneeling at a three-quarter angle toward a window with hands resting softly on the thighs",
+  "one-knee pose beside a chair": "posing on one knee beside a chair with the other foot grounded and one hand lightly touching the chair back",
+  "kneeling back view with head turn": "kneeling with the back toward the camera and head turned slightly over one shoulder",
+  "seated back on heels": "sitting back comfortably on the heels with an upright spine and hands resting on the thighs",
+  "boudoir portrait wrapped in robe": "seated near a softly lit window, wrapped securely in a robe and looking toward the camera",
+  "reclining on side in a satin robe": "reclining on one side in a satin robe with the upper body supported and the pose relaxed",
+  "seated at bedside with robe": "seated at the edge of a bed with a robe closed, feet grounded and posture composed",
+  "standing by curtains in a slip": "standing in profile beside sheer curtains in an opaque slip dress, arms relaxed and backlit softly",
+  "lounging diagonally across chaise": "lounging diagonally across a chaise with the body comfortably supported and one arm resting overhead",
+  "seated at vanity in three-quarter view": "seated at a vanity in three-quarter view with one hand near the mirror and shoulders relaxed",
+  "robe over shoulder portrait": "standing in a composed portrait with a robe draped securely over the shoulders and gaze turned aside",
+  "reclining with knees softly bent": "reclining comfortably with knees softly bent and the upper body supported by pillows",
+  "boudoir window silhouette seated": "seated in a soft window silhouette with a robe or slip fully covering the body and profile visible",
+  "seated on bed facing away": "seated on the bed facing away from the camera, shoulders relaxed and head turned gently toward the light"
 };
 
 const ADDITIONAL_PHOTOGRAPHY_POSES = ["standing relaxed shoulder turn","standing hands clasped","standing hand at collar","chin resting on hand","hands framing face","adjusting sleeve cuff","seated with ankles crossed","seated leaning forward","seated with one arm on chair","seated torso rotated","leaning on high table","leaning with arms crossed","walking diagonal","walking looking back","mid-turn fabric movement","reaching toward window light","descending staircase","holding coat over shoulder"];
@@ -161,11 +201,37 @@ const EXTENDED_EDITORIAL_POSES = [
   "walking toward window light", "turning away mid-step", "reaching to adjust hair", "walking heel to toe", "gentle seated stretch",
   "reclining with upper body supported", "kneeling beside a chair", "standing back to camera", "seated with back to camera",
 ];
+const SQUATTING_EDITORIAL_POSES = [
+  "squatting", "squatting spread", "squatting deep", "low squat with hands on thighs", "wide editorial squat",
+  "side-facing squat", "squat with one heel lifted", "supported squat beside a stool", "squat with elbows on knees",
+  "three-quarter squat with shoulder turn", "low crouch with one knee forward", "squat looking over shoulder", "asymmetric fashion squat",
+];
+const ALL_FOURS_EDITORIAL_POSES = [
+  "all fours", "doggy arched", "doggy low", "all fours facing camera", "all fours in side profile", "all fours turned away",
+  "forearms supported on chaise", "one arm extended in all fours", "one leg extended behind on all fours", "all fours beside a chair",
+  "all fours with a gentle shoulder turn", "low hands-and-knees profile", "all fours looking back softly",
+];
+const KNEELING_EDITORIAL_POSES = [
+  "kneeling upright", "kneeling back arched", "kneeling hands floor", "upright kneel with hands at waist", "kneel with one foot planted",
+  "side-profile kneel", "kneeling with hands clasped", "kneeling beside a chaise", "kneeling with arms overhead",
+  "kneeling turned toward window", "one-knee pose beside a chair", "kneeling back view with head turn", "seated back on heels",
+];
+const BOUDOIR_EDITORIAL_POSES = [
+  "reclining on velvet sofa", "seated at vanity mirror", "silhouette beside sheer curtains", "kneeling on cushioned bench",
+  "standing in doorway with robe", "looking back over shoulder", "sitting on edge of bed", "reclining against pillows",
+  "boudoir portrait wrapped in robe", "reclining on side in a satin robe", "seated at bedside with robe", "standing by curtains in a slip",
+  "lounging diagonally across chaise", "seated at vanity in three-quarter view", "robe over shoulder portrait",
+  "reclining with knees softly bent", "boudoir window silhouette seated", "seated on bed facing away",
+];
 export const PHOTOGRAPHY_POSE_PROMPTS = Object.fromEntries([
   ...Object.entries(POSE_ACTION_PROMPTS).slice(0,16),
   ...ADDITIONAL_PHOTOGRAPHY_POSES.map(key=>[key,POSE_ACTION_PROMPTS[key]]),
   ...ADULT_EDITORIAL_POSES.map(key=>[key,POSE_ACTION_PROMPTS[key]]),
   ...EXTENDED_EDITORIAL_POSES.map(key=>[key,POSE_ACTION_PROMPTS[key]]),
+  ...SQUATTING_EDITORIAL_POSES.slice(3).map(key=>[key,POSE_ACTION_PROMPTS[key]]),
+  ...ALL_FOURS_EDITORIAL_POSES.slice(3).map(key=>[key,POSE_ACTION_PROMPTS[key]]),
+  ...KNEELING_EDITORIAL_POSES.slice(3).map(key=>[key,POSE_ACTION_PROMPTS[key]]),
+  ...BOUDOIR_EDITORIAL_POSES.slice(8).map(key=>[key,POSE_ACTION_PROMPTS[key]]),
 ]);
 
 export const PHOTOGRAPHY_POSE_GROUPS = [
@@ -182,6 +248,10 @@ export const PHOTOGRAPHY_POSE_GROUPS = [
   {name:'Expanded profile & leaning', options:EXTENDED_EDITORIAL_POSES.slice(10,15)},
   {name:'Expanded movement', options:EXTENDED_EDITORIAL_POSES.slice(15,20)},
   {name:'Boudoir & reverse view', options:EXTENDED_EDITORIAL_POSES.slice(20)},
+  {name:'Squatting', options:SQUATTING_EDITORIAL_POSES},
+  {name:'All Fours', options:ALL_FOURS_EDITORIAL_POSES},
+  {name:'Kneeling', options:KNEELING_EDITORIAL_POSES},
+  {name:'Boudoir editorial', options:BOUDOIR_EDITORIAL_POSES},
 ];
 
 export function photographyPosePrompt(value) {
