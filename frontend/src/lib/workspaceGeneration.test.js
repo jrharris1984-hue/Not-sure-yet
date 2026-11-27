@@ -1,4 +1,4 @@
-import {workspaceWorkflows,workspacePrompt,workspacePayload,workspaceSubjects} from './workspaceGeneration';
+import {applyWorkspaceRelationship,editWorkspaceRelationshipFeature,workspaceWorkflows,workspacePrompt,workspacePayload,workspaceSubjects} from './workspaceGeneration';
 import {previewPerson} from './workspacePreview';
 const image={id:'image',name:'Krea 2',kind:'image',prompt_style:'krea2'};
 const edit={id:'edit',name:'Qwen edit',kind:'edit',prompt_style:'qwen_edit'};
@@ -48,4 +48,34 @@ test('group pairing selections such as sisters and adult mother-daughter reach e
   const sisters=workspaceSubjects(cast.slice(0,2),'sisters');
   expect(sisters[0].dna.scenario).toMatchObject({cast_size:'duo',cast_type:'sisters'});
   expect(workspaceSubjects([...cast,previewPerson()],'none')[0].dna.scenario.cast_size).toBe('foursome');
+});
+test('family pairings share heritage, skin tone, and facial traits while ages remain editable',()=>{
+  const a=previewPerson(),b=previewPerson();
+  a.dna.identity={...a.dna.identity,age:32,ethnicity:'japanese'};
+  a.dna.face={...a.dna.face,eye_shape:'monolid',eye_color:'deep brown',jawline:'soft',nose:'straight',lips:'medium',expression:'smile'};
+  a.dna.skin={...a.dna.skin,tone:'warm beige'};
+  b.dna.identity={...b.dna.identity,age:28,ethnicity:'british'};
+  b.dna.face={...b.dna.face,eye_shape:'round',eye_color:'blue',jawline:'angular',nose:'roman',lips:'full',expression:'serious'};
+  let cast=applyWorkspaceRelationship([a,b],'sisters');
+  expect(cast[1].dna.identity).toMatchObject({age:35,ethnicity:'japanese'});
+  expect(cast[1].dna.face).toMatchObject({eye_shape:'monolid',eye_color:'deep brown',jawline:'soft',nose:'straight',lips:'medium'});
+  expect(cast[1].dna.face.expression).toBe('serious');
+  expect(cast[1].dna.skin.tone).toBe('warm beige');
+  cast=editWorkspaceRelationshipFeature(cast,'sisters',1,'identity','ethnicity','filipino');
+  cast=editWorkspaceRelationshipFeature(cast,'sisters',1,'face','nose','button');
+  expect(cast[0].dna.identity.ethnicity).toBe('filipino');
+  expect(cast[0].dna.face.nose).toBe('button');
+  cast=editWorkspaceRelationshipFeature(cast,'sisters',1,'identity','age',38);
+  expect(cast[0].dna.identity.age).toBe(35);
+  expect(workspaceSubjects(cast,'sisters')[1].dna.identity.age).toBe(38);
+});
+test('mother-daughter presets keep both subjects adult and align their family traits',()=>{
+  const a=previewPerson(),b=previewPerson();
+  a.dna.identity={...a.dna.identity,age:46,ethnicity:'colombian'};
+  a.dna.face={...a.dna.face,nose:'straight'};
+  const cast=applyWorkspaceRelationship([a,b],'mother and daughter');
+  expect(cast[0].dna.identity.age).toBe(46);
+  expect(cast[1].dna.identity.age).toBe(23);
+  expect(cast[1].dna.identity.ethnicity).toBe('colombian');
+  expect(cast[1].dna.face.nose).toBe('straight');
 });

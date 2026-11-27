@@ -32,14 +32,14 @@ export function useWorkspaceGeneration(values) {
     const timer=setInterval(async()=>{
       if(polling)return;polling=true;
       try {const updates=await Promise.all(renders.map(r=>terminal(r)?r:endpoints.pollRender(r.id)));
-        if(!stopped){setRenders(updates);setPollError('');}}
+        if(!stopped){const byId=new Map(updates.map(render=>[render.id,render]));setRenders(current=>current.map(render=>byId.get(render.id) || render));setPollError('');}}
       catch{if(!stopped)setPollError('Connection interrupted. Retrying progress updates; your queued images are kept.');}
       finally{polling=false;}
     },2500);
     return()=>{stopped=true;clearInterval(timer);};
   },[pending,renders]);
   async function generate(){
-    if(operation.current || pending)return;
+    if(operation.current)return;
     operation.current=true;setBusy('Generating');setError('');
     const queued=[];
     try {
@@ -76,7 +76,7 @@ export function useWorkspaceGeneration(values) {
           : base;
         const result=await endpoints.dispatchRender({...shotPayload,seed:batchSeed(firstSeed,i,smartShoot?'smart':'nearby')});
         if(!result.id || ['failed','offline'].includes(result.status))throw new Error(result.error || 'Generation could not start. Check ComfyUI and the selected workflow.');
-        queued.push(result);if(live.current)setRenders([...queued]);
+        queued.push(result);if(live.current)setRenders(current=>[...current,...queued.filter(item=>!current.some(existing=>existing.id===item.id))]);
       }
     }catch(e){if(live.current)setError(`${queued.length?`${queued.length} of ${values.count} images queued. `:''}${message(e)}`);}
     finally{operation.current=false;if(live.current)setBusy('');}

@@ -19,10 +19,10 @@ beforeEach(()=>{
 afterEach(()=>{act(()=>root.unmount());container.remove();});
 test('first launch offers one Create hub for image, editing, shoots and video',async()=>{
   await paint({fresh:true});expect(container.querySelector('.cs-start-hub')).not.toBeNull();expect(container.querySelector('.cs-inspector')).toBeNull();expect(container.querySelector('.cs-generate-bar')).toBeNull();
-  expect(container.textContent).toContain('Studio workspace');expect(container.querySelectorAll('.cs-start-card')).toHaveLength(6);
+  expect(container.textContent).toContain('What are we creating?');expect(container.querySelectorAll('.cs-start-group')).toHaveLength(3);
   expect(container.querySelector('a[href="/create/guided?start=build"]')).not.toBeNull();
   expect(container.querySelector('a[href="/create/text-video"]')).not.toBeNull();expect(container.querySelector('a[href="/create/video"]')).not.toBeNull();
-  expect(container.querySelector('a[href="/character/new"]')).not.toBeNull();await click('Text to image');expect(container.querySelector('.cs-start-hub')).toBeNull();expect(container.querySelector('.cs-inspector')).not.toBeNull();
+  expect(container.querySelector('a[href="/character/new"]')).not.toBeNull();expect(container.textContent).toContain('Edit a personal photo');await click('Text to image');expect(container.querySelector('.cs-start-hub')).toBeNull();expect(container.querySelector('.cs-inspector')).not.toBeNull();
 });
 test('Create opens the workflow hub first and offers saved draft resume',async()=>{
   await paint({fresh:false,resume:false});
@@ -52,10 +52,42 @@ test('switches to prompt creation and queues the reviewed text through the selec
   expect(endpoints.dispatchRender).toHaveBeenCalledTimes(1);expect(endpoints.dispatchRender.mock.calls[0][0].workflow_id).toBe('image');
   expect(container.querySelector('img[alt="Generated result"]').getAttribute('src')).toBe('result.png');
 });
+test('editing stays available and another render can be queued while a job is pending',async()=>{
+  endpoints.dispatchRender.mockResolvedValue({id:'queued-render',status:'queued'});
+  await paint();await click('Generate');
+  expect(container.textContent).toContain('Changes here are ready for the next render.');
+  expect(document.querySelector('input[aria-label="Selected person"]').disabled).toBe(false);
+  expect(container.querySelector('.cs-generate').disabled).toBe(false);
+  expect(container.querySelector('.cs-generate').textContent).toContain('Queue more');
+  input('.cs-label input','Edited while rendering');
+  expect(document.querySelector('.cs-label input').value).toBe('Edited while rendering');
+});
+test('a new queue request uses the latest prompt and keeps prior jobs visible',async()=>{
+  endpoints.dispatchRender.mockResolvedValueOnce({id:'queued-one',status:'queued'}).mockResolvedValueOnce({id:'queued-two',status:'queued'});
+  await paint();await click('Text to image');input('textarea[aria-label="Image description"]','First prompt');await click('Generate');
+  expect(container.textContent).toContain('Changes here are ready for the next render.');
+  input('textarea[aria-label="Image description"]','Updated prompt');await click('Queue more');
+  expect(endpoints.dispatchRender).toHaveBeenCalledTimes(2);
+  expect(endpoints.dispatchRender.mock.calls[0][0].prompt_positive).toContain('First prompt');
+  expect(endpoints.dispatchRender.mock.calls[1][0].prompt_positive).toContain('Updated prompt');
+  expect(container.querySelectorAll('.cs-generating')).toHaveLength(1);
+  expect(container.querySelector('.cs-generating').textContent).toContain('keep editing and add another job');
+});
 test('loads saved characters without updating the original and saves explicit copies',async()=>{
   endpoints.listCharacters.mockResolvedValue([{id:'source',name:'Alex',dna:previewPerson().dna}]);endpoints.createCharacter.mockResolvedValue({id:'copy',name:'Alex'});
   await paint();await click('Use saved character');await click('Alex');await click('Save a copy');
   expect(endpoints.createCharacter.mock.calls[0][0].name).toBe('Alex');expect(container.querySelector('a[href="/character/copy"]')).not.toBeNull();
+});
+test('multi-person setup restores relationship choices and compiles the selected pairing',async()=>{
+  endpoints.dispatchRender.mockResolvedValue({id:'group-result',status:'done'});
+  await paint();await act(async()=>container.querySelector('[aria-label="Add another person"]').click());
+  const relationship=document.querySelector('select[aria-label="Relationship"]');expect(relationship).not.toBeNull();
+  expect([...relationship.options].map(option=>option.textContent)).toContain('Adult sisters · family portrait');
+  await act(async()=>{relationship.value='sisters';relationship.dispatchEvent(new Event('change',{bubbles:true}));});
+  expect(container.textContent).toContain('Family preset aligns heritage, skin tone, hair color and texture, and key facial traits.');
+  await click('Generate');
+  expect(endpoints.dispatchRender.mock.calls[0][0].subjects).toHaveLength(2);
+  expect(endpoints.dispatchRender.mock.calls[0][0].subjects[0].dna.scenario).toMatchObject({cast_size:'duo',cast_type:'sisters'});
 });
 test('mobile inspector detail choices return to the sheet rather than losing the editing panel',async()=>{
   await paint();await act(async()=>container.querySelector('.cs-mobile-panels button').click());
@@ -63,6 +95,12 @@ test('mobile inspector detail choices return to the sheet rather than losing the
   await act(async()=>[...dialog.querySelectorAll('button')].find(button=>button.textContent.includes('Gender')).click());
   expect(document.querySelector('[aria-label="Find an option"]')).not.toBeNull();await click('male');
   dialog=document.querySelector('[role="dialog"]');expect(dialog.className).toContain('cs-sheet');expect(dialog.textContent).toContain('Your character');
+});
+test('age can be typed directly as well as adjusted with the slider',async()=>{
+  await paint();await act(async()=>buttons().find(button=>button.textContent.includes('Age (adult)')).click());
+  const numberInput=document.querySelector('input[aria-label="Age (adult) value"]');expect(numberInput).not.toBeNull();
+  input('input[aria-label="Age (adult) value"]','47');
+  expect(container.querySelector('.cs-field-list').textContent).toContain('47');
 });
 test('invalid source files never upload and leave a clear error',async()=>{
   await paint();await click('Image edit');const upload=document.querySelector('input[type="file"]');
